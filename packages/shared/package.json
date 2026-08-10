@@ -1,0 +1,9 @@
+{
+  "name": "@hakgyo/shared",
+  "private": true,
+  "scripts": {
+    "build": "",
+    "lint": "",
+    "clean": "rm -rf dist node_modules"
+  }
+}

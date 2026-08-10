@@ -1,0 +1,10 @@
+{
+  "name": "@hakgyo/mobile",
+  "private": true,
+  "scripts": {
+    "dev": "",
+    "build": "",
+    "lint": "",
+    "clean": "rm -rf node_modules"
+  }
+}
