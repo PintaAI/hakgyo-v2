@@ -1,10 +1,33 @@
 {
   "name": "@hakgyo/mobile",
-  "private": true,
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "expo": "~57.0.11",
+    "expo-status-bar": "~57.0.1",
+    "nativewind": "^5.0.0-preview.4",
+    "react": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-css": "^3.0.7",
+    "react-native-reanimated": "^4.5.3",
+    "react-native-safe-area-context": "^5.8.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/react": "~19.2.2",
+    "postcss": "^8.5.26",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.3"
+  },
   "scripts": {
-    "dev": "",
-    "build": "",
-    "lint": "",
-    "clean": "rm -rf node_modules"
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "private": true,
+  "overrides": {
+    "lightningcss": "1.30.1"
   }
 }
