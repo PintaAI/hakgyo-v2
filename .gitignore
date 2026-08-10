@@ -16,3 +16,6 @@ dist/
 .idea/
 *.swp
 *.swo
+
+# generated (prisma generate output)
+generated/
