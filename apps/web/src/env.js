@@ -16,6 +16,10 @@ export const env = createEnv({
     BETTER_AUTH_GOOGLE_CLIENT_SECRET: z.string(),
     DATABASE_URL: z.string().url(),
     DIRECT_URL: z.string().url(),
+    CLOUDFLARE_R2_ENDPOINT: z.string().url(),
+    CLOUDFLARE_R2_ACCESS_KEY_ID: z.string().min(1),
+    CLOUDFLARE_R2_SECRET_ACCESS_KEY: z.string().min(1),
+    CLOUDFLARE_R2_BUCKET_NAME: z.string().min(1),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -42,6 +46,11 @@ export const env = createEnv({
       process.env.BETTER_AUTH_GOOGLE_CLIENT_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     DIRECT_URL: process.env.DIRECT_URL,
+    CLOUDFLARE_R2_ENDPOINT: process.env.CLOUDFLARE_R2_ENDPOINT,
+    CLOUDFLARE_R2_ACCESS_KEY_ID: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    CLOUDFLARE_R2_SECRET_ACCESS_KEY:
+      process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+    CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

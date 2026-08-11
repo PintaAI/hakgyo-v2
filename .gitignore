@@ -1,5 +1,6 @@
 node_modules/
 .turbo/
+.vercel/
 dist/
 .next/
 .expo/
@@ -11,6 +12,7 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+client_secret_*.json
 
 # IDE
 .vscode/
