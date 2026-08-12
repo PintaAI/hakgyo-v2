@@ -210,9 +210,65 @@ export const storageRouter = createTRPCRouter({
               },
             },
             {
+              vocabularyEntries: {
+                some: {
+                  vocabularySet: {
+                    courseItems: {
+                      some: {
+                        module: {
+                          course: {
+                            OR: [
+                              { owner: { userId } },
+                              {
+                                cohorts: {
+                                  some: {
+                                    staff: {
+                                      some: { organizationMember: { userId } },
+                                    },
+                                  },
+                                },
+                              },
+                            ],
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            {
               materials: {
                 some: {
                   material: {
+                    courseItems: {
+                      some: {
+                        isPublished: true,
+                        module: {
+                          course: {
+                            status: "PUBLISHED",
+                            OR: [
+                              { enrollments: { some: enrollment } },
+                              {
+                                cohorts: {
+                                  some: {
+                                    enrollments: { some: enrollment },
+                                  },
+                                },
+                              },
+                            ],
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            {
+              vocabularyEntries: {
+                some: {
+                  vocabularySet: {
                     courseItems: {
                       some: {
                         isPublished: true,
@@ -273,6 +329,7 @@ export const storageRouter = createTRPCRouter({
           _count: {
             select: {
               materials: true,
+              vocabularyEntries: true,
             },
           },
         },
@@ -281,7 +338,8 @@ export const storageRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
       if (
-        asset._count.materials > 0
+        asset._count.materials > 0 ||
+        asset._count.vocabularyEntries > 0
       ) {
         throw new TRPCError({
           code: "CONFLICT",

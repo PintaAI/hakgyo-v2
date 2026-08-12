@@ -497,15 +497,20 @@ model VocabularySet {
 model VocabularyEntry {
   id              String        @id @default(cuid())
   vocabularySetId String
+  organizationId  String
   position        Int
   term            String
   definition      String
+  examples        Json          @default("[]")
+  audioAssetId    String?
   metadata        Json?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  vocabularySet   VocabularySet @relation(fields: [vocabularySetId], references: [id], onDelete: Cascade)
+  vocabularySet   VocabularySet @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  audioAsset      Asset?        @relation(fields: [audioAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
   @@unique([vocabularySetId, position])
+  @@index([audioAssetId])
 }
 
 model CourseEnrollment {
@@ -634,21 +639,22 @@ model AssessmentAnswerSelection {
 }
 
 model Asset {
-  id               String          @id @default(cuid())
-  organizationId   String
-  uploadedByUserId String
-  objectKey        String          @unique
-  fileName         String
-  contentType      String
-  size             Int
-  etag             String?
-  confirmedAt      DateTime?
-  deletedAt        DateTime?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  uploadedBy       User            @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
-  materials        MaterialAsset[]
+  id                String            @id @default(cuid())
+  organizationId    String
+  uploadedByUserId  String
+  objectKey         String            @unique
+  fileName          String
+  contentType       String
+  size              Int
+  etag              String?
+  confirmedAt       DateTime?
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  uploadedBy        User              @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  materials         MaterialAsset[]
+  vocabularyEntries VocabularyEntry[]
 
   @@unique([id, organizationId])
   @@index([organizationId, deletedAt])
