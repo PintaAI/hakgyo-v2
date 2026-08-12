@@ -8,7 +8,9 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { EnrollmentStatus } from "../../../../generated/prisma/enums";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { db } from "~/server/db";
 import { r2, r2Bucket } from "~/server/r2";
 
 const MAX_DOCUMENT_SIZE = 100 * 1024 * 1024;
@@ -41,6 +43,7 @@ export const storageRouter = createTRPCRouter({
   createUploadUrl: protectedProcedure
     .input(
       z.object({
+        organizationId: z.string().min(1),
         fileName: z.string().trim().min(1).max(255),
         contentType: z
           .string()
@@ -50,6 +53,15 @@ export const storageRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const membership = await db.organizationMember.findFirst({
+        where: { organizationId: input.organizationId, userId },
+        select: { id: true },
+      });
+      if (!membership) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
       const extension =
         /\.[a-z0-9]{1,10}$/i.exec(input.fileName)?.[0].toLowerCase() ?? "";
       const key = `${getUserPrefix(ctx.session.user.id)}${crypto.randomUUID()}-${input.fileSize}${extension}`;
@@ -62,8 +74,20 @@ export const storageRouter = createTRPCRouter({
       const uploadUrl = await getSignedUrl(r2, command, {
         expiresIn: SIGNED_URL_TTL_SECONDS,
       });
+      const asset = await db.asset.create({
+        data: {
+          organizationId: input.organizationId,
+          uploadedByUserId: userId,
+          objectKey: key,
+          fileName: input.fileName,
+          contentType: input.contentType,
+          size: input.fileSize,
+        },
+        select: { id: true },
+      });
 
       return {
+        assetId: asset.id,
         key,
         uploadUrl,
         expiresIn: SIGNED_URL_TTL_SECONDS,
@@ -75,7 +99,17 @@ export const storageRouter = createTRPCRouter({
     .input(z.object({ key: documentKeySchema }))
     .mutation(async ({ ctx, input }) => {
       assertOwnedKey(input.key, ctx.session.user.id);
+      const asset = await db.asset.findUnique({
+        where: { objectKey: input.key },
+      });
+      if (asset?.uploadedByUserId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
       const expectedSize = getExpectedSize(input.key);
+      if (asset.size !== expectedSize || asset.deletedAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid asset" });
+      }
 
       let object;
       try {
@@ -106,7 +140,18 @@ export const storageRouter = createTRPCRouter({
         });
       }
 
+      const confirmedAsset = await db.asset.update({
+        where: { id: asset.id },
+        data: {
+          confirmedAt: new Date(),
+          contentType: object.ContentType ?? asset.contentType,
+          etag: object.ETag ?? null,
+        },
+        select: { id: true },
+      });
+
       return {
+        assetId: confirmedAsset.id,
         key: input.key,
         size: object.ContentLength,
         contentType: object.ContentType ?? "application/octet-stream",
@@ -115,15 +160,98 @@ export const storageRouter = createTRPCRouter({
     }),
 
   createDownloadUrl: protectedProcedure
-    .input(z.object({ key: documentKeySchema }))
+    .input(z.object({ assetId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      assertOwnedKey(input.key, ctx.session.user.id);
+      const userId = ctx.session.user.id;
+      const enrollment = {
+        userId,
+        status: { in: [EnrollmentStatus.ACTIVE, EnrollmentStatus.COMPLETED] },
+      };
+      const asset = await db.asset.findFirst({
+        where: {
+          id: input.assetId,
+          confirmedAt: { not: null },
+          deletedAt: null,
+          OR: [
+            { uploadedByUserId: userId },
+            {
+              organization: {
+                members: {
+                  some: { userId, role: { in: ["OWNER", "ADMIN"] } },
+                },
+              },
+            },
+            {
+              materials: {
+                some: {
+                  material: {
+                    courseItems: {
+                      some: {
+                        module: {
+                          course: {
+                            OR: [
+                              { owner: { userId } },
+                              {
+                                cohorts: {
+                                  some: {
+                                    staff: {
+                                      some: { organizationMember: { userId } },
+                                    },
+                                  },
+                                },
+                              },
+                            ],
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            {
+              materials: {
+                some: {
+                  material: {
+                    courseItems: {
+                      some: {
+                        isPublished: true,
+                        module: {
+                          course: {
+                            status: "PUBLISHED",
+                            OR: [
+                              { enrollments: { some: enrollment } },
+                              {
+                                cohorts: {
+                                  some: {
+                                    enrollments: { some: enrollment },
+                                  },
+                                },
+                              },
+                            ],
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+        select: {
+          objectKey: true,
+        },
+      });
+      if (!asset) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
 
       const downloadUrl = await getSignedUrl(
         r2,
         new GetObjectCommand({
           Bucket: r2Bucket,
-          Key: input.key,
+          Key: asset.objectKey,
           ResponseContentDisposition: "attachment",
         }),
         { expiresIn: SIGNED_URL_TTL_SECONDS },
@@ -136,9 +264,39 @@ export const storageRouter = createTRPCRouter({
     .input(z.object({ key: documentKeySchema }))
     .mutation(async ({ ctx, input }) => {
       assertOwnedKey(input.key, ctx.session.user.id);
+      const asset = await db.asset.findUnique({
+        where: { objectKey: input.key },
+        select: {
+          id: true,
+          uploadedByUserId: true,
+          deletedAt: true,
+          _count: {
+            select: {
+              materials: true,
+            },
+          },
+        },
+      });
+      if (asset?.uploadedByUserId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      if (
+        asset._count.materials > 0
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Asset is still referenced",
+        });
+      }
+      if (asset.deletedAt) return { deleted: true };
+
       await r2.send(
         new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
       );
+      await db.asset.update({
+        where: { id: asset.id },
+        data: { deletedAt: new Date() },
+      });
       return { deleted: true };
     }),
 });

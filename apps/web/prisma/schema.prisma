@@ -15,15 +15,21 @@ datasource db {
 }
 
 model User {
-  id            String    @id
-  name          String //@db.Text
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String? //@db.Text
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  id                      String               @id
+  name                    String //@db.Text
+  email                   String
+  emailVerified           Boolean              @default(false)
+  image                   String? //@db.Text
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @default(now()) @updatedAt
+  sessions                Session[]
+  accounts                Account[]
+  organizationMemberships OrganizationMember[]
+  courseEnrollments       CourseEnrollment[]
+  cohortEnrollments       CohortEnrollment[]
+  contentProgress         ContentProgress[]
+  assessmentAttempts      AssessmentAttempt[]
+  uploadedAssets          Asset[]
 
   @@unique([email])
   @@map("user")
@@ -60,6 +66,7 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
+  @@unique([providerId, accountId])
   @@map("account")
 }
 
@@ -72,4 +79,589 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  TEACHER
+}
+
+enum EnrollmentMode {
+  OPEN
+  INVITE_ONLY
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CohortStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum CohortStaffRole {
+  TEACHER
+  MODERATOR
+}
+
+enum ZoomConnectionStatus {
+  CONNECTED
+  EXPIRED
+  REVOKED
+}
+
+enum CohortMeetingStatus {
+  SCHEDULED
+  STARTED
+  ENDED
+  CANCELLED
+}
+
+enum CourseItemType {
+  MATERIAL
+  ASSESSMENT
+  VOCABULARY_SET
+}
+
+enum RequirementPolicy {
+  ALL
+  ANY
+}
+
+enum MaterialRequirementType {
+  ASSESSMENT
+  VOCABULARY_SET
+}
+
+enum AssessmentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AssessmentQuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  WRITTEN
+}
+
+enum AssessmentAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  IN_REVIEW
+  GRADED
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum EnrollmentSource {
+  OPEN
+  INVITE
+  PURCHASE
+  MANUAL
+  COHORT
+}
+
+enum ProgressStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Organization {
+  id                    String               @id @default(cuid())
+  name                  String
+  slug                  String               @unique
+  defaultEnrollmentMode EnrollmentMode       @default(INVITE_ONLY)
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  members               OrganizationMember[]
+  courses               Course[]
+  materials             Material[]
+  assessments           Assessment[]
+  vocabularySets        VocabularySet[]
+  zoomConnection        ZoomConnection?
+  assets                Asset[]
+}
+
+model OrganizationMember {
+  id                        String             @id @default(cuid())
+  organizationId            String
+  userId                    String
+  role                      OrganizationRole
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  organization              Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownedCourses              Course[]           @relation("CourseOwner")
+  cohortStaffMemberships    CohortStaff[]
+  createdMaterials          Material[]         @relation("MaterialCreator")
+  createdAssessments        Assessment[]       @relation("AssessmentCreator")
+  createdVocabularySets     VocabularySet[]    @relation("VocabularySetCreator")
+  createdEnrollmentInvites  EnrollmentInvite[] @relation("EnrollmentInviteCreator")
+  reviewedAssessmentAnswers AssessmentAnswer[] @relation("AssessmentAnswerReviewer")
+  connectedZoomAccounts     ZoomConnection[]   @relation("ZoomConnectionCreator")
+  createdCohortMeetings     CohortMeeting[]    @relation("CohortMeetingCreator")
+
+  @@unique([organizationId, userId])
+  @@unique([id, organizationId])
+  @@index([userId])
+}
+
+model Course {
+  id                String             @id @default(cuid())
+  organizationId    String
+  ownerMembershipId String
+  title             String
+  slug              String
+  description       String?
+  thumbnailUrl      String?
+  price             Int                @default(0)
+  currency          String             @default("IDR")
+  enrollmentMode    EnrollmentMode?
+  status            CourseStatus       @default(DRAFT)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner             OrganizationMember @relation("CourseOwner", fields: [ownerMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  modules           CourseModule[]
+  cohorts           Cohort[]
+  enrollments       CourseEnrollment[]
+  enrollmentInvites EnrollmentInvite[]
+
+  @@unique([organizationId, slug])
+  @@unique([id, organizationId])
+  @@index([ownerMembershipId])
+  @@index([organizationId, status])
+}
+
+model Cohort {
+  id                String             @id @default(cuid())
+  courseId          String
+  organizationId    String
+  name              String
+  description       String?
+  whatsappGroupUrl  String?
+  status            CohortStatus       @default(DRAFT)
+  enrollmentMode    EnrollmentMode?
+  price             Int?
+  capacity          Int?
+  startsAt          DateTime?
+  endsAt            DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  course            Course             @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  staff             CohortStaff[]
+  enrollments       CohortEnrollment[]
+  enrollmentInvites EnrollmentInvite[]
+  meetings          CohortMeeting[]
+
+  @@unique([id, courseId])
+  @@unique([id, organizationId])
+  @@index([courseId, status])
+}
+
+model ZoomConnection {
+  id                      String               @id @default(cuid())
+  organizationId          String               @unique
+  connectedByMembershipId String
+  zoomAccountId           String
+  zoomUserId              String
+  encryptedAccessToken    String
+  encryptedRefreshToken   String
+  accessTokenExpiresAt    DateTime
+  scope                   String?
+  status                  ZoomConnectionStatus @default(CONNECTED)
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  organization            Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  connectedBy             OrganizationMember   @relation("ZoomConnectionCreator", fields: [connectedByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([connectedByMembershipId])
+  @@index([zoomAccountId])
+}
+
+model CohortMeeting {
+  id                    String              @id @default(cuid())
+  cohortId              String
+  organizationId        String
+  createdByMembershipId String
+  title                 String
+  agenda                String?
+  zoomMeetingId         String?             @unique
+  zoomMeetingUuid       String?
+  joinUrl               String?
+  startsAt              DateTime
+  durationMinutes       Int
+  timezone              String
+  status                CohortMeetingStatus @default(SCHEDULED)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  cohort                Cohort              @relation(fields: [cohortId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  createdBy             OrganizationMember  @relation("CohortMeetingCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([cohortId, startsAt])
+  @@index([createdByMembershipId])
+  @@index([status, startsAt])
+}
+
+model CohortStaff {
+  id                   String             @id @default(cuid())
+  cohortId             String
+  organizationId       String
+  organizationMemberId String
+  role                 CohortStaffRole
+  createdAt            DateTime           @default(now())
+  cohort               Cohort             @relation(fields: [cohortId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationMember   OrganizationMember @relation(fields: [organizationMemberId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([cohortId, organizationMemberId])
+  @@index([organizationMemberId])
+}
+
+model CourseModule {
+  id             String       @id @default(cuid())
+  courseId       String
+  organizationId String
+  title          String
+  description    String?
+  position       Int
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  course         Course       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  items          CourseItem[]
+
+  @@unique([courseId, position])
+  @@unique([id, organizationId])
+  @@index([courseId])
+}
+
+model CourseItem {
+  id              String              @id @default(cuid())
+  moduleId        String
+  organizationId  String
+  type            CourseItemType
+  position        Int
+  materialId      String?
+  assessmentId    String?
+  vocabularySetId String?
+  isPublished     Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  module          CourseModule        @relation(fields: [moduleId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  material        Material?           @relation(fields: [materialId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  assessment      Assessment?         @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  vocabularySet   VocabularySet?      @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  progress        ContentProgress[]
+  attempts        AssessmentAttempt[]
+
+  @@unique([moduleId, position])
+  @@unique([id, organizationId])
+  @@index([materialId])
+  @@index([assessmentId])
+  @@index([vocabularySetId])
+}
+
+model Material {
+  id                     String                @id @default(cuid())
+  organizationId         String
+  createdByMembershipId  String
+  title                  String
+  description            String?
+  content                Json
+  editorSchemaVersion    Int                   @default(1)
+  requirementPolicy      RequirementPolicy     @default(ALL)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  organization           Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy              OrganizationMember    @relation("MaterialCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  courseItems            CourseItem[]
+  completionRequirements MaterialRequirement[]
+  assets                 MaterialAsset[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([createdByMembershipId])
+}
+
+model MaterialRequirement {
+  id              String                  @id @default(cuid())
+  materialId      String
+  organizationId  String
+  type            MaterialRequirementType
+  assessmentId    String?
+  vocabularySetId String?
+  minimumScore    Int?
+  position        Int
+  material        Material                @relation(fields: [materialId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  assessment      Assessment?             @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  vocabularySet   VocabularySet?          @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([materialId, position])
+  @@index([assessmentId])
+  @@index([vocabularySetId])
+}
+
+model Assessment {
+  id                    String                @id @default(cuid())
+  organizationId        String
+  createdByMembershipId String
+  title                 String
+  description           String?
+  status                AssessmentStatus      @default(DRAFT)
+  editorSchemaVersion   Int                   @default(1)
+  instructions          Json?
+  passingScore          Int?
+  maxAttempts           Int?
+  timeLimitMinutes      Int?
+  shuffleQuestions      Boolean               @default(false)
+  shuffleOptions        Boolean               @default(false)
+  publishedAt           DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  organization          Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy             OrganizationMember    @relation("AssessmentCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  questions             AssessmentQuestion[]
+  courseItems           CourseItem[]
+  attempts              AssessmentAttempt[]
+  materialRequirements  MaterialRequirement[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([createdByMembershipId])
+}
+
+model AssessmentQuestion {
+  id           String                 @id @default(cuid())
+  assessmentId String
+  type         AssessmentQuestionType
+  prompt       Json
+  explanation  Json?
+  points       Int                    @default(1)
+  position     Int
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  assessment   Assessment             @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  options      AssessmentOption[]
+  answers      AssessmentAnswer[]
+
+  @@unique([assessmentId, position])
+  @@index([assessmentId])
+}
+
+model AssessmentOption {
+  id         String                      @id @default(cuid())
+  questionId String
+  content    Json
+  isCorrect  Boolean                     @default(false)
+  position   Int
+  createdAt  DateTime                    @default(now())
+  updatedAt  DateTime                    @updatedAt
+  question   AssessmentQuestion          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selections AssessmentAnswerSelection[]
+
+  @@unique([questionId, position])
+  @@index([questionId])
+}
+
+model VocabularySet {
+  id                    String                @id @default(cuid())
+  organizationId        String
+  createdByMembershipId String
+  title                 String
+  description           String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  organization          Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy             OrganizationMember    @relation("VocabularySetCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  entries               VocabularyEntry[]
+  courseItems           CourseItem[]
+  materialRequirements  MaterialRequirement[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId])
+  @@index([createdByMembershipId])
+}
+
+model VocabularyEntry {
+  id              String        @id @default(cuid())
+  vocabularySetId String
+  position        Int
+  term            String
+  definition      String
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  vocabularySet   VocabularySet @relation(fields: [vocabularySetId], references: [id], onDelete: Cascade)
+
+  @@unique([vocabularySetId, position])
+}
+
+model CourseEnrollment {
+  id          String           @id @default(cuid())
+  courseId    String
+  userId      String
+  status      EnrollmentStatus @default(PENDING)
+  source      EnrollmentSource
+  enrolledAt  DateTime         @default(now())
+  completedAt DateTime?
+  expiresAt   DateTime?
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([courseId, userId])
+  @@index([userId, status])
+}
+
+model CohortEnrollment {
+  id          String           @id @default(cuid())
+  cohortId    String
+  userId      String
+  status      EnrollmentStatus @default(PENDING)
+  source      EnrollmentSource
+  enrolledAt  DateTime         @default(now())
+  completedAt DateTime?
+  cohort      Cohort           @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([cohortId, userId])
+  @@index([userId, status])
+}
+
+model EnrollmentInvite {
+  id                    String             @id @default(cuid())
+  courseId              String
+  organizationId        String
+  cohortId              String?
+  createdByMembershipId String
+  token                 String             @unique
+  expiresAt             DateTime?
+  maxUses               Int?
+  useCount              Int                @default(0)
+  revokedAt             DateTime?
+  createdAt             DateTime           @default(now())
+  course                Course             @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  cohort                Cohort?            @relation(fields: [cohortId, courseId], references: [id, courseId], onDelete: Cascade)
+  createdBy             OrganizationMember @relation("EnrollmentInviteCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([courseId])
+  @@index([cohortId])
+  @@index([createdByMembershipId])
+}
+
+model ContentProgress {
+  id           String         @id @default(cuid())
+  courseItemId String
+  userId       String
+  status       ProgressStatus @default(IN_PROGRESS)
+  startedAt    DateTime       @default(now())
+  completedAt  DateTime?
+  updatedAt    DateTime       @updatedAt
+  courseItem   CourseItem     @relation(fields: [courseItemId], references: [id], onDelete: Restrict)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([courseItemId, userId])
+  @@index([userId, status])
+}
+
+model AssessmentAttempt {
+  id             String                  @id @default(cuid())
+  assessmentId   String
+  courseItemId   String
+  organizationId String
+  userId         String
+  attemptNumber  Int
+  status         AssessmentAttemptStatus @default(IN_PROGRESS)
+  score          Int?
+  maxScore       Int?
+  startedAt      DateTime                @default(now())
+  submittedAt    DateTime?
+  gradedAt       DateTime?
+  assessment     Assessment              @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  courseItem     CourseItem              @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  answers        AssessmentAnswer[]
+
+  @@unique([courseItemId, userId, attemptNumber])
+  @@unique([id, organizationId])
+  @@index([assessmentId])
+  @@index([userId, status])
+}
+
+model AssessmentAnswer {
+  id                     String                      @id @default(cuid())
+  attemptId              String
+  organizationId         String
+  questionId             String
+  content                Json?
+  autoScore              Int?
+  manualScore            Int?
+  feedback               Json?
+  reviewedByMembershipId String?
+  reviewedAt             DateTime?
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+  attempt                AssessmentAttempt           @relation(fields: [attemptId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  question               AssessmentQuestion          @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  reviewedBy             OrganizationMember?         @relation("AssessmentAnswerReviewer", fields: [reviewedByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  selectedOptions        AssessmentAnswerSelection[]
+
+  @@unique([attemptId, questionId])
+  @@unique([id, organizationId])
+  @@index([questionId])
+  @@index([reviewedByMembershipId])
+}
+
+model AssessmentAnswerSelection {
+  answerId String
+  optionId String
+  answer   AssessmentAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  option   AssessmentOption @relation(fields: [optionId], references: [id], onDelete: Restrict)
+
+  @@id([answerId, optionId])
+  @@index([optionId])
+}
+
+model Asset {
+  id               String          @id @default(cuid())
+  organizationId   String
+  uploadedByUserId String
+  objectKey        String          @unique
+  fileName         String
+  contentType      String
+  size             Int
+  etag             String?
+  confirmedAt      DateTime?
+  deletedAt        DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  uploadedBy       User            @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  materials        MaterialAsset[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, deletedAt])
+  @@index([uploadedByUserId, deletedAt])
+}
+
+model MaterialAsset {
+  materialId     String
+  assetId        String
+  organizationId String
+  material       Material @relation(fields: [materialId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  asset          Asset    @relation(fields: [assetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([materialId, assetId])
+  @@index([assetId])
 }
