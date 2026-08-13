@@ -215,16 +215,28 @@ export const cohortRouter = createTRPCRouter({
       });
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
       const meeting = await createZoomMeeting(cohort.organizationId, input);
-      return db.cohortMeeting.create({
-        data: {
-          ...input,
-          organizationId: cohort.organizationId,
-          createdByMembershipId: member.id,
-          zoomMeetingId: String(meeting.id),
-          zoomMeetingUuid: meeting.uuid,
-          joinUrl: meeting.join_url,
-        },
-      });
+      try {
+        return await db.cohortMeeting.create({
+          data: {
+            ...input,
+            organizationId: cohort.organizationId,
+            createdByMembershipId: member.id,
+            zoomMeetingId: String(meeting.id),
+            zoomMeetingUuid: meeting.uuid,
+            joinUrl: meeting.join_url,
+          },
+        });
+      } catch (error) {
+        try {
+          await deleteZoomMeeting(cohort.organizationId, String(meeting.id));
+        } catch (cleanupError) {
+          console.error("Orphaned Zoom meeting could not be removed", {
+            meetingId: meeting.id,
+            cleanupError,
+          });
+        }
+        throw error;
+      }
     }),
   updateMeeting: protectedProcedure
     .input(

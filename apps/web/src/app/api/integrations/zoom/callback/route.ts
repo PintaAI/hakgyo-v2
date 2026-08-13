@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { env } from "~/env";
 import { auth } from "~/server/better-auth";
 import { requireOrganizationPermission } from "~/server/authorization";
 import { db } from "~/server/db";
@@ -14,6 +15,9 @@ export async function GET(request: Request) {
   const expectedState = cookieStore.get("zoom_oauth_state")?.value;
   const organizationId = cookieStore.get("zoom_oauth_organization")?.value;
   const session = await auth.api.getSession({ headers: request.headers });
+
+  cookieStore.delete("zoom_oauth_state");
+  cookieStore.delete("zoom_oauth_organization");
 
   if (
     !session?.user ||
@@ -30,6 +34,21 @@ export async function GET(request: Request) {
     userId: session.user.id,
   });
   const { tokens, user } = await exchangeZoomCode(code);
+  const existingConnection = await db.zoomConnection.findUnique({
+    where: { organizationId },
+    select: { zoomUserId: true },
+  });
+  if (existingConnection && existingConnection.zoomUserId !== user.id) {
+    const linkedMeetings = await db.cohortMeeting.count({
+      where: { organizationId, zoomMeetingId: { not: null } },
+    });
+    if (linkedMeetings > 0) {
+      return new NextResponse(
+        "Delete existing Zoom meetings before connecting a different Zoom account",
+        { status: 409 },
+      );
+    }
+  }
   await db.zoomConnection.upsert({
     where: { organizationId },
     update: {
@@ -55,9 +74,10 @@ export async function GET(request: Request) {
   });
 
   const response = NextResponse.redirect(
-    new URL("/?zoom=connected", request.url),
+    new URL(
+      `/zoom-test?zoom=connected&organizationId=${encodeURIComponent(organizationId)}`,
+      env.APP_URL,
+    ),
   );
-  response.cookies.delete("zoom_oauth_state");
-  response.cookies.delete("zoom_oauth_organization");
   return response;
 }

@@ -61,7 +61,7 @@ bun --cwd apps/mobile run typecheck
 ## Environment and Database
 
 - Copy `apps/web/.env.example` to `apps/web/.env` before running the web app.
-- Required server variables are validated in `apps/web/src/env.js`: `DATABASE_URL`, `DIRECT_URL`, `BETTER_AUTH_URL`, Google OAuth credentials, and `BETTER_AUTH_SECRET` in production.
+- Required server variables are validated in `apps/web/src/env.js`: `DATABASE_URL`, `DIRECT_URL`, `APP_URL`, Google OAuth credentials, and `BETTER_AUTH_SECRET` in production.
 - The Expo client reads `EXPO_PUBLIC_API_URL` from `apps/mobile/.env`. It must be the Next.js origin without `/api/trpc`; use a LAN address when testing on a physical device.
 - `DATABASE_URL` is the pooled Neon connection used by the application. `DIRECT_URL` is the direct connection used by Prisma CLI commands.
 - Never commit `apps/web/.env` or secrets.

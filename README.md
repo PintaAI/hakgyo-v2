@@ -37,7 +37,7 @@ Better Auth completes OAuth on the Next.js backend and redirects the native app 
 
 ## Vercel and Mobile
 
-Deploy `apps/web` as the Vercel project and configure all variables from `apps/web/.env.example`. Set `BETTER_AUTH_URL` to the stable production origin, not a preview deployment URL.
+Deploy `apps/web` as the Vercel project and configure all variables from `apps/web/.env.example`. Set `APP_URL` to the stable production origin, not a preview deployment URL. Better Auth and Zoom OAuth both derive their callback URLs from this value.
 
 For production mobile builds, set:
 

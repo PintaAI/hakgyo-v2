@@ -11,7 +11,12 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string()
         : z.string().optional(),
-    BETTER_AUTH_URL: z.string().url(),
+    APP_URL: z
+      .string()
+      .url()
+      .refine((url) => !url.endsWith("/"), {
+        message: "APP_URL must not have a trailing slash",
+      }),
     BETTER_AUTH_GOOGLE_CLIENT_ID: z.string(),
     BETTER_AUTH_GOOGLE_CLIENT_SECRET: z.string(),
     DATABASE_URL: z.string().url(),
@@ -22,7 +27,6 @@ export const env = createEnv({
     CLOUDFLARE_R2_BUCKET_NAME: z.string().min(1),
     ZOOM_CLIENT_ID: z.string().min(1),
     ZOOM_CLIENT_SECRET: z.string().min(1),
-    ZOOM_REDIRECT_URI: z.string().url(),
     ZOOM_TOKEN_ENCRYPTION_KEY: z.string().base64(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -44,7 +48,7 @@ export const env = createEnv({
    */
   runtimeEnv: {
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    APP_URL: process.env.APP_URL,
     BETTER_AUTH_GOOGLE_CLIENT_ID: process.env.BETTER_AUTH_GOOGLE_CLIENT_ID,
     BETTER_AUTH_GOOGLE_CLIENT_SECRET:
       process.env.BETTER_AUTH_GOOGLE_CLIENT_SECRET,
@@ -57,7 +61,6 @@ export const env = createEnv({
     CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
     ZOOM_CLIENT_ID: process.env.ZOOM_CLIENT_ID,
     ZOOM_CLIENT_SECRET: process.env.ZOOM_CLIENT_SECRET,
-    ZOOM_REDIRECT_URI: process.env.ZOOM_REDIRECT_URI,
     ZOOM_TOKEN_ENCRYPTION_KEY: process.env.ZOOM_TOKEN_ENCRYPTION_KEY,
     NODE_ENV: process.env.NODE_ENV,
   },

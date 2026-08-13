@@ -6,7 +6,7 @@ import { env } from "~/env";
 import { db } from "~/server/db";
 
 export const auth = betterAuth({
-  baseURL: env.BETTER_AUTH_URL,
+  baseURL: env.APP_URL,
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
