@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -8,6 +8,14 @@ import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
 
 export default function ZoomTestPage() {
+  return (
+    <Suspense fallback={<TestShell message="Loading the Zoom workbench..." />}>
+      <ZoomTestContent />
+    </Suspense>
+  );
+}
+
+function ZoomTestContent() {
   const searchParams = useSearchParams();
   const callbackOrganizationId = searchParams.get("organizationId") ?? "";
   const [selectedOrganizationId, setSelectedOrganizationId] = useState(
