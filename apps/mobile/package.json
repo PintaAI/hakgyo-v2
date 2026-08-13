@@ -28,6 +28,7 @@
   "devDependencies": {
     "@expo/metro-config": "~57.0.8",
     "@tailwindcss/postcss": "4.1.16",
+    "@types/node": "^20.14.10",
     "@types/react": "~19.2.2",
     "postcss": "^8.5.26",
     "prettier-plugin-tailwindcss": "^0.8.1",

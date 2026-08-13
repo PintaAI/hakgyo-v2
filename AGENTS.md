@@ -30,7 +30,7 @@ packages/
 
 ## Package Manager and Commands
 
-Use Bun 1.2.0. Run commands from the repository root unless a package-specific command is needed.
+Use Bun 1.3.14. Run commands from the repository root unless a package-specific command is needed.
 
 ```bash
 bun install
