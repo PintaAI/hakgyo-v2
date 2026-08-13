@@ -8,8 +8,11 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { EnrollmentStatus } from "../../../../generated/prisma/enums";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  requireCourseItemAccess,
+  requireOrganizationPermission,
+} from "~/server/authorization";
 import { db } from "~/server/db";
 import { r2, r2Bucket } from "~/server/r2";
 
@@ -54,13 +57,11 @@ export const storageRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const membership = await db.organizationMember.findFirst({
-        where: { organizationId: input.organizationId, userId },
-        select: { id: true },
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "asset.create",
+        userId,
       });
-      if (!membership) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
 
       const extension =
         /\.[a-z0-9]{1,10}$/i.exec(input.fileName)?.[0].toLowerCase() ?? "";
@@ -163,144 +164,72 @@ export const storageRouter = createTRPCRouter({
     .input(z.object({ assetId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const enrollment = {
-        userId,
-        status: { in: [EnrollmentStatus.ACTIVE, EnrollmentStatus.COMPLETED] },
-      };
       const asset = await db.asset.findFirst({
         where: {
           id: input.assetId,
           confirmedAt: { not: null },
           deletedAt: null,
-          OR: [
-            { uploadedByUserId: userId },
-            {
-              organization: {
-                members: {
-                  some: { userId, role: { in: ["OWNER", "ADMIN"] } },
-                },
-              },
-            },
-            {
-              materials: {
-                some: {
-                  material: {
-                    courseItems: {
-                      some: {
-                        module: {
-                          course: {
-                            OR: [
-                              { owner: { userId } },
-                              {
-                                cohorts: {
-                                  some: {
-                                    staff: {
-                                      some: { organizationMember: { userId } },
-                                    },
-                                  },
-                                },
-                              },
-                            ],
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            {
-              vocabularyEntries: {
-                some: {
-                  vocabularySet: {
-                    courseItems: {
-                      some: {
-                        module: {
-                          course: {
-                            OR: [
-                              { owner: { userId } },
-                              {
-                                cohorts: {
-                                  some: {
-                                    staff: {
-                                      some: { organizationMember: { userId } },
-                                    },
-                                  },
-                                },
-                              },
-                            ],
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            {
-              materials: {
-                some: {
-                  material: {
-                    courseItems: {
-                      some: {
-                        isPublished: true,
-                        module: {
-                          course: {
-                            status: "PUBLISHED",
-                            OR: [
-                              { enrollments: { some: enrollment } },
-                              {
-                                cohorts: {
-                                  some: {
-                                    enrollments: { some: enrollment },
-                                  },
-                                },
-                              },
-                            ],
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            {
-              vocabularyEntries: {
-                some: {
-                  vocabularySet: {
-                    courseItems: {
-                      some: {
-                        isPublished: true,
-                        module: {
-                          course: {
-                            status: "PUBLISHED",
-                            OR: [
-                              { enrollments: { some: enrollment } },
-                              {
-                                cohorts: {
-                                  some: {
-                                    enrollments: { some: enrollment },
-                                  },
-                                },
-                              },
-                            ],
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          ],
         },
         select: {
           objectKey: true,
+          uploadedByUserId: true,
+          organization: {
+            select: {
+              members: {
+                where: { userId, role: { in: ["OWNER", "ADMIN"] } },
+                select: { id: true },
+                take: 1,
+              },
+            },
+          },
+          materials: {
+            select: {
+              material: { select: { courseItems: { select: { id: true } } } },
+            },
+          },
+          vocabularyEntries: {
+            select: {
+              vocabularySet: {
+                select: { courseItems: { select: { id: true } } },
+              },
+            },
+          },
         },
       });
       if (!asset) {
         throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      const hasDirectAccess =
+        asset.uploadedByUserId === userId ||
+        asset.organization.members.length > 0;
+      if (!hasDirectAccess) {
+        const courseItemIds = new Set([
+          ...asset.materials.flatMap(({ material }) =>
+            material.courseItems.map(({ id }) => id),
+          ),
+          ...asset.vocabularyEntries.flatMap(({ vocabularySet }) =>
+            vocabularySet.courseItems.map(({ id }) => id),
+          ),
+        ]);
+        let canAccessAssociatedItem = false;
+        for (const courseItemId of courseItemIds) {
+          try {
+            await requireCourseItemAccess({ courseItemId, userId });
+            canAccessAssociatedItem = true;
+            break;
+          } catch (error) {
+            if (
+              !(error instanceof TRPCError) ||
+              error.code === "INTERNAL_SERVER_ERROR"
+            ) {
+              throw error;
+            }
+          }
+        }
+        if (!canAccessAssociatedItem) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
       }
 
       const downloadUrl = await getSignedUrl(
@@ -337,10 +266,7 @@ export const storageRouter = createTRPCRouter({
       if (asset?.uploadedByUserId !== ctx.session.user.id) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
-      if (
-        asset._count.materials > 0 ||
-        asset._count.vocabularyEntries > 0
-      ) {
+      if (asset._count.materials > 0 || asset._count.vocabularyEntries > 0) {
         throw new TRPCError({
           code: "CONFLICT",
           message: "Asset is still referenced",

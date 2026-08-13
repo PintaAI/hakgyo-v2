@@ -20,6 +20,10 @@ export const env = createEnv({
     CLOUDFLARE_R2_ACCESS_KEY_ID: z.string().min(1),
     CLOUDFLARE_R2_SECRET_ACCESS_KEY: z.string().min(1),
     CLOUDFLARE_R2_BUCKET_NAME: z.string().min(1),
+    ZOOM_CLIENT_ID: z.string().min(1),
+    ZOOM_CLIENT_SECRET: z.string().min(1),
+    ZOOM_REDIRECT_URI: z.string().url(),
+    ZOOM_TOKEN_ENCRYPTION_KEY: z.string().base64(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -51,6 +55,10 @@ export const env = createEnv({
     CLOUDFLARE_R2_SECRET_ACCESS_KEY:
       process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
     CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+    ZOOM_CLIENT_ID: process.env.ZOOM_CLIENT_ID,
+    ZOOM_CLIENT_SECRET: process.env.ZOOM_CLIENT_SECRET,
+    ZOOM_REDIRECT_URI: process.env.ZOOM_REDIRECT_URI,
+    ZOOM_TOKEN_ENCRYPTION_KEY: process.env.ZOOM_TOKEN_ENCRYPTION_KEY,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

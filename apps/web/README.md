@@ -1,6 +1,16 @@
-# Create T3 App
+# Hakgyo Web
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+Next.js application dan backend tRPC untuk Hakgyo.
+
+## Integrasi Provider
+
+- BlockNote: komponen reusable ShadCN di `src/components/editor`; tidak terikat ke
+  route atau persistence tertentu.
+- Zoom: General App OAuth di `/api/integrations/zoom/connect`, token terenkripsi
+  server-side, dan CRUD cohort meeting disinkronkan melalui Zoom REST API.
+
+Lihat [`../../docs/api.md`](../../docs/api.md) dan
+[`../../docs/database.md`](../../docs/database.md) untuk kontrak dan model data.
 
 ## What's next? How do I make an app with this?
 

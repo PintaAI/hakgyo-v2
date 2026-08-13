@@ -1,4 +1,11 @@
 import { accountRouter } from "~/server/api/routers/account";
+import { assessmentRouter } from "~/server/api/routers/assessment";
+import { cohortRouter } from "~/server/api/routers/cohort";
+import { contentRouter } from "~/server/api/routers/content";
+import { courseRouter } from "~/server/api/routers/course";
+import { enrollmentRouter } from "~/server/api/routers/enrollment";
+import { learningRouter } from "~/server/api/routers/learning";
+import { organizationRouter } from "~/server/api/routers/organization";
 import { storageRouter } from "~/server/api/routers/storage";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -9,6 +16,13 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   account: accountRouter,
+  assessment: assessmentRouter,
+  cohort: cohortRouter,
+  content: contentRouter,
+  course: courseRouter,
+  enrollment: enrollmentRouter,
+  learning: learningRouter,
+  organization: organizationRouter,
   storage: storageRouter,
 });
 

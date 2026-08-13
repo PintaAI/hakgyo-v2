@@ -10,6 +10,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "dev": "next dev --turbo",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
@@ -19,6 +20,7 @@
     "lint:fix": "eslint . --fix",
     "preview": "next build && next start",
     "start": "next start",
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -26,6 +28,9 @@
     "@aws-sdk/s3-request-presigner": "^3.1107.0",
     "@base-ui/react": "^1.7.0",
     "@better-auth/expo": "^1.6.26",
+    "@blocknote/core": "^0.53.0",
+    "@blocknote/react": "^0.53.0",
+    "@blocknote/shadcn": "^0.53.0",
     "@prisma/adapter-neon": "^7",
     "@prisma/client": "^7",
     "@t3-oss/env-nextjs": "^0.12.0",
@@ -53,6 +58,7 @@
     "@eslint/eslintrc": "^3.3.1",
     "@next/eslint-plugin-next": "^15.2.3",
     "@tailwindcss/postcss": "4.1.16",
+    "@types/bun": "^1.3.14",
     "@types/node": "^20.14.10",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

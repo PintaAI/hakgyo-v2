@@ -98,6 +98,11 @@ enum CourseStatus {
   ARCHIVED
 }
 
+enum CourseProgressionMode {
+  OPEN
+  SEQUENTIAL
+}
+
 enum CohortStatus {
   DRAFT
   OPEN
@@ -231,6 +236,7 @@ model Course {
   currency          String             @default("IDR")
   enrollmentMode    EnrollmentMode?
   status            CourseStatus       @default(DRAFT)
+  progressionMode   CourseProgressionMode @default(OPEN)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)

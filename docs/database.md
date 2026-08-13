@@ -333,7 +333,9 @@ Menghubungkan anggota organisasi dengan cohort sebagai `TEACHER` atau
 `ZoomConnection` menyimpan satu koneksi Zoom terenkripsi per organisasi.
 `CohortMeeting` menyimpan jadwal dan data meeting yang dibuat untuk cohort.
 
-Token Zoom berada di database dan harus selalu dienkripsi sebelum disimpan.
+Token Zoom berada di database dan dienkripsi AES-256-GCM sebelum disimpan. Access
+token di-refresh sebelum expiry dan refresh token hasil rotation menggantikan token
+lama. ID, UUID, dan join URL meeting hanya ditulis dari response provider.
 `joinUrl` tidak boleh dianggap sebagai bukti authorization; akses tetap harus
 divalidasi melalui enrollment atau role pengguna.
 
@@ -421,17 +423,22 @@ Vocabulary entry dapat menunjuk satu asset sebagai audio pelafalan melalui
 `audioAssetId`. Asset yang masih dipakai material atau vocabulary entry tidak
 dapat dihapus.
 
-BlockNote menyimpan referensi asset di dalam `Material.content`. Contoh bentuk
-konseptual:
+`Material.content` adalah root array block BlockNote. BlockNote menyimpan referensi
+asset di dalam array tersebut. Contoh bentuk konseptual:
 
 ```json
-{
-  "type": "file",
-  "props": {
-    "assetId": "cm123...",
-    "name": "latihan-hangul.pdf"
+[
+  {
+    "id": "block-id",
+    "type": "file",
+    "props": {
+      "assetId": "cm123...",
+      "name": "latihan-hangul.pdf"
+    },
+    "content": [],
+    "children": []
   }
-}
+]
 ```
 
 URL download tidak disimpan permanen di JSON karena signed URL memiliki masa
