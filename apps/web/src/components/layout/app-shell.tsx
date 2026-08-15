@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { User, type UserProps } from "~/components/user";
 import { NavLinks } from "./nav-links";
 
 export type NavItem = { href: string; label: string };
@@ -7,10 +8,12 @@ export type NavItem = { href: string; label: string };
 export function AppShell({
   title,
   nav,
+  userMenu,
   children,
 }: {
   title: string;
-  nav: NavItem[];
+  nav?: NavItem[];
+  userMenu?: UserProps;
   children: React.ReactNode;
 }) {
   return (
@@ -22,34 +25,15 @@ export function AppShell({
           </Link>
           <span className="text-muted-foreground text-sm">{title}</span>
           <nav
-            className="ml-auto flex flex-wrap gap-1"
+            className="ml-auto flex flex-wrap items-center gap-1"
             aria-label={`${title} navigation`}
           >
-            <NavLinks items={nav} variant="primary" />
+            {nav?.length ? <NavLinks items={nav} variant="primary" /> : null}
+            <User {...userMenu} />
           </nav>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-5 py-8">{children}</main>
-    </div>
-  );
-}
-
-export function Subnav({
-  nav,
-  children,
-}: {
-  nav: NavItem[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <nav
-        className="mb-6 flex flex-wrap gap-2 border-b pb-4"
-        aria-label="Section navigation"
-      >
-        <NavLinks items={nav} variant="secondary" />
-      </nav>
-      {children}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import {
   isProtectedRoute,
   organizationRoleHeader,
   routeAccess,
-} from "~/routing/access";
+} from "~/lib/access";
 import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
 
@@ -63,17 +63,26 @@ function redirectToSignIn(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (!isProtectedRoute(pathname)) return NextResponse.next();
+  const isProtected = isProtectedRoute(pathname);
+  const isSignInRoute = pathname === routeAccess.signInPath;
+  if (!isProtected && !isSignInRoute) return NextResponse.next();
 
   const session = await auth.api.getSession({ headers: request.headers });
-  if (!session?.user) return redirectToSignIn(request);
+  if (!session?.user) {
+    return isProtected ? redirectToSignIn(request) : NextResponse.next();
+  }
 
-  if (pathname === routeAccess.postSignInPath) {
+  if (isSignInRoute || pathname === routeAccess.postSignInPath) {
     const requestedPath = getSafeRedirectPath(
       request.nextUrl.searchParams.get("redirectTo"),
     );
+    const requestedPathname = requestedPath
+      ? new URL(requestedPath, request.url).pathname
+      : undefined;
     const destination =
-      requestedPath ?? (await getSignedInDestination(session.user.id));
+      requestedPath && requestedPathname !== pathname
+        ? requestedPath
+        : await getSignedInDestination(session.user.id);
     return NextResponse.redirect(new URL(destination, request.url));
   }
 

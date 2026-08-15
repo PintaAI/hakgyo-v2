@@ -1,4 +1,4 @@
-import { RoutePlaceholder } from "~/components/routing/route-placeholder";
+import { PagePlaceholder } from "~/components/placeholder/page-placeholder";
 
 export default async function InvitePage({
   params,
@@ -6,5 +6,5 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  return <RoutePlaceholder title="Accept invitation" params={{ token }} />;
+  return <PagePlaceholder title="Accept invitation" params={{ token }} />;
 }

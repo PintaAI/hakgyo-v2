@@ -1,11 +1,11 @@
 "use client";
 
-import type { ComponentProps, ComponentType } from "react";
+import { useState, type ComponentProps, type ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpenIcon,
-  Building2Icon,
+  ChevronRightIcon,
   ClipboardCheckIcon,
   FileTextIcon,
   GraduationCapIcon,
@@ -13,10 +13,14 @@ import {
   LayoutDashboardIcon,
   LibraryIcon,
   Settings2Icon,
-  UserRoundIcon,
   UsersIcon,
 } from "lucide-react";
 
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "~/components/ui/collapsible";
 import {
   Sidebar,
   SidebarContent,
@@ -26,24 +30,105 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
-  SidebarSeparator,
   useSidebar,
 } from "~/components/ui/sidebar";
-import type { OrganizationRole } from "~/routing/access";
+import { User } from "~/components/user";
+import type { OrganizationRole } from "~/lib/access";
 
-type NavigationItem = {
+type NavigationLink = {
   title: string;
   href: string;
   match?: string;
-  icon: ComponentType<{ className?: string }>;
+  icon?: ComponentType<{ className?: string }>;
+  items?: NavigationLink[];
 };
 
-function isRouteActive(pathname: string, item: NavigationItem) {
+type NavigationItem = NavigationLink & {
+  icon: NonNullable<NavigationLink["icon"]>;
+};
+
+function isRouteActive(pathname: string, item: NavigationLink): boolean {
   const match = item.match ?? item.href;
-  return pathname === match || pathname.startsWith(`${match}/`);
+  return (
+    pathname === match ||
+    pathname.startsWith(`${match}/`) ||
+    item.items?.some((child) => isRouteActive(pathname, child)) === true
+  );
+}
+
+function CollapsibleNavigationItem({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavigationItem;
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const active = isRouteActive(pathname, item);
+  const [open, setOpen] = useState(active);
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      render={<SidebarMenuItem />}
+    >
+      <SidebarMenuButton
+        isActive={active}
+        tooltip={item.title}
+        render={
+          <Link
+            href={item.href}
+            onClick={() => {
+              setOpen(true);
+              onNavigate();
+            }}
+          />
+        }
+      >
+        <item.icon />
+        <span>{item.title}</span>
+      </SidebarMenuButton>
+      <CollapsibleTrigger
+        render={<SidebarMenuAction className="aria-expanded:rotate-90" />}
+      >
+        <ChevronRightIcon />
+        <span className="sr-only">Toggle {item.title}</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <SidebarMenuSub>
+          {item.items?.map((child) => {
+            const childActive = isRouteActive(pathname, child);
+            return (
+              <SidebarMenuSubItem key={child.href}>
+                <SidebarMenuSubButton
+                  isActive={childActive}
+                  render={
+                    <Link
+                      href={child.href}
+                      aria-current={childActive ? "page" : undefined}
+                      onClick={onNavigate}
+                    />
+                  }
+                >
+                  {child.icon ? <child.icon /> : null}
+                  <span>{child.title}</span>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            );
+          })}
+        </SidebarMenuSub>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 export function AppSidebar({
@@ -59,37 +144,35 @@ export function AppSidebar({
   const workspaceRoot = `/workspace/${organizationId}`;
   const isManager = role === "OWNER" || role === "ADMIN";
   const workspaceHome = `${workspaceRoot}/${isManager ? "dashboard" : "courses"}`;
-  const navigation: Array<{ label: string; items: NavigationItem[] }> = [
+  const navigation: NavigationItem[] = [
+    ...(isManager
+      ? [
+          {
+            title: "Dashboard",
+            href: `${workspaceRoot}/dashboard`,
+            icon: LayoutDashboardIcon,
+          },
+        ]
+      : []),
     {
-      label: "Workspace",
-      items: [
-        ...(isManager
-          ? [
-              {
-                title: "Dashboard",
-                href: `${workspaceRoot}/dashboard`,
-                icon: LayoutDashboardIcon,
-              },
-            ]
-          : []),
-        {
-          title: "Courses",
-          href: `${workspaceRoot}/courses`,
-          icon: BookOpenIcon,
-        },
-        ...(isManager
-          ? [
-              {
-                title: "Reviews",
-                href: `${workspaceRoot}/reviews`,
-                icon: ClipboardCheckIcon,
-              },
-            ]
-          : []),
-      ],
+      title: "Courses",
+      href: `${workspaceRoot}/courses`,
+      icon: BookOpenIcon,
     },
+    ...(isManager
+      ? [
+          {
+            title: "Reviews",
+            href: `${workspaceRoot}/reviews`,
+            icon: ClipboardCheckIcon,
+          },
+        ]
+      : []),
     {
-      label: "Content library",
+      title: "Content library",
+      href: `${workspaceRoot}/library/materials`,
+      match: `${workspaceRoot}/library`,
+      icon: LibraryIcon,
       items: [
         {
           title: "Materials",
@@ -104,36 +187,29 @@ export function AppSidebar({
         {
           title: "Assessments",
           href: `${workspaceRoot}/library/assessments`,
-          icon: LibraryIcon,
+          icon: ClipboardCheckIcon,
         },
       ],
     },
-    ...(isManager
-      ? [
-          {
-            label: "Organization",
-            items: [
-              {
-                title: "Members",
-                href: `${workspaceRoot}/members`,
-                icon: UsersIcon,
-              },
-              {
-                title: "Settings",
-                href: `${workspaceRoot}/settings/general`,
-                match: `${workspaceRoot}/settings`,
-                icon: Settings2Icon,
-              },
-            ],
-          },
-        ]
-      : []),
+  ];
+  const organizationNavigation: NavigationItem[] = [
+    {
+      title: "Members",
+      href: `${workspaceRoot}/members`,
+      icon: UsersIcon,
+    },
+    {
+      title: "Settings",
+      href: `${workspaceRoot}/settings/general`,
+      match: `${workspaceRoot}/settings`,
+      icon: Settings2Icon,
+    },
   ];
 
   const closeMobileSidebar = () => setOpenMobile(false);
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -157,16 +233,53 @@ export function AppSidebar({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-
-      <SidebarSeparator />
-
       <SidebarContent>
-        {navigation.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+        <SidebarGroup>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigation.map((item) => {
+                const active = isRouteActive(pathname, item);
+
+                if (!item.items?.length) {
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        isActive={active}
+                        tooltip={item.title}
+                        render={
+                          <Link
+                            href={item.href}
+                            aria-current={active ? "page" : undefined}
+                            onClick={closeMobileSidebar}
+                          />
+                        }
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }
+
+                return (
+                  <CollapsibleNavigationItem
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    onNavigate={closeMobileSidebar}
+                  />
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {isManager ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Organization</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => {
+                {organizationNavigation.map((item) => {
                   const active = isRouteActive(pathname, item);
                   return (
                     <SidebarMenuItem key={item.href}>
@@ -190,34 +303,33 @@ export function AppSidebar({
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+        ) : null}
+        <SidebarGroup className="mt-auto">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="My learning"
+                render={
+                  <Link href="/learn/courses" onClick={closeMobileSidebar} />
+                }
+              >
+                <GraduationCapIcon />
+                <span>My learning</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
-
-      <SidebarSeparator />
-
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="My learning"
-              render={
-                <Link href="/learn/courses" onClick={closeMobileSidebar} />
-              }
-            >
-              <Building2Icon />
-              <span>My learning</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Account"
-              render={<Link href="/account" onClick={closeMobileSidebar} />}
-            >
-              <UserRoundIcon />
-              <span>Account</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <User
+          variant="sidebar"
+          role={role}
+          settingsHref={
+            isManager
+              ? `${workspaceRoot}/settings/general`
+              : "/account?section=settings"
+          }
+        />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -437,11 +437,14 @@ GET /api/integrations/zoom/callback
 query({
   organizationId?: string;
   limit?: number; // default 50, max 100
+  cursor?: string; // ID course terakhir dari page sebelumnya
 } = {}): PublishedCourseSummary[]
 ```
 
 - Auth: public.
 - Hanya course `PUBLISHED`.
+- Untuk pagination, kirim `id` item terakhir sebagai `cursor`; pagination selesai
+  ketika jumlah output lebih kecil dari `limit`.
 - Output: metadata katalog, organization, jumlah module dan cohort.
 - Tidak mengembalikan konten material atau jawaban assessment.
 

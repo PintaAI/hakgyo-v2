@@ -1,8 +1,10 @@
-import { WorkspacePlaceholder } from "~/components/routing/workspace-placeholder";
+import { WorkspacePagePlaceholder } from "~/components/placeholder/workspace-page-placeholder";
 export default function Page({
   params,
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  return <WorkspacePlaceholder title="Vocabulary library" params={params} />;
+  return (
+    <WorkspacePagePlaceholder title="Vocabulary library" params={params} />
+  );
 }

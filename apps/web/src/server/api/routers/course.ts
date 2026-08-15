@@ -42,6 +42,7 @@ export const courseRouter = createTRPCRouter({
         .object({
           organizationId: id.optional(),
           limit: z.number().int().min(1).max(100).default(50),
+          cursor: id.optional(),
         })
         .default({}),
     )
@@ -52,7 +53,9 @@ export const courseRouter = createTRPCRouter({
           organizationId: input.organizationId,
         },
         take: input.limit,
-        orderBy: { createdAt: "desc" },
+        cursor: input.cursor ? { id: input.cursor } : undefined,
+        skip: input.cursor ? 1 : undefined,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         select: {
           id: true,
           title: true,
@@ -119,7 +122,9 @@ export const courseRouter = createTRPCRouter({
       return db.course.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.role === "TEACHER" ? { ownerMembershipId: member.id } : {}),
+          ...(member.role === "TEACHER"
+            ? { ownerMembershipId: member.id }
+            : {}),
         },
         orderBy: { createdAt: "desc" },
         include: {
@@ -161,10 +166,7 @@ export const courseRouter = createTRPCRouter({
         permission: "course.create",
         userId: ctx.session.user.id,
       });
-      if (
-        member.role === "TEACHER" &&
-        input.ownerMembershipId !== member.id
-      )
+      if (member.role === "TEACHER" && input.ownerMembershipId !== member.id)
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Teachers can only create courses they own",

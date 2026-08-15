@@ -1,4 +1,4 @@
-import { WorkspacePlaceholder } from "~/components/routing/workspace-placeholder";
+import { WorkspacePagePlaceholder } from "~/components/placeholder/workspace-page-placeholder";
 export default function Page({
   params,
 }: {
@@ -8,5 +8,5 @@ export default function Page({
     cohortId: string;
   }>;
 }) {
-  return <WorkspacePlaceholder title="Cohort learners" params={params} />;
+  return <WorkspacePagePlaceholder title="Cohort learners" params={params} />;
 }

@@ -1,8 +1,8 @@
-import { WorkspacePlaceholder } from "~/components/routing/workspace-placeholder";
+import { WorkspacePagePlaceholder } from "~/components/placeholder/workspace-page-placeholder";
 export default function Page({
   params,
 }: {
   params: Promise<{ organizationId: string; courseId: string }>;
 }) {
-  return <WorkspacePlaceholder title="Course overview" params={params} />;
+  return <WorkspacePagePlaceholder title="Course overview" params={params} />;
 }

@@ -1,4 +1,4 @@
-import { Subnav } from "~/components/routing/app-shell";
+import { Subnav } from "~/components/layout/subnav";
 export default async function Layout({
   children,
   params,

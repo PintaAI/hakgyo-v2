@@ -1,5 +1,5 @@
-import { RoutePlaceholder } from "~/components/routing/route-placeholder";
+import { PagePlaceholder } from "~/components/placeholder/page-placeholder";
 
 export default function LearningCoursesPage() {
-  return <RoutePlaceholder title="My courses" />;
+  return <PagePlaceholder title="My courses" />;
 }

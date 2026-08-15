@@ -1,4 +1,4 @@
-import { AppShell } from "~/components/routing/app-shell";
+import { AppShell } from "~/components/layout/app-shell";
 
 export default function AuthLayout({
   children,

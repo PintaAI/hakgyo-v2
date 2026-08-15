@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { getPostSignInPath } from "~/routing/access";
+import { getPostSignInPath } from "~/lib/access";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
 
