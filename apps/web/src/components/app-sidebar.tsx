@@ -32,6 +32,7 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "~/components/ui/sidebar";
+import type { OrganizationRole } from "~/routing/access";
 
 type NavigationItem = {
   title: string;
@@ -47,30 +48,44 @@ function isRouteActive(pathname: string, item: NavigationItem) {
 
 export function AppSidebar({
   organizationId,
+  role,
   ...props
-}: ComponentProps<typeof Sidebar> & { organizationId: string }) {
+}: ComponentProps<typeof Sidebar> & {
+  organizationId: string;
+  role: OrganizationRole;
+}) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const workspaceRoot = `/workspace/${organizationId}`;
+  const isManager = role === "OWNER" || role === "ADMIN";
+  const workspaceHome = `${workspaceRoot}/${isManager ? "dashboard" : "courses"}`;
   const navigation: Array<{ label: string; items: NavigationItem[] }> = [
     {
       label: "Workspace",
       items: [
-        {
-          title: "Dashboard",
-          href: `${workspaceRoot}/dashboard`,
-          icon: LayoutDashboardIcon,
-        },
+        ...(isManager
+          ? [
+              {
+                title: "Dashboard",
+                href: `${workspaceRoot}/dashboard`,
+                icon: LayoutDashboardIcon,
+              },
+            ]
+          : []),
         {
           title: "Courses",
           href: `${workspaceRoot}/courses`,
           icon: BookOpenIcon,
         },
-        {
-          title: "Reviews",
-          href: `${workspaceRoot}/reviews`,
-          icon: ClipboardCheckIcon,
-        },
+        ...(isManager
+          ? [
+              {
+                title: "Reviews",
+                href: `${workspaceRoot}/reviews`,
+                icon: ClipboardCheckIcon,
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -93,22 +108,26 @@ export function AppSidebar({
         },
       ],
     },
-    {
-      label: "Organization",
-      items: [
-        {
-          title: "Members",
-          href: `${workspaceRoot}/members`,
-          icon: UsersIcon,
-        },
-        {
-          title: "Settings",
-          href: `${workspaceRoot}/settings/general`,
-          match: `${workspaceRoot}/settings`,
-          icon: Settings2Icon,
-        },
-      ],
-    },
+    ...(isManager
+      ? [
+          {
+            label: "Organization",
+            items: [
+              {
+                title: "Members",
+                href: `${workspaceRoot}/members`,
+                icon: UsersIcon,
+              },
+              {
+                title: "Settings",
+                href: `${workspaceRoot}/settings/general`,
+                match: `${workspaceRoot}/settings`,
+                icon: Settings2Icon,
+              },
+            ],
+          },
+        ]
+      : []),
   ];
 
   const closeMobileSidebar = () => setOpenMobile(false);
@@ -122,10 +141,7 @@ export function AppSidebar({
               size="lg"
               tooltip="Hakgyo workspace"
               render={
-                <Link
-                  href={`${workspaceRoot}/dashboard`}
-                  onClick={closeMobileSidebar}
-                />
+                <Link href={workspaceHome} onClick={closeMobileSidebar} />
               }
             >
               <span className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">

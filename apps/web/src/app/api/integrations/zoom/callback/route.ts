@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 
   const response = NextResponse.redirect(
     new URL(
-      `/zoom-test?zoom=connected&organizationId=${encodeURIComponent(organizationId)}`,
+      `/workspace/${encodeURIComponent(organizationId)}/settings/integrations?zoom=connected`,
       env.APP_URL,
     ),
   );

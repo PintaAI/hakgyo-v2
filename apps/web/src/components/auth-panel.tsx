@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 
+import { getPostSignInPath } from "~/routing/access";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
 
-export function AuthPanel() {
+export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
+  const router = useRouter();
+  const postSignInPath = getPostSignInPath(redirectTo);
   const {
     data: session,
     isPending: sessionPending,
@@ -43,6 +47,7 @@ export function AuthPanel() {
     }
 
     await refetch();
+    router.replace(postSignInPath);
   };
 
   if (sessionPending) {
@@ -178,7 +183,7 @@ export function AuthPanel() {
           setError(null);
           const result = await authClient.signIn.social({
             provider: "google",
-            callbackURL: "/",
+            callbackURL: postSignInPath,
           });
           if (result.error) {
             setError(result.error.message ?? "Google sign-in failed.");

@@ -1,6 +1,12 @@
 import { AuthPanel } from "~/components/auth-panel";
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirectTo?: string }>;
+}) {
+  const { redirectTo } = await searchParams;
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f2efe6] text-[#163f35]">
       <div className="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-[#e9c46a]/35 blur-3xl" />
@@ -34,7 +40,7 @@ export default function Home() {
           </div>
         </section>
 
-        <AuthPanel />
+        <AuthPanel redirectTo={redirectTo} />
       </div>
     </main>
   );

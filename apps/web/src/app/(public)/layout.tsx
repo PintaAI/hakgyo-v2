@@ -10,7 +10,7 @@ export default function PublicLayout({
       title="Public"
       nav={[
         { href: "/catalog", label: "Catalog" },
-        { href: "/sign-in", label: "Sign in" },
+        { href: "/", label: "Sign in" },
       ]}
     >
       {children}

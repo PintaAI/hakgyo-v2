@@ -245,9 +245,41 @@ query(): SessionUser
 - Auth: protected.
 - Mengembalikan user dari session Better Auth aktif.
 
+### `account.updateProfile`
+
+```ts
+mutation({
+  name?: string;         // 1..120
+  image?: string | null; // URL, max 2,048
+}): UserProfile
+```
+
+- Auth: protected.
+- Minimal satu field wajib dikirim.
+- Hanya memperbarui nama dan foto user aktif; email dan password tidak dapat
+  diubah melalui procedure ini.
+- Client sebaiknya me-refresh session setelah mutation jika header global
+  membaca data user langsung dari session.
+
 ---
 
 ## Organization
+
+### `organization.create`
+
+```ts
+mutation({
+  name: string; // 1..120
+  slug: string; // lowercase kebab-case, 2..80
+  defaultEnrollmentMode?: "OPEN" | "INVITE_ONLY"; // default INVITE_ONLY
+}): Organization & {
+  membership: { id: string; role: "OWNER" };
+}
+```
+
+- Auth: protected.
+- Organization dan membership owner pembuat dibuat dalam satu transaction.
+- Slug bersifat global unique; slug yang sudah dipakai menghasilkan `CONFLICT`.
 
 ### `organization.list`
 
@@ -266,6 +298,31 @@ query({ organizationId: string }): Organization
 ```
 
 - Scope: member organization yang memiliki permission membuat course.
+
+### `organization.getDashboardAnalytics`
+
+```ts
+query({ organizationId: string }): {
+  members: number;
+  courses: { total: number; byStatus: Partial<Record<CourseStatus, number>> };
+  cohorts: { total: number; byStatus: Partial<Record<CohortStatus, number>> };
+  enrollments: {
+    total: number;
+    byStatus: Partial<Record<EnrollmentStatus, number>>;
+  };
+  content: {
+    materials: number;
+    vocabularySets: number;
+    assessments: number;
+  };
+  actionItems: { attemptsInReview: number; upcomingMeetings: number };
+}
+```
+
+- Scope: `OWNER` atau `ADMIN` organization.
+- Seluruh count dibatasi oleh `organizationId`.
+- `upcomingMeetings` menghitung meeting `SCHEDULED` yang belum dimulai.
+- Status tanpa data tidak disertakan dalam `byStatus`.
 
 ### `organization.update`
 
@@ -918,6 +975,25 @@ mutation({ cohortId: string; meetingId: string }): { deleted: true }
 
 ## Enrollment
 
+### `enrollment.enrollOpenCourse`
+
+```ts
+mutation({ courseId: string }): CourseEnrollment
+```
+
+- Auth: protected student/user.
+- Course wajib `PUBLISHED` dan mode efektif enrollment wajib `OPEN`.
+- Mode efektif memakai `course.enrollmentMode`, atau
+  `organization.defaultEnrollmentMode` bila override course bernilai `null`.
+- Hanya course gratis (`price === 0`) yang dapat didaftarkan karena payment belum
+  tersedia. Course berbayar menghasilkan `PRECONDITION_FAILED`.
+- Enrollment baru langsung `ACTIVE` dengan source `OPEN`.
+- Idempotent untuk enrollment `ACTIVE`/`COMPLETED` yang masih berlaku.
+- Enrollment dengan source `COHORT` diubah menjadi `OPEN` ketika learner
+  mengambil open enrollment agar pembatalan cohort tidak mencabut akses mandiri.
+- Enrollment yang expired, pending, atau cancelled diaktifkan kembali sebagai
+  `ACTIVE`, source `OPEN`, tanpa expiry.
+
 ### `enrollment.listCourseEnrollments`
 
 ```ts
@@ -1485,6 +1561,15 @@ storage.createUploadUrl
 course.listPublished
 → enrollment.setCourseEnrollment (oleh manager)
 → learning.listMyCourses (oleh student)
+```
+
+### Enrollment Open
+
+```text
+course.listPublished
+→ enrollment.enrollOpenCourse (student)
+→ learning.listMyCourses
+→ learning.getCourseOutline
 ```
 
 ### Enrollment Invite
