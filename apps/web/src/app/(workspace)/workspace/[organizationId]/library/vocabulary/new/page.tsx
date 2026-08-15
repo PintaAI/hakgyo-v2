@@ -1,8 +1,19 @@
-import { WorkspacePlaceholder } from "~/components/routing/workspace-placeholder";
-export default function Page({
+import { VocabularyEditor } from "~/components/vocabulary-editor";
+import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
+
+export default async function Page({
   params,
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  return <WorkspacePlaceholder title="New vocabulary set" params={params} />;
+  const { organizationId: organizationSlug } = await params;
+  const membership =
+    await requireOrganizationMembershipBySlug(organizationSlug);
+
+  return (
+    <VocabularyEditor
+      organizationId={membership.organizationId}
+      organizationSlug={organizationSlug}
+    />
+  );
 }

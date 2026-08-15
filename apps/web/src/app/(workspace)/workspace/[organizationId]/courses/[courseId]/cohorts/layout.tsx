@@ -1,4 +1,4 @@
-import { Subnav } from "~/components/routing/app-shell";
+import { Subnav } from "~/components/layout/subnav";
 export default async function Layout({
   children,
   params,
@@ -6,8 +6,8 @@ export default async function Layout({
   children: React.ReactNode;
   params: Promise<{ organizationId: string; courseId: string }>;
 }) {
-  const { organizationId, courseId } = await params;
-  const root = `/workspace/${organizationId}/courses/${courseId}/cohorts`;
+  const { organizationId: organizationSlug, courseId } = await params;
+  const root = `/workspace/${organizationSlug}/courses/${courseId}/cohorts`;
   return (
     <Subnav
       nav={[

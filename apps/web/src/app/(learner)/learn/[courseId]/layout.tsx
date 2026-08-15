@@ -1,4 +1,4 @@
-import { Subnav } from "~/components/routing/app-shell";
+import { Subnav } from "~/components/layout/subnav";
 
 export default async function LearningCourseLayout({
   children,
@@ -9,12 +9,7 @@ export default async function LearningCourseLayout({
 }) {
   const { courseId } = await params;
   return (
-    <Subnav
-      nav={[
-        { href: `/learn/${courseId}`, label: "Course outline" },
-        { href: `/learn/${courseId}/items/item-demo`, label: "Sample item" },
-      ]}
-    >
+    <Subnav nav={[{ href: `/learn/${courseId}`, label: "Course outline" }]}>
       {children}
     </Subnav>
   );

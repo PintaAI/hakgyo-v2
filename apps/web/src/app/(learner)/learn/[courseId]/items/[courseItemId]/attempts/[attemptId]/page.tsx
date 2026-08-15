@@ -1,4 +1,4 @@
-import { RoutePlaceholder } from "~/components/routing/route-placeholder";
+import { PagePlaceholder } from "~/components/placeholder/page-placeholder";
 
 export default async function AttemptPage({
   params,
@@ -9,5 +9,5 @@ export default async function AttemptPage({
     attemptId: string;
   }>;
 }) {
-  return <RoutePlaceholder title="Assessment attempt" params={await params} />;
+  return <PagePlaceholder title="Assessment attempt" params={await params} />;
 }

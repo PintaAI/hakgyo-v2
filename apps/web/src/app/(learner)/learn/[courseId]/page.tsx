@@ -1,4 +1,4 @@
-import { RoutePlaceholder } from "~/components/routing/route-placeholder";
+import { PagePlaceholder } from "~/components/placeholder/page-placeholder";
 
 export default async function LearningCoursePage({
   params,
@@ -6,5 +6,5 @@ export default async function LearningCoursePage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
-  return <RoutePlaceholder title="Learning course" params={{ courseId }} />;
+  return <PagePlaceholder title="Learning course" params={{ courseId }} />;
 }

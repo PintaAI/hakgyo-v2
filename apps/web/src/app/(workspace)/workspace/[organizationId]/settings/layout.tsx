@@ -1,4 +1,7 @@
-import { Subnav } from "~/components/routing/app-shell";
+import { Subnav } from "~/components/layout/subnav";
+import { organizationManagerRoles } from "~/lib/access";
+import { requireOrganizationRole } from "~/server/auth/dal";
+
 export default async function Layout({
   children,
   params,
@@ -6,8 +9,9 @@ export default async function Layout({
   children: React.ReactNode;
   params: Promise<{ organizationId: string }>;
 }) {
-  const { organizationId } = await params;
-  const root = `/workspace/${organizationId}/settings`;
+  const { organizationId: organizationSlug } = await params;
+  await requireOrganizationRole(organizationSlug, organizationManagerRoles);
+  const root = `/workspace/${organizationSlug}/settings`;
   return (
     <Subnav
       nav={[

@@ -5,6 +5,8 @@
 import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
-const config = {};
+const config = {
+  allowedDevOrigins: ["jennie-linux.tail2268a1.ts.net"],
+};
 
 export default config;

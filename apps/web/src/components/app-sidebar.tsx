@@ -1,22 +1,29 @@
 "use client";
 
-import type { ComponentProps, ComponentType } from "react";
+import { useState, type ComponentProps, type ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpenIcon,
-  Building2Icon,
+  CrownIcon,
+  ChevronRightIcon,
   ClipboardCheckIcon,
   FileTextIcon,
   GraduationCapIcon,
   LanguagesIcon,
   LayoutDashboardIcon,
   LibraryIcon,
+  BookMarkedIcon,
   Settings2Icon,
-  UserRoundIcon,
   UsersIcon,
 } from "lucide-react";
 
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "~/components/ui/collapsible";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -26,55 +33,170 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
-  SidebarSeparator,
   useSidebar,
 } from "~/components/ui/sidebar";
+import { User } from "~/components/user";
+import type { OrganizationRole } from "~/lib/access";
 
-type NavigationItem = {
+type NavigationLink = {
   title: string;
   href: string;
   match?: string;
-  icon: ComponentType<{ className?: string }>;
+  icon?: ComponentType<{ className?: string }>;
+  items?: NavigationLink[];
 };
 
-function isRouteActive(pathname: string, item: NavigationItem) {
+type NavigationItem = NavigationLink & {
+  icon: NonNullable<NavigationLink["icon"]>;
+};
+
+export type DocsNavigationItem = {
+  title: string;
+  href: string;
+  iconName: string;
+  locale: string;
+};
+
+const docsIconMap: Record<string, ComponentType<{ className?: string }>> = {
+  BookOpenIcon,
+  ClipboardCheckIcon,
+  CrownIcon,
+  FileTextIcon,
+  GraduationCapIcon,
+  LanguagesIcon,
+  LibraryIcon,
+  Settings2Icon,
+  UsersIcon,
+};
+
+function isRouteActive(pathname: string, item: NavigationLink): boolean {
   const match = item.match ?? item.href;
-  return pathname === match || pathname.startsWith(`${match}/`);
+  return (
+    pathname === match ||
+    pathname.startsWith(`${match}/`) ||
+    item.items?.some((child) => isRouteActive(pathname, child)) === true
+  );
+}
+
+function CollapsibleNavigationItem({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavigationItem;
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const active = isRouteActive(pathname, item);
+  const [open, setOpen] = useState(active);
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      render={<SidebarMenuItem />}
+    >
+      <SidebarMenuButton
+        isActive={active}
+        tooltip={item.title}
+        render={
+          <Link
+            href={item.href}
+            onClick={() => {
+              setOpen(true);
+              onNavigate();
+            }}
+          />
+        }
+      >
+        <item.icon />
+        <span>{item.title}</span>
+      </SidebarMenuButton>
+      <CollapsibleTrigger
+        render={<SidebarMenuAction className="aria-expanded:rotate-90" />}
+      >
+        <ChevronRightIcon />
+        <span className="sr-only">Toggle {item.title}</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <SidebarMenuSub>
+          {item.items?.map((child) => {
+            const childActive = isRouteActive(pathname, child);
+            return (
+              <SidebarMenuSubItem key={child.href}>
+                <SidebarMenuSubButton
+                  isActive={childActive}
+                  render={
+                    <Link
+                      href={child.href}
+                      aria-current={childActive ? "page" : undefined}
+                      onClick={onNavigate}
+                    />
+                  }
+                >
+                  {child.icon ? <child.icon /> : null}
+                  <span>{child.title}</span>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            );
+          })}
+        </SidebarMenuSub>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 export function AppSidebar({
-  organizationId,
+  organizationSlug,
+  organization,
+  role,
   ...props
-}: ComponentProps<typeof Sidebar> & { organizationId: string }) {
+}: ComponentProps<typeof Sidebar> & {
+  organizationSlug: string;
+  organization: { name: string; logoUrl: string | null };
+  role: OrganizationRole;
+}) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
-  const workspaceRoot = `/workspace/${organizationId}`;
-  const navigation: Array<{ label: string; items: NavigationItem[] }> = [
+  const workspaceRoot = `/workspace/${organizationSlug}`;
+  const isManager = role === "OWNER" || role === "ADMIN";
+  const workspaceHome = `${workspaceRoot}/${isManager ? "dashboard" : "courses"}`;
+  const navigation: NavigationItem[] = [
+    ...(isManager
+      ? [
+          {
+            title: "Dashboard",
+            href: `${workspaceRoot}/dashboard`,
+            icon: LayoutDashboardIcon,
+          },
+        ]
+      : []),
     {
-      label: "Workspace",
-      items: [
-        {
-          title: "Dashboard",
-          href: `${workspaceRoot}/dashboard`,
-          icon: LayoutDashboardIcon,
-        },
-        {
-          title: "Courses",
-          href: `${workspaceRoot}/courses`,
-          icon: BookOpenIcon,
-        },
-        {
-          title: "Reviews",
-          href: `${workspaceRoot}/reviews`,
-          icon: ClipboardCheckIcon,
-        },
-      ],
+      title: "Courses",
+      href: `${workspaceRoot}/courses`,
+      icon: BookOpenIcon,
     },
+    ...(isManager
+      ? [
+          {
+            title: "Reviews",
+            href: `${workspaceRoot}/reviews`,
+            icon: ClipboardCheckIcon,
+          },
+        ]
+      : []),
     {
-      label: "Content library",
+      title: "Content library",
+      href: `${workspaceRoot}/library/materials`,
+      match: `${workspaceRoot}/library`,
+      icon: LibraryIcon,
       items: [
         {
           title: "Materials",
@@ -89,68 +211,110 @@ export function AppSidebar({
         {
           title: "Assessments",
           href: `${workspaceRoot}/library/assessments`,
-          icon: LibraryIcon,
+          icon: ClipboardCheckIcon,
         },
       ],
     },
+  ];
+  const organizationNavigation: NavigationItem[] = [
     {
-      label: "Organization",
-      items: [
-        {
-          title: "Members",
-          href: `${workspaceRoot}/members`,
-          icon: UsersIcon,
-        },
-        {
-          title: "Settings",
-          href: `${workspaceRoot}/settings/general`,
-          match: `${workspaceRoot}/settings`,
-          icon: Settings2Icon,
-        },
-      ],
+      title: "Members",
+      href: `${workspaceRoot}/members`,
+      icon: UsersIcon,
+    },
+    {
+      title: "Settings",
+      href: `${workspaceRoot}/settings/general`,
+      match: `${workspaceRoot}/settings`,
+      icon: Settings2Icon,
     },
   ];
 
   const closeMobileSidebar = () => setOpenMobile(false);
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              tooltip="Hakgyo workspace"
+              tooltip={organization.name}
               render={
-                <Link
-                  href={`${workspaceRoot}/dashboard`}
-                  onClick={closeMobileSidebar}
-                />
+                <Link href={workspaceHome} onClick={closeMobileSidebar} />
               }
             >
-              <span className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <GraduationCapIcon className="size-4" />
-              </span>
+              <Avatar className="size-8 rounded-lg after:rounded-lg">
+                {organization.logoUrl ? (
+                  <AvatarImage
+                    src={organization.logoUrl}
+                    alt={`${organization.name} logo`}
+                    className="rounded-lg"
+                  />
+                ) : null}
+                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground rounded-lg font-semibold">
+                  {organization.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <span className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate font-semibold">Hakgyo</span>
+                <span className="truncate font-semibold">
+                  {organization.name}
+                </span>
                 <span className="text-sidebar-foreground/65 truncate text-xs">
-                  {organizationId}
+                  Hakgyo workspace
                 </span>
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-
-      <SidebarSeparator />
-
       <SidebarContent>
-        {navigation.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+        <SidebarGroup>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigation.map((item) => {
+                const active = isRouteActive(pathname, item);
+
+                if (!item.items?.length) {
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        isActive={active}
+                        tooltip={item.title}
+                        render={
+                          <Link
+                            href={item.href}
+                            aria-current={active ? "page" : undefined}
+                            onClick={closeMobileSidebar}
+                          />
+                        }
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }
+
+                return (
+                  <CollapsibleNavigationItem
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    onNavigate={closeMobileSidebar}
+                  />
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {isManager ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Organization</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => {
+                {organizationNavigation.map((item) => {
                   const active = isRouteActive(pathname, item);
                   return (
                     <SidebarMenuItem key={item.href}>
@@ -174,34 +338,125 @@ export function AppSidebar({
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+        ) : null}
+        <SidebarGroup className="mt-auto">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="My learning"
+                render={
+                  <Link href="/learn/courses" onClick={closeMobileSidebar} />
+                }
+              >
+                <GraduationCapIcon />
+                <span>My learning</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={pathname === "/docs" || pathname.startsWith("/docs/")}
+                tooltip="User documentation"
+                render={<Link href="/docs" onClick={closeMobileSidebar} />}
+              >
+                <BookMarkedIcon />
+                <span>User documentation</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
-
-      <SidebarSeparator />
-
       <SidebarFooter>
+        <User variant="sidebar" role={role} />
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  );
+}
+
+export function DocsAppSidebar({
+  navigation,
+  ...props
+}: ComponentProps<typeof Sidebar> & {
+  navigation: DocsNavigationItem[];
+}) {
+  const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
+  const closeMobileSidebar = () => setOpenMobile(false);
+
+  return (
+    <Sidebar variant="inset" collapsible="icon" {...props}>
+      <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip="My learning"
-              render={
-                <Link href="/learn/courses" onClick={closeMobileSidebar} />
-              }
+              size="lg"
+              tooltip="Hakgyo docs"
+              render={<Link href="/docs" onClick={closeMobileSidebar} />}
             >
-              <Building2Icon />
-              <span>My learning</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Account"
-              render={<Link href="/account" onClick={closeMobileSidebar} />}
-            >
-              <UserRoundIcon />
-              <span>Account</span>
+              <span className="bg-sidebar-primary text-sidebar-primary-foreground flex size-8 items-center justify-center rounded-lg">
+                <BookMarkedIcon className="size-4" />
+              </span>
+              <span className="grid min-w-0 flex-1 text-left leading-tight">
+                <span className="truncate font-semibold">Hakgyo Docs</span>
+                <span className="text-sidebar-foreground/65 truncate text-xs">
+                  User guide
+                </span>
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Key concepts</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigation.map((item) => {
+                const active = pathname === item.href;
+                const Icon = docsIconMap[item.iconName] ?? FileTextIcon;
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      isActive={active}
+                      tooltip={item.title}
+                      render={
+                        <Link
+                          href={item.href}
+                          aria-current={active ? "page" : undefined}
+                          onClick={closeMobileSidebar}
+                        />
+                      }
+                    >
+                      <Icon />
+                      <span>{item.title}</span>
+                      <span className="text-sidebar-foreground/50 ml-auto text-[0.65rem] uppercase group-data-[collapsible=icon]:hidden">
+                        {item.locale}
+                      </span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup className="mt-auto">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="My learning"
+                render={
+                  <Link href="/learn/courses" onClick={closeMobileSidebar} />
+                }
+              >
+                <GraduationCapIcon />
+                <span>My learning</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <User variant="sidebar" />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Hanken_Grotesk, Inter } from "next/font/google";
-import { redirect } from "next/navigation";
 
 import { type ReactNode } from "react";
 import {
@@ -26,8 +25,9 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { organizationManagerRoles } from "~/lib/access";
 import { cn } from "~/lib/utils";
-import { getSession } from "~/server/better-auth/server";
+import { requireOrganizationRole } from "~/server/auth/dal";
 import { api } from "~/trpc/server";
 
 const hanken = Hanken_Grotesk({
@@ -185,65 +185,17 @@ function EmptyState({
   );
 }
 
-function OwnerOnlyNotice() {
-  return (
-    <div
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        body,
-        "mx-auto w-full max-w-md py-6",
-      )}
-    >
-      <div className="bg-card ring-foreground/10 rounded-lg px-6 py-10 text-center ring-1">
-        <ShieldCheckIcon className="text-muted-foreground mx-auto size-6" />
-        <h1
-          className={cn(
-            headline,
-            "text-foreground mt-4 text-xl font-medium tracking-tight",
-          )}
-        >
-          Akses khusus pemilik
-        </h1>
-        <p
-          className={cn(
-            "text-muted-foreground mx-auto mt-2 max-w-sm text-sm leading-relaxed",
-            body,
-          )}
-        >
-          Dashboard ini hanya dapat dibuka oleh pemilik organisasi. Silakan
-          hubungi pemilik apabila Anda merasa ini sebuah kesalahan.
-        </p>
-      </div>
-      <p className="mt-4 text-center">
-        <Link
-          href="/learn/courses"
-          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-        >
-          Kembali ke pembelajaran
-        </Link>
-      </p>
-    </div>
-  );
-}
-
 export default async function DashboardPage({
   params,
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  const { organizationId } = await params;
-  const session = await getSession();
-  if (!session) redirect("/sign-in");
-
-  const organizations = await api.organization.list();
-  const organization = organizations.find(
-    (candidate) => candidate.id === organizationId,
+  const { organizationId: organizationSlug } = await params;
+  const membership = await requireOrganizationRole(
+    organizationSlug,
+    organizationManagerRoles,
   );
-
-  if (organization?.members[0]?.role !== "OWNER") {
-    return <OwnerOnlyNotice />;
-  }
+  const { organizationId, organization, role } = membership;
 
   const [
     courses,
@@ -261,7 +213,7 @@ export default async function DashboardPage({
     api.assessment.listAttemptsNeedingReview({ organizationId }),
   ]);
 
-  const root = `/workspace/${organizationId}`;
+  const root = `/workspace/${organizationSlug}`;
   const publishedCount = courses.filter(
     (course) => course.status === "PUBLISHED",
   ).length;
@@ -295,7 +247,7 @@ export default async function DashboardPage({
         </div>
         <span className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-sans text-xs font-medium">
           <ShieldCheckIcon className="size-3.5" />
-          Pemilik
+          {role === "OWNER" ? "Pemilik" : "Admin"}
         </span>
       </header>
 

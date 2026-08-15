@@ -1,20 +1,32 @@
+import { getSessionCookie } from "better-auth/cookies";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AuthPanel } from "~/components/auth-panel";
+import { getSafeRedirectPath, routeAccess } from "~/lib/access";
+import { getSignedInDestination } from "~/server/auth/dal";
 import { getSession } from "~/server/better-auth/server";
-import { api } from "~/trpc/server";
 
-export default async function Home() {
-  const session = await getSession();
-  if (session?.user) {
-    const organizations = await api.organization.list();
-    const ownerOrganization = organizations.find(
-      (organization) => organization.members[0]?.role === "OWNER",
-    );
-    if (ownerOrganization) {
-      redirect(`/workspace/${ownerOrganization.id}/dashboard`);
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirectTo?: string }>;
+}) {
+  const [query, requestHeaders] = await Promise.all([searchParams, headers()]);
+  const { redirectTo } = query;
+  if (getSessionCookie(requestHeaders)) {
+    const session = await getSession();
+    if (session?.user) {
+      const requestedPath = getSafeRedirectPath(redirectTo, [
+        routeAccess.signInPath,
+        routeAccess.postSignInPath,
+      ]);
+      redirect(
+        requestedPath ?? (await getSignedInDestination(session.user.id)),
+      );
     }
   }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f2efe6] text-[#163f35]">
       <div className="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-[#e9c46a]/35 blur-3xl" />
@@ -48,7 +60,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <AuthPanel />
+        <AuthPanel redirectTo={redirectTo} />
       </div>
     </main>
   );

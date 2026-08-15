@@ -1,8 +1,24 @@
-import { WorkspacePlaceholder } from "~/components/routing/workspace-placeholder";
-export default function Page({
+import { MaterialLibrary } from "~/components/material-library";
+import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
+import { api, HydrateClient } from "~/trpc/server";
+
+export default async function Page({
   params,
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  return <WorkspacePlaceholder title="Material library" params={params} />;
+  const { organizationId: organizationSlug } = await params;
+  const membership =
+    await requireOrganizationMembershipBySlug(organizationSlug);
+  const organizationId = membership.organizationId;
+  void api.content.listMaterials.prefetch({ organizationId });
+
+  return (
+    <HydrateClient>
+      <MaterialLibrary
+        organizationId={organizationId}
+        organizationSlug={organizationSlug}
+      />
+    </HydrateClient>
+  );
 }

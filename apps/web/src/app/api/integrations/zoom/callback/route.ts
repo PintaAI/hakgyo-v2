@@ -72,10 +72,14 @@ export async function GET(request: Request) {
       scope: tokens.scope,
     },
   });
+  const organization = await db.organization.findUniqueOrThrow({
+    where: { id: organizationId },
+    select: { slug: true },
+  });
 
   const response = NextResponse.redirect(
     new URL(
-      `/zoom-test?zoom=connected&organizationId=${encodeURIComponent(organizationId)}`,
+      `/workspace/${encodeURIComponent(organization.slug)}/settings/integrations?zoom=connected`,
       env.APP_URL,
     ),
   );

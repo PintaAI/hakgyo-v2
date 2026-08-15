@@ -1,13 +1,11 @@
-import { AppShell } from "~/components/routing/app-shell";
+import { AppShell } from "~/components/layout/app-shell";
+import { requireSession } from "~/server/auth/dal";
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AppShell title="Account" nav={[{ href: "/catalog", label: "Catalog" }]}>
-      {children}
-    </AppShell>
-  );
+  await requireSession();
+  return <AppShell title="Settings">{children}</AppShell>;
 }

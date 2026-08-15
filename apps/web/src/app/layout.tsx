@@ -1,7 +1,13 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Geist } from "next/font/google";
+import {
+  Geist,
+  Inter,
+  JetBrains_Mono,
+  Merriweather,
+  Poppins,
+} from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import { TooltipProvider } from "~/components/ui/tooltip";
@@ -19,11 +25,36 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700"],
+});
+
+const merriweather = Merriweather({
+  subsets: ["latin"],
+  variable: "--font-merriweather",
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable}`}>
+    <html
+      lang="en"
+      className={`${geist.variable} ${inter.variable} ${poppins.variable} ${merriweather.variable} ${jetBrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         <ThemeProvider
           attribute="class"

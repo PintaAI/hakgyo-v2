@@ -1,14 +1,14 @@
-type RoutePlaceholderProps = {
+type PagePlaceholderProps = {
   title: string;
   description?: string;
   params?: Record<string, string>;
 };
 
-export function RoutePlaceholder({
+export function PagePlaceholder({
   title,
   description = "This route is ready for its future page content.",
   params,
-}: RoutePlaceholderProps) {
+}: PagePlaceholderProps) {
   return (
     <section className="bg-card text-card-foreground rounded-xl border p-6 shadow-sm">
       <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase">

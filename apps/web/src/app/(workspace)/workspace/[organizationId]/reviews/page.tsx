@@ -1,8 +1,13 @@
-import { WorkspacePlaceholder } from "~/components/routing/workspace-placeholder";
-export default function Page({
+import { WorkspacePagePlaceholder } from "~/components/placeholder/workspace-page-placeholder";
+import { organizationManagerRoles } from "~/lib/access";
+import { requireOrganizationRole } from "~/server/auth/dal";
+
+export default async function Page({
   params,
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  return <WorkspacePlaceholder title="Review queue" params={params} />;
+  const { organizationId: organizationSlug } = await params;
+  await requireOrganizationRole(organizationSlug, organizationManagerRoles);
+  return <WorkspacePagePlaceholder title="Review queue" params={params} />;
 }

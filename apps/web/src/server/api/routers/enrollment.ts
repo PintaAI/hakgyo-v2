@@ -6,6 +6,10 @@ import {
   requireCohortPermission,
   requireCoursePermission,
 } from "~/server/authorization";
+import {
+  getOpenEnrollmentRejection,
+  getOpenEnrollmentUpdate,
+} from "~/server/enrollment/open-enrollment";
 
 const id = z.string().min(1);
 const enrollmentStatus = z.enum([
@@ -16,6 +20,70 @@ const enrollmentStatus = z.enum([
 ]);
 
 export const enrollmentRouter = createTRPCRouter({
+  enrollOpenCourse: protectedProcedure
+    .input(z.object({ courseId: id }))
+    .mutation(async ({ ctx, input }) => {
+      const course = await ctx.db.course.findUnique({
+        where: { id: input.courseId },
+        select: {
+          status: true,
+          price: true,
+          enrollmentMode: true,
+          organization: { select: { defaultEnrollmentMode: true } },
+        },
+      });
+      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const rejection = getOpenEnrollmentRejection(course);
+      if (rejection === "COURSE_NOT_PUBLISHED") {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      if (rejection === "INVITE_REQUIRED") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This course requires an invite",
+        });
+      }
+      if (rejection === "PAYMENT_REQUIRED") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Paid enrollment is not available yet",
+        });
+      }
+
+      const existing = await ctx.db.courseEnrollment.findUnique({
+        where: {
+          courseId_userId: {
+            courseId: input.courseId,
+            userId: ctx.session.user.id,
+          },
+        },
+      });
+      const update = getOpenEnrollmentUpdate(existing, new Date());
+      if (!update && existing) return existing;
+
+      return ctx.db.courseEnrollment.upsert({
+        where: {
+          courseId_userId: {
+            courseId: input.courseId,
+            userId: ctx.session.user.id,
+          },
+        },
+        create: {
+          courseId: input.courseId,
+          userId: ctx.session.user.id,
+          status: "ACTIVE",
+          source: "OPEN",
+        },
+        update: update ?? {
+          status: "ACTIVE",
+          source: "OPEN",
+          completedAt: null,
+          expiresAt: null,
+        },
+      });
+    }),
+
   listInvites: protectedProcedure
     .input(z.object({ courseId: id, cohortId: id.optional() }))
     .query(async ({ ctx, input }) => {
