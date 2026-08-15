@@ -1,10 +1,12 @@
 import { AppShell } from "~/components/layout/app-shell";
+import { requireSession } from "~/server/auth/dal";
 
-export default function LearnerLayout({
+export default async function LearnerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await requireSession();
   return (
     <AppShell
       title="Learning"

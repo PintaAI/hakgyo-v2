@@ -47,6 +47,7 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([token])
+  @@index([userId])
   @@map("session")
 }
 
@@ -67,6 +68,7 @@ model Account {
   updatedAt             DateTime  @updatedAt
 
   @@unique([providerId, accountId])
+  @@index([userId])
   @@map("account")
 }
 
@@ -529,7 +531,7 @@ model CourseEnrollment {
   completedAt DateTime?
   expiresAt   DateTime?
   course      Course           @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  user        User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, userId])
   @@index([userId, status])
@@ -544,7 +546,7 @@ model CohortEnrollment {
   enrolledAt  DateTime         @default(now())
   completedAt DateTime?
   cohort      Cohort           @relation(fields: [cohortId], references: [id], onDelete: Restrict)
-  user        User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([cohortId, userId])
   @@index([userId, status])
@@ -580,7 +582,7 @@ model ContentProgress {
   completedAt  DateTime?
   updatedAt    DateTime       @updatedAt
   courseItem   CourseItem     @relation(fields: [courseItemId], references: [id], onDelete: Restrict)
-  user         User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([courseItemId, userId])
   @@index([userId, status])
@@ -601,7 +603,7 @@ model AssessmentAttempt {
   gradedAt       DateTime?
   assessment     Assessment              @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
   courseItem     CourseItem              @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  user           User                    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers        AssessmentAnswer[]
 
   @@unique([courseItemId, userId, attemptNumber])
@@ -647,7 +649,7 @@ model AssessmentAnswerSelection {
 model Asset {
   id                String            @id @default(cuid())
   organizationId    String
-  uploadedByUserId  String
+  uploadedByUserId  String?
   objectKey         String            @unique
   fileName          String
   contentType       String
@@ -658,7 +660,7 @@ model Asset {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  uploadedBy        User              @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  uploadedBy        User?             @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   materials         MaterialAsset[]
   vocabularyEntries VocabularyEntry[]
 

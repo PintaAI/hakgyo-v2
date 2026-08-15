@@ -8,6 +8,14 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import {
+  createProfileImageKey,
+  getManagedProfileImageKey,
+  getProfileImagePath,
+  MAX_PROFILE_IMAGE_SIZE,
+  parseProfileImageKey,
+  profileImageContentTypes,
+} from "~/lib/profile-image";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   requireCourseItemAccess,
@@ -43,6 +51,148 @@ const getExpectedSize = (key: string) => {
 };
 
 export const storageRouter = createTRPCRouter({
+  createProfileImageUploadUrl: protectedProcedure
+    .input(
+      z.object({
+        contentType: z.enum(profileImageContentTypes),
+        fileSize: z.number().int().positive().max(MAX_PROFILE_IMAGE_SIZE),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const key = createProfileImageKey(
+        ctx.session.user.id,
+        input.fileSize,
+        input.contentType,
+      );
+      const uploadUrl = await getSignedUrl(
+        r2,
+        new PutObjectCommand({
+          Bucket: r2Bucket,
+          Key: key,
+          ContentType: input.contentType,
+        }),
+        { expiresIn: SIGNED_URL_TTL_SECONDS },
+      );
+
+      return {
+        key,
+        uploadUrl,
+        expiresIn: SIGNED_URL_TTL_SECONDS,
+        headers: { "Content-Type": input.contentType },
+      };
+    }),
+
+  confirmProfileImageUpload: protectedProcedure
+    .input(z.object({ key: z.string().min(1).max(1024) }))
+    .mutation(async ({ ctx, input }) => {
+      const parsed = parseProfileImageKey(input.key, ctx.session.user.id);
+      if (!parsed) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid image key",
+        });
+      }
+
+      let object;
+      try {
+        object = await r2.send(
+          new HeadObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+        );
+      } catch (cause) {
+        const status = (cause as { $metadata?: { httpStatusCode?: number } })
+          .$metadata?.httpStatusCode;
+        throw new TRPCError({
+          code: status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
+          message: status === 404 ? "Uploaded image was not found" : undefined,
+          cause,
+        });
+      }
+
+      if (
+        object.ContentLength !== parsed.size ||
+        object.ContentType !== parsed.contentType
+      ) {
+        await r2.send(
+          new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+        );
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Uploaded image does not match the signed request",
+        });
+      }
+
+      const currentUser = await db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { image: true },
+      });
+      const oldKey = getManagedProfileImageKey(
+        currentUser?.image,
+        ctx.session.user.id,
+      );
+      const image = getProfileImagePath(ctx.session.user.id, parsed.fileName);
+      await db.user.update({
+        where: { id: ctx.session.user.id },
+        data: { image },
+      });
+
+      if (oldKey && oldKey !== input.key) {
+        try {
+          await r2.send(
+            new DeleteObjectCommand({ Bucket: r2Bucket, Key: oldKey }),
+          );
+        } catch (error) {
+          console.error("Failed to remove replaced profile image", error);
+        }
+      }
+
+      return { image };
+    }),
+
+  discardProfileImageUpload: protectedProcedure
+    .input(z.object({ key: z.string().min(1).max(1024) }))
+    .mutation(async ({ ctx, input }) => {
+      if (!parseProfileImageKey(input.key, ctx.session.user.id)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const user = await db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { image: true },
+      });
+      if (
+        getManagedProfileImageKey(user?.image, ctx.session.user.id) ===
+        input.key
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "The image is currently in use",
+        });
+      }
+      await r2.send(
+        new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+      );
+      return { deleted: true };
+    }),
+
+  deleteProfileImage: protectedProcedure.mutation(async ({ ctx }) => {
+    const user = await db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: { image: true },
+    });
+    const key = getManagedProfileImageKey(user?.image, ctx.session.user.id);
+    await db.user.update({
+      where: { id: ctx.session.user.id },
+      data: { image: null },
+    });
+    if (key) {
+      try {
+        await r2.send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }));
+      } catch (error) {
+        console.error("Failed to remove profile image", error);
+      }
+    }
+    return { deleted: true };
+  }),
+
   createUploadUrl: protectedProcedure
     .input(
       z.object({

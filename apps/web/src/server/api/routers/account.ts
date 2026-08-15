@@ -1,9 +1,13 @@
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { getAccountDeletionBlockers } from "~/server/account/deletion";
 
 export const accountRouter = createTRPCRouter({
   me: protectedProcedure.query(({ ctx }) => ctx.session.user),
+  deletionBlockers: protectedProcedure.query(({ ctx }) =>
+    getAccountDeletionBlockers(ctx.session.user.id),
+  ),
   updateProfile: protectedProcedure
     .input(
       z

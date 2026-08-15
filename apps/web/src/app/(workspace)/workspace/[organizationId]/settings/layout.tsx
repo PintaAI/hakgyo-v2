@@ -1,4 +1,7 @@
 import { Subnav } from "~/components/layout/subnav";
+import { organizationManagerRoles } from "~/lib/access";
+import { requireOrganizationRole } from "~/server/auth/dal";
+
 export default async function Layout({
   children,
   params,
@@ -7,6 +10,7 @@ export default async function Layout({
   params: Promise<{ organizationId: string }>;
 }) {
   const { organizationId } = await params;
+  await requireOrganizationRole(organizationId, organizationManagerRoles);
   const root = `/workspace/${organizationId}/settings`;
   return (
     <Subnav

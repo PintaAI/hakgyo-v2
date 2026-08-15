@@ -157,7 +157,7 @@ function SidebarUserMenu({
 export function User({
   role,
   accountHref = "/account",
-  settingsHref = "/account?section=settings",
+  settingsHref = "/account",
   variant = "header",
 }: UserProps) {
   const pathname = usePathname();

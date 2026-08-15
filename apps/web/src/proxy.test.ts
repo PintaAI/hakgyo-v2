@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
+import { NextRequest } from "next/server";
 
-import { config } from "./proxy";
+import { config, proxy } from "./proxy";
 
 const matchesProxy = (url: string) =>
   unstable_doesMiddlewareMatch({ config, nextConfig: {}, url });
@@ -24,5 +25,22 @@ describe("proxy matcher", () => {
       false,
     );
     expect(matchesProxy("https://hakgyo.test/favicon.ico")).toBe(false);
+    expect(matchesProxy("https://hakgyo.test/catalog")).toBe(false);
+  });
+
+  test("redirects missing cookies but leaves validation to protected routes", () => {
+    const missingCookie = proxy(
+      new NextRequest("https://hakgyo.test/workspace/org-1/courses"),
+    );
+    expect(missingCookie.status).toBe(307);
+    expect(missingCookie.headers.get("location")).toBe(
+      "https://hakgyo.test/?redirectTo=%2Fworkspace%2Forg-1%2Fcourses",
+    );
+
+    const requestWithCookie = new NextRequest(
+      "https://hakgyo.test/workspace/org-1/courses",
+      { headers: { cookie: "better-auth.session_token=optimistic-only" } },
+    );
+    expect(proxy(requestWithCookie).headers.get("x-middleware-next")).toBe("1");
   });
 });

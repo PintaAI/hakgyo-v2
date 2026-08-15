@@ -1,5 +1,5 @@
-import { PagePlaceholder } from "~/components/placeholder/page-placeholder";
+import { AccountSettings } from "./account-settings";
 
 export default function AccountPage() {
-  return <PagePlaceholder title="Account" />;
+  return <AccountSettings />;
 }

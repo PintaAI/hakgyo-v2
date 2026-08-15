@@ -1,11 +1,31 @@
+import { getSessionCookie } from "better-auth/cookies";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import { AuthPanel } from "~/components/auth-panel";
+import { getSafeRedirectPath, routeAccess } from "~/lib/access";
+import { getSignedInDestination } from "~/server/auth/dal";
+import { getSession } from "~/server/better-auth/server";
 
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{ redirectTo?: string }>;
 }) {
-  const { redirectTo } = await searchParams;
+  const [query, requestHeaders] = await Promise.all([searchParams, headers()]);
+  const { redirectTo } = query;
+  if (getSessionCookie(requestHeaders)) {
+    const session = await getSession();
+    if (session?.user) {
+      const requestedPath = getSafeRedirectPath(redirectTo, [
+        routeAccess.signInPath,
+        routeAccess.postSignInPath,
+      ]);
+      redirect(
+        requestedPath ?? (await getSignedInDestination(session.user.id)),
+      );
+    }
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f2efe6] text-[#163f35]">

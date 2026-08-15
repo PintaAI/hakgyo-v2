@@ -2,8 +2,6 @@ export const organizationRoles = ["OWNER", "ADMIN", "TEACHER"] as const;
 
 export type OrganizationRole = (typeof organizationRoles)[number];
 
-export const organizationRoleHeader = "x-hakgyo-organization-role";
-
 export function isOrganizationRole(
   value: string | null | undefined,
 ): value is OrganizationRole {
@@ -11,14 +9,17 @@ export function isOrganizationRole(
 }
 
 const allOrganizationRoles: readonly OrganizationRole[] = organizationRoles;
-const organizationManagers: readonly OrganizationRole[] = ["OWNER", "ADMIN"];
+export const organizationManagerRoles: readonly OrganizationRole[] = [
+  "OWNER",
+  "ADMIN",
+];
 const workspaceSectionRoles: Readonly<
   Record<string, readonly OrganizationRole[]>
 > = {
-  dashboard: organizationManagers,
-  members: organizationManagers,
-  reviews: organizationManagers,
-  settings: organizationManagers,
+  dashboard: organizationManagerRoles,
+  members: organizationManagerRoles,
+  reviews: organizationManagerRoles,
+  settings: organizationManagerRoles,
 };
 
 export const routeAccess = {
@@ -74,21 +75,29 @@ export function getWorkspaceFallback(
   return `/workspace/${organizationId}/${section}`;
 }
 
-export function getSafeRedirectPath(value: string | null | undefined) {
+const redirectParsingBase = "https://redirect.invalid";
+
+export function getSafeRedirectPath(
+  value: string | null | undefined,
+  disallowedPaths: readonly string[] = [],
+) {
   if (
     !value ||
-    !value.startsWith("/") ||
-    value.startsWith("//") ||
-    value.includes("\\") ||
+    !/^\/(?!\/)/.test(value) ||
+    /[\\\u0000-\u001f\u007f]/.test(value) ||
     /%5c/i.test(value) ||
-    /[\u0000-\u001f\u007f]/.test(value)
+    value.length > 4096
   ) {
     return null;
   }
 
-  const baseUrl = new URL("https://redirect.hakgyo.invalid");
-  const resolved = new URL(value, baseUrl);
-  if (resolved.origin !== baseUrl.origin) return null;
+  const resolved = URL.parse(value, redirectParsingBase);
+  if (
+    resolved?.origin !== redirectParsingBase ||
+    disallowedPaths.includes(resolved.pathname)
+  ) {
+    return null;
+  }
 
   return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }

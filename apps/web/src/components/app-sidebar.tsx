@@ -325,9 +325,7 @@ export function AppSidebar({
           variant="sidebar"
           role={role}
           settingsHref={
-            isManager
-              ? `${workspaceRoot}/settings/general`
-              : "/account?section=settings"
+            isManager ? `${workspaceRoot}/settings/general` : "/account"
           }
         />
       </SidebarFooter>

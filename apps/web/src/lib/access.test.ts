@@ -48,6 +48,8 @@ describe("route access", () => {
     expect(getSafeRedirectPath("/%5Cexample.com")).toBeNull();
     expect(getSafeRedirectPath("/learn/\nexample")).toBeNull();
     expect(getSafeRedirectPath("/learn/../catalog")).toBe("/catalog");
+    expect(getSafeRedirectPath("/account", ["/account"])).toBeNull();
+    expect(getSafeRedirectPath(`/learn/${"x".repeat(4096)}`)).toBeNull();
     expect(getPostSignInPath("https://example.com")).toBe("/auth/continue");
   });
 
