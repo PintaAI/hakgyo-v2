@@ -27,8 +27,8 @@ export const routeAccess = {
   postSignInPath: "/auth/continue",
   signedInFallbackPath: "/catalog",
   protectedPrefixes: [
-    "/account",
     "/auth/continue",
+    "/docs",
     "/invite",
     "/learn",
     "/workspace",
@@ -60,7 +60,7 @@ export function getWorkspaceRoute(pathname: string) {
 
   const section = segments[2];
   return {
-    organizationId: segments[1],
+    organizationSlug: segments[1],
     allowedRoles:
       (section && routeAccess.workspace.sectionRoles[section]) ??
       routeAccess.workspace.defaultRoles,
@@ -68,11 +68,11 @@ export function getWorkspaceRoute(pathname: string) {
 }
 
 export function getWorkspaceFallback(
-  organizationId: string,
+  organizationSlug: string,
   role: OrganizationRole,
 ) {
   const section = routeAccess.workspace.roleFallbackSection[role];
-  return `/workspace/${organizationId}/${section}`;
+  return `/workspace/${organizationSlug}/${section}`;
 }
 
 const redirectParsingBase = "https://redirect.invalid";

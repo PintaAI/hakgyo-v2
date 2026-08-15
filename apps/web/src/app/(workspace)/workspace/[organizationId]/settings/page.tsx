@@ -5,6 +5,6 @@ export default async function SettingsPage({
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  const { organizationId } = await params;
-  redirect(`/workspace/${organizationId}/settings/general`);
+  const { organizationId: organizationSlug } = await params;
+  redirect(`/workspace/${organizationSlug}/settings/general`);
 }

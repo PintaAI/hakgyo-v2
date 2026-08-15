@@ -9,6 +9,14 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import {
+  createOrganizationLogoKey,
+  getManagedOrganizationLogoKey,
+  getOrganizationLogoPath,
+  MAX_ORGANIZATION_LOGO_SIZE,
+  organizationLogoContentTypes,
+  parseOrganizationLogoKey,
+} from "~/lib/organization-logo";
+import {
   createProfileImageKey,
   getManagedProfileImageKey,
   getProfileImagePath,
@@ -192,6 +200,191 @@ export const storageRouter = createTRPCRouter({
     }
     return { deleted: true };
   }),
+
+  createOrganizationLogoUploadUrl: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+        contentType: z.enum(organizationLogoContentTypes),
+        fileSize: z.number().int().positive().max(MAX_ORGANIZATION_LOGO_SIZE),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.session.user.id,
+      });
+      const key = createOrganizationLogoKey(
+        input.organizationId,
+        input.fileSize,
+        input.contentType,
+      );
+      const uploadUrl = await getSignedUrl(
+        r2,
+        new PutObjectCommand({
+          Bucket: r2Bucket,
+          Key: key,
+          ContentType: input.contentType,
+        }),
+        { expiresIn: SIGNED_URL_TTL_SECONDS },
+      );
+
+      return {
+        key,
+        uploadUrl,
+        expiresIn: SIGNED_URL_TTL_SECONDS,
+        headers: { "Content-Type": input.contentType },
+      };
+    }),
+
+  confirmOrganizationLogoUpload: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+        key: z.string().min(1).max(1024),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.session.user.id,
+      });
+      const parsed = parseOrganizationLogoKey(input.key, input.organizationId);
+      if (!parsed) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid logo key",
+        });
+      }
+
+      let object;
+      try {
+        object = await r2.send(
+          new HeadObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+        );
+      } catch (cause) {
+        const status = (cause as { $metadata?: { httpStatusCode?: number } })
+          .$metadata?.httpStatusCode;
+        throw new TRPCError({
+          code: status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
+          message: status === 404 ? "Uploaded logo was not found" : undefined,
+          cause,
+        });
+      }
+
+      if (
+        object.ContentLength !== parsed.size ||
+        object.ContentType !== parsed.contentType
+      ) {
+        await r2.send(
+          new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+        );
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Uploaded logo does not match the signed request",
+        });
+      }
+
+      const organization = await db.organization.findUniqueOrThrow({
+        where: { id: input.organizationId },
+        select: { logoUrl: true },
+      });
+      const oldKey = getManagedOrganizationLogoKey(
+        organization.logoUrl,
+        input.organizationId,
+      );
+      const logoUrl = getOrganizationLogoPath(
+        input.organizationId,
+        parsed.fileName,
+      );
+      await db.organization.update({
+        where: { id: input.organizationId },
+        data: { logoUrl },
+      });
+
+      if (oldKey && oldKey !== input.key) {
+        try {
+          await r2.send(
+            new DeleteObjectCommand({ Bucket: r2Bucket, Key: oldKey }),
+          );
+        } catch (error) {
+          console.error("Failed to remove replaced organization logo", error);
+        }
+      }
+
+      return { logoUrl };
+    }),
+
+  discardOrganizationLogoUpload: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+        key: z.string().min(1).max(1024),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.session.user.id,
+      });
+      if (!parseOrganizationLogoKey(input.key, input.organizationId)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const organization = await db.organization.findUniqueOrThrow({
+        where: { id: input.organizationId },
+        select: { logoUrl: true },
+      });
+      if (
+        getManagedOrganizationLogoKey(
+          organization.logoUrl,
+          input.organizationId,
+        ) === input.key
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "The logo is currently in use",
+        });
+      }
+      await r2.send(
+        new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+      );
+      return { deleted: true };
+    }),
+
+  deleteOrganizationLogo: protectedProcedure
+    .input(z.object({ organizationId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.session.user.id,
+      });
+      const organization = await db.organization.findUniqueOrThrow({
+        where: { id: input.organizationId },
+        select: { logoUrl: true },
+      });
+      const key = getManagedOrganizationLogoKey(
+        organization.logoUrl,
+        input.organizationId,
+      );
+      await db.organization.update({
+        where: { id: input.organizationId },
+        data: { logoUrl: null },
+      });
+      if (key) {
+        try {
+          await r2.send(
+            new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }),
+          );
+        } catch (error) {
+          console.error("Failed to remove organization logo", error);
+        }
+      }
+      return { deleted: true };
+    }),
 
   createUploadUrl: protectedProcedure
     .input(

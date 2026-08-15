@@ -5,6 +5,6 @@ export default async function LibraryPage({
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  const { organizationId } = await params;
-  redirect(`/workspace/${organizationId}/library/materials`);
+  const { organizationId: organizationSlug } = await params;
+  redirect(`/workspace/${organizationSlug}/library/materials`);
 }

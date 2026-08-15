@@ -5,6 +5,6 @@ export default async function CoursePage({
 }: {
   params: Promise<{ organizationId: string; courseId: string }>;
 }) {
-  const { organizationId, courseId } = await params;
-  redirect(`/workspace/${organizationId}/courses/${courseId}/overview`);
+  const { organizationId: organizationSlug, courseId } = await params;
+  redirect(`/workspace/${organizationSlug}/courses/${courseId}/overview`);
 }

@@ -7,8 +7,8 @@ export default async function Page({
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  const { organizationId } = await params;
-  await requireOrganizationRole(organizationId, organizationManagerRoles);
+  const { organizationId: organizationSlug } = await params;
+  await requireOrganizationRole(organizationSlug, organizationManagerRoles);
   return (
     <WorkspacePagePlaceholder title="Workspace dashboard" params={params} />
   );

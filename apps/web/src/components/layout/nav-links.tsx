@@ -9,7 +9,7 @@ const styles = {
   primary:
     "text-muted-foreground hover:bg-muted hover:text-foreground rounded-md px-3 py-2 text-sm aria-[current=page]:bg-muted aria-[current=page]:text-foreground",
   secondary:
-    "bg-background ring-border hover:bg-muted rounded-md px-3 py-2 text-sm shadow-sm ring-1 aria-[current=page]:bg-foreground aria-[current=page]:text-background",
+    "text-muted-foreground hover:text-foreground focus-visible:ring-ring relative -mb-px border-b-2 border-transparent py-3 text-sm font-medium whitespace-nowrap transition-colors focus-visible:rounded-sm focus-visible:ring-2 focus-visible:outline-none aria-[current=page]:border-primary aria-[current=page]:text-foreground",
 };
 
 export function NavLinks({

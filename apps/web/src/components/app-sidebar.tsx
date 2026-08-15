@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpenIcon,
+  CrownIcon,
   ChevronRightIcon,
   ClipboardCheckIcon,
   FileTextIcon,
@@ -12,6 +13,7 @@ import {
   LanguagesIcon,
   LayoutDashboardIcon,
   LibraryIcon,
+  BookMarkedIcon,
   Settings2Icon,
   UsersIcon,
 } from "lucide-react";
@@ -21,6 +23,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "~/components/ui/collapsible";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -52,6 +55,25 @@ type NavigationLink = {
 
 type NavigationItem = NavigationLink & {
   icon: NonNullable<NavigationLink["icon"]>;
+};
+
+export type DocsNavigationItem = {
+  title: string;
+  href: string;
+  iconName: string;
+  locale: string;
+};
+
+const docsIconMap: Record<string, ComponentType<{ className?: string }>> = {
+  BookOpenIcon,
+  ClipboardCheckIcon,
+  CrownIcon,
+  FileTextIcon,
+  GraduationCapIcon,
+  LanguagesIcon,
+  LibraryIcon,
+  Settings2Icon,
+  UsersIcon,
 };
 
 function isRouteActive(pathname: string, item: NavigationLink): boolean {
@@ -132,16 +154,18 @@ function CollapsibleNavigationItem({
 }
 
 export function AppSidebar({
-  organizationId,
+  organizationSlug,
+  organization,
   role,
   ...props
 }: ComponentProps<typeof Sidebar> & {
-  organizationId: string;
+  organizationSlug: string;
+  organization: { name: string; logoUrl: string | null };
   role: OrganizationRole;
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
-  const workspaceRoot = `/workspace/${organizationId}`;
+  const workspaceRoot = `/workspace/${organizationSlug}`;
   const isManager = role === "OWNER" || role === "ADMIN";
   const workspaceHome = `${workspaceRoot}/${isManager ? "dashboard" : "courses"}`;
   const navigation: NavigationItem[] = [
@@ -215,18 +239,29 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              tooltip="Hakgyo workspace"
+              tooltip={organization.name}
               render={
                 <Link href={workspaceHome} onClick={closeMobileSidebar} />
               }
             >
-              <span className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <GraduationCapIcon className="size-4" />
-              </span>
+              <Avatar className="size-8 rounded-lg after:rounded-lg">
+                {organization.logoUrl ? (
+                  <AvatarImage
+                    src={organization.logoUrl}
+                    alt={`${organization.name} logo`}
+                    className="rounded-lg"
+                  />
+                ) : null}
+                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground rounded-lg font-semibold">
+                  {organization.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <span className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate font-semibold">Hakgyo</span>
+                <span className="truncate font-semibold">
+                  {organization.name}
+                </span>
                 <span className="text-sidebar-foreground/65 truncate text-xs">
-                  {organizationId}
+                  Hakgyo workspace
                 </span>
               </span>
             </SidebarMenuButton>
@@ -317,17 +352,111 @@ export function AppSidebar({
                 <span>My learning</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={pathname === "/docs" || pathname.startsWith("/docs/")}
+                tooltip="User documentation"
+                render={<Link href="/docs" onClick={closeMobileSidebar} />}
+              >
+                <BookMarkedIcon />
+                <span>User documentation</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <User
-          variant="sidebar"
-          role={role}
-          settingsHref={
-            isManager ? `${workspaceRoot}/settings/general` : "/account"
-          }
-        />
+        <User variant="sidebar" role={role} />
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  );
+}
+
+export function DocsAppSidebar({
+  navigation,
+  ...props
+}: ComponentProps<typeof Sidebar> & {
+  navigation: DocsNavigationItem[];
+}) {
+  const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
+  const closeMobileSidebar = () => setOpenMobile(false);
+
+  return (
+    <Sidebar variant="inset" collapsible="icon" {...props}>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              tooltip="Hakgyo docs"
+              render={<Link href="/docs" onClick={closeMobileSidebar} />}
+            >
+              <span className="bg-sidebar-primary text-sidebar-primary-foreground flex size-8 items-center justify-center rounded-lg">
+                <BookMarkedIcon className="size-4" />
+              </span>
+              <span className="grid min-w-0 flex-1 text-left leading-tight">
+                <span className="truncate font-semibold">Hakgyo Docs</span>
+                <span className="text-sidebar-foreground/65 truncate text-xs">
+                  User guide
+                </span>
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Key concepts</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigation.map((item) => {
+                const active = pathname === item.href;
+                const Icon = docsIconMap[item.iconName] ?? FileTextIcon;
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      isActive={active}
+                      tooltip={item.title}
+                      render={
+                        <Link
+                          href={item.href}
+                          aria-current={active ? "page" : undefined}
+                          onClick={closeMobileSidebar}
+                        />
+                      }
+                    >
+                      <Icon />
+                      <span>{item.title}</span>
+                      <span className="text-sidebar-foreground/50 ml-auto text-[0.65rem] uppercase group-data-[collapsible=icon]:hidden">
+                        {item.locale}
+                      </span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup className="mt-auto">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="My learning"
+                render={
+                  <Link href="/learn/courses" onClick={closeMobileSidebar} />
+                }
+              >
+                <GraduationCapIcon />
+                <span>My learning</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <User variant="sidebar" />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

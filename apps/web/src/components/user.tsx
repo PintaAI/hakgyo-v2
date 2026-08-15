@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { AccountSettings } from "~/components/account-settings";
+import { AppSettings } from "~/components/app-settings";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import {
@@ -51,8 +53,6 @@ function formatRole(role: string) {
 
 export type UserProps = {
   role?: OrganizationRole;
-  accountHref?: string;
-  settingsHref?: string;
   variant?: "header" | "sidebar";
 };
 
@@ -91,16 +91,16 @@ function UserDetails({
 function SidebarUserMenu({
   user,
   role,
-  accountHref,
-  settingsHref,
   isSigningOut,
+  onOpenAccount,
+  onOpenSettings,
   onSignOut,
 }: {
   user: AuthenticatedUser;
   role?: OrganizationRole;
-  accountHref: string;
-  settingsHref: string;
   isSigningOut: boolean;
+  onOpenAccount: () => void;
+  onOpenSettings: () => void;
   onSignOut: () => void;
 }) {
   const { isMobile } = useSidebar();
@@ -130,11 +130,11 @@ function SidebarUserMenu({
               <UserDetails user={user} role={role} />
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link href={accountHref} />}>
+            <DropdownMenuItem onClick={onOpenAccount}>
               <UserRoundIcon />
               Profile & account
             </DropdownMenuItem>
-            <DropdownMenuItem render={<Link href={settingsHref} />}>
+            <DropdownMenuItem onClick={onOpenSettings}>
               <SettingsIcon />
               Settings
             </DropdownMenuItem>
@@ -154,16 +154,13 @@ function SidebarUserMenu({
   );
 }
 
-export function User({
-  role,
-  accountHref = "/account",
-  settingsHref = "/account",
-  variant = "header",
-}: UserProps) {
+export function User({ role, variant = "header" }: UserProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   if (isPending) {
     if (variant === "sidebar") {
@@ -242,83 +239,91 @@ export function User({
 
   if (variant === "sidebar") {
     return (
-      <SidebarUserMenu
-        user={user}
-        role={role}
-        accountHref={accountHref}
-        settingsHref={settingsHref}
-        isSigningOut={isSigningOut}
-        onSignOut={signOut}
-      />
+      <>
+        <SidebarUserMenu
+          user={user}
+          role={role}
+          isSigningOut={isSigningOut}
+          onOpenAccount={() => setIsAccountOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onSignOut={signOut}
+        />
+        <AccountSettings open={isAccountOpen} onOpenChange={setIsAccountOpen} />
+        <AppSettings open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      </>
     );
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className="hover:bg-muted focus-visible:ring-ring flex items-center gap-2 rounded-full p-1 pr-2 text-left transition-colors outline-none focus-visible:ring-2"
-        aria-label={`Open user menu for ${user.name}`}
-      >
-        <Avatar>
-          {user.image ? <AvatarImage src={user.image} alt="" /> : null}
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-        <span className="hidden min-w-0 items-center gap-2 sm:flex">
-          <span className="block max-w-28 truncate text-sm font-medium">
-            {user.name}
-          </span>
-          {role ? (
-            <Badge variant="secondary" className="h-5 px-1.5 text-[0.65rem]">
-              {formatRole(role)}
-            </Badge>
-          ) : null}
-        </span>
-        <ChevronDownIcon className="text-muted-foreground hidden size-3.5 sm:block" />
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent align="end" sideOffset={8} className="w-72 p-2">
-        <div className="flex items-center gap-3 px-2 py-2">
-          <Avatar size="lg">
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className="hover:bg-muted focus-visible:ring-ring flex items-center gap-2 rounded-full p-1 pr-2 text-left transition-colors outline-none focus-visible:ring-2"
+          aria-label={`Open user menu for ${user.name}`}
+        >
+          <Avatar>
             {user.image ? <AvatarImage src={user.image} alt="" /> : null}
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-semibold">{user.name}</p>
-              {role ? (
-                <Badge
-                  variant="secondary"
-                  className="h-5 px-1.5 text-[0.65rem]"
-                >
-                  {formatRole(role)}
-                </Badge>
-              ) : null}
-            </div>
-            <p className="text-muted-foreground truncate text-xs">
-              {user.email}
-            </p>
-          </div>
-        </div>
+          <span className="hidden min-w-0 items-center gap-2 sm:flex">
+            <span className="block max-w-28 truncate text-sm font-medium">
+              {user.name}
+            </span>
+            {role ? (
+              <Badge variant="secondary" className="h-5 px-1.5 text-[0.65rem]">
+                {formatRole(role)}
+              </Badge>
+            ) : null}
+          </span>
+          <ChevronDownIcon className="text-muted-foreground hidden size-3.5 sm:block" />
+        </DropdownMenuTrigger>
 
-        <DropdownMenuSeparator />
-        <DropdownMenuItem render={<Link href={accountHref} />}>
-          <UserRoundIcon />
-          Profile & account
-        </DropdownMenuItem>
-        <DropdownMenuItem render={<Link href={settingsHref} />}>
-          <SettingsIcon />
-          Settings
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          disabled={isSigningOut}
-          onClick={signOut}
-        >
-          <LogOutIcon />
-          {isSigningOut ? "Signing out..." : "Sign out"}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        <DropdownMenuContent align="end" sideOffset={8} className="w-72 p-2">
+          <div className="flex items-center gap-3 px-2 py-2">
+            <Avatar size="lg">
+              {user.image ? <AvatarImage src={user.image} alt="" /> : null}
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold">{user.name}</p>
+                {role ? (
+                  <Badge
+                    variant="secondary"
+                    className="h-5 px-1.5 text-[0.65rem]"
+                  >
+                    {formatRole(role)}
+                  </Badge>
+                ) : null}
+              </div>
+              <p className="text-muted-foreground truncate text-xs">
+                {user.email}
+              </p>
+            </div>
+          </div>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setIsAccountOpen(true)}>
+            <UserRoundIcon />
+            Profile & account
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>
+            <SettingsIcon />
+            Settings
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={isSigningOut}
+            onClick={signOut}
+          >
+            <LogOutIcon />
+            {isSigningOut ? "Signing out..." : "Sign out"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AccountSettings open={isAccountOpen} onOpenChange={setIsAccountOpen} />
+      <AppSettings open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+    </>
   );
 }

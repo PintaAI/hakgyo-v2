@@ -74,6 +74,7 @@ bun --cwd apps/mobile run typecheck
 - Use `publicProcedure` for unauthenticated procedures and `protectedProcedure` for procedures requiring a session.
 - Keep database access on the server through `src/server/db.ts`; do not import Prisma into client components.
 - Use the `~/` path alias for imports within the web app.
+- Keep links as semantic anchors. To make a Next.js `Link` or `<a>` look like a button, apply `buttonVariants` from `~/components/ui/button`; do not render links through Base UI `Button`, including with `nativeButton={false}`.
 - Keep authentication changes aligned across `src/server/better-auth/config.ts`, `server.ts`, `client.ts`, and the auth route.
 - The shared tRPC endpoint is `/api/trpc`. Mobile authentication works by forwarding the Better Auth cookie returned by `authClient.getCookie()`.
 

@@ -12,29 +12,32 @@ import {
 describe("route access", () => {
   test("identifies protected route segments without matching similar names", () => {
     expect(isProtectedRoute("/learn/courses")).toBe(true);
-    expect(isProtectedRoute("/workspace/org-1/dashboard")).toBe(true);
+    expect(isProtectedRoute("/docs/courses-id")).toBe(true);
+    expect(isProtectedRoute("/workspace/acme-school/dashboard")).toBe(true);
     expect(isProtectedRoute("/invite/token.with.dot")).toBe(true);
     expect(isProtectedRoute("/learning-resources")).toBe(false);
     expect(isProtectedRoute("/catalog")).toBe(false);
   });
 
   test("maps restricted workspace sections to manager roles", () => {
-    expect(getWorkspaceRoute("/workspace/org-1/settings/general")).toEqual({
-      organizationId: "org-1",
+    expect(
+      getWorkspaceRoute("/workspace/acme-school/settings/general"),
+    ).toEqual({
+      organizationSlug: "acme-school",
       allowedRoles: ["OWNER", "ADMIN"],
     });
-    expect(getWorkspaceRoute("/workspace/org-1/courses")).toEqual({
-      organizationId: "org-1",
+    expect(getWorkspaceRoute("/workspace/acme-school/courses")).toEqual({
+      organizationSlug: "acme-school",
       allowedRoles: ["OWNER", "ADMIN", "TEACHER"],
     });
   });
 
   test("provides role-specific workspace destinations", () => {
-    expect(getWorkspaceFallback("org-1", "OWNER")).toBe(
-      "/workspace/org-1/dashboard",
+    expect(getWorkspaceFallback("acme-school", "OWNER")).toBe(
+      "/workspace/acme-school/dashboard",
     );
-    expect(getWorkspaceFallback("org-1", "TEACHER")).toBe(
-      "/workspace/org-1/courses",
+    expect(getWorkspaceFallback("acme-school", "TEACHER")).toBe(
+      "/workspace/acme-school/courses",
     );
   });
 
@@ -48,7 +51,7 @@ describe("route access", () => {
     expect(getSafeRedirectPath("/%5Cexample.com")).toBeNull();
     expect(getSafeRedirectPath("/learn/\nexample")).toBeNull();
     expect(getSafeRedirectPath("/learn/../catalog")).toBe("/catalog");
-    expect(getSafeRedirectPath("/account", ["/account"])).toBeNull();
+    expect(getSafeRedirectPath("/catalog", ["/catalog"])).toBeNull();
     expect(getSafeRedirectPath(`/learn/${"x".repeat(4096)}`)).toBeNull();
     expect(getPostSignInPath("https://example.com")).toBe("/auth/continue");
   });

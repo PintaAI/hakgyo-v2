@@ -336,6 +336,7 @@ mutation({
 ```
 
 - Scope: `OWNER` atau `ADMIN` organization.
+- `logoUrl` dikelola melalui procedure upload organization logo pada router storage.
 
 ### `organization.listMembers`
 
@@ -351,12 +352,13 @@ query({ organizationId: string }): OrganizationMemberWithUser[]
 ```ts
 mutation({
   organizationId: string;
-  userId: string;
+  email: string;
   role: "OWNER" | "ADMIN" | "TEACHER";
 }): OrganizationMember
 ```
 
 - Scope: `OWNER` atau `ADMIN`.
+- Email dinormalisasi ke lowercase dan harus cocok dengan akun Hakgyo yang sudah ada.
 - Hanya `OWNER` yang dapat menambahkan owner baru.
 
 ### `organization.updateMemberRole`
@@ -1435,6 +1437,57 @@ File binary tidak melewati server Next.js. Client upload/download langsung ke R2
 menggunakan signed URL berdurasi lima menit.
 
 Ukuran maksimal dokumen: 100 MiB.
+
+### Organization Logo
+
+Logo organization menerima JPEG, PNG, WebP, atau GIF dengan ukuran maksimal 5 MiB.
+Seluruh mutation memerlukan scope `OWNER` atau `ADMIN` organization.
+
+#### `storage.createOrganizationLogoUploadUrl`
+
+```ts
+mutation({
+  organizationId: string;
+  contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  fileSize: number; // 1..5 MiB
+}): {
+  key: string;
+  uploadUrl: string;
+  expiresIn: 300;
+  headers: { "Content-Type": string };
+}
+```
+
+Client mengunggah file langsung ke `uploadUrl` menggunakan HTTP `PUT`, lalu
+memanggil procedure confirm.
+
+#### `storage.confirmOrganizationLogoUpload`
+
+```ts
+mutation({ organizationId: string; key: string }): { logoUrl: string }
+```
+
+- Memeriksa key, ukuran object, dan content type terhadap signed request.
+- Menyimpan relative `logoUrl` setelah validasi berhasil.
+- Object logo managed sebelumnya dihapus setelah penggantian berhasil.
+
+#### `storage.discardOrganizationLogoUpload`
+
+```ts
+mutation({ organizationId: string; key: string }): { deleted: true }
+```
+
+- Digunakan untuk membersihkan object yang sudah diunggah tetapi gagal dikonfirmasi.
+- Logo yang sedang aktif tidak dapat di-discard.
+
+#### `storage.deleteOrganizationLogo`
+
+```ts
+mutation({ organizationId: string }): { deleted: true }
+```
+
+- Mengosongkan `Organization.logoUrl` dan menghapus object managed dari R2.
+- Idempotent ketika organization belum memiliki logo.
 
 ### `storage.createUploadUrl`
 

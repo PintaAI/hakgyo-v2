@@ -6,8 +6,8 @@ export default async function Layout({
   children: React.ReactNode;
   params: Promise<{ organizationId: string }>;
 }) {
-  const { organizationId } = await params;
-  const root = `/workspace/${organizationId}/library`;
+  const { organizationId: organizationSlug } = await params;
+  const root = `/workspace/${organizationSlug}/library`;
   return (
     <Subnav
       nav={["materials", "vocabulary", "assessments"].map((section) => ({

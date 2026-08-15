@@ -23,8 +23,8 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/account/:path*",
     "/auth/continue",
+    "/docs/:path*",
     "/invite/:path*",
     "/learn/:path*",
     "/workspace/:path*",

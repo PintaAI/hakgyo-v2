@@ -9,9 +9,9 @@ export default async function Layout({
   children: React.ReactNode;
   params: Promise<{ organizationId: string }>;
 }) {
-  const { organizationId } = await params;
-  await requireOrganizationRole(organizationId, organizationManagerRoles);
-  const root = `/workspace/${organizationId}/settings`;
+  const { organizationId: organizationSlug } = await params;
+  await requireOrganizationRole(organizationSlug, organizationManagerRoles);
+  const root = `/workspace/${organizationSlug}/settings`;
   return (
     <Subnav
       nav={[

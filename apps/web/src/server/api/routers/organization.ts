@@ -143,7 +143,23 @@ export const organizationRouter = createTRPCRouter({
         userId: ctx.session.user.id,
       });
       const { organizationId, ...data } = input;
-      return db.organization.update({ where: { id: organizationId }, data });
+      try {
+        return await db.organization.update({
+          where: { id: organizationId },
+          data,
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Organization slug is already in use",
+          });
+        }
+        throw error;
+      }
     }),
 
   getDashboardAnalytics: protectedProcedure
@@ -247,7 +263,7 @@ export const organizationRouter = createTRPCRouter({
     .input(
       z.object({
         organizationId: id,
-        userId: id,
+        email: z.string().trim().toLowerCase().email().max(320),
         role: z.enum(["OWNER", "ADMIN", "TEACHER"]),
       }),
     )
@@ -259,7 +275,40 @@ export const organizationRouter = createTRPCRouter({
       });
       if (input.role === "OWNER" && actor.role !== "OWNER")
         throw new TRPCError({ code: "FORBIDDEN" });
-      return db.organizationMember.create({ data: input });
+
+      const user = await db.user.findUnique({
+        where: { email: input.email },
+        select: { id: true },
+      });
+      if (!user) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No Hakgyo account was found for this email",
+        });
+      }
+
+      const existingMembership = await db.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId: input.organizationId,
+            userId: user.id,
+          },
+        },
+        select: { id: true },
+      });
+      if (existingMembership) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "User is already an organization member",
+        });
+      }
+      return db.organizationMember.create({
+        data: {
+          organizationId: input.organizationId,
+          userId: user.id,
+          role: input.role,
+        },
+      });
     }),
 
   updateMemberRole: protectedProcedure

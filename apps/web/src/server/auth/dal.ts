@@ -21,13 +21,16 @@ export const getSignedInDestination = cache(async (userId: string) => {
   const memberships = await db.organizationMember.findMany({
     where: { userId },
     orderBy: { createdAt: "asc" },
-    select: { organizationId: true, role: true },
+    select: {
+      role: true,
+      organization: { select: { slug: true } },
+    },
   });
   const membership =
     memberships.find(({ role }) => role === "OWNER" || role === "ADMIN") ??
     memberships[0];
   if (membership) {
-    return getWorkspaceFallback(membership.organizationId, membership.role);
+    return getWorkspaceFallback(membership.organization.slug, membership.role);
   }
 
   const enrollment = await db.course.findFirst({
@@ -56,17 +59,23 @@ export const getSignedInDestination = cache(async (userId: string) => {
   return enrollment ? "/learn/courses" : routeAccess.signedInFallbackPath;
 });
 
-export const requireOrganizationMembership = cache(
-  async (organizationId: string) => {
+export const requireOrganizationMembershipBySlug = cache(
+  async (organizationSlug: string) => {
     const session = await requireSession();
-    const membership = await db.organizationMember.findUnique({
+    const membership = await db.organizationMember.findFirst({
       where: {
-        organizationId_userId: {
-          organizationId,
-          userId: session.user.id,
+        userId: session.user.id,
+        organization: { slug: organizationSlug },
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        role: true,
+        userId: true,
+        organization: {
+          select: { name: true, slug: true, logoUrl: true },
         },
       },
-      select: { id: true, organizationId: true, role: true, userId: true },
     });
     if (!membership) redirect(await getSignedInDestination(session.user.id));
     return membership;
@@ -74,12 +83,13 @@ export const requireOrganizationMembership = cache(
 );
 
 export async function requireOrganizationRole(
-  organizationId: string,
+  organizationSlug: string,
   allowedRoles: readonly OrganizationRole[],
 ) {
-  const membership = await requireOrganizationMembership(organizationId);
+  const membership =
+    await requireOrganizationMembershipBySlug(organizationSlug);
   if (!allowedRoles.includes(membership.role)) {
-    redirect(getWorkspaceFallback(organizationId, membership.role));
+    redirect(getWorkspaceFallback(organizationSlug, membership.role));
   }
   return membership;
 }

@@ -6,5 +6,5 @@ export default async function CourseItemPage({
   params: Promise<{ courseId: string; courseItemId: string }>;
 }) {
   const values = await params;
-  return <PagePlaceholder title="Course item" params={values} />;
+  return <PagePlaceholder title="Bahan ajar" params={values} />;
 }

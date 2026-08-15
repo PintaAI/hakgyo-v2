@@ -190,6 +190,7 @@ model Organization {
   id                    String               @id @default(cuid())
   name                  String
   slug                  String               @unique
+  logoUrl               String?
   defaultEnrollmentMode EnrollmentMode       @default(INVITE_ONLY)
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt

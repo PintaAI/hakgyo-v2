@@ -6,8 +6,8 @@ export default async function Layout({
   children: React.ReactNode;
   params: Promise<{ organizationId: string; courseId: string }>;
 }) {
-  const { organizationId, courseId } = await params;
-  const root = `/workspace/${organizationId}/courses/${courseId}`;
+  const { organizationId: organizationSlug, courseId } = await params;
+  const root = `/workspace/${organizationSlug}/courses/${courseId}`;
   return (
     <Subnav
       nav={[

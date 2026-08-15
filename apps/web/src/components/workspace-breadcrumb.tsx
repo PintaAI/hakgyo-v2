@@ -23,16 +23,16 @@ const sectionLabels: Record<string, string> = {
 };
 
 export function WorkspaceBreadcrumb({
-  organizationId,
+  organizationSlug,
   role,
 }: {
-  organizationId: string;
+  organizationSlug: string;
   role: OrganizationRole;
 }) {
   const pathname = usePathname();
   const section = pathname.split("/").filter(Boolean)[2];
   const currentLabel = (section && sectionLabels[section]) ?? "Workspace";
-  const workspaceHome = `/workspace/${organizationId}/${
+  const workspaceHome = `/workspace/${organizationSlug}/${
     role === "TEACHER" ? "courses" : "dashboard"
   }`;
 

@@ -11,7 +11,8 @@ export default async function Layout({
   }>;
 }) {
   const values = await params;
-  const root = `/workspace/${values.organizationId}/courses/${values.courseId}/cohorts/${values.cohortId}`;
+  const organizationSlug = values.organizationId;
+  const root = `/workspace/${organizationSlug}/courses/${values.courseId}/cohorts/${values.cohortId}`;
   return (
     <Subnav
       nav={["overview", "staff", "learners", "meetings"].map((section) => ({

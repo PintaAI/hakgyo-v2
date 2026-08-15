@@ -13,7 +13,6 @@ export default async function LearnerLayout({
       nav={[
         { href: "/learn/courses", label: "My courses" },
         { href: "/catalog", label: "Catalog" },
-        { href: "/account", label: "Account" },
       ]}
     >
       {children}

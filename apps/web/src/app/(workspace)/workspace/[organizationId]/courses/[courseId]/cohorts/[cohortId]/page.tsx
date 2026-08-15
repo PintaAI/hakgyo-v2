@@ -9,8 +9,8 @@ export default async function CohortPage({
     cohortId: string;
   }>;
 }) {
-  const { organizationId, courseId, cohortId } = await params;
+  const { organizationId: organizationSlug, courseId, cohortId } = await params;
   redirect(
-    `/workspace/${organizationId}/courses/${courseId}/cohorts/${cohortId}/overview`,
+    `/workspace/${organizationSlug}/courses/${courseId}/cohorts/${cohortId}/overview`,
   );
 }
