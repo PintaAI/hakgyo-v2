@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
 
 export function AuthPanel() {
+  const router = useRouter();
   const {
     data: session,
     isPending: sessionPending,
@@ -43,6 +45,7 @@ export function AuthPanel() {
     }
 
     await refetch();
+    router.refresh();
   };
 
   if (sessionPending) {

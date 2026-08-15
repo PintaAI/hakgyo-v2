@@ -1,6 +1,20 @@
-import { AuthPanel } from "~/components/auth-panel";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+import { AuthPanel } from "~/components/auth-panel";
+import { getSession } from "~/server/better-auth/server";
+import { api } from "~/trpc/server";
+
+export default async function Home() {
+  const session = await getSession();
+  if (session?.user) {
+    const organizations = await api.organization.list();
+    const ownerOrganization = organizations.find(
+      (organization) => organization.members[0]?.role === "OWNER",
+    );
+    if (ownerOrganization) {
+      redirect(`/workspace/${ownerOrganization.id}/dashboard`);
+    }
+  }
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f2efe6] text-[#163f35]">
       <div className="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-[#e9c46a]/35 blur-3xl" />
