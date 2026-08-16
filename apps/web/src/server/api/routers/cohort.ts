@@ -72,6 +72,9 @@ export const cohortRouter = createTRPCRouter({
       return db.cohort.findUniqueOrThrow({
         where: { id: input.cohortId },
         include: {
+          course: {
+            select: { id: true, title: true, thumbnailUrl: true },
+          },
           staff: {
             include: {
               organizationMember: {
@@ -123,7 +126,7 @@ export const cohortRouter = createTRPCRouter({
     .input(
       z.object({
         cohortId: id,
-        organizationMemberId: id,
+        email: z.string().trim().toLowerCase().email().max(320),
         role: z.enum(["TEACHER", "MODERATOR"]),
       }),
     )
@@ -132,20 +135,41 @@ export const cohortRouter = createTRPCRouter({
         input.cohortId,
         ctx.session.user.id,
       );
-      if (
-        !(await db.organizationMember.findFirst({
-          where: {
-            id: input.organizationMemberId,
-            organizationId: cohort.organizationId,
-          },
-        }))
-      )
+      const membership = await db.organizationMember.findFirst({
+        where: {
+          organizationId: cohort.organizationId,
+          user: { email: input.email },
+        },
+        select: { id: true },
+      });
+      if (!membership) {
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Staff member must belong to the organization",
+          code: "NOT_FOUND",
+          message: "No organization member was found for this email",
         });
+      }
+      const existing = await db.cohortStaff.findUnique({
+        where: {
+          cohortId_organizationMemberId: {
+            cohortId: input.cohortId,
+            organizationMemberId: membership.id,
+          },
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This member is already assigned to the cohort",
+        });
+      }
       return db.cohortStaff.create({
-        data: { ...input, organizationId: cohort.organizationId },
+        data: {
+          cohortId: input.cohortId,
+          organizationMemberId: membership.id,
+          organizationId: cohort.organizationId,
+          role: input.role,
+        },
       });
     }),
   updateStaff: protectedProcedure

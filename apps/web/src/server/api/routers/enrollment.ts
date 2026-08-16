@@ -173,7 +173,7 @@ export const enrollmentRouter = createTRPCRouter({
     .input(
       z.object({
         courseId: id,
-        userId: id,
+        email: z.string().trim().toLowerCase().email().max(320),
         status: enrollmentStatus,
         expiresAt: z.coerce.date().nullable().optional(),
       }),
@@ -184,11 +184,28 @@ export const enrollmentRouter = createTRPCRouter({
         permission: "course.manage",
         userId: ctx.session.user.id,
       });
+      const user = await ctx.db.user.findUnique({
+        where: { email: input.email },
+        select: { id: true },
+      });
+      if (!user) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No Hakgyo account was found for this email",
+        });
+      }
       return ctx.db.courseEnrollment.upsert({
         where: {
-          courseId_userId: { courseId: input.courseId, userId: input.userId },
+          courseId_userId: { courseId: input.courseId, userId: user.id },
         },
-        create: { ...input, source: "MANUAL" },
+        create: {
+          courseId: input.courseId,
+          userId: user.id,
+          status: input.status,
+          expiresAt: input.expiresAt,
+          completedAt: input.status === "COMPLETED" ? new Date() : null,
+          source: "MANUAL",
+        },
         update: {
           status: input.status,
           expiresAt: input.expiresAt,
@@ -198,21 +215,43 @@ export const enrollmentRouter = createTRPCRouter({
     }),
 
   setCohortEnrollment: protectedProcedure
-    .input(z.object({ cohortId: id, userId: id, status: enrollmentStatus }))
+    .input(
+      z.object({
+        cohortId: id,
+        email: z.string().trim().toLowerCase().email().max(320),
+        status: enrollmentStatus,
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const cohort = await requireCohortPermission({
         cohortId: input.cohortId,
         userId: ctx.session.user.id,
       });
+      const user = await ctx.db.user.findUnique({
+        where: { email: input.email },
+        select: { id: true },
+      });
+      if (!user) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No Hakgyo account was found for this email",
+        });
+      }
       return ctx.db.$transaction(async (tx) => {
         const cohortEnrollment = await tx.cohortEnrollment.upsert({
           where: {
             cohortId_userId: {
               cohortId: input.cohortId,
-              userId: input.userId,
+              userId: user.id,
             },
           },
-          create: { ...input, source: "MANUAL" },
+          create: {
+            cohortId: input.cohortId,
+            userId: user.id,
+            status: input.status,
+            completedAt: input.status === "COMPLETED" ? new Date() : null,
+            source: "MANUAL",
+          },
           update: {
             status: input.status,
             completedAt: input.status === "COMPLETED" ? new Date() : null,
@@ -223,7 +262,7 @@ export const enrollmentRouter = createTRPCRouter({
             where: {
               courseId_userId: {
                 courseId: cohort.courseId,
-                userId: input.userId,
+                userId: user.id,
               },
             },
             select: { id: true, source: true },
@@ -232,7 +271,7 @@ export const enrollmentRouter = createTRPCRouter({
             await tx.courseEnrollment.create({
               data: {
                 courseId: cohort.courseId,
-                userId: input.userId,
+                userId: user.id,
                 status: "ACTIVE",
                 source: "COHORT",
               },
@@ -247,7 +286,7 @@ export const enrollmentRouter = createTRPCRouter({
           const otherActiveCohortEnrollment =
             await tx.cohortEnrollment.findFirst({
               where: {
-                userId: input.userId,
+                userId: user.id,
                 cohortId: { not: input.cohortId },
                 status: { in: ["ACTIVE", "COMPLETED"] },
                 cohort: { courseId: cohort.courseId },
@@ -258,7 +297,7 @@ export const enrollmentRouter = createTRPCRouter({
             await tx.courseEnrollment.updateMany({
               where: {
                 courseId: cohort.courseId,
-                userId: input.userId,
+                userId: user.id,
                 source: "COHORT",
               },
               data: { status: "CANCELLED", completedAt: null },

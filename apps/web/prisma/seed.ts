@@ -136,6 +136,8 @@ async function main() {
       price: 0,
       progressionMode: "SEQUENTIAL",
       status: "PUBLISHED",
+      thumbnailUrl:
+        "https://images.unsplash.com/photo-1492571350019-22de08371fd3?auto=format&fit=crop&w=1200&q=80",
       title: "Bahasa Korea Dasar",
     },
     create: {
@@ -149,6 +151,8 @@ async function main() {
       price: 0,
       progressionMode: "SEQUENTIAL",
       status: "PUBLISHED",
+      thumbnailUrl:
+        "https://images.unsplash.com/photo-1492571350019-22de08371fd3?auto=format&fit=crop&w=1200&q=80",
     },
   });
 
@@ -159,7 +163,11 @@ async function main() {
         slug: "persiapan-topik-i",
       },
     },
-    update: { status: "DRAFT" },
+    update: {
+      status: "DRAFT",
+      thumbnailUrl:
+        "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80",
+    },
     create: {
       id: "seed-course-topik-draft",
       organizationId: organization.id,
@@ -170,6 +178,8 @@ async function main() {
       enrollmentMode: "INVITE_ONLY",
       price: 250_000,
       status: "DRAFT",
+      thumbnailUrl:
+        "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80",
     },
   });
 
