@@ -11,6 +11,21 @@ import { getManagedProfileImageKey } from "~/lib/profile-image";
 import { getAccountDeletionBlockers } from "~/server/account/deletion";
 import { db } from "~/server/db";
 
+const mcpOAuthScopes = ["openid", "profile", "hakgyo:mcp", "offline_access"];
+
+async function applyCimdDefaultScopes(client: {
+  clientId: string;
+  scopes?: string[];
+}) {
+  if (client.scopes?.length) return;
+
+  await db.oauthClient.update({
+    where: { clientId: client.clientId },
+    data: { scopes: mcpOAuthScopes },
+  });
+  client.scopes = [...mcpOAuthScopes];
+}
+
 export const auth = betterAuth({
   baseURL: env.APP_URL,
   database: prismaAdapter(db, {
@@ -60,7 +75,7 @@ export const auth = betterAuth({
     oauthProvider({
       loginPage: "/",
       consentPage: "/oauth/consent",
-      scopes: ["openid", "profile", "hakgyo:mcp", "offline_access"],
+      scopes: mcpOAuthScopes,
       resources: [
         {
           identifier: `${env.APP_URL}/api/mcp`,
@@ -76,7 +91,10 @@ export const auth = betterAuth({
       clientRegistrationAllowedScopes: ["offline_access"],
       silenceWarnings: { oauthAuthServerConfig: true },
     }),
-    cimd(),
+    cimd({
+      onClientCreated: ({ client }) => applyCimdDefaultScopes(client),
+      onClientRefreshed: ({ client }) => applyCimdDefaultScopes(client),
+    }),
     expo(),
   ],
 });
