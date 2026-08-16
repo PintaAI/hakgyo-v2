@@ -12,18 +12,29 @@ import { getAccountDeletionBlockers } from "~/server/account/deletion";
 import { db } from "~/server/db";
 
 const mcpOAuthScopes = ["openid", "profile", "hakgyo:mcp", "offline_access"];
+const mcpResource = `${env.APP_URL}/api/mcp`;
 
-async function applyCimdDefaultScopes(client: {
+async function configureCimdClient(client: {
   clientId: string;
   scopes?: string[];
 }) {
-  if (client.scopes?.length) return;
+  if (!client.scopes?.length) {
+    await db.oauthClient.update({
+      where: { clientId: client.clientId },
+      data: { scopes: mcpOAuthScopes },
+    });
+    client.scopes = [...mcpOAuthScopes];
+  }
 
-  await db.oauthClient.update({
-    where: { clientId: client.clientId },
-    data: { scopes: mcpOAuthScopes },
+  await db.oauthClientResource.upsert({
+    where: { id: `${client.clientId}::${mcpResource}` },
+    create: {
+      id: `${client.clientId}::${mcpResource}`,
+      clientId: client.clientId,
+      resourceId: mcpResource,
+    },
+    update: {},
   });
-  client.scopes = [...mcpOAuthScopes];
 }
 
 export const auth = betterAuth({
@@ -78,7 +89,7 @@ export const auth = betterAuth({
       scopes: mcpOAuthScopes,
       resources: [
         {
-          identifier: `${env.APP_URL}/api/mcp`,
+          identifier: mcpResource,
           name: "Hakgyo MCP",
           allowedScopes: ["hakgyo:mcp"],
           accessTokenTtl: 15 * 60,
@@ -92,8 +103,8 @@ export const auth = betterAuth({
       silenceWarnings: { oauthAuthServerConfig: true },
     }),
     cimd({
-      onClientCreated: ({ client }) => applyCimdDefaultScopes(client),
-      onClientRefreshed: ({ client }) => applyCimdDefaultScopes(client),
+      onClientCreated: ({ client }) => configureCimdClient(client),
+      onClientRefreshed: ({ client }) => configureCimdClient(client),
     }),
     expo(),
   ],
