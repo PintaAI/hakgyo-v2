@@ -12,7 +12,7 @@ import { db } from "~/server/db";
 const id = z.string().min(1);
 const json = z.custom<Prisma.InputJsonValue>((value) => value !== undefined);
 const blockNoteDocument = z
-  .array(z.record(z.unknown()))
+  .array(z.record(z.string(), z.unknown()))
   .min(1)
   .max(5000)
   .transform((value) => value as Prisma.InputJsonValue);

@@ -44,7 +44,7 @@ export const courseRouter = createTRPCRouter({
           limit: z.number().int().min(1).max(100).default(50),
           cursor: id.optional(),
         })
-        .default({}),
+        .default({ limit: 50 }),
     )
     .query(({ ctx, input }) =>
       ctx.db.course.findMany({

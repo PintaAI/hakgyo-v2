@@ -16,7 +16,20 @@ export const env = createEnv({
       .url()
       .refine((url) => !url.endsWith("/"), {
         message: "APP_URL must not have a trailing slash",
-      }),
+      })
+      .refine(
+        (value) => {
+          const url = new URL(value);
+          return url.pathname === "/" && !url.search && !url.hash;
+        },
+        { message: "APP_URL must be an origin without a path, query, or hash" },
+      )
+      .refine(
+        (value) =>
+          process.env.NODE_ENV !== "production" ||
+          new URL(value).protocol === "https:",
+        { message: "APP_URL must use HTTPS in production" },
+      ),
     BETTER_AUTH_GOOGLE_CLIENT_ID: z.string(),
     BETTER_AUTH_GOOGLE_CLIENT_SECRET: z.string(),
     DATABASE_URL: z.string().url(),

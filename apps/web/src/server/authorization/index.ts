@@ -133,8 +133,24 @@ export async function requireCohortPermission(input: {
   });
   if (!cohort) throw new TRPCError({ code: "NOT_FOUND" });
 
-  const result = await getCourseScope(cohort.courseId, input.userId);
-  if (!canManageCohort(result.scope)) return forbidden();
+  const [result, exactStaffAssignment] = await Promise.all([
+    getCourseScope(cohort.courseId, input.userId),
+    db.cohortStaff.findFirst({
+      where: {
+        cohortId: input.cohortId,
+        organizationMember: { userId: input.userId },
+      },
+      select: { id: true },
+    }),
+  ]);
+  if (
+    !canManageCohort({
+      ...result.scope,
+      isCohortStaff: Boolean(exactStaffAssignment),
+    })
+  ) {
+    return forbidden();
+  }
   return cohort;
 }
 

@@ -1,7 +1,10 @@
 import { expo } from "@better-auth/expo";
+import { cimd } from "@better-auth/cimd";
+import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { jwt } from "better-auth/plugins";
 
 import { env } from "~/env";
 import { getManagedProfileImageKey } from "~/lib/profile-image";
@@ -52,7 +55,30 @@ export const auth = betterAuth({
     "hakgyo://*",
     ...(env.NODE_ENV === "development" ? ["exp://", "exp://**"] : []),
   ],
-  plugins: [expo()],
+  plugins: [
+    jwt(),
+    oauthProvider({
+      loginPage: "/",
+      consentPage: "/oauth/consent",
+      scopes: ["openid", "profile", "hakgyo:mcp", "offline_access"],
+      resources: [
+        {
+          identifier: `${env.APP_URL}/api/mcp`,
+          name: "Hakgyo MCP",
+          allowedScopes: ["hakgyo:mcp"],
+          accessTokenTtl: 15 * 60,
+        },
+      ],
+      grantTypes: ["authorization_code", "refresh_token"],
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
+      clientRegistrationDefaultScopes: ["openid", "profile", "hakgyo:mcp"],
+      clientRegistrationAllowedScopes: ["offline_access"],
+      silenceWarnings: { oauthAuthServerConfig: true },
+    }),
+    cimd(),
+    expo(),
+  ],
 });
 
 export type Session = typeof auth.$Infer.Session;
