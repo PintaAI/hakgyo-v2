@@ -126,7 +126,7 @@ export const assessmentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const member = await requireContentAuthor({
         ...input,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return ctx.db.assessment.findMany({
         where: {
@@ -145,7 +145,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireAssessmentManagement(
         ctx.db,
         input.assessmentId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       return ctx.db.assessment.findUniqueOrThrow({
         where: { id: input.assessmentId },
@@ -162,7 +162,7 @@ export const assessmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const member = await requireContentAuthor({
         organizationId: input.organizationId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return ctx.db.assessment.create({
         data: {
@@ -178,7 +178,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireAssessmentManagement(
         ctx.db,
         input.assessmentId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       const { assessmentId, ...data } = input;
       return ctx.db.assessment.update({
@@ -195,7 +195,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireAssessmentManagement(
         ctx.db,
         input.assessmentId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       await ctx.db.assessment.delete({ where: { id: input.assessmentId } });
       return { deleted: true };
@@ -206,7 +206,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireAssessmentManagement(
         ctx.db,
         input.assessmentId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       const position = await ctx.db.assessmentQuestion.aggregate({
         where: { assessmentId: input.assessmentId },
@@ -227,7 +227,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireAssessmentManagement(
         ctx.db,
         question.assessmentId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       const { questionId, ...data } = input;
       return ctx.db.assessmentQuestion.update({
@@ -246,7 +246,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireAssessmentManagement(
         ctx.db,
         question.assessmentId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       await ctx.db.assessmentQuestion.delete({
         where: { id: input.questionId },
@@ -266,7 +266,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireAssessmentManagement(
         ctx.db,
         question.assessmentId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       const position = await ctx.db.assessmentOption.aggregate({
         where: { questionId: input.questionId },
@@ -287,7 +287,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireAssessmentManagement(
         ctx.db,
         option.question.assessmentId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       const { optionId, ...data } = input;
       return ctx.db.assessmentOption.update({ where: { id: optionId }, data });
@@ -303,7 +303,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireAssessmentManagement(
         ctx.db,
         option.question.assessmentId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       await ctx.db.assessmentOption.delete({ where: { id: input.optionId } });
       return { deleted: true };
@@ -313,7 +313,7 @@ export const assessmentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await requireCourseItemAccess({
         courseItemId: input.courseItemId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const item = await ctx.db.courseItem.findUnique({
         where: { id: input.courseItemId },
@@ -360,7 +360,7 @@ export const assessmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCourseItemAccess({
         courseItemId: input.courseItemId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return ctx.db.$transaction(
         async (tx) => {
@@ -382,7 +382,7 @@ export const assessmentRouter = createTRPCRouter({
           const current = await tx.assessmentAttempt.findFirst({
             where: {
               courseItemId: input.courseItemId,
-              userId: ctx.session.user.id,
+              userId: ctx.actorUserId,
               status: "IN_PROGRESS",
             },
             orderBy: { attemptNumber: "desc" },
@@ -391,7 +391,7 @@ export const assessmentRouter = createTRPCRouter({
           const count = await tx.assessmentAttempt.count({
             where: {
               courseItemId: input.courseItemId,
-              userId: ctx.session.user.id,
+              userId: ctx.actorUserId,
             },
           });
           if (
@@ -407,12 +407,12 @@ export const assessmentRouter = createTRPCRouter({
             where: {
               courseItemId_userId: {
                 courseItemId: input.courseItemId,
-                userId: ctx.session.user.id,
+                userId: ctx.actorUserId,
               },
             },
             create: {
               courseItemId: input.courseItemId,
-              userId: ctx.session.user.id,
+              userId: ctx.actorUserId,
             },
             update: {},
           });
@@ -421,7 +421,7 @@ export const assessmentRouter = createTRPCRouter({
               assessmentId: item.assessment.id,
               courseItemId: input.courseItemId,
               organizationId: item.organizationId,
-              userId: ctx.session.user.id,
+              userId: ctx.actorUserId,
               attemptNumber: count + 1,
             },
           });
@@ -448,11 +448,11 @@ export const assessmentRouter = createTRPCRouter({
         },
       });
       if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
-      if (attempt.userId !== ctx.session.user.id)
+      if (attempt.userId !== ctx.actorUserId)
         throw new TRPCError({ code: "FORBIDDEN" });
       await requireCourseItemAccess({
         courseItemId: attempt.courseItemId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       if (attempt.status !== "IN_PROGRESS")
         throw new TRPCError({ code: "CONFLICT" });
@@ -563,11 +563,11 @@ export const assessmentRouter = createTRPCRouter({
         select: { userId: true, status: true, courseItemId: true },
       });
       if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
-      if (attempt.userId !== ctx.session.user.id)
+      if (attempt.userId !== ctx.actorUserId)
         throw new TRPCError({ code: "FORBIDDEN" });
       await requireCourseItemAccess({
         courseItemId: attempt.courseItemId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       if (attempt.status !== "IN_PROGRESS")
         throw new TRPCError({ code: "CONFLICT" });
@@ -623,7 +623,7 @@ export const assessmentRouter = createTRPCRouter({
         const updated = await tx.assessmentAttempt.updateMany({
           where: {
             id: input.attemptId,
-            userId: ctx.session.user.id,
+            userId: ctx.actorUserId,
             status: "IN_PROGRESS",
           },
           data: {
@@ -645,12 +645,12 @@ export const assessmentRouter = createTRPCRouter({
             where: {
               courseItemId_userId: {
                 courseItemId: full.courseItemId,
-                userId: ctx.session.user.id,
+                userId: ctx.actorUserId,
               },
             },
             create: {
               courseItemId: full.courseItemId,
-              userId: ctx.session.user.id,
+              userId: ctx.actorUserId,
               status: "COMPLETED",
               completedAt: now,
             },
@@ -669,7 +669,7 @@ export const assessmentRouter = createTRPCRouter({
     .input(z.object({ attemptId: id }))
     .query(async ({ ctx, input }) => {
       const attempt = await ctx.db.assessmentAttempt.findFirst({
-        where: { id: input.attemptId, userId: ctx.session.user.id },
+        where: { id: input.attemptId, userId: ctx.actorUserId },
         select: {
           id: true,
           courseItemId: true,
@@ -696,7 +696,7 @@ export const assessmentRouter = createTRPCRouter({
       if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
       await requireCourseItemAccess({
         courseItemId: attempt.courseItemId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       if (attempt.status === "IN_PROGRESS" || attempt.status === "IN_REVIEW") {
         return {
@@ -732,7 +732,7 @@ export const assessmentRouter = createTRPCRouter({
       const access = await requireReviewAccess(
         ctx.db,
         input.attemptId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       return ctx.db.$transaction(async (tx) => {
         const attempt = await tx.assessmentAttempt.findUnique({
@@ -824,7 +824,7 @@ export const assessmentRouter = createTRPCRouter({
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "assessment.review",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return ctx.db.assessmentAttempt.findMany({
         where: {

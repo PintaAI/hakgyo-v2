@@ -24,7 +24,7 @@ export const learningRouter = createTRPCRouter({
           {
             enrollments: {
               some: {
-                userId: ctx.session.user.id,
+                userId: ctx.actorUserId,
                 status: { in: [...activeEnrollmentStatuses] },
                 OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
               },
@@ -35,7 +35,7 @@ export const learningRouter = createTRPCRouter({
               some: {
                 enrollments: {
                   some: {
-                    userId: ctx.session.user.id,
+                    userId: ctx.actorUserId,
                     status: { in: [...activeEnrollmentStatuses] },
                   },
                 },
@@ -60,7 +60,7 @@ export const learningRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await requireCourseItemAccess({
         courseItemId: input.courseItemId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const item = await ctx.db.courseItem.findUnique({
         where: { id: input.courseItemId },
@@ -119,7 +119,7 @@ export const learningRouter = createTRPCRouter({
             },
           },
           progress: {
-            where: { userId: ctx.session.user.id },
+            where: { userId: ctx.actorUserId },
             select: { status: true, startedAt: true, completedAt: true },
             take: 1,
           },
@@ -138,7 +138,7 @@ export const learningRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCourseItemAccess({
         courseItemId: input.courseItemId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const item = await ctx.db.courseItem.findUnique({
         where: { id: input.courseItemId },
@@ -176,7 +176,7 @@ export const learningRouter = createTRPCRouter({
               const attempts = await ctx.db.assessmentAttempt.findMany({
                 where: {
                   assessmentId: requirement.assessmentId,
-                  userId: ctx.session.user.id,
+                  userId: ctx.actorUserId,
                   status: "GRADED",
                 },
                 select: { status: true, score: true, maxScore: true },
@@ -191,7 +191,7 @@ export const learningRouter = createTRPCRouter({
             if (!requirement.vocabularySetId) return false;
             const candidates = await ctx.db.contentProgress.findMany({
               where: {
-                userId: ctx.session.user.id,
+                userId: ctx.actorUserId,
                 status: "COMPLETED",
                 courseItem: {
                   type: "VOCABULARY_SET",
@@ -205,7 +205,7 @@ export const learningRouter = createTRPCRouter({
               try {
                 await requireCourseItemAccess({
                   courseItemId: candidate.courseItemId,
-                  userId: ctx.session.user.id,
+                  userId: ctx.actorUserId,
                 });
                 return true;
               } catch (error) {
@@ -238,10 +238,10 @@ export const learningRouter = createTRPCRouter({
         where: {
           courseItemId_userId: {
             courseItemId: input.courseItemId,
-            userId: ctx.session.user.id,
+            userId: ctx.actorUserId,
           },
         },
-        create: { ...input, userId: ctx.session.user.id, completedAt },
+        create: { ...input, userId: ctx.actorUserId, completedAt },
         update:
           input.status === "COMPLETED"
             ? { status: "COMPLETED", completedAt }
@@ -252,7 +252,7 @@ export const learningRouter = createTRPCRouter({
   getCourseOutline: protectedProcedure
     .input(z.object({ courseId: z.string().min(1) }))
     .query(({ ctx, input }) =>
-      getCourseOutlineForUser(input.courseId, ctx.session.user.id),
+      getCourseOutlineForUser(input.courseId, ctx.actorUserId),
     ),
   setProgressionMode: protectedProcedure
     .input(
@@ -265,7 +265,7 @@ export const learningRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: input.courseId,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
 
       return db.course.update({

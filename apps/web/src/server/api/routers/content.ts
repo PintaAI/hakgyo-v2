@@ -99,7 +99,7 @@ export const contentRouter = createTRPCRouter({
       const course = await requireCoursePermission({
         courseId: input.courseId,
         permission: "content.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.$transaction(async (tx) => {
         const aggregate = await tx.courseModule.aggregate({
@@ -132,7 +132,7 @@ export const contentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: courseModule.courseId,
         permission: "content.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const { moduleId, ...data } = input;
       return db.courseModule.update({ where: { id: moduleId }, data });
@@ -148,7 +148,7 @@ export const contentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: courseModule.courseId,
         permission: "content.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       await db.courseModule.delete({ where: { id: input.moduleId } });
       return { deleted: true };
@@ -159,7 +159,7 @@ export const contentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: input.courseId,
         permission: "content.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const total = await db.courseModule.count({
         where: { courseId: input.courseId },
@@ -193,7 +193,7 @@ export const contentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: courseModule.courseId,
         permission: "content.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const relationId =
         "materialId" in input.relation
@@ -232,7 +232,7 @@ export const contentRouter = createTRPCRouter({
         });
       await requireOwnedContent(
         courseModule.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         resource.createdByMembershipId,
       );
       return db.$transaction(async (tx) => {
@@ -271,7 +271,7 @@ export const contentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: item.module.courseId,
         permission: "content.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       if (input.relation) {
         const relationId =
@@ -308,7 +308,7 @@ export const contentRouter = createTRPCRouter({
           });
         await requireOwnedContent(
           item.organizationId,
-          ctx.session.user.id,
+          ctx.actorUserId,
           resource.createdByMembershipId,
         );
       }
@@ -338,7 +338,7 @@ export const contentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: item.module.courseId,
         permission: "content.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       await db.courseItem.delete({ where: { id: input.itemId } });
       return { deleted: true };
@@ -354,7 +354,7 @@ export const contentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: courseModule.courseId,
         permission: "content.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       if (
         (await db.courseItem.count({ where: { moduleId: input.moduleId } })) !==
@@ -373,7 +373,7 @@ export const contentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const member = await requireContentOrganization(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       return db.material.findMany({
         where: {
@@ -402,7 +402,7 @@ export const contentRouter = createTRPCRouter({
       if (!material) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         material.createdByMembershipId,
       );
       return material;
@@ -421,7 +421,7 @@ export const contentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const member = await requireContentOrganization(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       return db.material.create({
         data: { ...input, createdByMembershipId: member.id },
@@ -447,7 +447,7 @@ export const contentRouter = createTRPCRouter({
       if (!material) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         material.createdByMembershipId,
       );
       const { organizationId, materialId, ...data } = input;
@@ -468,7 +468,7 @@ export const contentRouter = createTRPCRouter({
       if (!material) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         material.createdByMembershipId,
       );
       const result = await db.material.deleteMany({
@@ -487,7 +487,7 @@ export const contentRouter = createTRPCRouter({
       if (!ownedMaterial) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         ownedMaterial.createdByMembershipId,
       );
       const [material, asset] = await Promise.all([
@@ -520,7 +520,7 @@ export const contentRouter = createTRPCRouter({
       if (!material) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         material.createdByMembershipId,
       );
       await db.materialAsset.deleteMany({ where: input });
@@ -542,7 +542,7 @@ export const contentRouter = createTRPCRouter({
       if (!material) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         material.createdByMembershipId,
       );
       if (
@@ -604,7 +604,7 @@ export const contentRouter = createTRPCRouter({
       if (!requirement) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         requirement.material.createdByMembershipId,
       );
       const result = await db.materialRequirement.deleteMany({
@@ -632,7 +632,7 @@ export const contentRouter = createTRPCRouter({
       if (!material) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         material.createdByMembershipId,
       );
       const total = await db.materialRequirement.count({
@@ -659,7 +659,7 @@ export const contentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const member = await requireContentOrganization(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       return db.vocabularySet.findMany({
         where: {
@@ -683,7 +683,7 @@ export const contentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const member = await requireContentOrganization(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       return db.vocabularySet.create({
         data: { ...input, createdByMembershipId: member.id },
@@ -709,7 +709,7 @@ export const contentRouter = createTRPCRouter({
       if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         vocabularySet.createdByMembershipId,
       );
       const { organizationId, vocabularySetId, ...data } = input;
@@ -735,7 +735,7 @@ export const contentRouter = createTRPCRouter({
       if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         vocabularySet.createdByMembershipId,
       );
       const result = await db.vocabularySet.deleteMany({
@@ -769,7 +769,7 @@ export const contentRouter = createTRPCRouter({
       if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         vocabularySet.createdByMembershipId,
       );
       if (
@@ -817,7 +817,7 @@ export const contentRouter = createTRPCRouter({
       if (!entry) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         entry.vocabularySet.createdByMembershipId,
       );
       if (
@@ -853,7 +853,7 @@ export const contentRouter = createTRPCRouter({
       if (!entry) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         entry.vocabularySet.createdByMembershipId,
       );
       const result = await db.vocabularyEntry.deleteMany({
@@ -881,7 +881,7 @@ export const contentRouter = createTRPCRouter({
       if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
         input.organizationId,
-        ctx.session.user.id,
+        ctx.actorUserId,
         vocabularySet.createdByMembershipId,
       );
       const total = await db.vocabularyEntry.count({

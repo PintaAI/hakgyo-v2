@@ -6,12 +6,12 @@ authorization server, dan deployment dibahas di [MCP Server](./mcp-server.md).
 
 ## Status
 
-- Status: baseline desain untuk implementasi.
+- Status: safe operational domain tools implemented.
 - Source of truth: router dan authorization code di `apps/web/src/server`.
 - API yang diaudit: 9 tRPC routers, 104 procedures.
 - Public API: 2 procedures katalog.
 - Protected API: 102 procedures.
-- OAuth scope hanya membuka koneksi MCP untuk organization yang dipilih user.
+- OAuth scope membuka koneksi MCP untuk seluruh membership aktif user.
 - Role, ownership, assignment, enrollment, dan lifecycle checks menentukan
   capability efektif.
 
@@ -356,28 +356,32 @@ private file yang tidak termasuk organization tersebut.
 
 ```text
 valid OAuth token with hakgyo:mcp
--> load server-stored grant by verified hakgyo_grant_id
--> target organization and acting mode are present in grant
+-> use the verified token subject as the application actor
+-> require an explicit target resource or organization in each operation
 -> load current organization role from database
--> intersect current role with grant maxProfile
 -> enforce ownership, cohort assignment, or enrollment
 -> enforce lifecycle and progression state
 -> execute bounded operation
 ```
 
-`hakgyo.context.get` mengembalikan current user, selected organization, acting
-mode, current role, grant ceiling, dan capability summary. Organization dan mode
-dipilih melalui consent/trusted Hakgyo UI, bukan arbitrary tool argument.
+`hakgyo.context.get` mengembalikan current user dan seluruh membership aktif.
+Setiap domain action tetap memvalidasi organization atau resource ID terhadap
+membership, ownership, assignment, atau enrollment terbaru di database.
 
-Tool listing di-key oleh exact organization, acting mode, grant policy version,
-dan current profile. Server mengirim list-change notification setelah grant/role
-change jika transport/client mendukungnya. Handler setiap tool tetap wajib
-melakukan authorization; hidden atau cached tools bukan security boundary.
+Tool listing menampilkan safe domain surface yang stabil. Effective capability
+ditentukan ulang pada setiap action menggunakan actor dan target resource saat
+ini. Hidden atau cached tools bukan security boundary.
 
 ## MCP Tool Strategy
 
 Jangan menyalin 104 procedure menjadi 104 tools. Tool surface harus curated,
 bounded, dan mudah dipilih model. Input MCP boleh lebih sempit daripada tRPC.
+
+Current implementation menyediakan tiga catalog/context tools,
+`hakgyo.capabilities.get`, dan delapan domain tools untuk 70 allowlisted actions.
+Domain tools memakai parser dan authorization tRPC yang sama dengan web app.
+Delete/remove/revoke/disconnect operations, raw invite tokens, signed storage
+URLs, dan internal storage/meeting credentials tidak tersedia melalui MCP.
 
 ### Phase A: Read-First Launch
 

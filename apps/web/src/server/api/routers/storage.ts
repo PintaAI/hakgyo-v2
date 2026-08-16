@@ -68,7 +68,7 @@ export const storageRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const key = createProfileImageKey(
-        ctx.session.user.id,
+        ctx.actorUserId,
         input.fileSize,
         input.contentType,
       );
@@ -93,7 +93,7 @@ export const storageRouter = createTRPCRouter({
   confirmProfileImageUpload: protectedProcedure
     .input(z.object({ key: z.string().min(1).max(1024) }))
     .mutation(async ({ ctx, input }) => {
-      const parsed = parseProfileImageKey(input.key, ctx.session.user.id);
+      const parsed = parseProfileImageKey(input.key, ctx.actorUserId);
       if (!parsed) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -130,16 +130,16 @@ export const storageRouter = createTRPCRouter({
       }
 
       const currentUser = await db.user.findUnique({
-        where: { id: ctx.session.user.id },
+        where: { id: ctx.actorUserId },
         select: { image: true },
       });
       const oldKey = getManagedProfileImageKey(
         currentUser?.image,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
-      const image = getProfileImagePath(ctx.session.user.id, parsed.fileName);
+      const image = getProfileImagePath(ctx.actorUserId, parsed.fileName);
       await db.user.update({
-        where: { id: ctx.session.user.id },
+        where: { id: ctx.actorUserId },
         data: { image },
       });
 
@@ -159,16 +159,15 @@ export const storageRouter = createTRPCRouter({
   discardProfileImageUpload: protectedProcedure
     .input(z.object({ key: z.string().min(1).max(1024) }))
     .mutation(async ({ ctx, input }) => {
-      if (!parseProfileImageKey(input.key, ctx.session.user.id)) {
+      if (!parseProfileImageKey(input.key, ctx.actorUserId)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const user = await db.user.findUnique({
-        where: { id: ctx.session.user.id },
+        where: { id: ctx.actorUserId },
         select: { image: true },
       });
       if (
-        getManagedProfileImageKey(user?.image, ctx.session.user.id) ===
-        input.key
+        getManagedProfileImageKey(user?.image, ctx.actorUserId) === input.key
       ) {
         throw new TRPCError({
           code: "CONFLICT",
@@ -183,12 +182,12 @@ export const storageRouter = createTRPCRouter({
 
   deleteProfileImage: protectedProcedure.mutation(async ({ ctx }) => {
     const user = await db.user.findUnique({
-      where: { id: ctx.session.user.id },
+      where: { id: ctx.actorUserId },
       select: { image: true },
     });
-    const key = getManagedProfileImageKey(user?.image, ctx.session.user.id);
+    const key = getManagedProfileImageKey(user?.image, ctx.actorUserId);
     await db.user.update({
-      where: { id: ctx.session.user.id },
+      where: { id: ctx.actorUserId },
       data: { image: null },
     });
     if (key) {
@@ -213,7 +212,7 @@ export const storageRouter = createTRPCRouter({
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const key = createOrganizationLogoKey(
         input.organizationId,
@@ -249,7 +248,7 @@ export const storageRouter = createTRPCRouter({
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const parsed = parseOrganizationLogoKey(input.key, input.organizationId);
       if (!parsed) {
@@ -328,7 +327,7 @@ export const storageRouter = createTRPCRouter({
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       if (!parseOrganizationLogoKey(input.key, input.organizationId)) {
         throw new TRPCError({ code: "FORBIDDEN" });
@@ -360,7 +359,7 @@ export const storageRouter = createTRPCRouter({
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const organization = await db.organization.findUniqueOrThrow({
         where: { id: input.organizationId },
@@ -399,7 +398,7 @@ export const storageRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+      const userId = ctx.actorUserId;
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "asset.create",
@@ -408,7 +407,7 @@ export const storageRouter = createTRPCRouter({
 
       const extension =
         /\.[a-z0-9]{1,10}$/i.exec(input.fileName)?.[0].toLowerCase() ?? "";
-      const key = `${getUserPrefix(ctx.session.user.id)}${crypto.randomUUID()}-${input.fileSize}${extension}`;
+      const key = `${getUserPrefix(ctx.actorUserId)}${crypto.randomUUID()}-${input.fileSize}${extension}`;
       const command = new PutObjectCommand({
         Bucket: r2Bucket,
         Key: key,
@@ -442,11 +441,11 @@ export const storageRouter = createTRPCRouter({
   confirmUpload: protectedProcedure
     .input(z.object({ key: documentKeySchema }))
     .mutation(async ({ ctx, input }) => {
-      assertOwnedKey(input.key, ctx.session.user.id);
+      assertOwnedKey(input.key, ctx.actorUserId);
       const asset = await db.asset.findUnique({
         where: { objectKey: input.key },
       });
-      if (asset?.uploadedByUserId !== ctx.session.user.id) {
+      if (asset?.uploadedByUserId !== ctx.actorUserId) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
@@ -506,7 +505,7 @@ export const storageRouter = createTRPCRouter({
   createDownloadUrl: protectedProcedure
     .input(z.object({ assetId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+      const userId = ctx.actorUserId;
       const asset = await db.asset.findFirst({
         where: {
           id: input.assetId,
@@ -591,7 +590,7 @@ export const storageRouter = createTRPCRouter({
   deleteDocument: protectedProcedure
     .input(z.object({ key: documentKeySchema }))
     .mutation(async ({ ctx, input }) => {
-      assertOwnedKey(input.key, ctx.session.user.id);
+      assertOwnedKey(input.key, ctx.actorUserId);
       const asset = await db.asset.findUnique({
         where: { objectKey: input.key },
         select: {
@@ -606,7 +605,7 @@ export const storageRouter = createTRPCRouter({
           },
         },
       });
-      if (asset?.uploadedByUserId !== ctx.session.user.id) {
+      if (asset?.uploadedByUserId !== ctx.actorUserId) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
       if (asset._count.materials > 0 || asset._count.vocabularyEntries > 0) {

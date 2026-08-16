@@ -8,6 +8,7 @@ import { learningRouter } from "~/server/api/routers/learning";
 import { organizationRouter } from "~/server/api/routers/organization";
 import { storageRouter } from "~/server/api/routers/storage";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
+import { db } from "~/server/db";
 
 /**
  * This is the primary router for your server.
@@ -33,3 +34,12 @@ export type AppRouter = typeof appRouter;
  * Create a server-side caller for the tRPC API.
  */
 export const createCaller = createCallerFactory(appRouter);
+
+export const createMcpCaller = (actorUserId: string) =>
+  createCaller({
+    actorKind: "mcp",
+    actorUserId,
+    db,
+    headers: new Headers(),
+    session: null,
+  });

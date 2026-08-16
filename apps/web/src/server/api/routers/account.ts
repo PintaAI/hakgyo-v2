@@ -4,9 +4,11 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getAccountDeletionBlockers } from "~/server/account/deletion";
 
 export const accountRouter = createTRPCRouter({
-  me: protectedProcedure.query(({ ctx }) => ctx.session.user),
+  me: protectedProcedure.query(({ ctx }) =>
+    ctx.db.user.findUniqueOrThrow({ where: { id: ctx.actorUserId } }),
+  ),
   deletionBlockers: protectedProcedure.query(({ ctx }) =>
-    getAccountDeletionBlockers(ctx.session.user.id),
+    getAccountDeletionBlockers(ctx.actorUserId),
   ),
   updateProfile: protectedProcedure
     .input(
@@ -24,7 +26,7 @@ export const accountRouter = createTRPCRouter({
     )
     .mutation(({ ctx, input }) =>
       ctx.db.user.update({
-        where: { id: ctx.session.user.id },
+        where: { id: ctx.actorUserId },
         data: input,
         select: {
           id: true,

@@ -44,7 +44,7 @@ export const organizationRouter = createTRPCRouter({
           const membership = await tx.organizationMember.create({
             data: {
               organizationId: organization.id,
-              userId: ctx.session.user.id,
+              userId: ctx.actorUserId,
               role: "OWNER",
             },
             select: { id: true, role: true },
@@ -71,7 +71,7 @@ export const organizationRouter = createTRPCRouter({
       await requireOrganizationPermission({
         ...input,
         permission: "organization.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.zoomConnection.findUnique({
         where: { organizationId: input.organizationId },
@@ -96,18 +96,18 @@ export const organizationRouter = createTRPCRouter({
       await requireOrganizationPermission({
         ...input,
         permission: "organization.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       await revokeZoomConnection(input.organizationId);
       return { disconnected: true };
     }),
   list: protectedProcedure.query(({ ctx }) =>
     db.organization.findMany({
-      where: { members: { some: { userId: ctx.session.user.id } } },
+      where: { members: { some: { userId: ctx.actorUserId } } },
       orderBy: { name: "asc" },
       include: {
         members: {
-          where: { userId: ctx.session.user.id },
+          where: { userId: ctx.actorUserId },
           select: { id: true, role: true },
         },
       },
@@ -120,7 +120,7 @@ export const organizationRouter = createTRPCRouter({
       await requireOrganizationPermission({
         ...input,
         permission: "course.create",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.organization.findUniqueOrThrow({
         where: { id: input.organizationId },
@@ -140,7 +140,7 @@ export const organizationRouter = createTRPCRouter({
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const { organizationId, ...data } = input;
       try {
@@ -168,7 +168,7 @@ export const organizationRouter = createTRPCRouter({
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
 
       const organizationScope = { organizationId: input.organizationId };
@@ -248,7 +248,7 @@ export const organizationRouter = createTRPCRouter({
       await requireOrganizationPermission({
         ...input,
         permission: "organization.members.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.organizationMember.findMany({
         where: { organizationId: input.organizationId },
@@ -271,7 +271,7 @@ export const organizationRouter = createTRPCRouter({
       const actor = await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.members.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       if (input.role === "OWNER" && actor.role !== "OWNER")
         throw new TRPCError({ code: "FORBIDDEN" });
@@ -323,7 +323,7 @@ export const organizationRouter = createTRPCRouter({
       const actor = await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.members.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const member = await db.organizationMember.findFirst({
         where: { id: input.membershipId, organizationId: input.organizationId },
@@ -358,7 +358,7 @@ export const organizationRouter = createTRPCRouter({
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.members.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const member = await db.organizationMember.findFirst({
         where: { id: input.membershipId, organizationId: input.organizationId },

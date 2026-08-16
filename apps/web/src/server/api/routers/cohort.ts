@@ -50,7 +50,7 @@ export const cohortRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: input.courseId,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.cohort.findMany({
         where: { courseId: input.courseId },
@@ -67,7 +67,7 @@ export const cohortRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.cohort.findUniqueOrThrow({
         where: { id: input.cohortId },
@@ -96,7 +96,7 @@ export const cohortRouter = createTRPCRouter({
       const course = await requireCoursePermission({
         courseId: input.courseId,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.cohort.create({
         data: { ...input, organizationId: course.organizationId },
@@ -107,7 +107,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const { cohortId, ...data } = input;
       return db.cohort.update({ where: { id: cohortId }, data });
@@ -117,7 +117,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       await db.cohort.delete({ where: { id: input.cohortId } });
       return { deleted: true };
@@ -133,7 +133,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const cohort = await requireManagedCohort(
         input.cohortId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       const membership = await db.organizationMember.findFirst({
         where: {
@@ -183,7 +183,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const result = await db.cohortStaff.updateMany({
         where: { id: input.staffId, cohortId: input.cohortId },
@@ -197,7 +197,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const result = await db.cohortStaff.deleteMany({
         where: { id: input.staffId, cohortId: input.cohortId },
@@ -210,7 +210,7 @@ export const cohortRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.cohortMeeting.findMany({
         where: { cohortId: input.cohortId },
@@ -223,17 +223,17 @@ export const cohortRouter = createTRPCRouter({
       });
     }),
   createMeeting: protectedProcedure
-    .input(meetingFields.and(z.object({ cohortId: id })))
+    .input(meetingFields.extend({ cohortId: id }))
     .mutation(async ({ ctx, input }) => {
       const cohort = await requireManagedCohort(
         input.cohortId,
-        ctx.session.user.id,
+        ctx.actorUserId,
       );
       const member = await db.organizationMember.findUnique({
         where: {
           organizationId_userId: {
             organizationId: cohort.organizationId,
-            userId: ctx.session.user.id,
+            userId: ctx.actorUserId,
           },
         },
       });
@@ -263,13 +263,11 @@ export const cohortRouter = createTRPCRouter({
       }
     }),
   updateMeeting: protectedProcedure
-    .input(
-      meetingFields.partial().and(z.object({ cohortId: id, meetingId: id })),
-    )
+    .input(meetingFields.partial().extend({ cohortId: id, meetingId: id }))
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const { cohortId, meetingId, ...data } = input;
       const existing = await db.cohortMeeting.findFirst({
@@ -301,7 +299,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const meeting = await db.cohortMeeting.findFirst({
         where: { id: input.meetingId, cohortId: input.cohortId },

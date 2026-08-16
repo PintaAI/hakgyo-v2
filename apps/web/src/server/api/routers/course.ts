@@ -117,7 +117,7 @@ export const courseRouter = createTRPCRouter({
       const member = await requireOrganizationPermission({
         ...input,
         permission: "course.create",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.course.findMany({
         where: {
@@ -141,7 +141,7 @@ export const courseRouter = createTRPCRouter({
       await requireCoursePermission({
         ...input,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return db.course.findUniqueOrThrow({
         where: { id: input.courseId },
@@ -164,7 +164,7 @@ export const courseRouter = createTRPCRouter({
       const member = await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "course.create",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       if (member.role === "TEACHER" && input.ownerMembershipId !== member.id)
         throw new TRPCError({
@@ -195,7 +195,7 @@ export const courseRouter = createTRPCRouter({
       const course = await requireCoursePermission({
         courseId: input.courseId,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const { courseId, ...data } = input;
       if (data.ownerMembershipId) {
@@ -219,7 +219,7 @@ export const courseRouter = createTRPCRouter({
       await requireCoursePermission({
         ...input,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       await db.course.delete({ where: { id: input.courseId } });
       return { deleted: true };

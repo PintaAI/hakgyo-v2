@@ -2,8 +2,15 @@ import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 
 import { requireMcpUserId } from "./auth";
+import { sanitizeMcpResult } from "./domain-actions";
 import { getMcpCatalogCourse, listMcpCatalog } from "./services/catalog";
 import { getMcpContext } from "./services/context";
+import {
+  getMcpCapabilitySchemas,
+  invokeMcpDomainAction,
+  mcpDomainActions,
+  type McpDomain,
+} from "./services/domains";
 
 const organizationSchema = z.object({
   id: z.string(),
@@ -162,6 +169,100 @@ export const mcpHandler = createMcpHandler(
         };
       },
     );
+
+    server.registerTool(
+      "hakgyo.capabilities.get",
+      {
+        title: "Get Hakgyo capability schemas",
+        description:
+          "List safe role-aware Hakgyo operations and their exact input schemas. Use this before calling a domain operation.",
+        inputSchema: z.object({
+          domain: z
+            .enum([
+              "account",
+              "organization",
+              "course",
+              "content",
+              "cohort",
+              "enrollment",
+              "learning",
+              "assessment",
+            ])
+            .optional(),
+          action: z.string().min(1).optional(),
+        }),
+        outputSchema: z.object({ capabilities: z.unknown() }),
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+      },
+      async (input, ctx) => {
+        requireMcpUserId(ctx.http?.authInfo);
+        const capabilities = getMcpCapabilitySchemas(input);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(capabilities, null, 2),
+            },
+          ],
+          structuredContent: { capabilities },
+        };
+      },
+    );
+
+    for (const [domain, actions] of Object.entries(mcpDomainActions)) {
+      server.registerTool(
+        `hakgyo.${domain}.manage`,
+        {
+          title: `Hakgyo ${domain} operations`,
+          description: `Run a safe ${domain} operation using the current user's live Hakgyo permissions. Call hakgyo.capabilities.get first for exact action input schemas. Destructive and secret-bearing operations are not available.`,
+          inputSchema: z.object({
+            action: z.enum(actions),
+            input: z.record(z.string(), z.unknown()).default({}),
+          }),
+          outputSchema: z.object({ result: z.unknown() }),
+          annotations: {
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: false,
+            openWorldHint: true,
+          },
+        },
+        async ({ action, input }, ctx) => {
+          try {
+            const result = await invokeMcpDomainAction({
+              action,
+              actorUserId: requireMcpUserId(ctx.http?.authInfo),
+              domain: domain as McpDomain,
+              procedureInput: input,
+            });
+            const serialized = sanitizeMcpResult(result);
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(serialized, null, 2),
+                },
+              ],
+              structuredContent: { result: serialized },
+            };
+          } catch (error) {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Hakgyo operation failed";
+            return {
+              content: [{ type: "text", text: message }],
+              isError: true,
+            };
+          }
+        },
+      );
+    }
   },
   {
     serverInfo: { name: "hakgyo", version: "0.1.0" },

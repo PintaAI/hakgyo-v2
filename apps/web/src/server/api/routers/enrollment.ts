@@ -55,7 +55,7 @@ export const enrollmentRouter = createTRPCRouter({
         where: {
           courseId_userId: {
             courseId: input.courseId,
-            userId: ctx.session.user.id,
+            userId: ctx.actorUserId,
           },
         },
       });
@@ -66,12 +66,12 @@ export const enrollmentRouter = createTRPCRouter({
         where: {
           courseId_userId: {
             courseId: input.courseId,
-            userId: ctx.session.user.id,
+            userId: ctx.actorUserId,
           },
         },
         create: {
           courseId: input.courseId,
-          userId: ctx.session.user.id,
+          userId: ctx.actorUserId,
           status: "ACTIVE",
           source: "OPEN",
         },
@@ -90,7 +90,7 @@ export const enrollmentRouter = createTRPCRouter({
       if (input.cohortId) {
         const cohort = await requireCohortPermission({
           cohortId: input.cohortId,
-          userId: ctx.session.user.id,
+          userId: ctx.actorUserId,
         });
         if (cohort.courseId !== input.courseId)
           throw new TRPCError({ code: "BAD_REQUEST" });
@@ -98,7 +98,7 @@ export const enrollmentRouter = createTRPCRouter({
         await requireCoursePermission({
           courseId: input.courseId,
           permission: "course.manage",
-          userId: ctx.session.user.id,
+          userId: ctx.actorUserId,
         });
       }
       return ctx.db.enrollmentInvite.findMany({
@@ -136,7 +136,7 @@ export const enrollmentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: invite.courseId,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return invite;
     }),
@@ -146,7 +146,7 @@ export const enrollmentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: input.courseId,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return ctx.db.courseEnrollment.findMany({
         where: { courseId: input.courseId },
@@ -160,7 +160,7 @@ export const enrollmentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return ctx.db.cohortEnrollment.findMany({
         where: { cohortId: input.cohortId },
@@ -182,7 +182,7 @@ export const enrollmentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: input.courseId,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const user = await ctx.db.user.findUnique({
         where: { email: input.email },
@@ -225,7 +225,7 @@ export const enrollmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const cohort = await requireCohortPermission({
         cohortId: input.cohortId,
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       const user = await ctx.db.user.findUnique({
         where: { email: input.email },
@@ -321,7 +321,7 @@ export const enrollmentRouter = createTRPCRouter({
       if (input.cohortId) {
         const cohort = await requireCohortPermission({
           cohortId: input.cohortId,
-          userId: ctx.session.user.id,
+          userId: ctx.actorUserId,
         });
         if (cohort.courseId !== input.courseId) {
           throw new TRPCError({ code: "BAD_REQUEST" });
@@ -330,7 +330,7 @@ export const enrollmentRouter = createTRPCRouter({
         await requireCoursePermission({
           courseId: input.courseId,
           permission: "course.manage",
-          userId: ctx.session.user.id,
+          userId: ctx.actorUserId,
         });
       }
       const course = await ctx.db.course.findUnique({
@@ -342,7 +342,7 @@ export const enrollmentRouter = createTRPCRouter({
         where: {
           organizationId_userId: {
             organizationId: course.organizationId,
-            userId: ctx.session.user.id,
+            userId: ctx.actorUserId,
           },
         },
         select: { id: true },
@@ -383,7 +383,7 @@ export const enrollmentRouter = createTRPCRouter({
       await requireCoursePermission({
         courseId: invite.courseId,
         permission: "course.manage",
-        userId: ctx.session.user.id,
+        userId: ctx.actorUserId,
       });
       return ctx.db.enrollmentInvite.update({
         where: { id: input.inviteId },
@@ -423,7 +423,7 @@ export const enrollmentRouter = createTRPCRouter({
                 where: {
                   cohortId_userId: {
                     cohortId: invite.cohortId,
-                    userId: ctx.session.user.id,
+                    userId: ctx.actorUserId,
                   },
                 },
               })
@@ -431,7 +431,7 @@ export const enrollmentRouter = createTRPCRouter({
                 where: {
                   courseId_userId: {
                     courseId: invite.courseId,
-                    userId: ctx.session.user.id,
+                    userId: ctx.actorUserId,
                   },
                 },
               });
@@ -459,12 +459,12 @@ export const enrollmentRouter = createTRPCRouter({
             where: {
               courseId_userId: {
                 courseId: invite.courseId,
-                userId: ctx.session.user.id,
+                userId: ctx.actorUserId,
               },
             },
             create: {
               courseId: invite.courseId,
-              userId: ctx.session.user.id,
+              userId: ctx.actorUserId,
               status: "ACTIVE",
               source: "INVITE",
             },
@@ -474,7 +474,7 @@ export const enrollmentRouter = createTRPCRouter({
           return tx.cohortEnrollment.create({
             data: {
               cohortId: invite.cohortId,
-              userId: ctx.session.user.id,
+              userId: ctx.actorUserId,
               status: "ACTIVE",
               source: "INVITE",
             },

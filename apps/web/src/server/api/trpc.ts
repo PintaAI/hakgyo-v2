@@ -13,6 +13,7 @@ import { ZodError } from "zod";
 
 import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
+import { hasAuthenticatedActor } from "~/server/api/trpc-principal";
 
 /**
  * 1. CONTEXT
@@ -33,9 +34,21 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   return {
     db,
     session,
-    ...opts,
+    headers: opts.headers,
+    actorKind: "session" as const,
+    actorUserId: session?.user.id ?? null,
   };
 };
+
+type TRPCContext =
+  | Awaited<ReturnType<typeof createTRPCContext>>
+  | {
+      actorKind: "mcp";
+      actorUserId: string;
+      db: typeof db;
+      headers: Headers;
+      session: null;
+    };
 
 /**
  * 2. INITIALIZATION
@@ -44,7 +57,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  * ZodErrors so that you get typesafety on the frontend if your procedure fails due to validation
  * errors on the backend.
  */
-const t = initTRPC.context<typeof createTRPCContext>().create({
+const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
     return {
@@ -122,13 +135,19 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
-    if (!ctx.session?.user) {
+    if (
+      !ctx.actorUserId ||
+      !hasAuthenticatedActor({
+        actorKind: ctx.actorKind,
+        actorUserId: ctx.actorUserId,
+        sessionUserId: ctx.session?.user.id,
+      })
+    ) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
     return next({
       ctx: {
-        // infers the `session` as non-nullable
-        session: { ...ctx.session, user: ctx.session.user },
+        actorUserId: ctx.actorUserId,
       },
     });
   });
