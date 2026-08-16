@@ -881,6 +881,7 @@ query({ cohortId: string }): CohortWithStaffAndMeetings
 ```
 
 - Scope: owner/admin, course owner, atau assigned cohort staff.
+- Memuat metadata ringkas course, staff beserta user, dan meeting terurut.
 
 ### `cohort.create`
 
@@ -907,12 +908,13 @@ mutation({ cohortId: string }): { deleted: true }
 ```ts
 mutation({
   cohortId: string;
-  organizationMemberId: string;
+  email: string;
   role: "TEACHER" | "MODERATOR";
 }): CohortStaff
 ```
 
-- Member harus berasal dari organization cohort.
+- Email dinormalisasi ke lowercase dan harus cocok dengan member organization cohort.
+- Member yang tidak ditemukan menghasilkan `NOT_FOUND`; assignment duplikat menghasilkan `CONFLICT`.
 
 #### `cohort.updateStaff`
 
@@ -1020,13 +1022,15 @@ query({ cohortId: string }): CohortEnrollmentWithUser[]
 ```ts
 mutation({
   courseId: string;
-  userId: string;
+  email: string;
   status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
   expiresAt?: Date | null;
 }): CourseEnrollment
 ```
 
 - Scope: pengelola course.
+- Email dinormalisasi ke lowercase dan harus cocok dengan akun Hakgyo yang sudah ada.
+- Akun yang tidak ditemukan menghasilkan `NOT_FOUND`.
 - Enrollment baru memakai source `MANUAL`.
 - `completedAt` diisi saat status `COMPLETED`.
 - Enrollment expired tidak memberi akses learning content.
@@ -1036,12 +1040,14 @@ mutation({
 ```ts
 mutation({
   cohortId: string;
-  userId: string;
+  email: string;
   status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
 }): CohortEnrollment
 ```
 
 - Scope: pengelola cohort.
+- Email dinormalisasi ke lowercase dan harus cocok dengan akun Hakgyo yang sudah ada.
+- Akun yang tidak ditemukan menghasilkan `NOT_FOUND`.
 - Status aktif membuat entitlement course source `COHORT` bila diperlukan.
 - Pembatalan hanya mencabut entitlement source `COHORT` jika tidak ada cohort aktif lain.
 - Entitlement `MANUAL` atau `INVITE` tidak ikut dicabut.

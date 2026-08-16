@@ -391,7 +391,7 @@ export function DocsAppSidebar({
             <SidebarMenuButton
               size="lg"
               tooltip="Hakgyo docs"
-              render={<Link href="/docs" onClick={closeMobileSidebar} />}
+              render={<Link href="/" onClick={closeMobileSidebar} />}
             >
               <span className="bg-sidebar-primary text-sidebar-primary-foreground flex size-8 items-center justify-center rounded-lg">
                 <BookMarkedIcon className="size-4" />

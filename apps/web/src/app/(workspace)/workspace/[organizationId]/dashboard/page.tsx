@@ -319,7 +319,7 @@ export default async function DashboardPage({
               {courses.slice(0, 5).map((course) => (
                 <li key={course.id}>
                   <Link
-                    href={`${root}/courses/${course.id}/overview`}
+                    href={`${root}/courses/${course.id}`}
                     className="group/row hover:bg-muted/50 flex items-center gap-4 px-4 py-3 transition-colors"
                   >
                     <span className="min-w-0 flex-1">

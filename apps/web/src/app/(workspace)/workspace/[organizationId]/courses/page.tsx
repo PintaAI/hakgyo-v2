@@ -1,38 +1,45 @@
-import Link from "next/link";
-import { BookOpenIcon, PlusIcon } from "lucide-react";
+import { Hanken_Grotesk, Inter } from "next/font/google";
 
-import { buttonVariants } from "~/components/ui/button";
+import { CoursesLibrary } from "~/components/courses-library";
+import { cn } from "~/lib/utils";
+import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
+import { api } from "~/trpc/server";
 
-export default async function Page({
+const hanken = Hanken_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-hanken-grotesk",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+export default async function CoursesPage({
   params,
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  const { organizationId } = await params;
+  const { organizationId: organizationSlug } = await params;
+  const membership =
+    await requireOrganizationMembershipBySlug(organizationSlug);
+  const courses = await api.course.list({
+    organizationId: membership.organizationId,
+  });
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div className="space-y-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <BookOpenIcon className="size-4" />
-            Learning spaces
-          </div>
-          <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            Courses
-          </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            Create, organize, and manage your organization&apos;s courses.
-          </p>
-        </div>
-        <Link
-          href={`/workspace/${organizationId}/courses/new`}
-          className={buttonVariants()}
-        >
-          <PlusIcon data-icon="inline-start" />
-          New course
-        </Link>
-      </div>
+    <div
+      className={cn(
+        hanken.variable,
+        inter.variable,
+        "mx-auto w-full max-w-6xl font-[family-name:var(--font-inter)]",
+      )}
+    >
+      <CoursesLibrary
+        courses={courses}
+        organizationSlug={organizationSlug}
+        role={membership.role}
+      />
     </div>
   );
 }
