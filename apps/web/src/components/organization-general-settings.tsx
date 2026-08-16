@@ -66,6 +66,15 @@ export function OrganizationGeneralSettings({
   const [enrollmentMode, setEnrollmentMode] = useState<EnrollmentMode | null>(
     null,
   );
+  const [allTeacherCourses, setAllTeacherCourses] = useState<boolean | null>(
+    null,
+  );
+  const [allTeacherContent, setAllTeacherContent] = useState<boolean | null>(
+    null,
+  );
+  const [teachersCanDeleteContent, setTeachersCanDeleteContent] = useState<
+    boolean | null
+  >(null);
   const logoBusy =
     createLogoUpload.isPending ||
     confirmLogoUpload.isPending ||
@@ -93,6 +102,19 @@ export function OrganizationGeneralSettings({
         slug,
         defaultEnrollmentMode:
           enrollmentMode ?? organization.data.defaultEnrollmentMode,
+        teacherCourseAccess:
+          (allTeacherCourses ?? organization.data.teacherCourseAccess === "ALL")
+            ? "ALL"
+            : "OWN_ONLY",
+        teacherContentAccess:
+          (allTeacherCourses ??
+            organization.data.teacherCourseAccess === "ALL") &&
+          (allTeacherContent ??
+            organization.data.teacherContentAccess === "ALL")
+            ? "ALL"
+            : "OWN_ONLY",
+        teacherCanDeleteContent:
+          teachersCanDeleteContent ?? organization.data.teacherCanDeleteContent,
       });
       await Promise.all([
         utils.organization.get.invalidate({ organizationId }),
@@ -210,6 +232,13 @@ export function OrganizationGeneralSettings({
 
   const effectiveEnrollmentMode =
     enrollmentMode ?? organization.data.defaultEnrollmentMode;
+  const effectiveAllTeacherCourses =
+    allTeacherCourses ?? organization.data.teacherCourseAccess === "ALL";
+  const effectiveAllTeacherContent =
+    effectiveAllTeacherCourses &&
+    (allTeacherContent ?? organization.data.teacherContentAccess === "ALL");
+  const effectiveTeachersCanDeleteContent =
+    teachersCanDeleteContent ?? organization.data.teacherCanDeleteContent;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -222,8 +251,8 @@ export function OrganizationGeneralSettings({
           General settings
         </h1>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          Manage how your organization is identified and how new courses handle
-          enrollment by default.
+          Manage how your organization is identified, handles enrollment, and
+          shares learning resources with teachers.
         </p>
       </div>
 
@@ -348,6 +377,71 @@ export function OrganizationGeneralSettings({
                 }
                 aria-label="Allow open enrollment"
               />
+            </div>
+
+            <div className="grid gap-4 border-t pt-6">
+              <div className="grid gap-1">
+                <h2 className="text-sm font-semibold">Teacher access</h2>
+                <p className="text-muted-foreground text-xs">
+                  These defaults apply to every member with the Teacher role.
+                  Owners and admins always retain full access.
+                </p>
+              </div>
+
+              <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
+                <div className="grid gap-1">
+                  <Label htmlFor="all-teacher-courses">
+                    Access all organization courses
+                  </Label>
+                  <p className="text-muted-foreground text-xs">
+                    Teachers can open every course. Course settings, enrollment,
+                    and ownership remain restricted to course managers.
+                  </p>
+                </div>
+                <Switch
+                  id="all-teacher-courses"
+                  checked={effectiveAllTeacherCourses}
+                  onCheckedChange={(checked) => {
+                    setAllTeacherCourses(checked);
+                    if (!checked) setAllTeacherContent(false);
+                  }}
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
+                <div className="grid gap-1">
+                  <Label htmlFor="all-teacher-content">
+                    Edit all organization content
+                  </Label>
+                  <p className="text-muted-foreground text-xs">
+                    Teachers can use and edit every course curriculum, material,
+                    vocabulary set, and assessment in this organization.
+                  </p>
+                </div>
+                <Switch
+                  id="all-teacher-content"
+                  checked={effectiveAllTeacherContent}
+                  disabled={!effectiveAllTeacherCourses}
+                  onCheckedChange={setAllTeacherContent}
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
+                <div className="grid gap-1">
+                  <Label htmlFor="teachers-delete-content">
+                    Allow teachers to delete content
+                  </Label>
+                  <p className="text-muted-foreground text-xs">
+                    Applies to materials, requirements, vocabulary entries, and
+                    assessments that the teacher can access.
+                  </p>
+                </div>
+                <Switch
+                  id="teachers-delete-content"
+                  checked={effectiveTeachersCanDeleteContent}
+                  onCheckedChange={setTeachersCanDeleteContent}
+                />
+              </div>
             </div>
           </CardContent>
           <div className="bg-muted/30 flex justify-end border-t p-4">

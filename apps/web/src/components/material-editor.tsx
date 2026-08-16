@@ -80,9 +80,15 @@ export function MaterialEditor({
     { organizationId, materialId: materialId ?? "" },
     { enabled: Boolean(materialId) },
   );
+  const organization = api.organization.get.useQuery({ organizationId });
   const createMaterial = api.content.createMaterial.useMutation();
   const updateMaterial = api.content.updateMaterial.useMutation();
   const deleteMaterial = api.content.deleteMaterial.useMutation();
+  const canDelete = Boolean(
+    organization.data &&
+    (organization.data.currentRole !== "TEACHER" ||
+      organization.data.teacherCanDeleteContent),
+  );
 
   if (materialId && material.isPending) {
     return (
@@ -113,6 +119,7 @@ export function MaterialEditor({
       initialDescription={material.data?.description ?? ""}
       initialRequirementPolicy={material.data?.requirementPolicy ?? "ALL"}
       initialTitle={material.data?.title ?? ""}
+      canDelete={canDelete}
       isDeleting={deleteMaterial.isPending}
       isSaving={createMaterial.isPending || updateMaterial.isPending}
       materialId={materialId}
@@ -174,6 +181,7 @@ export function MaterialEditor({
 }
 
 function MaterialEditorForm({
+  canDelete,
   initialContent,
   initialDescription,
   initialRequirementPolicy,
@@ -186,6 +194,7 @@ function MaterialEditorForm({
   onDelete,
   onSave,
 }: {
+  canDelete: boolean;
   initialContent: MaterialContent;
   initialDescription: string;
   initialRequirementPolicy: "ALL" | "ANY";
@@ -250,7 +259,7 @@ function MaterialEditorForm({
           </div>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto">
-          {materialId && (
+          {materialId && canDelete && (
             <AlertDialog>
               <AlertDialogTrigger
                 render={

@@ -83,6 +83,7 @@ export function VocabularyEditor({
     { organizationId },
     { enabled: Boolean(vocabularySetId) },
   );
+  const organization = api.organization.get.useQuery({ organizationId });
   const createSet = api.content.createVocabularySet.useMutation();
   const updateSet = api.content.updateVocabularySet.useMutation();
   const deleteSet = api.content.deleteVocabularySet.useMutation();
@@ -90,6 +91,11 @@ export function VocabularyEditor({
   const updateEntry = api.content.updateVocabularyEntry.useMutation();
   const deleteEntry = api.content.deleteVocabularyEntry.useMutation();
   const reorderEntries = api.content.reorderVocabularyEntries.useMutation();
+  const canDelete = Boolean(
+    organization.data &&
+    (organization.data.currentRole !== "TEACHER" ||
+      organization.data.teacherCanDeleteContent),
+  );
   const vocabularySet = vocabularySets.data?.find(
     (set) => set.id === vocabularySetId,
   );
@@ -126,6 +132,7 @@ export function VocabularyEditor({
       key={vocabularySet?.id ?? "new-vocabulary-set"}
       initialDescription={vocabularySet?.description ?? ""}
       initialTitle={vocabularySet?.title ?? ""}
+      canDelete={canDelete}
       isDeleting={deleteSet.isPending}
       isSaving={createSet.isPending || updateSet.isPending}
       organizationSlug={organizationSlug}
@@ -251,6 +258,7 @@ type EntryFields = {
 };
 
 function VocabularySetForm({
+  canDelete,
   initialDescription,
   initialTitle,
   isDeleting,
@@ -265,6 +273,7 @@ function VocabularySetForm({
   onSave,
   onUpdateEntry,
 }: {
+  canDelete: boolean;
   initialDescription: string;
   initialTitle: string;
   isDeleting: boolean;
@@ -321,7 +330,7 @@ function VocabularySetForm({
             </div>
           </div>
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            {vocabularySet && (
+            {vocabularySet && canDelete && (
               <AlertDialog>
                 <AlertDialogTrigger
                   render={
@@ -420,6 +429,7 @@ function VocabularySetForm({
               {vocabularySet.entries.map((entry, index) => (
                 <VocabularyEntryCard
                   busy={entryBusy}
+                  canDelete={canDelete}
                   canMoveDown={index < vocabularySet.entries.length - 1}
                   canMoveUp={index > 0}
                   entry={entry}
@@ -537,6 +547,7 @@ function NewEntryForm({
 
 function VocabularyEntryCard({
   busy,
+  canDelete,
   canMoveDown,
   canMoveUp,
   entry,
@@ -547,6 +558,7 @@ function VocabularyEntryCard({
   onUpdate,
 }: {
   busy: boolean;
+  canDelete: boolean;
   canMoveDown: boolean;
   canMoveUp: boolean;
   entry: VocabularyEntry;
@@ -684,37 +696,39 @@ function VocabularyEntryCard({
           >
             <PencilIcon />
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  aria-label="Delete entry"
-                  disabled={busy}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                />
-              }
-            >
-              <Trash2Icon />
-            </AlertDialogTrigger>
-            <AlertDialogContent size="sm">
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Delete &ldquo;{entry.term}&rdquo;?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  This vocabulary entry will be permanently removed.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onDelete} variant="destructive">
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {canDelete ? (
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    aria-label="Delete entry"
+                    disabled={busy}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  />
+                }
+              >
+                <Trash2Icon />
+              </AlertDialogTrigger>
+              <AlertDialogContent size="sm">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Delete &ldquo;{entry.term}&rdquo;?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This vocabulary entry will be permanently removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete} variant="destructive">
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
         </div>
       </CardContent>
     </Card>

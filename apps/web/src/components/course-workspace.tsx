@@ -204,9 +204,18 @@ export function CourseWorkspace({
   const searchParams = useSearchParams();
   const utils = api.useUtils();
   const root = `/workspace/${organizationSlug}/courses/${course.id}`;
+  const canManageCourse = course.access.canManageCourse;
+  const canManageContent = course.access.canManageContent;
+  const availableViews = canManageCourse
+    ? views
+    : views.filter(({ value }) => value === "overview");
   const requestedView = searchParams.get("view") as CourseView | null;
   const view =
-    requestedView && validViews.has(requestedView) ? requestedView : "overview";
+    requestedView &&
+    validViews.has(requestedView) &&
+    availableViews.some(({ value }) => value === requestedView)
+      ? requestedView
+      : "overview";
   const isOverview = view === "overview";
 
   function navigate(nextView: CourseView) {
@@ -220,15 +229,19 @@ export function CourseWorkspace({
 
   const cohorts = api.cohort.list.useQuery(
     { courseId: course.id },
-    { enabled: isOverview || view === "cohorts" || view === "invites" },
+    {
+      enabled:
+        canManageCourse &&
+        (isOverview || view === "cohorts" || view === "invites"),
+    },
   );
   const learners = api.enrollment.listCourseEnrollments.useQuery(
     { courseId: course.id },
-    { enabled: isOverview || view === "learners" },
+    { enabled: canManageCourse && (isOverview || view === "learners") },
   );
   const invites = api.enrollment.listInvites.useQuery(
     { courseId: course.id },
-    { enabled: isOverview || view === "invites" },
+    { enabled: canManageCourse && (isOverview || view === "invites") },
   );
 
   const updateCourse = api.course.update.useMutation();
@@ -308,17 +321,19 @@ export function CourseWorkspace({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link
-              href={`${root}/curriculum`}
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "border-white/20 bg-white/5 text-[#f5f3e9] hover:bg-white/10 hover:text-white",
-              )}
-            >
-              <FilePenLineIcon data-icon="inline-start" />
-              Edit curriculum
-            </Link>
-            {course.status === "PUBLISHED" ? (
+            {canManageContent ? (
+              <Link
+                href={`${root}/curriculum`}
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "border-white/20 bg-white/5 text-[#f5f3e9] hover:bg-white/10 hover:text-white",
+                )}
+              >
+                <FilePenLineIcon data-icon="inline-start" />
+                Edit curriculum
+              </Link>
+            ) : null}
+            {canManageCourse && course.status === "PUBLISHED" ? (
               <Button
                 className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
                 disabled={updateCourse.isPending}
@@ -326,7 +341,7 @@ export function CourseWorkspace({
               >
                 Kembalikan ke draf
               </Button>
-            ) : (
+            ) : canManageCourse ? (
               <Button
                 className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
                 disabled={updateCourse.isPending}
@@ -339,7 +354,7 @@ export function CourseWorkspace({
                 )}
                 Terbitkan
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
       </header>
@@ -349,7 +364,7 @@ export function CourseWorkspace({
         className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <div className="flex min-w-max items-center gap-1">
-          {views.map(({ value, label, icon: Icon }) => (
+          {availableViews.map(({ value, label, icon: Icon }) => (
             <button
               type="button"
               key={value}
@@ -381,6 +396,8 @@ export function CourseWorkspace({
           items={items}
           modules={modules}
           root={root}
+          canManageContent={canManageContent}
+          canManageCourse={canManageCourse}
           onNavigate={navigate}
         />
       ) : null}
@@ -434,6 +451,8 @@ function OverviewSection({
   items,
   modules,
   root,
+  canManageContent,
+  canManageCourse,
   onNavigate,
 }: {
   course: Course;
@@ -446,6 +465,8 @@ function OverviewSection({
   items: number;
   modules: number;
   root: string;
+  canManageContent: boolean;
+  canManageCourse: boolean;
   onNavigate: (view: CourseView) => void;
 }) {
   const activeLearners = learners?.filter(
@@ -455,6 +476,56 @@ function OverviewSection({
     (invite) =>
       !invite.revokedAt && (!invite.expiresAt || invite.expiresAt > new Date()),
   ).length;
+
+  if (!canManageCourse) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+              Shared course access
+            </CardTitle>
+            <CardDescription>
+              This course is shared with teachers in your organization.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {canManageContent ? (
+              <Link
+                href={`${root}/curriculum`}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                <FilePenLineIcon data-icon="inline-start" />
+                Edit curriculum
+              </Link>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                Ask an organization admin to enable shared content editing.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle className="text-sm">Course owner</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center gap-3">
+            <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
+              {course.owner.user.name.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium">
+                {course.owner.user.name}
+              </span>
+              <span className="text-muted-foreground block truncate text-xs">
+                {course.owner.user.email}
+              </span>
+            </span>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

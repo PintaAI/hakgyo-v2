@@ -273,6 +273,11 @@ enum OrganizationRole {
   TEACHER
 }
 
+enum TeacherAccessScope {
+  OWN_ONLY
+  ALL
+}
+
 enum EnrollmentMode {
   OPEN
   INVITE_ONLY
@@ -371,20 +376,23 @@ enum ProgressStatus {
 }
 
 model Organization {
-  id                    String               @id @default(cuid())
-  name                  String
-  slug                  String               @unique
-  logoUrl               String?
-  defaultEnrollmentMode EnrollmentMode       @default(INVITE_ONLY)
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
-  members               OrganizationMember[]
-  courses               Course[]
-  materials             Material[]
-  assessments           Assessment[]
-  vocabularySets        VocabularySet[]
-  zoomConnection        ZoomConnection?
-  assets                Asset[]
+  id                      String               @id @default(cuid())
+  name                    String
+  slug                    String               @unique
+  logoUrl                 String?
+  defaultEnrollmentMode   EnrollmentMode       @default(INVITE_ONLY)
+  teacherCourseAccess     TeacherAccessScope   @default(OWN_ONLY)
+  teacherContentAccess    TeacherAccessScope   @default(OWN_ONLY)
+  teacherCanDeleteContent Boolean              @default(false)
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  members                 OrganizationMember[]
+  courses                 Course[]
+  materials               Material[]
+  assessments             Assessment[]
+  vocabularySets          VocabularySet[]
+  zoomConnection          ZoomConnection?
+  assets                  Asset[]
 }
 
 model OrganizationMember {

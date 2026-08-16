@@ -8,6 +8,7 @@ import {
   canManageCohort,
   canManageContent,
   canManageCourse,
+  canViewCourse,
   hasPermission,
   type Permission,
 } from "./permissions";
@@ -35,7 +36,19 @@ export async function requireOrganizationPermission(input: {
         userId: input.userId,
       },
     },
-    select: { id: true, organizationId: true, role: true, userId: true },
+    select: {
+      id: true,
+      organizationId: true,
+      role: true,
+      userId: true,
+      organization: {
+        select: {
+          teacherCourseAccess: true,
+          teacherContentAccess: true,
+          teacherCanDeleteContent: true,
+        },
+      },
+    },
   });
 
   if (!membership || !hasPermission(membership.role, input.permission)) {
@@ -49,6 +62,7 @@ export async function requireContentAuthor(input: {
   organizationId: string;
   userId: string;
   createdByMembershipId?: string;
+  action?: "edit" | "delete";
 }) {
   const membership = await db.organizationMember.findUnique({
     where: {
@@ -57,14 +71,29 @@ export async function requireContentAuthor(input: {
         userId: input.userId,
       },
     },
-    select: { id: true, organizationId: true, role: true, userId: true },
+    select: {
+      id: true,
+      organizationId: true,
+      role: true,
+      userId: true,
+      organization: {
+        select: {
+          teacherContentAccess: true,
+          teacherCanDeleteContent: true,
+        },
+      },
+    },
   });
 
   if (
     !membership ||
     (membership.role === "TEACHER" &&
+      input.action === "delete" &&
+      !membership.organization.teacherCanDeleteContent) ||
+    (membership.role === "TEACHER" &&
       input.createdByMembershipId !== undefined &&
-      input.createdByMembershipId !== membership.id)
+      input.createdByMembershipId !== membership.id &&
+      membership.organization.teacherContentAccess !== "ALL")
   ) {
     return forbidden();
   }
@@ -81,6 +110,8 @@ async function getCourseScope(courseId: string, userId: string) {
       owner: { select: { userId: true } },
       organization: {
         select: {
+          teacherCourseAccess: true,
+          teacherContentAccess: true,
           members: {
             where: { userId },
             select: { role: true },
@@ -104,23 +135,33 @@ async function getCourseScope(courseId: string, userId: string) {
       organizationRole: course.organization.members[0]?.role,
       isCourseOwner: course.owner.userId === userId,
       isCohortStaff: course.cohorts.length > 0,
+      teacherCourseAccess: course.organization.teacherCourseAccess,
+      teacherContentAccess: course.organization.teacherContentAccess,
     },
   };
 }
 
 export async function requireCoursePermission(input: {
   courseId: string;
-  permission: "course.manage" | "content.manage";
+  permission: "course.view" | "course.manage" | "content.manage";
   userId: string;
 }) {
   const result = await getCourseScope(input.courseId, input.userId);
   const allowed =
-    input.permission === "course.manage"
-      ? canManageCourse(result.scope)
-      : canManageContent(result.scope);
+    input.permission === "course.view"
+      ? canViewCourse(result.scope)
+      : input.permission === "course.manage"
+        ? canManageCourse(result.scope)
+        : canManageContent(result.scope);
 
   if (!allowed) return forbidden();
-  return result.course;
+  return {
+    ...result.course,
+    access: {
+      canManageCourse: canManageCourse(result.scope),
+      canManageContent: canManageContent(result.scope),
+    },
+  };
 }
 
 export async function requireCohortPermission(input: {
@@ -173,6 +214,7 @@ export async function requireCourseItemAccess(input: {
               owner: { select: { userId: true } },
               organization: {
                 select: {
+                  teacherContentAccess: true,
                   members: {
                     where: { userId: input.userId },
                     select: { role: true },
@@ -220,6 +262,7 @@ export async function requireCourseItemAccess(input: {
     organizationRole: course.organization.members[0]?.role,
     isCourseOwner: course.owner.userId === input.userId,
     isCohortStaff: course.cohorts.length > 0,
+    teacherContentAccess: course.organization.teacherContentAccess,
     hasActiveEnrollment:
       course.enrollments.length > 0 || Boolean(cohortEnrollment),
     isCoursePublished: course.status === "PUBLISHED",
@@ -233,6 +276,7 @@ export async function requireCourseItemAccess(input: {
       organizationRole: course.organization.members[0]?.role,
       isCourseOwner: course.owner.userId === input.userId,
       isCohortStaff: course.cohorts.length > 0,
+      teacherContentAccess: course.organization.teacherContentAccess,
     })
   ) {
     const outline = await getCourseOutlineForUser(course.id, input.userId);

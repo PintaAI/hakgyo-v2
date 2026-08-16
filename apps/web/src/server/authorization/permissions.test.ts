@@ -5,6 +5,7 @@ import {
   canManageCohort,
   canManageContent,
   canManageCourse,
+  canViewCourse,
   hasPermission,
 } from "./permissions";
 
@@ -22,9 +23,7 @@ describe("organization permissions", () => {
 
   test("teacher cannot manage organization or members", () => {
     expect(hasPermission("TEACHER", "organization.manage")).toBe(false);
-    expect(hasPermission("TEACHER", "organization.members.manage")).toBe(
-      false,
-    );
+    expect(hasPermission("TEACHER", "organization.members.manage")).toBe(false);
     expect(hasPermission("TEACHER", "asset.create")).toBe(true);
     expect(hasPermission("TEACHER", "course.create")).toBe(true);
   });
@@ -62,6 +61,32 @@ describe("resource scope", () => {
     };
     expect(canManageCohort(assignedTeacher)).toBe(true);
     expect(canManageContent(assignedTeacher)).toBe(false);
+  });
+
+  test("organization settings can share courses and content with teachers", () => {
+    const sharedTeacher = {
+      organizationRole: "TEACHER" as const,
+      isCourseOwner: false,
+      isCohortStaff: false,
+      teacherCourseAccess: "ALL" as const,
+      teacherContentAccess: "ALL" as const,
+    };
+
+    expect(canViewCourse(sharedTeacher)).toBe(true);
+    expect(canManageCourse(sharedTeacher)).toBe(false);
+    expect(canManageContent(sharedTeacher)).toBe(true);
+  });
+
+  test("shared content editing requires access to all courses", () => {
+    expect(
+      canManageContent({
+        organizationRole: "TEACHER",
+        isCourseOwner: false,
+        isCohortStaff: false,
+        teacherCourseAccess: "OWN_ONLY",
+        teacherContentAccess: "ALL",
+      }),
+    ).toBe(false);
   });
 });
 

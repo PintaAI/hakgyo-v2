@@ -33,7 +33,12 @@ export default async function CurriculumPage({
     }),
   ]);
 
-  if (course.organizationId !== membership.organizationId) notFound();
+  if (
+    course.organizationId !== membership.organizationId ||
+    !course.access.canManageContent
+  ) {
+    notFound();
+  }
 
   return (
     <div

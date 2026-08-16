@@ -117,14 +117,15 @@ export const organizationRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.object({ organizationId: id }))
     .query(async ({ ctx, input }) => {
-      await requireOrganizationPermission({
+      const membership = await requireOrganizationPermission({
         ...input,
         permission: "course.create",
         userId: ctx.actorUserId,
       });
-      return db.organization.findUniqueOrThrow({
+      const organization = await db.organization.findUniqueOrThrow({
         where: { id: input.organizationId },
       });
+      return { ...organization, currentRole: membership.role };
     }),
 
   update: protectedProcedure
@@ -134,6 +135,9 @@ export const organizationRouter = createTRPCRouter({
         name: z.string().trim().min(1).max(120).optional(),
         slug: slug.optional(),
         defaultEnrollmentMode: z.enum(["OPEN", "INVITE_ONLY"]).optional(),
+        teacherCourseAccess: z.enum(["OWN_ONLY", "ALL"]).optional(),
+        teacherContentAccess: z.enum(["OWN_ONLY", "ALL"]).optional(),
+        teacherCanDeleteContent: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

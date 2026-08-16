@@ -19,10 +19,7 @@ const rolePermissions = {
   TEACHER: ["asset.create", "course.create"] as const,
 } satisfies Record<OrganizationRole, readonly Permission[]>;
 
-export function hasPermission(
-  role: OrganizationRole,
-  permission: Permission,
-) {
+export function hasPermission(role: OrganizationRole, permission: Permission) {
   return (rolePermissions[role] as readonly Permission[]).includes(permission);
 }
 
@@ -30,7 +27,25 @@ type CourseScope = {
   organizationRole?: OrganizationRole;
   isCourseOwner: boolean;
   isCohortStaff: boolean;
+  teacherCourseAccess?: "OWN_ONLY" | "ALL";
+  teacherContentAccess?: "OWN_ONLY" | "ALL";
 };
+
+export function canViewCourse(scope: CourseScope) {
+  if (
+    scope.organizationRole === "OWNER" ||
+    scope.organizationRole === "ADMIN"
+  ) {
+    return true;
+  }
+
+  return (
+    scope.isCourseOwner ||
+    scope.isCohortStaff ||
+    (scope.organizationRole === "TEACHER" &&
+      scope.teacherCourseAccess === "ALL")
+  );
+}
 
 export function canManageCourse(scope: CourseScope) {
   if (
@@ -62,14 +77,21 @@ export function canManageContent(scope: CourseScope) {
     return true;
   }
 
-  return scope.isCourseOwner;
+  return (
+    scope.isCourseOwner ||
+    (scope.organizationRole === "TEACHER" &&
+      scope.teacherCourseAccess === "ALL" &&
+      scope.teacherContentAccess === "ALL")
+  );
 }
 
-export function canAccessLearningContent(input: CourseScope & {
-  hasActiveEnrollment: boolean;
-  isCoursePublished: boolean;
-  isItemPublished: boolean;
-}) {
+export function canAccessLearningContent(
+  input: CourseScope & {
+    hasActiveEnrollment: boolean;
+    isCoursePublished: boolean;
+    isItemPublished: boolean;
+  },
+) {
   if (canManageContent(input) || input.isCohortStaff) return true;
 
   return (

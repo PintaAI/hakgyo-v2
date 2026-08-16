@@ -44,6 +44,7 @@ async function requireAssessmentManagement(
   db: Prisma.TransactionClient | Prisma.DefaultPrismaClient,
   assessmentId: string,
   userId: string,
+  action: "edit" | "delete" = "edit",
 ) {
   const assessment = await db.assessment.findUnique({
     where: { id: assessmentId },
@@ -54,6 +55,7 @@ async function requireAssessmentManagement(
     organizationId: assessment.organizationId,
     userId,
     createdByMembershipId: assessment.createdByMembershipId,
+    action,
   });
   return assessment;
 }
@@ -131,7 +133,8 @@ export const assessmentRouter = createTRPCRouter({
       return ctx.db.assessment.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.role === "TEACHER"
+          ...(member.role === "TEACHER" &&
+          member.organization.teacherContentAccess !== "ALL"
             ? { createdByMembershipId: member.id }
             : {}),
         },
@@ -196,6 +199,7 @@ export const assessmentRouter = createTRPCRouter({
         ctx.db,
         input.assessmentId,
         ctx.actorUserId,
+        "delete",
       );
       await ctx.db.assessment.delete({ where: { id: input.assessmentId } });
       return { deleted: true };
@@ -247,6 +251,7 @@ export const assessmentRouter = createTRPCRouter({
         ctx.db,
         question.assessmentId,
         ctx.actorUserId,
+        "delete",
       );
       await ctx.db.assessmentQuestion.delete({
         where: { id: input.questionId },
@@ -304,6 +309,7 @@ export const assessmentRouter = createTRPCRouter({
         ctx.db,
         option.question.assessmentId,
         ctx.actorUserId,
+        "delete",
       );
       await ctx.db.assessmentOption.delete({ where: { id: input.optionId } });
       return { deleted: true };

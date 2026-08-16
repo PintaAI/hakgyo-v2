@@ -122,7 +122,8 @@ export const courseRouter = createTRPCRouter({
       return db.course.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.role === "TEACHER"
+          ...(member.role === "TEACHER" &&
+          member.organization.teacherCourseAccess !== "ALL"
             ? { ownerMembershipId: member.id }
             : {}),
         },
@@ -138,12 +139,12 @@ export const courseRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.object({ courseId: id }))
     .query(async ({ ctx, input }) => {
-      await requireCoursePermission({
+      const access = await requireCoursePermission({
         ...input,
-        permission: "course.manage",
+        permission: "course.view",
         userId: ctx.actorUserId,
       });
-      return db.course.findUniqueOrThrow({
+      const course = await db.course.findUniqueOrThrow({
         where: { id: input.courseId },
         include: {
           owner: {
@@ -157,6 +158,7 @@ export const courseRouter = createTRPCRouter({
           },
         },
       });
+      return { ...course, access: access.access };
     }),
   create: protectedProcedure
     .input(fields.extend({ organizationId: id, ownerMembershipId: id }))

@@ -87,11 +87,13 @@ async function requireOwnedContent(
   organizationId: string,
   userId: string,
   createdByMembershipId: string,
+  action: "edit" | "delete" = "edit",
 ) {
   return requireContentAuthor({
     organizationId,
     userId,
     createdByMembershipId,
+    action,
   });
 }
 
@@ -387,7 +389,8 @@ export const contentRouter = createTRPCRouter({
       return db.material.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.role === "TEACHER"
+          ...(member.role === "TEACHER" &&
+          member.organization.teacherContentAccess !== "ALL"
             ? { createdByMembershipId: member.id }
             : {}),
         },
@@ -479,6 +482,7 @@ export const contentRouter = createTRPCRouter({
         input.organizationId,
         ctx.actorUserId,
         material.createdByMembershipId,
+        "delete",
       );
       const result = await db.material.deleteMany({
         where: { id: input.materialId, organizationId: input.organizationId },
@@ -570,14 +574,12 @@ export const contentRouter = createTRPCRouter({
               where: {
                 id: relationId,
                 organizationId: input.organizationId,
-                createdByMembershipId: material.createdByMembershipId,
               },
             })
           : await db.vocabularySet.findFirst({
               where: {
                 id: relationId,
                 organizationId: input.organizationId,
-                createdByMembershipId: material.createdByMembershipId,
               },
             });
       if (!resource)
@@ -585,6 +587,11 @@ export const contentRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "Requirement must belong to the organization",
         });
+      await requireOwnedContent(
+        input.organizationId,
+        ctx.actorUserId,
+        resource.createdByMembershipId,
+      );
       return db.$transaction(async (tx) => {
         const a = await tx.materialRequirement.aggregate({
           where: { materialId: input.materialId },
@@ -615,6 +622,7 @@ export const contentRouter = createTRPCRouter({
         input.organizationId,
         ctx.actorUserId,
         requirement.material.createdByMembershipId,
+        "delete",
       );
       const result = await db.materialRequirement.deleteMany({
         where: {
@@ -673,7 +681,8 @@ export const contentRouter = createTRPCRouter({
       return db.vocabularySet.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.role === "TEACHER"
+          ...(member.role === "TEACHER" &&
+          member.organization.teacherContentAccess !== "ALL"
             ? { createdByMembershipId: member.id }
             : {}),
         },
@@ -746,6 +755,7 @@ export const contentRouter = createTRPCRouter({
         input.organizationId,
         ctx.actorUserId,
         vocabularySet.createdByMembershipId,
+        "delete",
       );
       const result = await db.vocabularySet.deleteMany({
         where: {
@@ -864,6 +874,7 @@ export const contentRouter = createTRPCRouter({
         input.organizationId,
         ctx.actorUserId,
         entry.vocabularySet.createdByMembershipId,
+        "delete",
       );
       const result = await db.vocabularyEntry.deleteMany({
         where: { id: input.entryId, organizationId: input.organizationId },
