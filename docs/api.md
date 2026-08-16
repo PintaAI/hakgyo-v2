@@ -1288,6 +1288,11 @@ mutation({ questionId: string }): { deleted: true }
 
 Question baru ditempatkan di posisi terakhir.
 
+Ubah type question ke `SINGLE_CHOICE`: bila terdapat lebih dari satu option
+benar, hanya option benar pertama (berdasarkan `position`) yang dipertahankan;
+sisanya dinonaktifkan dalam transaction yang sama dengan perubahan type. Option
+tidak pernah dihapus.
+
 ### Option Authoring
 
 ```ts
@@ -1304,12 +1309,18 @@ mutation(OptionFields & { questionId: string }): AssessmentOption
 ```
 
 - Tidak dapat menambah option pada written question.
+- Single choice: membuat option dengan `isCorrect: true` sekaligus menonaktifkan
+  option benar lain dalam transaction, sehingga option baru adalah satu-satunya
+  option benar.
 
 #### `assessment.updateOption`
 
 ```ts
 mutation(Partial<OptionFields> & { optionId: string }): AssessmentOption
 ```
+
+- Single choice: menandai `isCorrect: true` pada satu option sekaligus
+  menonaktifkan option benar lain dalam transaction.
 
 #### `assessment.deleteOption`
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { keepSingleChoiceCorrectOption } from "~/server/assessment/single-choice";
 import {
   requireContentAuthor,
   requireCourseItemAccess,
@@ -221,7 +222,7 @@ export const assessmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const question = await ctx.db.assessmentQuestion.findUnique({
         where: { id: input.questionId },
-        select: { assessmentId: true },
+        select: { assessmentId: true, type: true },
       });
       if (!question) throw new TRPCError({ code: "NOT_FOUND" });
       await requireAssessmentManagement(
@@ -230,6 +231,34 @@ export const assessmentRouter = createTRPCRouter({
         ctx.session.user.id,
       );
       const { questionId, ...data } = input;
+      const nextType = data.type ?? question.type;
+      if (nextType === "SINGLE_CHOICE") {
+        return ctx.db.$transaction(async (tx) => {
+          const current = await tx.assessmentQuestion.findUnique({
+            where: { id: questionId },
+            select: {
+              options: {
+                orderBy: { position: "asc" },
+                select: { id: true, isCorrect: true },
+              },
+            },
+          });
+          const correctOptions = (current?.options ?? []).filter(
+            (option) => option.isCorrect,
+          );
+          const keepId = keepSingleChoiceCorrectOption(correctOptions);
+          if (keepId !== null && correctOptions.length > 1) {
+            await tx.assessmentOption.updateMany({
+              where: { questionId, isCorrect: true, id: { not: keepId } },
+              data: { isCorrect: false },
+            });
+          }
+          return tx.assessmentQuestion.update({
+            where: { id: questionId },
+            data,
+          });
+        });
+      }
       return ctx.db.assessmentQuestion.update({
         where: { id: questionId },
         data,
@@ -268,12 +297,25 @@ export const assessmentRouter = createTRPCRouter({
         question.assessmentId,
         ctx.session.user.id,
       );
-      const position = await ctx.db.assessmentOption.aggregate({
-        where: { questionId: input.questionId },
-        _max: { position: true },
-      });
-      return ctx.db.assessmentOption.create({
-        data: { ...input, position: (position._max.position ?? -1) + 1 },
+      const { questionId, ...data } = input;
+      return ctx.db.$transaction(async (tx) => {
+        if (question.type === "SINGLE_CHOICE" && data.isCorrect === true) {
+          await tx.assessmentOption.updateMany({
+            where: { questionId, isCorrect: true },
+            data: { isCorrect: false },
+          });
+        }
+        const position = await tx.assessmentOption.aggregate({
+          where: { questionId },
+          _max: { position: true },
+        });
+        return tx.assessmentOption.create({
+          data: {
+            ...data,
+            questionId,
+            position: (position._max.position ?? -1) + 1,
+          },
+        });
       });
     }),
   updateOption: protectedProcedure
@@ -281,7 +323,10 @@ export const assessmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const option = await ctx.db.assessmentOption.findUnique({
         where: { id: input.optionId },
-        select: { question: { select: { assessmentId: true } } },
+        select: {
+          questionId: true,
+          question: { select: { assessmentId: true, type: true } },
+        },
       });
       if (!option) throw new TRPCError({ code: "NOT_FOUND" });
       await requireAssessmentManagement(
@@ -290,6 +335,19 @@ export const assessmentRouter = createTRPCRouter({
         ctx.session.user.id,
       );
       const { optionId, ...data } = input;
+      if (option.question.type === "SINGLE_CHOICE" && data.isCorrect === true) {
+        return ctx.db.$transaction(async (tx) => {
+          await tx.assessmentOption.updateMany({
+            where: {
+              questionId: option.questionId,
+              isCorrect: true,
+              id: { not: optionId },
+            },
+            data: { isCorrect: false },
+          });
+          return tx.assessmentOption.update({ where: { id: optionId }, data });
+        });
+      }
       return ctx.db.assessmentOption.update({ where: { id: optionId }, data });
     }),
   deleteOption: protectedProcedure
