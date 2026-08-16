@@ -328,7 +328,7 @@ export default async function DashboardPage({
                       </span>
                       <span className="text-muted-foreground mt-0.5 block text-xs">
                         {course._count.modules} modul · {course._count.cohorts}{" "}
-                        cohort
+                        batch
                       </span>
                     </span>
                     <time

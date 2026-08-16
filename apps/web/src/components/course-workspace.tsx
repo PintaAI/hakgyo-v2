@@ -112,7 +112,7 @@ const cohortStatus = {
 
 const views = [
   { value: "overview", label: "Overview", icon: LayoutDashboardIcon },
-  { value: "cohorts", label: "Cohorts", icon: CalendarDaysIcon },
+  { value: "cohorts", label: "Batch pembelajaran", icon: CalendarDaysIcon },
   { value: "learners", label: "Learners", icon: UsersIcon },
   { value: "invites", label: "Invites", icon: MailPlusIcon },
   { value: "settings", label: "Settings", icon: Settings2Icon },
@@ -464,7 +464,7 @@ function OverviewSection({
       >
         <Stat label="Modules" value={modules} />
         <Stat
-          label="Cohorts"
+          label="Batch pembelajaran"
           value={cohortsPending ? "–" : (cohorts?.length ?? 0)}
         />
         <Stat
@@ -503,7 +503,7 @@ function OverviewSection({
               <SectionEmpty
                 icon={Layers3Icon}
                 title="Curriculum masih kosong"
-                description="Susun module pertama, lalu hubungkan materi, vocabulary, atau assessment."
+                description="Susun bab pertama, lalu hubungkan bahan ajar."
                 action={
                   <Link
                     href={`${root}/curriculum`}
@@ -562,7 +562,7 @@ function OverviewSection({
                 {
                   view: "cohorts" as const,
                   icon: CalendarDaysIcon,
-                  label: "Buat dan kelola cohort",
+                  label: "Buat dan kelola batch pembelajaran",
                 },
                 {
                   view: "invites" as const,
@@ -654,7 +654,7 @@ function CohortsSection({
       setCapacity("");
       setStartsAt("");
       setEndsAt("");
-      toast.success("Cohort berhasil dibuat.");
+      toast.success("Batch pembelajaran berhasil dibuat.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -665,7 +665,7 @@ function CohortsSection({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
-            Cohorts
+            Batch pembelajaran
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             Kelola kelas, kapasitas, periode, dan staff course.
@@ -673,7 +673,7 @@ function CohortsSection({
         </div>
         <Button onClick={() => setOpen(true)}>
           <PlusIcon data-icon="inline-start" />
-          Buat cohort
+          Buat batch pembelajaran
         </Button>
       </div>
 
@@ -683,8 +683,8 @@ function CohortsSection({
           <CardContent>
             <SectionEmpty
               icon={CalendarDaysIcon}
-              title="Belum ada cohort"
-              description="Cohort membantu mengatur periode belajar, staff, meeting, dan kelompok learner."
+              title="Belum ada batch pembelajaran"
+              description="Batch pembelajaran membantu mengatur periode belajar, pengajar, meeting, dan kelompok peserta didik."
               action={
                 <Button
                   className="mt-4"
@@ -692,7 +692,7 @@ function CohortsSection({
                   onClick={() => setOpen(true)}
                 >
                   <PlusIcon data-icon="inline-start" />
-                  Buat cohort pertama
+                  Buat batch pertama
                 </Button>
               }
             />
@@ -714,7 +714,8 @@ function CohortsSection({
                     {cohort.name}
                   </h3>
                   <p className="text-muted-foreground mt-1 line-clamp-2 min-h-8 text-xs leading-relaxed">
-                    {cohort.description ?? "Belum ada deskripsi cohort."}
+                    {cohort.description ??
+                      "Belum ada deskripsi batch pembelajaran."}
                   </p>
                 </div>
                 <ArrowRightIcon className="text-muted-foreground group-hover:text-foreground mt-1 size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
@@ -748,14 +749,14 @@ function CohortsSection({
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submit}>
             <DialogHeader>
-              <DialogTitle>Buat cohort</DialogTitle>
+              <DialogTitle>Buat batch pembelajaran</DialogTitle>
               <DialogDescription>
-                Buat kelompok belajar baru untuk course ini.
+                Buat kelompok belajar baru untuk kursus ini.
               </DialogDescription>
             </DialogHeader>
             <div className="mt-5 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="cohort-name">Nama cohort</Label>
+                <Label htmlFor="cohort-name">Nama batch pembelajaran</Label>
                 <Input
                   id="cohort-name"
                   autoFocus
@@ -770,7 +771,7 @@ function CohortsSection({
                 <Textarea
                   id="cohort-description"
                   maxLength={10000}
-                  placeholder="Fokus dan konteks cohort ini"
+                  placeholder="Fokus dan konteks batch pembelajaran ini"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                 />
@@ -824,7 +825,7 @@ function CohortsSection({
                 ) : (
                   <PlusIcon />
                 )}
-                Buat cohort
+                Buat batch pembelajaran
               </Button>
             </DialogFooter>
           </form>
@@ -1184,7 +1185,7 @@ function InvitesSection({
             Invites
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Buat link akses untuk course atau cohort tertentu.
+            Buat link akses untuk kursus atau batch pembelajaran tertentu.
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>
@@ -1208,7 +1209,7 @@ function InvitesSection({
             <SectionEmpty
               icon={MailPlusIcon}
               title="Belum ada invite"
-              description="Buat link terbatas untuk mengundang learner ke course atau cohort."
+              description="Buat link terbatas untuk mengundang peserta didik ke kursus atau batch pembelajaran."
               action={
                 <Button
                   className="mt-4"
@@ -1252,7 +1253,9 @@ function InvitesSection({
                     <TableCell className="pl-4">
                       <span className="block font-medium">
                         {cohort?.name ??
-                          (invite.cohortId ? "Cohort" : "Entire course")}
+                          (invite.cohortId
+                            ? "Batch pembelajaran"
+                            : "Seluruh kursus")}
                       </span>
                       <span className="text-muted-foreground block text-xs">
                         oleh {invite.createdBy.user.name}

@@ -96,7 +96,7 @@ export function OrganizationIntegrations({
               </div>
               <div>
                 <CardTitle>Zoom</CardTitle>
-                <CardDescription>Live cohort meetings</CardDescription>
+                <CardDescription>Meeting batch pembelajaran</CardDescription>
               </div>
             </div>
             {connection.isPending ? (
@@ -181,7 +181,8 @@ export function OrganizationIntegrations({
                 <p className="font-medium">Create meetings from Hakgyo</p>
                 <p className="text-muted-foreground mt-1 max-w-lg text-sm">
                   Authorize your Zoom account to create, update, and cancel
-                  cohort meetings without sharing credentials with members.
+                  meeting batch pembelajaran tanpa membagikan kredensial kepada
+                  anggota.
                 </p>
               </div>
               <a
@@ -204,8 +205,8 @@ export function OrganizationIntegrations({
             </AlertDialogMedia>
             <AlertDialogTitle>Disconnect Zoom?</AlertDialogTitle>
             <AlertDialogDescription>
-              Hakgyo will revoke the stored Zoom connection. New cohort meetings
-              cannot be created until Zoom is connected again.
+              Hakgyo will revoke the stored Zoom connection. Meeting batch
+              pembelajaran baru cannot be created until Zoom is connected again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

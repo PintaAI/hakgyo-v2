@@ -247,7 +247,7 @@ export function CohortWorkspace({
           <div className="max-w-3xl min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold tracking-[0.18em] text-white/60 uppercase">
-                {cohort.course.title} · Cohort
+                {cohort.course.title} · Batch Pembelajaran
               </span>
               <Badge className="border-white/30 bg-white/10 text-white">
                 {statusLabels[cohort.status]}
@@ -258,7 +258,7 @@ export function CohortWorkspace({
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65">
               {cohort.description ??
-                "Kelola learner, staff, dan jadwal cohort dari workspace ini."}
+                "Kelola peserta didik, pengajar, dan jadwal batch pembelajaran dari workspace ini."}
             </p>
           </div>
           <Button
@@ -266,13 +266,13 @@ export function CohortWorkspace({
             onClick={() => setEditOpen(true)}
           >
             <PencilIcon data-icon="inline-start" />
-            Edit cohort
+            Edit batch pembelajaran
           </Button>
         </div>
       </header>
 
       <nav
-        aria-label="Cohort management"
+        aria-label="Pengelolaan batch pembelajaran"
         className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <div className="flex min-w-max items-center gap-1">
@@ -369,10 +369,10 @@ function Overview({
         <Card className="gap-0 rounded-lg py-0">
           <CardHeader className="border-b py-4">
             <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
-              Cohort details
+              Detail batch pembelajaran
             </CardTitle>
             <CardDescription>
-              Periode dan aturan cohort saat ini.
+              Periode dan aturan batch pembelajaran saat ini.
             </CardDescription>
           </CardHeader>
           <dl className="divide-border divide-y">
@@ -436,7 +436,7 @@ function Overview({
               Operations
             </CardTitle>
             <CardDescription>
-              Kelola bagian cohort tanpa berpindah page.
+              Kelola bagian batch pembelajaran tanpa berpindah halaman.
             </CardDescription>
           </CardHeader>
           <div className="divide-border divide-y">
@@ -444,12 +444,12 @@ function Overview({
               {
                 target: "learners" as const,
                 icon: UsersIcon,
-                label: "Kelola learner dan status",
+                label: "Kelola peserta didik dan status",
               },
               {
                 target: "staff" as const,
                 icon: UserRoundCogIcon,
-                label: "Atur teacher dan moderator",
+                label: "Atur pengajar dan moderator",
               },
               {
                 target: "meetings" as const,
@@ -522,7 +522,7 @@ function Learners({
     <section className="space-y-5">
       <SectionHeading
         title="Learners"
-        description="Kelola learner yang tergabung langsung dalam cohort."
+        description="Kelola peserta didik yang tergabung langsung dalam batch pembelajaran."
         action={
           <Button onClick={() => setOpen(true)}>
             <UserPlusIcon data-icon="inline-start" /> Tambah learner
@@ -554,7 +554,7 @@ function Learners({
         <Card className="gap-0 py-0">
           <CardHeader className="border-b py-4 sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
-              <CardTitle>Enrollment cohort</CardTitle>
+              <CardTitle>Peserta batch pembelajaran</CardTitle>
               <CardDescription>{data.length} learner terdaftar</CardDescription>
             </div>
             <div className="relative w-full sm:w-64">
@@ -733,7 +733,7 @@ function Staff({ cohort }: { cohort: Cohort }) {
     try {
       await remove.mutateAsync({ cohortId: cohort.id, staffId });
       await refresh();
-      toast.success("Staff dihapus dari cohort.");
+      toast.success("Staff dihapus dari batch pembelajaran.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -743,7 +743,7 @@ function Staff({ cohort }: { cohort: Cohort }) {
     <section className="space-y-5">
       <SectionHeading
         title="Staff"
-        description="Teacher dan moderator yang mengelola cohort."
+        description="Pengajar dan moderator yang mengelola batch pembelajaran."
         action={
           <Button onClick={() => setOpen(true)}>
             <UserPlusIcon />
@@ -1195,7 +1195,7 @@ function EditCohort({
       });
       await utils.cohort.get.invalidate({ cohortId: cohort.id });
       onOpenChange(false);
-      toast.success("Cohort diperbarui.");
+      toast.success("Batch pembelajaran diperbarui.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -1204,7 +1204,7 @@ function EditCohort({
     try {
       await remove.mutateAsync({ cohortId: cohort.id });
       await utils.cohort.list.invalidate({ courseId: cohort.courseId });
-      toast.success("Cohort dihapus.");
+      toast.success("Batch pembelajaran dihapus.");
       router.replace(`${courseRoot}?view=cohorts`);
       router.refresh();
     } catch (cause) {
@@ -1217,7 +1217,7 @@ function EditCohort({
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <form onSubmit={submit}>
             <DialogHeader>
-              <DialogTitle>Edit cohort</DialogTitle>
+              <DialogTitle>Edit batch pembelajaran</DialogTitle>
               <DialogDescription>
                 Perbarui informasi, periode, dan aturan enrollment.
               </DialogDescription>

@@ -142,7 +142,7 @@ export function CoursesLibrary({
           <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
             {role === "TEACHER"
               ? "Temukan dan kelola course yang menjadi tanggung jawab Anda."
-              : "Kelola kurikulum, cohort, dan peserta dari satu tempat."}
+              : "Kelola kurikulum, batch pembelajaran, dan peserta dari satu tempat."}
           </p>
         </div>
         <Link href={`${root}/new`} className={buttonVariants()}>
@@ -160,8 +160,8 @@ export function CoursesLibrary({
                 Belum ada course
               </h2>
               <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-xs leading-relaxed">
-                Course menyatukan materi, cohort, dan peserta agar semuanya
-                mudah ditemukan.
+                Kursus menyatukan materi, batch pembelajaran, dan peserta agar
+                semuanya mudah ditemukan.
               </p>
               <Link
                 href={`${root}/new`}
@@ -304,7 +304,7 @@ export function CoursesLibrary({
                           )}
                         >
                           <span>{course._count.modules} modul</span>
-                          <span>{course._count.cohorts} cohort</span>
+                          <span>{course._count.cohorts} batch</span>
                         </span>
                       </span>
                       <span
@@ -321,7 +321,7 @@ export function CoursesLibrary({
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <UsersIcon className="size-3.5" />
-                          {course._count.cohorts} cohort
+                          {course._count.cohorts} batch pembelajaran
                         </span>
                       </span>
                       <span

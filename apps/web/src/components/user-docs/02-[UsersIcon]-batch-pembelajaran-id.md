@@ -1,10 +1,10 @@
-# Konsep Utama Cohort di Hakgyo
+# Konsep Utama Batch Pembelajaran di Hakgyo
 
-Cohort adalah **batch pembelajaran**, yaitu satu pelaksanaan terjadwal dari sebuah kursus. Kursus menyimpan kurikulum yang dipelajari, sedangkan cohort menyimpan konteks bagaimana kurikulum tersebut dijalankan untuk kelompok tertentu.
+Batch pembelajaran (**cohort**) adalah satu pelaksanaan terjadwal dari sebuah kursus. Kursus menyimpan kurikulum yang dipelajari, sedangkan batch pembelajaran menyimpan konteks bagaimana kurikulum tersebut dijalankan untuk kelompok tertentu.
 
-Satu kursus dapat memiliki banyak cohort. Setiap cohort dapat mempunyai periode, peserta didik, pengajar, moderator, kapasitas, harga, grup WhatsApp, undangan, dan jadwal meeting yang berbeda tanpa menduplikasi kurikulum kursus.
+Satu kursus dapat memiliki banyak batch pembelajaran. Setiap batch dapat mempunyai periode, peserta didik, pengajar, moderator, kapasitas, harga, grup WhatsApp, undangan, dan jadwal meeting yang berbeda tanpa menduplikasi kurikulum kursus.
 
-Dokumen ini menjelaskan hubungan antara **kursus**, **cohort**, **peserta didik**, **staff**, **undangan**, **meeting**, dan **akses belajar**.
+Dokumen ini menjelaskan hubungan antara **kursus**, **batch pembelajaran**, **peserta didik**, **staff**, **undangan**, **meeting**, dan **akses belajar**. Di dalam sistem, istilah teknisnya tetap `cohort`.
 
 ## Gambaran Dasar
 
@@ -15,21 +15,21 @@ Bayangkan sebuah kursus bernama **Bahasa Korea untuk Pemula**. Kurikulum kursus 
   <div class="mt-2 text-xs text-muted-foreground">Kurikulum, bab, bahan ajar, dan cara belajar</div>
   <div class="ml-3 mt-4 grid gap-4 border-l pl-4">
     <div class="rounded-lg bg-muted p-3">
-      <div class="text-sm font-medium">Cohort September</div>
+      <div class="text-sm font-medium">Batch September</div>
       <div class="mt-1 text-xs text-muted-foreground">20 peserta didik / Pengajar A / September-November</div>
     </div>
     <div class="rounded-lg bg-muted p-3">
-      <div class="text-sm font-medium">Cohort Weekend</div>
+      <div class="text-sm font-medium">Batch Akhir Pekan</div>
       <div class="mt-1 text-xs text-muted-foreground">12 peserta didik / Pengajar B / Sabtu-Minggu</div>
     </div>
     <div class="rounded-lg bg-muted p-3">
-      <div class="text-sm font-medium">Cohort Private</div>
+      <div class="text-sm font-medium">Batch Privat</div>
       <div class="mt-1 text-xs text-muted-foreground">5 peserta didik / Pengajar A / Jadwal khusus</div>
     </div>
   </div>
 </div>
 
-Ketiga cohort menggunakan kurikulum yang sama. Perubahan pada susunan kursus berlaku untuk seluruh cohort karena cohort tidak menyimpan salinan materi.
+Ketiga batch menggunakan kurikulum yang sama. Perubahan pada susunan kursus berlaku untuk seluruh batch karena batch tidak menyimpan salinan materi.
 
 | Disimpan pada kursus                  | Disimpan pada cohort                    |
 | ------------------------------------- | --------------------------------------- |
@@ -40,9 +40,9 @@ Ketiga cohort menggunakan kurikulum yang sama. Perubahan pada susunan kursus ber
 | Cara belajar open atau sequential     | Meeting dan link Zoom                   |
 | Aturan enrollment dasar dan kurikulum | Kapasitas, harga, dan aturan enrollment |
 
-## Kapan Menggunakan Cohort
+## Kapan Menggunakan Batch Pembelajaran
 
-Gunakan cohort ketika sebuah program belajar membutuhkan satu atau lebih konteks berikut:
+Gunakan batch pembelajaran ketika sebuah program belajar membutuhkan satu atau lebih konteks berikut:
 
 - Kelompok peserta didik tertentu.
 - Tanggal mulai dan selesai.
@@ -52,9 +52,9 @@ Gunakan cohort ketika sebuah program belajar membutuhkan satu atau lebih konteks
 - Grup komunikasi seperti WhatsApp.
 - Harga atau aturan enrollment yang berbeda dari kursus.
 
-Cohort tidak wajib digunakan untuk semua kursus. Kursus belajar mandiri dapat memberikan akses langsung kepada peserta didik tanpa memasukkannya ke cohort.
+Batch pembelajaran tidak wajib digunakan untuk semua kursus. Kursus belajar mandiri dapat memberikan akses langsung kepada peserta didik tanpa memasukkannya ke batch.
 
-### Kursus Langsung atau Cohort
+### Kursus Langsung atau Batch Pembelajaran
 
 | Kebutuhan                                           | Pilihan yang disarankan |
 | --------------------------------------------------- | ----------------------- |
