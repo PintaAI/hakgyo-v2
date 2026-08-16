@@ -11,6 +11,7 @@ import {
   closestCorners,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -78,6 +79,27 @@ const itemMeta = {
   ASSESSMENT: { label: "Assessment", icon: ListChecksIcon },
   VOCABULARY_SET: { label: "Vocabulary", icon: BookOpenIcon },
 } satisfies Record<ItemType, { label: string; icon: typeof FileTextIcon }>;
+
+function getDragData(value: unknown) {
+  if (typeof value !== "object" || value === null) return {};
+  const data = value as Record<string, unknown>;
+  return {
+    kind:
+      data.kind === "module" || data.kind === "item" ? data.kind : undefined,
+    moduleId: typeof data.moduleId === "string" ? data.moduleId : undefined,
+  };
+}
+
+const curriculumCollisionDetection: CollisionDetection = (args) => {
+  const active = getDragData(args.active.data.current);
+  const droppableContainers = args.droppableContainers.filter((container) => {
+    const candidate = getDragData(container.data.current);
+    if (candidate.kind !== active.kind) return false;
+    return active.kind !== "item" || candidate.moduleId === active.moduleId;
+  });
+
+  return closestCorners({ ...args, droppableContainers });
+};
 
 function resourceTitle(
   item: CourseItem,
@@ -384,7 +406,7 @@ export function CurriculumEditor({
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={curriculumCollisionDetection}
           measuring={{
             droppable: { strategy: MeasuringStrategy.Always },
           }}
@@ -520,7 +542,11 @@ function SortableModuleCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: module.id, disabled: isReordering });
+  } = useSortable({
+    id: module.id,
+    disabled: isReordering,
+    data: { kind: "module" },
+  });
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
@@ -589,6 +615,7 @@ function SortableModuleCard({
               <SortableItemRow
                 key={item.id}
                 item={item}
+                moduleId={module.id}
                 isPending={isItemUpdatePending}
                 isReordering={isReordering}
                 title={
@@ -618,6 +645,7 @@ function SortableModuleCard({
 
 function SortableItemRow({
   item,
+  moduleId,
   isPending,
   isReordering,
   title,
@@ -625,6 +653,7 @@ function SortableItemRow({
   onDeleteItem,
 }: {
   item: CourseItem;
+  moduleId: string;
   isPending: boolean;
   isReordering: boolean;
   title: string;
@@ -638,7 +667,11 @@ function SortableItemRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id, disabled: isReordering });
+  } = useSortable({
+    id: item.id,
+    disabled: isReordering,
+    data: { kind: "item", moduleId },
+  });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const meta = itemMeta[item.type];
   const Icon = meta.icon;
