@@ -4,9 +4,25 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowDownIcon,
+  DndContext,
+  KeyboardSensor,
+  MeasuringStrategy,
+  PointerSensor,
+  closestCorners,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   ArrowLeftIcon,
-  ArrowUpIcon,
   BookOpenIcon,
   CheckCircle2Icon,
   CircleOffIcon,
@@ -63,6 +79,23 @@ const itemMeta = {
   VOCABULARY_SET: { label: "Vocabulary", icon: BookOpenIcon },
 } satisfies Record<ItemType, { label: string; icon: typeof FileTextIcon }>;
 
+function resourceTitle(
+  item: CourseItem,
+  materials: Material[],
+  assessments: Assessment[],
+  vocabularySets: VocabularySet[],
+) {
+  if (item.type === "MATERIAL") {
+    return materials.find((resource) => resource.id === item.materialId)?.title;
+  }
+  if (item.type === "ASSESSMENT") {
+    return assessments.find((resource) => resource.id === item.assessmentId)
+      ?.title;
+  }
+  return vocabularySets.find((resource) => resource.id === item.vocabularySetId)
+    ?.title;
+}
+
 function getErrorMessage(error: unknown) {
   if (
     typeof error === "object" &&
@@ -100,19 +133,31 @@ export function CurriculumEditor({
   const [progressionMode, setProgressionMode] = useState(
     course.progressionMode,
   );
+  const [modules, setModules] = useState(course.modules);
+  const [modulesSource, setModulesSource] = useState(course.modules);
   const [deleteTarget, setDeleteTarget] = useState<
     | { kind: "module"; id: string; name: string }
     | { kind: "item"; id: string; name: string }
     | null
   >(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
   const reorderModules = api.content.reorderModules.useMutation();
   const reorderItems = api.content.reorderItems.useMutation();
   const updateProgression = api.learning.setProgressionMode.useMutation();
   const updateItem = api.content.updateItem.useMutation();
   const deleteModule = api.content.deleteModule.useMutation();
   const deleteItem = api.content.deleteItem.useMutation();
-  const itemCount = course.modules.reduce(
+  if (course.modules !== modulesSource) {
+    setModulesSource(course.modules);
+    setModules(course.modules);
+  }
+  const itemCount = modules.reduce(
     (total, module) => total + module.items.length,
     0,
   );
@@ -146,48 +191,72 @@ export function CurriculumEditor({
     }
   }
 
-  function resourceTitle(item: CourseItem) {
-    if (item.type === "MATERIAL") {
-      return materials.find((resource) => resource.id === item.materialId)
-        ?.title;
-    }
-    if (item.type === "ASSESSMENT") {
-      return assessments.find((resource) => resource.id === item.assessmentId)
-        ?.title;
-    }
-    return vocabularySets.find(
-      (resource) => resource.id === item.vocabularySetId,
-    )?.title;
-  }
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  async function moveModule(index: number, direction: -1 | 1) {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= course.modules.length) return;
-    const ids = course.modules.map(({ id }) => id);
-    [ids[index], ids[nextIndex]] = [ids[nextIndex]!, ids[index]!];
-    try {
-      await reorderModules.mutateAsync({ courseId: course.id, moduleIds: ids });
+    if (modules.some(({ id }) => id === active.id)) {
+      let overModuleId = over.id.toString();
+      if (!modules.some(({ id }) => id === overModuleId)) {
+        overModuleId =
+          modules.find((module) =>
+            module.items.some(({ id }) => id === over.id),
+          )?.id ?? "";
+      }
+      if (!overModuleId || overModuleId === active.id) return;
+      const oldIndex = modules.findIndex(({ id }) => id === active.id);
+      const newIndex = modules.findIndex(({ id }) => id === overModuleId);
+      if (oldIndex === newIndex) return;
+      const previousModules = modules;
+      const nextModules = arrayMove(modules, oldIndex, newIndex);
+      setModules(nextModules);
+      try {
+        await reorderModules.mutateAsync({
+          courseId: course.id,
+          moduleIds: nextModules.map(({ id }) => id),
+        });
+      } catch (error) {
+        setModules(previousModules);
+        toast.error(getErrorMessage(error));
+        return;
+      }
       await refreshCourse();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
+      return;
     }
-  }
 
-  async function moveItem(
-    module: CourseModule,
-    index: number,
-    direction: -1 | 1,
-  ) {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= module.items.length) return;
-    const ids = module.items.map(({ id }) => id);
-    [ids[index], ids[nextIndex]] = [ids[nextIndex]!, ids[index]!];
+    const activeModule = modules.find((candidate) =>
+      candidate.items.some(({ id }) => id === active.id),
+    );
+    if (!activeModule) return;
+    const overItemId = activeModule.items.some(({ id }) => id === over.id)
+      ? over.id
+      : null;
+    if (!overItemId) return;
+    const oldIndex = activeModule.items.findIndex(({ id }) => id === active.id);
+    const newIndex = activeModule.items.findIndex(
+      ({ id }) => id === overItemId,
+    );
+    if (oldIndex === newIndex) return;
+    const previousModules = modules;
+    const nextItems = arrayMove(activeModule.items, oldIndex, newIndex);
+    setModules((current) =>
+      current.map((module) =>
+        module.id === activeModule.id
+          ? { ...module, items: nextItems }
+          : module,
+      ),
+    );
     try {
-      await reorderItems.mutateAsync({ moduleId: module.id, itemIds: ids });
-      await refreshCourse();
+      await reorderItems.mutateAsync({
+        moduleId: activeModule.id,
+        itemIds: nextItems.map(({ id }) => id),
+      });
     } catch (error) {
+      setModules(previousModules);
       toast.error(getErrorMessage(error));
+      return;
     }
+    await refreshCourse();
   }
 
   async function togglePublished(item: CourseItem, checked: boolean) {
@@ -284,7 +353,7 @@ export function CurriculumEditor({
         aria-label="Curriculum summary"
         className="bg-card grid grid-cols-3 divide-x rounded-lg border py-4"
       >
-        <SummaryStat label="Module" value={course.modules.length} />
+        <SummaryStat label="Module" value={modules.length} />
         <SummaryStat label="Learning item" value={itemCount} />
         <SummaryStat
           label="Progression"
@@ -292,7 +361,7 @@ export function CurriculumEditor({
         />
       </section>
 
-      {course.modules.length === 0 ? (
+      {modules.length === 0 ? (
         <div className="rounded-xl border border-dashed px-5 py-16 text-center">
           <span className="bg-muted mx-auto flex size-12 items-center justify-center rounded-full">
             <Layers3Icon className="text-muted-foreground size-5" />
@@ -313,196 +382,57 @@ export function CurriculumEditor({
           </Button>
         </div>
       ) : (
-        <ol className="space-y-4">
-          {course.modules.map((module, moduleIndex) => (
-            <li
-              key={module.id}
-              className="bg-card overflow-hidden rounded-xl border"
-            >
-              <div className="flex items-start gap-3 px-4 py-4 sm:px-5">
-                <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold tabular-nums">
-                  {String(moduleIndex + 1).padStart(2, "0")}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
-                      {module.title}
-                    </h2>
-                    <Badge variant="secondary">
-                      {module.items.length} item
-                    </Badge>
-                  </div>
-                  {module.description ? (
-                    <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                      {module.description}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    aria-label="Pindahkan module ke atas"
-                    disabled={moduleIndex === 0 || isReordering}
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() => moveModule(moduleIndex, -1)}
-                  >
-                    <ArrowUpIcon />
-                  </Button>
-                  <Button
-                    aria-label="Pindahkan module ke bawah"
-                    disabled={
-                      moduleIndex === course.modules.length - 1 || isReordering
-                    }
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() => moveModule(moduleIndex, 1)}
-                  >
-                    <ArrowDownIcon />
-                  </Button>
-                  <Button
-                    aria-label="Edit module"
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() => setModuleDialog({ open: true, module })}
-                  >
-                    <PencilIcon />
-                  </Button>
-                  <Button
-                    aria-label="Hapus module"
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setDeleteTarget({
-                        kind: "module",
-                        id: module.id,
-                        name: module.title,
-                      })
-                    }
-                  >
-                    <Trash2Icon />
-                  </Button>
-                </div>
-              </div>
-
-              {module.items.length > 0 ? (
-                <ol className="divide-y border-t">
-                  {module.items.map((item, itemIndex) => {
-                    const meta = itemMeta[item.type];
-                    const Icon = meta.icon;
-                    const title =
-                      resourceTitle(item) ?? "Resource tidak tersedia";
-                    return (
-                      <li
-                        key={item.id}
-                        className="group flex items-center gap-3 px-4 py-3 sm:px-5"
-                      >
-                        <GripVerticalIcon className="text-muted-foreground/50 hidden size-4 sm:block" />
-                        <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
-                          <Icon className="text-muted-foreground size-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">
-                            {title}
-                          </span>
-                          <span className="text-muted-foreground mt-0.5 block text-[11px] tracking-wide uppercase">
-                            {meta.label}
-                          </span>
-                        </span>
-                        <div className="flex shrink-0 items-center gap-1">
-                          <div className="mr-1 hidden items-center gap-2 sm:flex">
-                            <Label
-                              htmlFor={`published-${item.id}`}
-                              className="text-muted-foreground text-xs font-normal"
-                            >
-                              {item.isPublished ? "Published" : "Draft"}
-                            </Label>
-                            <Switch
-                              id={`published-${item.id}`}
-                              checked={item.isPublished}
-                              disabled={updateItem.isPending}
-                              onCheckedChange={(checked) =>
-                                togglePublished(item, checked)
-                              }
-                            />
-                          </div>
-                          <Button
-                            aria-label={
-                              item.isPublished
-                                ? "Jadikan item draf"
-                                : "Terbitkan item"
-                            }
-                            disabled={updateItem.isPending}
-                            size="icon-sm"
-                            variant="ghost"
-                            className="sm:hidden"
-                            onClick={() =>
-                              togglePublished(item, !item.isPublished)
-                            }
-                          >
-                            {item.isPublished ? (
-                              <CheckCircle2Icon />
-                            ) : (
-                              <CircleOffIcon />
-                            )}
-                          </Button>
-                          <Button
-                            aria-label="Pindahkan item ke atas"
-                            disabled={itemIndex === 0 || isReordering}
-                            size="icon-sm"
-                            variant="ghost"
-                            onClick={() => moveItem(module, itemIndex, -1)}
-                          >
-                            <ArrowUpIcon />
-                          </Button>
-                          <Button
-                            aria-label="Pindahkan item ke bawah"
-                            disabled={
-                              itemIndex === module.items.length - 1 ||
-                              isReordering
-                            }
-                            size="icon-sm"
-                            variant="ghost"
-                            onClick={() => moveItem(module, itemIndex, 1)}
-                          >
-                            <ArrowDownIcon />
-                          </Button>
-                          <Button
-                            aria-label="Hapus item"
-                            size="icon-sm"
-                            variant="ghost"
-                            onClick={() =>
-                              setDeleteTarget({
-                                kind: "item",
-                                id: item.id,
-                                name: title,
-                              })
-                            }
-                          >
-                            <Trash2Icon />
-                          </Button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              ) : (
-                <div className="text-muted-foreground border-t border-dashed px-5 py-7 text-center text-sm">
-                  Module ini belum memiliki learning item.
-                </div>
-              )}
-              <div className="bg-muted/30 border-t px-4 py-3 sm:px-5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setItemModule(module)}
-                >
-                  <PlusIcon data-icon="inline-start" />
-                  Tambah learning item
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ol>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          measuring={{
+            droppable: { strategy: MeasuringStrategy.Always },
+          }}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={modules.map(({ id }) => id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ol className="space-y-4">
+              {modules.map((module, moduleIndex) => (
+                <SortableModuleCard
+                  key={module.id}
+                  module={module}
+                  moduleIndex={moduleIndex}
+                  isItemUpdatePending={updateItem.isPending}
+                  isReordering={isReordering}
+                  materials={materials}
+                  assessments={assessments}
+                  vocabularySets={vocabularySets}
+                  onAddItem={() => setItemModule(module)}
+                  onDeleteItem={(item) =>
+                    setDeleteTarget({
+                      kind: "item",
+                      id: item.id,
+                      name:
+                        resourceTitle(
+                          item,
+                          materials,
+                          assessments,
+                          vocabularySets,
+                        ) ?? "Resource tidak tersedia",
+                    })
+                  }
+                  onDeleteModule={() =>
+                    setDeleteTarget({
+                      kind: "module",
+                      id: module.id,
+                      name: module.title,
+                    })
+                  }
+                  onEditModule={() => setModuleDialog({ open: true, module })}
+                  onTogglePublished={togglePublished}
+                />
+              ))}
+            </ol>
+          </SortableContext>
+        </DndContext>
       )}
 
       <ModuleDialog
@@ -553,6 +483,229 @@ export function CurriculumEditor({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function SortableModuleCard({
+  module,
+  moduleIndex,
+  isReordering,
+  isItemUpdatePending,
+  materials,
+  assessments,
+  vocabularySets,
+  onAddItem,
+  onDeleteItem,
+  onDeleteModule,
+  onEditModule,
+  onTogglePublished,
+}: {
+  module: CourseModule;
+  moduleIndex: number;
+  isReordering: boolean;
+  isItemUpdatePending: boolean;
+  materials: Material[];
+  assessments: Assessment[];
+  vocabularySets: VocabularySet[];
+  onAddItem: () => void;
+  onDeleteItem: (item: CourseItem) => void;
+  onDeleteModule: () => void;
+  onEditModule: () => void;
+  onTogglePublished: (item: CourseItem, checked: boolean) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: module.id, disabled: isReordering });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "bg-card overflow-hidden rounded-xl border",
+        isDragging && "z-10 shadow-lg",
+      )}
+    >
+      <div className="flex items-start gap-3 px-4 py-4 sm:px-5">
+        <button
+          type="button"
+          aria-label="Seret module untuk mengurutkan"
+          disabled={isReordering}
+          className="text-muted-foreground hover:bg-muted hover:text-foreground mt-1 cursor-grab touch-none rounded-md p-1 disabled:cursor-not-allowed disabled:opacity-50"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVerticalIcon className="size-4" />
+        </button>
+        <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold tabular-nums">
+          {String(moduleIndex + 1).padStart(2, "0")}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+              {module.title}
+            </h2>
+            <Badge variant="secondary">{module.items.length} item</Badge>
+          </div>
+          {module.description ? (
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+              {module.description}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            aria-label="Edit module"
+            size="icon-sm"
+            variant="ghost"
+            onClick={onEditModule}
+          >
+            <PencilIcon />
+          </Button>
+          <Button
+            aria-label="Hapus module"
+            size="icon-sm"
+            variant="ghost"
+            onClick={onDeleteModule}
+          >
+            <Trash2Icon />
+          </Button>
+        </div>
+      </div>
+
+      {module.items.length > 0 ? (
+        <SortableContext
+          items={module.items.map(({ id }) => id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <ol className="divide-y border-t">
+            {module.items.map((item) => (
+              <SortableItemRow
+                key={item.id}
+                item={item}
+                isPending={isItemUpdatePending}
+                isReordering={isReordering}
+                title={
+                  resourceTitle(item, materials, assessments, vocabularySets) ??
+                  "Resource tidak tersedia"
+                }
+                onTogglePublished={onTogglePublished}
+                onDeleteItem={() => onDeleteItem(item)}
+              />
+            ))}
+          </ol>
+        </SortableContext>
+      ) : (
+        <div className="text-muted-foreground border-t border-dashed px-5 py-7 text-center text-sm">
+          Module ini belum memiliki learning item.
+        </div>
+      )}
+      <div className="bg-muted/30 border-t px-4 py-3 sm:px-5">
+        <Button size="sm" variant="outline" onClick={onAddItem}>
+          <PlusIcon data-icon="inline-start" />
+          Tambah learning item
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+function SortableItemRow({
+  item,
+  isPending,
+  isReordering,
+  title,
+  onTogglePublished,
+  onDeleteItem,
+}: {
+  item: CourseItem;
+  isPending: boolean;
+  isReordering: boolean;
+  title: string;
+  onTogglePublished: (item: CourseItem, checked: boolean) => void;
+  onDeleteItem: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id, disabled: isReordering });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const meta = itemMeta[item.type];
+  const Icon = meta.icon;
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group flex items-center gap-3 px-4 py-3 sm:px-5",
+        isDragging && "bg-background z-10 shadow-lg",
+      )}
+    >
+      <button
+        type="button"
+        aria-label="Seret item untuk mengurutkan"
+        disabled={isReordering}
+        className="text-muted-foreground/50 hover:bg-muted hover:text-foreground cursor-grab touch-none rounded-md p-1 disabled:cursor-not-allowed disabled:opacity-50"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVerticalIcon className="size-4" />
+      </button>
+      <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
+        <Icon className="text-muted-foreground size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{title}</span>
+        <span className="text-muted-foreground mt-0.5 block text-[11px] tracking-wide uppercase">
+          {meta.label}
+        </span>
+      </span>
+      <div className="flex shrink-0 items-center gap-1">
+        <div className="mr-1 hidden items-center gap-2 sm:flex">
+          <Label
+            htmlFor={`published-${item.id}`}
+            className="text-muted-foreground text-xs font-normal"
+          >
+            {item.isPublished ? "Published" : "Draft"}
+          </Label>
+          <Switch
+            id={`published-${item.id}`}
+            checked={item.isPublished}
+            disabled={isPending}
+            onCheckedChange={(checked) => onTogglePublished(item, checked)}
+          />
+        </div>
+        <Button
+          aria-label={item.isPublished ? "Jadikan item draf" : "Terbitkan item"}
+          disabled={isPending}
+          size="icon-sm"
+          variant="ghost"
+          className="sm:hidden"
+          onClick={() => onTogglePublished(item, !item.isPublished)}
+        >
+          {item.isPublished ? <CheckCircle2Icon /> : <CircleOffIcon />}
+        </Button>
+        <Button
+          aria-label="Hapus item"
+          size="icon-sm"
+          variant="ghost"
+          onClick={onDeleteItem}
+        >
+          <Trash2Icon />
+        </Button>
+      </div>
+    </li>
   );
 }
 

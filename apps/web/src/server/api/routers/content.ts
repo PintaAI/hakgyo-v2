@@ -40,6 +40,10 @@ async function reorder(
     throw new TRPCError({ code: "BAD_REQUEST", message: "Duplicate IDs" });
   await db.$transaction(async (tx) => {
     const delegate = tx[model] as unknown as {
+      aggregate(args: {
+        where: Record<string, unknown>;
+        _max: { position: true };
+      }): Promise<{ _max: { position: number | null } }>;
       count(args: { where: Record<string, unknown> }): Promise<number>;
       updateMany(args: {
         where: Record<string, unknown>;
@@ -54,10 +58,15 @@ async function reorder(
         code: "BAD_REQUEST",
         message: "Reorder contains unknown resources",
       });
+    const maximum = await delegate.aggregate({
+      where: parent,
+      _max: { position: true },
+    });
+    const temporaryPosition = (maximum._max.position ?? -1) + 1;
     for (let i = 0; i < ids.length; i++)
       await delegate.updateMany({
         where: { ...parent, id: ids[i] },
-        data: { position: -i - 1 },
+        data: { position: temporaryPosition + i },
       });
     for (let i = 0; i < ids.length; i++)
       await delegate.updateMany({
