@@ -5,6 +5,7 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   requireCohortPermission,
   requireCoursePermission,
+  requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
 import {
@@ -44,6 +45,25 @@ async function requireManagedCohort(cohortId: string, userId: string) {
 }
 
 export const cohortRouter = createTRPCRouter({
+  listByOrganization: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .query(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "cohort.manage",
+        userId: ctx.actorUserId,
+      });
+      return db.cohort.findMany({
+        where: { organizationId: input.organizationId },
+        orderBy: { createdAt: "desc" },
+        include: {
+          course: { select: { id: true, title: true } },
+          _count: {
+            select: { staff: true, enrollments: true, meetings: true },
+          },
+        },
+      });
+    }),
   list: protectedProcedure
     .input(z.object({ courseId: id }))
     .query(async ({ ctx, input }) => {

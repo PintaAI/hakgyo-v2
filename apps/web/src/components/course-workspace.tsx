@@ -303,7 +303,7 @@ export function CourseWorkspace({
           <div className="max-w-3xl min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold tracking-[0.18em] text-[#aaa99f] uppercase dark:text-[#5f605a]">
-                Course workspace
+                Workspace course
               </span>
               <Badge
                 variant={courseStatus[course.status].variant}
@@ -483,10 +483,10 @@ function OverviewSection({
         <Card className="rounded-lg">
           <CardHeader>
             <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
-              Shared course access
+              Akses course bersama
             </CardTitle>
             <CardDescription>
-              This course is shared with teachers in your organization.
+              Course ini dibagikan kepada teacher di organisasi Anda.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -500,14 +500,14 @@ function OverviewSection({
               </Link>
             ) : (
               <p className="text-muted-foreground text-sm">
-                Ask an organization admin to enable shared content editing.
+                Minta admin organisasi mengaktifkan pengeditan konten bersama.
               </p>
             )}
           </CardContent>
         </Card>
         <Card className="rounded-lg">
           <CardHeader>
-            <CardTitle className="text-sm">Course owner</CardTitle>
+            <CardTitle className="text-sm">Pemilik course</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-3">
             <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
@@ -533,17 +533,17 @@ function OverviewSection({
         aria-label="Course summary"
         className="grid grid-cols-2 gap-y-6 border-y py-5 sm:grid-cols-4"
       >
-        <Stat label="Modules" value={modules} />
+        <Stat label="Modul" value={modules} />
         <Stat
           label="Batch pembelajaran"
           value={cohortsPending ? "–" : (cohorts?.length ?? 0)}
         />
         <Stat
-          label="Active learners"
+          label="Learner aktif"
           value={learnersPending ? "–" : (activeLearners ?? 0)}
         />
         <Stat
-          label="Active invites"
+          label="Invite aktif"
           value={invitesPending ? "–" : (activeInvites ?? 0)}
         />
       </section>
@@ -553,7 +553,7 @@ function OverviewSection({
           <CardHeader className="border-b">
             <div>
               <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
-                Curriculum pulse
+                Ikhtisar curriculum
               </CardTitle>
               <CardDescription>
                 Struktur pembelajaran yang tersedia saat ini.
@@ -613,7 +613,9 @@ function OverviewSection({
           <div className="bg-muted/40 text-muted-foreground flex items-center justify-between border-t px-4 py-3 text-xs">
             <span>{items} total learning item</span>
             <span>
-              {course.progressionMode === "OPEN" ? "Open access" : "Sequential"}
+              {course.progressionMode === "OPEN"
+                ? "Akses terbuka"
+                : "Berurutan"}
             </span>
           </div>
         </Card>
@@ -622,7 +624,7 @@ function OverviewSection({
           <Card className="rounded-lg">
             <CardHeader>
               <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
-                Next moves
+                Langkah berikutnya
               </CardTitle>
               <CardDescription>
                 Action yang paling sering dibutuhkan.
@@ -662,7 +664,7 @@ function OverviewSection({
 
           <Card className="rounded-lg">
             <CardHeader>
-              <CardTitle className="text-sm">Course owner</CardTitle>
+              <CardTitle className="text-sm">Pemilik course</CardTitle>
             </CardHeader>
             <CardContent className="flex items-center gap-3">
               <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
@@ -1039,7 +1041,7 @@ function LearnersSection({
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-4">Learner</TableHead>
-                  <TableHead>Source</TableHead>
+                  <TableHead>Sumber</TableHead>
                   <TableHead>Terdaftar</TableHead>
                   <TableHead className="pr-4 text-right">Status</TableHead>
                 </TableRow>
@@ -1300,11 +1302,11 @@ function InvitesSection({
             <TableHeader>
               <TableRow>
                 <TableHead className="pl-4">Target</TableHead>
-                <TableHead>Usage</TableHead>
-                <TableHead>Expires</TableHead>
+                <TableHead>Pemakaian</TableHead>
+                <TableHead>Berakhir</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="pr-4 text-right">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">Aksi</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -1415,7 +1417,7 @@ function InvitesSection({
                     value={cohortId}
                     onChange={(event) => setCohortId(event.target.value)}
                   >
-                    <option value="">Entire course</option>
+                    <option value="">Seluruh course</option>
                     {cohorts?.map((cohort) => (
                       <option key={cohort.id} value={cohort.id}>
                         {cohort.name}
@@ -1551,7 +1553,7 @@ function SettingsSection({
       >
         <Card className="rounded-lg">
           <CardHeader className="border-b">
-            <CardTitle>Course information</CardTitle>
+            <CardTitle>Informasi course</CardTitle>
             <CardDescription>
               Informasi yang terlihat oleh pengelola dan learner.
             </CardDescription>
@@ -1620,7 +1622,7 @@ function SettingsSection({
         <div className="space-y-4">
           <Card className="rounded-lg">
             <CardHeader className="border-b">
-              <CardTitle>Access rules</CardTitle>
+              <CardTitle>Aturan akses</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-2">
@@ -1632,8 +1634,8 @@ function SettingsSection({
                   onChange={(event) => setEnrollmentMode(event.target.value)}
                 >
                   <option value="INHERIT">Ikuti organization</option>
-                  <option value="OPEN">Open enrollment</option>
-                  <option value="INVITE_ONLY">Invite only</option>
+                  <option value="OPEN">Enrollment terbuka</option>
+                  <option value="INVITE_ONLY">Hanya invite</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -1676,7 +1678,7 @@ function SettingsSection({
 
       <Card className="border-destructive/20 rounded-lg ring-0">
         <CardHeader className="border-b">
-          <CardTitle className="text-destructive">Danger zone</CardTitle>
+          <CardTitle className="text-destructive">Zona berbahaya</CardTitle>
           <CardDescription>
             Action lifecycle yang berdampak pada akses learner.
           </CardDescription>
@@ -1687,7 +1689,7 @@ function SettingsSection({
               <p className="text-sm font-medium">
                 {course.status === "ARCHIVED"
                   ? "Pulihkan course"
-                  : "Archive course"}
+                  : "Arsipkan course"}
               </p>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 {course.status === "ARCHIVED"
@@ -1705,7 +1707,7 @@ function SettingsSection({
               }
             >
               <ArchiveIcon data-icon="inline-start" />
-              {course.status === "ARCHIVED" ? "Pulihkan" : "Archive"}
+              {course.status === "ARCHIVED" ? "Pulihkan" : "Arsipkan"}
             </Button>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">

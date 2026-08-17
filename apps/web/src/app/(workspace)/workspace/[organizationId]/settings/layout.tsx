@@ -15,8 +15,8 @@ export default async function Layout({
   return (
     <Subnav
       nav={[
-        { href: `${root}/general`, label: "General" },
-        { href: `${root}/integrations`, label: "Integrations" },
+        { href: `${root}/general`, label: "Umum" },
+        { href: `${root}/integrations`, label: "Integrasi" },
       ]}
     >
       {children}

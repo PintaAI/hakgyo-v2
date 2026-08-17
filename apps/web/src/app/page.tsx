@@ -37,15 +37,15 @@ export default async function Home({
             H
           </div>
           <p className="mt-12 text-xs font-bold tracking-[0.28em] text-[#9b5b3d] uppercase">
-            Hakgyo / learn together
+            Hakgyo / belajar bersama
           </p>
           <h1 className="mt-5 max-w-2xl text-5xl leading-[0.98] font-black tracking-[-0.05em] sm:text-7xl">
-            Your school,
-            <span className="block text-[#e76f51]">within reach.</span>
+            Sekolah Anda,
+            <span className="block text-[#e76f51]">dalam genggaman.</span>
           </h1>
           <p className="mt-7 max-w-lg text-lg leading-8 text-[#52665f]">
-            One secure account for the Hakgyo web and mobile experience, powered
-            by Better Auth and a shared type-safe API.
+            Satu akun aman untuk pengalaman Hakgyo web dan mobile, didukung
+            Better Auth dan API type-safe yang dibagikan.
           </p>
           <div className="mt-10 flex flex-wrap gap-3 text-xs font-bold tracking-wide uppercase">
             <span className="rounded-full border border-emerald-950/15 px-4 py-2">

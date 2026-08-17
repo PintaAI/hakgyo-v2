@@ -9,5 +9,5 @@ export default async function AttemptPage({
     attemptId: string;
   }>;
 }) {
-  return <PagePlaceholder title="Assessment attempt" params={await params} />;
+  return <PagePlaceholder title="Attempt penilaian" params={await params} />;
 }

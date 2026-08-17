@@ -9,16 +9,10 @@ import {
 describe("assessment completion", () => {
   test("requires a graded attempt that reaches the passing percentage", () => {
     expect(
-      hasPassedAssessment(
-        [{ status: "GRADED", score: 7, maxScore: 10 }],
-        70,
-      ),
+      hasPassedAssessment([{ status: "GRADED", score: 7, maxScore: 10 }], 70),
     ).toBe(true);
     expect(
-      hasPassedAssessment(
-        [{ status: "GRADED", score: 6, maxScore: 10 }],
-        70,
-      ),
+      hasPassedAssessment([{ status: "GRADED", score: 6, maxScore: 10 }], 70),
     ).toBe(false);
   });
 
@@ -39,10 +33,7 @@ describe("sequential module access", () => {
       { id: "two", items: [{ isCompleted: false }] },
     ]);
 
-    expect(result.map(({ access }) => access)).toEqual([
-      "AVAILABLE",
-      "LOCKED",
-    ]);
+    expect(result.map(({ access }) => access)).toEqual(["AVAILABLE", "LOCKED"]);
   });
 
   test("unlocks the next module after every previous item is complete", () => {
@@ -68,10 +59,7 @@ describe("sequential module access", () => {
       { id: "two", items: [{ isCompleted: false }] },
     ]);
 
-    expect(result.map(({ access }) => access)).toEqual([
-      "AVAILABLE",
-      "LOCKED",
-    ]);
+    expect(result.map(({ access }) => access)).toEqual(["AVAILABLE", "LOCKED"]);
   });
 });
 

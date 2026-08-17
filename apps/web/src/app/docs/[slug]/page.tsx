@@ -32,7 +32,7 @@ export default async function UserDocPage({
     <div>
       <div className="mx-auto mb-5 flex w-full max-w-4xl items-center gap-2">
         <Badge variant="secondary">{doc.locale.toUpperCase()}</Badge>
-        <span className="text-muted-foreground text-xs">Hakgyo user guide</span>
+        <span className="text-muted-foreground text-xs">Panduan pengguna Hakgyo</span>
       </div>
       <UserDocArticle content={doc.content} />
     </div>

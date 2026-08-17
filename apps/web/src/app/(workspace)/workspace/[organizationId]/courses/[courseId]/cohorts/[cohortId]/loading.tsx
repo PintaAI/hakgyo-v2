@@ -16,7 +16,7 @@ export default function CohortWorkspaceLoading() {
         </div>
       </div>
 
-      <nav aria-label="Cohort management" className="border-b">
+      <nav aria-label="Pengelolaan batch pembelajaran" className="border-b">
         <div className="flex min-w-max items-center gap-1">
           {Array.from({ length: 4 }).map((_, index) => (
             <Skeleton key={index} className="h-11 w-28 rounded-none" />

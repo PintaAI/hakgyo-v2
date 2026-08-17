@@ -360,10 +360,10 @@ function Overview({
   return (
     <div className="space-y-4">
       <section className="grid grid-cols-2 gap-y-6 border-y py-5 sm:grid-cols-4">
-        <Stat label="Active learners" value={learnersPending ? "–" : active} />
-        <Stat label="Capacity" value={cohort.capacity ?? "∞"} />
-        <Stat label="Occupancy" value={learnersPending ? "–" : occupancy} />
-        <Stat label="Upcoming" value={meetingsPending ? "–" : upcoming} />
+        <Stat label="Learner aktif" value={learnersPending ? "–" : active} />
+        <Stat label="Kapasitas" value={cohort.capacity ?? "∞"} />
+        <Stat label="Keterisian" value={learnersPending ? "–" : occupancy} />
+        <Stat label="Akan datang" value={meetingsPending ? "–" : upcoming} />
       </section>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
         <Card className="gap-0 rounded-lg py-0">
@@ -433,7 +433,7 @@ function Overview({
         <Card className="gap-0 rounded-lg py-0">
           <CardHeader className="border-b py-4">
             <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
-              Operations
+              Operasi
             </CardTitle>
             <CardDescription>
               Kelola bagian batch pembelajaran tanpa berpindah halaman.

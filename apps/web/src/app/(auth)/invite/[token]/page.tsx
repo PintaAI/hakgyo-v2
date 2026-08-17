@@ -6,5 +6,5 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  return <PagePlaceholder title="Accept invitation" params={{ token }} />;
+  return <PagePlaceholder title="Terima undangan" params={{ token }} />;
 }

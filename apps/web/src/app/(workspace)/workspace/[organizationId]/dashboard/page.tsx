@@ -6,6 +6,7 @@ import {
   ArrowUpRightIcon,
   BookCheckIcon,
   BookOpenIcon,
+  CalendarDaysIcon,
   ClipboardCheckIcon,
   FileTextIcon,
   LanguagesIcon,
@@ -58,6 +59,20 @@ const courseStatus = {
   ARCHIVED: { label: "Arsip", chip: "border-border text-muted-foreground" },
 } as const;
 
+const cohortStatus = {
+  DRAFT: { label: "Draf", chip: "border-border text-muted-foreground" },
+  OPEN: { label: "Dibuka", chip: "border-foreground/70 text-foreground" },
+  IN_PROGRESS: {
+    label: "Berjalan",
+    chip: "border-foreground/70 text-foreground",
+  },
+  COMPLETED: { label: "Selesai", chip: "border-border text-muted-foreground" },
+  CANCELLED: {
+    label: "Dibatalkan",
+    chip: "border-border text-muted-foreground",
+  },
+} as const;
+
 function StatCard({
   icon: Icon,
   label,
@@ -92,8 +107,14 @@ function StatCard({
   );
 }
 
-function StatusChip({ status }: { status: keyof typeof courseStatus }) {
-  const meta = courseStatus[status];
+function StatusChip({
+  status,
+}: {
+  status: keyof typeof courseStatus | keyof typeof cohortStatus;
+}) {
+  const meta =
+    courseStatus[status as keyof typeof courseStatus] ??
+    cohortStatus[status as keyof typeof cohortStatus];
   return (
     <span
       className={cn(
@@ -199,6 +220,7 @@ export default async function DashboardPage({
 
   const [
     courses,
+    cohorts,
     members,
     assessments,
     materials,
@@ -206,6 +228,7 @@ export default async function DashboardPage({
     reviewQueue,
   ] = await Promise.all([
     api.course.list({ organizationId }),
+    api.cohort.listByOrganization({ organizationId }),
     api.organization.listMembers({ organizationId }),
     api.assessment.list({ organizationId }),
     api.content.listMaterials({ organizationId }),
@@ -216,6 +239,10 @@ export default async function DashboardPage({
   const root = `/workspace/${organizationSlug}`;
   const publishedCount = courses.filter(
     (course) => course.status === "PUBLISHED",
+  ).length;
+  const activeCohortCount = cohorts.filter(
+    (cohort) =>
+      cohort.status === "OPEN" || cohort.status === "IN_PROGRESS",
   ).length;
 
   return (
@@ -241,8 +268,8 @@ export default async function DashboardPage({
             {organization.name}
           </h1>
           <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-            Gambaran umum course, anggota, perpustakaan konten, dan antrean
-            review untuk organisasi Anda.
+            Gambaran umum course, batch pembelajaran, anggota, perpustakaan
+            konten, dan antrean review untuk organisasi Anda.
           </p>
         </div>
         <span className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-sans text-xs font-medium">
@@ -253,7 +280,7 @@ export default async function DashboardPage({
 
       <section
         aria-label="Ringkasan organisasi"
-        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
       >
         <StatCard
           icon={BookOpenIcon}
@@ -265,6 +292,18 @@ export default async function DashboardPage({
           icon={BookCheckIcon}
           label="Diterbitkan"
           value={publishedCount}
+          href={`${root}/courses`}
+        />
+        <StatCard
+          icon={CalendarDaysIcon}
+          label="Total batch"
+          value={cohorts.length}
+          href={`${root}/courses`}
+        />
+        <StatCard
+          icon={UsersIcon}
+          label="Batch berjalan"
+          value={activeCohortCount}
           href={`${root}/courses`}
         />
         <StatCard
@@ -282,69 +321,127 @@ export default async function DashboardPage({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <Card className="rounded-lg lg:col-span-2">
-          <CardHeader>
-            <div>
-              <CardTitle className={cn(headline, "text-lg font-medium")}>
-                Course terbaru
-              </CardTitle>
-              <CardDescription>Course yang paling baru dibuat.</CardDescription>
-            </div>
-            <CardAction>
-              <TextAction href={`${root}/courses`}>Semua course</TextAction>
-            </CardAction>
-          </CardHeader>
-          {courses.length === 0 ? (
-            <CardContent>
-              <EmptyState
-                icon={BookOpenIcon}
-                title="Belum ada course"
-                description="Course pertama belum dibuat untuk organisasi ini. Mulai dengan menyusun materi dan kurikulumnya."
-                action={
-                  <Link
-                    href={`${root}/courses/new`}
-                    className={cn(
-                      buttonVariants({ variant: "outline", size: "sm" }),
-                      "mt-4",
-                    )}
-                  >
-                    <PlusIcon data-icon="inline-start" />
-                    Buat course
-                  </Link>
-                }
-              />
-            </CardContent>
-          ) : (
-            <ul className="divide-border divide-y">
-              {courses.slice(0, 5).map((course) => (
-                <li key={course.id}>
-                  <Link
-                    href={`${root}/courses/${course.id}`}
-                    className="group/row hover:bg-muted/50 flex items-center gap-4 px-4 py-3 transition-colors"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="text-foreground block truncate text-sm font-medium">
-                        {course.title}
-                      </span>
-                      <span className="text-muted-foreground mt-0.5 block text-xs">
-                        {course._count.modules} modul · {course._count.cohorts}{" "}
-                        batch
-                      </span>
-                    </span>
-                    <time
-                      dateTime={course.createdAt.toISOString()}
-                      className="text-muted-foreground hidden shrink-0 font-sans text-xs sm:block"
+        <div className="grid gap-4 lg:col-span-2">
+          <Card className="rounded-lg">
+            <CardHeader>
+              <div>
+                <CardTitle className={cn(headline, "text-lg font-medium")}>
+                  Course terbaru
+                </CardTitle>
+                <CardDescription>Course yang paling baru dibuat.</CardDescription>
+              </div>
+              <CardAction>
+                <TextAction href={`${root}/courses`}>Semua course</TextAction>
+              </CardAction>
+            </CardHeader>
+            {courses.length === 0 ? (
+              <CardContent>
+                <EmptyState
+                  icon={BookOpenIcon}
+                  title="Belum ada course"
+                  description="Course pertama belum dibuat untuk organisasi ini. Mulai dengan menyusun materi dan kurikulumnya."
+                  action={
+                    <Link
+                      href={`${root}/courses/new`}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" }),
+                        "mt-4",
+                      )}
                     >
-                      {dateFormatter.format(course.createdAt)}
-                    </time>
-                    <StatusChip status={course.status} />
-                    <ArrowUpRightIcon className="text-muted-foreground group-hover/row:text-foreground size-4 shrink-0 transition-all group-hover/row:translate-x-0.5 group-hover/row:-translate-y-0.5" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+                      <PlusIcon data-icon="inline-start" />
+                      Buat course
+                    </Link>
+                  }
+                />
+              </CardContent>
+            ) : (
+              <ul className="divide-border divide-y">
+                {courses.slice(0, 5).map((course) => (
+                  <li key={course.id}>
+                    <Link
+                      href={`${root}/courses/${course.id}`}
+                      className="group/row hover:bg-muted/50 flex items-center gap-4 px-4 py-3 transition-colors"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="text-foreground block truncate text-sm font-medium">
+                          {course.title}
+                        </span>
+                        <span className="text-muted-foreground mt-0.5 block text-xs">
+                          {course._count.modules} modul · {course._count.cohorts}{" "}
+                          batch
+                        </span>
+                      </span>
+                      <time
+                        dateTime={course.createdAt.toISOString()}
+                        className="text-muted-foreground hidden shrink-0 font-sans text-xs sm:block"
+                      >
+                        {dateFormatter.format(course.createdAt)}
+                      </time>
+                      <StatusChip status={course.status} />
+                      <ArrowUpRightIcon className="text-muted-foreground group-hover/row:text-foreground size-4 shrink-0 transition-all group-hover/row:translate-x-0.5 group-hover/row:-translate-y-0.5" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="rounded-lg">
+            <CardHeader>
+              <div>
+                <CardTitle className={cn(headline, "text-lg font-medium")}>
+                  Batch terbaru
+                </CardTitle>
+                <CardDescription>
+                  Batch pembelajaran yang paling baru dibuat.
+                </CardDescription>
+              </div>
+              <CardAction>
+                <TextAction href={`${root}/courses`}>
+                  Semua course
+                </TextAction>
+              </CardAction>
+            </CardHeader>
+            {cohorts.length === 0 ? (
+              <CardContent>
+                <EmptyState
+                  icon={CalendarDaysIcon}
+                  title="Belum ada batch"
+                  description="Batch pembelajaran membantu mengatur periode belajar, pengajar, meeting, dan kelompok peserta didik."
+                />
+              </CardContent>
+            ) : (
+              <ul className="divide-border divide-y">
+                {cohorts.slice(0, 5).map((cohort) => (
+                  <li key={cohort.id}>
+                    <Link
+                      href={`${root}/courses/${cohort.courseId}/cohorts/${cohort.id}`}
+                      className="group/row hover:bg-muted/50 flex items-center gap-4 px-4 py-3 transition-colors"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="text-foreground block truncate text-sm font-medium">
+                          {cohort.name}
+                        </span>
+                        <span className="text-muted-foreground mt-0.5 block truncate text-xs">
+                          {cohort.course.title} · {cohort._count.enrollments}{" "}
+                          learner
+                        </span>
+                      </span>
+                      <time
+                        dateTime={cohort.createdAt.toISOString()}
+                        className="text-muted-foreground hidden shrink-0 font-sans text-xs sm:block"
+                      >
+                        {dateFormatter.format(cohort.createdAt)}
+                      </time>
+                      <StatusChip status={cohort.status} />
+                      <ArrowUpRightIcon className="text-muted-foreground group-hover/row:text-foreground size-4 shrink-0 transition-all group-hover/row:translate-x-0.5 group-hover/row:-translate-y-0.5" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
 
         <div className="grid gap-4">
           <Card className="rounded-lg">

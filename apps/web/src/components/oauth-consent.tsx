@@ -29,7 +29,7 @@ export function OAuthConsent({
       claims,
     });
     if (result.error) {
-      setError(result.error.message ?? "Authorization could not be completed.");
+      setError(result.error.message ?? "Otorisasi tidak dapat diselesaikan.");
       setPending(false);
     }
   };
@@ -38,24 +38,24 @@ export function OAuthConsent({
     <main className="flex min-h-screen items-center justify-center bg-[#f2efe6] px-6 py-12 text-[#163f35]">
       <section className="w-full max-w-lg rounded-[2rem] border border-emerald-950/10 bg-[#fffaf0] p-8 shadow-[0_24px_80px_rgba(50,65,58,0.14)]">
         <p className="text-xs font-bold tracking-[0.24em] text-[#9b5b3d] uppercase">
-          Hakgyo MCP access
+          Akses MCP Hakgyo
         </p>
         <h1 className="mt-4 text-3xl font-black tracking-tight">
-          Connect {clientName}
+          Hubungkan {clientName}
         </h1>
         <p className="mt-3 text-sm leading-6 text-[#52665f]">
-          This AI client will use Hakgyo according to your current role. Every
-          course, cohort, and organization permission is checked again when a
-          tool runs.
+          Klien AI ini akan memakai Hakgyo sesuai role Anda saat ini. Setiap
+          izin course, batch pembelajaran, dan organisasi diperiksa kembali
+          setiap kali sebuah tool dijalankan.
         </p>
 
         <div className="mt-6 rounded-2xl border border-emerald-950/10 bg-white p-4">
           <p className="text-xs font-bold tracking-wide text-[#718079] uppercase">
-            Client
+            Klien
           </p>
           <p className="mt-1 text-sm font-bold break-all">{clientId}</p>
           <p className="mt-4 text-xs font-bold tracking-wide text-[#718079] uppercase">
-            Requested access
+            Akses yang diminta
           </p>
           <ul className="mt-2 space-y-2 text-sm">
             {scopes.map((scope) => (
@@ -65,7 +65,7 @@ export function OAuthConsent({
           {userInfoClaims.length > 0 && (
             <>
               <p className="mt-4 text-xs font-bold tracking-wide text-[#718079] uppercase">
-                Requested profile fields
+                Bidang profile yang diminta
               </p>
               <ul className="mt-2 space-y-2 text-sm">
                 {userInfoClaims.map((claim) => (
@@ -89,7 +89,7 @@ export function OAuthConsent({
             onClick={() => void submit(false)}
             type="button"
           >
-            Deny
+            Tolak
           </button>
           <button
             className="rounded-2xl bg-[#e76f51] px-5 py-3 font-black text-white transition hover:bg-[#d85f42] disabled:opacity-50"
@@ -97,7 +97,7 @@ export function OAuthConsent({
             onClick={() => void submit(true)}
             type="button"
           >
-            {pending ? "Please wait..." : "Allow"}
+            {pending ? "Mohon tunggu..." : "Izinkan"}
           </button>
         </div>
       </section>

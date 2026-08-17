@@ -48,7 +48,7 @@ function errorMessage(error: unknown) {
   ) {
     return error.message;
   }
-  return "Something went wrong. Please try again.";
+  return "Terjadi kesalahan. Silakan coba lagi.";
 }
 
 function examplesToText(examples: unknown) {
@@ -108,7 +108,7 @@ export function VocabularyEditor({
     return (
       <div className="text-muted-foreground flex min-h-96 items-center justify-center text-sm">
         <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-        Loading vocabulary set
+        Memuat set kosakata
       </div>
     );
   }
@@ -118,10 +118,10 @@ export function VocabularyEditor({
       <div className="flex min-h-96 flex-col items-center justify-center gap-3 text-center">
         <p className="text-destructive text-sm">
           {vocabularySets.error?.message ??
-            "Vocabulary set could not be loaded."}
+            "Set kosakata gagal dimuat."}
         </p>
         <Button variant="outline" onClick={() => vocabularySets.refetch()}>
-          Try again
+          Coba lagi
         </Button>
       </div>
     );
@@ -152,7 +152,7 @@ export function VocabularyEditor({
             ...entry,
           });
           await refreshVocabulary();
-          toast.success("Vocabulary entry added.");
+          toast.success("Entri kosakata ditambahkan.");
           return true;
         } catch (error) {
           toast.error(errorMessage(error));
@@ -164,7 +164,7 @@ export function VocabularyEditor({
         try {
           await deleteSet.mutateAsync({ organizationId, vocabularySetId });
           await refreshVocabulary();
-          toast.success("Vocabulary set deleted.");
+          toast.success("Set kosakata dihapus.");
           router.replace(`/workspace/${organizationSlug}/library/vocabulary`);
         } catch (error) {
           toast.error(errorMessage(error));
@@ -174,7 +174,7 @@ export function VocabularyEditor({
         try {
           await deleteEntry.mutateAsync({ organizationId, entryId });
           await refreshVocabulary();
-          toast.success("Vocabulary entry deleted.");
+          toast.success("Entri kosakata dihapus.");
         } catch (error) {
           toast.error(errorMessage(error));
         }
@@ -218,7 +218,7 @@ export function VocabularyEditor({
               description,
             });
             await refreshVocabulary();
-            toast.success("Vocabulary set saved.");
+            toast.success("Set kosakata disimpan.");
             return;
           }
 
@@ -228,7 +228,7 @@ export function VocabularyEditor({
             description,
           });
           await refreshVocabulary();
-          toast.success("Vocabulary set created. Add your first term.");
+          toast.success("Set kosakata dibuat. Tambahkan istilah pertama Anda.");
           router.replace(
             `/workspace/${organizationSlug}/library/vocabulary/${created.id}`,
           );
@@ -240,7 +240,7 @@ export function VocabularyEditor({
         try {
           await updateEntry.mutateAsync({ organizationId, entryId, ...entry });
           await refreshVocabulary();
-          toast.success("Vocabulary entry saved.");
+          toast.success("Entri kosakata disimpan.");
           return true;
         } catch (error) {
           toast.error(errorMessage(error));
@@ -298,7 +298,7 @@ function VocabularySetForm({
     event.preventDefault();
     const normalizedTitle = title.trim();
     if (!normalizedTitle) {
-      toast.error("Vocabulary set title is required.");
+      toast.error("Judul set kosakata wajib diisi.");
       return;
     }
     await onSave({
@@ -313,7 +313,7 @@ function VocabularySetForm({
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex min-w-0 items-center gap-3">
             <Link
-              aria-label="Back to vocabulary"
+              aria-label="Kembali ke kosakata"
               href={`/workspace/${organizationSlug}/library/vocabulary`}
               className={buttonVariants({ variant: "outline", size: "icon" })}
             >
@@ -322,10 +322,10 @@ function VocabularySetForm({
             <div className="min-w-0">
               <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
                 <LanguagesIcon className="size-3.5" />
-                {vocabularySet ? "Edit vocabulary set" : "New vocabulary set"}
+                {vocabularySet ? "Edit set kosakata" : "Set kosakata baru"}
               </div>
               <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
-                {title.trim() || "Untitled vocabulary set"}
+                {title.trim() || "Set kosakata tanpa judul"}
               </h1>
             </div>
           </div>
@@ -338,20 +338,21 @@ function VocabularySetForm({
                   }
                 >
                   <Trash2Icon />
-                  <span className="sr-only">Delete vocabulary set</span>
+                  <span className="sr-only">Hapus set kosakata</span>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      Delete this vocabulary set?
+                      Hapus set kosakata ini?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This deletes all entries and cannot be undone. Deletion
-                      can fail while the set is used by a course or material.
+                      Ini menghapus semua entri dan tidak dapat dibatalkan.
+                      Penghapusan dapat gagal selama set dipakai oleh course
+                      atau materi.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>Batal</AlertDialogCancel>
                     <AlertDialogAction
                       disabled={isDeleting}
                       onClick={onDelete}
@@ -360,7 +361,7 @@ function VocabularySetForm({
                       {isDeleting && (
                         <LoaderCircleIcon className="animate-spin" />
                       )}
-                      Delete
+                      Hapus
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -375,7 +376,7 @@ function VocabularySetForm({
               ) : (
                 <SaveIcon data-icon="inline-start" />
               )}
-              {vocabularySet ? "Save details" : "Create set"}
+              {vocabularySet ? "Simpan detail" : "Buat set"}
             </Button>
           </div>
         </div>
@@ -383,23 +384,23 @@ function VocabularySetForm({
         <Card>
           <CardContent className="grid gap-5 md:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="vocabulary-title">Title</Label>
+              <Label htmlFor="vocabulary-title">Judul</Label>
               <Input
                 autoFocus={!vocabularySet}
                 id="vocabulary-title"
                 maxLength={200}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="e.g. Travel essentials"
+                placeholder="Mis. Perjalanan penting"
                 value={title}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="vocabulary-description">Description</Label>
+              <Label htmlFor="vocabulary-description">Deskripsi</Label>
               <Textarea
                 id="vocabulary-description"
                 maxLength={10000}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="Where and how will learners use these words?"
+                placeholder="Di mana dan bagaimana learner akan memakai kata-kata ini?"
                 rows={3}
                 value={description}
               />
@@ -412,13 +413,13 @@ function VocabularySetForm({
         <section className="grid gap-4">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h2 className="font-heading text-xl font-semibold">Entries</h2>
+              <h2 className="font-heading text-xl font-semibold">Entri</h2>
               <p className="text-muted-foreground text-sm">
-                Terms are presented to learners in this order.
+                Istilah ditampilkan kepada learner dalam urutan ini.
               </p>
             </div>
             <Badge variant="secondary">
-              {vocabularySet.entries.length} entries
+              {vocabularySet.entries.length} entri
             </Badge>
           </div>
 
@@ -444,13 +445,13 @@ function VocabularySetForm({
             </div>
           ) : (
             <div className="text-muted-foreground bg-muted/20 rounded-xl border border-dashed px-6 py-12 text-center text-sm">
-              Add the first term to start building this set.
+              Tambahkan istilah pertama untuk mulai membangun set ini.
             </div>
           )}
         </section>
       ) : (
         <div className="text-muted-foreground bg-muted/20 rounded-xl border border-dashed px-6 py-10 text-center text-sm">
-          Create the vocabulary set before adding entries.
+          Buat set kosakata terlebih dahulu sebelum menambahkan entri.
         </div>
       )}
     </div>
@@ -471,7 +472,7 @@ function NewEntryForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!term.trim() || !definition.trim()) {
-      toast.error("Term and definition are required.");
+      toast.error("Istilah dan definisi wajib diisi.");
       return;
     }
     const created = await onCreate({
@@ -491,37 +492,37 @@ function NewEntryForm({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <PlusIcon className="size-4" />
-          Add entry
+          Tambah entri
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4 lg:grid-cols-2" onSubmit={handleSubmit}>
           <div className="grid gap-2">
-            <Label htmlFor="new-vocabulary-term">Term</Label>
+            <Label htmlFor="new-vocabulary-term">Istilah</Label>
             <Input
               id="new-vocabulary-term"
               maxLength={500}
               onChange={(event) => setTerm(event.target.value)}
-              placeholder="Term or phrase"
+              placeholder="Istilah atau frasa"
               value={term}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="new-vocabulary-definition">Definition</Label>
+            <Label htmlFor="new-vocabulary-definition">Definisi</Label>
             <Input
               id="new-vocabulary-definition"
               maxLength={5000}
               onChange={(event) => setDefinition(event.target.value)}
-              placeholder="Clear learner-friendly definition"
+              placeholder="Definisi yang mudah dipahami learner"
               value={definition}
             />
           </div>
           <div className="grid gap-2 lg:col-span-2">
-            <Label htmlFor="new-vocabulary-examples">Examples</Label>
+            <Label htmlFor="new-vocabulary-examples">Contoh</Label>
             <Textarea
               id="new-vocabulary-examples"
               onChange={(event) => setExamples(event.target.value)}
-              placeholder="One usage example per line"
+              placeholder="Satu contoh pemakaian per baris"
               rows={2}
               value={examples}
             />
@@ -536,7 +537,7 @@ function NewEntryForm({
               ) : (
                 <PlusIcon data-icon="inline-start" />
               )}
-              Add entry
+              Tambah entri
             </Button>
           </div>
         </form>
@@ -576,7 +577,7 @@ function VocabularyEntryCard({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!term.trim() || !definition.trim()) {
-      toast.error("Term and definition are required.");
+      toast.error("Istilah dan definisi wajib diisi.");
       return;
     }
     const saved = await onUpdate({
@@ -600,7 +601,7 @@ function VocabularyEntryCard({
         <CardContent>
           <form className="grid gap-4 lg:grid-cols-2" onSubmit={handleSubmit}>
             <div className="grid gap-2">
-              <Label htmlFor={`term-${entry.id}`}>Term</Label>
+              <Label htmlFor={`term-${entry.id}`}>Istilah</Label>
               <Input
                 id={`term-${entry.id}`}
                 maxLength={500}
@@ -609,7 +610,7 @@ function VocabularyEntryCard({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor={`definition-${entry.id}`}>Definition</Label>
+              <Label htmlFor={`definition-${entry.id}`}>Definisi</Label>
               <Input
                 id={`definition-${entry.id}`}
                 maxLength={5000}
@@ -618,7 +619,7 @@ function VocabularyEntryCard({
               />
             </div>
             <div className="grid gap-2 lg:col-span-2">
-              <Label htmlFor={`examples-${entry.id}`}>Examples</Label>
+              <Label htmlFor={`examples-${entry.id}`}>Contoh</Label>
               <Textarea
                 id={`examples-${entry.id}`}
                 onChange={(event) => setExamples(event.target.value)}
@@ -629,11 +630,11 @@ function VocabularyEntryCard({
             <div className="flex justify-end gap-2 lg:col-span-2">
               <Button type="button" variant="outline" onClick={cancelEditing}>
                 <XIcon data-icon="inline-start" />
-                Cancel
+                Batal
               </Button>
               <Button disabled={busy} type="submit">
                 {busy && <LoaderCircleIcon className="animate-spin" />}
-                Save entry
+                Simpan entri
               </Button>
             </div>
           </form>
@@ -667,7 +668,7 @@ function VocabularyEntryCard({
         </div>
         <div className="flex shrink-0 flex-col gap-1 sm:flex-row">
           <Button
-            aria-label="Move entry up"
+            aria-label="Pindahkan entri ke atas"
             disabled={busy || !canMoveUp}
             onClick={onMoveUp}
             size="icon-sm"
@@ -677,7 +678,7 @@ function VocabularyEntryCard({
             <ArrowUpIcon />
           </Button>
           <Button
-            aria-label="Move entry down"
+            aria-label="Pindahkan entri ke bawah"
             disabled={busy || !canMoveDown}
             onClick={onMoveDown}
             size="icon-sm"
@@ -687,7 +688,7 @@ function VocabularyEntryCard({
             <ArrowDownIcon />
           </Button>
           <Button
-            aria-label="Edit entry"
+            aria-label="Edit entri"
             disabled={busy}
             onClick={() => setEditing(true)}
             size="icon-sm"
@@ -701,7 +702,7 @@ function VocabularyEntryCard({
               <AlertDialogTrigger
                 render={
                   <Button
-                    aria-label="Delete entry"
+                    aria-label="Hapus entri"
                     disabled={busy}
                     size="icon-sm"
                     type="button"
@@ -714,16 +715,16 @@ function VocabularyEntryCard({
               <AlertDialogContent size="sm">
                 <AlertDialogHeader>
                   <AlertDialogTitle>
-                    Delete &ldquo;{entry.term}&rdquo;?
+                    Hapus &ldquo;{entry.term}&rdquo;?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    This vocabulary entry will be permanently removed.
+                    Entri kosakata ini akan dihapus permanen.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
                   <AlertDialogAction onClick={onDelete} variant="destructive">
-                    Delete
+                    Hapus
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

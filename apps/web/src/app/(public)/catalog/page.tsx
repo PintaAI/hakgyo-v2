@@ -5,8 +5,8 @@ import Link from "next/link";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
-  title: "Course catalog | Hakgyo",
-  description: "Explore every published course available on Hakgyo.",
+  title: "Katalog course | Hakgyo",
+  description: "Jelajahi semua course terbit yang tersedia di Hakgyo.",
 };
 
 const pageSize = 100;
@@ -27,7 +27,7 @@ async function getAllPublishedCourses() {
 }
 
 function formatPrice(price: number, currency: string) {
-  if (price === 0) return "Free";
+  if (price === 0) return "Gratis";
 
   try {
     return new Intl.NumberFormat("en", {
@@ -47,21 +47,21 @@ export default async function CatalogPage() {
     <section>
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Course catalog</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Katalog course</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Browse all published courses available on Hakgyo.
+            Jelajahi semua course terbit yang tersedia di Hakgyo.
           </p>
         </div>
         <p className="text-muted-foreground shrink-0 text-sm">
-          {courses.length} {courses.length === 1 ? "course" : "courses"}
+          {courses.length} {courses.length === 1 ? "course" : "course"}
         </p>
       </div>
 
       {courses.length === 0 ? (
         <div className="bg-card rounded-xl border p-10 text-center">
-          <h2 className="font-semibold">No courses available</h2>
+          <h2 className="font-semibold">Belum ada course tersedia</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Published courses will appear here.
+            Course yang diterbitkan akan muncul di sini.
           </p>
         </div>
       ) : (
@@ -83,7 +83,7 @@ export default async function CatalogPage() {
                   />
                 ) : (
                   <div className="text-muted-foreground absolute inset-0 grid place-items-center text-sm">
-                    No thumbnail
+                    Tanpa thumbnail
                   </div>
                 )}
               </div>
@@ -96,12 +96,12 @@ export default async function CatalogPage() {
                   {course.title}
                 </h2>
                 <p className="text-muted-foreground mt-2 line-clamp-2 min-h-10 text-sm">
-                  {course.description ?? "No description available."}
+                  {course.description ?? "Belum ada deskripsi."}
                 </p>
 
                 <dl className="text-muted-foreground mt-4 grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <dt>Price</dt>
+                    <dt>Harga</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
                       {formatPrice(course.price, course.currency)}
                     </dd>
@@ -110,18 +110,18 @@ export default async function CatalogPage() {
                     <dt>Enrollment</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
                       {course.enrollmentMode === "OPEN"
-                        ? "Open"
+                        ? "Terbuka"
                         : "Invite only"}
                     </dd>
                   </div>
                   <div>
-                    <dt>Modules</dt>
+                    <dt>Modul</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
                       {course._count.modules}
                     </dd>
                   </div>
                   <div>
-                    <dt>Cohorts</dt>
+                    <dt>Batch</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
                       {course._count.cohorts}
                     </dd>
@@ -132,7 +132,7 @@ export default async function CatalogPage() {
                   href={`/catalog/${course.id}`}
                   className="mt-5 inline-flex text-sm font-medium underline-offset-4 hover:underline"
                 >
-                  View course
+                  Lihat course
                 </Link>
               </div>
             </article>

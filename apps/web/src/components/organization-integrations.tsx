@@ -41,7 +41,7 @@ function errorMessage(error: unknown) {
   ) {
     return error.message;
   }
-  return "Something went wrong. Please try again.";
+  return "Terjadi kesalahan. Silakan coba lagi.";
 }
 
 export function OrganizationIntegrations({
@@ -63,7 +63,7 @@ export function OrganizationIntegrations({
         organizationId,
       });
       setDisconnectOpen(false);
-      toast.success("Zoom disconnected.");
+      toast.success("Zoom dicabut tautannya.");
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -77,13 +77,14 @@ export function OrganizationIntegrations({
       <div className="space-y-1">
         <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
           <PlugZapIcon className="size-4" />
-          Connected services
+          Layanan terhubung
         </div>
         <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          Integrations
+          Integrasi
         </h1>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          Connect external services used to run live learning experiences.
+          Hubungkan layanan eksternal yang dipakai untuk menjalankan pengalaman
+          belajar langsung.
         </p>
       </div>
 
@@ -100,10 +101,10 @@ export function OrganizationIntegrations({
               </div>
             </div>
             {connection.isPending ? (
-              <Badge variant="outline">Checking</Badge>
+              <Badge variant="outline">Memeriksa</Badge>
             ) : (
               <Badge variant={isConnected ? "default" : "secondary"}>
-                {isConnected ? "Connected" : "Not connected"}
+                {isConnected ? "Terhubung" : "Belum terhubung"}
               </Badge>
             )}
           </div>
@@ -112,7 +113,7 @@ export function OrganizationIntegrations({
           {connection.isPending ? (
             <div className="text-muted-foreground flex min-h-32 items-center justify-center text-sm">
               <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-              Checking connection
+              Memeriksa koneksi
             </div>
           ) : connection.error ? (
             <div className="flex min-h-32 flex-col items-center justify-center gap-3 text-center">
@@ -120,7 +121,7 @@ export function OrganizationIntegrations({
                 {connection.error.message}
               </p>
               <Button variant="outline" onClick={() => connection.refetch()}>
-                Try again
+                Coba lagi
               </Button>
             </div>
           ) : zoom ? (
@@ -128,7 +129,7 @@ export function OrganizationIntegrations({
               <div className="grid gap-4 text-sm sm:grid-cols-2">
                 <div>
                   <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                    Connected by
+                    Dihubungkan oleh
                   </p>
                   <p className="mt-1 font-medium">
                     {zoom.connectedBy.user.name}
@@ -136,13 +137,13 @@ export function OrganizationIntegrations({
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                    Zoom user ID
+                    ID pengguna Zoom
                   </p>
                   <p className="mt-1 font-mono text-xs">{zoom.zoomUserId}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                    Token expires
+                    Token berakhir
                   </p>
                   <p className="mt-1">
                     {zoom.accessTokenExpiresAt.toLocaleString()}
@@ -162,7 +163,7 @@ export function OrganizationIntegrations({
                     className={buttonVariants()}
                   >
                     <ExternalLinkIcon />
-                    Reconnect Zoom
+                    Hubungkan ulang Zoom
                   </a>
                 ) : (
                   <Button
@@ -170,7 +171,7 @@ export function OrganizationIntegrations({
                     onClick={() => setDisconnectOpen(true)}
                   >
                     <UnplugIcon />
-                    Disconnect
+                    Putuskan koneksi
                   </Button>
                 )}
               </div>
@@ -178,11 +179,11 @@ export function OrganizationIntegrations({
           ) : (
             <div className="flex min-h-36 flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
               <div>
-                <p className="font-medium">Create meetings from Hakgyo</p>
+                <p className="font-medium">Buat meeting dari Hakgyo</p>
                 <p className="text-muted-foreground mt-1 max-w-lg text-sm">
-                  Authorize your Zoom account to create, update, and cancel
-                  meeting batch pembelajaran tanpa membagikan kredensial kepada
-                  anggota.
+                  Otorisasi akun Zoom Anda untuk membuat, memperbarui, dan
+                  membatalkan meeting batch pembelajaran tanpa membagikan
+                  kredensial kepada anggota.
                 </p>
               </div>
               <a
@@ -190,7 +191,7 @@ export function OrganizationIntegrations({
                 className={buttonVariants()}
               >
                 <ExternalLinkIcon />
-                Connect Zoom
+                Hubungkan Zoom
               </a>
             </div>
           )}
@@ -203,15 +204,15 @@ export function OrganizationIntegrations({
             <AlertDialogMedia>
               <UnplugIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Disconnect Zoom?</AlertDialogTitle>
+            <AlertDialogTitle>Putuskan koneksi Zoom?</AlertDialogTitle>
             <AlertDialogDescription>
-              Hakgyo will revoke the stored Zoom connection. Meeting batch
-              pembelajaran baru cannot be created until Zoom is connected again.
+              Hakgyo akan mencabut koneksi Zoom yang tersimpan. Meeting batch
+              pembelajaran baru tidak dapat dibuat sampai Zoom dihubungkan lagi.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={disconnect.isPending}>
-              Cancel
+              Batal
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
@@ -223,7 +224,7 @@ export function OrganizationIntegrations({
               ) : (
                 <UnplugIcon />
               )}
-              Disconnect
+              Putuskan koneksi
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

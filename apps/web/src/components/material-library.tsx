@@ -41,14 +41,14 @@ export function MaterialLibrary({
         <div className="space-y-1">
           <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
             <LibraryIcon className="size-4" />
-            Content library
+            Perpustakaan konten
           </div>
           <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            Materials
+            Materi
           </h1>
           <p className="text-muted-foreground max-w-2xl text-sm">
-            Build reusable lessons in BlockNote, then add them to any course in
-            this workspace.
+            Susun pelajaran yang dapat dipakai ulang di BlockNote, lalu tambahkan
+            ke course mana pun di workspace ini.
           </p>
         </div>
         <Link
@@ -56,17 +56,17 @@ export function MaterialLibrary({
           className={buttonVariants()}
         >
           <PlusIcon data-icon="inline-start" />
-          New material
+          Materi baru
         </Link>
       </div>
 
       <div className="relative max-w-md">
         <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
         <Input
-          aria-label="Search materials"
+          aria-label="Cari materi"
           className="pl-8"
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search materials"
+          placeholder="Cari materi"
           value={search}
         />
       </div>
@@ -74,13 +74,13 @@ export function MaterialLibrary({
       {materials.isPending ? (
         <div className="text-muted-foreground flex min-h-64 items-center justify-center text-sm">
           <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-          Loading materials
+          Memuat materi
         </div>
       ) : materials.error ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
           <p className="text-destructive text-sm">{materials.error.message}</p>
           <Button variant="outline" onClick={() => materials.refetch()}>
-            Try again
+            Coba lagi
           </Button>
         </div>
       ) : visibleMaterials.length ? (
@@ -101,7 +101,7 @@ export function MaterialLibrary({
                       {Array.isArray(material.content)
                         ? material.content.length
                         : 0}{" "}
-                      blocks
+                      blok
                     </Badge>
                   </div>
                   <div className="min-w-0 space-y-1">
@@ -109,13 +109,13 @@ export function MaterialLibrary({
                       {material.title}
                     </h2>
                     <p className="text-muted-foreground line-clamp-2 min-h-10 text-sm">
-                      {material.description ?? "No description yet."}
+                      {material.description ?? "Belum ada deskripsi."}
                     </p>
                   </div>
                   <div className="text-muted-foreground mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-4 text-xs">
                     <span className="flex items-center gap-1.5">
                       <WorkflowIcon className="size-3.5" />
-                      {material.completionRequirements.length} requirements
+                      {material.completionRequirements.length} requirement
                     </span>
                     <span className="flex items-center gap-1.5">
                       <PaperclipIcon className="size-3.5" />
@@ -134,13 +134,13 @@ export function MaterialLibrary({
           </div>
           <h2 className="font-heading font-semibold">
             {deferredSearch
-              ? "No matching materials"
-              : "Create your first material"}
+              ? "Materi tidak ditemukan"
+              : "Buat materi pertama Anda"}
           </h2>
           <p className="text-muted-foreground mt-1 max-w-sm text-sm">
             {deferredSearch
-              ? "Try a different title or description."
-              : "Write a reusable lesson with rich text, media, lists, and structured blocks."}
+              ? "Coba judul atau deskripsi yang berbeda."
+              : "Tulis pelajaran yang dapat dipakai ulang dengan teks kaya, media, daftar, dan blok terstruktur."}
           </p>
           {!deferredSearch && (
             <Link
@@ -148,7 +148,7 @@ export function MaterialLibrary({
               className={buttonVariants({ className: "mt-4" })}
             >
               <PlusIcon data-icon="inline-start" />
-              New material
+              Materi baru
             </Link>
           )}
         </div>

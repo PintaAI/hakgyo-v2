@@ -123,7 +123,7 @@ function CollapsibleNavigationItem({
         render={<SidebarMenuAction className="aria-expanded:rotate-90" />}
       >
         <ChevronRightIcon />
-        <span className="sr-only">Toggle {item.title}</span>
+        <span className="sr-only">Buka/tutup {item.title}</span>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <SidebarMenuSub>
@@ -193,23 +193,23 @@ export function AppSidebar({
         ]
       : []),
     {
-      title: "Content library",
+      title: "Perpustakaan konten",
       href: `${workspaceRoot}/library/materials`,
       match: `${workspaceRoot}/library`,
       icon: LibraryIcon,
       items: [
         {
-          title: "Materials",
+          title: "Materi",
           href: `${workspaceRoot}/library/materials`,
           icon: FileTextIcon,
         },
         {
-          title: "Vocabulary",
+          title: "Kosakata",
           href: `${workspaceRoot}/library/vocabulary`,
           icon: LanguagesIcon,
         },
         {
-          title: "Assessments",
+          title: "Penilaian",
           href: `${workspaceRoot}/library/assessments`,
           icon: ClipboardCheckIcon,
         },
@@ -218,7 +218,7 @@ export function AppSidebar({
   ];
   const organizationNavigation: NavigationItem[] = [
     {
-      title: "Members",
+      title: "Anggota",
       href: `${workspaceRoot}/members`,
       icon: UsersIcon,
     },
@@ -248,7 +248,7 @@ export function AppSidebar({
                 {organization.logoUrl ? (
                   <AvatarImage
                     src={organization.logoUrl}
-                    alt={`${organization.name} logo`}
+                    alt={`Logo ${organization.name}`}
                     className="rounded-lg"
                   />
                 ) : null}
@@ -261,7 +261,7 @@ export function AppSidebar({
                   {organization.name}
                 </span>
                 <span className="text-sidebar-foreground/65 truncate text-xs">
-                  Hakgyo workspace
+                  Workspace Hakgyo
                 </span>
               </span>
             </SidebarMenuButton>
@@ -311,7 +311,7 @@ export function AppSidebar({
         </SidebarGroup>
         {isManager ? (
           <SidebarGroup>
-            <SidebarGroupLabel>Organization</SidebarGroupLabel>
+            <SidebarGroupLabel>Organisasi</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {organizationNavigation.map((item) => {
@@ -343,23 +343,23 @@ export function AppSidebar({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                tooltip="My learning"
+                tooltip="Pembelajaran saya"
                 render={
                   <Link href="/learn/courses" onClick={closeMobileSidebar} />
                 }
               >
                 <GraduationCapIcon />
-                <span>My learning</span>
+                <span>Pembelajaran saya</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 isActive={pathname === "/docs" || pathname.startsWith("/docs/")}
-                tooltip="User documentation"
+                tooltip="Dokumentasi pengguna"
                 render={<Link href="/docs" onClick={closeMobileSidebar} />}
               >
                 <BookMarkedIcon />
-                <span>User documentation</span>
+                <span>Dokumentasi pengguna</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -390,16 +390,16 @@ export function DocsAppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              tooltip="Hakgyo docs"
+              tooltip="Dokumen Hakgyo"
               render={<Link href="/" onClick={closeMobileSidebar} />}
             >
               <span className="bg-sidebar-primary text-sidebar-primary-foreground flex size-8 items-center justify-center rounded-lg">
                 <BookMarkedIcon className="size-4" />
               </span>
               <span className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate font-semibold">Hakgyo Docs</span>
+                <span className="truncate font-semibold">Dokumen Hakgyo</span>
                 <span className="text-sidebar-foreground/65 truncate text-xs">
-                  User guide
+                  Panduan pengguna
                 </span>
               </span>
             </SidebarMenuButton>
@@ -408,7 +408,7 @@ export function DocsAppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Key concepts</SidebarGroupLabel>
+          <SidebarGroupLabel>Konsep utama</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation.map((item) => {
@@ -443,13 +443,13 @@ export function DocsAppSidebar({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                tooltip="My learning"
+                tooltip="Pembelajaran saya"
                 render={
                   <Link href="/learn/courses" onClick={closeMobileSidebar} />
                 }
               >
                 <GraduationCapIcon />
-                <span>My learning</span>
+                <span>Pembelajaran saya</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

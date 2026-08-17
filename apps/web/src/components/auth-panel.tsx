@@ -42,7 +42,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
 
     setSubmitting(false);
     if (result.error) {
-      setError(result.error.message ?? "Authentication failed.");
+      setError(result.error.message ?? "Autentikasi gagal.");
       return;
     }
 
@@ -60,17 +60,17 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
     return (
       <section className="rounded-[2rem] bg-[#163f35] p-7 text-[#fffaf0] shadow-[0_24px_80px_rgba(22,63,53,0.2)] sm:p-9">
         <p className="text-xs font-bold tracking-[0.24em] text-[#e9c46a] uppercase">
-          Session connected
+          Sesi terhubung
         </p>
         <h2 className="mt-5 text-3xl font-black tracking-tight">
-          Welcome, {session.user.name}.
+          Selamat datang, {session.user.name}.
         </h2>
         <div className="mt-8 rounded-2xl bg-[#fffaf0] p-5 text-[#163f35]">
           <p className="text-xs font-bold tracking-[0.18em] text-[#9b5b3d] uppercase">
-            Protected tRPC response
+            Respons tRPC terproteksi
           </p>
           {account.isPending ? (
-            <p className="mt-4 text-sm text-[#52665f]">Checking the API...</p>
+            <p className="mt-4 text-sm text-[#52665f]">Memeriksa API...</p>
           ) : account.error ? (
             <p className="mt-4 text-sm text-red-700">{account.error.message}</p>
           ) : (
@@ -90,7 +90,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
           }}
           type="button"
         >
-          Sign out
+          Keluar
         </button>
       </section>
     );
@@ -113,7 +113,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
             }}
             type="button"
           >
-            {value === "sign-in" ? "Sign in" : "Create account"}
+            {value === "sign-in" ? "Masuk" : "Buat akun"}
           </button>
         ))}
       </div>
@@ -124,7 +124,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
             autoComplete="name"
             className="w-full rounded-2xl border border-emerald-950/15 bg-white px-4 py-3.5 transition outline-none focus:border-[#163f35] focus:ring-2 focus:ring-[#163f35]/10"
             onChange={(event) => setName(event.target.value)}
-            placeholder="Full name"
+            placeholder="Nama lengkap"
             required
             value={name}
           />
@@ -133,7 +133,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
           autoComplete="email"
           className="w-full rounded-2xl border border-emerald-950/15 bg-white px-4 py-3.5 transition outline-none focus:border-[#163f35] focus:ring-2 focus:ring-[#163f35]/10"
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="Email address"
+          placeholder="Alamat email"
           required
           type="email"
           value={email}
@@ -145,7 +145,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
           className="w-full rounded-2xl border border-emerald-950/15 bg-white px-4 py-3.5 transition outline-none focus:border-[#163f35] focus:ring-2 focus:ring-[#163f35]/10"
           minLength={8}
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Password"
+          placeholder="Kata sandi"
           required
           type="password"
           value={password}
@@ -163,16 +163,16 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
           type="submit"
         >
           {submitting
-            ? "Please wait..."
+            ? "Mohon tunggu..."
             : mode === "sign-in"
-              ? "Sign in with email"
-              : "Create account"}
+              ? "Masuk dengan email"
+              : "Buat akun"}
         </button>
       </form>
 
       <div className="my-5 flex items-center gap-3">
         <span className="h-px flex-1 bg-emerald-950/10" />
-        <span className="text-xs font-bold text-[#718079] uppercase">or</span>
+        <span className="text-xs font-bold text-[#718079] uppercase">atau</span>
         <span className="h-px flex-1 bg-emerald-950/10" />
       </div>
 
@@ -186,12 +186,12 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
             callbackURL: postSignInPath,
           });
           if (result.error) {
-            setError(result.error.message ?? "Google sign-in failed.");
+            setError(result.error.message ?? "Masuk dengan Google gagal.");
           }
         }}
         type="button"
       >
-        Continue with Google
+        Lanjut dengan Google
       </button>
     </section>
   );

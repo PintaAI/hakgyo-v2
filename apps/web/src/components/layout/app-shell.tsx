@@ -24,9 +24,9 @@ export function AppShell({
           <Link
             href="/"
             className="group flex items-center gap-2.5"
-            aria-label="Hakgyo home"
+            aria-label="Beranda Hakgyo"
           >
-            <span className="bg-primary text-primary-foreground grid size-8 place-items-center rounded-lg shadow-sm transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105">
+            <span className="bg-primary text-primary-foreground grid size-8 place-items-center rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-6">
               <GraduationCapIcon className="size-4.5" />
             </span>
             <span className="text-lg font-bold tracking-tight">Hakgyo</span>
@@ -44,7 +44,7 @@ export function AppShell({
             {nav?.length ? (
               <nav
                 className="flex items-center gap-6"
-                aria-label={`${title} navigation`}
+                aria-label={`Navigasi ${title}`}
               >
                 <NavLinks items={nav} variant="secondary" />
               </nav>

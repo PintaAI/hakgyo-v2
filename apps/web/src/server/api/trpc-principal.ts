@@ -4,7 +4,5 @@ export function hasAuthenticatedActor(input: {
   sessionUserId?: string;
 }) {
   if (!input.actorUserId) return false;
-  return (
-    input.actorKind === "mcp" || input.sessionUserId === input.actorUserId
-  );
+  return input.actorKind === "mcp" || input.sessionUserId === input.actorUserId;
 }

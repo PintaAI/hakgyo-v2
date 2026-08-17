@@ -1,6 +1,8 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 
+import { hakgyoBlockCatalog } from "~/lib/blocknote/block-catalog";
+
 import { requireMcpUserId } from "./auth";
 import { sanitizeMcpResult } from "./domain-actions";
 import { getMcpCatalogCourse, listMcpCatalog } from "./services/catalog";
@@ -171,6 +173,35 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
+      "hakgyo.content.get_block_catalog",
+      {
+        title: "Get Hakgyo BlockNote catalog",
+        description:
+          "Return the current BlockNote document format, supported built-in blocks, and Hakgyo custom blocks. Call this before creating or updating material content.",
+        inputSchema: z.object({}),
+        outputSchema: z.object({ catalog: z.unknown() }),
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+      },
+      async (_input, ctx) => {
+        requireMcpUserId(ctx.http?.authInfo);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(hakgyoBlockCatalog, null, 2),
+            },
+          ],
+          structuredContent: { catalog: hakgyoBlockCatalog },
+        };
+      },
+    );
+
+    server.registerTool(
       "hakgyo.capabilities.get",
       {
         title: "Get Hakgyo capability schemas",
@@ -215,11 +246,15 @@ export const mcpHandler = createMcpHandler(
     );
 
     for (const [domain, actions] of Object.entries(mcpDomainActions)) {
+      const contentGuidance =
+        domain === "content"
+          ? " Before createMaterial or updateMaterial, call hakgyo.content.get_block_catalog and generate BlockNote editor.document JSON using its current catalog version."
+          : "";
       server.registerTool(
         `hakgyo.${domain}.manage`,
         {
           title: `Hakgyo ${domain} operations`,
-          description: `Run a safe ${domain} operation using the current user's live Hakgyo permissions. Call hakgyo.capabilities.get first for exact action input schemas. Destructive and secret-bearing operations are not available.`,
+          description: `Run a safe ${domain} operation using the current user's live Hakgyo permissions. Call hakgyo.capabilities.get first for exact action input schemas.${contentGuidance} Destructive and secret-bearing operations are not available.`,
           inputSchema: z.object({
             action: z.enum(actions),
             input: z.record(z.string(), z.unknown()).default({}),

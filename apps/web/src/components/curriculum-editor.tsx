@@ -75,9 +75,9 @@ type VocabularySet = RouterOutputs["content"]["listVocabularySets"][number];
 type ItemType = CourseItem["type"];
 
 const itemMeta = {
-  MATERIAL: { label: "Material", icon: FileTextIcon },
-  ASSESSMENT: { label: "Assessment", icon: ListChecksIcon },
-  VOCABULARY_SET: { label: "Vocabulary", icon: BookOpenIcon },
+  MATERIAL: { label: "Materi", icon: FileTextIcon },
+  ASSESSMENT: { label: "Penilaian", icon: ListChecksIcon },
+  VOCABULARY_SET: { label: "Kosakata", icon: BookOpenIcon },
 } satisfies Record<ItemType, { label: string; icon: typeof FileTextIcon }>;
 
 function getDragData(value: unknown) {
@@ -321,7 +321,7 @@ export function CurriculumEditor({
           )}
         >
           <ArrowLeftIcon data-icon="inline-start" />
-          Course workspace
+          Workspace course
         </Link>
         <Badge variant={course.status === "PUBLISHED" ? "default" : "outline"}>
           {course.status === "PUBLISHED" ? "Course terbit" : "Course draf"}
@@ -331,7 +331,7 @@ export function CurriculumEditor({
       <header className="border-foreground/10 grid gap-6 border-b pb-7 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="max-w-3xl">
           <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
-            Curriculum builder
+            Pembuat curriculum
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
             {course.title}
@@ -375,11 +375,11 @@ export function CurriculumEditor({
         aria-label="Curriculum summary"
         className="bg-card grid grid-cols-3 divide-x rounded-lg border py-4"
       >
-        <SummaryStat label="Module" value={modules.length} />
+        <SummaryStat label="Modul" value={modules.length} />
         <SummaryStat label="Learning item" value={itemCount} />
         <SummaryStat
           label="Progression"
-          value={progressionMode === "OPEN" ? "Open" : "Sequential"}
+          value={progressionMode === "OPEN" ? "Terbuka" : "Berurutan"}
         />
       </section>
 
@@ -710,7 +710,7 @@ function SortableItemRow({
             htmlFor={`published-${item.id}`}
             className="text-muted-foreground text-xs font-normal"
           >
-            {item.isPublished ? "Published" : "Draft"}
+            {item.isPublished ? "Terbit" : "Draf"}
           </Label>
           <Switch
             id={`published-${item.id}`}
@@ -962,7 +962,7 @@ function ItemDialog({
               >
                 <option value="MATERIAL">Material</option>
                 <option value="ASSESSMENT">Assessment</option>
-                <option value="VOCABULARY_SET">Vocabulary set</option>
+                <option value="VOCABULARY_SET">Set kosakata</option>
               </select>
             </div>
             <div className="space-y-2">

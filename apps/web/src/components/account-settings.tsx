@@ -67,9 +67,9 @@ type AccountSection = "profile" | "security" | "sessions" | "danger";
 
 const accountSections = [
   { value: "profile", label: "Profile", icon: UserRoundIcon },
-  { value: "security", label: "Security", icon: KeyRoundIcon },
-  { value: "sessions", label: "Sessions", icon: MonitorSmartphoneIcon },
-  { value: "danger", label: "Danger zone", icon: ShieldAlertIcon },
+  { value: "security", label: "Keamanan", icon: KeyRoundIcon },
+  { value: "sessions", label: "Sesi", icon: MonitorSmartphoneIcon },
+  { value: "danger", label: "Zona berbahaya", icon: ShieldAlertIcon },
 ] as const;
 
 function errorMessage(error: unknown) {
@@ -81,12 +81,12 @@ function errorMessage(error: unknown) {
   ) {
     return error.message;
   }
-  return "Something went wrong. Please try again.";
+  return "Terjadi kesalahan. Silakan coba lagi.";
 }
 
 function providerName(providerId: string) {
   return providerId === "credential"
-    ? "Email and password"
+    ? "Email dan kata sandi"
     : providerId.charAt(0).toUpperCase() + providerId.slice(1);
 }
 
@@ -151,7 +151,7 @@ export function AccountSettings({
     const nameValue = formData.get("name");
     const trimmedName = typeof nameValue === "string" ? nameValue.trim() : "";
     if (!trimmedName) {
-      toast.error("Name is required.");
+      toast.error("Nama wajib diisi.");
       return;
     }
 
@@ -159,7 +159,7 @@ export function AccountSettings({
     try {
       await updateProfile.mutateAsync({ name: trimmedName });
       await Promise.all([refetchSession(), utils.account.me.invalidate()]);
-      toast.success("Profile updated.");
+      toast.success("Profile diperbarui.");
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -169,11 +169,11 @@ export function AccountSettings({
 
   async function uploadProfileImage() {
     if (!profileImage) {
-      toast.error("Choose an image first.");
+      toast.error("Pilih gambar terlebih dahulu.");
       return;
     }
     if (profileImage.size > MAX_PROFILE_IMAGE_SIZE) {
-      toast.error("Profile images must be 5 MB or smaller.");
+      toast.error("Foto profile maksimal 5 MB.");
       return;
     }
     if (
@@ -181,7 +181,7 @@ export function AccountSettings({
         profileImage.type as ProfileImageContentType,
       )
     ) {
-      toast.error("Use a JPEG, PNG, WebP, or GIF image.");
+      toast.error("Gunakan gambar JPEG, PNG, WebP, atau GIF.");
       return;
     }
 
@@ -206,7 +206,7 @@ export function AccountSettings({
       uploadedKey = null;
       await Promise.all([refetchSession(), utils.account.me.invalidate()]);
       setProfileImage(null);
-      toast.success("Profile image updated.");
+      toast.success("Foto profile diperbarui.");
     } catch (error) {
       if (uploadedKey) {
         try {
@@ -227,7 +227,7 @@ export function AccountSettings({
       await deleteProfileImage.mutateAsync();
       await Promise.all([refetchSession(), utils.account.me.invalidate()]);
       setProfileImage(null);
-      toast.success("Profile image removed.");
+      toast.success("Foto profile dihapus.");
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -238,15 +238,15 @@ export function AccountSettings({
   async function changePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (newPassword.length < 8) {
-      toast.error("The new password must contain at least 8 characters.");
+      toast.error("Kata sandi baru minimal 8 karakter.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("The new passwords do not match.");
+      toast.error("Kata sandi baru tidak cocok.");
       return;
     }
     if (currentPassword === newPassword) {
-      toast.error("Choose a password different from your current password.");
+      toast.error("Pilih kata sandi yang berbeda dari kata sandi saat ini.");
       return;
     }
 
@@ -263,7 +263,7 @@ export function AccountSettings({
       setConfirmPassword("");
       const refreshed = await authClient.listSessions();
       if (refreshed.data) setSessions(refreshed.data);
-      toast.success("Password changed. Other sessions were signed out.");
+      toast.success("Kata sandi diubah. Sesi lain telah keluar.");
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -279,7 +279,7 @@ export function AccountSettings({
       setSessions((current) =>
         current.filter((userSession) => userSession.token !== token),
       );
-      toast.success("Session signed out.");
+      toast.success("Sesi keluar.");
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -297,7 +297,7 @@ export function AccountSettings({
           (userSession) => userSession.token === session?.session.token,
         ),
       );
-      toast.success("All other sessions were signed out.");
+      toast.success("Semua sesi lain telah keluar.");
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -316,7 +316,7 @@ export function AccountSettings({
       setAccounts((current) =>
         current.filter((item) => item.id !== account.id),
       );
-      toast.success(`${providerName(account.providerId)} disconnected.`);
+      toast.success(`${providerName(account.providerId)} dicabut tautannya.`);
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -341,11 +341,11 @@ export function AccountSettings({
   async function deleteAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (deleteConfirmation !== email) {
-      toast.error("Enter your email address exactly to confirm deletion.");
+      toast.error("Ketik alamat email persis untuk mengonfirmasi penghapusan.");
       return;
     }
     if (hasCredential && !deletePassword) {
-      toast.error("Your current password is required.");
+      toast.error("Kata sandi saat ini wajib diisi.");
       return;
     }
 
@@ -371,9 +371,9 @@ export function AccountSettings({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="h-[min(44rem,calc(100svh-2rem))] overflow-hidden p-0 sm:max-w-4xl">
         <DialogHeader className="sr-only">
-          <DialogTitle>Profile and account</DialogTitle>
+          <DialogTitle>Profile dan akun</DialogTitle>
           <DialogDescription>
-            Manage your profile, sign-in methods, sessions, and account.
+            Kelola profile, metode masuk, sesi, dan akun Anda.
           </DialogDescription>
         </DialogHeader>
 
@@ -383,7 +383,7 @@ export function AccountSettings({
             collapsible="none"
           >
             <SidebarHeader className="border-b px-4 py-4">
-              <p className="font-heading text-base font-semibold">Account</p>
+              <p className="font-heading text-base font-semibold">Akun</p>
             </SidebarHeader>
             <SidebarContent>
               <SidebarGroup>
@@ -430,9 +430,8 @@ export function AccountSettings({
                   <CardHeader>
                     <CardTitle>Profile</CardTitle>
                     <CardDescription>
-                      Your email is {email}. Email changes require a
-                      verified-email delivery flow and are not currently
-                      available.
+                      Email Anda adalah {email}. Perubahan email memerlukan alur
+                      pengiriman email terverifikasi dan belum tersedia saat ini.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-6">
@@ -441,7 +440,7 @@ export function AccountSettings({
                         {session.user.image ? (
                           <AvatarImage
                             src={session.user.image}
-                            alt="Profile image"
+                            alt="Foto profile"
                           />
                         ) : null}
                         <AvatarFallback>
@@ -451,7 +450,7 @@ export function AccountSettings({
                         </AvatarFallback>
                       </Avatar>
                       <div className="grid gap-2">
-                        <Label htmlFor="account-image">Profile image</Label>
+                        <Label htmlFor="account-image">Foto profile</Label>
                         <Input
                           accept={profileImageContentTypes.join(",")}
                           disabled={isBusy}
@@ -463,7 +462,7 @@ export function AccountSettings({
                           type="file"
                         />
                         <p className="text-muted-foreground text-xs">
-                          JPEG, PNG, WebP, or GIF. Maximum 5 MB.
+                          JPEG, PNG, WebP, atau GIF. Maksimal 5 MB.
                         </p>
                         <div className="flex flex-wrap gap-2">
                           <Button
@@ -473,8 +472,8 @@ export function AccountSettings({
                             variant="outline"
                           >
                             {pendingAction === "profile-image"
-                              ? "Uploading..."
-                              : "Upload image"}
+                              ? "Mengunggah..."
+                              : "Unggah gambar"}
                           </Button>
                           {session.user.image ? (
                             <Button
@@ -484,8 +483,8 @@ export function AccountSettings({
                               variant="destructive"
                             >
                               {pendingAction === "remove-profile-image"
-                                ? "Removing..."
-                                : "Remove image"}
+                                ? "Menghapus..."
+                                : "Hapus gambar"}
                             </Button>
                           ) : null}
                         </div>
@@ -493,7 +492,7 @@ export function AccountSettings({
                     </div>
                     <form className="grid gap-4" onSubmit={saveProfile}>
                       <div className="grid gap-2">
-                        <Label htmlFor="account-name">Name</Label>
+                        <Label htmlFor="account-name">Nama</Label>
                         <Input
                           defaultValue={session.user.name}
                           id="account-name"
@@ -504,8 +503,8 @@ export function AccountSettings({
                       </div>
                       <Button className="w-fit" disabled={isBusy} type="submit">
                         {pendingAction === "profile"
-                          ? "Saving..."
-                          : "Save profile"}
+                          ? "Menyimpan..."
+                          : "Simpan profile"}
                       </Button>
                     </form>
                   </CardContent>
@@ -515,9 +514,10 @@ export function AccountSettings({
               {section === "security" ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Password</CardTitle>
+                    <CardTitle>Kata sandi</CardTitle>
                     <CardDescription>
-                      Changing your password signs out every other device.
+                      Mengubah kata sandi akan mengeluarkan semua perangkat
+                      lainnya.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -525,7 +525,7 @@ export function AccountSettings({
                       <form className="grid gap-4" onSubmit={changePassword}>
                         <div className="grid gap-2">
                           <Label htmlFor="current-password">
-                            Current password
+                            Kata sandi saat ini
                           </Label>
                           <Input
                             autoComplete="current-password"
@@ -540,7 +540,7 @@ export function AccountSettings({
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                           <div className="grid gap-2">
-                            <Label htmlFor="new-password">New password</Label>
+                            <Label htmlFor="new-password">Kata sandi baru</Label>
                             <Input
                               autoComplete="new-password"
                               id="new-password"
@@ -555,7 +555,7 @@ export function AccountSettings({
                           </div>
                           <div className="grid gap-2">
                             <Label htmlFor="confirm-password">
-                              Confirm password
+                              Konfirmasi kata sandi
                             </Label>
                             <Input
                               autoComplete="new-password"
@@ -575,15 +575,15 @@ export function AccountSettings({
                           disabled={isBusy}
                           type="submit"
                         >
-                          {pendingAction === "password"
-                            ? "Changing..."
-                            : "Change password"}
-                        </Button>
+{pendingAction === "password"
+                            ? "Mengubah..."
+                            : "Ubah kata sandi"}
+                      </Button>
                       </form>
                     ) : (
                       <p className="text-muted-foreground text-sm">
-                        This account uses a social sign-in and has no password
-                        to change.
+                        Akun ini menggunakan social sign-in dan tidak memiliki
+                        kata sandi untuk diubah.
                       </p>
                     )}
                   </CardContent>
@@ -593,10 +593,10 @@ export function AccountSettings({
               {section === "security" ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Sign-in methods</CardTitle>
+                    <CardTitle>Metode masuk</CardTitle>
                     <CardDescription>
-                      Keep at least one sign-in method connected to your
-                      account.
+                      Pertahankan setidaknya satu metode masuk yang terhubung ke
+                      akun Anda.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-3">
@@ -610,7 +610,7 @@ export function AccountSettings({
                             {providerName(account.providerId)}
                           </p>
                           <p className="text-muted-foreground text-xs">
-                            Connected{" "}
+                            Terhubung{" "}
                             {new Date(account.createdAt).toLocaleDateString()}
                           </p>
                         </div>
@@ -622,7 +622,7 @@ export function AccountSettings({
                             type="button"
                             variant="outline"
                           >
-                            Disconnect
+                            Putuskan tautan
                           </Button>
                         ) : null}
                       </div>
@@ -637,7 +637,7 @@ export function AccountSettings({
                         type="button"
                         variant="outline"
                       >
-                        Connect Google
+                        Hubungkan Google
                       </Button>
                     ) : null}
                   </CardContent>
@@ -647,9 +647,10 @@ export function AccountSettings({
               {section === "sessions" ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Active sessions</CardTitle>
+                    <CardTitle>Sesi aktif</CardTitle>
                     <CardDescription>
-                      Sign out devices you no longer recognize or use.
+                      Keluar dari perangkat yang tidak lagi Anda kenali atau
+                      pakai.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-3">
@@ -663,11 +664,12 @@ export function AccountSettings({
                         >
                           <div className="min-w-0">
                             <p className="truncate font-medium">
-                              {userSession.userAgent ?? "Unknown device"}
-                              {isCurrent ? " (current)" : ""}
+                              {userSession.userAgent ?? "Perangkat tidak dikenal"}
+                              {isCurrent ? " (saat ini)" : ""}
                             </p>
                             <p className="text-muted-foreground text-xs">
-                              {userSession.ipAddress ?? "Unknown IP"} · expires{" "}
+                              {userSession.ipAddress ?? "IP tidak dikenal"} ·
+                              berakhir{" "}
                               {new Date(
                                 userSession.expiresAt,
                               ).toLocaleDateString()}
@@ -682,7 +684,7 @@ export function AccountSettings({
                               type="button"
                               variant="outline"
                             >
-                              Sign out
+                              Keluar
                             </Button>
                           ) : null}
                         </div>
@@ -696,7 +698,7 @@ export function AccountSettings({
                         type="button"
                         variant="outline"
                       >
-                        Sign out all other sessions
+                        Keluar dari semua sesi lainnya
                       </Button>
                     ) : null}
                     <Button
@@ -711,7 +713,7 @@ export function AccountSettings({
                       type="button"
                       variant="outline"
                     >
-                      Sign out this device
+                      Keluar dari perangkat ini
                     </Button>
                   </CardContent>
                 </Card>
@@ -720,11 +722,11 @@ export function AccountSettings({
               {section === "danger" ? (
                 <Card className="ring-destructive/30">
                   <CardHeader>
-                    <CardTitle>Delete account</CardTitle>
+                    <CardTitle>Hapus akun</CardTitle>
                     <CardDescription>
-                      Permanently removes your profile, enrollments, learning
-                      progress, assessment attempts, sessions, and sign-in
-                      methods. This cannot be undone.
+                      Menghapus permanen profile, enrollment, progres belajar,
+                      attempt penilaian, sesi, dan metode masuk Anda. Ini tidak
+                      dapat dibatalkan.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -738,7 +740,7 @@ export function AccountSettings({
                     <form className="grid gap-4" onSubmit={deleteAccount}>
                       <div className="grid gap-2">
                         <Label htmlFor="delete-confirmation">
-                          Type {email} to confirm
+                          Ketik {email} untuk mengonfirmasi
                         </Label>
                         <Input
                           autoComplete="off"
@@ -753,7 +755,7 @@ export function AccountSettings({
                       {hasCredential ? (
                         <div className="grid gap-2">
                           <Label htmlFor="delete-password">
-                            Current password
+                            Kata sandi saat ini
                           </Label>
                           <Input
                             autoComplete="current-password"
@@ -780,8 +782,8 @@ export function AccountSettings({
                         variant="destructive"
                       >
                         {pendingAction === "delete"
-                          ? "Deleting..."
-                          : "Permanently delete account"}
+                          ? "Menghapus..."
+                          : "Hapus akun permanen"}
                       </Button>
                     </form>
                   </CardContent>

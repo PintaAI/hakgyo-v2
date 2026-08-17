@@ -382,6 +382,8 @@ Current implementation menyediakan tiga catalog/context tools,
 Domain tools memakai parser dan authorization tRPC yang sama dengan web app.
 Delete/remove/revoke/disconnect operations, raw invite tokens, signed storage
 URLs, dan internal storage/meeting credentials tidak tersedia melalui MCP.
+BlockNote built-ins dan custom blocks ditemukan melalui
+`hakgyo.content.get_block_catalog`; lihat [Custom Blocks](./custom-blocks.md).
 
 ### Phase A: Read-First Launch
 

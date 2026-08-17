@@ -19,7 +19,7 @@ export function Subnav({
       >
         <nav
           className="border-border flex min-w-max items-center gap-6 border-b"
-          aria-label="Section navigation"
+          aria-label="Navigasi bagian"
         >
           <NavLinks items={nav} variant="secondary" />
         </nav>

@@ -132,7 +132,7 @@ function SidebarUserMenu({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onOpenAccount}>
               <UserRoundIcon />
-              Profile & account
+              Profile & akun
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenSettings}>
               <SettingsIcon />
@@ -145,7 +145,7 @@ function SidebarUserMenu({
               onClick={onSignOut}
             >
               <LogOutIcon />
-              {isSigningOut ? "Signing out..." : "Sign out"}
+              {isSigningOut ? "Keluar..." : "Keluar"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -167,7 +167,7 @@ export function User({ role, variant = "header" }: UserProps) {
       return (
         <div
           className="flex h-12 items-center gap-2 px-2"
-          aria-label="Loading user"
+          aria-label="Memuat pengguna"
         >
           <div className="bg-sidebar-accent size-8 animate-pulse rounded-lg" />
           <div className="grid flex-1 gap-1.5 group-data-[collapsible=icon]:hidden">
@@ -181,7 +181,7 @@ export function User({ role, variant = "header" }: UserProps) {
     return (
       <div
         className="bg-muted h-9 w-24 animate-pulse rounded-full"
-        aria-label="Loading user"
+        aria-label="Memuat pengguna"
       />
     );
   }
@@ -195,11 +195,11 @@ export function User({ role, variant = "header" }: UserProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip="Sign in"
+              tooltip="Masuk"
               render={<Link href={signInHref} />}
             >
               <LogInIcon />
-              <span>Sign in</span>
+              <span>Masuk</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -212,7 +212,7 @@ export function User({ role, variant = "header" }: UserProps) {
         className="hover:bg-muted inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm font-medium transition-colors"
       >
         <LogInIcon className="size-4" />
-        Sign in
+        Masuk
       </Link>
     );
   }
@@ -224,7 +224,7 @@ export function User({ role, variant = "header" }: UserProps) {
     try {
       const result = await authClient.signOut();
       if (result.error) {
-        toast.error(result.error.message ?? "Sign out failed.");
+        toast.error(result.error.message ?? "Keluar gagal.");
         setIsSigningOut(false);
         return;
       }
@@ -232,7 +232,7 @@ export function User({ role, variant = "header" }: UserProps) {
       router.replace("/");
       router.refresh();
     } catch {
-      toast.error("Sign out failed.");
+      toast.error("Keluar gagal.");
       setIsSigningOut(false);
     }
   };
@@ -259,7 +259,7 @@ export function User({ role, variant = "header" }: UserProps) {
       <DropdownMenu>
         <DropdownMenuTrigger
           className="hover:bg-muted focus-visible:ring-ring flex items-center gap-2 rounded-full p-1 pr-2 text-left transition-colors outline-none focus-visible:ring-2"
-          aria-label={`Open user menu for ${user.name}`}
+          aria-label={`Buka menu pengguna ${user.name}`}
         >
           <Avatar>
             {user.image ? <AvatarImage src={user.image} alt="" /> : null}
@@ -305,7 +305,7 @@ export function User({ role, variant = "header" }: UserProps) {
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setIsAccountOpen(true)}>
             <UserRoundIcon />
-            Profile & account
+            Profile & akun
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>
             <SettingsIcon />
@@ -318,7 +318,7 @@ export function User({ role, variant = "header" }: UserProps) {
             onClick={signOut}
           >
             <LogOutIcon />
-            {isSigningOut ? "Signing out..." : "Sign out"}
+            {isSigningOut ? "Keluar..." : "Keluar"}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

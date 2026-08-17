@@ -32,8 +32,7 @@ export function evaluateSequentialModules<
 
   return modules.map((module) => {
     const isCompleted =
-      module.items.length > 0 &&
-      module.items.every((item) => item.isCompleted);
+      module.items.length > 0 && module.items.every((item) => item.isCompleted);
     const access: ModuleAccess = isCompleted
       ? "COMPLETED"
       : previousModulesCompleted
@@ -50,8 +49,7 @@ export function evaluateOpenModules<
 >(modules: T[]): (T & { access: ModuleAccess; isCompleted: boolean })[] {
   return modules.map((module) => {
     const isCompleted =
-      module.items.length > 0 &&
-      module.items.every((item) => item.isCompleted);
+      module.items.length > 0 && module.items.every((item) => item.isCompleted);
 
     return {
       ...module,

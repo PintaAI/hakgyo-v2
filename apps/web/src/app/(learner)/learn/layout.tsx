@@ -9,10 +9,10 @@ export default async function LearnerLayout({
   await requireSession();
   return (
     <AppShell
-      title="Learning"
+      title="Pembelajaran"
       nav={[
-        { href: "/learn/courses", label: "My courses" },
-        { href: "/catalog", label: "Catalog" },
+        { href: "/learn/courses", label: "Course saya" },
+        { href: "/catalog", label: "Katalog" },
       ]}
     >
       {children}

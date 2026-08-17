@@ -5,5 +5,5 @@ export default function PublicLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell title="Public">{children}</AppShell>;
+  return <AppShell title="Publik">{children}</AppShell>;
 }

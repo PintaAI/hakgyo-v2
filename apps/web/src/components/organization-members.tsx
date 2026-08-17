@@ -59,9 +59,15 @@ const roleDetails: Record<
   OrganizationRole,
   { label: string; description: string }
 > = {
-  OWNER: { label: "Owner", description: "Full control and ownership" },
-  ADMIN: { label: "Admin", description: "Manages members and all courses" },
-  TEACHER: { label: "Teacher", description: "Creates and teaches courses" },
+  OWNER: { label: "Owner", description: "Kontrol penuh dan kepemilikan" },
+  ADMIN: {
+    label: "Admin",
+    description: "Mengelola member dan semua course",
+  },
+  TEACHER: {
+    label: "Teacher",
+    description: "Membuat dan mengajar course",
+  },
 };
 
 function errorMessage(error: unknown) {
@@ -73,7 +79,7 @@ function errorMessage(error: unknown) {
   ) {
     return error.message;
   }
-  return "Something went wrong. Please try again.";
+  return "Terjadi kesalahan. Silakan coba lagi.";
 }
 
 function initials(name: string) {
@@ -127,7 +133,7 @@ export function OrganizationMembers({
     const emailValue = new FormData(form).get("email");
     const email = typeof emailValue === "string" ? emailValue.trim() : "";
     if (!email) {
-      toast.error("Email is required.");
+      toast.error("Email wajib diisi.");
       return;
     }
 
@@ -137,7 +143,7 @@ export function OrganizationMembers({
       form.reset();
       setNewRole("TEACHER");
       setAddOpen(false);
-      toast.success("Member added to the organization.");
+      toast.success("Member ditambahkan ke organisasi.");
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -153,7 +159,7 @@ export function OrganizationMembers({
         role,
       });
       await refreshMembers();
-      toast.success(`${member.user.name} is now ${roleDetails[role].label}.`);
+      toast.success(`${member.user.name} kini ${roleDetails[role].label}.`);
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -170,7 +176,7 @@ export function OrganizationMembers({
         membershipId: memberToRemove.id,
       });
       await refreshMembers();
-      toast.success(`${memberToRemove.user.name} was removed.`);
+      toast.success(`${memberToRemove.user.name} telah dihapus.`);
       setMemberToRemove(null);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -185,26 +191,26 @@ export function OrganizationMembers({
         <div className="space-y-1">
           <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
             <UsersIcon className="size-4" />
-            Organization access
+            Akses organisasi
           </div>
           <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            Members
+            Anggota
           </h1>
           <p className="text-muted-foreground max-w-2xl text-sm">
-            Assign access deliberately. Owners control the organization, admins
-            manage operations, and teachers manage their learning spaces.
+            Berikan akses secara sengaja. Owner mengendalikan organisasi, admin
+            mengelola operasional, dan teacher mengelola ruang belajar mereka.
           </p>
         </div>
         <Button onClick={() => setAddOpen(true)}>
           <UserPlusIcon data-icon="inline-start" />
-          Add member
+          Tambah member
         </Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Card size="sm">
           <CardHeader>
-            <CardDescription>Total members</CardDescription>
+            <CardDescription>Total member</CardDescription>
             <CardTitle className="text-2xl">
               {members.data?.length ?? 0}
             </CardTitle>
@@ -221,7 +227,7 @@ export function OrganizationMembers({
         </Card>
         <Card size="sm">
           <CardHeader>
-            <CardDescription>Your access</CardDescription>
+            <CardDescription>Akses Anda</CardDescription>
             <CardTitle className="text-2xl">
               {roleDetails[currentRole].label}
             </CardTitle>
@@ -231,16 +237,16 @@ export function OrganizationMembers({
 
       <Card className="gap-0 py-0">
         <CardHeader className="border-b py-4">
-          <CardTitle>Member directory</CardTitle>
+          <CardTitle>Direktori member</CardTitle>
           <CardDescription>
-            {members.data?.length ?? 0} people with organization access
+            {members.data?.length ?? 0} orang dengan akses organisasi
           </CardDescription>
           <div className="relative col-span-full mt-3 sm:max-w-sm">
             <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search name, email, or role"
+              placeholder="Cari nama, email, atau role"
               className="pl-9"
             />
           </div>
@@ -249,7 +255,7 @@ export function OrganizationMembers({
           {members.isPending ? (
             <div className="text-muted-foreground flex min-h-56 items-center justify-center">
               <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-              Loading members
+              Memuat member
             </div>
           ) : members.error ? (
             <div className="flex min-h-56 flex-col items-center justify-center gap-3 p-6 text-center">
@@ -257,15 +263,15 @@ export function OrganizationMembers({
                 {members.error.message}
               </p>
               <Button variant="outline" onClick={() => members.refetch()}>
-                Try again
+                Coba lagi
               </Button>
             </div>
           ) : visibleMembers.length === 0 ? (
             <div className="flex min-h-56 flex-col items-center justify-center gap-2 p-6 text-center">
               <UsersIcon className="text-muted-foreground/60 size-8" />
-              <p className="font-medium">No members found</p>
+              <p className="font-medium">Member tidak ditemukan</p>
               <p className="text-muted-foreground text-sm">
-                Try a different name, email, or role.
+                Coba nama, email, atau role yang berbeda.
               </p>
             </div>
           ) : (
@@ -299,7 +305,7 @@ export function OrganizationMembers({
                             {member.user.name}
                           </p>
                           {isCurrentMember ? (
-                            <Badge variant="secondary">You</Badge>
+                            <Badge variant="secondary">Anda</Badge>
                           ) : null}
                         </div>
                         <p className="text-muted-foreground truncate text-sm">
@@ -337,7 +343,7 @@ export function OrganizationMembers({
                       size="icon"
                       disabled={member.role === "OWNER" || isPending}
                       onClick={() => setMemberToRemove(member)}
-                      aria-label={`Remove ${member.user.name}`}
+                      aria-label={`Hapus ${member.user.name}`}
                     >
                       {isPending ? (
                         <LoaderCircleIcon className="animate-spin" />
@@ -357,15 +363,15 @@ export function OrganizationMembers({
         <DialogContent>
           <form onSubmit={handleAddMember} className="contents">
             <DialogHeader>
-              <DialogTitle>Add organization member</DialogTitle>
+              <DialogTitle>Tambah member organisasi</DialogTitle>
               <DialogDescription>
-                Enter the email from their Hakgyo account and choose their
-                starting access level.
+                Masukkan email dari akun Hakgyo mereka dan pilih tingkat akses
+                awal.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-2">
               <div className="grid gap-2">
-                <Label htmlFor="member-email">Email address</Label>
+                <Label htmlFor="member-email">Alamat email</Label>
                 <Input
                   id="member-email"
                   name="email"
@@ -376,7 +382,7 @@ export function OrganizationMembers({
                   required
                 />
                 <p className="text-muted-foreground text-xs">
-                  The user must already have a Hakgyo account.
+                  Pengguna harus sudah memiliki akun Hakgyo.
                 </p>
               </div>
               <div className="grid gap-2">
@@ -409,7 +415,7 @@ export function OrganizationMembers({
                 variant="outline"
                 onClick={() => setAddOpen(false)}
               >
-                Cancel
+                Batal
               </Button>
               <Button type="submit" disabled={addMember.isPending}>
                 {addMember.isPending ? (
@@ -417,7 +423,7 @@ export function OrganizationMembers({
                 ) : (
                   <UserPlusIcon />
                 )}
-                Add member
+                Tambah member
               </Button>
             </DialogFooter>
           </form>
@@ -435,15 +441,15 @@ export function OrganizationMembers({
             <AlertDialogMedia>
               <ShieldCheckIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Remove organization access?</AlertDialogTitle>
+            <AlertDialogTitle>Hapus akses organisasi?</AlertDialogTitle>
             <AlertDialogDescription>
-              {memberToRemove?.user.name} will lose access to this organization.
-              Their account and learning history will not be deleted.
+              {memberToRemove?.user.name} akan kehilangan akses ke organisasi
+              ini. Akun dan riwayat belajar mereka tidak akan dihapus.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={removeMember.isPending}>
-              Cancel
+              Batal
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
@@ -455,7 +461,7 @@ export function OrganizationMembers({
               ) : (
                 <Trash2Icon />
               )}
-              Remove member
+              Hapus member
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

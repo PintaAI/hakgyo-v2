@@ -41,7 +41,7 @@ function errorMessage(error: unknown) {
   ) {
     return error.message;
   }
-  return "Something went wrong. Please try again.";
+  return "Terjadi kesalahan. Silakan coba lagi.";
 }
 
 export function OrganizationGeneralSettings({
@@ -91,7 +91,7 @@ export function OrganizationGeneralSettings({
     const name = typeof nameValue === "string" ? nameValue.trim() : "";
     const slug = typeof slugValue === "string" ? slugValue.trim() : "";
     if (!name || !slug) {
-      toast.error("Organization name and slug are required.");
+      toast.error("Nama dan slug organisasi wajib diisi.");
       return;
     }
 
@@ -125,7 +125,7 @@ export function OrganizationGeneralSettings({
       } else {
         router.refresh();
       }
-      toast.success("Organization settings saved.");
+      toast.success("Pengaturan organisasi disimpan.");
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -133,11 +133,11 @@ export function OrganizationGeneralSettings({
 
   async function uploadLogo() {
     if (!logoFile) {
-      toast.error("Choose an image first.");
+      toast.error("Pilih gambar terlebih dahulu.");
       return;
     }
     if (logoFile.size > MAX_ORGANIZATION_LOGO_SIZE) {
-      toast.error("Organization logos must be 5 MB or smaller.");
+      toast.error("Logo organisasi maksimal 5 MB.");
       return;
     }
     if (
@@ -145,7 +145,7 @@ export function OrganizationGeneralSettings({
         logoFile.type as OrganizationLogoContentType,
       )
     ) {
-      toast.error("Use a JPEG, PNG, WebP, or GIF image.");
+      toast.error("Gunakan gambar JPEG, PNG, WebP, atau GIF.");
       return;
     }
 
@@ -177,7 +177,7 @@ export function OrganizationGeneralSettings({
       ]);
       setLogoFile(null);
       router.refresh();
-      toast.success("Organization logo updated.");
+      toast.success("Logo organisasi diperbarui.");
     } catch (error) {
       if (uploadedKey) {
         try {
@@ -202,7 +202,7 @@ export function OrganizationGeneralSettings({
       ]);
       setLogoFile(null);
       router.refresh();
-      toast.success("Organization logo removed.");
+      toast.success("Logo organisasi dihapus.");
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -212,7 +212,7 @@ export function OrganizationGeneralSettings({
     return (
       <div className="text-muted-foreground flex min-h-64 items-center justify-center text-sm">
         <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-        Loading settings
+        Memuat pengaturan
       </div>
     );
   }
@@ -221,10 +221,10 @@ export function OrganizationGeneralSettings({
     return (
       <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
         <p className="text-destructive text-sm">
-          {organization.error?.message ?? "Organization could not be loaded."}
+          {organization.error?.message ?? "Organisasi gagal dimuat."}
         </p>
         <Button variant="outline" onClick={() => organization.refetch()}>
-          Try again
+          Coba lagi
         </Button>
       </div>
     );
@@ -245,28 +245,28 @@ export function OrganizationGeneralSettings({
       <div className="space-y-1">
         <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
           <Settings2Icon className="size-4" />
-          Organization configuration
+          Konfigurasi organisasi
         </div>
         <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          General settings
+          Pengaturan umum
         </h1>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          Manage how your organization is identified, handles enrollment, and
-          shares learning resources with teachers.
+          Kelola bagaimana organisasi Anda diidentifikasi, menangani enrollment,
+          dan berbagi sumber belajar dengan teacher.
         </p>
       </div>
 
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader className="border-b">
-            <CardTitle>Organization profile</CardTitle>
+            <CardTitle>Profile organisasi</CardTitle>
             <CardDescription>
-              These details identify this workspace across Hakgyo.
+              Detail ini mengidentifikasi workspace ini di seluruh Hakgyo.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 pt-2">
             <div className="grid gap-2">
-              <Label htmlFor="organization-name">Name</Label>
+              <Label htmlFor="organization-name">Nama</Label>
               <Input
                 id="organization-name"
                 name="name"
@@ -275,7 +275,7 @@ export function OrganizationGeneralSettings({
                 required
               />
               <p className="text-muted-foreground text-xs">
-                The display name shown to members and learners.
+                Nama tampilan yang dilihat member dan learner.
               </p>
             </div>
 
@@ -284,7 +284,7 @@ export function OrganizationGeneralSettings({
                 {organization.data.logoUrl ? (
                   <AvatarImage
                     src={organization.data.logoUrl}
-                    alt={`${organization.data.name} logo`}
+                    alt={`Logo ${organization.data.name}`}
                     className="rounded-xl"
                   />
                 ) : null}
@@ -293,7 +293,7 @@ export function OrganizationGeneralSettings({
                 </AvatarFallback>
               </Avatar>
               <div className="grid min-w-0 flex-1 gap-2">
-                <Label htmlFor="organization-logo">Organization logo</Label>
+                <Label htmlFor="organization-logo">Logo organisasi</Label>
                 <Input
                   id="organization-logo"
                   type="file"
@@ -305,7 +305,7 @@ export function OrganizationGeneralSettings({
                   }
                 />
                 <p className="text-muted-foreground text-xs">
-                  JPEG, PNG, WebP, or GIF. Maximum 5 MB.
+                  JPEG, PNG, WebP, atau GIF. Maksimal 5 MB.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -320,7 +320,7 @@ export function OrganizationGeneralSettings({
                     ) : (
                       <ImageUpIcon />
                     )}
-                    Upload logo
+                    Unggah logo
                   </Button>
                   {organization.data.logoUrl ? (
                     <Button
@@ -334,7 +334,7 @@ export function OrganizationGeneralSettings({
                       ) : (
                         <Trash2Icon />
                       )}
-                      Remove logo
+                      Hapus logo
                     </Button>
                   ) : null}
                 </div>
@@ -354,19 +354,19 @@ export function OrganizationGeneralSettings({
                 required
               />
               <p className="text-muted-foreground text-xs">
-                Use lowercase letters, numbers, and single hyphens. Slugs must
-                be unique across Hakgyo.
+                Gunakan huruf kecil, angka, dan tanda hubung tunggal. Slug harus
+                unik di seluruh Hakgyo.
               </p>
             </div>
 
             <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
               <div className="grid gap-1">
-                <Label htmlFor="open-enrollment">Allow open enrollment</Label>
+                <Label htmlFor="open-enrollment">Izinkan open enrollment</Label>
                 <p className="text-muted-foreground text-xs">
                   {effectiveEnrollmentMode === "OPEN"
-                    ? "Learners can enroll themselves in eligible courses by default."
-                    : "Learners need an invite or manual enrollment by default."}{" "}
-                  Courses can override this setting.
+                    ? "Learner dapat mendaftar sendiri ke course yang memenuhi syarat secara default."
+                    : "Learner memerlukan invite atau enrollment manual secara default."}{" "}
+                  Course dapat menimpa pengaturan ini.
                 </p>
               </div>
               <Switch
@@ -375,27 +375,28 @@ export function OrganizationGeneralSettings({
                 onCheckedChange={(checked) =>
                   setEnrollmentMode(checked ? "OPEN" : "INVITE_ONLY")
                 }
-                aria-label="Allow open enrollment"
+                aria-label="Izinkan open enrollment"
               />
             </div>
 
             <div className="grid gap-4 border-t pt-6">
               <div className="grid gap-1">
-                <h2 className="text-sm font-semibold">Teacher access</h2>
+                <h2 className="text-sm font-semibold">Akses teacher</h2>
                 <p className="text-muted-foreground text-xs">
-                  These defaults apply to every member with the Teacher role.
-                  Owners and admins always retain full access.
+                  Default ini berlaku untuk setiap member dengan role Teacher.
+                  Owner dan admin selalu mempertahankan akses penuh.
                 </p>
               </div>
 
               <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
                 <div className="grid gap-1">
                   <Label htmlFor="all-teacher-courses">
-                    Access all organization courses
+                    Akses semua course organisasi
                   </Label>
                   <p className="text-muted-foreground text-xs">
-                    Teachers can open every course. Course settings, enrollment,
-                    and ownership remain restricted to course managers.
+                    Teacher dapat membuka setiap course. Pengaturan course,
+                    enrollment, dan kepemilikan tetap dibatasi untuk course
+                    manager.
                   </p>
                 </div>
                 <Switch
@@ -411,11 +412,11 @@ export function OrganizationGeneralSettings({
               <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
                 <div className="grid gap-1">
                   <Label htmlFor="all-teacher-content">
-                    Edit all organization content
+                    Edit semua konten organisasi
                   </Label>
                   <p className="text-muted-foreground text-xs">
-                    Teachers can use and edit every course curriculum, material,
-                    vocabulary set, and assessment in this organization.
+                    Teacher dapat memakai dan mengedit seluruh curriculum course,
+                    materi, set kosakata, dan penilaian di organisasi ini.
                   </p>
                 </div>
                 <Switch
@@ -429,11 +430,11 @@ export function OrganizationGeneralSettings({
               <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
                 <div className="grid gap-1">
                   <Label htmlFor="teachers-delete-content">
-                    Allow teachers to delete content
+                    Izinkan teacher menghapus konten
                   </Label>
                   <p className="text-muted-foreground text-xs">
-                    Applies to materials, requirements, vocabulary entries, and
-                    assessments that the teacher can access.
+                    Berlaku untuk materi, requirement, entri kosakata, dan
+                    penilaian yang dapat diakses teacher.
                   </p>
                 </div>
                 <Switch
@@ -451,7 +452,7 @@ export function OrganizationGeneralSettings({
               ) : (
                 <SaveIcon />
               )}
-              Save changes
+              Simpan perubahan
             </Button>
           </div>
         </Card>

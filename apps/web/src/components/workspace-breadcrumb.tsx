@@ -16,8 +16,8 @@ import type { OrganizationRole } from "~/lib/access";
 const sectionLabels: Record<string, string> = {
   courses: "Courses",
   dashboard: "Dashboard",
-  library: "Content library",
-  members: "Members",
+  library: "Perpustakaan konten",
+  members: "Anggota",
   reviews: "Reviews",
   settings: "Settings",
 };

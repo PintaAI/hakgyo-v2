@@ -9,7 +9,7 @@ export default async function LearningCourseLayout({
 }) {
   const { courseId } = await params;
   return (
-    <Subnav nav={[{ href: `/learn/${courseId}`, label: "Course outline" }]}>
+    <Subnav nav={[{ href: `/learn/${courseId}`, label: "Garis besar course" }]}>
       {children}
     </Subnav>
   );

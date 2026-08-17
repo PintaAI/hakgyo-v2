@@ -9,5 +9,5 @@ export default async function Page({
 }) {
   const { organizationId: organizationSlug } = await params;
   await requireOrganizationRole(organizationSlug, organizationManagerRoles);
-  return <WorkspacePagePlaceholder title="Review queue" params={params} />;
+  return <WorkspacePagePlaceholder title="Antrean review" params={params} />;
 }

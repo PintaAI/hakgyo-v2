@@ -58,7 +58,7 @@ function AuthScreen() {
 
     setSubmitting(false);
     if (result.error) {
-      setError(result.error.message ?? "Authentication failed.");
+      setError(result.error.message ?? "Autentikasi gagal.");
       return;
     }
 
@@ -75,7 +75,7 @@ function AuthScreen() {
     setSubmitting(false);
 
     if (result.error) {
-      setError(result.error.message ?? "Google sign-in failed.");
+      setError(result.error.message ?? "Masuk dengan Google gagal.");
       return;
     }
 
@@ -97,20 +97,20 @@ function AuthScreen() {
         <View className="flex-1 justify-between px-7 py-8">
           <View>
             <Text className="text-xs font-bold uppercase tracking-[3px] text-[#e9c46a]">
-              Hakgyo / connected
+              Hakgyo / terhubung
             </Text>
             <Text className="mt-5 text-4xl font-black leading-tight text-[#fffaf0]">
-              Welcome back,{"\n"}
+              Selamat datang kembali,{"\n"}
               {session.user.name}.
             </Text>
             <Text className="mt-4 text-base leading-6 text-[#c9d8d2]">
-              Your Better Auth session is stored securely on this device.
+              Sesi Better Auth Anda tersimpan dengan aman di perangkat ini.
             </Text>
           </View>
 
           <View className="rounded-[28px] border border-[#fffaf0]/15 bg-[#fffaf0] p-6">
             <Text className="text-xs font-bold uppercase tracking-[2px] text-[#9b5b3d]">
-              Protected tRPC response
+              Respons tRPC terproteksi
             </Text>
             {account.isPending ? (
               <ActivityIndicator className="mt-6 self-start" color="#173f35" />
@@ -128,7 +128,7 @@ function AuthScreen() {
                 </Text>
                 <View className="mt-3 self-start rounded-full bg-[#dce9df] px-3 py-1.5">
                   <Text className="text-xs font-bold text-[#173f35]">
-                    API authenticated
+                    API terautentikasi
                   </Text>
                 </View>
               </View>
@@ -142,7 +142,7 @@ function AuthScreen() {
               await refetch();
             }}
           >
-            <Text className="font-bold text-[#fffaf0]">Sign out</Text>
+            <Text className="font-bold text-[#fffaf0]">Keluar</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -166,10 +166,10 @@ function AuthScreen() {
               <Text className="text-xl font-black text-[#fffaf0]">H</Text>
             </View>
             <Text className="mt-8 text-xs font-bold uppercase tracking-[3px] text-[#9b5b3d]">
-              Learn together
+              Belajar bersama
             </Text>
             <Text className="mt-3 text-5xl font-black leading-[52px] text-[#173f35]">
-              Your school,{"\n"}within reach.
+              Sekolah Anda,{"\n"}dalam genggaman.
             </Text>
           </View>
 
@@ -179,7 +179,7 @@ function AuthScreen() {
                 autoComplete="name"
                 className="rounded-2xl border border-[#173f35]/15 bg-[#fffaf0] px-5 py-4 text-base text-[#173f35]"
                 onChangeText={setName}
-                placeholder="Full name"
+                placeholder="Nama lengkap"
                 placeholderTextColor="#7d8b85"
                 value={name}
               />
@@ -190,7 +190,7 @@ function AuthScreen() {
               className="rounded-2xl border border-[#173f35]/15 bg-[#fffaf0] px-5 py-4 text-base text-[#173f35]"
               keyboardType="email-address"
               onChangeText={setEmail}
-              placeholder="Email address"
+              placeholder="Alamat email"
               placeholderTextColor="#7d8b85"
               value={email}
             />
@@ -201,7 +201,7 @@ function AuthScreen() {
               }
               className="rounded-2xl border border-[#173f35]/15 bg-[#fffaf0] px-5 py-4 text-base text-[#173f35]"
               onChangeText={setPassword}
-              placeholder="Password"
+              placeholder="Kata sandi"
               placeholderTextColor="#7d8b85"
               secureTextEntry
               value={password}
@@ -222,7 +222,7 @@ function AuthScreen() {
                 <ActivityIndicator color="#fffaf0" />
               ) : (
                 <Text className="text-base font-bold text-[#fffaf0]">
-                  {mode === "sign-in" ? "Sign in" : "Create account"}
+                  {mode === "sign-in" ? "Masuk" : "Buat akun"}
                 </Text>
               )}
             </Pressable>
@@ -230,7 +230,7 @@ function AuthScreen() {
             <View className="flex-row items-center gap-3 py-1">
               <View className="h-px flex-1 bg-[#173f35]/15" />
               <Text className="text-xs font-bold uppercase text-[#718079]">
-                or
+                atau
               </Text>
               <View className="h-px flex-1 bg-[#173f35]/15" />
             </View>
@@ -241,7 +241,7 @@ function AuthScreen() {
               onPress={signInWithGoogle}
             >
               <Text className="text-base font-bold text-[#173f35]">
-                Continue with Google
+                Lanjut dengan Google
               </Text>
             </Pressable>
 
@@ -254,10 +254,10 @@ function AuthScreen() {
             >
               <Text className="text-sm text-[#52665f]">
                 {mode === "sign-in"
-                  ? "New to Hakgyo? "
-                  : "Already registered? "}
+                  ? "Baru di Hakgyo? "
+                  : "Sudah punya akun? "}
                 <Text className="font-black text-[#173f35]">
-                  {mode === "sign-in" ? "Create an account" : "Sign in"}
+                  {mode === "sign-in" ? "Buat akun" : "Masuk"}
                 </Text>
               </Text>
             </Pressable>

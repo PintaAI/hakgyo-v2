@@ -177,9 +177,9 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="h-[min(44rem,calc(100svh-2rem))] overflow-hidden p-0 sm:max-w-4xl">
         <DialogHeader className="sr-only">
-          <DialogTitle>App settings</DialogTitle>
+          <DialogTitle>Pengaturan aplikasi</DialogTitle>
           <DialogDescription>
-            Customize how Hakgyo looks and feels on this device.
+            Sesuaikan tampilan dan nuansa Hakgyo di perangkat ini.
           </DialogDescription>
         </DialogHeader>
 
@@ -193,30 +193,30 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
             </SidebarHeader>
             <SidebarContent>
               <SidebarGroup>
-                <SidebarGroupLabel>Application</SidebarGroupLabel>
+                <SidebarGroupLabel>Aplikasi</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     <SidebarMenuItem>
                       <SidebarMenuButton isActive>
                         <PaletteIcon />
-                        <span>Appearance</span>
+                        <span>Tampilan</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton disabled>
                         <LanguagesIcon />
-                        <span>Language</span>
+                        <span>Bahasa</span>
                         <span className="ml-auto text-[0.6rem] uppercase">
-                          Soon
+                          Segera
                         </span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton disabled>
                         <BellIcon />
-                        <span>Notifications</span>
+                        <span>Notifikasi</span>
                         <span className="ml-auto text-[0.6rem] uppercase">
-                          Soon
+                          Segera
                         </span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -232,32 +232,32 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
                 variant="ghost"
               >
                 <RotateCcwIcon />
-                Reset to default
+                Kembalikan ke default
               </Button>
             </SidebarFooter>
           </Sidebar>
 
           <main className="min-w-0 flex-1 overflow-y-auto">
             <div className="px-5 pt-6 sm:px-7 sm:pt-7">
-              <h2 className="font-heading text-lg font-semibold">Appearance</h2>
+              <h2 className="font-heading text-lg font-semibold">Tampilan</h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                Tune Hakgyo for the way you read and work.
+                Sesuaikan Hakgyo dengan cara Anda membaca dan bekerja.
               </p>
             </div>
 
             <div className="grid gap-8 p-5 sm:p-7">
               <section className="grid gap-3">
                 <div>
-                  <Label>Theme</Label>
+                  <Label>Tema</Label>
                   <p className="text-muted-foreground text-xs">
-                    Choose a light, dark, or system-matched interface.
+                    Pilih antarmuka terang, gelap, atau mengikuti sistem.
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: "light", label: "Light", icon: SunIcon },
-                    { value: "dark", label: "Dark", icon: MoonIcon },
-                    { value: "system", label: "System", icon: MonitorIcon },
+                    { value: "light", label: "Terang", icon: SunIcon },
+                    { value: "dark", label: "Gelap", icon: MoonIcon },
+                    { value: "system", label: "Sistem", icon: MonitorIcon },
                   ].map((option) => (
                     <ChoiceButton
                       active={activeTheme === option.value}
@@ -275,9 +275,9 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
 
               <section className="grid gap-3">
                 <div>
-                  <Label>Color scheme</Label>
+                  <Label>Skema warna</Label>
                   <p className="text-muted-foreground text-xs">
-                    Set the accent color used for actions and highlights.
+                    Atur warna aksen untuk action dan sorotan.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -303,9 +303,9 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
 
               <section className="grid gap-3">
                 <div>
-                  <Label>Font style</Label>
+                  <Label>Gaya font</Label>
                   <p className="text-muted-foreground text-xs">
-                    Select the typeface personality used across the app.
+                    Pilih karakter tipografi yang dipakai di seluruh aplikasi.
                   </p>
                 </div>
                 <Select
@@ -335,16 +335,16 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
 
               <section className="grid gap-3">
                 <div>
-                  <Label>Text size</Label>
+                  <Label>Ukuran teks</Label>
                   <p className="text-muted-foreground text-xs">
-                    Adjust the base text and interface scale.
+                    Sesuaikan skala teks dan antarmuka dasar.
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: "small", label: "Small", sample: "text-xs" },
+                    { value: "small", label: "Kecil", sample: "text-xs" },
                     { value: "default", label: "Default", sample: "text-sm" },
-                    { value: "large", label: "Large", sample: "text-base" },
+                    { value: "large", label: "Besar", sample: "text-base" },
                   ].map((option) => (
                     <ChoiceButton
                       active={preferences.size === option.value}
@@ -364,20 +364,20 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
 
               <section className="grid gap-3">
                 <div>
-                  <Label>Spacing</Label>
+                  <Label>Spasi</Label>
                   <p className="text-muted-foreground text-xs">
-                    Control how much room interface elements use.
+                    Atur seberapa banyak ruang antar elemen antarmuka.
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: "compact", label: "Compact", bars: "gap-0.5" },
+                    { value: "compact", label: "Padat", bars: "gap-0.5" },
                     {
                       value: "comfortable",
-                      label: "Comfortable",
+                      label: "Nyaman",
                       bars: "gap-1.5",
                     },
-                    { value: "spacious", label: "Spacious", bars: "gap-2.5" },
+                    { value: "spacious", label: "Luas", bars: "gap-2.5" },
                   ].map((option) => (
                     <ChoiceButton
                       active={preferences.density === option.value}
@@ -404,17 +404,17 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
 
               <section className="grid gap-3">
                 <div>
-                  <Label>Corner radius</Label>
+                  <Label>Radius sudut</Label>
                   <p className="text-muted-foreground text-xs">
-                    Choose how sharp or soft surfaces should feel.
+                    Pilih seberapa tajam atau lembut permukaan terasa.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
-                    { value: "none", label: "Square", radius: "rounded-none" },
-                    { value: "small", label: "Subtle", radius: "rounded-sm" },
-                    { value: "default", label: "Soft", radius: "rounded-lg" },
-                    { value: "large", label: "Round", radius: "rounded-2xl" },
+                    { value: "none", label: "Kotak", radius: "rounded-none" },
+                    { value: "small", label: "Halus", radius: "rounded-sm" },
+                    { value: "default", label: "Lembut", radius: "rounded-lg" },
+                    { value: "large", label: "Bulat", radius: "rounded-2xl" },
                   ].map((option) => (
                     <ChoiceButton
                       active={preferences.radius === option.value}
@@ -441,15 +441,15 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
               </section>
 
               <div className="bg-muted/50 rounded-lg border p-4">
-                <p className="font-medium">Live preview</p>
+                <p className="font-medium">Pratinjau langsung</p>
                 <p className="text-muted-foreground mt-1 text-sm">
-                  Changes are applied instantly and saved only on this device.
-                  Current mode: {resolvedTheme ?? "system"}.
+                  Perubahan diterapkan langsung dan hanya tersimpan di perangkat
+                  ini. Mode saat ini: {resolvedTheme ?? "sistem"}.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button size="sm">Primary action</Button>
+                  <Button size="sm">Action utama</Button>
                   <Button size="sm" variant="outline">
-                    Secondary
+                    Sekunder
                   </Button>
                 </div>
               </div>

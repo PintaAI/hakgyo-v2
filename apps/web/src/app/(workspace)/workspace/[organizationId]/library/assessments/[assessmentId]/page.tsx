@@ -4,5 +4,5 @@ export default function Page({
 }: {
   params: Promise<{ organizationId: string; assessmentId: string }>;
 }) {
-  return <WorkspacePagePlaceholder title="Assessment" params={params} />;
+  return <WorkspacePagePlaceholder title="Penilaian" params={params} />;
 }

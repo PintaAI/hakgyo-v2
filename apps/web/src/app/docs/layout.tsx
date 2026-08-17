@@ -39,7 +39,7 @@ export default async function DocsLayout({
               orientation="vertical"
               className="mr-2 data-vertical:h-4 data-vertical:self-center"
             />
-            <span className="text-sm font-medium">User documentation</span>
+            <span className="text-sm font-medium">Dokumentasi pengguna</span>
           </div>
         </header>
         <div className="flex-1 px-5 py-8 md:px-8 lg:px-12">{children}</div>

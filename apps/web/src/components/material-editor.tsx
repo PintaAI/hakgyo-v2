@@ -61,7 +61,7 @@ function errorMessage(error: unknown) {
   ) {
     return error.message;
   }
-  return "Something went wrong. Please try again.";
+  return "Terjadi kesalahan. Silakan coba lagi.";
 }
 
 export function MaterialEditor({
@@ -94,7 +94,7 @@ export function MaterialEditor({
     return (
       <div className="text-muted-foreground flex min-h-96 items-center justify-center text-sm">
         <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-        Loading material
+        Memuat materi
       </div>
     );
   }
@@ -103,10 +103,10 @@ export function MaterialEditor({
     return (
       <div className="flex min-h-96 flex-col items-center justify-center gap-3 text-center">
         <p className="text-destructive text-sm">
-          {material.error?.message ?? "Material could not be loaded."}
+          {material.error?.message ?? "Materi gagal dimuat."}
         </p>
         <Button variant="outline" onClick={() => material.refetch()}>
-          Try again
+          Coba lagi
         </Button>
       </div>
     );
@@ -130,7 +130,7 @@ export function MaterialEditor({
         try {
           await deleteMaterial.mutateAsync({ organizationId, materialId });
           await utils.content.listMaterials.invalidate({ organizationId });
-          toast.success("Material deleted.");
+          toast.success("Materi dihapus.");
           router.replace(`/workspace/${organizationSlug}/library/materials`);
         } catch (error) {
           toast.error(errorMessage(error));
@@ -155,7 +155,7 @@ export function MaterialEditor({
               }),
               utils.content.listMaterials.invalidate({ organizationId }),
             ]);
-            toast.success("Material saved.");
+            toast.success("Materi disimpan.");
             return;
           }
 
@@ -168,7 +168,7 @@ export function MaterialEditor({
             requirementPolicy,
           });
           await utils.content.listMaterials.invalidate({ organizationId });
-          toast.success("Material created.");
+          toast.success("Materi dibuat.");
           router.replace(
             `/workspace/${organizationSlug}/library/materials/${created.id}`,
           );
@@ -223,7 +223,7 @@ function MaterialEditorForm({
     event.preventDefault();
     const normalizedTitle = title.trim();
     if (!normalizedTitle) {
-      toast.error("Material title is required.");
+      toast.error("Judul materi wajib diisi.");
       return;
     }
     await onSave({
@@ -242,7 +242,7 @@ function MaterialEditorForm({
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex min-w-0 items-center gap-3">
           <Link
-            aria-label="Back to materials"
+            aria-label="Kembali ke materi"
             href={`/workspace/${organizationSlug}/library/materials`}
             className={buttonVariants({ variant: "outline", size: "icon" })}
           >
@@ -251,10 +251,10 @@ function MaterialEditorForm({
           <div className="min-w-0">
             <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
               <FileTextIcon className="size-3.5" />
-              {materialId ? "Edit material" : "New material"}
+              {materialId ? "Edit materi" : "Materi baru"}
             </div>
             <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
-              {title.trim() || "Untitled material"}
+              {title.trim() || "Materi tanpa judul"}
             </h1>
           </div>
         </div>
@@ -267,18 +267,18 @@ function MaterialEditorForm({
                 }
               >
                 <Trash2Icon />
-                <span className="sr-only">Delete material</span>
+                <span className="sr-only">Hapus materi</span>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this material?</AlertDialogTitle>
+                  <AlertDialogTitle>Hapus materi ini?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This cannot be undone. Deletion can fail while the material
-                    is still used by a course.
+                    Tindakan ini tidak dapat dibatalkan. Penghapusan dapat gagal
+                    selama materi masih dipakai oleh sebuah course.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
                   <AlertDialogAction
                     disabled={isDeleting}
                     onClick={onDelete}
@@ -287,7 +287,7 @@ function MaterialEditorForm({
                     {isDeleting && (
                       <LoaderCircleIcon className="animate-spin" />
                     )}
-                    Delete
+                    Hapus
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -302,7 +302,7 @@ function MaterialEditorForm({
             ) : (
               <SaveIcon data-icon="inline-start" />
             )}
-            {materialId ? "Save changes" : "Create material"}
+            {materialId ? "Simpan perubahan" : "Buat materi"}
           </Button>
         </div>
       </div>
@@ -310,13 +310,13 @@ function MaterialEditorForm({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <section className="bg-card min-w-0 overflow-hidden rounded-xl border shadow-xs">
           <div className="border-b px-5 py-4">
-            <h2 className="font-heading font-semibold">Lesson content</h2>
+            <h2 className="font-heading font-semibold">Konten pelajaran</h2>
             <p className="text-muted-foreground text-sm">
-              Type{" "}
+              Ketik{" "}
               <kbd className="bg-muted rounded border px-1 py-0.5 text-[0.7rem]">
                 /
               </kbd>{" "}
-              to add headings, lists, media, and other blocks.
+              untuk menambahkan heading, daftar, media, dan blok lainnya.
             </p>
           </div>
           <div className="min-h-[32rem] py-5">
@@ -330,32 +330,32 @@ function MaterialEditorForm({
 
         <aside className="bg-card grid gap-5 rounded-xl border p-5 shadow-xs lg:sticky lg:top-6">
           <div className="grid gap-2">
-            <Label htmlFor="material-title">Title</Label>
+            <Label htmlFor="material-title">Judul</Label>
             <Input
               autoFocus={!materialId}
               id="material-title"
               maxLength={200}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="e.g. Introducing yourself"
+              placeholder="Mis. Memperkenalkan diri"
               value={title}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="material-description">Description</Label>
+            <Label htmlFor="material-description">Deskripsi</Label>
             <Textarea
               id="material-description"
               maxLength={10000}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="What will learners work through?"
+              placeholder="Apa yang akan dikerjakan learner?"
               rows={6}
               value={description}
             />
             <p className="text-muted-foreground text-xs">
-              Shown to authors when choosing content for a course.
+              Ditampilkan kepada penulis saat memilih konten untuk sebuah course.
             </p>
           </div>
           <div className="grid gap-2 border-t pt-5">
-            <Label htmlFor="requirement-policy">Completion policy</Label>
+            <Label htmlFor="requirement-policy">Kebijakan penyelesaian</Label>
             <Select
               value={requirementPolicy}
               onValueChange={(value) => {
@@ -368,12 +368,12 @@ function MaterialEditorForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">Meet every requirement</SelectItem>
-                <SelectItem value="ANY">Meet any requirement</SelectItem>
+                <SelectItem value="ALL">Penuhi semua requirement</SelectItem>
+                <SelectItem value="ANY">Penuhi salah satu requirement</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-muted-foreground text-xs">
-              Applies when assessments or vocabulary requirements are attached.
+              Berlaku ketika assessment atau requirement kosakata dipasang.
             </p>
           </div>
         </aside>

@@ -43,14 +43,14 @@ export function VocabularyLibrary({
         <div className="space-y-1">
           <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
             <LibraryIcon className="size-4" />
-            Content library
+            Perpustakaan konten
           </div>
           <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            Vocabulary
+            Kosakata
           </h1>
           <p className="text-muted-foreground max-w-2xl text-sm">
-            Create reusable word sets with definitions and examples for lessons
-            and course requirements.
+            Buat kumpulan kata dengan definisi dan contoh untuk pelajaran dan
+            persyaratan course.
           </p>
         </div>
         <Link
@@ -58,17 +58,17 @@ export function VocabularyLibrary({
           className={buttonVariants()}
         >
           <PlusIcon data-icon="inline-start" />
-          New vocabulary set
+          Set kosakata baru
         </Link>
       </div>
 
       <div className="relative max-w-md">
         <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
         <Input
-          aria-label="Search vocabulary sets"
+          aria-label="Cari set kosakata"
           className="pl-8"
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search sets, terms, or definitions"
+          placeholder="Cari set, istilah, atau definisi"
           value={search}
         />
       </div>
@@ -76,7 +76,7 @@ export function VocabularyLibrary({
       {vocabularySets.isPending ? (
         <div className="text-muted-foreground flex min-h-64 items-center justify-center text-sm">
           <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-          Loading vocabulary
+          Memuat kosakata
         </div>
       ) : vocabularySets.error ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
@@ -84,7 +84,7 @@ export function VocabularyLibrary({
             {vocabularySets.error.message}
           </p>
           <Button variant="outline" onClick={() => vocabularySets.refetch()}>
-            Try again
+            Coba lagi
           </Button>
         </div>
       ) : visibleSets.length ? (
@@ -102,8 +102,7 @@ export function VocabularyLibrary({
                       <LanguagesIcon className="size-5" />
                     </div>
                     <Badge variant="outline">
-                      {set.entries.length}{" "}
-                      {set.entries.length === 1 ? "term" : "terms"}
+                      {set.entries.length} istilah
                     </Badge>
                   </div>
                   <div className="min-w-0 space-y-1">
@@ -111,7 +110,7 @@ export function VocabularyLibrary({
                       {set.title}
                     </h2>
                     <p className="text-muted-foreground line-clamp-2 min-h-10 text-sm">
-                      {set.description ?? "No description yet."}
+                      {set.description ?? "Belum ada deskripsi."}
                     </p>
                   </div>
                   <div className="mt-auto flex min-h-7 flex-wrap gap-1.5 border-t pt-4">
@@ -122,12 +121,12 @@ export function VocabularyLibrary({
                     ))}
                     {set.entries.length > 3 && (
                       <span className="text-muted-foreground self-center text-xs">
-                        +{set.entries.length - 3} more
+                        +{set.entries.length - 3} lainnya
                       </span>
                     )}
                     {!set.entries.length && (
                       <span className="text-muted-foreground text-xs">
-                        No terms added yet
+                        Belum ada istilah
                       </span>
                     )}
                   </div>
@@ -143,13 +142,13 @@ export function VocabularyLibrary({
           </div>
           <h2 className="font-heading font-semibold">
             {deferredSearch
-              ? "No matching vocabulary"
-              : "Create your first vocabulary set"}
+              ? "Kosakata tidak ditemukan"
+              : "Buat set kosakata pertama Anda"}
           </h2>
           <p className="text-muted-foreground mt-1 max-w-sm text-sm">
             {deferredSearch
-              ? "Try a different set title, term, or definition."
-              : "Group related terms into a set you can reuse across courses."}
+              ? "Coba judul set, istilah, atau definisi yang berbeda."
+              : "Kelompokkan istilah terkait menjadi satu set yang dapat dipakai ulang lintas course."}
           </p>
           {!deferredSearch && (
             <Link
@@ -157,7 +156,7 @@ export function VocabularyLibrary({
               className={buttonVariants({ className: "mt-4" })}
             >
               <PlusIcon data-icon="inline-start" />
-              New vocabulary set
+              Set kosakata baru
             </Link>
           )}
         </div>

@@ -8,11 +8,16 @@ export default async function Layout({
 }) {
   const { organizationId: organizationSlug } = await params;
   const root = `/workspace/${organizationSlug}/library`;
+  const sectionLabels: Record<string, string> = {
+    materials: "Materi",
+    vocabulary: "Kosakata",
+    assessments: "Penilaian",
+  };
   return (
     <Subnav
       nav={["materials", "vocabulary", "assessments"].map((section) => ({
         href: `${root}/${section}`,
-        label: section[0]!.toUpperCase() + section.slice(1),
+        label: sectionLabels[section] ?? section,
       }))}
     >
       {children}
