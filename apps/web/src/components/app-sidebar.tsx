@@ -2,6 +2,7 @@
 
 import { useState, type ComponentProps, type ComponentType } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   BookOpenIcon,
@@ -50,6 +51,7 @@ type NavigationLink = {
   href: string;
   match?: string;
   icon?: ComponentType<{ className?: string }>;
+  thumbnailUrl?: string | null;
   items?: NavigationLink[];
 };
 
@@ -141,7 +143,18 @@ function CollapsibleNavigationItem({
                     />
                   }
                 >
-                  {child.icon ? <child.icon /> : null}
+                  {child.thumbnailUrl ? (
+                    <Image
+                      src={child.thumbnailUrl}
+                      alt=""
+                      width={24}
+                      height={24}
+                      unoptimized
+                      className="size-6 shrink-0 rounded-sm object-cover"
+                    />
+                  ) : child.icon ? (
+                    <child.icon />
+                  ) : null}
                   <span>{child.title}</span>
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
@@ -157,17 +170,24 @@ export function AppSidebar({
   organizationSlug,
   organization,
   role,
+  recentCourses,
   ...props
 }: ComponentProps<typeof Sidebar> & {
   organizationSlug: string;
   organization: { name: string; logoUrl: string | null };
   role: OrganizationRole;
+  recentCourses: Array<{
+    id: string;
+    title: string;
+    thumbnailUrl: string | null;
+  }>;
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const workspaceRoot = `/workspace/${organizationSlug}`;
   const isManager = role === "OWNER" || role === "ADMIN";
   const workspaceHome = `${workspaceRoot}/${isManager ? "dashboard" : "courses"}`;
+
   const navigation: NavigationItem[] = [
     ...(isManager
       ? [
@@ -182,6 +202,12 @@ export function AppSidebar({
       title: "Courses",
       href: `${workspaceRoot}/courses`,
       icon: BookOpenIcon,
+      items: recentCourses.map((course) => ({
+        title: course.title,
+        href: `${workspaceRoot}/courses/${course.id}`,
+        icon: BookOpenIcon,
+        thumbnailUrl: course.thumbnailUrl,
+      })),
     },
     ...(isManager
       ? [

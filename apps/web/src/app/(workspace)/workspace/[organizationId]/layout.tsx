@@ -9,6 +9,7 @@ import {
 } from "~/components/ui/sidebar";
 import { WorkspaceBreadcrumb } from "~/components/workspace-breadcrumb";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
+import { api } from "~/trpc/server";
 
 export default async function WorkspaceLayout({
   children,
@@ -22,6 +23,17 @@ export default async function WorkspaceLayout({
     cookies(),
     requireOrganizationMembershipBySlug(organizationSlug),
   ]);
+  const courses = await api.course.list({
+    organizationId: membership.organizationId,
+  });
+  const recentCourses = courses
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .slice(0, 3)
+    .map((course) => ({
+      id: course.id,
+      title: course.title,
+      thumbnailUrl: course.thumbnailUrl,
+    }));
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
   const role = membership.role;
 
@@ -31,6 +43,7 @@ export default async function WorkspaceLayout({
         organizationSlug={organizationSlug}
         organization={membership.organization}
         role={role}
+        recentCourses={recentCourses}
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear">
