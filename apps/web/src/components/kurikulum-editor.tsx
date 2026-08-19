@@ -76,7 +76,7 @@ type ItemType = CourseItem["type"];
 
 const itemMeta = {
   MATERIAL: { label: "Materi", icon: FileTextIcon },
-  ASSESSMENT: { label: "Penilaian", icon: ListChecksIcon },
+  ASSESSMENT: { label: "Tugas", icon: ListChecksIcon },
   VOCABULARY_SET: { label: "Kosakata", icon: BookOpenIcon },
 } satisfies Record<ItemType, { label: string; icon: typeof FileTextIcon }>;
 
@@ -90,7 +90,7 @@ function getDragData(value: unknown) {
   };
 }
 
-const curriculumCollisionDetection: CollisionDetection = (args) => {
+const kurikulumCollisionDetection: CollisionDetection = (args) => {
   const active = getDragData(args.active.data.current);
   const droppableContainers = args.droppableContainers.filter((container) => {
     const candidate = getDragData(container.data.current);
@@ -130,16 +130,14 @@ function getErrorMessage(error: unknown) {
   return "Perubahan belum berhasil disimpan. Silakan coba lagi.";
 }
 
-export function CurriculumEditor({
+export function KurikulumEditor({
   course,
-  organizationId,
   organizationSlug,
   materials,
   assessments,
   vocabularySets,
 }: {
   course: Course;
-  organizationId: string;
   organizationSlug: string;
   materials: Material[];
   assessments: Assessment[];
@@ -204,8 +202,8 @@ export function CurriculumEditor({
       router.refresh();
       toast.success(
         nextMode === "OPEN"
-          ? "Semua module sekarang terbuka."
-          : "Progression berurutan diaktifkan.",
+          ? "Semua bab sekarang terbuka."
+          : "Bertahap diaktifkan.",
       );
     } catch (error) {
       setProgressionMode(previousMode);
@@ -296,10 +294,10 @@ export function CurriculumEditor({
     try {
       if (deleteTarget.kind === "module") {
         await deleteModule.mutateAsync({ moduleId: deleteTarget.id });
-        toast.success("Module dihapus.");
+        toast.success("Bab dihapus.");
       } else {
         await deleteItem.mutateAsync({ itemId: deleteTarget.id });
-        toast.success("Item dihapus dari curriculum.");
+        toast.success("Item dihapus dari kurikulum.");
       }
       setDeleteTarget(null);
       await refreshCourse();
@@ -331,26 +329,26 @@ export function CurriculumEditor({
       <header className="border-foreground/10 grid gap-6 border-b pb-7 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="max-w-3xl">
           <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
-            Pembuat curriculum
+            Pembuat kurikulum
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
             {course.title}
           </h1>
           <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
-            Susun alur belajar menjadi module, lalu hubungkan material,
-            assessment, dan vocabulary yang sudah tersedia.
+            Susun alur belajar menjadi bab, lalu hubungkan material, tugas, dan
+            vocabulary yang sudah tersedia.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1.5">
             <Label
-              htmlFor="curriculum-progression"
+              htmlFor="kurikulum-progression"
               className="text-muted-foreground text-xs"
             >
               Progression
             </Label>
             <select
-              id="curriculum-progression"
+              id="kurikulum-progression"
               className="border-input bg-background focus-visible:ring-ring h-9 min-w-48 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2 disabled:opacity-50"
               disabled={updateProgression.isPending}
               value={progressionMode}
@@ -360,26 +358,26 @@ export function CurriculumEditor({
                 )
               }
             >
-              <option value="OPEN">Semua module terbuka</option>
-              <option value="SEQUENTIAL">Berurutan</option>
+              <option value="OPEN">Terbuka</option>
+              <option value="SEQUENTIAL">Bertahap</option>
             </select>
           </div>
           <Button onClick={() => setModuleDialog({ open: true })}>
             <PlusIcon data-icon="inline-start" />
-            Tambah module
+            Tambah bab
           </Button>
         </div>
       </header>
 
       <section
-        aria-label="Curriculum summary"
+        aria-label="Kurikulum summary"
         className="bg-card grid grid-cols-3 divide-x rounded-lg border py-4"
       >
-        <SummaryStat label="Modul" value={modules.length} />
+        <SummaryStat label="Bab" value={modules.length} />
         <SummaryStat label="Learning item" value={itemCount} />
         <SummaryStat
           label="Progression"
-          value={progressionMode === "OPEN" ? "Terbuka" : "Berurutan"}
+          value={progressionMode === "OPEN" ? "Terbuka" : "Bertahap"}
         />
       </section>
 
@@ -389,24 +387,24 @@ export function CurriculumEditor({
             <Layers3Icon className="text-muted-foreground size-5" />
           </span>
           <h2 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
-            Mulai dengan module pertama
+            Mulai dengan bab pertama
           </h2>
           <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm leading-relaxed">
-            Module mengelompokkan learning item dan menentukan urutan yang
-            dijalani learner.
+            Bab mengelompokkan learning item dan menentukan urutan yang dijalani
+            siswa.
           </p>
           <Button
             className="mt-5"
             onClick={() => setModuleDialog({ open: true })}
           >
             <PlusIcon data-icon="inline-start" />
-            Buat module
+            Buat bab
           </Button>
         </div>
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={curriculumCollisionDetection}
+          collisionDetection={kurikulumCollisionDetection}
           measuring={{
             droppable: { strategy: MeasuringStrategy.Always },
           }}
@@ -467,9 +465,10 @@ export function CurriculumEditor({
       <ItemDialog
         key={itemModule?.id ?? "no-module"}
         assessments={assessments}
+        courseId={course.id}
         materials={materials}
         module={itemModule}
-        organizationId={organizationId}
+        organizationSlug={organizationSlug}
         vocabularySets={vocabularySets}
         onClose={() => setItemModule(null)}
         onSaved={refreshCourse}
@@ -484,12 +483,12 @@ export function CurriculumEditor({
               <Trash2Icon />
             </AlertDialogMedia>
             <AlertDialogTitle>
-              Hapus {deleteTarget?.kind === "module" ? "module" : "item"}?
+              Hapus {deleteTarget?.kind === "module" ? "bab" : "item"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget?.kind === "module"
-                ? `Module “${deleteTarget.name}” dan seluruh item di dalamnya akan dihapus. Resource aslinya tetap tersimpan.`
-                : `“${deleteTarget?.name}” akan dilepas dari curriculum. Resource aslinya tetap tersimpan.`}
+                ? `Bab “${deleteTarget.name}” dan seluruh item di dalamnya akan dihapus. Resource aslinya tetap tersimpan.`
+                : `“${deleteTarget?.name}” akan dilepas dari kurikulum. Resource aslinya tetap tersimpan.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -561,7 +560,7 @@ function SortableModuleCard({
       <div className="flex items-start gap-3 px-4 py-4 sm:px-5">
         <button
           type="button"
-          aria-label="Seret module untuk mengurutkan"
+          aria-label="Seret bab untuk mengurutkan"
           disabled={isReordering}
           className="text-muted-foreground hover:bg-muted hover:text-foreground mt-1 cursor-grab touch-none rounded-md p-1 disabled:cursor-not-allowed disabled:opacity-50"
           {...attributes}
@@ -587,7 +586,7 @@ function SortableModuleCard({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button
-            aria-label="Edit module"
+            aria-label="Edit bab"
             size="icon-sm"
             variant="ghost"
             onClick={onEditModule}
@@ -595,7 +594,7 @@ function SortableModuleCard({
             <PencilIcon />
           </Button>
           <Button
-            aria-label="Hapus module"
+            aria-label="Hapus bab"
             size="icon-sm"
             variant="ghost"
             onClick={onDeleteModule}
@@ -630,7 +629,7 @@ function SortableModuleCard({
         </SortableContext>
       ) : (
         <div className="text-muted-foreground border-t border-dashed px-5 py-7 text-center text-sm">
-          Module ini belum memiliki learning item.
+          Bab ini belum memiliki learning item.
         </div>
       )}
       <div className="bg-muted/30 border-t px-4 py-3 sm:px-5">
@@ -813,7 +812,7 @@ function ModuleDialog({
       }
       close();
       await onSaved();
-      toast.success(state.module ? "Module diperbarui." : "Module dibuat.");
+      toast.success(state.module ? "Bab diperbarui." : "Bab dibuat.");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -825,15 +824,15 @@ function ModuleDialog({
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>
-              {state.module ? "Edit module" : "Tambah module"}
+              {state.module ? "Edit bab" : "Tambah bab"}
             </DialogTitle>
             <DialogDescription>
-              Module membagi curriculum menjadi tahapan belajar yang terurut.
+              Bab membagi kurikulum menjadi tahapan belajar yang terurut.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-5 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="module-title">Judul module</Label>
+              <Label htmlFor="module-title">Judul bab</Label>
               <Input
                 id="module-title"
                 autoFocus
@@ -860,7 +859,7 @@ function ModuleDialog({
             </Button>
             <Button type="submit" disabled={!title.trim() || pending}>
               {pending ? <LoaderCircleIcon className="animate-spin" /> : null}
-              {state.module ? "Simpan perubahan" : "Tambah module"}
+              {state.module ? "Simpan perubahan" : "Tambah bab"}
             </Button>
           </DialogFooter>
         </form>
@@ -874,14 +873,17 @@ function ItemDialog({
   materials,
   assessments,
   vocabularySets,
+  courseId,
+  organizationSlug,
   onClose,
   onSaved,
 }: {
   module: CourseModule | null;
-  organizationId: string;
   materials: Material[];
   assessments: Assessment[];
   vocabularySets: VocabularySet[];
+  courseId: string;
+  organizationSlug: string;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
@@ -948,7 +950,8 @@ function ItemDialog({
           <DialogHeader>
             <DialogTitle>Tambah learning item</DialogTitle>
             <DialogDescription>
-              Hubungkan resource yang sudah tersedia ke module {module?.title}.
+              Buat materi baru atau hubungkan resource yang sudah tersedia ke
+              bab {module?.title}.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-5 space-y-5">
@@ -961,12 +964,34 @@ function ItemDialog({
                 onChange={(event) => changeType(event.target.value as ItemType)}
               >
                 <option value="MATERIAL">Material</option>
-                <option value="ASSESSMENT">Assessment</option>
+                <option value="ASSESSMENT">Tugas</option>
                 <option value="VOCABULARY_SET">Set kosakata</option>
               </select>
             </div>
+            {type === "MATERIAL" && module ? (
+              <div className="bg-muted/30 flex items-center justify-between gap-4 rounded-lg border p-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Mulai materi baru</p>
+                  <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                    Materi akan otomatis ditambahkan ke bab ini setelah
+                    disimpan.
+                  </p>
+                </div>
+                <Link
+                  href={`/workspace/${organizationSlug}/courses/${courseId}/kurikulum/${module.id}/materials/new`}
+                  className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
+                >
+                  <PlusIcon data-icon="inline-start" />
+                  Buat baru
+                </Link>
+              </div>
+            ) : null}
             <div className="space-y-2">
-              <Label htmlFor="item-resource">Resource</Label>
+              <Label htmlFor="item-resource">
+                {type === "MATERIAL"
+                  ? "Atau pilih dari bahan ajar"
+                  : "Resource"}
+              </Label>
               <select
                 id="item-resource"
                 className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2 disabled:opacity-50"
@@ -989,8 +1014,9 @@ function ItemDialog({
               {resources.length === 0 ? (
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                   <CircleOffIcon className="size-3.5" />
-                  Buat {itemMeta[type].label.toLowerCase()} terlebih dahulu
-                  melalui content API.
+                  {type === "MATERIAL"
+                    ? "Belum ada materi lain di bahan ajar."
+                    : `Buat ${itemMeta[type].label.toLowerCase()} terlebih dahulu.`}
                 </p>
               ) : null}
             </div>
@@ -998,7 +1024,7 @@ function ItemDialog({
               <div>
                 <Label htmlFor="item-published">Langsung publish</Label>
                 <p className="text-muted-foreground mt-0.5 text-xs">
-                  Learner dapat melihat item setelah course diterbitkan.
+                  Siswa dapat melihat item setelah course diterbitkan.
                 </p>
               </div>
               <Switch

@@ -14,12 +14,15 @@ import {
   ArrowRightIcon,
   CalendarDaysIcon,
   CheckIcon,
+  ClipboardCheckIcon,
   ExternalLinkIcon,
   LayoutDashboardIcon,
   LoaderCircleIcon,
+  MailPlusIcon,
   PencilIcon,
   PlusIcon,
   SearchIcon,
+  Settings2Icon,
   Trash2Icon,
   UserPlusIcon,
   UserRoundCogIcon,
@@ -29,6 +32,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CohortInvites } from "~/components/cohort-invites";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +46,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
+import { ReviewQueue } from "~/components/review-queue";
 import {
   Card,
   CardContent,
@@ -76,13 +81,16 @@ type Cohort = RouterOutputs["cohort"]["get"];
 type CohortEnrollment =
   RouterOutputs["enrollment"]["listCohortEnrollments"][number];
 type Meeting = RouterOutputs["cohort"]["listMeetings"][number];
-type CohortView = "overview" | "learners" | "staff" | "meetings";
+type CohortView =
+  "overview" | "learners" | "staff" | "meetings" | "reviews" | "invites";
 
 const views = [
   { value: "overview", label: "Overview", icon: LayoutDashboardIcon },
-  { value: "learners", label: "Learners", icon: UsersIcon },
+  { value: "learners", label: "Siswa", icon: UsersIcon },
   { value: "staff", label: "Staff", icon: UserRoundCogIcon },
   { value: "meetings", label: "Meetings", icon: VideoIcon },
+  { value: "reviews", label: "Review tugas", icon: ClipboardCheckIcon },
+  { value: "invites", label: "Invite", icon: MailPlusIcon },
 ] satisfies Array<{ value: CohortView; label: string; icon: LucideIcon }>;
 
 const validViews = new Set<CohortView>(views.map(({ value }) => value));
@@ -188,19 +196,33 @@ export function CohortWorkspace({
 }) {
   const searchParams = useSearchParams();
   const [editOpen, setEditOpen] = useState(false);
-  const requestedView = searchParams.get("view") as CohortView | null;
-  const view =
-    requestedView && validViews.has(requestedView) ? requestedView : "overview";
   const cohortQuery = api.cohort.get.useQuery(
     { cohortId: initialCohort.id },
     { initialData: initialCohort },
   );
   const cohort = cohortQuery.data;
+  const availableViews = views.filter(({ value }) => {
+    if (value === "learners") return cohort.access.manageLearners;
+    if (value === "reviews") return cohort.access.reviewAssessments;
+    if (value === "invites") return cohort.access.manageInvites;
+    return true;
+  });
+  const requestedView = searchParams.get("view") as CohortView | null;
+  const view =
+    requestedView &&
+    validViews.has(requestedView) &&
+    availableViews.some(({ value }) => value === requestedView)
+      ? requestedView
+      : "overview";
   const root = `/workspace/${organizationSlug}/courses/${cohort.courseId}/cohorts/${cohort.id}`;
   const courseRoot = `/workspace/${organizationSlug}/courses/${cohort.courseId}`;
   const learners = api.enrollment.listCohortEnrollments.useQuery(
     { cohortId: cohort.id },
-    { enabled: view === "overview" || view === "learners" },
+    {
+      enabled:
+        cohort.access.manageLearners &&
+        (view === "overview" || view === "learners"),
+    },
   );
   const meetings = api.cohort.listMeetings.useQuery(
     { cohortId: cohort.id },
@@ -247,7 +269,7 @@ export function CohortWorkspace({
           <div className="max-w-3xl min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold tracking-[0.18em] text-white/60 uppercase">
-                {cohort.course.title} · Batch Pembelajaran
+                {cohort.course.title} · Group belajar
               </span>
               <Badge className="border-white/30 bg-white/10 text-white">
                 {statusLabels[cohort.status]}
@@ -258,25 +280,27 @@ export function CohortWorkspace({
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65">
               {cohort.description ??
-                "Kelola peserta didik, pengajar, dan jadwal batch pembelajaran dari workspace ini."}
+                "Kelola peserta didik, pengajar, dan jadwal Group belajar dari workspace ini."}
             </p>
           </div>
-          <Button
-            className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
-            onClick={() => setEditOpen(true)}
-          >
-            <PencilIcon data-icon="inline-start" />
-            Edit batch pembelajaran
-          </Button>
+          {cohort.access.update ? (
+            <Button
+              className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
+              onClick={() => setEditOpen(true)}
+            >
+              <PencilIcon data-icon="inline-start" />
+              Edit Group belajar
+            </Button>
+          ) : null}
         </div>
       </header>
 
       <nav
-        aria-label="Pengelolaan batch pembelajaran"
+        aria-label="Pengelolaan Group belajar"
         className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <div className="flex min-w-max items-center gap-1">
-          {views.map(({ value, label, icon: Icon }) => (
+          {availableViews.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
               type="button"
@@ -314,22 +338,43 @@ export function CohortWorkspace({
           pending={learners.isPending}
         />
       ) : null}
-      {view === "staff" ? <Staff cohort={cohort} /> : null}
+      {view === "staff" ? (
+        <Staff canManage={cohort.access.manageStaff} cohort={cohort} />
+      ) : null}
       {view === "meetings" ? (
         <Meetings
           cohortId={cohort.id}
           data={meetings.data}
           error={meetings.error}
+          organizationSlug={organizationSlug}
+          canManage={cohort.access.manageMeetings}
           pending={meetings.isPending}
         />
       ) : null}
+      {view === "reviews" ? (
+        <ReviewQueue
+          organizationId={cohort.organizationId}
+          cohortId={cohort.id}
+          cohortName={cohort.name}
+        />
+      ) : null}
+      {view === "invites" ? (
+        <CohortInvites
+          courseId={cohort.courseId}
+          cohortId={cohort.id}
+          cohortName={cohort.name}
+        />
+      ) : null}
 
-      <EditCohort
-        cohort={cohort}
-        courseRoot={courseRoot}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-      />
+      {cohort.access.update ? (
+        <EditCohort
+          canDelete={cohort.access.delete}
+          cohort={cohort}
+          courseRoot={courseRoot}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      ) : null}
     </div>
   );
 }
@@ -360,7 +405,7 @@ function Overview({
   return (
     <div className="space-y-4">
       <section className="grid grid-cols-2 gap-y-6 border-y py-5 sm:grid-cols-4">
-        <Stat label="Learner aktif" value={learnersPending ? "–" : active} />
+        <Stat label="Siswa aktif" value={learnersPending ? "–" : active} />
         <Stat label="Kapasitas" value={cohort.capacity ?? "∞"} />
         <Stat label="Keterisian" value={learnersPending ? "–" : occupancy} />
         <Stat label="Akan datang" value={meetingsPending ? "–" : upcoming} />
@@ -369,10 +414,10 @@ function Overview({
         <Card className="gap-0 rounded-lg py-0">
           <CardHeader className="border-b py-4">
             <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
-              Detail batch pembelajaran
+              Detail Group belajar
             </CardTitle>
             <CardDescription>
-              Periode dan aturan batch pembelajaran saat ini.
+              Periode dan aturan Group belajar saat ini.
             </CardDescription>
           </CardHeader>
           <dl className="divide-border divide-y">
@@ -436,7 +481,7 @@ function Overview({
               Operasi
             </CardTitle>
             <CardDescription>
-              Kelola bagian batch pembelajaran tanpa berpindah halaman.
+              Kelola bagian Group belajar tanpa berpindah halaman.
             </CardDescription>
           </CardHeader>
           <div className="divide-border divide-y">
@@ -501,7 +546,7 @@ function Learners({
     try {
       await mutation.mutateAsync({ cohortId, email, status });
       await utils.enrollment.listCohortEnrollments.invalidate({ cohortId });
-      toast.success("Status learner diperbarui.");
+      toast.success("Status siswa diperbarui.");
       return true;
     } catch (cause) {
       toast.error(getErrorMessage(cause));
@@ -521,11 +566,11 @@ function Learners({
   return (
     <section className="space-y-5">
       <SectionHeading
-        title="Learners"
-        description="Kelola peserta didik yang tergabung langsung dalam batch pembelajaran."
+        title="Siswa"
+        description="Kelola peserta didik yang tergabung langsung dalam Group belajar."
         action={
           <Button onClick={() => setOpen(true)}>
-            <UserPlusIcon data-icon="inline-start" /> Tambah learner
+            <UserPlusIcon data-icon="inline-start" /> Tambah siswa
           </Button>
         }
       />
@@ -535,7 +580,7 @@ function Learners({
           <CardContent>
             <EmptyState
               icon={UsersIcon}
-              title="Belum ada learner"
+              title="Belum ada siswa"
               description="Tambahkan akun Hakgyo menggunakan alamat email."
               action={
                 <Button
@@ -543,7 +588,7 @@ function Learners({
                   size="sm"
                   onClick={() => setOpen(true)}
                 >
-                  Tambah learner
+                  Tambah siswa
                 </Button>
               }
             />
@@ -554,8 +599,8 @@ function Learners({
         <Card className="gap-0 py-0">
           <CardHeader className="border-b py-4 sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
-              <CardTitle>Peserta batch pembelajaran</CardTitle>
-              <CardDescription>{data.length} learner terdaftar</CardDescription>
+              <CardTitle>Peserta Group belajar</CardTitle>
+              <CardDescription>{data.length} siswa terdaftar</CardDescription>
             </div>
             <div className="relative w-full sm:w-64">
               <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
@@ -571,7 +616,7 @@ function Learners({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-4">Learner</TableHead>
+                  <TableHead className="pl-4">Siswa</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Terdaftar</TableHead>
                   <TableHead className="pr-4 text-right">Status</TableHead>
@@ -623,7 +668,7 @@ function Learners({
             <CardContent>
               <EmptyState
                 icon={SearchIcon}
-                title="Learner tidak ditemukan"
+                title="Siswa tidak ditemukan"
                 description="Coba nama atau email yang berbeda."
               />
             </CardContent>
@@ -634,7 +679,7 @@ function Learners({
         <DialogContent>
           <form onSubmit={submit}>
             <DialogHeader>
-              <DialogTitle>Tambah learner</DialogTitle>
+              <DialogTitle>Tambah siswa</DialogTitle>
               <DialogDescription>
                 Email harus sudah terdaftar sebagai akun Hakgyo.
               </DialogDescription>
@@ -686,7 +731,7 @@ function Learners({
                 ) : (
                   <UserPlusIcon />
                 )}
-                Tambah learner
+                Tambah siswa
               </Button>
             </DialogFooter>
           </form>
@@ -696,11 +741,11 @@ function Learners({
   );
 }
 
-function Staff({ cohort }: { cohort: Cohort }) {
+function Staff({ canManage, cohort }: { canManage: boolean; cohort: Cohort }) {
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"TEACHER" | "MODERATOR">("TEACHER");
+  const [role, setRole] = useState<"INSTRUCTOR" | "ASSISTANT">("INSTRUCTOR");
   const add = api.cohort.addStaff.useMutation();
   const update = api.cohort.updateStaff.useMutation();
   const remove = api.cohort.removeStaff.useMutation();
@@ -711,7 +756,11 @@ function Staff({ cohort }: { cohort: Cohort }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      await add.mutateAsync({ cohortId: cohort.id, email, role });
+      await add.mutateAsync({
+        cohortId: cohort.id,
+        email,
+        role,
+      });
       await refresh();
       setOpen(false);
       setEmail("");
@@ -720,7 +769,7 @@ function Staff({ cohort }: { cohort: Cohort }) {
       toast.error(getErrorMessage(cause));
     }
   }
-  async function changeRole(staffId: string, role: "TEACHER" | "MODERATOR") {
+  async function changeRole(staffId: string, role: "INSTRUCTOR" | "ASSISTANT") {
     try {
       await update.mutateAsync({ cohortId: cohort.id, staffId, role });
       await refresh();
@@ -733,22 +782,23 @@ function Staff({ cohort }: { cohort: Cohort }) {
     try {
       await remove.mutateAsync({ cohortId: cohort.id, staffId });
       await refresh();
-      toast.success("Staff dihapus dari batch pembelajaran.");
+      toast.success("Staff dihapus dari Group belajar.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
   }
-
   return (
     <section className="space-y-5">
       <SectionHeading
         title="Staff"
-        description="Pengajar dan moderator yang mengelola batch pembelajaran."
+        description="Instructor mengelola aktivitas kelas. Assistant membantu siswa dan melihat jadwal."
         action={
-          <Button onClick={() => setOpen(true)}>
-            <UserPlusIcon />
-            Tambah staff
-          </Button>
+          canManage ? (
+            <Button onClick={() => setOpen(true)}>
+              <UserPlusIcon />
+              Tambah staff
+            </Button>
+          ) : undefined
         }
       />
       {cohort.staff.length === 0 ? (
@@ -759,13 +809,15 @@ function Staff({ cohort }: { cohort: Cohort }) {
               title="Belum ada staff"
               description="Tambahkan organization member menggunakan email."
               action={
-                <Button
-                  className="mt-4"
-                  size="sm"
-                  onClick={() => setOpen(true)}
-                >
-                  Tambah staff
-                </Button>
+                canManage ? (
+                  <Button
+                    className="mt-4"
+                    size="sm"
+                    onClick={() => setOpen(true)}
+                  >
+                    Tambah staff
+                  </Button>
+                ) : undefined
               }
             />
           </CardContent>
@@ -786,107 +838,184 @@ function Staff({ cohort }: { cohort: Cohort }) {
                     {staff.organizationMember.user.email}
                   </span>
                 </span>
-                <select
-                  className="border-input bg-background h-8 rounded-lg border px-2 text-xs"
-                  value={staff.role}
-                  onChange={(event) =>
-                    changeRole(
-                      staff.id,
-                      event.target.value as "TEACHER" | "MODERATOR",
-                    )
-                  }
-                >
-                  <option value="TEACHER">Teacher</option>
-                  <option value="MODERATOR">Moderator</option>
-                </select>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="Hapus staff"
-                  onClick={() => removeStaff(staff.id)}
-                >
-                  <Trash2Icon />
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  {canManage ? (
+                    <select
+                      className="border-input bg-background h-8 rounded-lg border px-2 text-xs"
+                      value={staff.role}
+                      onChange={(event) =>
+                        changeRole(
+                          staff.id,
+                          event.target.value as "INSTRUCTOR" | "ASSISTANT",
+                        )
+                      }
+                    >
+                      <option value="INSTRUCTOR">Instructor</option>
+                      <option value="ASSISTANT">Assistant</option>
+                    </select>
+                  ) : (
+                    <Badge variant="secondary">
+                      {staff.role === "INSTRUCTOR" ? "Instructor" : "Assistant"}
+                    </Badge>
+                  )}
+                </div>
+                {canManage ? (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="Hapus staff"
+                    onClick={() => removeStaff(staff.id)}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                ) : null}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <form onSubmit={submit}>
-            <DialogHeader>
-              <DialogTitle>Tambah staff</DialogTitle>
-              <DialogDescription>
-                Email harus merupakan member organization ini.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-5 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="staff-email">Email</Label>
-                <Input
-                  id="staff-email"
-                  type="email"
-                  autoFocus
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
+      {canManage ? (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent>
+            <form onSubmit={submit}>
+              <DialogHeader>
+                <DialogTitle>Tambah staff</DialogTitle>
+                <DialogDescription>
+                  Email harus merupakan member organization ini.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-5 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="staff-email">Email</Label>
+                  <Input
+                    id="staff-email"
+                    type="email"
+                    autoFocus
+                    required
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="staff-role">Role</Label>
+                  <select
+                    id="staff-role"
+                    className="border-input bg-background h-9 w-full rounded-lg border px-2.5 text-sm"
+                    value={role}
+                    onChange={(event) =>
+                      setRole(event.target.value as "INSTRUCTOR" | "ASSISTANT")
+                    }
+                  >
+                    <option value="INSTRUCTOR">Instructor</option>
+                    <option value="ASSISTANT">Assistant</option>
+                  </select>
+                  <p className="text-muted-foreground text-xs">
+                    Instructor dapat mengelola meeting, invite, dan review.
+                    Assistant hanya mengelola siswa dan melihat jadwal.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="staff-role">Role</Label>
-                <select
-                  id="staff-role"
-                  className="border-input bg-background h-9 w-full rounded-lg border px-2.5 text-sm"
-                  value={role}
-                  onChange={(event) =>
-                    setRole(event.target.value as "TEACHER" | "MODERATOR")
-                  }
+              <DialogFooter className="mt-5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
                 >
-                  <option value="TEACHER">Teacher</option>
-                  <option value="MODERATOR">Moderator</option>
-                </select>
-              </div>
-            </div>
-            <DialogFooter className="mt-5">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Batal
-              </Button>
-              <Button type="submit" disabled={!email.trim() || add.isPending}>
-                {add.isPending ? (
-                  <LoaderCircleIcon className="animate-spin" />
-                ) : (
-                  <UserPlusIcon />
-                )}
-                Tambah staff
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+                  Batal
+                </Button>
+                <Button type="submit" disabled={!email.trim() || add.isPending}>
+                  {add.isPending ? (
+                    <LoaderCircleIcon className="animate-spin" />
+                  ) : (
+                    <UserPlusIcon />
+                  )}
+                  Tambah staff
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </section>
   );
 }
 
 function Meetings({
+  canManage,
   cohortId,
   data,
   error,
+  organizationSlug,
   pending,
 }: {
+  canManage: boolean;
   cohortId: string;
   data?: RouterOutputs["cohort"]["listMeetings"];
   error: { message: string } | null;
+  organizationSlug: string;
   pending: boolean;
 }) {
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Meeting | null>(null);
+  const integration = api.cohort.getMeetingIntegrationStatus.useQuery(
+    { cohortId },
+    { enabled: canManage },
+  );
   const remove = api.cohort.deleteMeeting.useMutation();
+
+  function openMeetingForm() {
+    setEditing(null);
+    setOpen(true);
+  }
+
+  function renderMeetingAction(size: "default" | "sm" = "default") {
+    if (!canManage) return null;
+    if (integration.isPending) {
+      return (
+        <Button size={size} variant="outline" disabled>
+          <LoaderCircleIcon className="animate-spin" />
+          Memeriksa Zoom
+        </Button>
+      );
+    }
+    if (integration.error) {
+      return (
+        <Button
+          size={size}
+          variant="outline"
+          onClick={() => integration.refetch()}
+        >
+          Coba cek Zoom lagi
+        </Button>
+      );
+    }
+    if (integration.data?.isConnected) {
+      return (
+        <Button size={size} onClick={openMeetingForm}>
+          <PlusIcon />
+          Jadwalkan meeting
+        </Button>
+      );
+    }
+    if (integration.data?.canConfigure) {
+      return (
+        <Link
+          href={`/workspace/${organizationSlug}/settings/integrations`}
+          className={buttonVariants({ size, variant: "outline" })}
+        >
+          <Settings2Icon />
+          Buka pengaturan integrasi
+        </Link>
+      );
+    }
+    return (
+      <Button size={size} variant="outline" disabled>
+        Zoom belum terhubung
+      </Button>
+    );
+  }
+
   async function deleteMeeting(meetingId: string) {
     try {
       await remove.mutateAsync({ cohortId, meetingId });
@@ -901,17 +1030,7 @@ function Meetings({
       <SectionHeading
         title="Meetings"
         description="Jadwal live session yang terhubung ke Zoom."
-        action={
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setOpen(true);
-            }}
-          >
-            <PlusIcon />
-            Jadwalkan meeting
-          </Button>
-        }
+        action={renderMeetingAction()}
       />
       {pending || error ? <LoadingRows error={error} /> : null}
       {!pending && !error && data?.length === 0 ? (
@@ -920,19 +1039,16 @@ function Meetings({
             <EmptyState
               icon={VideoIcon}
               title="Belum ada meeting"
-              description="Hubungkan Zoom organization, lalu jadwalkan live session."
-              action={
-                <Button
-                  className="mt-4"
-                  size="sm"
-                  onClick={() => {
-                    setEditing(null);
-                    setOpen(true);
-                  }}
-                >
-                  Jadwalkan meeting
-                </Button>
+              description={
+                !canManage
+                  ? "Belum ada live session yang dijadwalkan untuk Group belajar ini."
+                  : integration.data?.isConnected
+                    ? "Jadwalkan live session pertama untuk Group belajar ini."
+                    : integration.data?.canConfigure
+                      ? "Hubungkan Zoom organization sebelum menjadwalkan live session."
+                      : "Zoom organization belum terhubung. Hubungi owner atau admin organisasi."
               }
+              action={renderMeetingAction("sm")}
             />
           </CardContent>
         </Card>
@@ -969,31 +1085,35 @@ function Meetings({
                       <ExternalLinkIcon />
                     </a>
                   ) : null}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditing(meeting);
-                      setOpen(true);
-                    }}
-                  >
-                    <PencilIcon />
-                    Edit
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() => deleteMeeting(meeting.id)}
-                  >
-                    <Trash2Icon />
-                  </Button>
+                  {canManage ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditing(meeting);
+                          setOpen(true);
+                        }}
+                      >
+                        <PencilIcon />
+                        Edit
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        onClick={() => deleteMeeting(meeting.id)}
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    </>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       ) : null}
-      {open ? (
+      {canManage && open ? (
         <MeetingForm
           key={editing?.id ?? "new"}
           cohortId={cohortId}
@@ -1145,11 +1265,13 @@ function MeetingForm({
 }
 
 function EditCohort({
+  canDelete,
   cohort,
   courseRoot,
   open,
   onOpenChange,
 }: {
+  canDelete: boolean;
   cohort: Cohort;
   courseRoot: string;
   open: boolean;
@@ -1195,7 +1317,7 @@ function EditCohort({
       });
       await utils.cohort.get.invalidate({ cohortId: cohort.id });
       onOpenChange(false);
-      toast.success("Batch pembelajaran diperbarui.");
+      toast.success("Group belajar diperbarui.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -1204,7 +1326,7 @@ function EditCohort({
     try {
       await remove.mutateAsync({ cohortId: cohort.id });
       await utils.cohort.list.invalidate({ courseId: cohort.courseId });
-      toast.success("Batch pembelajaran dihapus.");
+      toast.success("Group belajar dihapus.");
       router.replace(`${courseRoot}?view=cohorts`);
       router.refresh();
     } catch (cause) {
@@ -1217,7 +1339,7 @@ function EditCohort({
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <form onSubmit={submit}>
             <DialogHeader>
-              <DialogTitle>Edit batch pembelajaran</DialogTitle>
+              <DialogTitle>Edit Group belajar</DialogTitle>
               <DialogDescription>
                 Perbarui informasi, periode, dan aturan enrollment.
               </DialogDescription>
@@ -1311,14 +1433,18 @@ function EditCohort({
               </div>
             </div>
             <DialogFooter className="mt-5 justify-between sm:justify-between">
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2Icon />
-                Hapus
-              </Button>
+              {canDelete ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2Icon />
+                  Hapus
+                </Button>
+              ) : (
+                <span />
+              )}
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -1343,30 +1469,32 @@ function EditCohort({
           </form>
         </DialogContent>
       </Dialog>
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <Trash2Icon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Hapus {cohort.name}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Learner, staff, invite, dan meeting terkait dapat ikut terhapus.
-              Action ini permanen.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={remove.isPending}
-              onClick={deleteCohort}
-            >
-              Hapus permanen
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canDelete ? (
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogMedia>
+                <Trash2Icon />
+              </AlertDialogMedia>
+              <AlertDialogTitle>Hapus {cohort.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Siswa, staff, invite, dan meeting terkait dapat ikut terhapus.
+                Action ini permanen.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={remove.isPending}
+                onClick={deleteCohort}
+              >
+                Hapus permanen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : null}
     </>
   );
 }

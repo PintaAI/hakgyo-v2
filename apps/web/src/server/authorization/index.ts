@@ -5,10 +5,9 @@ import { db } from "~/server/db";
 import { getCourseOutlineForUser } from "~/server/learning/course-outline";
 import {
   canAccessLearningContent,
-  canManageCohort,
   canManageContent,
-  canManageCourse,
-  canViewCourse,
+  getCohortCapabilities,
+  getCourseCapabilities,
   hasPermission,
   type Permission,
 } from "./permissions";
@@ -24,9 +23,8 @@ const forbidden = () => {
   throw new TRPCError({ code: "FORBIDDEN" });
 };
 
-export async function requireOrganizationPermission(input: {
+export async function requireOrganizationMembership(input: {
   organizationId: string;
-  permission: Permission;
   userId: string;
 }) {
   const membership = await db.organizationMember.findUnique({
@@ -42,16 +40,32 @@ export async function requireOrganizationPermission(input: {
       role: true,
       userId: true,
       organization: {
-        select: {
-          teacherCourseAccess: true,
-          teacherContentAccess: true,
-          teacherCanDeleteContent: true,
-        },
+        select: { permissionMode: true, teacherCanCreateCourse: true },
       },
     },
   });
 
-  if (!membership || !hasPermission(membership.role, input.permission)) {
+  if (!membership) return forbidden();
+  return membership;
+}
+
+export async function requireOrganizationPermission(input: {
+  organizationId: string;
+  permission: Permission;
+  userId: string;
+}) {
+  const membership = await requireOrganizationMembership(input);
+
+  if (
+    !hasPermission(membership.role, input.permission) ||
+    (membership.organization.permissionMode === "SIMPLE" &&
+      membership.role === "ADMIN" &&
+      input.permission === "course.create") ||
+    (membership.organization.permissionMode === "ADVANCED" &&
+      membership.role === "TEACHER" &&
+      input.permission === "course.create" &&
+      !membership.organization.teacherCanCreateCourse)
+  ) {
     return forbidden();
   }
 
@@ -76,24 +90,16 @@ export async function requireContentAuthor(input: {
       organizationId: true,
       role: true,
       userId: true,
-      organization: {
-        select: {
-          teacherContentAccess: true,
-          teacherCanDeleteContent: true,
-        },
-      },
+      organization: { select: { permissionMode: true } },
     },
   });
 
   if (
     !membership ||
-    (membership.role === "TEACHER" &&
-      input.action === "delete" &&
-      !membership.organization.teacherCanDeleteContent) ||
-    (membership.role === "TEACHER" &&
+    (membership.organization.permissionMode === "ADVANCED" &&
+      membership.role === "TEACHER" &&
       input.createdByMembershipId !== undefined &&
-      input.createdByMembershipId !== membership.id &&
-      membership.organization.teacherContentAccess !== "ALL")
+      input.createdByMembershipId !== membership.id)
   ) {
     return forbidden();
   }
@@ -107,11 +113,16 @@ async function getCourseScope(courseId: string, userId: string) {
     select: {
       id: true,
       organizationId: true,
+      ownerMembershipId: true,
       owner: { select: { userId: true } },
+      collaborators: {
+        where: { role: "EDITOR", organizationMember: { userId } },
+        select: { id: true },
+        take: 1,
+      },
       organization: {
         select: {
-          teacherCourseAccess: true,
-          teacherContentAccess: true,
+          permissionMode: true,
           members: {
             where: { userId },
             select: { role: true },
@@ -133,10 +144,10 @@ async function getCourseScope(courseId: string, userId: string) {
     course,
     scope: {
       organizationRole: course.organization.members[0]?.role,
+      permissionMode: course.organization.permissionMode,
       isCourseOwner: course.owner.userId === userId,
+      isCourseEditor: course.collaborators.length > 0,
       isCohortStaff: course.cohorts.length > 0,
-      teacherCourseAccess: course.organization.teacherCourseAccess,
-      teacherContentAccess: course.organization.teacherContentAccess,
     },
   };
 }
@@ -147,26 +158,43 @@ export async function requireCoursePermission(input: {
   userId: string;
 }) {
   const result = await getCourseScope(input.courseId, input.userId);
+  const capabilities = getCourseCapabilities(result.scope);
   const allowed =
     input.permission === "course.view"
-      ? canViewCourse(result.scope)
+      ? capabilities.view
       : input.permission === "course.manage"
-        ? canManageCourse(result.scope)
-        : canManageContent(result.scope);
+        ? capabilities.manage
+        : capabilities.manageContent;
 
   if (!allowed) return forbidden();
   return {
     ...result.course,
     access: {
-      canManageCourse: canManageCourse(result.scope),
-      canManageContent: canManageContent(result.scope),
+      canManageCourse: capabilities.manage,
+      canManageContent: capabilities.manageContent,
+      canViewCohorts: capabilities.viewCohorts,
+      canViewAllCohorts: capabilities.viewAllCohorts,
+      canCreateCohort: capabilities.createCohort,
+      canManageCohortInvites: capabilities.manageCohortInvites,
+      usesAdvancedPermissions: capabilities.usesAdvancedPermissions,
     },
   };
 }
 
+export type CohortPermission =
+  | "view"
+  | "update"
+  | "delete"
+  | "staff.manage"
+  | "learners.manage"
+  | "invites.manage"
+  | "meetings.manage"
+  | "assessment.review";
+
 export async function requireCohortPermission(input: {
   cohortId: string;
   userId: string;
+  permission?: CohortPermission;
 }) {
   const cohort = await db.cohort.findUnique({
     where: { id: input.cohortId },
@@ -181,18 +209,31 @@ export async function requireCohortPermission(input: {
         cohortId: input.cohortId,
         organizationMember: { userId: input.userId },
       },
-      select: { id: true },
+      select: { id: true, role: true },
     }),
   ]);
-  if (
-    !canManageCohort({
-      ...result.scope,
-      isCohortStaff: Boolean(exactStaffAssignment),
-    })
-  ) {
-    return forbidden();
-  }
-  return cohort;
+  const courseCapabilities = getCourseCapabilities({
+    ...result.scope,
+    isCohortStaff: Boolean(exactStaffAssignment),
+  });
+  const capabilities = getCohortCapabilities({
+    course: courseCapabilities,
+    staffRole: exactStaffAssignment?.role,
+  });
+  const permission = input.permission ?? "view";
+  const allowed = {
+    view: capabilities.view,
+    update: capabilities.update,
+    delete: capabilities.delete,
+    "staff.manage": capabilities.manageStaff,
+    "learners.manage": capabilities.manageLearners,
+    "invites.manage": capabilities.manageInvites,
+    "meetings.manage": capabilities.manageMeetings,
+    "assessment.review": capabilities.reviewAssessments,
+  }[permission];
+
+  if (!allowed) return forbidden();
+  return { ...cohort, access: capabilities };
 }
 
 export async function requireCourseItemAccess(input: {
@@ -212,9 +253,17 @@ export async function requireCourseItemAccess(input: {
               id: true,
               status: true,
               owner: { select: { userId: true } },
+              collaborators: {
+                where: {
+                  role: "EDITOR",
+                  organizationMember: { userId: input.userId },
+                },
+                select: { id: true },
+                take: 1,
+              },
               organization: {
                 select: {
-                  teacherContentAccess: true,
+                  permissionMode: true,
                   members: {
                     where: { userId: input.userId },
                     select: { role: true },
@@ -260,9 +309,10 @@ export async function requireCourseItemAccess(input: {
   });
   const allowed = canAccessLearningContent({
     organizationRole: course.organization.members[0]?.role,
+    permissionMode: course.organization.permissionMode,
     isCourseOwner: course.owner.userId === input.userId,
+    isCourseEditor: course.collaborators.length > 0,
     isCohortStaff: course.cohorts.length > 0,
-    teacherContentAccess: course.organization.teacherContentAccess,
     hasActiveEnrollment:
       course.enrollments.length > 0 || Boolean(cohortEnrollment),
     isCoursePublished: course.status === "PUBLISHED",
@@ -274,9 +324,10 @@ export async function requireCourseItemAccess(input: {
   if (
     !canManageContent({
       organizationRole: course.organization.members[0]?.role,
+      permissionMode: course.organization.permissionMode,
       isCourseOwner: course.owner.userId === input.userId,
+      isCourseEditor: course.collaborators.length > 0,
       isCohortStaff: course.cohorts.length > 0,
-      teacherContentAccess: course.organization.teacherContentAccess,
     })
   ) {
     const outline = await getCourseOutlineForUser(course.id, input.userId);

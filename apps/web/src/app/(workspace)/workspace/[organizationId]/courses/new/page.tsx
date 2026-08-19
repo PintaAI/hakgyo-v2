@@ -1,4 +1,5 @@
 import { Hanken_Grotesk, Inter } from "next/font/google";
+import { redirect } from "next/navigation";
 
 import { CourseCreateForm } from "~/components/course-create-form";
 import { cn } from "~/lib/utils";
@@ -22,6 +23,19 @@ export default async function NewCoursePage({
   const { organizationId: organizationSlug } = await params;
   const membership =
     await requireOrganizationMembershipBySlug(organizationSlug);
+  if (
+    membership.role === "ADMIN" &&
+    membership.organization.permissionMode === "SIMPLE"
+  ) {
+    redirect(`/workspace/${organizationSlug}/courses`);
+  }
+  if (
+    membership.role === "TEACHER" &&
+    membership.organization.permissionMode === "ADVANCED" &&
+    !membership.organization.teacherCanCreateCourse
+  ) {
+    redirect(`/workspace/${organizationSlug}/courses`);
+  }
 
   return (
     <div

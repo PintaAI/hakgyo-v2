@@ -274,21 +274,18 @@ async function main() {
   const vocabularyEntries = [
     {
       id: "seed-vocab-annyeonghaseyo",
-      position: 1,
       term: "안녕하세요",
       definition: "Halo (formal)",
       examples: ["안녕하세요, 만나서 반갑습니다."],
     },
     {
       id: "seed-vocab-gamsahamnida",
-      position: 2,
       term: "감사합니다",
       definition: "Terima kasih",
       examples: ["도와주셔서 감사합니다."],
     },
     {
       id: "seed-vocab-annyeonghi-gaseyo",
-      position: 3,
       term: "안녕히 가세요",
       definition: "Selamat jalan",
       examples: ["내일 만나요. 안녕히 가세요."],
@@ -435,13 +432,13 @@ async function main() {
         organizationMemberId: teacherMembership.id,
       },
     },
-    update: { role: "TEACHER" },
+    update: { role: "INSTRUCTOR" },
     create: {
       id: "seed-cohort-staff-teacher",
       cohortId: cohort.id,
       organizationId: organization.id,
       organizationMemberId: teacherMembership.id,
-      role: "TEACHER",
+      role: "INSTRUCTOR",
     },
   });
 

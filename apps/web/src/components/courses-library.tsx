@@ -104,10 +104,12 @@ function StatusChip({
 }
 
 export function CoursesLibrary({
+  canCreate,
   courses,
   organizationSlug,
   role,
 }: {
+  canCreate: boolean;
   courses: Course[];
   organizationSlug: string;
   role: OrganizationRole;
@@ -122,6 +124,14 @@ export function CoursesLibrary({
     DRAFT: courses.filter((course) => course.status === "DRAFT").length,
     ARCHIVED: courses.filter((course) => course.status === "ARCHIVED").length,
   };
+
+  const accessLabels = {
+    MANAGER: "Manager",
+    COHORT_MANAGER: "Cohort invite manager",
+    EDITOR: "Editor",
+    COHORT_STAFF: "Cohort staff",
+    VIEWER: "View only",
+  } as const;
   const visibleCourses = courses.filter((course) => {
     const matchesFilter = filter === "ALL" || course.status === filter;
     const searchable =
@@ -142,13 +152,15 @@ export function CoursesLibrary({
           <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
             {role === "TEACHER"
               ? "Temukan dan kelola course yang menjadi tanggung jawab Anda."
-              : "Kelola kurikulum, batch pembelajaran, dan peserta dari satu tempat."}
+              : "Kelola kurikulum, Group belajar, dan peserta dari satu tempat."}
           </p>
         </div>
-        <Link href={`${root}/new`} className={buttonVariants()}>
-          <PlusIcon data-icon="inline-start" />
-          Buat course
-        </Link>
+        {canCreate ? (
+          <Link href={`${root}/new`} className={buttonVariants()}>
+            <PlusIcon data-icon="inline-start" />
+            Buat course
+          </Link>
+        ) : null}
       </header>
 
       {courses.length === 0 ? (
@@ -160,20 +172,22 @@ export function CoursesLibrary({
                 Belum ada course
               </h2>
               <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-xs leading-relaxed">
-                Kursus menyatukan materi, batch pembelajaran, dan peserta agar
+                Kursus menyatukan materi, Group belajar, dan peserta agar
                 semuanya mudah ditemukan.
               </p>
-              <Link
-                href={`${root}/new`}
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "sm",
-                  className: "mt-4",
-                })}
-              >
-                <PlusIcon data-icon="inline-start" />
-                Buat course pertama
-              </Link>
+              {canCreate ? (
+                <Link
+                  href={`${root}/new`}
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "sm",
+                    className: "mt-4",
+                  })}
+                >
+                  <PlusIcon data-icon="inline-start" />
+                  Buat course pertama
+                </Link>
+              ) : null}
             </div>
           </CardContent>
         </Card>
@@ -284,6 +298,16 @@ export function CoursesLibrary({
                             status={course.status}
                             inverted={Boolean(course.thumbnailUrl)}
                           />
+                          <span
+                            className={cn(
+                              "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                              course.thumbnailUrl
+                                ? "border-white/25 text-white/80"
+                                : "border-border text-muted-foreground",
+                            )}
+                          >
+                            {accessLabels[course.accessRole]}
+                          </span>
                         </span>
                         <span
                           className={cn(
@@ -303,8 +327,8 @@ export function CoursesLibrary({
                               : "text-muted-foreground",
                           )}
                         >
-                          <span>{course._count.modules} modul</span>
-                          <span>{course._count.cohorts} batch</span>
+                          <span>{course._count.modules} bab</span>
+                          <span>{course._count.cohorts} Group belajar</span>
                         </span>
                       </span>
                       <span
@@ -317,11 +341,11 @@ export function CoursesLibrary({
                       >
                         <span className="inline-flex items-center gap-1.5">
                           <Layers3Icon className="size-3.5" />
-                          {course._count.modules} modul
+                          {course._count.modules} bab
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <UsersIcon className="size-3.5" />
-                          {course._count.cohorts} batch pembelajaran
+                          {course._count.cohorts} Group belajar
                         </span>
                       </span>
                       <span

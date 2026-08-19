@@ -31,7 +31,6 @@ export const mcpDomainActions = {
     "updateVocabularySet",
     "createVocabularyEntry",
     "updateVocabularyEntry",
-    "reorderVocabularyEntries",
   ],
   cohort: [
     "list",

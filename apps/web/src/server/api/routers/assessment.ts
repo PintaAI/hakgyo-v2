@@ -4,11 +4,13 @@ import { z } from "zod";
 import type { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+  activeEnrollmentStatuses,
+  requireCohortPermission,
   requireContentAuthor,
   requireCourseItemAccess,
+  requireCoursePermission,
   requireOrganizationPermission,
 } from "~/server/authorization";
-import { canManageContent } from "~/server/authorization/permissions";
 
 const id = z.string().min(1);
 const json = z.unknown().transform((value) => value as Prisma.InputJsonValue);
@@ -70,44 +72,24 @@ async function requireReviewAccess(
     select: {
       id: true,
       organizationId: true,
+      cohortId: true,
       userId: true,
       courseItem: { select: { module: { select: { courseId: true } } } },
     },
   });
   if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
-  const course = await db.course.findUnique({
-    where: { id: attempt.courseItem.module.courseId },
-    select: {
-      owner: { select: { userId: true } },
-      organization: {
-        select: {
-          members: {
-            where: { userId },
-            select: { role: true },
-            take: 1,
-          },
-        },
-      },
-      cohorts: {
-        where: {
-          staff: { some: { organizationMember: { userId } } },
-          enrollments: { some: { userId: attempt.userId } },
-        },
-        select: { id: true },
-        take: 1,
-      },
-    },
-  });
-  if (
-    !course ||
-    (!canManageContent({
-      organizationRole: course.organization.members[0]?.role,
-      isCourseOwner: course.owner.userId === userId,
-      isCohortStaff: course.cohorts.length > 0,
-    }) &&
-      course.cohorts.length === 0)
-  ) {
-    throw new TRPCError({ code: "FORBIDDEN" });
+  if (attempt.cohortId) {
+    await requireCohortPermission({
+      cohortId: attempt.cohortId,
+      permission: "assessment.review",
+      userId,
+    });
+  } else {
+    await requireCoursePermission({
+      courseId: attempt.courseItem.module.courseId,
+      permission: "course.manage",
+      userId,
+    });
   }
   const membership = await db.organizationMember.findUnique({
     where: {
@@ -133,8 +115,8 @@ export const assessmentRouter = createTRPCRouter({
       return ctx.db.assessment.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.role === "TEACHER" &&
-          member.organization.teacherContentAccess !== "ALL"
+          ...(member.organization.permissionMode === "ADVANCED" &&
+          member.role === "TEACHER"
             ? { createdByMembershipId: member.id }
             : {}),
         },
@@ -362,7 +344,7 @@ export const assessmentRouter = createTRPCRouter({
     }),
 
   startAttempt: protectedProcedure
-    .input(z.object({ courseItemId: id }))
+    .input(z.object({ courseItemId: id, cohortId: id.optional() }))
     .mutation(async ({ ctx, input }) => {
       await requireCourseItemAccess({
         courseItemId: input.courseItemId,
@@ -374,6 +356,7 @@ export const assessmentRouter = createTRPCRouter({
             where: { id: input.courseItemId },
             select: {
               organizationId: true,
+              module: { select: { courseId: true } },
               assessment: {
                 select: { id: true, status: true, maxAttempts: true },
               },
@@ -385,6 +368,33 @@ export const assessmentRouter = createTRPCRouter({
               message: "Assessment is not published",
             });
           }
+          const cohortEnrollments = await tx.cohortEnrollment.findMany({
+            where: {
+              userId: ctx.actorUserId,
+              status: { in: [...activeEnrollmentStatuses] },
+              cohort: {
+                courseId: item.module.courseId,
+                ...(input.cohortId ? { id: input.cohortId } : {}),
+              },
+            },
+            orderBy: { enrolledAt: "desc" },
+            select: { cohortId: true },
+            take: input.cohortId ? 1 : 2,
+          });
+          if (input.cohortId && cohortEnrollments.length === 0) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "You are not actively enrolled in this study group",
+            });
+          }
+          if (!input.cohortId && cohortEnrollments.length > 1) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Select a study group before starting this assessment",
+            });
+          }
+          const cohortId =
+            input.cohortId ?? cohortEnrollments[0]?.cohortId ?? null;
           const current = await tx.assessmentAttempt.findFirst({
             where: {
               courseItemId: input.courseItemId,
@@ -393,7 +403,21 @@ export const assessmentRouter = createTRPCRouter({
             },
             orderBy: { attemptNumber: "desc" },
           });
-          if (current) return current;
+          if (current) {
+            if (current.cohortId && cohortId && current.cohortId !== cohortId) {
+              throw new TRPCError({
+                code: "CONFLICT",
+                message: "This attempt belongs to another study group",
+              });
+            }
+            if (!current.cohortId && cohortId) {
+              return tx.assessmentAttempt.update({
+                where: { id: current.id },
+                data: { cohortId },
+              });
+            }
+            return current;
+          }
           const count = await tx.assessmentAttempt.count({
             where: {
               courseItemId: input.courseItemId,
@@ -427,6 +451,7 @@ export const assessmentRouter = createTRPCRouter({
               assessmentId: item.assessment.id,
               courseItemId: input.courseItemId,
               organizationId: item.organizationId,
+              cohortId,
               userId: ctx.actorUserId,
               attemptNumber: count + 1,
             },
@@ -825,18 +850,69 @@ export const assessmentRouter = createTRPCRouter({
       });
     }),
   listAttemptsNeedingReview: protectedProcedure
-    .input(z.object({ organizationId: id, assessmentId: id.optional() }))
+    .input(
+      z.object({
+        organizationId: id,
+        assessmentId: id.optional(),
+        cohortId: id.optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
-      await requireOrganizationPermission({
+      const member = await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "assessment.review",
         userId: ctx.actorUserId,
       });
+      if (input.cohortId) {
+        const cohort = await ctx.db.cohort.findFirst({
+          where: {
+            id: input.cohortId,
+            organizationId: input.organizationId,
+          },
+          select: { id: true },
+        });
+        if (!cohort) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireCohortPermission({
+          cohortId: input.cohortId,
+          permission: "assessment.review",
+          userId: ctx.actorUserId,
+        });
+      }
+      const scopedTeacher = member.role === "TEACHER";
+      const simplified = member.organization.permissionMode === "SIMPLE";
       return ctx.db.assessmentAttempt.findMany({
         where: {
           organizationId: input.organizationId,
           assessmentId: input.assessmentId,
+          cohortId: input.cohortId,
           status: "IN_REVIEW",
+          ...(scopedTeacher
+            ? {
+                OR: [
+                  ...(simplified
+                    ? [{ cohortId: null }]
+                    : [
+                        {
+                          courseItem: {
+                            module: {
+                              course: { ownerMembershipId: member.id },
+                            },
+                          },
+                        },
+                      ]),
+                  {
+                    cohort: {
+                      staff: {
+                        some: {
+                          organizationMemberId: member.id,
+                          ...(simplified ? {} : { role: "INSTRUCTOR" }),
+                        },
+                      },
+                    },
+                  },
+                ],
+              }
+            : {}),
         },
         orderBy: { submittedAt: "asc" },
         select: {
@@ -846,6 +922,7 @@ export const assessmentRouter = createTRPCRouter({
           attemptNumber: true,
           submittedAt: true,
           assessment: { select: { title: true } },
+          cohort: { select: { id: true, name: true } },
           user: { select: { id: true, name: true, email: true } },
           answers: {
             where: { question: { type: "WRITTEN" } },

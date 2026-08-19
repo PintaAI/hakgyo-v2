@@ -18,19 +18,20 @@ const workspaceSectionRoles: Readonly<
 > = {
   dashboard: organizationManagerRoles,
   members: organizationManagerRoles,
-  reviews: organizationManagerRoles,
+  reviews: allOrganizationRoles,
   settings: organizationManagerRoles,
 };
 
 export const routeAccess = {
-  signInPath: "/",
+  signInPath: "/auth",
   postSignInPath: "/auth/continue",
-  signedInFallbackPath: "/catalog",
+  signedInFallbackPath: "/onboarding",
   protectedPrefixes: [
     "/auth/continue",
     "/docs",
-    "/invite",
     "/learn",
+    "/onboarding",
+    "/organizations",
     "/workspace",
   ],
   workspace: {

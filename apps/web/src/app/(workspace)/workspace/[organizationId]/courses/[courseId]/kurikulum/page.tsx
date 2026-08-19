@@ -1,7 +1,7 @@
 import { Hanken_Grotesk, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 
-import { CurriculumEditor } from "~/components/curriculum-editor";
+import { KurikulumEditor } from "~/components/kurikulum-editor";
 import { cn } from "~/lib/utils";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
 import { api } from "~/trpc/server";
@@ -16,7 +16,7 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-export default async function CurriculumPage({
+export default async function KurikulumPage({
   params,
 }: {
   params: Promise<{ organizationId: string; courseId: string }>;
@@ -48,11 +48,10 @@ export default async function CurriculumPage({
         "mx-auto w-full max-w-6xl font-[family-name:var(--font-inter)]",
       )}
     >
-      <CurriculumEditor
+      <KurikulumEditor
         assessments={assessments}
         course={course}
         materials={materials}
-        organizationId={membership.organizationId}
         organizationSlug={organizationSlug}
         vocabularySets={vocabularySets}
       />

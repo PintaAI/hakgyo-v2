@@ -4,9 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowDownIcon,
   ArrowLeftIcon,
-  ArrowUpIcon,
   LanguagesIcon,
   LoaderCircleIcon,
   PencilIcon,
@@ -90,12 +88,7 @@ export function VocabularyEditor({
   const createEntry = api.content.createVocabularyEntry.useMutation();
   const updateEntry = api.content.updateVocabularyEntry.useMutation();
   const deleteEntry = api.content.deleteVocabularyEntry.useMutation();
-  const reorderEntries = api.content.reorderVocabularyEntries.useMutation();
-  const canDelete = Boolean(
-    organization.data &&
-    (organization.data.currentRole !== "TEACHER" ||
-      organization.data.teacherCanDeleteContent),
-  );
+  const canDelete = Boolean(organization.data);
   const vocabularySet = vocabularySets.data?.find(
     (set) => set.id === vocabularySetId,
   );
@@ -117,8 +110,7 @@ export function VocabularyEditor({
     return (
       <div className="flex min-h-96 flex-col items-center justify-center gap-3 text-center">
         <p className="text-destructive text-sm">
-          {vocabularySets.error?.message ??
-            "Set kosakata gagal dimuat."}
+          {vocabularySets.error?.message ?? "Set kosakata gagal dimuat."}
         </p>
         <Button variant="outline" onClick={() => vocabularySets.refetch()}>
           Coba lagi
@@ -138,10 +130,7 @@ export function VocabularyEditor({
       organizationSlug={organizationSlug}
       vocabularySet={vocabularySet}
       entryBusy={
-        createEntry.isPending ||
-        updateEntry.isPending ||
-        deleteEntry.isPending ||
-        reorderEntries.isPending
+        createEntry.isPending || updateEntry.isPending || deleteEntry.isPending
       }
       onCreateEntry={async (entry) => {
         if (!vocabularySetId) return false;
@@ -175,35 +164,6 @@ export function VocabularyEditor({
           await deleteEntry.mutateAsync({ organizationId, entryId });
           await refreshVocabulary();
           toast.success("Entri kosakata dihapus.");
-        } catch (error) {
-          toast.error(errorMessage(error));
-        }
-      }}
-      onMoveEntry={async (entryId, direction) => {
-        if (!vocabularySet) return;
-        const index = vocabularySet.entries.findIndex(
-          (entry) => entry.id === entryId,
-        );
-        const nextIndex = index + direction;
-        if (
-          index < 0 ||
-          nextIndex < 0 ||
-          nextIndex >= vocabularySet.entries.length
-        ) {
-          return;
-        }
-        const entryIds = vocabularySet.entries.map((entry) => entry.id);
-        [entryIds[index], entryIds[nextIndex]] = [
-          entryIds[nextIndex]!,
-          entryIds[index]!,
-        ];
-        try {
-          await reorderEntries.mutateAsync({
-            organizationId,
-            vocabularySetId: vocabularySet.id,
-            entryIds,
-          });
-          await refreshVocabulary();
         } catch (error) {
           toast.error(errorMessage(error));
         }
@@ -269,7 +229,6 @@ function VocabularySetForm({
   onCreateEntry,
   onDelete,
   onDeleteEntry,
-  onMoveEntry,
   onSave,
   onUpdateEntry,
 }: {
@@ -284,7 +243,6 @@ function VocabularySetForm({
   onCreateEntry: (entry: EntryFields) => Promise<boolean>;
   onDelete: () => Promise<void>;
   onDeleteEntry: (entryId: string) => Promise<void>;
-  onMoveEntry: (entryId: string, direction: -1 | 1) => Promise<void>;
   onSave: (value: {
     title: string;
     description: string | null;
@@ -342,9 +300,7 @@ function VocabularySetForm({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Hapus set kosakata ini?
-                    </AlertDialogTitle>
+                    <AlertDialogTitle>Hapus set kosakata ini?</AlertDialogTitle>
                     <AlertDialogDescription>
                       Ini menghapus semua entri dan tidak dapat dibatalkan.
                       Penghapusan dapat gagal selama set dipakai oleh course
@@ -400,7 +356,7 @@ function VocabularySetForm({
                 id="vocabulary-description"
                 maxLength={10000}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="Di mana dan bagaimana learner akan memakai kata-kata ini?"
+                placeholder="Di mana dan bagaimana siswa akan memakai kata-kata ini?"
                 rows={3}
                 value={description}
               />
@@ -415,7 +371,7 @@ function VocabularySetForm({
             <div>
               <h2 className="font-heading text-xl font-semibold">Entri</h2>
               <p className="text-muted-foreground text-sm">
-                Istilah ditampilkan kepada learner dalam urutan ini.
+                Istilah ditampilkan menurut waktu penambahannya.
               </p>
             </div>
             <Badge variant="secondary">
@@ -431,14 +387,10 @@ function VocabularySetForm({
                 <VocabularyEntryCard
                   busy={entryBusy}
                   canDelete={canDelete}
-                  canMoveDown={index < vocabularySet.entries.length - 1}
-                  canMoveUp={index > 0}
                   entry={entry}
                   index={index}
                   key={entry.id}
                   onDelete={() => onDeleteEntry(entry.id)}
-                  onMoveDown={() => onMoveEntry(entry.id, 1)}
-                  onMoveUp={() => onMoveEntry(entry.id, -1)}
                   onUpdate={(value) => onUpdateEntry(entry.id, value)}
                 />
               ))}
@@ -513,7 +465,7 @@ function NewEntryForm({
               id="new-vocabulary-definition"
               maxLength={5000}
               onChange={(event) => setDefinition(event.target.value)}
-              placeholder="Definisi yang mudah dipahami learner"
+              placeholder="Definisi yang mudah dipahami siswa"
               value={definition}
             />
           </div>
@@ -549,24 +501,16 @@ function NewEntryForm({
 function VocabularyEntryCard({
   busy,
   canDelete,
-  canMoveDown,
-  canMoveUp,
   entry,
   index,
   onDelete,
-  onMoveDown,
-  onMoveUp,
   onUpdate,
 }: {
   busy: boolean;
   canDelete: boolean;
-  canMoveDown: boolean;
-  canMoveUp: boolean;
   entry: VocabularyEntry;
   index: number;
   onDelete: () => Promise<void>;
-  onMoveDown: () => Promise<void>;
-  onMoveUp: () => Promise<void>;
   onUpdate: (entry: EntryFields) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -667,26 +611,6 @@ function VocabularyEntryCard({
           )}
         </div>
         <div className="flex shrink-0 flex-col gap-1 sm:flex-row">
-          <Button
-            aria-label="Pindahkan entri ke atas"
-            disabled={busy || !canMoveUp}
-            onClick={onMoveUp}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <ArrowUpIcon />
-          </Button>
-          <Button
-            aria-label="Pindahkan entri ke bawah"
-            disabled={busy || !canMoveDown}
-            onClick={onMoveDown}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <ArrowDownIcon />
-          </Button>
           <Button
             aria-label="Edit entri"
             disabled={busy}

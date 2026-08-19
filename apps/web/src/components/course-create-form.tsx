@@ -199,8 +199,8 @@ export function CourseCreateForm({
           </p>
           <ol className="text-muted-foreground mt-5 space-y-5 text-sm">
             {[
-              "Susun modul dan materi",
-              "Buat batch pembelajaran atau kelas",
+              "Susun bab dan materi",
+              "Buat Group belajar atau kelas",
               "Undang peserta untuk belajar",
             ].map((item, index) => (
               <li key={item} className="flex gap-3">

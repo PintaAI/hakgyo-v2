@@ -132,7 +132,6 @@ export type ContentMutationInputMap = {
   "content.createVocabularyEntry": RouterInputs["content"]["createVocabularyEntry"];
   "content.updateVocabularyEntry": RouterInputs["content"]["updateVocabularyEntry"];
   "content.deleteVocabularyEntry": RouterInputs["content"]["deleteVocabularyEntry"];
-  "content.reorderVocabularyEntries": RouterInputs["content"]["reorderVocabularyEntries"];
   "assessment.create": RouterInputs["assessment"]["create"];
   "assessment.update": RouterInputs["assessment"]["update"];
   "assessment.delete": RouterInputs["assessment"]["delete"];

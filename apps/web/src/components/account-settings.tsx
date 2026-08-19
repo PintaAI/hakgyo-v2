@@ -725,7 +725,7 @@ export function AccountSettings({
                     <CardTitle>Hapus akun</CardTitle>
                     <CardDescription>
                       Menghapus permanen profile, enrollment, progres belajar,
-                      attempt penilaian, sesi, dan metode masuk Anda. Ini tidak
+                      attempt tugas, sesi, dan metode masuk Anda. Ini tidak
                       dapat dibatalkan.
                     </CardDescription>
                   </CardHeader>

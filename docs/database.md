@@ -194,7 +194,7 @@ menentukan urutan tampilan requirement.
 ### VocabularySet dan VocabularyEntry
 
 `VocabularySet` adalah kumpulan kosakata reusable. `VocabularyEntry` menyimpan
-setiap kata dan urutannya.
+setiap kata. Entri ditampilkan secara stabil berdasarkan waktu pembuatannya.
 
 | Field `VocabularyEntry` | Contoh                                            |
 | ----------------------- | ------------------------------------------------- |

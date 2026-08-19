@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Building2Icon,
   ChevronDownIcon,
   ChevronsUpDownIcon,
   LogInIcon,
@@ -137,6 +138,10 @@ function SidebarUserMenu({
             <DropdownMenuItem onClick={onOpenSettings}>
               <SettingsIcon />
               Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href="/organizations/new" />}>
+              <Building2Icon />
+              Buat organization
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -310,6 +315,10 @@ export function User({ role, variant = "header" }: UserProps) {
           <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>
             <SettingsIcon />
             Settings
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link href="/organizations/new" />}>
+            <Building2Icon />
+            Buat organization
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

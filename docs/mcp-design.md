@@ -98,7 +98,6 @@ content.deleteVocabularySet
 content.createVocabularyEntry
 content.updateVocabularyEntry
 content.deleteVocabularyEntry
-content.reorderVocabularyEntries
 ```
 
 ### Cohort
@@ -451,7 +450,7 @@ Candidate workflows setelah confirmation dan audit design selesai:
 
 - publish/archive course atau assessment;
 - update material yang dapat direferensikan published course item;
-- create/update curriculum modules dan items;
+- create/update kurikulum modules dan items;
 - create/update cohort dan staff assignment;
 - create/update Zoom meetings;
 - list dan update enrollment;

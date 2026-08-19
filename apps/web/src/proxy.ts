@@ -25,8 +25,9 @@ export const config = {
   matcher: [
     "/auth/continue",
     "/docs/:path*",
-    "/invite/:path*",
     "/learn/:path*",
+    "/onboarding",
+    "/organizations/:path*",
     "/workspace/:path*",
   ],
 };

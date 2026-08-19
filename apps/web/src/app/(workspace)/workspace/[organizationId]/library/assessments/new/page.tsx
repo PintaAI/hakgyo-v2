@@ -4,5 +4,5 @@ export default function Page({
 }: {
   params: Promise<{ organizationId: string }>;
 }) {
-  return <WorkspacePagePlaceholder title="Penilaian baru" params={params} />;
+  return <WorkspacePagePlaceholder title="Tugas baru" params={params} />;
 }

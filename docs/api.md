@@ -835,18 +835,6 @@ mutation({
 mutation({ organizationId: string; entryId: string }): { deleted: true }
 ```
 
-#### `content.reorderVocabularyEntries`
-
-```ts
-mutation({
-  organizationId: string;
-  vocabularySetId: string;
-  entryIds: string[];
-}): { reordered: true }
-```
-
-- Semua entry set wajib disertakan; maksimal 2,000.
-
 ---
 
 ## Cohort

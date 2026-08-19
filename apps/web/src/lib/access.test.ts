@@ -14,7 +14,10 @@ describe("route access", () => {
     expect(isProtectedRoute("/learn/courses")).toBe(true);
     expect(isProtectedRoute("/docs/courses-id")).toBe(true);
     expect(isProtectedRoute("/workspace/acme-school/dashboard")).toBe(true);
-    expect(isProtectedRoute("/invite/token.with.dot")).toBe(true);
+    expect(isProtectedRoute("/invite/token.with.dot")).toBe(false);
+    expect(isProtectedRoute("/organization-invite/token.with.dot")).toBe(false);
+    expect(isProtectedRoute("/onboarding")).toBe(true);
+    expect(isProtectedRoute("/organizations/new")).toBe(true);
     expect(isProtectedRoute("/learning-resources")).toBe(false);
     expect(isProtectedRoute("/catalog")).toBe(false);
   });
@@ -27,6 +30,10 @@ describe("route access", () => {
       allowedRoles: ["OWNER", "ADMIN"],
     });
     expect(getWorkspaceRoute("/workspace/acme-school/courses")).toEqual({
+      organizationSlug: "acme-school",
+      allowedRoles: ["OWNER", "ADMIN", "TEACHER"],
+    });
+    expect(getWorkspaceRoute("/workspace/acme-school/reviews")).toEqual({
       organizationSlug: "acme-school",
       allowedRoles: ["OWNER", "ADMIN", "TEACHER"],
     });

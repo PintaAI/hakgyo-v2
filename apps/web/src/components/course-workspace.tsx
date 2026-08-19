@@ -16,6 +16,7 @@ import {
   CalendarDaysIcon,
   CheckIcon,
   ClipboardIcon,
+  CrownIcon,
   FilePenLineIcon,
   Layers3Icon,
   LayoutDashboardIcon,
@@ -26,6 +27,7 @@ import {
   PlusIcon,
   SearchIcon,
   Settings2Icon,
+  ShieldCheckIcon,
   Trash2Icon,
   UserPlusIcon,
   UserRoundCheckIcon,
@@ -45,6 +47,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import {
@@ -66,6 +69,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Switch } from "~/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -78,7 +82,8 @@ import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
-type CourseView = "overview" | "cohorts" | "learners" | "invites" | "settings";
+type CourseView =
+  "overview" | "cohorts" | "learners" | "invites" | "access" | "settings";
 
 type Course = RouterOutputs["course"]["get"];
 type Enrollment = RouterOutputs["enrollment"]["listCourseEnrollments"][number];
@@ -112,9 +117,10 @@ const cohortStatus = {
 
 const views = [
   { value: "overview", label: "Overview", icon: LayoutDashboardIcon },
-  { value: "cohorts", label: "Batch pembelajaran", icon: CalendarDaysIcon },
-  { value: "learners", label: "Learners", icon: UsersIcon },
+  { value: "cohorts", label: "Group belajar", icon: CalendarDaysIcon },
+  { value: "learners", label: "Siswa", icon: UsersIcon },
   { value: "invites", label: "Invites", icon: MailPlusIcon },
+  { value: "access", label: "Akses", icon: ShieldCheckIcon },
   { value: "settings", label: "Settings", icon: Settings2Icon },
 ] satisfies Array<{
   value: CourseView;
@@ -134,6 +140,15 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
   return "Perubahan belum berhasil disimpan. Silakan coba lagi.";
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
 function SectionEmpty({
@@ -205,10 +220,16 @@ export function CourseWorkspace({
   const utils = api.useUtils();
   const root = `/workspace/${organizationSlug}/courses/${course.id}`;
   const canManageCourse = course.access.canManageCourse;
+  const canViewCohorts = course.access.canViewCohorts;
   const canManageContent = course.access.canManageContent;
+  const canManageAccess =
+    canManageCourse && course.access.usesAdvancedPermissions;
   const availableViews = canManageCourse
-    ? views
-    : views.filter(({ value }) => value === "overview");
+    ? views.filter(({ value }) => value !== "access" || canManageAccess)
+    : views.filter(
+        ({ value }) =>
+          value === "overview" || (canViewCohorts && value === "cohorts"),
+      );
   const requestedView = searchParams.get("view") as CourseView | null;
   const view =
     requestedView &&
@@ -231,7 +252,7 @@ export function CourseWorkspace({
     { courseId: course.id },
     {
       enabled:
-        canManageCourse &&
+        canViewCohorts &&
         (isOverview || view === "cohorts" || view === "invites"),
     },
   );
@@ -242,6 +263,10 @@ export function CourseWorkspace({
   const invites = api.enrollment.listInvites.useQuery(
     { courseId: course.id },
     { enabled: canManageCourse && (isOverview || view === "invites") },
+  );
+  const access = api.course.getAccess.useQuery(
+    { courseId: course.id },
+    { enabled: canManageAccess && view === "access" },
   );
 
   const updateCourse = api.course.update.useMutation();
@@ -323,16 +348,27 @@ export function CourseWorkspace({
           <div className="flex flex-wrap gap-2">
             {canManageContent ? (
               <Link
-                href={`${root}/curriculum`}
+                href={`${root}/kurikulum`}
                 className={cn(
                   buttonVariants({ variant: "outline" }),
                   "border-white/20 bg-white/5 text-[#f5f3e9] hover:bg-white/10 hover:text-white",
                 )}
               >
                 <FilePenLineIcon data-icon="inline-start" />
-                Edit curriculum
+                Edit kurikulum
               </Link>
-            ) : null}
+            ) : (
+              <Link
+                href={`/learn/${course.id}`}
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "border-white/20 bg-white/5 text-[#f5f3e9] hover:bg-white/10 hover:text-white",
+                )}
+              >
+                <Layers3Icon data-icon="inline-start" />
+                Lihat kurikulum
+              </Link>
+            )}
             {canManageCourse && course.status === "PUBLISHED" ? (
               <Button
                 className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
@@ -403,6 +439,7 @@ export function CourseWorkspace({
       ) : null}
       {view === "cohorts" ? (
         <CohortsSection
+          canCreate={canManageCourse}
           courseId={course.id}
           data={cohorts.data}
           error={cohorts.error}
@@ -426,6 +463,14 @@ export function CourseWorkspace({
           data={invites.data}
           error={invites.error}
           isPending={invites.isPending}
+        />
+      ) : null}
+      {view === "access" ? (
+        <AccessSection
+          courseId={course.id}
+          data={access.data}
+          error={access.error}
+          isPending={access.isPending}
         />
       ) : null}
       {view === "settings" ? (
@@ -486,22 +531,33 @@ function OverviewSection({
               Akses course bersama
             </CardTitle>
             <CardDescription>
-              Course ini dibagikan kepada teacher di organisasi Anda.
+              Anda memiliki akses melalui assignment course atau cohort.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {canManageContent ? (
               <Link
-                href={`${root}/curriculum`}
+                href={`${root}/kurikulum`}
                 className={buttonVariants({ variant: "outline" })}
               >
                 <FilePenLineIcon data-icon="inline-start" />
-                Edit curriculum
+                Edit kurikulum
               </Link>
             ) : (
-              <p className="text-muted-foreground text-sm">
-                Minta admin organisasi mengaktifkan pengeditan konten bersama.
-              </p>
+              <div className="space-y-3">
+                <p className="text-muted-foreground text-sm">
+                  Curriculum tersedia sebagai referensi mengajar. Minta course
+                  manager menambahkan Anda sebagai editor bila perlu
+                  mengubahnya.
+                </p>
+                <Link
+                  href={`/learn/${course.id}`}
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  <Layers3Icon data-icon="inline-start" />
+                  Lihat kurikulum
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -533,13 +589,13 @@ function OverviewSection({
         aria-label="Course summary"
         className="grid grid-cols-2 gap-y-6 border-y py-5 sm:grid-cols-4"
       >
-        <Stat label="Modul" value={modules} />
+        <Stat label="Bab" value={modules} />
         <Stat
-          label="Batch pembelajaran"
+          label="Group belajar"
           value={cohortsPending ? "–" : (cohorts?.length ?? 0)}
         />
         <Stat
-          label="Learner aktif"
+          label="Siswa aktif"
           value={learnersPending ? "–" : (activeLearners ?? 0)}
         />
         <Stat
@@ -553,7 +609,7 @@ function OverviewSection({
           <CardHeader className="border-b">
             <div>
               <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
-                Ikhtisar curriculum
+                Ikhtisar kurikulum
               </CardTitle>
               <CardDescription>
                 Struktur pembelajaran yang tersedia saat ini.
@@ -561,7 +617,7 @@ function OverviewSection({
             </div>
             <CardAction>
               <Link
-                href={`${root}/curriculum`}
+                href={`${root}/kurikulum`}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 Kelola
@@ -573,11 +629,11 @@ function OverviewSection({
             <CardContent>
               <SectionEmpty
                 icon={Layers3Icon}
-                title="Curriculum masih kosong"
+                title="Kurikulum masih kosong"
                 description="Susun bab pertama, lalu hubungkan bahan ajar."
                 action={
                   <Link
-                    href={`${root}/curriculum`}
+                    href={`${root}/kurikulum`}
                     className={cn(
                       buttonVariants({ variant: "outline", size: "sm" }),
                       "mt-4",
@@ -613,9 +669,7 @@ function OverviewSection({
           <div className="bg-muted/40 text-muted-foreground flex items-center justify-between border-t px-4 py-3 text-xs">
             <span>{items} total learning item</span>
             <span>
-              {course.progressionMode === "OPEN"
-                ? "Akses terbuka"
-                : "Berurutan"}
+              {course.progressionMode === "OPEN" ? "Akses terbuka" : "Bertahap"}
             </span>
           </div>
         </Card>
@@ -635,12 +689,12 @@ function OverviewSection({
                 {
                   view: "cohorts" as const,
                   icon: CalendarDaysIcon,
-                  label: "Buat dan kelola batch pembelajaran",
+                  label: "Buat dan kelola Group belajar",
                 },
                 {
                   view: "invites" as const,
                   icon: MailPlusIcon,
-                  label: "Undang learner",
+                  label: "Undang siswa",
                 },
                 {
                   view: "settings" as const,
@@ -687,12 +741,14 @@ function OverviewSection({
 }
 
 function CohortsSection({
+  canCreate,
   courseId,
   data,
   error,
   isPending,
   root,
 }: {
+  canCreate: boolean;
   courseId: string;
   data?: RouterOutputs["cohort"]["list"];
   error: { message: string } | null;
@@ -727,7 +783,7 @@ function CohortsSection({
       setCapacity("");
       setStartsAt("");
       setEndsAt("");
-      toast.success("Batch pembelajaran berhasil dibuat.");
+      toast.success("Group belajar berhasil dibuat.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -738,16 +794,18 @@ function CohortsSection({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
-            Batch pembelajaran
+            Group belajar
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             Kelola kelas, kapasitas, periode, dan staff course.
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <PlusIcon data-icon="inline-start" />
-          Buat batch pembelajaran
-        </Button>
+        {canCreate ? (
+          <Button onClick={() => setOpen(true)}>
+            <PlusIcon data-icon="inline-start" />
+            Buat Group belajar
+          </Button>
+        ) : null}
       </div>
 
       {isPending || error ? <QueryState error={error} /> : null}
@@ -756,17 +814,19 @@ function CohortsSection({
           <CardContent>
             <SectionEmpty
               icon={CalendarDaysIcon}
-              title="Belum ada batch pembelajaran"
-              description="Batch pembelajaran membantu mengatur periode belajar, pengajar, meeting, dan kelompok peserta didik."
+              title="Belum ada Group belajar"
+              description="Group belajar membantu mengatur periode belajar, pengajar, meeting, dan kelompok peserta didik."
               action={
-                <Button
-                  className="mt-4"
-                  size="sm"
-                  onClick={() => setOpen(true)}
-                >
-                  <PlusIcon data-icon="inline-start" />
-                  Buat batch pertama
-                </Button>
+                canCreate ? (
+                  <Button
+                    className="mt-4"
+                    size="sm"
+                    onClick={() => setOpen(true)}
+                  >
+                    <PlusIcon data-icon="inline-start" />
+                    Buat Group belajar pertama
+                  </Button>
+                ) : undefined
               }
             />
           </CardContent>
@@ -787,8 +847,7 @@ function CohortsSection({
                     {cohort.name}
                   </h3>
                   <p className="text-muted-foreground mt-1 line-clamp-2 min-h-8 text-xs leading-relaxed">
-                    {cohort.description ??
-                      "Belum ada deskripsi batch pembelajaran."}
+                    {cohort.description ?? "Belum ada deskripsi Group belajar."}
                   </p>
                 </div>
                 <ArrowRightIcon className="text-muted-foreground group-hover:text-foreground mt-1 size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
@@ -818,92 +877,94 @@ function CohortsSection({
         </div>
       ) : null}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <form onSubmit={submit}>
-            <DialogHeader>
-              <DialogTitle>Buat batch pembelajaran</DialogTitle>
-              <DialogDescription>
-                Buat kelompok belajar baru untuk kursus ini.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-5 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="cohort-name">Nama batch pembelajaran</Label>
-                <Input
-                  id="cohort-name"
-                  autoFocus
-                  maxLength={200}
-                  placeholder="Contoh: Batch September 2026"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cohort-description">Deskripsi</Label>
-                <Textarea
-                  id="cohort-description"
-                  maxLength={10000}
-                  placeholder="Fokus dan konteks batch pembelajaran ini"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-3">
+      {canCreate ? (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <form onSubmit={submit}>
+              <DialogHeader>
+                <DialogTitle>Buat Group belajar</DialogTitle>
+                <DialogDescription>
+                  Buat kelompok belajar baru untuk kursus ini.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-5 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cohort-capacity">Kapasitas</Label>
+                  <Label htmlFor="cohort-name">Nama Group belajar</Label>
                   <Input
-                    id="cohort-capacity"
-                    min={1}
-                    type="number"
-                    value={capacity}
-                    onChange={(event) => setCapacity(event.target.value)}
+                    id="cohort-name"
+                    autoFocus
+                    maxLength={200}
+                    placeholder="Contoh: Group belajar September 2026"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cohort-start">Mulai</Label>
-                  <Input
-                    id="cohort-start"
-                    type="date"
-                    value={startsAt}
-                    onChange={(event) => setStartsAt(event.target.value)}
+                  <Label htmlFor="cohort-description">Deskripsi</Label>
+                  <Textarea
+                    id="cohort-description"
+                    maxLength={10000}
+                    placeholder="Fokus dan konteks Group belajar ini"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cohort-end">Selesai</Label>
-                  <Input
-                    id="cohort-end"
-                    min={startsAt || undefined}
-                    type="date"
-                    value={endsAt}
-                    onChange={(event) => setEndsAt(event.target.value)}
-                  />
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="cohort-capacity">Kapasitas</Label>
+                    <Input
+                      id="cohort-capacity"
+                      min={1}
+                      type="number"
+                      value={capacity}
+                      onChange={(event) => setCapacity(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cohort-start">Mulai</Label>
+                    <Input
+                      id="cohort-start"
+                      type="date"
+                      value={startsAt}
+                      onChange={(event) => setStartsAt(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cohort-end">Selesai</Label>
+                    <Input
+                      id="cohort-end"
+                      min={startsAt || undefined}
+                      type="date"
+                      value={endsAt}
+                      onChange={(event) => setEndsAt(event.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-            <DialogFooter className="mt-5">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                disabled={!name.trim() || createCohort.isPending}
-              >
-                {createCohort.isPending ? (
-                  <LoaderCircleIcon className="animate-spin" />
-                ) : (
-                  <PlusIcon />
-                )}
-                Buat batch pembelajaran
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <DialogFooter className="mt-5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!name.trim() || createCohort.isPending}
+                >
+                  {createCohort.isPending ? (
+                    <LoaderCircleIcon className="animate-spin" />
+                  ) : (
+                    <PlusIcon />
+                  )}
+                  Buat Group belajar
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </section>
   );
 }
@@ -929,6 +990,8 @@ function LearnersSection({
   const [expiresAt, setExpiresAt] = useState("");
   const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
   const updateEnrollment = api.enrollment.setCourseEnrollment.useMutation();
+  const removeEnrollment = api.enrollment.removeCourseEnrollment.useMutation();
+  const [removing, setRemoving] = useState<Enrollment | null>(null);
   const visible = data?.filter((enrollment) =>
     `${enrollment.user.name} ${enrollment.user.email}`
       .toLocaleLowerCase()
@@ -967,7 +1030,21 @@ function LearnersSection({
       setEmail("");
       setStatus("ACTIVE");
       setExpiresAt("");
-      toast.success("Learner berhasil ditambahkan.");
+      toast.success("Siswa berhasil ditambahkan.");
+    } catch (cause) {
+      toast.error(getErrorMessage(cause));
+    }
+  }
+
+  async function removeLearner(enrollment: Enrollment) {
+    try {
+      await removeEnrollment.mutateAsync({
+        courseId,
+        userId: enrollment.user.id,
+      });
+      await utils.enrollment.listCourseEnrollments.invalidate({ courseId });
+      setRemoving(null);
+      toast.success(`Siswa ${enrollment.user.name} dihapus dari course.`);
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -978,10 +1055,10 @@ function LearnersSection({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
-            Learners
+            Siswa
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Pantau entitlement dan status belajar seluruh learner.
+            Pantau entitlement dan status belajar seluruh siswa.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -991,7 +1068,7 @@ function LearnersSection({
           </Button>
           <Button onClick={() => setAddOpen(true)}>
             <UserPlusIcon data-icon="inline-start" />
-            Tambah learner
+            Tambah siswa
           </Button>
         </div>
       </div>
@@ -1002,8 +1079,8 @@ function LearnersSection({
           <CardContent>
             <SectionEmpty
               icon={UserRoundCheckIcon}
-              title="Belum ada learner"
-              description="Tambahkan akun Hakgyo dengan email atau bagikan invite agar learner mendaftar sendiri."
+              title="Belum ada siswa"
+              description="Tambahkan akun Hakgyo dengan email atau bagikan invite agar siswa mendaftar sendiri."
               action={
                 <Button
                   className="mt-4"
@@ -1011,7 +1088,7 @@ function LearnersSection({
                   onClick={() => setAddOpen(true)}
                 >
                   <UserPlusIcon data-icon="inline-start" />
-                  Tambah learner
+                  Tambah siswa
                 </Button>
               }
             />
@@ -1023,12 +1100,12 @@ function LearnersSection({
           <CardHeader className="gap-4 border-b sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
               <CardTitle>Enrollment course</CardTitle>
-              <CardDescription>{data.length} learner terdaftar</CardDescription>
+              <CardDescription>{data.length} siswa terdaftar</CardDescription>
             </div>
             <div className="relative w-full sm:w-64">
               <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
               <Input
-                aria-label="Cari learner"
+                aria-label="Cari siswa"
                 className="pl-8"
                 placeholder="Cari nama atau email"
                 value={search}
@@ -1040,10 +1117,13 @@ function LearnersSection({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-4">Learner</TableHead>
+                  <TableHead className="pl-4">Siswa</TableHead>
                   <TableHead>Sumber</TableHead>
                   <TableHead>Terdaftar</TableHead>
-                  <TableHead className="pr-4 text-right">Status</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
+                  <TableHead className="pr-4 text-right">
+                    <span className="sr-only">Aksi</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1063,7 +1143,7 @@ function LearnersSection({
                     <TableCell className="text-muted-foreground text-xs">
                       {dateFormatter.format(enrollment.enrolledAt)}
                     </TableCell>
-                    <TableCell className="pr-4 text-right">
+                    <TableCell className="text-right">
                       <select
                         aria-label={`Status ${enrollment.user.name}`}
                         className="border-input bg-background focus-visible:ring-ring h-8 rounded-lg border px-2 text-sm outline-none focus-visible:ring-2"
@@ -1085,6 +1165,18 @@ function LearnersSection({
                         )}
                       </select>
                     </TableCell>
+                    <TableCell className="pr-4 text-right">
+                      <Button
+                        aria-label={`Hapus ${enrollment.user.name}`}
+                        size="icon-sm"
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-destructive"
+                        disabled={removeEnrollment.isPending}
+                        onClick={() => setRemoving(enrollment)}
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1093,7 +1185,7 @@ function LearnersSection({
             <CardContent>
               <SectionEmpty
                 icon={SearchIcon}
-                title="Learner tidak ditemukan"
+                title="Siswa tidak ditemukan"
                 description="Coba nama atau alamat email yang berbeda."
               />
             </CardContent>
@@ -1105,20 +1197,20 @@ function LearnersSection({
         <DialogContent className="sm:max-w-md">
           <form onSubmit={addLearner}>
             <DialogHeader>
-              <DialogTitle>Tambah learner</DialogTitle>
+              <DialogTitle>Tambah siswa</DialogTitle>
               <DialogDescription>
                 Masukkan email akun Hakgyo yang akan diberi akses ke course ini.
               </DialogDescription>
             </DialogHeader>
             <div className="mt-5 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="learner-email">Email learner</Label>
+                <Label htmlFor="learner-email">Email siswa</Label>
                 <Input
                   id="learner-email"
                   autoComplete="email"
                   autoFocus
                   maxLength={320}
-                  placeholder="learner@example.com"
+                  placeholder="siswa@example.com"
                   required
                   type="email"
                   value={email}
@@ -1174,12 +1266,49 @@ function LearnersSection({
                 ) : (
                   <UserPlusIcon />
                 )}
-                Tambah learner
+                Tambah siswa
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(removing)}
+        onOpenChange={(value) => {
+          if (!value) setRemoving(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Trash2Icon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              Hapus {removing?.user.name} dari course?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Siswa akan kehilangan akses ke course ini. Status enrollment lama
+              tidak dapat dipulihkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removeEnrollment.isPending}
+              onClick={() => removing && removeLearner(removing)}
+            >
+              {removeEnrollment.isPending ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : (
+                <Trash2Icon />
+              )}
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
@@ -1202,6 +1331,7 @@ function InvitesSection({
   const [cohortId, setCohortId] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [maxUses, setMaxUses] = useState("");
+  const [oneTime, setOneTime] = useState(true);
   const [newToken, setNewToken] = useState<string | null>(null);
   const createInvite = api.enrollment.createInvite.useMutation();
   const revokeInvite = api.enrollment.revokeInvite.useMutation();
@@ -1213,7 +1343,7 @@ function InvitesSection({
         courseId,
         cohortId: cohortId || null,
         expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59`) : null,
-        maxUses: maxUses ? Number(maxUses) : null,
+        maxUses: oneTime ? 1 : maxUses ? Number(maxUses) : null,
       });
       await utils.enrollment.listInvites.invalidate({ courseId });
       setNewToken(invite.token);
@@ -1248,6 +1378,7 @@ function InvitesSection({
     setCohortId("");
     setExpiresAt("");
     setMaxUses("");
+    setOneTime(true);
   }
 
   return (
@@ -1258,7 +1389,7 @@ function InvitesSection({
             Invites
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Buat link akses untuk kursus atau batch pembelajaran tertentu.
+            Buat link akses untuk kursus atau Group belajar tertentu.
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>
@@ -1282,7 +1413,7 @@ function InvitesSection({
             <SectionEmpty
               icon={MailPlusIcon}
               title="Belum ada invite"
-              description="Buat link terbatas untuk mengundang peserta didik ke kursus atau batch pembelajaran."
+              description="Buat link terbatas untuk mengundang peserta didik ke kursus atau Group belajar."
               action={
                 <Button
                   className="mt-4"
@@ -1327,7 +1458,7 @@ function InvitesSection({
                       <span className="block font-medium">
                         {cohort?.name ??
                           (invite.cohortId
-                            ? "Batch pembelajaran"
+                            ? "Group belajar"
                             : "Seluruh kursus")}
                       </span>
                       <span className="text-muted-foreground block text-xs">
@@ -1409,6 +1540,20 @@ function InvitesSection({
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-5 space-y-4">
+                <div className="flex items-start justify-between gap-6 rounded-lg border p-4">
+                  <div className="grid gap-1">
+                    <Label htmlFor="invite-one-time">Link sekali pakai</Label>
+                    <p className="text-muted-foreground text-xs">
+                      Link otomatis tidak berlaku setelah berhasil digunakan.
+                    </p>
+                  </div>
+                  <Switch
+                    id="invite-one-time"
+                    checked={oneTime}
+                    onCheckedChange={setOneTime}
+                    aria-label="Link sekali pakai"
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="invite-cohort">Target</Label>
                   <select
@@ -1439,8 +1584,9 @@ function InvitesSection({
                     <Label htmlFor="invite-uses">Maksimal penggunaan</Label>
                     <Input
                       id="invite-uses"
+                      disabled={oneTime}
                       min={1}
-                      placeholder="Tanpa batas"
+                      placeholder={oneTime ? "1" : "Tanpa batas"}
                       type="number"
                       value={maxUses}
                       onChange={(event) => setMaxUses(event.target.value)}
@@ -1465,6 +1611,333 @@ function InvitesSection({
           )}
         </DialogContent>
       </Dialog>
+    </section>
+  );
+}
+
+function AccessSection({
+  courseId,
+  data,
+  error,
+  isPending,
+}: {
+  courseId: string;
+  data?: RouterOutputs["course"]["getAccess"];
+  error: { message: string } | null;
+  isPending: boolean;
+}) {
+  const router = useRouter();
+  const utils = api.useUtils();
+  const [editorMembershipId, setEditorMembershipId] = useState("");
+  const [ownerMembershipId, setOwnerMembershipId] = useState("");
+  const [transferOpen, setTransferOpen] = useState(false);
+  const addEditor = api.course.addEditor.useMutation();
+  const removeEditor = api.course.removeEditor.useMutation();
+  const updateCourse = api.course.update.useMutation();
+
+  async function refresh() {
+    await Promise.all([
+      utils.course.get.invalidate({ courseId }),
+      utils.course.getAccess.invalidate({ courseId }),
+    ]);
+    router.refresh();
+  }
+
+  async function grantEditor() {
+    if (!editorMembershipId) return;
+    try {
+      await addEditor.mutateAsync({
+        courseId,
+        organizationMemberId: editorMembershipId,
+      });
+      setEditorMembershipId("");
+      await refresh();
+      toast.success("Editor kurikulum ditambahkan.");
+    } catch (cause) {
+      toast.error(getErrorMessage(cause));
+    }
+  }
+
+  async function revokeEditor(collaboratorId: string) {
+    try {
+      await removeEditor.mutateAsync({ courseId, collaboratorId });
+      await refresh();
+      toast.success("Akses editor dicabut.");
+    } catch (cause) {
+      toast.error(getErrorMessage(cause));
+    }
+  }
+
+  async function transferOwnership() {
+    if (!ownerMembershipId) return;
+    try {
+      await updateCourse.mutateAsync({ courseId, ownerMembershipId });
+      setTransferOpen(false);
+      setOwnerMembershipId("");
+      await refresh();
+      toast.success("Course manager utama diperbarui.");
+    } catch (cause) {
+      toast.error(getErrorMessage(cause));
+    }
+  }
+
+  if (isPending || error || !data) return <QueryState error={error} />;
+
+  const editorMembershipIds = new Set(
+    data.collaborators.map(
+      (collaborator) => collaborator.organizationMember.id,
+    ),
+  );
+  const availableEditors = data.organization.members.filter(
+    (member) => !editorMembershipIds.has(member.id),
+  );
+  const selectedOwner = data.organization.members.find(
+    (member) => member.id === ownerMembershipId,
+  );
+
+  return (
+    <section className="space-y-6">
+      <div className="max-w-2xl">
+        <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
+          Akses course
+        </h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Tentukan siapa yang mengelola course ini dan apa yang dapat mereka
+          ubah.
+        </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
+        <Card className="gap-0 rounded-lg py-0">
+          <CardHeader className="border-b">
+            <CardTitle>Tim pengelola</CardTitle>
+            <CardDescription>
+              {data.collaborators.length + 1} orang memiliki akses ke course
+              ini.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y">
+              <div className="flex items-center gap-3 p-4">
+                <Avatar size="lg">
+                  {data.owner.user.image ? (
+                    <AvatarImage
+                      src={data.owner.user.image}
+                      alt={data.owner.user.name}
+                    />
+                  ) : null}
+                  <AvatarFallback>
+                    {getInitials(data.owner.user.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate font-medium">
+                      {data.owner.user.name}
+                    </p>
+                    <Badge variant="secondary">
+                      <CrownIcon /> Manager
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground truncate text-sm">
+                    {data.owner.user.email}
+                  </p>
+                </div>
+                <span className="text-muted-foreground hidden text-xs sm:block">
+                  Kontrol penuh
+                </span>
+              </div>
+
+              {data.collaborators.map((collaborator) => (
+                <div
+                  key={collaborator.id}
+                  className="hover:bg-muted/30 flex items-center gap-3 p-4 transition-colors"
+                >
+                  <Avatar size="lg">
+                    {collaborator.organizationMember.user.image ? (
+                      <AvatarImage
+                        src={collaborator.organizationMember.user.image}
+                        alt={collaborator.organizationMember.user.name}
+                      />
+                    ) : null}
+                    <AvatarFallback>
+                      {getInitials(collaborator.organizationMember.user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-medium">
+                        {collaborator.organizationMember.user.name}
+                      </p>
+                      <Badge variant="outline">Editor</Badge>
+                    </div>
+                    <p className="text-muted-foreground truncate text-sm">
+                      {collaborator.organizationMember.user.email}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={removeEditor.isPending}
+                    aria-label={`Cabut akses ${collaborator.organizationMember.user.name}`}
+                    onClick={() => revokeEditor(collaborator.id)}
+                  >
+                    {removeEditor.isPending ? (
+                      <LoaderCircleIcon className="animate-spin" />
+                    ) : (
+                      <Trash2Icon />
+                    )}
+                    <span className="hidden sm:inline">Cabut</span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-muted/35 border-t p-4">
+              <Label htmlFor="new-course-editor">Tambah editor kurikulum</Label>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Editor dapat menyusun modul dan materi, tanpa akses ke siswa,
+                undangan, atau pengaturan course.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <select
+                  id="new-course-editor"
+                  className="border-input bg-background h-9 min-w-0 flex-1 rounded-lg border px-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  value={editorMembershipId}
+                  disabled={
+                    availableEditors.length === 0 || addEditor.isPending
+                  }
+                  onChange={(event) =>
+                    setEditorMembershipId(event.target.value)
+                  }
+                >
+                  <option value="">
+                    {availableEditors.length === 0
+                      ? "Semua member sudah memiliki akses"
+                      : "Pilih member organisasi"}
+                  </option>
+                  {availableEditors.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.user.name} · {member.role}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  disabled={!editorMembershipId || addEditor.isPending}
+                  onClick={grantEditor}
+                >
+                  {addEditor.isPending ? (
+                    <LoaderCircleIcon className="animate-spin" />
+                  ) : (
+                    <UserPlusIcon />
+                  )}
+                  Tambah editor
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4">
+          <Card className="rounded-lg">
+            <CardHeader className="border-b">
+              <CardTitle>Hak akses</CardTitle>
+              <CardDescription>
+                Setiap peran memiliki ruang kerja yang berbeda.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex gap-3">
+                <div className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-lg">
+                  <CrownIcon className="size-4" />
+                </div>
+                <div>
+                  <p className="font-medium">Manager</p>
+                  <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                    Mengelola kurikulum, siswa, group belajar, undangan,
+                    pengaturan, dan status course.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg">
+                  <FilePenLineIcon className="size-4" />
+                </div>
+                <div>
+                  <p className="font-medium">Editor kurikulum</p>
+                  <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                    Hanya menyusun modul, materi, dan assessment di kurikulum.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-lg">
+            <CardHeader className="border-b">
+              <CardTitle>Ganti manager</CardTitle>
+              <CardDescription>
+                Serahkan kontrol penuh kepada member organisasi lain.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <select
+                aria-label="Manager course baru"
+                className="border-input bg-background h-9 w-full rounded-lg border px-2.5 text-sm"
+                value={ownerMembershipId}
+                disabled={updateCourse.isPending}
+                onChange={(event) => setOwnerMembershipId(event.target.value)}
+              >
+                <option value="">Pilih manager baru</option>
+                {data.organization.members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.user.name} · {member.role}
+                  </option>
+                ))}
+              </select>
+              <Button
+                className="w-full"
+                variant="outline"
+                disabled={!ownerMembershipId || updateCourse.isPending}
+                onClick={() => setTransferOpen(true)}
+              >
+                Ganti manager
+              </Button>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Anda dapat kehilangan akses pengelolaan setelah manager diganti.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <AlertDialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <CrownIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Ganti manager course?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedOwner?.user.name ?? "Member terpilih"} akan mendapat
+              kontrol penuh atas course ini. Perubahan ini dapat menghilangkan
+              akses pengelolaan Anda.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!ownerMembershipId || updateCourse.isPending}
+              onClick={transferOwnership}
+            >
+              {updateCourse.isPending ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : null}
+              Ya, ganti manager
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
@@ -1555,7 +2028,7 @@ function SettingsSection({
           <CardHeader className="border-b">
             <CardTitle>Informasi course</CardTitle>
             <CardDescription>
-              Informasi yang terlihat oleh pengelola dan learner.
+              Informasi yang terlihat oleh pengelola dan siswa.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -1650,8 +2123,8 @@ function SettingsSection({
                     )
                   }
                 >
-                  <option value="OPEN">Semua module terbuka</option>
-                  <option value="SEQUENTIAL">Berurutan</option>
+                  <option value="OPEN">Terbuka</option>
+                  <option value="SEQUENTIAL">Bertahap</option>
                 </select>
               </div>
             </CardContent>
@@ -1680,7 +2153,7 @@ function SettingsSection({
         <CardHeader className="border-b">
           <CardTitle className="text-destructive">Zona berbahaya</CardTitle>
           <CardDescription>
-            Action lifecycle yang berdampak pada akses learner.
+            Action lifecycle yang berdampak pada akses siswa.
           </CardDescription>
         </CardHeader>
         <div className="divide-border divide-y">

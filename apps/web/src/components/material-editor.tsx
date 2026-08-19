@@ -68,10 +68,16 @@ export function MaterialEditor({
   organizationId,
   organizationSlug,
   materialId,
+  attachTo,
 }: {
   organizationId: string;
   organizationSlug: string;
   materialId?: string;
+  attachTo?: {
+    moduleId: string;
+    moduleTitle: string;
+    curriculumHref: string;
+  };
 }) {
   const router = useRouter();
   const { resolvedTheme } = useTheme();
@@ -82,13 +88,10 @@ export function MaterialEditor({
   );
   const organization = api.organization.get.useQuery({ organizationId });
   const createMaterial = api.content.createMaterial.useMutation();
+  const createMaterialItem = api.content.createMaterialItem.useMutation();
   const updateMaterial = api.content.updateMaterial.useMutation();
   const deleteMaterial = api.content.deleteMaterial.useMutation();
-  const canDelete = Boolean(
-    organization.data &&
-    (organization.data.currentRole !== "TEACHER" ||
-      organization.data.teacherCanDeleteContent),
-  );
+  const canDelete = Boolean(organization.data);
 
   if (materialId && material.isPending) {
     return (
@@ -121,9 +124,20 @@ export function MaterialEditor({
       initialTitle={material.data?.title ?? ""}
       canDelete={canDelete}
       isDeleting={deleteMaterial.isPending}
-      isSaving={createMaterial.isPending || updateMaterial.isPending}
+      isSaving={
+        createMaterial.isPending ||
+        createMaterialItem.isPending ||
+        updateMaterial.isPending
+      }
       materialId={materialId}
-      organizationSlug={organizationSlug}
+      backHref={
+        attachTo?.curriculumHref ??
+        `/workspace/${organizationSlug}/library/materials`
+      }
+      contextLabel={
+        attachTo ? `Materi baru untuk ${attachTo.moduleTitle}` : undefined
+      }
+      saveLabel={attachTo ? "Simpan dan tambahkan" : undefined}
       theme={resolvedTheme === "dark" ? "dark" : "light"}
       onDelete={async () => {
         if (!materialId) return;
@@ -159,14 +173,31 @@ export function MaterialEditor({
             return;
           }
 
-          const created = await createMaterial.mutateAsync({
+          const materialInput = {
             organizationId,
             title,
             description,
             content,
             editorSchemaVersion: 1,
             requirementPolicy,
-          });
+          };
+
+          if (attachTo) {
+            await createMaterialItem.mutateAsync({
+              moduleId: attachTo.moduleId,
+              title,
+              description,
+              content,
+              editorSchemaVersion: 1,
+              requirementPolicy,
+            });
+            await utils.content.listMaterials.invalidate({ organizationId });
+            toast.success(`Materi ditambahkan ke ${attachTo.moduleTitle}.`);
+            router.replace(attachTo.curriculumHref);
+            return;
+          }
+
+          const created = await createMaterial.mutateAsync(materialInput);
           await utils.content.listMaterials.invalidate({ organizationId });
           toast.success("Materi dibuat.");
           router.replace(
@@ -189,7 +220,9 @@ function MaterialEditorForm({
   isDeleting,
   isSaving,
   materialId,
-  organizationSlug,
+  backHref,
+  contextLabel,
+  saveLabel,
   theme,
   onDelete,
   onSave,
@@ -202,7 +235,9 @@ function MaterialEditorForm({
   isDeleting: boolean;
   isSaving: boolean;
   materialId?: string;
-  organizationSlug: string;
+  backHref: string;
+  contextLabel?: string;
+  saveLabel?: string;
   theme: "light" | "dark";
   onDelete: () => Promise<void>;
   onSave: (value: {
@@ -243,7 +278,7 @@ function MaterialEditorForm({
         <div className="flex min-w-0 items-center gap-3">
           <Link
             aria-label="Kembali ke materi"
-            href={`/workspace/${organizationSlug}/library/materials`}
+            href={backHref}
             className={buttonVariants({ variant: "outline", size: "icon" })}
           >
             <ArrowLeftIcon />
@@ -251,7 +286,7 @@ function MaterialEditorForm({
           <div className="min-w-0">
             <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
               <FileTextIcon className="size-3.5" />
-              {materialId ? "Edit materi" : "Materi baru"}
+              {contextLabel ?? (materialId ? "Edit materi" : "Materi baru")}
             </div>
             <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
               {title.trim() || "Materi tanpa judul"}
@@ -302,7 +337,7 @@ function MaterialEditorForm({
             ) : (
               <SaveIcon data-icon="inline-start" />
             )}
-            {materialId ? "Simpan perubahan" : "Buat materi"}
+            {saveLabel ?? (materialId ? "Simpan perubahan" : "Buat materi")}
           </Button>
         </div>
       </div>
@@ -346,12 +381,13 @@ function MaterialEditorForm({
               id="material-description"
               maxLength={10000}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Apa yang akan dikerjakan learner?"
+              placeholder="Apa yang akan dikerjakan siswa?"
               rows={6}
               value={description}
             />
             <p className="text-muted-foreground text-xs">
-              Ditampilkan kepada penulis saat memilih konten untuk sebuah course.
+              Ditampilkan kepada penulis saat memilih konten untuk sebuah
+              course.
             </p>
           </div>
           <div className="grid gap-2 border-t pt-5">
@@ -369,11 +405,13 @@ function MaterialEditorForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Penuhi semua requirement</SelectItem>
-                <SelectItem value="ANY">Penuhi salah satu requirement</SelectItem>
+                <SelectItem value="ANY">
+                  Penuhi salah satu requirement
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-muted-foreground text-xs">
-              Berlaku ketika assessment atau requirement kosakata dipasang.
+              Berlaku ketika tugas atau requirement kosakata dipasang.
             </p>
           </div>
         </aside>

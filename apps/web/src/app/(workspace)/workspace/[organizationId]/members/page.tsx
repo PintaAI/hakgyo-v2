@@ -14,7 +14,10 @@ export default async function Page({
     organizationManagerRoles,
   );
   const organizationId = membership.organizationId;
-  void api.organization.listMembers.prefetch({ organizationId });
+  void Promise.all([
+    api.organization.listMembers.prefetch({ organizationId }),
+    api.organization.listInvites.prefetch({ organizationId }),
+  ]);
 
   return (
     <HydrateClient>

@@ -10,11 +10,13 @@ const matchesProxy = (url: string) =>
 describe("proxy matcher", () => {
   test("matches protected dynamic paths containing dots", () => {
     expect(matchesProxy("https://hakgyo.test/invite/token.with.dot")).toBe(
-      true,
+      false,
     );
     expect(
       matchesProxy("https://hakgyo.test/workspace/org.with.dot/courses"),
     ).toBe(true);
+    expect(matchesProxy("https://hakgyo.test/onboarding")).toBe(true);
+    expect(matchesProxy("https://hakgyo.test/organizations/new")).toBe(true);
   });
 
   test("skips API and framework asset paths", () => {
@@ -34,7 +36,7 @@ describe("proxy matcher", () => {
     );
     expect(missingCookie.status).toBe(307);
     expect(missingCookie.headers.get("location")).toBe(
-      "https://hakgyo.test/?redirectTo=%2Fworkspace%2Forg-1%2Fcourses",
+      "https://hakgyo.test/auth?redirectTo=%2Fworkspace%2Forg-1%2Fcourses",
     );
 
     const requestWithCookie = new NextRequest(

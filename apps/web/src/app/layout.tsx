@@ -12,11 +12,30 @@ import { ThemeProvider } from "next-themes";
 
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { Toaster } from "~/components/ui/sonner";
+import { env } from "~/env";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
-  title: "Hakgyo",
-  description: "Learn together with Hakgyo.",
+  metadataBase: new URL(env.APP_URL),
+  title: {
+    default: "Hakgyo | Ruang belajar yang tumbuh bersama",
+    template: "%s | Hakgyo",
+  },
+  description:
+    "Platform belajar untuk mengelola course, materi, tugas, cohort, dan perkembangan peserta dalam satu tempat.",
+  keywords: [
+    "platform belajar online",
+    "learning management system",
+    "course online",
+    "kelas online",
+    "Hakgyo",
+  ],
+  applicationName: "Hakgyo",
+  authors: [{ name: "Hakgyo" }],
+  creator: "Hakgyo",
+  publisher: "Hakgyo",
+  formatDetection: { email: false, address: false, telephone: false },
+  robots: { index: true, follow: true },
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
@@ -51,7 +70,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      lang="en"
+      lang="id"
       className={`${geist.variable} ${inter.variable} ${poppins.variable} ${merriweather.variable} ${jetBrainsMono.variable}`}
       suppressHydrationWarning
     >

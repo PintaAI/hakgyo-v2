@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+  type CohortPermission,
   requireCohortPermission,
   requireCoursePermission,
   requireOrganizationPermission,
@@ -36,12 +37,21 @@ const meetingFields = z.object({
   timezone: z.string().trim().min(1).max(100),
 });
 
-async function requireManagedCohort(cohortId: string, userId: string) {
-  await requireCohortPermission({ cohortId, userId });
-  return db.cohort.findUniqueOrThrow({
+async function requireManagedCohort(
+  cohortId: string,
+  userId: string,
+  permission: CohortPermission,
+) {
+  const access = await requireCohortPermission({
+    cohortId,
+    userId,
+    permission,
+  });
+  const cohort = await db.cohort.findUniqueOrThrow({
     where: { id: cohortId },
     select: { id: true, courseId: true, organizationId: true },
   });
+  return { ...cohort, access: access.access };
 }
 
 export const cohortRouter = createTRPCRouter({
@@ -50,7 +60,7 @@ export const cohortRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await requireOrganizationPermission({
         organizationId: input.organizationId,
-        permission: "cohort.manage",
+        permission: "organization.manage",
         userId: ctx.actorUserId,
       });
       return db.cohort.findMany({
@@ -67,13 +77,24 @@ export const cohortRouter = createTRPCRouter({
   list: protectedProcedure
     .input(z.object({ courseId: id }))
     .query(async ({ ctx, input }) => {
-      await requireCoursePermission({
+      const course = await requireCoursePermission({
         courseId: input.courseId,
-        permission: "course.manage",
+        permission: "course.view",
         userId: ctx.actorUserId,
       });
       return db.cohort.findMany({
-        where: { courseId: input.courseId },
+        where: {
+          courseId: input.courseId,
+          ...(course.access.canViewAllCohorts
+            ? {}
+            : {
+                staff: {
+                  some: {
+                    organizationMember: { userId: ctx.actorUserId },
+                  },
+                },
+              }),
+        },
         orderBy: { createdAt: "desc" },
         include: {
           _count: {
@@ -85,11 +106,12 @@ export const cohortRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.object({ cohortId: id }))
     .query(async ({ ctx, input }) => {
-      await requireCohortPermission({
+      const cohortAccess = await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "view",
         userId: ctx.actorUserId,
       });
-      return db.cohort.findUniqueOrThrow({
+      const cohort = await db.cohort.findUniqueOrThrow({
         where: { id: input.cohortId },
         include: {
           course: {
@@ -109,15 +131,19 @@ export const cohortRouter = createTRPCRouter({
           meetings: { orderBy: { startsAt: "asc" } },
         },
       });
+      return { ...cohort, access: cohortAccess.access };
     }),
   create: protectedProcedure
     .input(cohortFields.extend({ courseId: id }))
     .mutation(async ({ ctx, input }) => {
       const course = await requireCoursePermission({
         courseId: input.courseId,
-        permission: "course.manage",
+        permission: "course.view",
         userId: ctx.actorUserId,
       });
+      if (!course.access.canCreateCohort) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       return db.cohort.create({
         data: { ...input, organizationId: course.organizationId },
       });
@@ -127,6 +153,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "update",
         userId: ctx.actorUserId,
       });
       const { cohortId, ...data } = input;
@@ -137,6 +164,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "delete",
         userId: ctx.actorUserId,
       });
       await db.cohort.delete({ where: { id: input.cohortId } });
@@ -147,13 +175,14 @@ export const cohortRouter = createTRPCRouter({
       z.object({
         cohortId: id,
         email: z.string().trim().toLowerCase().email().max(320),
-        role: z.enum(["TEACHER", "MODERATOR"]),
+        role: z.enum(["INSTRUCTOR", "ASSISTANT"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const cohort = await requireManagedCohort(
         input.cohortId,
         ctx.actorUserId,
+        "staff.manage",
       );
       const membership = await db.organizationMember.findFirst({
         where: {
@@ -197,12 +226,13 @@ export const cohortRouter = createTRPCRouter({
       z.object({
         cohortId: id,
         staffId: id,
-        role: z.enum(["TEACHER", "MODERATOR"]),
+        role: z.enum(["INSTRUCTOR", "ASSISTANT"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "staff.manage",
         userId: ctx.actorUserId,
       });
       const result = await db.cohortStaff.updateMany({
@@ -217,6 +247,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "staff.manage",
         userId: ctx.actorUserId,
       });
       const result = await db.cohortStaff.deleteMany({
@@ -230,6 +261,7 @@ export const cohortRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "view",
         userId: ctx.actorUserId,
       });
       return db.cohortMeeting.findMany({
@@ -242,12 +274,43 @@ export const cohortRouter = createTRPCRouter({
         },
       });
     }),
+  getMeetingIntegrationStatus: protectedProcedure
+    .input(z.object({ cohortId: id }))
+    .query(async ({ ctx, input }) => {
+      const cohort = await requireManagedCohort(
+        input.cohortId,
+        ctx.actorUserId,
+        "view",
+      );
+      const [connection, membership] = await Promise.all([
+        db.zoomConnection.findUnique({
+          where: { organizationId: cohort.organizationId },
+          select: { status: true },
+        }),
+        db.organizationMember.findUnique({
+          where: {
+            organizationId_userId: {
+              organizationId: cohort.organizationId,
+              userId: ctx.actorUserId,
+            },
+          },
+          select: { role: true },
+        }),
+      ]);
+
+      return {
+        isConnected: connection?.status === "CONNECTED",
+        canConfigure:
+          membership?.role === "OWNER" || membership?.role === "ADMIN",
+      };
+    }),
   createMeeting: protectedProcedure
     .input(meetingFields.extend({ cohortId: id }))
     .mutation(async ({ ctx, input }) => {
       const cohort = await requireManagedCohort(
         input.cohortId,
         ctx.actorUserId,
+        "meetings.manage",
       );
       const member = await db.organizationMember.findUnique({
         where: {
@@ -287,6 +350,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "meetings.manage",
         userId: ctx.actorUserId,
       });
       const { cohortId, meetingId, ...data } = input;
@@ -319,6 +383,7 @@ export const cohortRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "meetings.manage",
         userId: ctx.actorUserId,
       });
       const meeting = await db.cohortMeeting.findFirst({

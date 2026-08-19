@@ -97,7 +97,7 @@ function CollapsibleNavigationItem({
   onNavigate: () => void;
 }) {
   const active = isRouteActive(pathname, item);
-  const [open, setOpen] = useState(active);
+  const [open, setOpen] = useState(true);
 
   return (
     <Collapsible
@@ -209,17 +209,13 @@ export function AppSidebar({
         thumbnailUrl: course.thumbnailUrl,
       })),
     },
-    ...(isManager
-      ? [
-          {
-            title: "Reviews",
-            href: `${workspaceRoot}/reviews`,
-            icon: ClipboardCheckIcon,
-          },
-        ]
-      : []),
     {
-      title: "Perpustakaan konten",
+      title: "Reviews",
+      href: `${workspaceRoot}/reviews`,
+      icon: ClipboardCheckIcon,
+    },
+    {
+      title: "Bahan ajar",
       href: `${workspaceRoot}/library/materials`,
       match: `${workspaceRoot}/library`,
       icon: LibraryIcon,
@@ -235,7 +231,7 @@ export function AppSidebar({
           icon: LanguagesIcon,
         },
         {
-          title: "Penilaian",
+          title: "Tugas",
           href: `${workspaceRoot}/library/assessments`,
           icon: ClipboardCheckIcon,
         },
@@ -369,23 +365,23 @@ export function AppSidebar({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                tooltip="Pembelajaran saya"
+                tooltip="Buka Area Belajar"
                 render={
                   <Link href="/learn/courses" onClick={closeMobileSidebar} />
                 }
               >
                 <GraduationCapIcon />
-                <span>Pembelajaran saya</span>
+                <span>Buka Area Belajar</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 isActive={pathname === "/docs" || pathname.startsWith("/docs/")}
-                tooltip="Dokumentasi pengguna"
+                tooltip="Panduan Aplikasi"
                 render={<Link href="/docs" onClick={closeMobileSidebar} />}
               >
                 <BookMarkedIcon />
-                <span>Dokumentasi pengguna</span>
+                <span>Panduan Aplikasi</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -469,13 +465,13 @@ export function DocsAppSidebar({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                tooltip="Pembelajaran saya"
+                tooltip="Buka Area Belajar"
                 render={
                   <Link href="/learn/courses" onClick={closeMobileSidebar} />
                 }
               >
                 <GraduationCapIcon />
-                <span>Pembelajaran saya</span>
+                <span>Buka Area Belajar</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

@@ -110,11 +110,11 @@ Sebuah item dapat diakses peserta didik jika:
 3. Peserta didik sudah gabung kursus dan aksesnya masih aktif.
 4. Bab tersebut sudah tersedia untuk peserta didik sesuai cara belajar yang dipilih.
 
-## Gabung Kursus dan Batch Pembelajaran
+## Gabung Kursus dan Group belajar
 
-Gabung kursus adalah cara peserta didik mendapatkan akses ke kursus. Peserta didik dapat bergabung melalui pendaftaran terbuka, undangan, ditambahkan oleh pengelola, atau melalui batch pembelajaran.
+Gabung kursus adalah cara peserta didik mendapatkan akses ke kursus. Peserta didik dapat bergabung melalui pendaftaran terbuka, undangan, ditambahkan oleh pengelola, atau melalui Group belajar.
 
-Batch pembelajaran adalah kelompok pelaksanaan untuk kursus yang sama. Satu kursus dapat mempunyai beberapa batch dengan peserta didik, pengajar, jadwal, dan meeting yang berbeda.
+Group belajar adalah kelompok pelaksanaan untuk kursus yang sama. Satu kursus dapat mempunyai beberapa batch dengan peserta didik, pengajar, jadwal, dan meeting yang berbeda.
 
 <div class="my-6 max-w-xl rounded-xl border p-4">
   <div class="font-heading font-semibold">Kursus: Bahasa Jepang Pemula</div>
@@ -134,7 +134,7 @@ Batch pembelajaran adalah kelompok pelaksanaan untuk kursus yang sama. Satu kurs
   </div>
 </div>
 
-Kursus menyimpan kurikulum, sedangkan batch pembelajaran menyimpan konteks pelaksanaannya.
+Kursus menyimpan kurikulum, sedangkan Group belajar menyimpan konteks pelaksanaannya.
 
 - **Gabung langsung** cocok untuk peserta didik yang belajar mandiri dan tidak memerlukan kelompok atau jadwal tertentu.
 - **Gabung melalui batch** menghubungkan peserta didik ke kursus sekaligus ke kelompok, pengajar, meeting, dan periode belajar tertentu.

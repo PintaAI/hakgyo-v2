@@ -97,7 +97,7 @@ export function OrganizationIntegrations({
               </div>
               <div>
                 <CardTitle>Zoom</CardTitle>
-                <CardDescription>Meeting batch pembelajaran</CardDescription>
+                <CardDescription>Meeting Group belajar</CardDescription>
               </div>
             </div>
             {connection.isPending ? (
@@ -182,7 +182,7 @@ export function OrganizationIntegrations({
                 <p className="font-medium">Buat meeting dari Hakgyo</p>
                 <p className="text-muted-foreground mt-1 max-w-lg text-sm">
                   Otorisasi akun Zoom Anda untuk membuat, memperbarui, dan
-                  membatalkan meeting batch pembelajaran tanpa membagikan
+                  membatalkan meeting Group belajar tanpa membagikan
                   kredensial kepada anggota.
                 </p>
               </div>
@@ -206,8 +206,8 @@ export function OrganizationIntegrations({
             </AlertDialogMedia>
             <AlertDialogTitle>Putuskan koneksi Zoom?</AlertDialogTitle>
             <AlertDialogDescription>
-              Hakgyo akan mencabut koneksi Zoom yang tersimpan. Meeting batch
-              pembelajaran baru tidak dapat dibuat sampai Zoom dihubungkan lagi.
+              Hakgyo akan mencabut koneksi Zoom yang tersimpan. Meeting Group
+              belajar baru tidak dapat dibuat sampai Zoom dihubungkan lagi.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

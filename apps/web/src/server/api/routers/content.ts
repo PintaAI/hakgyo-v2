@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import type { Prisma } from "../../../../generated/prisma/client";
+import { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   requireContentAuthor,
@@ -31,8 +31,7 @@ const requirementRelation = z.discriminatedUnion("type", [
 ]);
 
 async function reorder(
-  model:
-    "courseModule" | "courseItem" | "materialRequirement" | "vocabularyEntry",
+  model: "courseModule" | "courseItem" | "materialRequirement",
   parent: Record<string, string>,
   ids: string[],
 ) {
@@ -40,39 +39,55 @@ async function reorder(
     throw new TRPCError({ code: "BAD_REQUEST", message: "Duplicate IDs" });
   await db.$transaction(async (tx) => {
     const delegate = tx[model] as unknown as {
-      aggregate(args: {
+      findMany(args: {
         where: Record<string, unknown>;
-        _max: { position: true };
-      }): Promise<{ _max: { position: number | null } }>;
-      count(args: { where: Record<string, unknown> }): Promise<number>;
-      updateMany(args: {
-        where: Record<string, unknown>;
-        data: { position: number };
-      }): Promise<unknown>;
+        select: { id: true; position: true };
+      }): Promise<Array<{ id: string; position: number }>>;
     };
-    const count = await delegate.count({
-      where: { ...parent, id: { in: ids } },
+    const resources = await delegate.findMany({
+      where: parent,
+      select: { id: true, position: true },
     });
-    if (count !== ids.length)
+    const requestedIds = new Set(ids);
+    if (
+      resources.length !== ids.length ||
+      resources.some((resource) => !requestedIds.has(resource.id))
+    )
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Reorder contains unknown resources",
+        message: "All resources must be included",
       });
-    const maximum = await delegate.aggregate({
-      where: parent,
-      _max: { position: true },
-    });
-    const temporaryPosition = (maximum._max.position ?? -1) + 1;
-    for (let i = 0; i < ids.length; i++)
-      await delegate.updateMany({
-        where: { ...parent, id: ids[i] },
-        data: { position: temporaryPosition + i },
-      });
-    for (let i = 0; i < ids.length; i++)
-      await delegate.updateMany({
-        where: { ...parent, id: ids[i] },
-        data: { position: i },
-      });
+    if (ids.length === 0) return;
+
+    const temporaryPosition =
+      Math.max(...resources.map((resource) => resource.position)) + 1;
+    const config = {
+      courseModule: ["CourseModule", "courseId"],
+      courseItem: ["CourseItem", "moduleId"],
+      materialRequirement: ["MaterialRequirement", "materialId"],
+    } as const;
+    const [table, parentColumn] = config[model];
+    const parentId = parent[parentColumn];
+    if (!parentId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+    const updatePositions = (positions: number[]) =>
+      tx.$executeRaw(
+        Prisma.sql`
+          UPDATE ${Prisma.raw(`"${table}"`)} AS target
+          SET "position" = ordering.position
+          FROM (VALUES ${Prisma.join(
+            ids.map(
+              (resourceId, index) =>
+                Prisma.sql`(${resourceId}, ${positions[index]})`,
+            ),
+          )}) AS ordering(id, position)
+          WHERE target."id" = ordering.id
+            AND target.${Prisma.raw(`"${parentColumn}"`)} = ${parentId}
+        `,
+      );
+
+    await updatePositions(ids.map((_, index) => temporaryPosition + index));
+    await updatePositions(ids.map((_, index) => index));
   });
 }
 
@@ -172,14 +187,6 @@ export const contentRouter = createTRPCRouter({
         permission: "content.manage",
         userId: ctx.actorUserId,
       });
-      const total = await db.courseModule.count({
-        where: { courseId: input.courseId },
-      });
-      if (total !== input.moduleIds.length)
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "All modules must be included",
-        });
       await reorder(
         "courseModule",
         { courseId: input.courseId },
@@ -367,14 +374,6 @@ export const contentRouter = createTRPCRouter({
         permission: "content.manage",
         userId: ctx.actorUserId,
       });
-      if (
-        (await db.courseItem.count({ where: { moduleId: input.moduleId } })) !==
-        input.itemIds.length
-      )
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "All items must be included",
-        });
       await reorder("courseItem", { moduleId: input.moduleId }, input.itemIds);
       return { reordered: true };
     }),
@@ -389,8 +388,8 @@ export const contentRouter = createTRPCRouter({
       return db.material.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.role === "TEACHER" &&
-          member.organization.teacherContentAccess !== "ALL"
+          ...(member.organization.permissionMode === "ADVANCED" &&
+          member.role === "TEACHER"
             ? { createdByMembershipId: member.id }
             : {}),
         },
@@ -398,6 +397,19 @@ export const contentRouter = createTRPCRouter({
         include: {
           completionRequirements: { orderBy: { position: "asc" } },
           assets: { include: { asset: true } },
+          createdBy: { select: { id: true, user: { select: { name: true } } } },
+          courseItems: {
+            select: {
+              module: {
+                select: {
+                  title: true,
+                  course: {
+                    select: { id: true, title: true, thumbnailUrl: true },
+                  },
+                },
+              },
+            },
+          },
         },
       });
     }),
@@ -437,6 +449,62 @@ export const contentRouter = createTRPCRouter({
       );
       return db.material.create({
         data: { ...input, createdByMembershipId: member.id },
+      });
+    }),
+  createMaterialItem: protectedProcedure
+    .input(
+      z.object({
+        moduleId: id,
+        title: z.string().trim().min(1).max(200),
+        description: z.string().max(10000).nullable().optional(),
+        content: blockNoteDocument,
+        editorSchemaVersion: z.number().int().positive().optional(),
+        requirementPolicy: z.enum(["ALL", "ANY"]).optional(),
+        isPublished: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const courseModule = await db.courseModule.findUnique({
+        where: { id: input.moduleId },
+        select: { courseId: true, organizationId: true },
+      });
+      if (!courseModule) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await requireCoursePermission({
+        courseId: courseModule.courseId,
+        permission: "content.manage",
+        userId: ctx.actorUserId,
+      });
+      const member = await requireContentOrganization(
+        courseModule.organizationId,
+        ctx.actorUserId,
+      );
+      const { moduleId, isPublished, ...materialData } = input;
+
+      return db.$transaction(async (tx) => {
+        const aggregate = await tx.courseItem.aggregate({
+          where: { moduleId },
+          _max: { position: true },
+        });
+        const material = await tx.material.create({
+          data: {
+            ...materialData,
+            organizationId: courseModule.organizationId,
+            createdByMembershipId: member.id,
+          },
+        });
+        const item = await tx.courseItem.create({
+          data: {
+            moduleId,
+            organizationId: courseModule.organizationId,
+            type: "MATERIAL",
+            materialId: material.id,
+            isPublished,
+            position: (aggregate._max.position ?? -1) + 1,
+          },
+        });
+
+        return { material, item };
       });
     }),
   updateMaterial: protectedProcedure
@@ -652,17 +720,6 @@ export const contentRouter = createTRPCRouter({
         ctx.actorUserId,
         material.createdByMembershipId,
       );
-      const total = await db.materialRequirement.count({
-        where: {
-          materialId: input.materialId,
-          organizationId: input.organizationId,
-        },
-      });
-      if (total !== input.requirementIds.length)
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "All requirements must be included",
-        });
       await reorder(
         "materialRequirement",
         { materialId: input.materialId, organizationId: input.organizationId },
@@ -681,13 +738,15 @@ export const contentRouter = createTRPCRouter({
       return db.vocabularySet.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.role === "TEACHER" &&
-          member.organization.teacherContentAccess !== "ALL"
+          ...(member.organization.permissionMode === "ADVANCED" &&
+          member.role === "TEACHER"
             ? { createdByMembershipId: member.id }
             : {}),
         },
         orderBy: { updatedAt: "desc" },
-        include: { entries: { orderBy: { position: "asc" } } },
+        include: {
+          entries: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+        },
       });
     }),
   createVocabularySet: protectedProcedure
@@ -806,15 +865,7 @@ export const contentRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "Audio asset must belong to the organization",
         });
-      return db.$transaction(async (tx) => {
-        const a = await tx.vocabularyEntry.aggregate({
-          where: { vocabularySetId: input.vocabularySetId },
-          _max: { position: true },
-        });
-        return tx.vocabularyEntry.create({
-          data: { ...input, position: (a._max.position ?? -1) + 1 },
-        });
-      });
+      return db.vocabularyEntry.create({ data: input });
     }),
   updateVocabularyEntry: protectedProcedure
     .input(
@@ -881,48 +932,5 @@ export const contentRouter = createTRPCRouter({
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
       return { deleted: true };
-    }),
-  reorderVocabularyEntries: protectedProcedure
-    .input(
-      z.object({
-        organizationId: id,
-        vocabularySetId: id,
-        entryIds: z.array(id).max(2000),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const vocabularySet = await db.vocabularySet.findFirst({
-        where: {
-          id: input.vocabularySetId,
-          organizationId: input.organizationId,
-        },
-        select: { createdByMembershipId: true },
-      });
-      if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireOwnedContent(
-        input.organizationId,
-        ctx.actorUserId,
-        vocabularySet.createdByMembershipId,
-      );
-      const total = await db.vocabularyEntry.count({
-        where: {
-          vocabularySetId: input.vocabularySetId,
-          organizationId: input.organizationId,
-        },
-      });
-      if (total !== input.entryIds.length)
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "All entries must be included",
-        });
-      await reorder(
-        "vocabularyEntry",
-        {
-          vocabularySetId: input.vocabularySetId,
-          organizationId: input.organizationId,
-        },
-        input.entryIds,
-      );
-      return { reordered: true };
     }),
 });

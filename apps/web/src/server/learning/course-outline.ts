@@ -27,8 +27,14 @@ export async function getCourseOutlineForUser(
       status: true,
       progressionMode: true,
       owner: { select: { userId: true } },
+      collaborators: {
+        where: { role: "EDITOR", organizationMember: { userId } },
+        select: { id: true },
+        take: 1,
+      },
       organization: {
         select: {
+          permissionMode: true,
           members: {
             where: { userId },
             select: { role: true },
@@ -58,10 +64,10 @@ export async function getCourseOutlineForUser(
           description: true,
           position: true,
           items: {
-            where: { isPublished: true },
             orderBy: { position: "asc" },
             select: {
               id: true,
+              isPublished: true,
               type: true,
               position: true,
               material: { select: { title: true } },
@@ -92,7 +98,9 @@ export async function getCourseOutlineForUser(
 
   const scope = {
     organizationRole: course.organization.members[0]?.role,
+    permissionMode: course.organization.permissionMode,
     isCourseOwner: course.owner.userId === userId,
+    isCourseEditor: course.collaborators.length > 0,
     isCohortStaff: course.cohorts.length > 0,
   };
   const canManage = canManageContent(scope) || scope.isCohortStaff;
@@ -113,23 +121,25 @@ export async function getCourseOutlineForUser(
 
   const moduleCompletion = course.modules.map((module) => ({
     ...module,
-    items: module.items.map((item) => ({
-      id: item.id,
-      type: item.type,
-      position: item.position,
-      title:
-        item.material?.title ??
-        item.vocabularySet?.title ??
-        item.assessment?.title ??
-        "Untitled",
-      isCompleted:
-        item.type === "ASSESSMENT"
-          ? hasPassedAssessment(
-              item.assessment?.attempts ?? [],
-              item.assessment?.passingScore ?? null,
-            )
-          : item.progress.length > 0,
-    })),
+    items: module.items
+      .filter((item) => canManage || item.isPublished)
+      .map((item) => ({
+        id: item.id,
+        type: item.type,
+        position: item.position,
+        title:
+          item.material?.title ??
+          item.vocabularySet?.title ??
+          item.assessment?.title ??
+          "Untitled",
+        isCompleted:
+          item.type === "ASSESSMENT"
+            ? hasPassedAssessment(
+                item.assessment?.attempts ?? [],
+                item.assessment?.passingScore ?? null,
+              )
+            : item.progress.length > 0,
+      })),
   }));
   const modules =
     course.progressionMode === "SEQUENTIAL"

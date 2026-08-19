@@ -98,10 +98,9 @@ export const learningRouter = createTRPCRouter({
               title: true,
               description: true,
               entries: {
-                orderBy: { position: "asc" },
+                orderBy: [{ createdAt: "asc" }, { id: "asc" }],
                 select: {
                   id: true,
-                  position: true,
                   term: true,
                   definition: true,
                   examples: true,

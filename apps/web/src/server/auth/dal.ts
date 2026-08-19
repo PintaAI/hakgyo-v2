@@ -73,7 +73,13 @@ export const requireOrganizationMembershipBySlug = cache(
         role: true,
         userId: true,
         organization: {
-          select: { name: true, slug: true, logoUrl: true },
+          select: {
+            name: true,
+            slug: true,
+            logoUrl: true,
+            permissionMode: true,
+            teacherCanCreateCourse: true,
+          },
         },
       },
     });

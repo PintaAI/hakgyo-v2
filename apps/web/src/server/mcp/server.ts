@@ -148,7 +148,7 @@ export const mcpHandler = createMcpHandler(
       {
         title: "Get published course",
         description:
-          "Read published course details and its public curriculum outline.",
+          "Read published course details and its public kurikulum outline.",
         inputSchema: z.object({ courseId: z.string().min(1) }),
         outputSchema: catalogCourseDetailSchema,
         annotations: {
@@ -164,7 +164,7 @@ export const mcpHandler = createMcpHandler(
           content: [
             {
               type: "text",
-              text: `${result.title} has ${result.modules.length} curriculum module(s).`,
+              text: `${result.title} has ${result.modules.length} kurikulum module(s).`,
             },
           ],
           structuredContent: result,

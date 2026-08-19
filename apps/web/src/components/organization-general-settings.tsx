@@ -66,14 +66,11 @@ export function OrganizationGeneralSettings({
   const [enrollmentMode, setEnrollmentMode] = useState<EnrollmentMode | null>(
     null,
   );
-  const [allTeacherCourses, setAllTeacherCourses] = useState<boolean | null>(
-    null,
-  );
-  const [allTeacherContent, setAllTeacherContent] = useState<boolean | null>(
-    null,
-  );
-  const [teachersCanDeleteContent, setTeachersCanDeleteContent] = useState<
+  const [teacherCanCreateCourse, setTeacherCanCreateCourse] = useState<
     boolean | null
+  >(null);
+  const [permissionMode, setPermissionMode] = useState<
+    "SIMPLE" | "ADVANCED" | null
   >(null);
   const logoBusy =
     createLogoUpload.isPending ||
@@ -102,19 +99,12 @@ export function OrganizationGeneralSettings({
         slug,
         defaultEnrollmentMode:
           enrollmentMode ?? organization.data.defaultEnrollmentMode,
-        teacherCourseAccess:
-          (allTeacherCourses ?? organization.data.teacherCourseAccess === "ALL")
-            ? "ALL"
-            : "OWN_ONLY",
-        teacherContentAccess:
-          (allTeacherCourses ??
-            organization.data.teacherCourseAccess === "ALL") &&
-          (allTeacherContent ??
-            organization.data.teacherContentAccess === "ALL")
-            ? "ALL"
-            : "OWN_ONLY",
-        teacherCanDeleteContent:
-          teachersCanDeleteContent ?? organization.data.teacherCanDeleteContent,
+        permissionMode:
+          organization.data.currentRole === "OWNER"
+            ? (permissionMode ?? organization.data.permissionMode)
+            : undefined,
+        teacherCanCreateCourse:
+          teacherCanCreateCourse ?? organization.data.teacherCanCreateCourse,
       });
       await Promise.all([
         utils.organization.get.invalidate({ organizationId }),
@@ -232,13 +222,10 @@ export function OrganizationGeneralSettings({
 
   const effectiveEnrollmentMode =
     enrollmentMode ?? organization.data.defaultEnrollmentMode;
-  const effectiveAllTeacherCourses =
-    allTeacherCourses ?? organization.data.teacherCourseAccess === "ALL";
-  const effectiveAllTeacherContent =
-    effectiveAllTeacherCourses &&
-    (allTeacherContent ?? organization.data.teacherContentAccess === "ALL");
-  const effectiveTeachersCanDeleteContent =
-    teachersCanDeleteContent ?? organization.data.teacherCanDeleteContent;
+  const effectiveTeacherCanCreateCourse =
+    teacherCanCreateCourse ?? organization.data.teacherCanCreateCourse;
+  const effectivePermissionMode =
+    permissionMode ?? organization.data.permissionMode;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -275,7 +262,7 @@ export function OrganizationGeneralSettings({
                 required
               />
               <p className="text-muted-foreground text-xs">
-                Nama tampilan yang dilihat member dan learner.
+                Nama tampilan yang dilihat member dan siswa.
               </p>
             </div>
 
@@ -364,8 +351,8 @@ export function OrganizationGeneralSettings({
                 <Label htmlFor="open-enrollment">Izinkan open enrollment</Label>
                 <p className="text-muted-foreground text-xs">
                   {effectiveEnrollmentMode === "OPEN"
-                    ? "Learner dapat mendaftar sendiri ke course yang memenuhi syarat secara default."
-                    : "Learner memerlukan invite atau enrollment manual secara default."}{" "}
+                    ? "Siswa dapat mendaftar sendiri ke course yang memenuhi syarat secara default."
+                    : "Siswa memerlukan invite atau enrollment manual secara default."}{" "}
                   Course dapat menimpa pengaturan ini.
                 </p>
               </div>
@@ -381,68 +368,58 @@ export function OrganizationGeneralSettings({
 
             <div className="grid gap-4 border-t pt-6">
               <div className="grid gap-1">
-                <h2 className="text-sm font-semibold">Akses teacher</h2>
+                <h2 className="text-sm font-semibold">Mode akses</h2>
                 <p className="text-muted-foreground text-xs">
-                  Default ini berlaku untuk setiap member dengan role Teacher.
-                  Owner dan admin selalu mempertahankan akses penuh.
+                  Mode sederhana memberi semua member akses penuh ke course dan
+                  konten. Teacher hanya melihat Group belajar yang ditugaskan.
                 </p>
               </div>
 
               <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
                 <div className="grid gap-1">
-                  <Label htmlFor="all-teacher-courses">
-                    Akses semua course organisasi
+                  <Label htmlFor="advanced-permissions">
+                    Gunakan permission lanjutan
                   </Label>
                   <p className="text-muted-foreground text-xs">
-                    Teacher dapat membuka setiap course. Pengaturan course,
-                    enrollment, dan kepemilikan tetap dibatasi untuk course
-                    manager.
+                    {effectivePermissionMode === "ADVANCED"
+                      ? "Course owner, editor, dan role staff menentukan akses seperti sebelumnya."
+                      : "Semua member dapat mengelola semua course. Admin dan owner mengatur assignment Group belajar."}
                   </p>
                 </div>
-                <Switch
-                  id="all-teacher-courses"
-                  checked={effectiveAllTeacherCourses}
-                  onCheckedChange={(checked) => {
-                    setAllTeacherCourses(checked);
-                    if (!checked) setAllTeacherContent(false);
-                  }}
-                />
+                {organization.data.currentRole === "OWNER" ? (
+                  <Switch
+                    id="advanced-permissions"
+                    checked={effectivePermissionMode === "ADVANCED"}
+                    onCheckedChange={(checked) =>
+                      setPermissionMode(checked ? "ADVANCED" : "SIMPLE")
+                    }
+                  />
+                ) : (
+                  <span className="text-muted-foreground text-xs font-medium">
+                    Hanya owner
+                  </span>
+                )}
               </div>
 
-              <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
-                <div className="grid gap-1">
-                  <Label htmlFor="all-teacher-content">
-                    Edit semua konten organisasi
-                  </Label>
-                  <p className="text-muted-foreground text-xs">
-                    Teacher dapat memakai dan mengedit seluruh curriculum course,
-                    materi, set kosakata, dan penilaian di organisasi ini.
-                  </p>
+              {effectivePermissionMode === "ADVANCED" ? (
+                <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
+                  <div className="grid gap-1">
+                    <Label htmlFor="teacher-create-course">
+                      Teacher boleh membuat course
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      Teacher yang membuat course otomatis menjadi manager
+                      course tersebut. Akses course lain diberikan secara
+                      eksplisit.
+                    </p>
+                  </div>
+                  <Switch
+                    id="teacher-create-course"
+                    checked={effectiveTeacherCanCreateCourse}
+                    onCheckedChange={setTeacherCanCreateCourse}
+                  />
                 </div>
-                <Switch
-                  id="all-teacher-content"
-                  checked={effectiveAllTeacherContent}
-                  disabled={!effectiveAllTeacherCourses}
-                  onCheckedChange={setAllTeacherContent}
-                />
-              </div>
-
-              <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
-                <div className="grid gap-1">
-                  <Label htmlFor="teachers-delete-content">
-                    Izinkan teacher menghapus konten
-                  </Label>
-                  <p className="text-muted-foreground text-xs">
-                    Berlaku untuk materi, requirement, entri kosakata, dan
-                    penilaian yang dapat diakses teacher.
-                  </p>
-                </div>
-                <Switch
-                  id="teachers-delete-content"
-                  checked={effectiveTeachersCanDeleteContent}
-                  onCheckedChange={setTeachersCanDeleteContent}
-                />
-              </div>
+              ) : null}
             </div>
           </CardContent>
           <div className="bg-muted/30 flex justify-end border-t p-4">

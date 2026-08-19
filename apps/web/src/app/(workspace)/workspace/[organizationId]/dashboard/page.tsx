@@ -268,8 +268,8 @@ export default async function DashboardPage({
             {organization.name}
           </h1>
           <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-            Gambaran umum course, batch pembelajaran, anggota, perpustakaan
-            konten, dan antrean review untuk organisasi Anda.
+            Gambaran umum course, Group belajar, anggota, bahan ajar,
+            dan antrean review untuk organisasi Anda.
           </p>
         </div>
         <span className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-sans text-xs font-medium">
@@ -296,13 +296,13 @@ export default async function DashboardPage({
         />
         <StatCard
           icon={CalendarDaysIcon}
-          label="Total batch"
+          label="Total Group belajar"
           value={cohorts.length}
           href={`${root}/courses`}
         />
         <StatCard
           icon={UsersIcon}
-          label="Batch berjalan"
+          label="Group belajar berjalan"
           value={activeCohortCount}
           href={`${root}/courses`}
         />
@@ -367,8 +367,8 @@ export default async function DashboardPage({
                           {course.title}
                         </span>
                         <span className="text-muted-foreground mt-0.5 block text-xs">
-                          {course._count.modules} modul · {course._count.cohorts}{" "}
-                          batch
+                          {course._count.modules} bab · {course._count.cohorts}{" "}
+                          Group belajar
                         </span>
                       </span>
                       <time
@@ -390,10 +390,10 @@ export default async function DashboardPage({
             <CardHeader>
               <div>
                 <CardTitle className={cn(headline, "text-lg font-medium")}>
-                  Batch terbaru
+                  Group belajar terbaru
                 </CardTitle>
                 <CardDescription>
-                  Batch pembelajaran yang paling baru dibuat.
+                  Group belajar yang paling baru dibuat.
                 </CardDescription>
               </div>
               <CardAction>
@@ -406,8 +406,8 @@ export default async function DashboardPage({
               <CardContent>
                 <EmptyState
                   icon={CalendarDaysIcon}
-                  title="Belum ada batch"
-                  description="Batch pembelajaran membantu mengatur periode belajar, pengajar, meeting, dan kelompok peserta didik."
+                  title="Belum ada Group belajar"
+                  description="Group belajar membantu mengatur periode belajar, pengajar, meeting, dan kelompok peserta didik."
                 />
               </CardContent>
             ) : (
@@ -424,7 +424,7 @@ export default async function DashboardPage({
                         </span>
                         <span className="text-muted-foreground mt-0.5 block truncate text-xs">
                           {cohort.course.title} · {cohort._count.enrollments}{" "}
-                          learner
+                          siswa
                         </span>
                       </span>
                       <time
@@ -448,7 +448,7 @@ export default async function DashboardPage({
             <CardHeader>
               <div>
                 <CardTitle className={cn(headline, "text-lg font-medium")}>
-                  Perpustakaan konten
+                  Bahan ajar
                 </CardTitle>
                 <CardDescription>
                   Konten siap pakai untuk course Anda.
@@ -472,7 +472,7 @@ export default async function DashboardPage({
               />
               <LibraryRow
                 icon={LibraryIcon}
-                label="Penilaian"
+                label="Tugas"
                 detail="Kuis, ujian, dan soal latihan"
                 count={assessments.length}
                 href={`${root}/library/assessments`}

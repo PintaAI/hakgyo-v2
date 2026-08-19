@@ -25,6 +25,7 @@ model User {
   sessions                Session[]
   accounts                Account[]
   organizationMemberships OrganizationMember[]
+  acceptedOrganizationInvites OrganizationInvite[] @relation("OrganizationInviteAcceptedBy")
   courseEnrollments       CourseEnrollment[]
   cohortEnrollments       CohortEnrollment[]
   contentProgress         ContentProgress[]
@@ -273,9 +274,9 @@ enum OrganizationRole {
   TEACHER
 }
 
-enum TeacherAccessScope {
-  OWN_ONLY
-  ALL
+enum OrganizationPermissionMode {
+  SIMPLE
+  ADVANCED
 }
 
 enum EnrollmentMode {
@@ -303,8 +304,12 @@ enum CohortStatus {
 }
 
 enum CohortStaffRole {
-  TEACHER
-  MODERATOR
+  INSTRUCTOR
+  ASSISTANT
+}
+
+enum CourseCollaboratorRole {
+  EDITOR
 }
 
 enum ZoomConnectionStatus {
@@ -376,47 +381,71 @@ enum ProgressStatus {
 }
 
 model Organization {
-  id                      String               @id @default(cuid())
-  name                    String
-  slug                    String               @unique
-  logoUrl                 String?
-  defaultEnrollmentMode   EnrollmentMode       @default(INVITE_ONLY)
-  teacherCourseAccess     TeacherAccessScope   @default(OWN_ONLY)
-  teacherContentAccess    TeacherAccessScope   @default(OWN_ONLY)
-  teacherCanDeleteContent Boolean              @default(false)
-  createdAt               DateTime             @default(now())
-  updatedAt               DateTime             @updatedAt
-  members                 OrganizationMember[]
-  courses                 Course[]
-  materials               Material[]
-  assessments             Assessment[]
-  vocabularySets          VocabularySet[]
-  zoomConnection          ZoomConnection?
-  assets                  Asset[]
+  id                     String                     @id @default(cuid())
+  name                   String
+  slug                   String                     @unique
+  logoUrl                String?
+  defaultEnrollmentMode  EnrollmentMode             @default(INVITE_ONLY)
+  permissionMode         OrganizationPermissionMode @default(SIMPLE)
+  teacherCanCreateCourse Boolean                    @default(true)
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+  members                OrganizationMember[]
+  invites                OrganizationInvite[]
+  courses                Course[]
+  materials              Material[]
+  assessments            Assessment[]
+  vocabularySets         VocabularySet[]
+  zoomConnection         ZoomConnection?
+  assets                 Asset[]
 }
 
 model OrganizationMember {
-  id                        String             @id @default(cuid())
+  id                        String               @id @default(cuid())
   organizationId            String
   userId                    String
   role                      OrganizationRole
-  createdAt                 DateTime           @default(now())
-  updatedAt                 DateTime           @updatedAt
-  organization              Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user                      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ownedCourses              Course[]           @relation("CourseOwner")
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+  organization              Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownedCourses              Course[]             @relation("CourseOwner")
+  courseCollaborations      CourseCollaborator[]
   cohortStaffMemberships    CohortStaff[]
-  createdMaterials          Material[]         @relation("MaterialCreator")
-  createdAssessments        Assessment[]       @relation("AssessmentCreator")
-  createdVocabularySets     VocabularySet[]    @relation("VocabularySetCreator")
-  createdEnrollmentInvites  EnrollmentInvite[] @relation("EnrollmentInviteCreator")
-  reviewedAssessmentAnswers AssessmentAnswer[] @relation("AssessmentAnswerReviewer")
-  connectedZoomAccounts     ZoomConnection[]   @relation("ZoomConnectionCreator")
-  createdCohortMeetings     CohortMeeting[]    @relation("CohortMeetingCreator")
+  createdMaterials          Material[]           @relation("MaterialCreator")
+  createdAssessments        Assessment[]         @relation("AssessmentCreator")
+  createdVocabularySets     VocabularySet[]      @relation("VocabularySetCreator")
+  createdEnrollmentInvites  EnrollmentInvite[]   @relation("EnrollmentInviteCreator")
+  reviewedAssessmentAnswers AssessmentAnswer[]   @relation("AssessmentAnswerReviewer")
+  connectedZoomAccounts     ZoomConnection[]     @relation("ZoomConnectionCreator")
+  createdCohortMeetings     CohortMeeting[]      @relation("CohortMeetingCreator")
+  sentOrganizationInvites   OrganizationInvite[] @relation("OrganizationInviteSender")
 
   @@unique([organizationId, userId])
   @@unique([id, organizationId])
   @@index([userId])
+}
+
+model OrganizationInvite {
+  id                    String             @id @default(cuid())
+  organizationId        String
+  email                 String
+  role                  OrganizationRole
+  tokenHash             String             @unique
+  pendingKey            String?            @unique
+  invitedByMembershipId String?
+  acceptedByUserId      String?
+  expiresAt             DateTime
+  acceptedAt            DateTime?
+  revokedAt             DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy             OrganizationMember? @relation("OrganizationInviteSender", fields: [invitedByMembershipId], references: [id], onDelete: SetNull)
+  acceptedBy            User?              @relation("OrganizationInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([email, acceptedAt, revokedAt])
 }
 
 model Course {
@@ -437,6 +466,7 @@ model Course {
   organization      Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner             OrganizationMember    @relation("CourseOwner", fields: [ownerMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
   modules           CourseModule[]
+  collaborators     CourseCollaborator[]
   cohorts           Cohort[]
   enrollments       CourseEnrollment[]
   enrollmentInvites EnrollmentInvite[]
@@ -447,26 +477,42 @@ model Course {
   @@index([organizationId, status])
 }
 
+model CourseCollaborator {
+  id                   String                 @id @default(cuid())
+  courseId             String
+  organizationId       String
+  organizationMemberId String
+  role                 CourseCollaboratorRole @default(EDITOR)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  course               Course                 @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationMember   OrganizationMember     @relation(fields: [organizationMemberId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([courseId, organizationMemberId])
+  @@index([organizationMemberId])
+}
+
 model Cohort {
-  id                String             @id @default(cuid())
-  courseId          String
-  organizationId    String
-  name              String
-  description       String?
-  whatsappGroupUrl  String?
-  status            CohortStatus       @default(DRAFT)
-  enrollmentMode    EnrollmentMode?
-  price             Int?
-  capacity          Int?
-  startsAt          DateTime?
-  endsAt            DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  course            Course             @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  staff             CohortStaff[]
-  enrollments       CohortEnrollment[]
-  enrollmentInvites EnrollmentInvite[]
-  meetings          CohortMeeting[]
+  id                 String              @id @default(cuid())
+  courseId           String
+  organizationId     String
+  name               String
+  description        String?
+  whatsappGroupUrl   String?
+  status             CohortStatus        @default(DRAFT)
+  enrollmentMode     EnrollmentMode?
+  price              Int?
+  capacity           Int?
+  startsAt           DateTime?
+  endsAt             DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  course             Course              @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  staff              CohortStaff[]
+  enrollments        CohortEnrollment[]
+  enrollmentInvites  EnrollmentInvite[]
+  meetings           CohortMeeting[]
+  assessmentAttempts AssessmentAttempt[]
 
   @@unique([id, courseId])
   @@unique([id, organizationId])
@@ -699,7 +745,6 @@ model VocabularyEntry {
   id              String        @id @default(cuid())
   vocabularySetId String
   organizationId  String
-  position        Int
   term            String
   definition      String
   examples        Json          @default("[]")
@@ -710,7 +755,6 @@ model VocabularyEntry {
   vocabularySet   VocabularySet @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Cascade)
   audioAsset      Asset?        @relation(fields: [audioAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
-  @@unique([vocabularySetId, position])
   @@index([audioAssetId])
 }
 
@@ -786,6 +830,7 @@ model AssessmentAttempt {
   assessmentId   String
   courseItemId   String
   organizationId String
+  cohortId       String?
   userId         String
   attemptNumber  Int
   status         AssessmentAttemptStatus @default(IN_PROGRESS)
@@ -796,12 +841,14 @@ model AssessmentAttempt {
   gradedAt       DateTime?
   assessment     Assessment              @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
   courseItem     CourseItem              @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  cohort         Cohort?                 @relation(fields: [cohortId], references: [id], onDelete: SetNull)
   user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers        AssessmentAnswer[]
 
   @@unique([courseItemId, userId, attemptNumber])
   @@unique([id, organizationId])
   @@index([assessmentId])
+  @@index([cohortId, status])
   @@index([userId, status])
 }
 

@@ -1,6 +1,6 @@
 import { Skeleton } from "~/components/ui/skeleton";
 
-export default function CurriculumLoading() {
+export default function KurikulumLoading() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
       <Skeleton className="h-9 w-36" />

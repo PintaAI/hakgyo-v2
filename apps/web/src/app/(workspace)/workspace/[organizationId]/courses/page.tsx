@@ -37,6 +37,13 @@ export default async function CoursesPage({
     >
       <CoursesLibrary
         courses={courses}
+        canCreate={
+          membership.role === "OWNER" ||
+          (membership.organization.permissionMode === "ADVANCED" &&
+            membership.role === "ADMIN") ||
+          (membership.organization.permissionMode === "SIMPLE" &&
+            membership.role === "TEACHER")
+        }
         organizationSlug={organizationSlug}
         role={membership.role}
       />

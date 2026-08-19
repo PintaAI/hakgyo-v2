@@ -5,6 +5,7 @@ import { contentRouter } from "~/server/api/routers/content";
 import { courseRouter } from "~/server/api/routers/course";
 import { enrollmentRouter } from "~/server/api/routers/enrollment";
 import { learningRouter } from "~/server/api/routers/learning";
+import { inviteRouter } from "~/server/api/routers/invite";
 import { organizationRouter } from "~/server/api/routers/organization";
 import { storageRouter } from "~/server/api/routers/storage";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
   course: courseRouter,
   enrollment: enrollmentRouter,
   learning: learningRouter,
+  invite: inviteRouter,
   organization: organizationRouter,
   storage: storageRouter,
 });

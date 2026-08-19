@@ -115,13 +115,13 @@ export default async function CatalogPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt>Modul</dt>
+                    <dt>Bab</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
                       {course._count.modules}
                     </dd>
                   </div>
                   <div>
-                    <dt>Batch</dt>
+                    <dt>Group belajar</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
                       {course._count.cohorts}
                     </dd>

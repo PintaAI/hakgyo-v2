@@ -35,26 +35,28 @@ export function OAuthConsent({
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f2efe6] px-6 py-12 text-[#163f35]">
-      <section className="w-full max-w-lg rounded-[2rem] border border-emerald-950/10 bg-[#fffaf0] p-8 shadow-[0_24px_80px_rgba(50,65,58,0.14)]">
-        <p className="text-xs font-bold tracking-[0.24em] text-[#9b5b3d] uppercase">
+    <main className="bg-background text-foreground relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
+      <div className="bg-primary/10 pointer-events-none absolute -top-24 -right-20 size-72 rounded-full blur-3xl" />
+      <div className="bg-primary/5 pointer-events-none absolute -bottom-24 -left-20 size-80 rounded-full blur-3xl" />
+      <section className="border-primary/15 bg-card/95 relative w-full max-w-lg rounded-[2rem] border p-8 shadow-2xl backdrop-blur-xl">
+        <p className="text-primary text-xs font-bold tracking-[0.24em] uppercase">
           Akses MCP Hakgyo
         </p>
         <h1 className="mt-4 text-3xl font-black tracking-tight">
           Hubungkan {clientName}
         </h1>
-        <p className="mt-3 text-sm leading-6 text-[#52665f]">
+        <p className="text-muted-foreground mt-3 text-sm leading-6">
           Klien AI ini akan memakai Hakgyo sesuai role Anda saat ini. Setiap
-          izin course, batch pembelajaran, dan organisasi diperiksa kembali
-          setiap kali sebuah tool dijalankan.
+          izin course, Group belajar, dan organisasi diperiksa kembali setiap
+          kali sebuah tool dijalankan.
         </p>
 
-        <div className="mt-6 rounded-2xl border border-emerald-950/10 bg-white p-4">
-          <p className="text-xs font-bold tracking-wide text-[#718079] uppercase">
+        <div className="border-border bg-muted/25 mt-6 rounded-2xl border p-4">
+          <p className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
             Klien
           </p>
           <p className="mt-1 text-sm font-bold break-all">{clientId}</p>
-          <p className="mt-4 text-xs font-bold tracking-wide text-[#718079] uppercase">
+          <p className="text-muted-foreground mt-4 text-xs font-bold tracking-wide uppercase">
             Akses yang diminta
           </p>
           <ul className="mt-2 space-y-2 text-sm">
@@ -64,7 +66,7 @@ export function OAuthConsent({
           </ul>
           {userInfoClaims.length > 0 && (
             <>
-              <p className="mt-4 text-xs font-bold tracking-wide text-[#718079] uppercase">
+              <p className="text-muted-foreground mt-4 text-xs font-bold tracking-wide uppercase">
                 Bidang profile yang diminta
               </p>
               <ul className="mt-2 space-y-2 text-sm">
@@ -77,14 +79,14 @@ export function OAuthConsent({
         </div>
 
         {error && (
-          <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p className="bg-destructive/10 text-destructive mt-4 rounded-xl px-4 py-3 text-sm">
             {error}
           </p>
         )}
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button
-            className="rounded-2xl border border-emerald-950/15 bg-white px-5 py-3 font-bold transition hover:bg-[#f2efe6] disabled:opacity-50"
+            className="border-primary/15 bg-primary/5 hover:border-primary/30 hover:bg-primary/10 rounded-2xl border px-5 py-3 font-bold transition disabled:opacity-50"
             disabled={pending}
             onClick={() => void submit(false)}
             type="button"
@@ -92,7 +94,7 @@ export function OAuthConsent({
             Tolak
           </button>
           <button
-            className="rounded-2xl bg-[#e76f51] px-5 py-3 font-black text-white transition hover:bg-[#d85f42] disabled:opacity-50"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl px-5 py-3 font-black transition disabled:opacity-50"
             disabled={pending}
             onClick={() => void submit(true)}
             type="button"

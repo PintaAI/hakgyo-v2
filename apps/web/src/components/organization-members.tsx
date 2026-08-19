@@ -2,8 +2,10 @@
 
 import { useDeferredValue, useState, type FormEvent } from "react";
 import {
+  CopyIcon,
   CrownIcon,
   LoaderCircleIcon,
+  RotateCwIcon,
   SearchIcon,
   ShieldCheckIcon,
   Trash2Icon,
@@ -54,6 +56,7 @@ import { api, type RouterOutputs } from "~/trpc/react";
 
 type OrganizationRole = "OWNER" | "ADMIN" | "TEACHER";
 type Member = RouterOutputs["organization"]["listMembers"][number];
+type OrganizationInvite = RouterOutputs["organization"]["listInvites"][number];
 
 const roleDetails: Record<
   OrganizationRole,
@@ -62,11 +65,11 @@ const roleDetails: Record<
   OWNER: { label: "Owner", description: "Kontrol penuh dan kepemilikan" },
   ADMIN: {
     label: "Admin",
-    description: "Mengelola member dan semua course",
+    description: "Mengelola member dan operasional organization",
   },
   TEACHER: {
     label: "Teacher",
-    description: "Membuat dan mengajar course",
+    description: "Mengelola course dan cohort sesuai mode akses",
   },
 };
 
@@ -102,12 +105,16 @@ export function OrganizationMembers({
 }) {
   const utils = api.useUtils();
   const members = api.organization.listMembers.useQuery({ organizationId });
-  const addMember = api.organization.addMember.useMutation();
+  const invites = api.organization.listInvites.useQuery({ organizationId });
+  const createInvite = api.organization.createInvite.useMutation();
+  const resendInvite = api.organization.resendInvite.useMutation();
+  const revokeInvite = api.organization.revokeInvite.useMutation();
   const updateRole = api.organization.updateMemberRole.useMutation();
   const removeMember = api.organization.removeMember.useMutation();
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
-  const [newRole, setNewRole] = useState<OrganizationRole>("TEACHER");
+  const [newRole, setNewRole] = useState<"ADMIN" | "TEACHER">("TEACHER");
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
   const [pendingMembershipId, setPendingMembershipId] = useState<string | null>(
     null,
@@ -124,7 +131,10 @@ export function OrganizationMembers({
   ).length;
 
   async function refreshMembers() {
-    await utils.organization.listMembers.invalidate({ organizationId });
+    await Promise.all([
+      utils.organization.listMembers.invalidate({ organizationId }),
+      utils.organization.listInvites.invalidate({ organizationId }),
+    ]);
   }
 
   async function handleAddMember(event: FormEvent<HTMLFormElement>) {
@@ -138,12 +148,50 @@ export function OrganizationMembers({
     }
 
     try {
-      await addMember.mutateAsync({ organizationId, email, role: newRole });
+      const invite = await createInvite.mutateAsync({
+        organizationId,
+        email,
+        role: newRole,
+      });
       await refreshMembers();
+      setInviteLink(`${window.location.origin}/invite/${invite.token}`);
       form.reset();
       setNewRole("TEACHER");
       setAddOpen(false);
-      toast.success("Member ditambahkan ke organisasi.");
+      toast.success("Invitation dibuat. Bagikan link kepada penerima.");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  async function copyInviteLink() {
+    if (!inviteLink) return;
+    await navigator.clipboard.writeText(inviteLink);
+    toast.success("Link invitation disalin.");
+  }
+
+  async function handleResendInvite(invite: OrganizationInvite) {
+    try {
+      const result = await resendInvite.mutateAsync({
+        organizationId,
+        inviteId: invite.id,
+      });
+      setInviteLink(`${window.location.origin}/invite/${result.token}`);
+      await utils.organization.listInvites.invalidate({ organizationId });
+      toast.success("Link invitation baru dibuat.");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  async function handleRevokeInvite(invite: OrganizationInvite) {
+    try {
+      await revokeInvite.mutateAsync({
+        organizationId,
+        inviteId: invite.id,
+      });
+      await utils.organization.listInvites.invalidate({ organizationId });
+      toast.success("Invitation dicabut.");
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -203,7 +251,7 @@ export function OrganizationMembers({
         </div>
         <Button onClick={() => setAddOpen(true)}>
           <UserPlusIcon data-icon="inline-start" />
-          Tambah member
+          Invite member
         </Button>
       </div>
 
@@ -311,6 +359,12 @@ export function OrganizationMembers({
                         <p className="text-muted-foreground truncate text-sm">
                           {member.user.email}
                         </p>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {member._count.ownedCourses} managed course ·{" "}
+                          {member._count.courseCollaborations} curriculum access
+                          · {member._count.cohortStaffMemberships} cohort
+                          assignment
+                        </p>
                       </div>
                     </div>
 
@@ -359,14 +413,95 @@ export function OrganizationMembers({
         </CardContent>
       </Card>
 
+      <Card className="gap-0 py-0">
+        <CardHeader className="border-b py-4">
+          <CardTitle>Invitation</CardTitle>
+          <CardDescription>
+            User baru dapat membuat akun dari link lalu otomatis mendapat role.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {invites.isPending ? (
+            <div className="text-muted-foreground flex min-h-32 items-center justify-center text-sm">
+              <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
+              Memuat invitation
+            </div>
+          ) : invites.error ? (
+            <p className="text-destructive p-5 text-sm">
+              {invites.error.message}
+            </p>
+          ) : invites.data?.length ? (
+            <div className="divide-y">
+              {invites.data.map((invite) => (
+                <div
+                  key={invite.id}
+                  className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-medium">{invite.email}</p>
+                      <Badge variant="outline">{invite.role}</Badge>
+                      <Badge
+                        variant={
+                          invite.status === "PENDING" ? "secondary" : "outline"
+                        }
+                      >
+                        {invite.status}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Oleh{" "}
+                      {invite.invitedBy?.user.name ??
+                        "member yang telah dihapus"}{" "}
+                      · berlaku sampai{" "}
+                      {invite.expiresAt.toLocaleDateString("id-ID")}
+                    </p>
+                  </div>
+                  {invite.status === "PENDING" ||
+                  invite.status === "EXPIRED" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={resendInvite.isPending}
+                      onClick={() => void handleResendInvite(invite)}
+                    >
+                      <RotateCwIcon />
+                      Buat link baru
+                    </Button>
+                  ) : (
+                    <span />
+                  )}
+                  {invite.status === "PENDING" ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={revokeInvite.isPending}
+                      onClick={() => void handleRevokeInvite(invite)}
+                    >
+                      Cabut
+                    </Button>
+                  ) : (
+                    <span />
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground p-6 text-center text-sm">
+              Belum ada invitation organization.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
           <form onSubmit={handleAddMember} className="contents">
             <DialogHeader>
-              <DialogTitle>Tambah member organisasi</DialogTitle>
+              <DialogTitle>Invite member organisasi</DialogTitle>
               <DialogDescription>
-                Masukkan email dari akun Hakgyo mereka dan pilih tingkat akses
-                awal.
+                Penerima dapat login atau membuat akun, lalu role otomatis aktif
+                setelah invitation diterima.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-2">
@@ -382,7 +517,7 @@ export function OrganizationMembers({
                   required
                 />
                 <p className="text-muted-foreground text-xs">
-                  Pengguna harus sudah memiliki akun Hakgyo.
+                  Link hanya dapat diterima oleh akun dengan email ini.
                 </p>
               </div>
               <div className="grid gap-2">
@@ -397,9 +532,6 @@ export function OrganizationMembers({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {currentRole === "OWNER" ? (
-                      <SelectItem value="OWNER">Owner</SelectItem>
-                    ) : null}
                     <SelectItem value="ADMIN">Admin</SelectItem>
                     <SelectItem value="TEACHER">Teacher</SelectItem>
                   </SelectContent>
@@ -417,16 +549,50 @@ export function OrganizationMembers({
               >
                 Batal
               </Button>
-              <Button type="submit" disabled={addMember.isPending}>
-                {addMember.isPending ? (
+              <Button type="submit" disabled={createInvite.isPending}>
+                {createInvite.isPending ? (
                   <LoaderCircleIcon className="animate-spin" />
                 ) : (
                   <UserPlusIcon />
                 )}
-                Tambah member
+                Buat invitation
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={inviteLink !== null}
+        onOpenChange={(open) => {
+          if (!open) setInviteLink(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link invitation siap</DialogTitle>
+            <DialogDescription>
+              Demi keamanan, token hanya ditampilkan setelah create atau resend.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2">
+            <Label htmlFor="organization-invite-link">Link invitation</Label>
+            <Input
+              id="organization-invite-link"
+              value={inviteLink ?? ""}
+              readOnly
+              className="font-mono text-xs"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteLink(null)}>
+              Tutup
+            </Button>
+            <Button onClick={() => void copyInviteLink()}>
+              <CopyIcon />
+              Salin link
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

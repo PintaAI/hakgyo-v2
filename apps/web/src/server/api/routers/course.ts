@@ -8,6 +8,7 @@ import {
 } from "~/server/api/trpc";
 import {
   requireCoursePermission,
+  requireOrganizationMembership,
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
@@ -114,17 +115,34 @@ export const courseRouter = createTRPCRouter({
   list: protectedProcedure
     .input(z.object({ organizationId: id }))
     .query(async ({ ctx, input }) => {
-      const member = await requireOrganizationPermission({
+      const member = await requireOrganizationMembership({
         ...input,
-        permission: "course.create",
         userId: ctx.actorUserId,
       });
-      return db.course.findMany({
+      const courses = await db.course.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.role === "TEACHER" &&
-          member.organization.teacherCourseAccess !== "ALL"
-            ? { ownerMembershipId: member.id }
+          ...(member.organization.permissionMode === "ADVANCED" &&
+          member.role === "TEACHER"
+            ? {
+                OR: [
+                  { ownerMembershipId: member.id },
+                  {
+                    cohorts: {
+                      some: {
+                        staff: {
+                          some: { organizationMemberId: member.id },
+                        },
+                      },
+                    },
+                  },
+                  {
+                    collaborators: {
+                      some: { organizationMemberId: member.id, role: "EDITOR" },
+                    },
+                  },
+                ],
+              }
             : {}),
         },
         orderBy: { createdAt: "desc" },
@@ -132,8 +150,48 @@ export const courseRouter = createTRPCRouter({
           owner: {
             select: { id: true, user: { select: { id: true, name: true } } },
           },
+          collaborators: {
+            where: { organizationMemberId: member.id, role: "EDITOR" },
+            select: { id: true },
+          },
+          cohorts: {
+            where: {
+              staff: { some: { organizationMemberId: member.id } },
+            },
+            select: { id: true },
+          },
           _count: { select: { modules: true, cohorts: true } },
         },
+      });
+      return courses.map(({ collaborators, cohorts, ...course }) => {
+        const canViewAllCohorts =
+          member.role === "OWNER" ||
+          member.role === "ADMIN" ||
+          (member.organization.permissionMode === "ADVANCED" &&
+            course.owner.id === member.id);
+
+        return {
+          ...course,
+          _count: {
+            ...course._count,
+            cohorts: canViewAllCohorts ? course._count.cohorts : cohorts.length,
+          },
+          accessRole:
+            member.role === "OWNER" ||
+            (member.organization.permissionMode === "ADVANCED" &&
+              (member.role === "ADMIN" || course.owner.id === member.id)) ||
+            (member.organization.permissionMode === "SIMPLE" &&
+              member.role === "TEACHER")
+              ? ("MANAGER" as const)
+              : member.organization.permissionMode === "SIMPLE" &&
+                  member.role === "ADMIN"
+                ? ("COHORT_MANAGER" as const)
+                : collaborators.length > 0
+                  ? ("EDITOR" as const)
+                  : cohorts.length > 0
+                    ? ("COHORT_STAFF" as const)
+                    : ("VIEWER" as const),
+        };
       });
     }),
   get: protectedProcedure
@@ -160,6 +218,121 @@ export const courseRouter = createTRPCRouter({
       });
       return { ...course, access: access.access };
     }),
+  getAccess: protectedProcedure
+    .input(z.object({ courseId: id }))
+    .query(async ({ ctx, input }) => {
+      const course = await requireCoursePermission({
+        ...input,
+        permission: "course.manage",
+        userId: ctx.actorUserId,
+      });
+      if (!course.access.usesAdvancedPermissions) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return db.course.findUniqueOrThrow({
+        where: { id: input.courseId },
+        select: {
+          id: true,
+          ownerMembershipId: true,
+          owner: {
+            select: {
+              id: true,
+              user: {
+                select: { id: true, name: true, email: true, image: true },
+              },
+            },
+          },
+          collaborators: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              role: true,
+              organizationMember: {
+                select: {
+                  id: true,
+                  user: {
+                    select: { id: true, name: true, email: true, image: true },
+                  },
+                },
+              },
+            },
+          },
+          organization: {
+            select: {
+              members: {
+                where: { id: { not: course.ownerMembershipId } },
+                orderBy: { createdAt: "asc" },
+                select: {
+                  id: true,
+                  role: true,
+                  user: {
+                    select: { id: true, name: true, email: true, image: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+    }),
+  addEditor: protectedProcedure
+    .input(z.object({ courseId: id, organizationMemberId: id }))
+    .mutation(async ({ ctx, input }) => {
+      const course = await requireCoursePermission({
+        courseId: input.courseId,
+        permission: "course.manage",
+        userId: ctx.actorUserId,
+      });
+      if (!course.access.usesAdvancedPermissions) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (input.organizationMemberId === course.ownerMembershipId) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Course owner already has full access",
+        });
+      }
+      const member = await db.organizationMember.findFirst({
+        where: {
+          id: input.organizationMemberId,
+          organizationId: course.organizationId,
+        },
+        select: { id: true },
+      });
+      if (!member) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.courseCollaborator.upsert({
+        where: {
+          courseId_organizationMemberId: {
+            courseId: input.courseId,
+            organizationMemberId: member.id,
+          },
+        },
+        create: {
+          courseId: input.courseId,
+          organizationId: course.organizationId,
+          organizationMemberId: member.id,
+          role: "EDITOR",
+        },
+        update: { role: "EDITOR" },
+      });
+    }),
+  removeEditor: protectedProcedure
+    .input(z.object({ courseId: id, collaboratorId: id }))
+    .mutation(async ({ ctx, input }) => {
+      const course = await requireCoursePermission({
+        courseId: input.courseId,
+        permission: "course.manage",
+        userId: ctx.actorUserId,
+      });
+      if (!course.access.usesAdvancedPermissions) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const result = await db.courseCollaborator.deleteMany({
+        where: { id: input.collaboratorId, courseId: input.courseId },
+      });
+      if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
+      return { removed: true };
+    }),
   create: protectedProcedure
     .input(fields.extend({ organizationId: id, ownerMembershipId: id }))
     .mutation(async ({ ctx, input }) => {
@@ -168,7 +341,11 @@ export const courseRouter = createTRPCRouter({
         permission: "course.create",
         userId: ctx.actorUserId,
       });
-      if (member.role === "TEACHER" && input.ownerMembershipId !== member.id)
+      if (
+        member.organization.permissionMode === "ADVANCED" &&
+        member.role === "TEACHER" &&
+        input.ownerMembershipId !== member.id
+      )
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Teachers can only create courses they own",
@@ -212,6 +389,21 @@ export const courseRouter = createTRPCRouter({
             code: "BAD_REQUEST",
             message: "Owner must belong to the organization",
           });
+      }
+      if (data.ownerMembershipId) {
+        return db.$transaction(async (tx) => {
+          const updated = await tx.course.update({
+            where: { id: courseId },
+            data,
+          });
+          await tx.courseCollaborator.deleteMany({
+            where: {
+              courseId,
+              organizationMemberId: data.ownerMembershipId,
+            },
+          });
+          return updated;
+        });
       }
       return db.course.update({ where: { id: courseId }, data });
     }),

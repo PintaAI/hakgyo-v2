@@ -11,7 +11,7 @@ export default async function Layout({
   const sectionLabels: Record<string, string> = {
     materials: "Materi",
     vocabulary: "Kosakata",
-    assessments: "Penilaian",
+    assessments: "Tugas",
   };
   return (
     <Subnav

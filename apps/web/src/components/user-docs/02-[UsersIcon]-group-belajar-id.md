@@ -1,10 +1,10 @@
-# Konsep Utama Batch Pembelajaran di Hakgyo
+# Konsep Utama Group belajar di Hakgyo
 
-Batch pembelajaran (**cohort**) adalah satu pelaksanaan terjadwal dari sebuah kursus. Kursus menyimpan kurikulum yang dipelajari, sedangkan batch pembelajaran menyimpan konteks bagaimana kurikulum tersebut dijalankan untuk kelompok tertentu.
+Group belajar (**cohort**) adalah satu pelaksanaan terjadwal dari sebuah kursus. Kursus menyimpan kurikulum yang dipelajari, sedangkan Group belajar menyimpan konteks bagaimana kurikulum tersebut dijalankan untuk kelompok tertentu.
 
-Satu kursus dapat memiliki banyak batch pembelajaran. Setiap batch dapat mempunyai periode, peserta didik, pengajar, moderator, kapasitas, harga, grup WhatsApp, undangan, dan jadwal meeting yang berbeda tanpa menduplikasi kurikulum kursus.
+Satu kursus dapat memiliki banyak Group belajar. Setiap batch dapat mempunyai periode, peserta didik, instructor, assistant, kapasitas, harga, grup WhatsApp, undangan, dan jadwal meeting yang berbeda tanpa menduplikasi kurikulum kursus.
 
-Dokumen ini menjelaskan hubungan antara **kursus**, **batch pembelajaran**, **peserta didik**, **staff**, **undangan**, **meeting**, dan **akses belajar**. Di dalam sistem, istilah teknisnya tetap `cohort`.
+Dokumen ini menjelaskan hubungan antara **kursus**, **Group belajar**, **peserta didik**, **staff**, **undangan**, **meeting**, dan **akses belajar**. Di dalam sistem, istilah teknisnya tetap `cohort`.
 
 ## Gambaran Dasar
 
@@ -36,25 +36,25 @@ Ketiga batch menggunakan kurikulum yang sama. Perubahan pada susunan kursus berl
 | Judul dan deskripsi kursus            | Nama dan deskripsi batch                |
 | Bab dan bahan ajar                    | Periode mulai dan selesai               |
 | Urutan belajar                        | Peserta didik cohort                    |
-| Publication bahan ajar                | Teacher dan moderator                   |
+| Publication bahan ajar                | Instructor dan assistant                |
 | Cara belajar open atau sequential     | Meeting dan link Zoom                   |
 | Aturan enrollment dasar dan kurikulum | Kapasitas, harga, dan aturan enrollment |
 
-## Kapan Menggunakan Batch Pembelajaran
+## Kapan Menggunakan Group belajar
 
-Gunakan batch pembelajaran ketika sebuah program belajar membutuhkan satu atau lebih konteks berikut:
+Gunakan Group belajar ketika sebuah program belajar membutuhkan satu atau lebih konteks berikut:
 
 - Kelompok peserta didik tertentu.
 - Tanggal mulai dan selesai.
-- Teacher atau moderator khusus.
+- Instructor atau assistant khusus.
 - Live session atau meeting terjadwal.
 - Kapasitas peserta didik.
 - Grup komunikasi seperti WhatsApp.
 - Harga atau aturan enrollment yang berbeda dari kursus.
 
-Batch pembelajaran tidak wajib digunakan untuk semua kursus. Kursus belajar mandiri dapat memberikan akses langsung kepada peserta didik tanpa memasukkannya ke batch.
+Group belajar tidak wajib digunakan untuk semua kursus. Kursus belajar mandiri dapat memberikan akses langsung kepada peserta didik tanpa memasukkannya ke batch.
 
-### Kursus Langsung atau Batch Pembelajaran
+### Kursus Langsung atau Group belajar
 
 | Kebutuhan                                           | Pilihan yang disarankan |
 | --------------------------------------------------- | ----------------------- |
@@ -205,26 +205,26 @@ Staff adalah organization member yang ditugaskan untuk mengelola pelaksanaan coh
 
 Hakgyo menyediakan dua label role staff:
 
-### Teacher
+### Instructor
 
-Teacher bertanggung jawab terhadap proses pembelajaran, misalnya:
+Instructor bertanggung jawab terhadap proses pembelajaran, misalnya:
 
 - Menjalankan live session.
 - Memantau peserta didik.
 - Membantu proses belajar.
 - Memeriksa tugas tertulis sesuai scope yang dimiliki.
 
-### Moderator
+### Assistant
 
-Moderator berfokus pada dukungan operasional, misalnya:
+Assistant berfokus pada dukungan operasional, misalnya:
 
 - Membantu mengelola peserta.
 - Menjaga komunikasi kelompok.
-- Membantu meeting dan administrasi cohort.
+- Melihat jadwal dan membantu administrasi cohort.
 
-Pada implementasi saat ini, teacher dan moderator sama-sama memperoleh akses pengelolaan cohort. Perbedaannya masih berupa tanggung jawab operasional, bukan pembatasan permission yang berbeda.
+Instructor dapat mengelola detail cohort, peserta, undangan, meeting, dan review tugas. Assistant dapat mengelola peserta dan melihat jadwal, tetapi tidak dapat mengubah cohort, staff, meeting, undangan, atau review tugas.
 
-Course owner, owner/admin organization, dan assigned cohort staff dapat mengelola cohort sesuai scope masing-masing. Akses tidak pernah berlaku lintas organization.
+Course manager dan owner/admin organization dapat mengelola seluruh cohort termasuk staff dan penghapusan. Assigned cohort staff bekerja sesuai role operasionalnya. Akses tidak pernah berlaku lintas organization.
 
 ## Meeting dan Zoom
 
@@ -281,7 +281,7 @@ Isi nama, deskripsi, periode, kapasitas, harga, dan link komunikasi. Gunakan sta
 
 ### 3. Tambahkan Staff
 
-Pastikan teacher atau moderator sudah menjadi organization member. Tambahkan mereka menggunakan email dan tentukan role operasionalnya.
+Pastikan instructor atau assistant sudah menjadi organization member. Tambahkan mereka menggunakan email dan tentukan role operasionalnya.
 
 ### 4. Siapkan Meeting
 
@@ -309,7 +309,7 @@ Sebuah organisasi membuka **Cohort September** untuk kursus Bahasa Korea Pemula.
 
 1. Pengelola membuat cohort berstatus `DRAFT` dengan kapasitas 20 peserta.
 2. Periode diatur dari 1 September sampai 30 November.
-3. Seorang teacher dan moderator ditambahkan menggunakan email organization member.
+3. Seorang instructor dan assistant ditambahkan menggunakan email organization member.
 4. Organization menghubungkan Zoom dan membuat 12 meeting mingguan.
 5. Cohort diubah menjadi `OPEN`.
 6. Sepuluh peserta ditambahkan melalui email dan delapan peserta masuk melalui undangan cohort.
@@ -325,7 +325,7 @@ Sebuah organisasi membuka **Cohort September** untuk kursus Bahasa Korea Pemula.
 - Open enrollment langsung ke cohort belum tersedia.
 - Status cohort tidak berubah otomatis berdasarkan tanggal.
 - Status meeting belum tersinkron otomatis dari aktivitas Zoom.
-- Teacher dan moderator saat ini mempunyai kemampuan pengelolaan cohort yang sama.
+- Assistant tidak dapat mengelola meeting, undangan, staff, atau review tugas.
 - Peserta dan staff harus mempunyai akun atau membership yang sesuai sebelum ditambahkan melalui email.
 
 Memahami batasan ini membantu pengelola menggunakan cohort sebagai pusat operasi program tanpa menganggap metadata sebagai automation yang belum tersedia.

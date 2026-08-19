@@ -10,6 +10,7 @@ import {
   getOpenEnrollmentRejection,
   getOpenEnrollmentUpdate,
 } from "~/server/enrollment/open-enrollment";
+import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
 
 const id = z.string().min(1);
 const enrollmentStatus = z.enum([
@@ -90,6 +91,7 @@ export const enrollmentRouter = createTRPCRouter({
       if (input.cohortId) {
         const cohort = await requireCohortPermission({
           cohortId: input.cohortId,
+          permission: "invites.manage",
           userId: ctx.actorUserId,
         });
         if (cohort.courseId !== input.courseId)
@@ -140,6 +142,30 @@ export const enrollmentRouter = createTRPCRouter({
       });
       return invite;
     }),
+  getInviteByToken: protectedProcedure
+    .input(z.object({ token: z.string().min(20).max(200) }))
+    .query(async ({ ctx, input }) => {
+      const invite = await ctx.db.enrollmentInvite.findUnique({
+        where: { token: input.token },
+        select: {
+          id: true,
+          expiresAt: true,
+          maxUses: true,
+          useCount: true,
+          revokedAt: true,
+          course: {
+            select: {
+              id: true,
+              title: true,
+              organization: { select: { name: true } },
+            },
+          },
+          cohort: { select: { id: true, name: true } },
+        },
+      });
+      if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
+      return invite;
+    }),
   listCourseEnrollments: protectedProcedure
     .input(z.object({ courseId: id }))
     .query(async ({ ctx, input }) => {
@@ -160,6 +186,7 @@ export const enrollmentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "learners.manage",
         userId: ctx.actorUserId,
       });
       return ctx.db.cohortEnrollment.findMany({
@@ -214,6 +241,22 @@ export const enrollmentRouter = createTRPCRouter({
       });
     }),
 
+  removeCourseEnrollment: protectedProcedure
+    .input(z.object({ courseId: id, userId: id }))
+    .mutation(async ({ ctx, input }) => {
+      await requireCoursePermission({
+        courseId: input.courseId,
+        permission: "course.manage",
+        userId: ctx.actorUserId,
+      });
+      return ctx.db.courseEnrollment.deleteMany({
+        where: {
+          courseId: input.courseId,
+          userId: input.userId,
+        },
+      });
+    }),
+
   setCohortEnrollment: protectedProcedure
     .input(
       z.object({
@@ -225,6 +268,7 @@ export const enrollmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const cohort = await requireCohortPermission({
         cohortId: input.cohortId,
+        permission: "learners.manage",
         userId: ctx.actorUserId,
       });
       const user = await ctx.db.user.findUnique({
@@ -321,6 +365,7 @@ export const enrollmentRouter = createTRPCRouter({
       if (input.cohortId) {
         const cohort = await requireCohortPermission({
           cohortId: input.cohortId,
+          permission: "invites.manage",
           userId: ctx.actorUserId,
         });
         if (cohort.courseId !== input.courseId) {
@@ -377,14 +422,22 @@ export const enrollmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const invite = await ctx.db.enrollmentInvite.findUnique({
         where: { id: input.inviteId },
-        select: { courseId: true },
+        select: { courseId: true, cohortId: true },
       });
       if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireCoursePermission({
-        courseId: invite.courseId,
-        permission: "course.manage",
-        userId: ctx.actorUserId,
-      });
+      if (invite.cohortId) {
+        await requireCohortPermission({
+          cohortId: invite.cohortId,
+          permission: "invites.manage",
+          userId: ctx.actorUserId,
+        });
+      } else {
+        await requireCoursePermission({
+          courseId: invite.courseId,
+          permission: "course.manage",
+          userId: ctx.actorUserId,
+        });
+      }
       return ctx.db.enrollmentInvite.update({
         where: { id: input.inviteId },
         data: { revokedAt: new Date() },
@@ -396,90 +449,12 @@ export const enrollmentRouter = createTRPCRouter({
     .input(z.object({ token: z.string().min(20).max(200) }))
     .mutation(({ ctx, input }) =>
       ctx.db.$transaction(
-        async (tx) => {
-          const now = new Date();
-          const invite = await tx.enrollmentInvite.findUnique({
-            where: { token: input.token },
-          });
-          if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
-          if (
-            invite.revokedAt ||
-            (invite.expiresAt && invite.expiresAt <= now)
-          ) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Invite is no longer valid",
-            });
-          }
-          if (invite.maxUses !== null && invite.useCount >= invite.maxUses) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Invite has reached its use limit",
-            });
-          }
-
-          const existing = invite.cohortId
-            ? await tx.cohortEnrollment.findUnique({
-                where: {
-                  cohortId_userId: {
-                    cohortId: invite.cohortId,
-                    userId: ctx.actorUserId,
-                  },
-                },
-              })
-            : await tx.courseEnrollment.findUnique({
-                where: {
-                  courseId_userId: {
-                    courseId: invite.courseId,
-                    userId: ctx.actorUserId,
-                  },
-                },
-              });
-          if (existing) return existing;
-
-          const consumed = await tx.enrollmentInvite.updateMany({
-            where: {
-              id: invite.id,
-              revokedAt: null,
-              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-              ...(invite.maxUses === null
-                ? {}
-                : { useCount: { lt: invite.maxUses } }),
-            },
-            data: { useCount: { increment: 1 } },
-          });
-          if (consumed.count !== 1) {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "Invite was already consumed",
-            });
-          }
-
-          const courseEnrollment = await tx.courseEnrollment.upsert({
-            where: {
-              courseId_userId: {
-                courseId: invite.courseId,
-                userId: ctx.actorUserId,
-              },
-            },
-            create: {
-              courseId: invite.courseId,
-              userId: ctx.actorUserId,
-              status: "ACTIVE",
-              source: "INVITE",
-            },
-            update: { status: "ACTIVE" },
-          });
-          if (!invite.cohortId) return courseEnrollment;
-          return tx.cohortEnrollment.create({
-            data: {
-              cohortId: invite.cohortId,
-              userId: ctx.actorUserId,
-              status: "ACTIVE",
-              source: "INVITE",
-            },
-          });
-        },
+        (tx) =>
+          redeemEnrollmentInvite(tx, {
+            token: input.token,
+            userId: ctx.actorUserId,
+            now: new Date(),
+          }),
         { isolationLevel: "Serializable" },
       ),
     ),
