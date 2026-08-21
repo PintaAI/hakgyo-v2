@@ -38,6 +38,10 @@ export const env = createEnv({
     CLOUDFLARE_R2_ACCESS_KEY_ID: z.string().min(1),
     CLOUDFLARE_R2_SECRET_ACCESS_KEY: z.string().min(1),
     CLOUDFLARE_R2_BUCKET_NAME: z.string().min(1),
+    CLOUDFLARE_R2_PUBLIC_URL: z
+      .string()
+      .url()
+      .default("https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev"),
     ZOOM_CLIENT_ID: z.string().min(1),
     ZOOM_CLIENT_SECRET: z.string().min(1),
     ZOOM_TOKEN_ENCRYPTION_KEY: z.string().base64(),
@@ -72,6 +76,7 @@ export const env = createEnv({
     CLOUDFLARE_R2_SECRET_ACCESS_KEY:
       process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
     CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+    CLOUDFLARE_R2_PUBLIC_URL: process.env.CLOUDFLARE_R2_PUBLIC_URL,
     ZOOM_CLIENT_ID: process.env.ZOOM_CLIENT_ID,
     ZOOM_CLIENT_SECRET: process.env.ZOOM_CLIENT_SECRET,
     ZOOM_TOKEN_ENCRYPTION_KEY: process.env.ZOOM_TOKEN_ENCRYPTION_KEY,

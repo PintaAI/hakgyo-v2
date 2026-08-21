@@ -38,17 +38,14 @@ describe("profile image keys", () => {
   test("extracts only managed image URLs for the same user", () => {
     const fileName = `${objectId}-2048.jpg`;
     expect(
-      getManagedProfileImageKey(`/api/profile-images/user/${fileName}`, "user"),
-    ).toBe(`profile-images/user/${fileName}`);
-    expect(
       getManagedProfileImageKey(
-        `https://hakgyo.test/api/profile-images/user/${fileName}`,
+        `https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/profile-images/user/${fileName}`,
         "user",
       ),
     ).toBe(`profile-images/user/${fileName}`);
     expect(
       getManagedProfileImageKey(
-        `https://hakgyo.test/api/profile-images/other/${fileName}`,
+        `https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/profile-images/other/${fileName}`,
         "user",
       ),
     ).toBeNull();
@@ -58,5 +55,6 @@ describe("profile image keys", () => {
         "user",
       ),
     ).toBeNull();
+    expect(getManagedProfileImageKey(`/api/profile-images/user/${fileName}`, "user")).toBeNull();
   });
 });

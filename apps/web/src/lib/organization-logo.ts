@@ -1,4 +1,5 @@
 import {
+  getPublicR2Url,
   MAX_PROFILE_IMAGE_SIZE,
   profileImageContentTypes,
   type ProfileImageContentType,
@@ -66,7 +67,9 @@ export function getOrganizationLogoPath(
   organizationId: string,
   fileName: string,
 ) {
-  return `/api/organization-logos/${encodeURIComponent(organizationId)}/${fileName}`;
+  return getPublicR2Url(
+    `${getOrganizationLogoPrefix(organizationId)}${fileName}`,
+  );
 }
 
 export function getManagedOrganizationLogoKey(
@@ -75,10 +78,11 @@ export function getManagedOrganizationLogoKey(
 ) {
   if (!logoUrl) return null;
   const pathname = getUrlPathname(logoUrl);
-  const pathPrefix = `/api/organization-logos/${encodeURIComponent(organizationId)}/`;
-  if (!pathname?.startsWith(pathPrefix)) return null;
+  if (!pathname) return null;
+  const r2Prefix = `/organization-logos/${encodeURIComponent(organizationId)}/`;
+  if (!pathname.startsWith(r2Prefix)) return null;
 
-  const fileName = pathname.slice(pathPrefix.length);
+  const fileName = pathname.slice(r2Prefix.length);
   const key = `${getOrganizationLogoPrefix(organizationId)}${fileName}`;
   return parseOrganizationLogoKey(key, organizationId) ? key : null;
 }

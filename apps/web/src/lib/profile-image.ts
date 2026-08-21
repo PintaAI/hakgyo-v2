@@ -64,8 +64,17 @@ export function parseProfileImageKey(key: string, userId: string) {
   return { contentType, fileName, size };
 }
 
+export function getPublicR2Url(key: string) {
+  const base =
+    process.env.CLOUDFLARE_R2_PUBLIC_URL ??
+    "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev";
+  return `${base.replace(/\/$/, "")}/${key}`;
+}
+
 export function getProfileImagePath(userId: string, fileName: string) {
-  return `/api/profile-images/${encodeURIComponent(userId)}/${fileName}`;
+  return getPublicR2Url(
+    `${getProfileImagePrefix(userId)}${fileName}`,
+  );
 }
 
 export function getManagedProfileImageKey(
@@ -74,10 +83,11 @@ export function getManagedProfileImageKey(
 ) {
   if (!imageUrl) return null;
   const pathname = getUrlPathname(imageUrl);
-  const pathPrefix = `/api/profile-images/${encodeURIComponent(userId)}/`;
-  if (!pathname?.startsWith(pathPrefix)) return null;
+  if (!pathname) return null;
+  const r2Prefix = `/profile-images/${encodeURIComponent(userId)}/`;
+  if (!pathname.startsWith(r2Prefix)) return null;
 
-  const fileName = pathname.slice(pathPrefix.length);
+  const fileName = pathname.slice(r2Prefix.length);
   const key = `${getProfileImagePrefix(userId)}${fileName}`;
   return parseProfileImageKey(key, userId) ? key : null;
 }

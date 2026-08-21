@@ -78,6 +78,7 @@ export const storageRouter = createTRPCRouter({
           Bucket: r2Bucket,
           Key: key,
           ContentType: input.contentType,
+          CacheControl: "public, max-age=31536000, immutable",
         }),
         { expiresIn: SIGNED_URL_TTL_SECONDS },
       );
@@ -225,6 +226,7 @@ export const storageRouter = createTRPCRouter({
           Bucket: r2Bucket,
           Key: key,
           ContentType: input.contentType,
+          CacheControl: "public, max-age=31536000, immutable",
         }),
         { expiresIn: SIGNED_URL_TTL_SECONDS },
       );

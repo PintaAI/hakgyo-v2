@@ -8,6 +8,11 @@ import "./src/env.js";
 const config = {
   allowedDevOrigins: ["jennie-linux.tail2268a1.ts.net"],
   poweredByHeader: false,
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev" },
+    ],
+  },
   async headers() {
     return [
       {

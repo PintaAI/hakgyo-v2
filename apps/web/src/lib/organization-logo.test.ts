@@ -44,19 +44,13 @@ describe("organization logo keys", () => {
     const fileName = `${objectId}-2048.jpg`;
     expect(
       getManagedOrganizationLogoKey(
-        `/api/organization-logos/org/${fileName}`,
+        `https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/organization-logos/org/${fileName}`,
         "org",
       ),
     ).toBe(`organization-logos/org/${fileName}`);
     expect(
       getManagedOrganizationLogoKey(
-        `https://hakgyo.test/api/organization-logos/org/${fileName}`,
-        "org",
-      ),
-    ).toBe(`organization-logos/org/${fileName}`);
-    expect(
-      getManagedOrganizationLogoKey(
-        `https://hakgyo.test/api/organization-logos/other/${fileName}`,
+        `https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/organization-logos/other/${fileName}`,
         "org",
       ),
     ).toBeNull();
@@ -65,6 +59,9 @@ describe("organization logo keys", () => {
         "https://images.example.com/logo.jpg",
         "org",
       ),
+    ).toBeNull();
+    expect(
+      getManagedOrganizationLogoKey(`/api/organization-logos/org/${fileName}`, "org"),
     ).toBeNull();
   });
 });
