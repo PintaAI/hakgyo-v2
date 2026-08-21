@@ -11,6 +11,7 @@ import {
   getOpenEnrollmentUpdate,
 } from "~/server/enrollment/open-enrollment";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
+import { pageInput, pageResult } from "~/server/api/pagination";
 
 const id = z.string().min(1);
 const enrollmentStatus = z.enum([
@@ -86,7 +87,12 @@ export const enrollmentRouter = createTRPCRouter({
     }),
 
   listInvites: protectedProcedure
-    .input(z.object({ courseId: id, cohortId: id.optional() }))
+    .input(
+      pageInput.extend({
+        courseId: id,
+        cohortId: id.optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       if (input.cohortId) {
         const cohort = await requireCohortPermission({
@@ -103,20 +109,32 @@ export const enrollmentRouter = createTRPCRouter({
           userId: ctx.actorUserId,
         });
       }
-      return ctx.db.enrollmentInvite.findMany({
-        where: { courseId: input.courseId, cohortId: input.cohortId },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          cohortId: true,
-          expiresAt: true,
-          maxUses: true,
-          useCount: true,
-          revokedAt: true,
-          createdAt: true,
-          createdBy: { select: { user: { select: { id: true, name: true } } } },
-        },
-      });
+      const where = { courseId: input.courseId, cohortId: input.cohortId };
+      const [items, total] = await Promise.all([
+        ctx.db.enrollmentInvite.findMany({
+          where,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+          select: {
+            id: true,
+            cohortId: true,
+            expiresAt: true,
+            maxUses: true,
+            useCount: true,
+            revokedAt: true,
+            createdAt: true,
+            createdBy: {
+              select: { user: { select: { id: true, name: true } } },
+            },
+          },
+        }),
+        input.includeTotal
+          ? ctx.db.enrollmentInvite.count({ where })
+          : Promise.resolve(undefined),
+      ]);
+      return pageResult(items, input.limit, total);
     }),
   getInvite: protectedProcedure
     .input(z.object({ inviteId: id }))
@@ -167,33 +185,125 @@ export const enrollmentRouter = createTRPCRouter({
       return invite;
     }),
   listCourseEnrollments: protectedProcedure
-    .input(z.object({ courseId: id }))
+    .input(
+      pageInput.extend({
+        courseId: id,
+        search: z.string().trim().max(200).optional(),
+        status: enrollmentStatus.optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       await requireCoursePermission({
         courseId: input.courseId,
         permission: "course.manage",
         userId: ctx.actorUserId,
       });
-      return ctx.db.courseEnrollment.findMany({
-        where: { courseId: input.courseId },
-        orderBy: { enrolledAt: "desc" },
-        include: { user: { select: { id: true, name: true, email: true } } },
-      });
+      const where = {
+        courseId: input.courseId,
+        status: input.status,
+        ...(input.search
+          ? {
+              user: {
+                is: {
+                  OR: [
+                    {
+                      name: {
+                        contains: input.search,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                    {
+                      email: {
+                        contains: input.search,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                  ],
+                },
+              },
+            }
+          : {}),
+      };
+      const [items, total, activeTotal] = await Promise.all([
+        ctx.db.courseEnrollment.findMany({
+          where,
+          orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+          include: { user: { select: { id: true, name: true, email: true } } },
+        }),
+        input.includeTotal
+          ? ctx.db.courseEnrollment.count({ where })
+          : Promise.resolve(undefined),
+        input.includeTotal
+          ? ctx.db.courseEnrollment.count({
+              where: { ...where, status: "ACTIVE" },
+            })
+          : Promise.resolve(undefined),
+      ]);
+      return { ...pageResult(items, input.limit, total), activeTotal };
     }),
 
   listCohortEnrollments: protectedProcedure
-    .input(z.object({ cohortId: id }))
+    .input(
+      pageInput.extend({
+        cohortId: id,
+        search: z.string().trim().max(200).optional(),
+        status: enrollmentStatus.optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "learners.manage",
         userId: ctx.actorUserId,
       });
-      return ctx.db.cohortEnrollment.findMany({
-        where: { cohortId: input.cohortId },
-        orderBy: { enrolledAt: "desc" },
-        include: { user: { select: { id: true, name: true, email: true } } },
-      });
+      const where = {
+        cohortId: input.cohortId,
+        status: input.status,
+        ...(input.search
+          ? {
+              user: {
+                is: {
+                  OR: [
+                    {
+                      name: {
+                        contains: input.search,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                    {
+                      email: {
+                        contains: input.search,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                  ],
+                },
+              },
+            }
+          : {}),
+      };
+      const [items, total, activeTotal] = await Promise.all([
+        ctx.db.cohortEnrollment.findMany({
+          where,
+          orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+          include: { user: { select: { id: true, name: true, email: true } } },
+        }),
+        input.includeTotal
+          ? ctx.db.cohortEnrollment.count({ where })
+          : Promise.resolve(undefined),
+        input.includeTotal
+          ? ctx.db.cohortEnrollment.count({
+              where: { ...where, status: "ACTIVE" },
+            })
+          : Promise.resolve(undefined),
+      ]);
+      return { ...pageResult(items, input.limit, total), activeTotal };
     }),
 
   setCourseEnrollment: protectedProcedure

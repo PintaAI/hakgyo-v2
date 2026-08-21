@@ -9,6 +9,7 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
+import { pageInput, pageResult } from "~/server/api/pagination";
 import {
   createZoomMeeting,
   deleteZoomMeeting,
@@ -56,52 +57,118 @@ async function requireManagedCohort(
 
 export const cohortRouter = createTRPCRouter({
   listByOrganization: protectedProcedure
-    .input(z.object({ organizationId: id }))
+    .input(
+      pageInput.extend({
+        organizationId: id,
+        search: z.string().trim().max(200).optional(),
+        status: cohortFields.shape.status,
+      }),
+    )
     .query(async ({ ctx, input }) => {
       await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.manage",
         userId: ctx.actorUserId,
       });
-      return db.cohort.findMany({
-        where: { organizationId: input.organizationId },
-        orderBy: { createdAt: "desc" },
-        include: {
-          course: { select: { id: true, title: true } },
-          _count: {
-            select: { staff: true, enrollments: true, meetings: true },
+      const where = {
+        organizationId: input.organizationId,
+        status: input.status,
+        ...(input.search
+          ? {
+              OR: [
+                {
+                  name: {
+                    contains: input.search,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  course: {
+                    is: {
+                      title: {
+                        contains: input.search,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
+      };
+      const [items, total] = await Promise.all([
+        db.cohort.findMany({
+          where,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+          include: {
+            course: { select: { id: true, title: true } },
+            _count: {
+              select: { staff: true, enrollments: true, meetings: true },
+            },
           },
-        },
-      });
+        }),
+        input.includeTotal
+          ? db.cohort.count({ where })
+          : Promise.resolve(undefined),
+      ]);
+      return pageResult(items, input.limit, total);
     }),
   list: protectedProcedure
-    .input(z.object({ courseId: id }))
+    .input(
+      pageInput.extend({
+        courseId: id,
+        search: z.string().trim().max(200).optional(),
+        status: cohortFields.shape.status,
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const course = await requireCoursePermission({
         courseId: input.courseId,
         permission: "course.view",
         userId: ctx.actorUserId,
       });
-      return db.cohort.findMany({
-        where: {
-          courseId: input.courseId,
-          ...(course.access.canViewAllCohorts
-            ? {}
-            : {
-                staff: {
-                  some: {
-                    organizationMember: { userId: ctx.actorUserId },
-                  },
+      const where = {
+        courseId: input.courseId,
+        status: input.status,
+        ...(input.search
+          ? {
+              name: {
+                contains: input.search,
+                mode: "insensitive" as const,
+              },
+            }
+          : {}),
+        ...(course.access.canViewAllCohorts
+          ? {}
+          : {
+              staff: {
+                some: {
+                  organizationMember: { userId: ctx.actorUserId },
                 },
-              }),
-        },
-        orderBy: { createdAt: "desc" },
-        include: {
-          _count: {
-            select: { staff: true, enrollments: true, meetings: true },
+              },
+            }),
+      };
+      const [items, total] = await Promise.all([
+        db.cohort.findMany({
+          where,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+          include: {
+            _count: {
+              select: { staff: true, enrollments: true, meetings: true },
+            },
           },
-        },
-      });
+        }),
+        input.includeTotal
+          ? db.cohort.count({ where })
+          : Promise.resolve(undefined),
+      ]);
+      return pageResult(items, input.limit, total);
     }),
   get: protectedProcedure
     .input(z.object({ cohortId: id }))
@@ -128,7 +195,6 @@ export const cohortRouter = createTRPCRouter({
               },
             },
           },
-          meetings: { orderBy: { startsAt: "asc" } },
         },
       });
       return { ...cohort, access: cohortAccess.access };
@@ -257,22 +323,51 @@ export const cohortRouter = createTRPCRouter({
       return { removed: true };
     }),
   listMeetings: protectedProcedure
-    .input(z.object({ cohortId: id }))
+    .input(
+      pageInput.extend({
+        cohortId: id,
+        search: z.string().trim().max(200).optional(),
+        status: z
+          .enum(["SCHEDULED", "STARTED", "ENDED", "CANCELLED"])
+          .optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "view",
         userId: ctx.actorUserId,
       });
-      return db.cohortMeeting.findMany({
-        where: { cohortId: input.cohortId },
-        orderBy: { startsAt: "asc" },
-        include: {
-          createdBy: {
-            include: { user: { select: { id: true, name: true } } },
+      const where = {
+        cohortId: input.cohortId,
+        status: input.status,
+        ...(input.search
+          ? {
+              title: {
+                contains: input.search,
+                mode: "insensitive" as const,
+              },
+            }
+          : {}),
+      };
+      const [items, total] = await Promise.all([
+        db.cohortMeeting.findMany({
+          where,
+          orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+          include: {
+            createdBy: {
+              include: { user: { select: { id: true, name: true } } },
+            },
           },
-        },
-      });
+        }),
+        input.includeTotal
+          ? db.cohortMeeting.count({ where })
+          : Promise.resolve(undefined),
+      ]);
+      return pageResult(items, input.limit, total);
     }),
   getMeetingIntegrationStatus: protectedProcedure
     .input(z.object({ cohortId: id }))

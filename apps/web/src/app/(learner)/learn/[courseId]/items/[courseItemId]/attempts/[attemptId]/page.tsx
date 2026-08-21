@@ -1,4 +1,10 @@
-import { PagePlaceholder } from "~/components/placeholder/page-placeholder";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import { AssessmentAttempt } from "~/components/learner-assessment";
+import { api } from "~/trpc/server";
+
+export const metadata: Metadata = { title: "Kerjakan assessment" };
 
 export default async function AttemptPage({
   params,
@@ -9,5 +15,21 @@ export default async function AttemptPage({
     attemptId: string;
   }>;
 }) {
-  return <PagePlaceholder title="Attempt tugas" params={await params} />;
+  const { courseId, courseItemId, attemptId } = await params;
+  const [assessment, attempt] = await Promise.all([
+    api.assessment.getForCourseItem({ courseItemId, attemptId }),
+    api.assessment.getMyAttempt({ attemptId }),
+  ]);
+
+  if (attempt.courseItemId !== courseItemId) notFound();
+
+  return (
+    <AssessmentAttempt
+      courseId={courseId}
+      courseItemId={courseItemId}
+      assessment={assessment}
+      attempt={attempt}
+      serverTime={new Date()}
+    />
+  );
 }

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRightIcon } from "lucide-react";
 
+import { buttonVariants } from "~/components/ui/button";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
@@ -9,39 +11,35 @@ export const metadata: Metadata = {
   description: "Jelajahi semua course terbit yang tersedia di Hakgyo.",
 };
 
-const pageSize = 100;
-
-async function getAllPublishedCourses() {
-  let page = await api.course.listPublished({ limit: pageSize });
-  const courses = [...page];
-
-  while (page.length === pageSize) {
-    const cursor = page.at(-1)?.id;
-    if (!cursor) break;
-
-    page = await api.course.listPublished({ limit: pageSize, cursor });
-    courses.push(...page);
-  }
-
-  return courses;
-}
+const pageSize = 24;
 
 function formatPrice(price: number, currency: string) {
   if (price === 0) return "Gratis";
 
   try {
-    return new Intl.NumberFormat("en", {
+    return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency,
       maximumFractionDigits: 0,
     }).format(price);
   } catch {
-    return `${currency} ${price.toLocaleString("en")}`;
+    return `${currency} ${price.toLocaleString("id-ID")}`;
   }
 }
 
-export default async function CatalogPage() {
-  const courses = await getAllPublishedCourses();
+export default async function CatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cursor?: string }>;
+}) {
+  const { cursor } = await searchParams;
+  const page = await api.course.listPublished({
+    limit: pageSize + 1,
+    cursor: cursor?.slice(0, 200),
+  });
+  const hasNextPage = page.length > pageSize;
+  const courses = page.slice(0, pageSize);
+  const nextCursor = hasNextPage ? courses.at(-1)?.id : undefined;
 
   return (
     <section>
@@ -53,7 +51,7 @@ export default async function CatalogPage() {
           </p>
         </div>
         <p className="text-muted-foreground shrink-0 text-sm">
-          {courses.length} {courses.length === 1 ? "course" : "course"}
+          Menampilkan {courses.length} course
         </p>
       </div>
 
@@ -107,11 +105,12 @@ export default async function CatalogPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt>Enrollment</dt>
+                    <dt>Tipe</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
-                      {course.enrollmentMode === "OPEN"
+                      {(course.enrollmentMode ??
+                        course.organization.defaultEnrollmentMode) === "OPEN"
                         ? "Terbuka"
-                        : "Invite only"}
+                        : "Undangan"}
                     </dd>
                   </div>
                   <div>
@@ -139,6 +138,18 @@ export default async function CatalogPage() {
           ))}
         </div>
       )}
+
+      {nextCursor ? (
+        <div className="mt-8 flex justify-center">
+          <Link
+            href={`/catalog?cursor=${encodeURIComponent(nextCursor)}`}
+            className={buttonVariants({ variant: "outline", size: "lg" })}
+          >
+            Course berikutnya
+            <ArrowRightIcon aria-hidden="true" />
+          </Link>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -26,7 +26,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type ReviewAttempt =
-  RouterOutputs["assessment"]["listAttemptsNeedingReview"][number];
+  RouterOutputs["assessment"]["listAttemptsNeedingReview"]["items"][number];
 
 const submittedAtFormatter = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
@@ -295,11 +295,11 @@ export function ReviewQueue({
   cohortId?: string;
   cohortName?: string;
 }) {
-  const queue = api.assessment.listAttemptsNeedingReview.useQuery({
-    organizationId,
-    cohortId,
-  });
-  const attempts = queue.data ?? [];
+  const queue = api.assessment.listAttemptsNeedingReview.useInfiniteQuery(
+    { organizationId, cohortId, includeTotal: true },
+    { getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined },
+  );
+  const attempts = queue.data?.pages.flatMap((page) => page.items) ?? [];
   const answerCount = attempts.reduce(
     (total, attempt) => total + attempt.answers.length,
     0,
@@ -386,6 +386,20 @@ export function ReviewQueue({
               cohortId={cohortId}
             />
           ))}
+          {queue.hasNextPage ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={queue.isFetchingNextPage}
+              onClick={() => void queue.fetchNextPage()}
+            >
+              {queue.isFetchingNextPage ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : null}
+              Muat review berikutnya
+            </Button>
+          ) : null}
         </div>
       )}
     </div>

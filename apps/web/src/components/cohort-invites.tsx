@@ -55,7 +55,10 @@ export function CohortInvites({
   cohortName: string;
 }) {
   const utils = api.useUtils();
-  const invites = api.enrollment.listInvites.useQuery({ courseId, cohortId });
+  const invites = api.enrollment.listInvites.useInfiniteQuery(
+    { courseId, cohortId, includeTotal: true },
+    { getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined },
+  );
   const createInvite = api.enrollment.createInvite.useMutation();
   const revokeInvite = api.enrollment.revokeInvite.useMutation();
   const [open, setOpen] = useState(false);
@@ -160,7 +163,8 @@ export function CohortInvites({
             </Button>
           </CardContent>
         </Card>
-      ) : invites.data.length === 0 ? (
+      ) : (invites.data?.pages.flatMap((page) => page.items) ?? []).length ===
+        0 ? (
         <Card className="rounded-lg border-dashed">
           <CardContent className="py-12 text-center">
             <span className="bg-muted mx-auto flex size-12 items-center justify-center rounded-full">
@@ -177,60 +181,78 @@ export function CohortInvites({
         </Card>
       ) : (
         <div className="grid gap-3">
-          {invites.data.map((invite) => {
-            const expired = Boolean(
-              invite.expiresAt && invite.expiresAt <= new Date(),
-            );
-            const exhausted =
-              invite.maxUses !== null && invite.useCount >= invite.maxUses;
-            const active = !invite.revokedAt && !expired && !exhausted;
-            const status = invite.revokedAt
-              ? "Dicabut"
-              : expired
-                ? "Kedaluwarsa"
-                : exhausted
-                  ? "Habis"
-                  : "Aktif";
+          {(invites.data?.pages.flatMap((page) => page.items) ?? []).map(
+            (invite) => {
+              const expired = Boolean(
+                invite.expiresAt && invite.expiresAt <= new Date(),
+              );
+              const exhausted =
+                invite.maxUses !== null && invite.useCount >= invite.maxUses;
+              const active = !invite.revokedAt && !expired && !exhausted;
+              const status = invite.revokedAt
+                ? "Dicabut"
+                : expired
+                  ? "Kedaluwarsa"
+                  : exhausted
+                    ? "Habis"
+                    : "Aktif";
 
-            return (
-              <Card key={invite.id} className="rounded-lg py-0">
-                <CardContent className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={active ? "default" : "outline"}>
-                        {status}
-                      </Badge>
-                      <span className="text-muted-foreground text-xs">
-                        dibuat oleh {invite.createdBy.user.name}
-                      </span>
+              return (
+                <Card key={invite.id} className="rounded-lg py-0">
+                  <CardContent className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={active ? "default" : "outline"}>
+                          {status}
+                        </Badge>
+                        <span className="text-muted-foreground text-xs">
+                          dibuat oleh {invite.createdBy.user.name}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                        <span>
+                          <strong className="font-medium tabular-nums">
+                            {invite.useCount} / {invite.maxUses ?? "∞"}
+                          </strong>{" "}
+                          <span className="text-muted-foreground">
+                            digunakan
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          {invite.expiresAt
+                            ? `Berlaku hingga ${dateFormatter.format(invite.expiresAt)}`
+                            : "Tanpa batas waktu"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-                      <span>
-                        <strong className="font-medium tabular-nums">
-                          {invite.useCount} / {invite.maxUses ?? "∞"}
-                        </strong>{" "}
-                        <span className="text-muted-foreground">digunakan</span>
-                      </span>
-                      <span className="text-muted-foreground">
-                        {invite.expiresAt
-                          ? `Berlaku hingga ${dateFormatter.format(invite.expiresAt)}`
-                          : "Tanpa batas waktu"}
-                      </span>
-                    </div>
-                  </div>
-                  <Button
-                    className="self-start sm:self-auto"
-                    variant="outline"
-                    disabled={!active || revokeInvite.isPending}
-                    onClick={() => revoke(invite.id)}
-                  >
-                    <Trash2Icon data-icon="inline-start" />
-                    Cabut
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+                    <Button
+                      className="self-start sm:self-auto"
+                      variant="outline"
+                      disabled={!active || revokeInvite.isPending}
+                      onClick={() => revoke(invite.id)}
+                    >
+                      <Trash2Icon data-icon="inline-start" />
+                      Cabut
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            },
+          )}
+          {invites.hasNextPage ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={invites.isFetchingNextPage}
+              onClick={() => void invites.fetchNextPage()}
+            >
+              {invites.isFetchingNextPage ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : null}
+              Muat invite berikutnya
+            </Button>
+          ) : null}
         </div>
       )}
 

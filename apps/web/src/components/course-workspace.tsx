@@ -86,7 +86,8 @@ type CourseView =
   "overview" | "cohorts" | "learners" | "invites" | "access" | "settings";
 
 type Course = RouterOutputs["course"]["get"];
-type Enrollment = RouterOutputs["enrollment"]["listCourseEnrollments"][number];
+type Enrollment =
+  RouterOutputs["enrollment"]["listCourseEnrollments"]["items"][number];
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -238,6 +239,10 @@ export function CourseWorkspace({
       ? requestedView
       : "overview";
   const isOverview = view === "overview";
+  const [learnerSearch, setLearnerSearch] = useState("");
+  const deferredLearnerSearch = useDeferredValue(
+    learnerSearch.trim().toLowerCase(),
+  );
 
   function navigate(nextView: CourseView) {
     if (nextView === view) return;
@@ -248,22 +253,37 @@ export function CourseWorkspace({
     );
   }
 
-  const cohorts = api.cohort.list.useQuery(
-    { courseId: course.id },
+  const cohorts = api.cohort.list.useInfiniteQuery(
+    { courseId: course.id, includeTotal: true },
     {
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       enabled:
         canViewCohorts &&
         (isOverview || view === "cohorts" || view === "invites"),
     },
   );
-  const learners = api.enrollment.listCourseEnrollments.useQuery(
-    { courseId: course.id },
-    { enabled: canManageCourse && (isOverview || view === "learners") },
+  const learners = api.enrollment.listCourseEnrollments.useInfiniteQuery(
+    {
+      courseId: course.id,
+      search: deferredLearnerSearch || undefined,
+      includeTotal: true,
+    },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      enabled: canManageCourse && (isOverview || view === "learners"),
+    },
   );
-  const invites = api.enrollment.listInvites.useQuery(
-    { courseId: course.id },
-    { enabled: canManageCourse && (isOverview || view === "invites") },
+  const invites = api.enrollment.listInvites.useInfiniteQuery(
+    { courseId: course.id, includeTotal: true },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      enabled: canManageCourse && (isOverview || view === "invites"),
+    },
   );
+  const cohortItems = cohorts.data?.pages.flatMap((page) => page.items);
+  const learnerItems = learners.data?.pages.flatMap((page) => page.items);
+  const inviteItems = invites.data?.pages.flatMap((page) => page.items);
+  const learnerActiveTotal = learners.data?.pages[0]?.activeTotal;
   const access = api.course.getAccess.useQuery(
     { courseId: course.id },
     { enabled: canManageAccess && view === "access" },
@@ -423,11 +443,12 @@ export function CourseWorkspace({
       {view === "overview" ? (
         <OverviewSection
           course={course}
-          cohorts={cohorts.data}
+          cohorts={cohortItems}
           cohortsPending={cohorts.isPending}
-          learners={learners.data}
+          learners={learnerItems}
+          learnersActiveTotal={learnerActiveTotal}
           learnersPending={learners.isPending}
-          invites={invites.data}
+          invites={inviteItems}
           invitesPending={invites.isPending}
           items={items}
           modules={modules}
@@ -441,28 +462,39 @@ export function CourseWorkspace({
         <CohortsSection
           canCreate={canManageCourse}
           courseId={course.id}
-          data={cohorts.data}
+          data={cohortItems}
           error={cohorts.error}
           isPending={cohorts.isPending}
+          hasMore={cohorts.hasNextPage}
+          isLoadingMore={cohorts.isFetchingNextPage}
+          onLoadMore={() => void cohorts.fetchNextPage()}
           root={root}
         />
       ) : null}
       {view === "learners" ? (
         <LearnersSection
           courseId={course.id}
-          data={learners.data}
+          data={learnerItems}
           error={learners.error}
           isPending={learners.isPending}
+          search={learnerSearch}
+          onSearchChange={setLearnerSearch}
+          hasMore={learners.hasNextPage}
+          isLoadingMore={learners.isFetchingNextPage}
+          onLoadMore={() => void learners.fetchNextPage()}
           onNavigate={navigate}
         />
       ) : null}
       {view === "invites" ? (
         <InvitesSection
           courseId={course.id}
-          cohorts={cohorts.data}
-          data={invites.data}
+          cohorts={cohortItems}
+          data={inviteItems}
           error={invites.error}
           isPending={invites.isPending}
+          hasMore={invites.hasNextPage}
+          isLoadingMore={invites.isFetchingNextPage}
+          onLoadMore={() => void invites.fetchNextPage()}
         />
       ) : null}
       {view === "access" ? (
@@ -490,6 +522,7 @@ function OverviewSection({
   cohorts,
   cohortsPending,
   learners,
+  learnersActiveTotal,
   learnersPending,
   invites,
   invitesPending,
@@ -501,11 +534,12 @@ function OverviewSection({
   onNavigate,
 }: {
   course: Course;
-  cohorts?: RouterOutputs["cohort"]["list"];
+  cohorts?: RouterOutputs["cohort"]["list"]["items"];
   cohortsPending: boolean;
-  learners?: RouterOutputs["enrollment"]["listCourseEnrollments"];
+  learners?: RouterOutputs["enrollment"]["listCourseEnrollments"]["items"];
+  learnersActiveTotal?: number;
   learnersPending: boolean;
-  invites?: RouterOutputs["enrollment"]["listInvites"];
+  invites?: RouterOutputs["enrollment"]["listInvites"]["items"];
   invitesPending: boolean;
   items: number;
   modules: number;
@@ -514,9 +548,9 @@ function OverviewSection({
   canManageCourse: boolean;
   onNavigate: (view: CourseView) => void;
 }) {
-  const activeLearners = learners?.filter(
-    (enrollment) => enrollment.status === "ACTIVE",
-  ).length;
+  const activeLearners =
+    learnersActiveTotal ??
+    learners?.filter((enrollment) => enrollment.status === "ACTIVE").length;
   const activeInvites = invites?.filter(
     (invite) =>
       !invite.revokedAt && (!invite.expiresAt || invite.expiresAt > new Date()),
@@ -746,13 +780,19 @@ function CohortsSection({
   data,
   error,
   isPending,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
   root,
 }: {
   canCreate: boolean;
   courseId: string;
-  data?: RouterOutputs["cohort"]["list"];
+  data?: RouterOutputs["cohort"]["list"]["items"];
   error: { message: string } | null;
   isPending: boolean;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
   root: string;
 }) {
   const utils = api.useUtils();
@@ -874,6 +914,20 @@ function CohortsSection({
               </div>
             </Link>
           ))}
+          {hasMore ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="md:col-span-2"
+              disabled={isLoadingMore}
+              onClick={onLoadMore}
+            >
+              {isLoadingMore ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : null}
+              Muat Group belajar berikutnya
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -974,29 +1028,33 @@ function LearnersSection({
   data,
   error,
   isPending,
+  search,
+  onSearchChange,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
   onNavigate,
 }: {
   courseId: string;
-  data?: RouterOutputs["enrollment"]["listCourseEnrollments"];
+  data?: RouterOutputs["enrollment"]["listCourseEnrollments"]["items"];
   error: { message: string } | null;
   isPending: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
   onNavigate: (view: CourseView) => void;
 }) {
   const utils = api.useUtils();
-  const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Enrollment["status"]>("ACTIVE");
   const [expiresAt, setExpiresAt] = useState("");
-  const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
   const updateEnrollment = api.enrollment.setCourseEnrollment.useMutation();
   const removeEnrollment = api.enrollment.removeCourseEnrollment.useMutation();
   const [removing, setRemoving] = useState<Enrollment | null>(null);
-  const visible = data?.filter((enrollment) =>
-    `${enrollment.user.name} ${enrollment.user.email}`
-      .toLocaleLowerCase()
-      .includes(deferredSearch),
-  );
+  const visible = data;
 
   async function updateStatus(
     enrollment: Enrollment,
@@ -1109,7 +1167,7 @@ function LearnersSection({
                 className="pl-8"
                 placeholder="Cari nama atau email"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => onSearchChange(event.target.value)}
               />
             </div>
           </CardHeader>
@@ -1190,6 +1248,22 @@ function LearnersSection({
               />
             </CardContent>
           )}
+          {hasMore ? (
+            <div className="border-t p-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={isLoadingMore}
+                onClick={onLoadMore}
+              >
+                {isLoadingMore ? (
+                  <LoaderCircleIcon className="animate-spin" />
+                ) : null}
+                Muat siswa berikutnya
+              </Button>
+            </div>
+          ) : null}
         </Card>
       ) : null}
 
@@ -1319,12 +1393,18 @@ function InvitesSection({
   data,
   error,
   isPending,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
 }: {
   courseId: string;
-  cohorts?: RouterOutputs["cohort"]["list"];
-  data?: RouterOutputs["enrollment"]["listInvites"];
+  cohorts?: RouterOutputs["cohort"]["list"]["items"];
+  data?: RouterOutputs["enrollment"]["listInvites"]["items"];
   error: { message: string } | null;
   isPending: boolean;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
 }) {
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
@@ -1500,6 +1580,22 @@ function InvitesSection({
               })}
             </TableBody>
           </Table>
+          {hasMore ? (
+            <div className="border-t p-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={isLoadingMore}
+                onClick={onLoadMore}
+              >
+                {isLoadingMore ? (
+                  <LoaderCircleIcon className="animate-spin" />
+                ) : null}
+                Muat invite berikutnya
+              </Button>
+            </div>
+          ) : null}
         </Card>
       ) : null}
 
@@ -2016,7 +2112,7 @@ function SettingsSection({
           Settings
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Metadata, akses enrollment, dan lifecycle course.
+          Metadata, tipe course (public/private), dan lifecycle course.
         </p>
       </div>
 
@@ -2099,16 +2195,16 @@ function SettingsSection({
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="settings-enrollment">Enrollment</Label>
+                <Label htmlFor="settings-enrollment">Tipe course</Label>
                 <select
                   id="settings-enrollment"
                   className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
                   value={enrollmentMode}
                   onChange={(event) => setEnrollmentMode(event.target.value)}
                 >
-                  <option value="INHERIT">Ikuti organization</option>
-                  <option value="OPEN">Enrollment terbuka</option>
-                  <option value="INVITE_ONLY">Hanya invite</option>
+                  <option value="INHERIT">Ikuti organisasi</option>
+                  <option value="OPEN">Public course</option>
+                  <option value="INVITE_ONLY">Private course</option>
                 </select>
               </div>
               <div className="space-y-2">

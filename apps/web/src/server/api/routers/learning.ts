@@ -232,6 +232,19 @@ export const learningRouter = createTRPCRouter({
         }
       }
 
+      const existing = await ctx.db.contentProgress.findUnique({
+        where: {
+          courseItemId_userId: {
+            courseItemId: input.courseItemId,
+            userId: ctx.actorUserId,
+          },
+        },
+        select: { status: true, startedAt: true, completedAt: true },
+      });
+      // Monotonic: never downgrade COMPLETED -> IN_PROGRESS
+      if (existing?.status === "COMPLETED") return existing;
+      if (existing && input.status === "IN_PROGRESS") return existing;
+
       const completedAt = input.status === "COMPLETED" ? new Date() : null;
       return ctx.db.contentProgress.upsert({
         where: {
@@ -241,10 +254,7 @@ export const learningRouter = createTRPCRouter({
           },
         },
         create: { ...input, userId: ctx.actorUserId, completedAt },
-        update:
-          input.status === "COMPLETED"
-            ? { status: "COMPLETED", completedAt }
-            : {},
+        update: { status: input.status, completedAt },
         select: { status: true, startedAt: true, completedAt: true },
       });
     }),

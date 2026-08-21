@@ -1,6 +1,7 @@
 import { expo } from "@better-auth/expo";
 import { cimd } from "@better-auth/cimd";
-import { oauthProvider } from "@better-auth/oauth-provider";
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
+import { mcp } from "@better-auth/mcp";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
@@ -13,29 +14,6 @@ import { db } from "~/server/db";
 
 const mcpOAuthScopes = ["openid", "profile", "hakgyo:mcp", "offline_access"];
 const mcpResource = `${env.APP_URL}/api/mcp`;
-
-async function configureCimdClient(client: {
-  clientId: string;
-  scopes?: string[];
-}) {
-  if (!client.scopes?.length) {
-    await db.oauthClient.update({
-      where: { clientId: client.clientId },
-      data: { scopes: mcpOAuthScopes },
-    });
-    client.scopes = [...mcpOAuthScopes];
-  }
-
-  await db.oauthClientResource.upsert({
-    where: { id: `${client.clientId}::${mcpResource}` },
-    create: {
-      id: `${client.clientId}::${mcpResource}`,
-      clientId: client.clientId,
-      resourceId: mcpResource,
-    },
-    update: {},
-  });
-}
 
 export const auth = betterAuth({
   baseURL: env.APP_URL,
@@ -83,9 +61,10 @@ export const auth = betterAuth({
   ],
   plugins: [
     jwt(),
-    oauthProvider({
+    mcp({
       loginPage: "/",
       consentPage: "/oauth/consent",
+      resource: mcpResource,
       scopes: mcpOAuthScopes,
       resources: [
         {
@@ -96,15 +75,12 @@ export const auth = betterAuth({
         },
       ],
       grantTypes: ["authorization_code", "refresh_token"],
-      allowDynamicClientRegistration: true,
-      allowUnauthenticatedClientRegistration: true,
       clientRegistrationDefaultScopes: ["openid", "profile", "hakgyo:mcp"],
       clientRegistrationAllowedScopes: ["offline_access"],
-      silenceWarnings: { oauthAuthServerConfig: true },
     }),
     cimd({
-      onClientCreated: ({ client }) => configureCimdClient(client),
-      onClientRefreshed: ({ client }) => configureCimdClient(client),
+      fetchClientMetadataResource,
+      metadataProfile: "mcp-2026-07-28",
     }),
     expo(),
   ],

@@ -79,8 +79,8 @@ import { api, type RouterOutputs } from "~/trpc/react";
 
 type Cohort = RouterOutputs["cohort"]["get"];
 type CohortEnrollment =
-  RouterOutputs["enrollment"]["listCohortEnrollments"][number];
-type Meeting = RouterOutputs["cohort"]["listMeetings"][number];
+  RouterOutputs["enrollment"]["listCohortEnrollments"]["items"][number];
+type Meeting = RouterOutputs["cohort"]["listMeetings"]["items"][number];
 type CohortView =
   "overview" | "learners" | "staff" | "meetings" | "reviews" | "invites";
 
@@ -216,18 +216,33 @@ export function CohortWorkspace({
       : "overview";
   const root = `/workspace/${organizationSlug}/courses/${cohort.courseId}/cohorts/${cohort.id}`;
   const courseRoot = `/workspace/${organizationSlug}/courses/${cohort.courseId}`;
-  const learners = api.enrollment.listCohortEnrollments.useQuery(
-    { cohortId: cohort.id },
+  const [learnerSearch, setLearnerSearch] = useState("");
+  const deferredLearnerSearch = useDeferredValue(
+    learnerSearch.trim().toLowerCase(),
+  );
+  const learners = api.enrollment.listCohortEnrollments.useInfiniteQuery(
     {
+      cohortId: cohort.id,
+      search: deferredLearnerSearch || undefined,
+      includeTotal: true,
+    },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       enabled:
         cohort.access.manageLearners &&
         (view === "overview" || view === "learners"),
     },
   );
-  const meetings = api.cohort.listMeetings.useQuery(
-    { cohortId: cohort.id },
-    { enabled: view === "overview" || view === "meetings" },
+  const meetings = api.cohort.listMeetings.useInfiniteQuery(
+    { cohortId: cohort.id, includeTotal: true },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      enabled: view === "overview" || view === "meetings",
+    },
   );
+  const learnerItems = learners.data?.pages.flatMap((page) => page.items);
+  const meetingItems = meetings.data?.pages.flatMap((page) => page.items);
+  const learnerActiveTotal = learners.data?.pages[0]?.activeTotal;
 
   function navigate(nextView: CohortView) {
     if (nextView === view) return;
@@ -323,9 +338,10 @@ export function CohortWorkspace({
       {view === "overview" ? (
         <Overview
           cohort={cohort}
-          learners={learners.data}
+          learners={learnerItems}
+          learnersActiveTotal={learnerActiveTotal}
           learnersPending={learners.isPending}
-          meetings={meetings.data}
+          meetings={meetingItems}
           meetingsPending={meetings.isPending}
           onNavigate={navigate}
         />
@@ -333,9 +349,14 @@ export function CohortWorkspace({
       {view === "learners" ? (
         <Learners
           cohortId={cohort.id}
-          data={learners.data}
+          data={learnerItems}
           error={learners.error}
           pending={learners.isPending}
+          search={learnerSearch}
+          onSearchChange={setLearnerSearch}
+          hasMore={learners.hasNextPage}
+          isLoadingMore={learners.isFetchingNextPage}
+          onLoadMore={() => void learners.fetchNextPage()}
         />
       ) : null}
       {view === "staff" ? (
@@ -344,11 +365,14 @@ export function CohortWorkspace({
       {view === "meetings" ? (
         <Meetings
           cohortId={cohort.id}
-          data={meetings.data}
+          data={meetingItems}
           error={meetings.error}
           organizationSlug={organizationSlug}
           canManage={cohort.access.manageMeetings}
           pending={meetings.isPending}
+          hasMore={meetings.hasNextPage}
+          isLoadingMore={meetings.isFetchingNextPage}
+          onLoadMore={() => void meetings.fetchNextPage()}
         />
       ) : null}
       {view === "reviews" ? (
@@ -382,20 +406,24 @@ export function CohortWorkspace({
 function Overview({
   cohort,
   learners,
+  learnersActiveTotal,
   learnersPending,
   meetings,
   meetingsPending,
   onNavigate,
 }: {
   cohort: Cohort;
-  learners?: RouterOutputs["enrollment"]["listCohortEnrollments"];
+  learners?: RouterOutputs["enrollment"]["listCohortEnrollments"]["items"];
+  learnersActiveTotal?: number;
   learnersPending: boolean;
-  meetings?: RouterOutputs["cohort"]["listMeetings"];
+  meetings?: RouterOutputs["cohort"]["listMeetings"]["items"];
   meetingsPending: boolean;
   onNavigate: (view: CohortView) => void;
 }) {
   const active =
-    learners?.filter(({ status }) => status === "ACTIVE").length ?? 0;
+    learnersActiveTotal ??
+    learners?.filter(({ status }) => status === "ACTIVE").length ??
+    0;
   const upcoming =
     meetings?.filter(({ startsAt }) => startsAt > new Date()).length ?? 0;
   const occupancy = cohort.capacity
@@ -525,22 +553,28 @@ function Learners({
   data,
   error,
   pending,
+  search,
+  onSearchChange,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
 }: {
   cohortId: string;
-  data?: RouterOutputs["enrollment"]["listCohortEnrollments"];
+  data?: RouterOutputs["enrollment"]["listCohortEnrollments"]["items"];
   error: { message: string } | null;
   pending: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
 }) {
   const utils = api.useUtils();
-  const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<CohortEnrollment["status"]>("ACTIVE");
-  const deferredSearch = useDeferredValue(search.trim().toLowerCase());
   const mutation = api.enrollment.setCohortEnrollment.useMutation();
-  const visible = data?.filter(({ user }) =>
-    `${user.name} ${user.email}`.toLowerCase().includes(deferredSearch),
-  );
+  const visible = data;
 
   async function save(email: string, status: CohortEnrollment["status"]) {
     try {
@@ -608,7 +642,7 @@ function Learners({
                 className="pl-8"
                 placeholder="Cari nama atau email"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => onSearchChange(event.target.value)}
               />
             </div>
           </CardHeader>
@@ -673,6 +707,22 @@ function Learners({
               />
             </CardContent>
           )}
+          {hasMore ? (
+            <div className="border-t p-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={isLoadingMore}
+                onClick={onLoadMore}
+              >
+                {isLoadingMore ? (
+                  <LoaderCircleIcon className="animate-spin" />
+                ) : null}
+                Muat siswa berikutnya
+              </Button>
+            </div>
+          ) : null}
         </Card>
       ) : null}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -947,13 +997,19 @@ function Meetings({
   error,
   organizationSlug,
   pending,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
 }: {
   canManage: boolean;
   cohortId: string;
-  data?: RouterOutputs["cohort"]["listMeetings"];
+  data?: RouterOutputs["cohort"]["listMeetings"]["items"];
   error: { message: string } | null;
   organizationSlug: string;
   pending: boolean;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
 }) {
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
@@ -1111,6 +1167,20 @@ function Meetings({
               </CardContent>
             </Card>
           ))}
+          {hasMore ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="md:col-span-2"
+              disabled={isLoadingMore}
+              onClick={onLoadMore}
+            >
+              {isLoadingMore ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : null}
+              Muat meeting berikutnya
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {canManage && open ? (
@@ -1372,13 +1442,13 @@ function EditCohort({
                 />
                 <FieldSelect
                   id="edit-cohort-enrollment"
-                  label="Enrollment"
+                  label="Tipe akses"
                   value={enrollmentMode}
                   onChange={setEnrollmentMode}
                   options={[
                     ["INHERIT", "Ikuti course"],
-                    ["OPEN", "Open"],
-                    ["INVITE_ONLY", "Invite only"],
+                    ["OPEN", "Public course"],
+                    ["INVITE_ONLY", "Private course"],
                   ]}
                 />
                 <div className="space-y-2">

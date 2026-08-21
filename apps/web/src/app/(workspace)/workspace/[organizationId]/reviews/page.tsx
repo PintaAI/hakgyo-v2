@@ -14,7 +14,10 @@ export default async function Page({
     organizationRoles,
   );
   const organizationId = membership.organizationId;
-  void api.assessment.listAttemptsNeedingReview.prefetch({ organizationId });
+  void api.assessment.listAttemptsNeedingReview.prefetchInfinite({
+    organizationId,
+    includeTotal: true,
+  });
 
   return (
     <HydrateClient>

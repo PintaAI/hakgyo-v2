@@ -19,8 +19,8 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
         httpBatchLink({
           transformer: SuperJSON,
           url: `${apiUrl}/api/trpc`,
-          headers() {
-            const cookie = getAuthCookie();
+          async headers() {
+            const cookie = await getAuthCookie();
 
             return {
               ...(cookie ? { cookie } : {}),

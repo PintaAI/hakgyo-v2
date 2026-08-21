@@ -66,7 +66,14 @@ export const courseRouter = createTRPCRouter({
           price: true,
           currency: true,
           enrollmentMode: true,
-          organization: { select: { id: true, name: true, slug: true } },
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              defaultEnrollmentMode: true,
+            },
+          },
           _count: { select: { modules: true, cohorts: true } },
         },
       }),
@@ -85,7 +92,14 @@ export const courseRouter = createTRPCRouter({
           price: true,
           currency: true,
           enrollmentMode: true,
-          organization: { select: { id: true, name: true, slug: true } },
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              defaultEnrollmentMode: true,
+            },
+          },
           modules: {
             orderBy: { position: "asc" },
             select: {

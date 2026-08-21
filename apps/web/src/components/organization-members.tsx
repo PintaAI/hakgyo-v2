@@ -55,8 +55,9 @@ import {
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type OrganizationRole = "OWNER" | "ADMIN" | "TEACHER";
-type Member = RouterOutputs["organization"]["listMembers"][number];
-type OrganizationInvite = RouterOutputs["organization"]["listInvites"][number];
+type Member = RouterOutputs["organization"]["listMembers"]["items"][number];
+type OrganizationInvite =
+  RouterOutputs["organization"]["listInvites"]["items"][number];
 
 const roleDetails: Record<
   OrganizationRole,
@@ -104,14 +105,25 @@ export function OrganizationMembers({
   currentRole: OrganizationRole;
 }) {
   const utils = api.useUtils();
-  const members = api.organization.listMembers.useQuery({ organizationId });
-  const invites = api.organization.listInvites.useQuery({ organizationId });
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search.trim().toLowerCase());
+  const members = api.organization.listMembers.useInfiniteQuery(
+    {
+      organizationId,
+      search: deferredSearch || undefined,
+      includeTotal: true,
+    },
+    { getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined },
+  );
+  const invites = api.organization.listInvites.useInfiniteQuery(
+    { organizationId, includeTotal: true },
+    { getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined },
+  );
   const createInvite = api.organization.createInvite.useMutation();
   const resendInvite = api.organization.resendInvite.useMutation();
   const revokeInvite = api.organization.revokeInvite.useMutation();
   const updateRole = api.organization.updateMemberRole.useMutation();
   const removeMember = api.organization.removeMember.useMutation();
-  const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [newRole, setNewRole] = useState<"ADMIN" | "TEACHER">("TEACHER");
   const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -119,16 +131,12 @@ export function OrganizationMembers({
   const [pendingMembershipId, setPendingMembershipId] = useState<string | null>(
     null,
   );
-  const deferredSearch = useDeferredValue(search.trim().toLowerCase());
-  const visibleMembers = (members.data ?? []).filter((member) => {
-    if (!deferredSearch) return true;
-    return `${member.user.name} ${member.user.email} ${member.role}`
-      .toLowerCase()
-      .includes(deferredSearch);
-  });
-  const owners = (members.data ?? []).filter(
-    (member) => member.role === "OWNER",
-  ).length;
+  const memberItems = members.data?.pages.flatMap((page) => page.items) ?? [];
+  const inviteItems = invites.data?.pages.flatMap((page) => page.items) ?? [];
+  const membersTotal = members.data?.pages[0]?.total ?? memberItems.length;
+  const owners =
+    members.data?.pages[0]?.ownerCount ??
+    memberItems.filter((member) => member.role === "OWNER").length;
 
   async function refreshMembers() {
     await Promise.all([
@@ -259,9 +267,7 @@ export function OrganizationMembers({
         <Card size="sm">
           <CardHeader>
             <CardDescription>Total member</CardDescription>
-            <CardTitle className="text-2xl">
-              {members.data?.length ?? 0}
-            </CardTitle>
+            <CardTitle className="text-2xl">{membersTotal}</CardTitle>
           </CardHeader>
         </Card>
         <Card size="sm">
@@ -287,7 +293,7 @@ export function OrganizationMembers({
         <CardHeader className="border-b py-4">
           <CardTitle>Direktori member</CardTitle>
           <CardDescription>
-            {members.data?.length ?? 0} orang dengan akses organisasi
+            {membersTotal} orang dengan akses organisasi
           </CardDescription>
           <div className="relative col-span-full mt-3 sm:max-w-sm">
             <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -314,7 +320,7 @@ export function OrganizationMembers({
                 Coba lagi
               </Button>
             </div>
-          ) : visibleMembers.length === 0 ? (
+          ) : memberItems.length === 0 ? (
             <div className="flex min-h-56 flex-col items-center justify-center gap-2 p-6 text-center">
               <UsersIcon className="text-muted-foreground/60 size-8" />
               <p className="font-medium">Member tidak ditemukan</p>
@@ -324,7 +330,7 @@ export function OrganizationMembers({
             </div>
           ) : (
             <div className="divide-y">
-              {visibleMembers.map((member) => {
+              {memberItems.map((member) => {
                 const isCurrentMember = member.id === currentMembershipId;
                 const isOwnerProtected =
                   currentRole !== "OWNER" && member.role === "OWNER";
@@ -410,6 +416,22 @@ export function OrganizationMembers({
               })}
             </div>
           )}
+          {members.hasNextPage ? (
+            <div className="border-t p-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={members.isFetchingNextPage}
+                onClick={() => void members.fetchNextPage()}
+              >
+                {members.isFetchingNextPage ? (
+                  <LoaderCircleIcon className="animate-spin" />
+                ) : null}
+                Muat member berikutnya
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -430,9 +452,9 @@ export function OrganizationMembers({
             <p className="text-destructive p-5 text-sm">
               {invites.error.message}
             </p>
-          ) : invites.data?.length ? (
+          ) : inviteItems.length ? (
             <div className="divide-y">
-              {invites.data.map((invite) => (
+              {inviteItems.map((invite) => (
                 <div
                   key={invite.id}
                   className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
@@ -485,6 +507,22 @@ export function OrganizationMembers({
                   )}
                 </div>
               ))}
+              {invites.hasNextPage ? (
+                <div className="border-t p-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={invites.isFetchingNextPage}
+                    onClick={() => void invites.fetchNextPage()}
+                  >
+                    {invites.isFetchingNextPage ? (
+                      <LoaderCircleIcon className="animate-spin" />
+                    ) : null}
+                    Muat invitation berikutnya
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <p className="text-muted-foreground p-6 text-center text-sm">

@@ -1,8 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import type { Prisma } from "../../../../generated/prisma/client";
+import { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { pageInput, pageResult } from "~/server/api/pagination";
+import {
+  getMissingWrittenQuestionIds,
+  groupScoresByValue,
+} from "~/server/assessment-logic";
+import { orderAssessmentQuestions } from "~/server/assessment-order";
+import { isAssessmentExpired } from "~/server/assessment-timing";
 import {
   activeEnrollmentStatuses,
   requireCohortPermission,
@@ -297,12 +304,25 @@ export const assessmentRouter = createTRPCRouter({
       return { deleted: true };
     }),
   getForCourseItem: protectedProcedure
-    .input(z.object({ courseItemId: id }))
+    .input(z.object({ courseItemId: id, attemptId: id.optional() }))
     .query(async ({ ctx, input }) => {
       await requireCourseItemAccess({
         courseItemId: input.courseItemId,
         userId: ctx.actorUserId,
       });
+      const attempt = input.attemptId
+        ? await ctx.db.assessmentAttempt.findFirst({
+            where: {
+              id: input.attemptId,
+              courseItemId: input.courseItemId,
+              userId: ctx.actorUserId,
+            },
+            select: { id: true, shuffleSeed: true },
+          })
+        : null;
+      if (input.attemptId && !attempt) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
       const item = await ctx.db.courseItem.findUnique({
         where: { id: input.courseItemId },
         select: {
@@ -340,7 +360,15 @@ export const assessmentRouter = createTRPCRouter({
       if (item?.assessment?.status !== "PUBLISHED") {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
-      return item.assessment;
+      return {
+        ...item.assessment,
+        questions: orderAssessmentQuestions(
+          item.assessment.questions,
+          attempt?.shuffleSeed ?? attempt?.id ?? input.attemptId,
+          item.assessment.shuffleQuestions,
+          item.assessment.shuffleOptions,
+        ),
+      };
     }),
 
   startAttempt: protectedProcedure
@@ -454,6 +482,7 @@ export const assessmentRouter = createTRPCRouter({
               cohortId,
               userId: ctx.actorUserId,
               attemptNumber: count + 1,
+              shuffleSeed: crypto.randomUUID(),
             },
           });
         },
@@ -476,6 +505,9 @@ export const assessmentRouter = createTRPCRouter({
           status: true,
           courseItemId: true,
           organizationId: true,
+          assessmentId: true,
+          startedAt: true,
+          assessment: { select: { timeLimitMinutes: true } },
         },
       });
       if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
@@ -496,94 +528,143 @@ export const assessmentRouter = createTRPCRouter({
           message: "Duplicate questions",
         });
       }
-      return ctx.db.$transaction(
-        async (tx) => {
-          const currentAttempt = await tx.assessmentAttempt.findUnique({
-            where: { id: input.attemptId },
-            select: { status: true },
+      return ctx.db.$transaction(async (tx) => {
+        const currentAttempt = await tx.assessmentAttempt.findUnique({
+          where: { id: input.attemptId },
+          select: {
+            status: true,
+            assessmentId: true,
+            startedAt: true,
+            assessment: { select: { timeLimitMinutes: true } },
+          },
+        });
+        if (currentAttempt?.status !== "IN_PROGRESS") {
+          throw new TRPCError({ code: "CONFLICT" });
+        }
+        if (
+          isAssessmentExpired(
+            currentAttempt.startedAt,
+            currentAttempt.assessment.timeLimitMinutes,
+            new Date(),
+          )
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "The assessment time limit has expired",
           });
-          if (currentAttempt?.status !== "IN_PROGRESS") {
-            throw new TRPCError({ code: "CONFLICT" });
+        }
+
+        const questions = await tx.assessmentQuestion.findMany({
+          where: {
+            assessmentId: currentAttempt.assessmentId,
+            id: { in: input.answers.map((answer) => answer.questionId) },
+          },
+          select: { id: true, type: true, options: { select: { id: true } } },
+        });
+        const questionsById = new Map(
+          questions.map((question) => [question.id, question]),
+        );
+
+        for (const answer of input.answers) {
+          const question = questionsById.get(answer.questionId);
+          if (!question) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Invalid question",
+            });
           }
-          for (const answer of input.answers) {
-            const question = await tx.assessmentQuestion.findFirst({
-              where: {
-                id: answer.questionId,
-                assessment: { attempts: { some: { id: input.attemptId } } },
-              },
-              select: { type: true, options: { select: { id: true } } },
+          const validOptions = new Set(question.options.map(({ id }) => id));
+          if (
+            answer.optionIds.some((optionId) => !validOptions.has(optionId))
+          ) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Invalid option",
             });
-            if (!question)
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: "Invalid question",
-              });
-            const validOptions = new Set(
-              question.options.map((option) => option.id),
-            );
-            if (
-              answer.optionIds.some((optionId) => !validOptions.has(optionId))
-            ) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: "Invalid option",
-              });
-            }
-            if (
-              question.type === "WRITTEN"
-                ? answer.optionIds.length > 0
-                : answer.content !== undefined
-            ) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: "Answer shape does not match question",
-              });
-            }
-            if (
-              question.type === "SINGLE_CHOICE" &&
-              answer.optionIds.length > 1
-            ) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: "Select at most one option",
-              });
-            }
-            const saved = await tx.assessmentAnswer.upsert({
-              where: {
-                attemptId_questionId: {
-                  attemptId: input.attemptId,
-                  questionId: answer.questionId,
-                },
-              },
-              create: {
-                attemptId: input.attemptId,
-                organizationId: attempt.organizationId,
-                questionId: answer.questionId,
-                content: answer.content,
-              },
-              update: {
-                content: answer.content,
-                autoScore: null,
-                manualScore: null,
-                feedback: undefined,
-              },
-            });
-            await tx.assessmentAnswerSelection.deleteMany({
-              where: { answerId: saved.id },
-            });
-            if (answer.optionIds.length) {
-              await tx.assessmentAnswerSelection.createMany({
-                data: answer.optionIds.map((optionId) => ({
-                  answerId: saved.id,
-                  optionId,
-                })),
-              });
-            }
           }
-          return { saved: input.answers.length };
-        },
-        { isolationLevel: "Serializable" },
-      );
+          if (
+            question.type === "WRITTEN"
+              ? answer.optionIds.length > 0
+              : answer.content !== undefined
+          ) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Answer shape does not match question",
+            });
+          }
+          if (
+            question.type === "SINGLE_CHOICE" &&
+            answer.optionIds.length > 1
+          ) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Select at most one option",
+            });
+          }
+        }
+
+        await tx.assessmentAnswer.createMany({
+          data: input.answers.map((answer) => ({
+            attemptId: input.attemptId,
+            organizationId: attempt.organizationId,
+            questionId: answer.questionId,
+            ...(answer.content === undefined
+              ? {}
+              : { content: answer.content }),
+          })),
+          skipDuplicates: true,
+        });
+
+        const contentRows = Prisma.join(
+          input.answers.map(
+            (answer) =>
+              Prisma.sql`(
+                ${answer.questionId},
+                ${answer.content !== undefined},
+                ${answer.content === undefined ? null : JSON.stringify(answer.content)}
+              )`,
+          ),
+        );
+        await tx.$executeRaw(Prisma.sql`
+            UPDATE "AssessmentAnswer" AS answer
+            SET
+              "content" = CASE
+                WHEN incoming."hasContent" THEN incoming."content"::jsonb
+                ELSE answer."content"
+              END,
+              "autoScore" = NULL,
+              "manualScore" = NULL
+            FROM (VALUES ${contentRows}) AS incoming("questionId", "hasContent", "content")
+            WHERE answer."attemptId" = ${input.attemptId}
+              AND answer."questionId" = incoming."questionId"
+          `);
+
+        const savedAnswers = await tx.assessmentAnswer.findMany({
+          where: {
+            attemptId: input.attemptId,
+            questionId: {
+              in: input.answers.map((answer) => answer.questionId),
+            },
+          },
+          select: { id: true, questionId: true },
+        });
+        const answerIdsByQuestionId = new Map(
+          savedAnswers.map((answer) => [answer.questionId, answer.id]),
+        );
+        await tx.assessmentAnswerSelection.deleteMany({
+          where: { answerId: { in: savedAnswers.map((answer) => answer.id) } },
+        });
+        const selections = input.answers.flatMap((answer) => {
+          const answerId = answerIdsByQuestionId.get(answer.questionId);
+          return answerId
+            ? answer.optionIds.map((optionId) => ({ answerId, optionId }))
+            : [];
+        });
+        if (selections.length) {
+          await tx.assessmentAnswerSelection.createMany({ data: selections });
+        }
+        return { saved: input.answers.length };
+      });
     }),
 
   submitAttempt: protectedProcedure
@@ -618,12 +699,37 @@ export const assessmentRouter = createTRPCRouter({
         ) {
           throw new TRPCError({ code: "CONFLICT" });
         }
+        const now = new Date();
+        const expired = isAssessmentExpired(
+          full.startedAt,
+          full.assessment.timeLimitMinutes,
+          now,
+        );
         const answers = new Map(
           full.answers.map((answer) => [answer.questionId, answer]),
         );
+        const missingWrittenQuestionIds = getMissingWrittenQuestionIds(
+          full.assessment.questions.map((question) => ({
+            id: question.id,
+            type: question.type,
+            optionIds: question.options.map((option) => option.id),
+          })),
+          new Set(answers.keys()),
+        );
+        if (missingWrittenQuestionIds.length) {
+          await tx.assessmentAnswer.createMany({
+            data: missingWrittenQuestionIds.map((questionId) => ({
+              attemptId: full.id,
+              organizationId: full.organizationId,
+              questionId,
+            })),
+            skipDuplicates: true,
+          });
+        }
         let score = 0;
         let maxScore = 0;
         let needsReview = false;
+        const autoScores: Array<{ answerId: string; score: number }> = [];
         for (const question of full.assessment.questions) {
           maxScore += question.points;
           const answer = answers.get(question.id);
@@ -645,12 +751,14 @@ export const assessmentRouter = createTRPCRouter({
               : 0;
           score += autoScore;
           if (answer)
-            await tx.assessmentAnswer.update({
-              where: { id: answer.id },
-              data: { autoScore },
-            });
+            autoScores.push({ answerId: answer.id, score: autoScore });
         }
-        const now = new Date();
+        for (const [autoScore, answerIds] of groupScoresByValue(autoScores)) {
+          await tx.assessmentAnswer.updateMany({
+            where: { id: { in: answerIds } },
+            data: { autoScore },
+          });
+        }
         const updated = await tx.assessmentAttempt.updateMany({
           where: {
             id: input.attemptId,
@@ -692,6 +800,7 @@ export const assessmentRouter = createTRPCRouter({
           status: needsReview ? ("IN_REVIEW" as const) : ("GRADED" as const),
           score,
           maxScore,
+          expired,
         };
       });
     }),
@@ -851,10 +960,11 @@ export const assessmentRouter = createTRPCRouter({
     }),
   listAttemptsNeedingReview: protectedProcedure
     .input(
-      z.object({
+      pageInput.extend({
         organizationId: id,
         assessmentId: id.optional(),
         cohortId: id.optional(),
+        search: z.string().trim().max(200).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -880,61 +990,117 @@ export const assessmentRouter = createTRPCRouter({
       }
       const scopedTeacher = member.role === "TEACHER";
       const simplified = member.organization.permissionMode === "SIMPLE";
-      return ctx.db.assessmentAttempt.findMany({
-        where: {
-          organizationId: input.organizationId,
-          assessmentId: input.assessmentId,
-          cohortId: input.cohortId,
-          status: "IN_REVIEW",
-          ...(scopedTeacher
-            ? {
-                OR: [
-                  ...(simplified
-                    ? [{ cohortId: null }]
-                    : [
+      const searchFilter: Prisma.AssessmentAttemptWhereInput | undefined =
+        input.search
+          ? {
+              OR: [
+                {
+                  user: {
+                    is: {
+                      OR: [
                         {
-                          courseItem: {
-                            module: {
-                              course: { ownerMembershipId: member.id },
-                            },
+                          name: {
+                            contains: input.search,
+                            mode: "insensitive" as const,
                           },
                         },
-                      ]),
-                  {
-                    cohort: {
+                        {
+                          email: {
+                            contains: input.search,
+                            mode: "insensitive" as const,
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                {
+                  assessment: {
+                    is: {
+                      title: {
+                        contains: input.search,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                  },
+                },
+              ],
+            }
+          : undefined;
+      const teacherFilter: Prisma.AssessmentAttemptWhereInput | undefined =
+        scopedTeacher
+          ? {
+              OR: [
+                ...(simplified
+                  ? [{ cohortId: null }]
+                  : [
+                      {
+                        courseItem: {
+                          module: {
+                            course: { ownerMembershipId: member.id },
+                          },
+                        },
+                      },
+                    ]),
+                {
+                  cohort: {
+                    is: {
                       staff: {
                         some: {
                           organizationMemberId: member.id,
-                          ...(simplified ? {} : { role: "INSTRUCTOR" }),
+                          ...(simplified
+                            ? {}
+                            : { role: "INSTRUCTOR" as const }),
                         },
                       },
                     },
                   },
-                ],
-              }
-            : {}),
-        },
-        orderBy: { submittedAt: "asc" },
-        select: {
-          id: true,
-          assessmentId: true,
-          courseItemId: true,
-          attemptNumber: true,
-          submittedAt: true,
-          assessment: { select: { title: true } },
-          cohort: { select: { id: true, name: true } },
-          user: { select: { id: true, name: true, email: true } },
-          answers: {
-            where: { question: { type: "WRITTEN" } },
-            select: {
-              id: true,
-              content: true,
-              manualScore: true,
-              feedback: true,
-              question: { select: { id: true, prompt: true, points: true } },
+                },
+              ],
+            }
+          : undefined;
+      const where: Prisma.AssessmentAttemptWhereInput = {
+        organizationId: input.organizationId,
+        assessmentId: input.assessmentId,
+        cohortId: input.cohortId,
+        status: "IN_REVIEW" as const,
+        AND: [searchFilter, teacherFilter].filter(
+          (filter): filter is Prisma.AssessmentAttemptWhereInput =>
+            filter !== undefined,
+        ),
+      };
+      const [items, total] = await Promise.all([
+        ctx.db.assessmentAttempt.findMany({
+          where,
+          orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+          select: {
+            id: true,
+            assessmentId: true,
+            courseItemId: true,
+            attemptNumber: true,
+            submittedAt: true,
+            assessment: { select: { title: true } },
+            cohort: { select: { id: true, name: true } },
+            user: { select: { id: true, name: true, email: true } },
+            answers: {
+              where: { question: { type: "WRITTEN" } },
+              select: {
+                id: true,
+                content: true,
+                manualScore: true,
+                feedback: true,
+                question: { select: { id: true, prompt: true, points: true } },
+              },
             },
           },
-        },
-      });
+        }),
+        input.includeTotal
+          ? ctx.db.assessmentAttempt.count({ where })
+          : Promise.resolve(undefined),
+      ]);
+      return pageResult(items, input.limit, total);
     }),
 });

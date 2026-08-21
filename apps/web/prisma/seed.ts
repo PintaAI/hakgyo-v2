@@ -34,7 +34,11 @@ async function upsertUser(input: { email: string; id: string; name: string }) {
 
   const hashedPassword = await hashPassword(password);
   const account = await db.account.findFirst({
-    where: { providerId: "credential", accountId: user.id },
+    where: {
+      issuer: "local:credential",
+      providerId: "credential",
+      accountId: user.id,
+    },
     select: { id: true },
   });
 
@@ -47,6 +51,7 @@ async function upsertUser(input: { email: string; id: string; name: string }) {
     await db.account.create({
       data: {
         id: `seed-account-${input.id}`,
+        issuer: "local:credential",
         accountId: user.id,
         providerId: "credential",
         userId: user.id,
@@ -277,29 +282,71 @@ async function main() {
       term: "안녕하세요",
       definition: "Halo (formal)",
       examples: ["안녕하세요, 만나서 반갑습니다."],
+      image: {
+        objectKey: "vocab-images/annyeonghaseyo.jpg",
+        fileName: "annyeonghaseyo.jpg",
+        contentType: "image/jpeg",
+        size: 0,
+      },
     },
     {
       id: "seed-vocab-gamsahamnida",
       term: "감사합니다",
       definition: "Terima kasih",
       examples: ["도와주셔서 감사합니다."],
+      image: {
+        objectKey: "vocab-images/gamsahamnida.jpg",
+        fileName: "gamsahamnida.jpg",
+        contentType: "image/jpeg",
+        size: 0,
+      },
     },
     {
       id: "seed-vocab-annyeonghi-gaseyo",
       term: "안녕히 가세요",
       definition: "Selamat jalan",
       examples: ["내일 만나요. 안녕히 가세요."],
+      image: {
+        objectKey: "vocab-images/annyeonghi-gaseyo.jpg",
+        fileName: "annyeonghi-gaseyo.jpg",
+        contentType: "image/jpeg",
+        size: 0,
+      },
     },
   ];
 
+  const vocabularyEntryAssets = new Map<string, string>();
+
   for (const entry of vocabularyEntries) {
+    const asset = await db.asset.upsert({
+      where: { objectKey: entry.image.objectKey },
+      update: {},
+      create: {
+        organizationId: organization.id,
+        uploadedByUserId: owner.id,
+        objectKey: entry.image.objectKey,
+        fileName: entry.image.fileName,
+        contentType: entry.image.contentType,
+        size: entry.image.size,
+        confirmedAt: new Date(),
+      },
+      select: { id: true },
+    });
+    vocabularyEntryAssets.set(entry.id, asset.id);
+  }
+
+  for (const entry of vocabularyEntries) {
+    const { image, ...data } = entry;
+    void image;
+    const imageAssetId = vocabularyEntryAssets.get(entry.id);
     await db.vocabularyEntry.upsert({
       where: { id: entry.id },
-      update: entry,
+      update: { ...data, imageAssetId },
       create: {
-        ...entry,
+        ...data,
         organizationId: organization.id,
         vocabularySetId: vocabulary.id,
+        imageAssetId,
       },
     });
   }

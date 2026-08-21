@@ -8,6 +8,11 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
+import { pageInput, pageResult } from "~/server/api/pagination";
+import {
+  canDemoteOwner,
+  isSerializableConflict,
+} from "~/server/organization-role";
 import { revokeZoomConnection } from "~/server/integrations/zoom";
 import {
   acceptOrganizationInvite,
@@ -26,20 +31,42 @@ const slug = z
   .max(80)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 70);
+}
+
+function generateUniqueSlug(name: string) {
+  const base = slugify(name) || "workspace";
+  const suffix = Date.now().toString(36).slice(-6);
+  // keep total <= 80 (base 70 + 1 + 6 = 77)
+  return `${base}-${suffix}`;
+}
+
 export const organizationRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
       z.object({
         name: z.string().trim().min(1).max(120),
-        slug,
+        slug: slug.optional(),
         defaultEnrollmentMode: z
           .enum(["OPEN", "INVITE_ONLY"])
           .default("INVITE_ONLY"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const requestedSlug = input.slug?.trim();
+      const slug =
+        requestedSlug === undefined || requestedSlug.length === 0
+          ? generateUniqueSlug(input.name)
+          : requestedSlug;
       const existing = await ctx.db.organization.findUnique({
-        where: { slug: input.slug },
+        where: { slug },
         select: { id: true },
       });
       if (existing) {
@@ -51,7 +78,9 @@ export const organizationRouter = createTRPCRouter({
 
       try {
         return await ctx.db.$transaction(async (tx) => {
-          const organization = await tx.organization.create({ data: input });
+          const organization = await tx.organization.create({
+            data: { ...input, slug },
+          });
           const membership = await tx.organizationMember.create({
             data: {
               organizationId: organization.id,
@@ -139,7 +168,15 @@ export const organizationRouter = createTRPCRouter({
     }),
 
   listInvites: protectedProcedure
-    .input(z.object({ organizationId: id }))
+    .input(
+      pageInput.extend({
+        organizationId: id,
+        search: z.string().trim().max(200).optional(),
+        status: z
+          .enum(["PENDING", "EXPIRED", "ACCEPTED", "REVOKED"])
+          .optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       await requireOrganizationPermission({
         ...input,
@@ -147,26 +184,78 @@ export const organizationRouter = createTRPCRouter({
         userId: ctx.actorUserId,
       });
       const now = new Date();
-      const invites = await ctx.db.organizationInvite.findMany({
-        where: { organizationId: input.organizationId },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          expiresAt: true,
-          acceptedAt: true,
-          revokedAt: true,
-          createdAt: true,
-          invitedBy: {
-            select: { user: { select: { id: true, name: true } } },
+      const statusWhere =
+        input.status === "PENDING"
+          ? { acceptedAt: null, revokedAt: null, expiresAt: { gt: now } }
+          : input.status === "EXPIRED"
+            ? { acceptedAt: null, revokedAt: null, expiresAt: { lte: now } }
+            : input.status === "ACCEPTED"
+              ? { acceptedAt: { not: null } }
+              : input.status === "REVOKED"
+                ? { revokedAt: { not: null } }
+                : {};
+      const where = {
+        organizationId: input.organizationId,
+        ...statusWhere,
+        ...(input.search
+          ? {
+              OR: [
+                {
+                  email: {
+                    contains: input.search,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  invitedBy: {
+                    is: {
+                      user: {
+                        is: {
+                          name: {
+                            contains: input.search,
+                            mode: "insensitive" as const,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
+      };
+      const [invites, total] = await Promise.all([
+        ctx.db.organizationInvite.findMany({
+          where,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            expiresAt: true,
+            acceptedAt: true,
+            revokedAt: true,
+            createdAt: true,
+            invitedBy: {
+              select: { user: { select: { id: true, name: true } } },
+            },
           },
-        },
-      });
-      return invites.map((invite) => ({
-        ...invite,
-        status: organizationInviteStatus(invite, now),
-      }));
+        }),
+        input.includeTotal
+          ? ctx.db.organizationInvite.count({ where })
+          : Promise.resolve(undefined),
+      ]);
+      return pageResult(
+        invites.map((invite) => ({
+          ...invite,
+          status: organizationInviteStatus(invite, now),
+        })),
+        input.limit,
+        total,
+      );
     }),
 
   createInvite: protectedProcedure
@@ -480,27 +569,75 @@ export const organizationRouter = createTRPCRouter({
     }),
 
   listMembers: protectedProcedure
-    .input(z.object({ organizationId: id }))
+    .input(
+      pageInput.extend({
+        organizationId: id,
+        search: z.string().trim().max(200).optional(),
+        role: z.enum(["OWNER", "ADMIN", "TEACHER"]).optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       await requireOrganizationPermission({
         ...input,
         permission: "organization.members.manage",
         userId: ctx.actorUserId,
       });
-      return db.organizationMember.findMany({
-        where: { organizationId: input.organizationId },
-        orderBy: { createdAt: "asc" },
-        include: {
-          user: { select: { id: true, name: true, email: true, image: true } },
-          _count: {
-            select: {
-              ownedCourses: true,
-              courseCollaborations: true,
-              cohortStaffMemberships: true,
+      const where = {
+        organizationId: input.organizationId,
+        role: input.role,
+        ...(input.search
+          ? {
+              user: {
+                is: {
+                  OR: [
+                    {
+                      name: {
+                        contains: input.search,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                    {
+                      email: {
+                        contains: input.search,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                  ],
+                },
+              },
+            }
+          : {}),
+      };
+      const [items, total, ownerCount] = await Promise.all([
+        db.organizationMember.findMany({
+          where,
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          skip: input.cursor ? 1 : undefined,
+          include: {
+            user: {
+              select: { id: true, name: true, email: true, image: true },
+            },
+            _count: {
+              select: {
+                ownedCourses: true,
+                courseCollaborations: true,
+                cohortStaffMemberships: true,
+              },
             },
           },
-        },
-      });
+        }),
+        input.includeTotal
+          ? db.organizationMember.count({ where })
+          : Promise.resolve(undefined),
+        input.includeTotal
+          ? db.organizationMember.count({
+              where: { ...where, role: "OWNER" },
+            })
+          : Promise.resolve(undefined),
+      ]);
+      return { ...pageResult(items, input.limit, total), ownerCount };
     }),
 
   addMember: protectedProcedure
@@ -564,35 +701,90 @@ export const organizationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const actor = await requireOrganizationPermission({
+      await requireOrganizationPermission({
         organizationId: input.organizationId,
         permission: "organization.members.manage",
         userId: ctx.actorUserId,
       });
-      const member = await db.organizationMember.findFirst({
-        where: { id: input.membershipId, organizationId: input.organizationId },
-      });
-      if (!member) throw new TRPCError({ code: "NOT_FOUND" });
-      if (
-        (member.role === "OWNER" || input.role === "OWNER") &&
-        actor.role !== "OWNER"
-      )
-        throw new TRPCError({ code: "FORBIDDEN" });
-      return db.$transaction(async (tx) => {
-        if (member.role === "OWNER" && input.role !== "OWNER") {
-          const owners = await tx.organizationMember.count({
-            where: { organizationId: input.organizationId, role: "OWNER" },
-          });
-          if (owners <= 1)
+      for (let retry = 0; retry < 3; retry += 1) {
+        try {
+          return await ctx.db.$transaction(
+            async (tx) => {
+              // Serialize role changes for this organization, including two
+              // concurrent attempts to demote different owners.
+              await tx.$queryRaw`
+                SELECT "id"
+                FROM "Organization"
+                WHERE "id" = ${input.organizationId}
+                FOR UPDATE
+              `;
+              const member = await tx.organizationMember.findFirst({
+                where: {
+                  id: input.membershipId,
+                  organizationId: input.organizationId,
+                },
+              });
+              if (!member) throw new TRPCError({ code: "NOT_FOUND" });
+              const currentActor = await tx.organizationMember.findUnique({
+                where: {
+                  organizationId_userId: {
+                    organizationId: input.organizationId,
+                    userId: ctx.actorUserId,
+                  },
+                },
+                select: { role: true },
+              });
+              if (!currentActor) throw new TRPCError({ code: "FORBIDDEN" });
+              if (
+                (member.role === "OWNER" || input.role === "OWNER") &&
+                currentActor.role !== "OWNER"
+              ) {
+                throw new TRPCError({ code: "FORBIDDEN" });
+              }
+              if (member.role === "OWNER" && input.role !== "OWNER") {
+                const owners = await tx.organizationMember.count({
+                  where: {
+                    organizationId: input.organizationId,
+                    role: "OWNER",
+                  },
+                });
+                if (!canDemoteOwner(owners, input.role)) {
+                  throw new TRPCError({
+                    code: "CONFLICT",
+                    message: "Organization must retain at least one owner",
+                  });
+                }
+              }
+              return tx.organizationMember.update({
+                where: { id: member.id },
+                data: { role: input.role },
+              });
+            },
+            { isolationLevel: "Serializable" },
+          );
+        } catch (error) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            isSerializableConflict(error) &&
+            retry < 2
+          ) {
+            continue;
+          }
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            isSerializableConflict(error)
+          ) {
             throw new TRPCError({
               code: "CONFLICT",
-              message: "Organization must retain at least one owner",
+              message: "The organization changed concurrently. Try again.",
             });
+          }
+          throw error;
         }
-        return tx.organizationMember.update({
-          where: { id: member.id },
-          data: { role: input.role },
-        });
+      }
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "The organization changed concurrently. Try again.",
       });
     }),
 

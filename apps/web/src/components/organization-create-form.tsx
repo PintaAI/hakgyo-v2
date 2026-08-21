@@ -3,12 +3,8 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeftIcon,
-  Building2Icon,
-  CheckIcon,
-  LoaderCircleIcon,
-} from "lucide-react";
+import { Hanken_Grotesk, Inter } from "next/font/google";
+import { ArrowLeftIcon, Building2Icon, CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -18,15 +14,15 @@ import { completeOnboarding } from "~/lib/onboarding";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
-}
+const hanken = Hanken_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-hanken-grotesk",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 function errorMessage(error: unknown) {
   if (
@@ -45,18 +41,13 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
   const utils = api.useUtils();
   const create = api.organization.create.useMutation();
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugEdited, setSlugEdited] = useState(false);
-  const [enrollmentMode, setEnrollmentMode] = useState<"OPEN" | "INVITE_ONLY">(
-    "INVITE_ONLY",
-  );
+  const [enrollmentMode, setEnrollmentMode] = useState<"OPEN" | "INVITE_ONLY">("INVITE_ONLY");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
       const organization = await create.mutateAsync({
         name: name.trim(),
-        slug: slug.trim(),
         defaultEnrollmentMode: enrollmentMode,
       });
       const destination = `/workspace/${organization.slug}/dashboard`;
@@ -71,153 +62,140 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#171915] px-5 py-8 text-[#f5f3e9] sm:px-10 lg:px-14 lg:py-14">
-      <div className="mx-auto max-w-6xl">
-        <Link
-          href="/onboarding"
-          className={cn(
-            buttonVariants({ variant: "ghost" }),
-            "text-white/65 hover:bg-white/10 hover:text-white",
-          )}
+    <div
+      className={cn(
+        hanken.variable,
+        inter.variable,
+        "mx-auto w-full max-w-5xl space-y-8 font-[family-name:var(--font-inter)]",
+      )}
+    >
+      <Link
+        href="/onboarding"
+        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-muted-foreground -ml-2")}
+      >
+        <ArrowLeftIcon data-icon="inline-start" />
+        Kembali
+      </Link>
+
+      <header className="max-w-2xl">
+        <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
+          Workspace baru
+        </p>
+        <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
+          Buat workspace untuk tim Anda
+        </h1>
+        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+          Workspace mengelompokkan course, anggota, dan bahan ajar dalam satu organisasi.
+          Anda otomatis menjadi owner dan dapat mengundang tim setelah workspace siap.
+        </p>
+      </header>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <form
+          onSubmit={submit}
+          noValidate
+          className="bg-card ring-foreground/10 rounded-lg p-5 ring-1 sm:p-6"
         >
-          <ArrowLeftIcon />
-          Kembali
-        </Link>
-
-        <div className="mt-10 grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-          <section className="pt-4">
-            <div className="grid size-14 place-items-center rounded-2xl bg-[#d7a83f] text-[#171915] shadow-[5px_5px_0_#f5f3e9]">
-              <Building2Icon className="size-7" />
-            </div>
-            <p className="mt-10 text-xs font-black tracking-[0.2em] text-[#d7a83f] uppercase">
-              Workspace baru
+          <div className="space-y-2">
+            <Label htmlFor="organization-name">Nama organization</Label>
+            <Input
+              id="organization-name"
+              value={name}
+              maxLength={120}
+              placeholder="Hakgyo Academy"
+              autoFocus
+              required
+              className="h-11 px-3 text-base md:text-base"
+              onChange={(event) => setName(event.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">
+              Nama tampilan yang dilihat anggota dan siswa. Alamat workspace akan dibuat otomatis dari
+              nama dan dapat diubah nanti di Settings → General.
             </p>
-            <h1 className="mt-4 max-w-lg font-serif text-5xl leading-[0.96] font-semibold tracking-[-0.04em] sm:text-6xl">
-              Bangun ruang belajar Anda.
-            </h1>
-            <ul className="mt-8 grid gap-4 text-sm text-white/65">
-              {[
-                "Anda otomatis menjadi owner",
-                "Permission sederhana aktif secara default",
-                "Invite admin dan teacher setelah workspace siap",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-3">
-                  <span className="grid size-6 place-items-center rounded-full border border-[#d7a83f]/50 text-[#d7a83f]">
-                    <CheckIcon className="size-3.5" />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </section>
+          </div>
 
-          <form
-            onSubmit={submit}
-            className="rounded-[2rem] bg-[#f5f3e9] p-6 text-[#191b17] shadow-[10px_10px_0_#d7a83f] sm:p-9"
-          >
-            <div className="grid gap-2">
-              <Label htmlFor="organization-name">Nama organization</Label>
-              <Input
-                id="organization-name"
-                value={name}
-                maxLength={120}
-                placeholder="Hakgyo Academy"
-                autoFocus
-                required
-                onChange={(event) => {
-                  const nextName = event.target.value;
-                  setName(nextName);
-                  if (!slugEdited) setSlug(slugify(nextName));
-                }}
-              />
-            </div>
-
-            <div className="mt-6 grid gap-2">
-              <Label htmlFor="organization-slug">Alamat workspace</Label>
-              <div className="flex items-center rounded-lg border bg-white focus-within:ring-2 focus-within:ring-[#8b6416]">
-                <span className="text-muted-foreground pl-3 text-sm">
-                  /workspace/
-                </span>
-                <Input
-                  id="organization-slug"
-                  value={slug}
-                  minLength={2}
-                  maxLength={80}
-                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                  className="border-0 bg-transparent font-mono shadow-none focus-visible:ring-0"
-                  required
-                  onChange={(event) => {
-                    setSlugEdited(true);
-                    setSlug(slugify(event.target.value));
-                  }}
+          <fieldset className="mt-8 grid gap-3">
+            <legend className="text-sm font-medium">Tipe course default</legend>
+            <p className="text-muted-foreground -mt-1 text-xs">
+              Pengaturan berlaku untuk course baru. Setiap course dapat menimpa pilihan ini.
+            </p>
+            {[
+              {
+                value: "INVITE_ONLY" as const,
+                title: "Private course",
+                description: "Hanya siswa yang diundang atau ditambahkan manual yang bisa mengakses.",
+              },
+              {
+                value: "OPEN" as const,
+                title: "Public course",
+                description: "Siapa pun dapat menemukan dan mendaftar sendiri ke course.",
+              },
+            ].map((option) => (
+              <label
+                key={option.value}
+                className={cn(
+                  "cursor-pointer rounded-lg border p-4 transition-colors",
+                  enrollmentMode === option.value
+                    ? "border-foreground bg-muted/50"
+                    : "hover:bg-muted/50",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="enrollmentMode"
+                  value={option.value}
+                  checked={enrollmentMode === option.value}
+                  className="sr-only"
+                  onChange={() => setEnrollmentMode(option.value)}
                 />
-              </div>
-              <p className="text-muted-foreground text-xs">
-                Huruf kecil, angka, dan tanda hubung. Harus unik.
-              </p>
-            </div>
+                <span className="text-sm font-medium">{option.title}</span>
+                <span className="text-muted-foreground mt-1 block text-xs leading-relaxed">
+                  {option.description}
+                </span>
+              </label>
+            ))}
+          </fieldset>
 
-            <fieldset className="mt-8 grid gap-3">
-              <legend className="text-sm font-medium">
-                Enrollment default
-              </legend>
-              {[
-                {
-                  value: "INVITE_ONLY" as const,
-                  title: "Invitation only",
-                  description:
-                    "Learner perlu invitation atau enrollment manual.",
-                },
-                {
-                  value: "OPEN" as const,
-                  title: "Open enrollment",
-                  description:
-                    "Learner dapat mendaftar sendiri ke course publik.",
-                },
-              ].map((option) => (
-                <label
-                  key={option.value}
-                  className={cn(
-                    "cursor-pointer rounded-xl border p-4 transition-colors",
-                    enrollmentMode === option.value
-                      ? "border-[#8b6416] bg-[#d7a83f]/10"
-                      : "hover:bg-black/[0.03]",
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="enrollmentMode"
-                    value={option.value}
-                    checked={enrollmentMode === option.value}
-                    className="sr-only"
-                    onChange={() => setEnrollmentMode(option.value)}
-                  />
-                  <span className="font-semibold">{option.title}</span>
-                  <span className="text-muted-foreground mt-1 block text-xs">
-                    {option.description}
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-
-            <Button
-              type="submit"
-              size="lg"
-              className="mt-9 w-full"
-              disabled={
-                create.isPending || name.trim().length === 0 || slug.length < 2
-              }
-            >
+          <div className="mt-7 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-end">
+            <Link href="/onboarding" className={buttonVariants({ variant: "ghost" })}>
+              Batal
+            </Link>
+            <Button type="submit" disabled={create.isPending || name.trim().length === 0}>
               {create.isPending ? (
-                <LoaderCircleIcon className="animate-spin" />
+                <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
               ) : (
-                <Building2Icon />
+                <Building2Icon data-icon="inline-start" />
               )}
-              Buat organization
+              {create.isPending ? "Membuat workspace..." : "Buat organization"}
             </Button>
-          </form>
-        </div>
+          </div>
+        </form>
+
+        <aside className="bg-card ring-foreground/10 h-fit rounded-lg p-5 ring-1">
+          <p className="font-[family-name:var(--font-hanken-grotesk)] font-medium">Setelah workspace dibuat</p>
+          <ol className="text-muted-foreground mt-5 space-y-5 text-sm">
+            {[
+              "Anda otomatis menjadi owner",
+              "Permission sederhana aktif secara default",
+              "Undang admin dan teacher setelah workspace siap",
+            ].map((item, index) => (
+              <li key={item} className="flex gap-3">
+                <span className="bg-muted text-foreground flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold">
+                  {index + 1}
+                </span>
+                <span className="pt-0.5 leading-relaxed">{item}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-6 flex items-start gap-2.5 border-t pt-5 text-xs leading-relaxed">
+            <CheckIcon className="text-foreground mt-0.5 size-4 shrink-0" />
+            <p className="text-muted-foreground">
+              Workspace dapat diubah kapan saja melalui Settings → General: nama, slug, logo, dan mode
+              permission.
+            </p>
+          </div>
+        </aside>
       </div>
-    </main>
+    </div>
   );
 }

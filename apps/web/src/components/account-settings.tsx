@@ -309,8 +309,7 @@ export function AccountSettings({
     setPendingAction(`account:${account.id}`);
     try {
       const result = await authClient.unlinkAccount({
-        providerId: account.providerId,
-        accountId: account.accountId,
+        accountId: account.id,
       });
       if (result.error) throw new Error(errorMessage(result.error));
       setAccounts((current) =>

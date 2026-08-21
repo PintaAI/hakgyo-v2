@@ -1,15 +1,6 @@
-import { oauthProviderResourceClient } from "@better-auth/oauth-provider/resource-client";
-import { createAuthClient } from "better-auth/client";
 import type { AuthInfo } from "@modelcontextprotocol/server";
 
-import { env } from "~/env";
-import { auth } from "~/server/better-auth";
-import { mcpIssuer, mcpResource, mcpScope } from "./config";
-
-const resourceClient = createAuthClient({
-  baseURL: env.APP_URL,
-  plugins: [oauthProviderResourceClient(auth)],
-});
+import { mcpResource } from "./config";
 
 function tokenScopes(scope: unknown) {
   if (typeof scope === "string") return scope.split(" ").filter(Boolean);
@@ -19,44 +10,30 @@ function tokenScopes(scope: unknown) {
   return [];
 }
 
-export async function verifyMcpToken(
+export function createMcpAuthInfo(
   request: Request,
-  bearerToken?: string,
-): Promise<AuthInfo | undefined> {
-  if (!bearerToken) return undefined;
+  claims: { azp?: unknown; exp?: unknown; scope?: unknown; sub?: unknown },
+): AuthInfo {
+  const authorization = request.headers.get("authorization");
+  const token = authorization?.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length)
+    : undefined;
+  const userId = typeof claims.sub === "string" ? claims.sub : undefined;
+  const clientId = typeof claims.azp === "string" ? claims.azp : undefined;
+  const expiresAt = typeof claims.exp === "number" ? claims.exp : undefined;
 
-  try {
-    const payload = await resourceClient.verifyAccessTokenRequest(request, {
-      verifyOptions: {
-        audience: mcpResource,
-        issuer: mcpIssuer,
-      },
-      jwksUrl: `${mcpIssuer}/jwks`,
-      scopes: [mcpScope],
-    });
-    const userId = typeof payload.sub === "string" ? payload.sub : undefined;
-    const clientId = typeof payload.azp === "string" ? payload.azp : undefined;
-    const expiresAt = typeof payload.exp === "number" ? payload.exp : undefined;
-
-    if (!userId || !clientId || !expiresAt) return undefined;
-
-    return {
-      token: bearerToken,
-      clientId,
-      scopes: tokenScopes(payload.scope),
-      expiresAt,
-      resource: new URL(mcpResource),
-      extra: { userId },
-    };
-  } catch (error) {
-    if (env.NODE_ENV === "development") {
-      console.error(
-        "MCP token verification failed",
-        error instanceof Error ? error.message : "Unknown verification error",
-      );
-    }
-    return undefined;
+  if (!token || !userId || !clientId || !expiresAt) {
+    throw new Error("Verified MCP token is missing required claims");
   }
+
+  return {
+    token,
+    clientId,
+    scopes: tokenScopes(claims.scope),
+    expiresAt,
+    resource: new URL(mcpResource),
+    extra: { userId },
+  };
 }
 
 export function requireMcpUserId(authInfo: AuthInfo | undefined) {

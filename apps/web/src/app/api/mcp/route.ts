@@ -1,24 +1,25 @@
-import { withMcpAuth } from "mcp-handler";
+import { requireMcpAuth } from "@better-auth/mcp";
 
-import { verifyMcpToken } from "~/server/mcp/auth";
-import {
-  mcpPublicOrigin,
-  mcpResource,
-  mcpResourceMetadataPath,
-  mcpScope,
-} from "~/server/mcp/config";
+import { auth } from "~/server/better-auth";
+import { createMcpAuthInfo } from "~/server/mcp/auth";
+import { mcpResource, mcpScope } from "~/server/mcp/config";
 import { mcpHandler } from "~/server/mcp/server";
 import { validateMcpRequestBoundary } from "~/server/mcp/security";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const authenticatedHandler = withMcpAuth(mcpHandler, verifyMcpToken, {
-  required: true,
-  requiredScopes: [mcpScope],
-  resourceMetadataPath: mcpResourceMetadataPath,
-  resourceUrl: mcpPublicOrigin,
-});
+const authenticatedHandler = requireMcpAuth(
+  auth,
+  (request, claims) =>
+    mcpHandler.fetch(request, {
+      authInfo: createMcpAuthInfo(request, claims),
+    }),
+  {
+    resource: mcpResource,
+    requiredScopes: [mcpScope],
+  },
+);
 
 async function handler(request: Request) {
   const boundaryError = validateMcpRequestBoundary(request, mcpResource);
@@ -27,4 +28,4 @@ async function handler(request: Request) {
   return authenticatedHandler(request);
 }
 
-export { handler as GET, handler as POST };
+export { handler as POST };

@@ -218,32 +218,19 @@ export default async function DashboardPage({
   );
   const { organizationId, organization, role } = membership;
 
-  const [
-    courses,
-    cohorts,
-    members,
-    assessments,
-    materials,
-    vocabularySets,
-    reviewQueue,
-  ] = await Promise.all([
+  const [analytics, courses, cohortsPage, reviewQueue] = await Promise.all([
+    api.organization.getDashboardAnalytics({ organizationId }),
     api.course.list({ organizationId }),
-    api.cohort.listByOrganization({ organizationId }),
-    api.organization.listMembers({ organizationId }),
-    api.assessment.list({ organizationId }),
-    api.content.listMaterials({ organizationId }),
-    api.content.listVocabularySets({ organizationId }),
-    api.assessment.listAttemptsNeedingReview({ organizationId }),
+    api.cohort.listByOrganization({ organizationId, limit: 5 }),
+    api.assessment.listAttemptsNeedingReview({
+      organizationId,
+      limit: 3,
+    }),
   ]);
+  const cohorts = cohortsPage.items;
+  const reviewItems = reviewQueue.items;
 
   const root = `/workspace/${organizationSlug}`;
-  const publishedCount = courses.filter(
-    (course) => course.status === "PUBLISHED",
-  ).length;
-  const activeCohortCount = cohorts.filter(
-    (cohort) =>
-      cohort.status === "OPEN" || cohort.status === "IN_PROGRESS",
-  ).length;
 
   return (
     <div
@@ -268,8 +255,8 @@ export default async function DashboardPage({
             {organization.name}
           </h1>
           <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-            Gambaran umum course, Group belajar, anggota, bahan ajar,
-            dan antrean review untuk organisasi Anda.
+            Gambaran umum course, Group belajar, anggota, bahan ajar, dan
+            antrean review untuk organisasi Anda.
           </p>
         </div>
         <span className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-sans text-xs font-medium">
@@ -285,37 +272,40 @@ export default async function DashboardPage({
         <StatCard
           icon={BookOpenIcon}
           label="Total course"
-          value={courses.length}
+          value={analytics.courses.total}
           href={`${root}/courses`}
         />
         <StatCard
           icon={BookCheckIcon}
           label="Diterbitkan"
-          value={publishedCount}
+          value={analytics.courses.byStatus.PUBLISHED ?? 0}
           href={`${root}/courses`}
         />
         <StatCard
           icon={CalendarDaysIcon}
           label="Total Group belajar"
-          value={cohorts.length}
+          value={analytics.cohorts.total}
           href={`${root}/courses`}
         />
         <StatCard
           icon={UsersIcon}
           label="Group belajar berjalan"
-          value={activeCohortCount}
+          value={
+            (analytics.cohorts.byStatus.OPEN ?? 0) +
+            (analytics.cohorts.byStatus.IN_PROGRESS ?? 0)
+          }
           href={`${root}/courses`}
         />
         <StatCard
           icon={UsersIcon}
           label="Anggota"
-          value={members.length}
+          value={analytics.members}
           href={`${root}/members`}
         />
         <StatCard
           icon={ClipboardCheckIcon}
           label="Menunggu review"
-          value={reviewQueue.length}
+          value={analytics.actionItems.attemptsInReview}
           href={`${root}/reviews`}
         />
       </section>
@@ -328,7 +318,9 @@ export default async function DashboardPage({
                 <CardTitle className={cn(headline, "text-lg font-medium")}>
                   Course terbaru
                 </CardTitle>
-                <CardDescription>Course yang paling baru dibuat.</CardDescription>
+                <CardDescription>
+                  Course yang paling baru dibuat.
+                </CardDescription>
               </div>
               <CardAction>
                 <TextAction href={`${root}/courses`}>Semua course</TextAction>
@@ -397,9 +389,7 @@ export default async function DashboardPage({
                 </CardDescription>
               </div>
               <CardAction>
-                <TextAction href={`${root}/courses`}>
-                  Semua course
-                </TextAction>
+                <TextAction href={`${root}/courses`}>Semua course</TextAction>
               </CardAction>
             </CardHeader>
             {cohorts.length === 0 ? (
@@ -460,21 +450,21 @@ export default async function DashboardPage({
                 icon={FileTextIcon}
                 label="Materi"
                 detail="Dokumen dan aset pembelajaran"
-                count={materials.length}
+                count={analytics.content.materials}
                 href={`${root}/library/materials`}
               />
               <LibraryRow
                 icon={LanguagesIcon}
                 label="Set kosakata"
                 detail="Istilah, definisi, dan contoh"
-                count={vocabularySets.length}
+                count={analytics.content.vocabularySets}
                 href={`${root}/library/vocabulary`}
               />
               <LibraryRow
                 icon={LibraryIcon}
                 label="Tugas"
                 detail="Kuis, ujian, dan soal latihan"
-                count={assessments.length}
+                count={analytics.content.assessments}
                 href={`${root}/library/assessments`}
               />
             </ul>
@@ -494,7 +484,7 @@ export default async function DashboardPage({
                 <TextAction href={`${root}/reviews`}>Buka antrean</TextAction>
               </CardAction>
             </CardHeader>
-            {reviewQueue.length === 0 ? (
+            {reviewItems.length === 0 ? (
               <CardContent>
                 <EmptyState
                   icon={ClipboardCheckIcon}
@@ -504,7 +494,7 @@ export default async function DashboardPage({
               </CardContent>
             ) : (
               <ul className="divide-border divide-y">
-                {reviewQueue.slice(0, 3).map((item) => (
+                {reviewItems.map((item) => (
                   <li key={item.id}>
                     <Link
                       href={`${root}/reviews`}

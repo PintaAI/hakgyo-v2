@@ -2,10 +2,18 @@ import { Skeleton } from "~/components/ui/skeleton";
 
 export default function LearningCoursesLoading() {
   return (
-    <section className="bg-card text-card-foreground animate-pulse rounded-xl border p-6 shadow-sm">
-      <Skeleton className="h-3 w-28" />
-      <Skeleton className="mt-3 h-8 w-48" />
-      <Skeleton className="mt-3 h-4 w-full max-w-md" />
-    </section>
+    <div className="mx-auto max-w-7xl space-y-8">
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-10 w-80 max-w-full" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+      <Skeleton className="h-72 rounded-lg" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Skeleton className="h-72 rounded-lg" />
+        <Skeleton className="h-72 rounded-lg" />
+        <Skeleton className="hidden h-72 rounded-lg xl:block" />
+      </div>
+    </div>
   );
 }

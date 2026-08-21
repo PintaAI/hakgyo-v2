@@ -12,10 +12,7 @@ const nativePlugin = expoClient({
 
 export const authClient = createAuthClient({
   baseURL: apiUrl,
-  // Bun gives peer dependencies separate type identities in this monorepo.
-  // Keep the runtime plugin while relying on Better Auth's base session types.
-  plugins: [nativePlugin] as unknown as [],
+  plugins: [nativePlugin],
 });
 
-export const getAuthCookie = () =>
-  (authClient as typeof authClient & { getCookie: () => string }).getCookie();
+export const getAuthCookie = () => authClient.getCookie();

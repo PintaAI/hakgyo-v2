@@ -238,7 +238,7 @@ export function OrganizationGeneralSettings({
           Pengaturan umum
         </h1>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          Kelola bagaimana organisasi Anda diidentifikasi, menangani enrollment,
+          Kelola bagaimana organisasi Anda diidentifikasi, mengatur akses public/private course,
           dan berbagi sumber belajar dengan teacher.
         </p>
       </div>
@@ -348,12 +348,12 @@ export function OrganizationGeneralSettings({
 
             <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
               <div className="grid gap-1">
-                <Label htmlFor="open-enrollment">Izinkan open enrollment</Label>
+                <Label htmlFor="open-enrollment">Public course secara default</Label>
                 <p className="text-muted-foreground text-xs">
                   {effectiveEnrollmentMode === "OPEN"
-                    ? "Siswa dapat mendaftar sendiri ke course yang memenuhi syarat secara default."
-                    : "Siswa memerlukan invite atau enrollment manual secara default."}{" "}
-                  Course dapat menimpa pengaturan ini.
+                    ? "Course baru akan menjadi public — siswa dapat menemukan dan mendaftar sendiri."
+                    : "Course baru akan menjadi private — hanya siswa yang diundang atau ditambahkan manual yang bisa mengakses."}{" "}
+                  Setiap course dapat menimpa pengaturan ini.
                 </p>
               </div>
               <Switch
@@ -362,7 +362,7 @@ export function OrganizationGeneralSettings({
                 onCheckedChange={(checked) =>
                   setEnrollmentMode(checked ? "OPEN" : "INVITE_ONLY")
                 }
-                aria-label="Izinkan open enrollment"
+                aria-label="Jadikan course publik secara default"
               />
             </div>
 

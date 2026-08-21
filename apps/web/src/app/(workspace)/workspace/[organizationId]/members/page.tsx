@@ -15,8 +15,14 @@ export default async function Page({
   );
   const organizationId = membership.organizationId;
   void Promise.all([
-    api.organization.listMembers.prefetch({ organizationId }),
-    api.organization.listInvites.prefetch({ organizationId }),
+    api.organization.listMembers.prefetchInfinite({
+      organizationId,
+      includeTotal: true,
+    }),
+    api.organization.listInvites.prefetchInfinite({
+      organizationId,
+      includeTotal: true,
+    }),
   ]);
 
   return (

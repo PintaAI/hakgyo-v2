@@ -60,6 +60,7 @@ model Session {
 
 model Account {
   id                    String    @id
+  issuer                String
   accountId             String //@db.Text
   providerId            String //@db.Text
   userId                String
@@ -74,7 +75,7 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  @@unique([providerId, accountId])
+  @@unique([issuer, accountId], map: "account_issuer_accountId_uidx")
   @@index([userId])
   @@map("account")
 }
@@ -87,6 +88,7 @@ model Verification {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
 
+  @@index([identifier])
   @@map("verification")
 }
 
@@ -106,11 +108,13 @@ model OauthClient {
   id                               String                @id
   clientId                         String                @unique
   clientSecret                     String?
+  clientDiscoveryId                String?
   disabled                         Boolean?              @default(false)
   skipConsent                      Boolean?
   enableEndSession                 Boolean?
   subjectType                      String?
   scopes                           String[]
+  clientCredentialsScopes          String[]              @default([])
   userId                           String?
   user                             User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt                        DateTime?
@@ -129,12 +133,11 @@ model OauthClient {
   backchannelLogoutUri             String?
   backchannelLogoutSessionRequired Boolean?
   tokenEndpointAuthMethod          String?
+  applicationType                  String?
   jwks                             String?
   jwksUri                          String?
   grantTypes                       String[]
   responseTypes                    String[]
-  public                           Boolean?
-  type                             String?
   requirePKCE                      Boolean?
   dpopBoundAccessTokens            Boolean?              @default(false)
   referenceId                      String?
@@ -178,6 +181,7 @@ model OauthClientResource {
   metadata   Json?
   createdAt  DateTime?
 
+  @@unique([clientId, resourceId], map: "oauthClientResource_clientId_resourceId_uidx")
   @@index([clientId])
   @@index([resourceId])
   @@map("oauthClientResource")
@@ -196,8 +200,8 @@ model OauthRefreshToken {
   authorizationCodeId     String?
   resources               String[]
   requestedUserInfoClaims String[]
-  expiresAt               DateTime?
-  createdAt               DateTime?
+  expiresAt               DateTime
+  createdAt               DateTime
   revoked                 DateTime?
   rotatedAt               DateTime?
   rotationReplayResponse  String?
@@ -216,7 +220,7 @@ model OauthRefreshToken {
 
 model OauthAccessToken {
   id                      String             @id
-  token                   String?            @unique
+  token                   String             @unique
   clientId                String
   client                  OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
   sessionId               String?
@@ -229,8 +233,8 @@ model OauthAccessToken {
   requestedUserInfoClaims String[]
   refreshId               String?
   refreshToken            OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: Cascade)
-  expiresAt               DateTime?
-  createdAt               DateTime?
+  expiresAt               DateTime
+  createdAt               DateTime
   revoked                 DateTime?
   confirmation            Json?
   scopes                  String[]
@@ -253,8 +257,8 @@ model OauthConsent {
   resources               String[]
   requestedUserInfoClaims String[]
   scopes                  String[]
-  createdAt               DateTime?
-  updatedAt               DateTime?
+  createdAt               DateTime
+  updatedAt               DateTime
 
   @@index([clientId])
   @@index([userId])
@@ -749,13 +753,16 @@ model VocabularyEntry {
   definition      String
   examples        Json          @default("[]")
   audioAssetId    String?
+  imageAssetId    String?
   metadata        Json?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   vocabularySet   VocabularySet @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  audioAsset      Asset?        @relation(fields: [audioAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  audioAsset      Asset?        @relation("VocabularyEntryAudio", fields: [audioAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  imageAsset      Asset?        @relation("VocabularyEntryImage", fields: [imageAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
   @@index([audioAssetId])
+  @@index([imageAssetId])
 }
 
 model CourseEnrollment {
@@ -833,6 +840,7 @@ model AssessmentAttempt {
   cohortId       String?
   userId         String
   attemptNumber  Int
+  shuffleSeed    String?
   status         AssessmentAttemptStatus @default(IN_PROGRESS)
   score          Int?
   maxScore       Int?
@@ -902,7 +910,8 @@ model Asset {
   organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   uploadedBy        User?             @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   materials         MaterialAsset[]
-  vocabularyEntries VocabularyEntry[]
+  vocabularyEntries VocabularyEntry[] @relation("VocabularyEntryAudio")
+  vocabularyEntryImages VocabularyEntry[] @relation("VocabularyEntryImage")
 
   @@unique([id, organizationId])
   @@index([organizationId, deletedAt])

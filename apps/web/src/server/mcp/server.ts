@@ -1,4 +1,4 @@
-import { createMcpHandler } from "mcp-handler";
+import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import { hakgyoBlockCatalog } from "~/lib/blocknote/block-catalog";
@@ -60,7 +60,9 @@ const catalogCourseDetailSchema = z.object({
 });
 
 export const mcpHandler = createMcpHandler(
-  (server) => {
+  () => {
+    const server = new McpServer({ name: "hakgyo", version: "0.1.0" });
+
     server.registerTool(
       "hakgyo.context.get",
       {
@@ -298,9 +300,11 @@ export const mcpHandler = createMcpHandler(
         },
       );
     }
+
+    return server;
   },
   {
-    serverInfo: { name: "hakgyo", version: "0.1.0" },
+    legacy: "reject",
     maxSubscriptions: 0,
   },
 );
