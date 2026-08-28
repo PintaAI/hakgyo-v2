@@ -377,6 +377,7 @@ enum EnrollmentSource {
   PURCHASE
   MANUAL
   COHORT
+  FOUNDATION
 }
 
 enum ProgressStatus {

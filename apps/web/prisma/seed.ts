@@ -4,6 +4,10 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { hashPassword } from "better-auth/crypto";
 
 import { PrismaClient } from "../generated/prisma/client";
+import {
+  HAKGYO_SYSTEM_ORGANIZATION_ID,
+  HANGEUL_MASTERY_COURSE_ID,
+} from "../src/server/foundation/constants";
 
 const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 
@@ -18,11 +22,13 @@ const db = new PrismaClient({
 });
 
 const password = "Hakgyo123!";
+const systemOwnerEmail = "admin@hakgyo.test";
 
 async function upsertUser(input: { email: string; id: string; name: string }) {
   const user = await db.user.upsert({
-    where: { email: input.email },
+    where: { id: input.id },
     update: {
+      email: input.email,
       emailVerified: true,
       name: input.name,
     },
@@ -64,7 +70,7 @@ async function upsertUser(input: { email: string; id: string; name: string }) {
 }
 
 async function main() {
-  const [owner, teacher, student] = await Promise.all([
+  const [owner, teacher, student, systemOwner] = await Promise.all([
     upsertUser({
       id: "seed-user-owner",
       name: "Nadia Pratama",
@@ -80,7 +86,127 @@ async function main() {
       name: "Sari Wulandari",
       email: "student@hakgyo.test",
     }),
+    upsertUser({
+      id: "hakgyo-system-owner",
+      name: "Hakgyo System Owner",
+      email: systemOwnerEmail,
+    }),
   ]);
+
+  const systemOrganization = await db.organization.upsert({
+    where: { id: HAKGYO_SYSTEM_ORGANIZATION_ID },
+    update: {
+      defaultEnrollmentMode: "OPEN",
+      name: "Hakgyo System",
+      slug: "hakgyo-system",
+    },
+    create: {
+      id: HAKGYO_SYSTEM_ORGANIZATION_ID,
+      defaultEnrollmentMode: "OPEN",
+      name: "Hakgyo System",
+      slug: "hakgyo-system",
+    },
+  });
+
+  const systemOwnerMembership = await db.organizationMember.upsert({
+    where: {
+      organizationId_userId: {
+        organizationId: systemOrganization.id,
+        userId: systemOwner.id,
+      },
+    },
+    update: { role: "OWNER" },
+    create: {
+      id: "hakgyo-system-owner-membership",
+      organizationId: systemOrganization.id,
+      role: "OWNER",
+      userId: systemOwner.id,
+    },
+  });
+
+  const hangeulMasteryCourse = await db.course.upsert({
+    where: { id: HANGEUL_MASTERY_COURSE_ID },
+    update: {
+      ownerMembershipId: systemOwnerMembership.id,
+    },
+    create: {
+      id: HANGEUL_MASTERY_COURSE_ID,
+      organizationId: systemOrganization.id,
+      ownerMembershipId: systemOwnerMembership.id,
+      title: "Hangeul Mastery",
+      slug: "hangeul-mastery",
+      description:
+        "Fondasi membaca dan menulis Hangeul sebelum memulai perjalanan belajar bahasa Korea.",
+      enrollmentMode: "OPEN",
+      price: 0,
+      progressionMode: "SEQUENTIAL",
+      status: "PUBLISHED",
+    },
+  });
+
+  const hangeulModule = await db.courseModule.upsert({
+    where: { id: "hakgyo-foundation-hangeul-module" },
+    update: {},
+    create: {
+      id: "hakgyo-foundation-hangeul-module",
+      courseId: hangeulMasteryCourse.id,
+      organizationId: systemOrganization.id,
+      title: "Mulai dengan Hangeul",
+      description: "Mulai dari struktur dasar aksara Hangeul.",
+      position: 1,
+    },
+  });
+
+  const hangeulIntroduction = await db.material.upsert({
+    where: { id: "hakgyo-foundation-hangeul-introduction" },
+    update: {},
+    create: {
+      id: "hakgyo-foundation-hangeul-introduction",
+      organizationId: systemOrganization.id,
+      createdByMembershipId: systemOwnerMembership.id,
+      title: "Mengenal Hangeul",
+      description: "Pengenalan konsonan, vokal, dan blok suku kata Korea.",
+      content: [
+        {
+          id: "hakgyo-foundation-hangeul-block-create",
+          type: "paragraph",
+          props: {},
+          content: [
+            {
+              type: "text",
+              text: "Hangeul adalah sistem tulisan Korea. Di course ini kamu akan belajar mengenali konsonan, vokal, dan menyusunnya menjadi blok suku kata.",
+              styles: {},
+            },
+          ],
+          children: [],
+        },
+      ],
+    },
+  });
+
+  await db.courseItem.upsert({
+    where: { id: "hakgyo-foundation-hangeul-introduction-item" },
+    update: {},
+    create: {
+      id: "hakgyo-foundation-hangeul-introduction-item",
+      organizationId: systemOrganization.id,
+      moduleId: hangeulModule.id,
+      type: "MATERIAL",
+      position: 1,
+      materialId: hangeulIntroduction.id,
+      isPublished: true,
+    },
+  });
+
+  await db.courseEnrollment.createMany({
+    data: [owner, teacher, student, systemOwner].map(({ id }) => ({
+      courseId: hangeulMasteryCourse.id,
+      userId: id,
+      source: "FOUNDATION" as const,
+      status: "ACTIVE" as const,
+    })),
+    skipDuplicates: true,
+  });
 
   const organization = await db.organization.upsert({
     where: { slug: "hakgyo-academy" },
@@ -537,6 +663,7 @@ async function main() {
   console.info(`Login: owner@hakgyo.test / ${password}`);
   console.info(`Login: teacher@hakgyo.test / ${password}`);
   console.info(`Login: student@hakgyo.test / ${password}`);
+  console.info(`Login: ${systemOwnerEmail} / ${password}`);
 }
 
 main()

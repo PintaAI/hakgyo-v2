@@ -7,7 +7,7 @@ type OpenEnrollmentCourse = {
 
 type ExistingEnrollment = {
   status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
-  source: "OPEN" | "INVITE" | "PURCHASE" | "MANUAL" | "COHORT";
+  source: "OPEN" | "INVITE" | "PURCHASE" | "MANUAL" | "COHORT" | "FOUNDATION";
   expiresAt: Date | null;
 };
 

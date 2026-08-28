@@ -11,6 +11,7 @@ import { env } from "~/env";
 import { getManagedProfileImageKey } from "~/lib/profile-image";
 import { getAccountDeletionBlockers } from "~/server/account/deletion";
 import { db } from "~/server/db";
+import { ensureHangeulMasteryEnrollment } from "~/server/foundation/hangeul-mastery";
 
 const mcpOAuthScopes = ["openid", "profile", "hakgyo:mcp", "offline_access"];
 const mcpResource = `${env.APP_URL}/api/mcp`;
@@ -20,6 +21,15 @@ export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          await ensureHangeulMasteryEnrollment(user.id);
+        },
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },
