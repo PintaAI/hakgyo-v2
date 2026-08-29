@@ -33,6 +33,10 @@ describe("route access", () => {
       organizationSlug: "acme-school",
       allowedRoles: ["OWNER", "ADMIN", "TEACHER"],
     });
+    expect(getWorkspaceRoute("/workspace/acme-school/dashboard")).toEqual({
+      organizationSlug: "acme-school",
+      allowedRoles: ["OWNER", "ADMIN", "TEACHER"],
+    });
     expect(getWorkspaceRoute("/workspace/acme-school/reviews")).toEqual({
       organizationSlug: "acme-school",
       allowedRoles: ["OWNER", "ADMIN", "TEACHER"],
@@ -44,7 +48,7 @@ describe("route access", () => {
       "/workspace/acme-school/dashboard",
     );
     expect(getWorkspaceFallback("acme-school", "TEACHER")).toBe(
-      "/workspace/acme-school/courses",
+      "/workspace/acme-school/dashboard",
     );
   });
 

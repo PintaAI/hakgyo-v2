@@ -411,7 +411,11 @@ export const enrollmentRouter = createTRPCRouter({
             completedAt: input.status === "COMPLETED" ? new Date() : null,
           },
         });
-        if (input.status === "ACTIVE" || input.status === "COMPLETED") {
+        if (
+          (input.status === "ACTIVE" || input.status === "COMPLETED") &&
+          (cohort.status === "OPEN" || cohort.status === "IN_PROGRESS") &&
+          (cohort.endsAt === null || cohort.endsAt > new Date())
+        ) {
           const courseEnrollment = await tx.courseEnrollment.findUnique({
             where: {
               courseId_userId: {

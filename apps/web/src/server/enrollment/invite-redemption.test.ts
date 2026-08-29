@@ -78,4 +78,33 @@ describe("invite redemption", () => {
       ),
     ).toBe("CONFLICT");
   });
+
+  test("rejects an invite after its cohort has ended", async () => {
+    let updateCount = 0;
+    const tx = {
+      enrollmentInvite: {
+        findUnique: () =>
+          Promise.resolve({
+            id: "invite-1",
+            cohortId: "cohort-1",
+            revokedAt: null,
+            expiresAt: null,
+            maxUses: null,
+            useCount: 0,
+            cohort: { status: "COMPLETED" },
+          }),
+        updateMany: () => {
+          updateCount += 1;
+          return Promise.resolve({ count: 1 });
+        },
+      },
+    } as unknown as Prisma.TransactionClient;
+
+    expect(
+      await rejectionCode(
+        consumeEnrollmentInvite(tx, "ended-cohort-token-long-enough", now),
+      ),
+    ).toBe("BAD_REQUEST");
+    expect(updateCount).toBe(0);
+  });
 });

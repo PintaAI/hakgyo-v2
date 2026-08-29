@@ -16,7 +16,7 @@ export const organizationManagerRoles: readonly OrganizationRole[] = [
 const workspaceSectionRoles: Readonly<
   Record<string, readonly OrganizationRole[]>
 > = {
-  dashboard: organizationManagerRoles,
+  dashboard: allOrganizationRoles,
   members: organizationManagerRoles,
   reviews: allOrganizationRoles,
   settings: organizationManagerRoles,
@@ -40,7 +40,7 @@ export const routeAccess = {
     roleFallbackSection: {
       OWNER: "dashboard",
       ADMIN: "dashboard",
-      TEACHER: "courses",
+      TEACHER: "dashboard",
     } satisfies Record<OrganizationRole, string>,
   },
 } as const;

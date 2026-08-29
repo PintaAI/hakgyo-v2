@@ -8,6 +8,7 @@ import {
   requireCoursePermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
+import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
 import { getCourseOutlineForUser } from "~/server/learning/course-outline";
 import {
   passesAssessmentRequirement,
@@ -26,6 +27,7 @@ export const learningRouter = createTRPCRouter({
               some: {
                 userId: ctx.actorUserId,
                 status: { in: [...activeEnrollmentStatuses] },
+                source: { not: "COHORT" },
                 OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
               },
             },
@@ -33,6 +35,8 @@ export const learningRouter = createTRPCRouter({
           {
             cohorts: {
               some: {
+                status: { in: [...accessGrantingCohortStatuses] },
+                OR: [{ endsAt: null }, { endsAt: { gt: now } }],
                 enrollments: {
                   some: {
                     userId: ctx.actorUserId,

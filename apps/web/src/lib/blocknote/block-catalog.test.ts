@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  assetAudioBlockType,
+  assetImageBlockType,
   calloutBlockType,
   calloutTones,
   hakgyoBlockCatalog,
@@ -12,12 +14,17 @@ describe("Hakgyo BlockNote catalog", () => {
       (block) => block.type,
     );
 
-    expect(customTypes).toEqual([calloutBlockType]);
-    expect(hakgyoBlockCatalog.customBlocks[0].example.type).toBe(
+    expect(customTypes).toEqual([
+      assetAudioBlockType,
+      assetImageBlockType,
       calloutBlockType,
+    ]);
+    const callout = hakgyoBlockCatalog.customBlocks.find(
+      (block) => block.type === calloutBlockType,
     );
-    expect(calloutTones).toContain(
-      hakgyoBlockCatalog.customBlocks[0].example.props.tone,
-    );
+    expect(callout).toBeDefined();
+    if (!callout || !("example" in callout)) return;
+    expect(callout.example.type).toBe(calloutBlockType);
+    expect(calloutTones).toContain(callout.example.props.tone);
   });
 });

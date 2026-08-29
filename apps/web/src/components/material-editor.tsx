@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -25,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
-import { Button, buttonVariants } from "~/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -130,15 +129,12 @@ export function MaterialEditor({
         updateMaterial.isPending
       }
       materialId={materialId}
-      backHref={
-        attachTo?.curriculumHref ??
-        `/workspace/${organizationSlug}/library/materials`
-      }
       contextLabel={
         attachTo ? `Materi baru untuk ${attachTo.moduleTitle}` : undefined
       }
       saveLabel={attachTo ? "Simpan dan tambahkan" : undefined}
       theme={resolvedTheme === "dark" ? "dark" : "light"}
+      onBack={() => router.back()}
       onDelete={async () => {
         if (!materialId) return;
         try {
@@ -220,10 +216,10 @@ function MaterialEditorForm({
   isDeleting,
   isSaving,
   materialId,
-  backHref,
   contextLabel,
   saveLabel,
   theme,
+  onBack,
   onDelete,
   onSave,
 }: {
@@ -235,10 +231,10 @@ function MaterialEditorForm({
   isDeleting: boolean;
   isSaving: boolean;
   materialId?: string;
-  backHref: string;
   contextLabel?: string;
   saveLabel?: string;
   theme: "light" | "dark";
+  onBack: () => void;
   onDelete: () => Promise<void>;
   onSave: (value: {
     title: string;
@@ -276,13 +272,15 @@ function MaterialEditorForm({
     >
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex min-w-0 items-center gap-3">
-          <Link
+          <Button
+            type="button"
             aria-label="Kembali ke materi"
-            href={backHref}
-            className={buttonVariants({ variant: "outline", size: "icon" })}
+            variant="outline"
+            size="icon"
+            onClick={onBack}
           >
             <ArrowLeftIcon />
-          </Link>
+          </Button>
           <div className="min-w-0">
             <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
               <FileTextIcon className="size-3.5" />

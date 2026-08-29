@@ -26,7 +26,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { organizationManagerRoles } from "~/lib/access";
+import { organizationRoles } from "~/lib/access";
 import { cn } from "~/lib/utils";
 import { requireOrganizationRole } from "~/server/auth/dal";
 import { api } from "~/trpc/server";
@@ -206,6 +206,347 @@ function EmptyState({
   );
 }
 
+function QuickAction({
+  icon: Icon,
+  title,
+  description,
+  href,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group/action border-border hover:bg-muted/50 focus-visible:ring-ring flex items-start gap-3 border-t py-4 transition-colors outline-none first:border-t-0 focus-visible:ring-2"
+    >
+      <span className="bg-foreground text-background inline-flex size-9 shrink-0 items-center justify-center rounded-md">
+        <Icon className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-foreground block text-sm font-medium">
+          {title}
+        </span>
+        <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
+          {description}
+        </span>
+      </span>
+      <ArrowUpRightIcon className="text-muted-foreground group-hover/action:text-foreground mt-1 size-4 shrink-0 transition-all group-hover/action:translate-x-0.5 group-hover/action:-translate-y-0.5" />
+    </Link>
+  );
+}
+
+async function TeacherDashboard({
+  membership,
+  organizationSlug,
+}: {
+  membership: Awaited<ReturnType<typeof requireOrganizationRole>>;
+  organizationSlug: string;
+}) {
+  const { organizationId, organization } = membership;
+  const [courses, cohortsPage, materials, assessments, reviewQueue] =
+    await Promise.all([
+      api.course.list({ organizationId }),
+      api.cohort.listForCurrentMember({
+        organizationId,
+        includeTotal: true,
+        limit: 50,
+      }),
+      api.content.listMaterials({ organizationId }),
+      api.assessment.list({ organizationId }),
+      api.assessment.listAttemptsNeedingReview({
+        organizationId,
+        includeTotal: true,
+        limit: 4,
+      }),
+    ]);
+  const root = `/workspace/${organizationSlug}`;
+  const cohorts = cohortsPage.items;
+  const reviewItems = reviewQueue.items;
+  const pendingReviews = reviewQueue.total ?? reviewItems.length;
+  const cohortCount = cohortsPage.total ?? cohorts.length;
+  const canCreateCourse =
+    organization.permissionMode === "SIMPLE" ||
+    organization.teacherCanCreateCourse;
+
+  return (
+    <div
+      className={cn(
+        hanken.variable,
+        inter.variable,
+        body,
+        "mx-auto w-full max-w-6xl space-y-10",
+      )}
+    >
+      <header className="border-foreground/15 relative overflow-hidden rounded-xl border p-6 sm:p-8">
+        <div className="bg-muted/70 pointer-events-none absolute -top-20 -right-16 size-56 rounded-full blur-3xl" />
+        <div className="relative flex flex-wrap items-end justify-between gap-6">
+          <div className="min-w-0">
+            <p className="text-muted-foreground font-sans text-xs font-semibold tracking-[0.18em] uppercase">
+              Ruang pengajar · {organization.slug}
+            </p>
+            <h1
+              className={cn(
+                headline,
+                "text-foreground mt-2 text-3xl font-medium tracking-tight sm:text-4xl",
+              )}
+            >
+              Siap mengajar hari ini?
+            </h1>
+            <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
+              Pantau course yang menjadi tanggung jawab Anda, siapkan bahan
+              ajar, dan selesaikan penilaian yang masih menunggu.
+            </p>
+          </div>
+          <span className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-sans text-xs font-medium">
+            <BookCheckIcon className="size-3.5" />
+            Pengajar
+          </span>
+        </div>
+      </header>
+
+      <section
+        aria-label="Ringkasan pengajar"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
+      >
+        <StatCard
+          icon={BookOpenIcon}
+          label="Course saya"
+          value={courses.length}
+          href={`${root}/courses`}
+        />
+        <StatCard
+          icon={BookCheckIcon}
+          label="Sudah terbit"
+          value={
+            courses.filter((course) => course.status === "PUBLISHED").length
+          }
+          href={`${root}/courses`}
+        />
+        <StatCard
+          icon={CalendarDaysIcon}
+          label="Group belajar"
+          value={cohortCount}
+          href={`${root}/courses`}
+        />
+        <StatCard
+          icon={FileTextIcon}
+          label="Materi saya"
+          value={materials.length}
+          href={`${root}/library/materials`}
+        />
+        <StatCard
+          icon={LibraryIcon}
+          label="Tugas saya"
+          value={assessments.length}
+          href={`${root}/library/assessments`}
+        />
+        <StatCard
+          icon={ClipboardCheckIcon}
+          label="Perlu direview"
+          value={pendingReviews}
+          href={`${root}/reviews`}
+        />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,1fr)]">
+        <Card className="rounded-lg">
+          <CardHeader>
+            <div>
+              <CardTitle className={cn(headline, "text-lg font-medium")}>
+                Course dalam tanggung jawab Anda
+              </CardTitle>
+              <CardDescription>
+                Course yang Anda miliki, edit, atau dampingi sebagai staf.
+              </CardDescription>
+            </div>
+            <CardAction>
+              <TextAction href={`${root}/courses`}>Lihat semua</TextAction>
+            </CardAction>
+          </CardHeader>
+          {courses.length === 0 ? (
+            <CardContent>
+              <EmptyState
+                icon={BookOpenIcon}
+                title="Belum ada course"
+                description="Course yang Anda buat atau yang ditugaskan kepada Anda akan muncul di sini."
+                action={
+                  canCreateCourse ? (
+                    <Link
+                      href={`${root}/courses/new`}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" }),
+                        "mt-4",
+                      )}
+                    >
+                      <PlusIcon data-icon="inline-start" />
+                      Buat course
+                    </Link>
+                  ) : undefined
+                }
+              />
+            </CardContent>
+          ) : (
+            <ul className="divide-border divide-y">
+              {courses.slice(0, 5).map((course) => {
+                const courseCohorts = cohorts.filter(
+                  (cohort) => cohort.courseId === course.id,
+                );
+
+                return (
+                  <li key={course.id}>
+                    <Link
+                      href={`${root}/courses/${course.id}`}
+                      className="group/row hover:bg-muted/50 flex items-center gap-4 px-4 py-3 transition-colors"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="text-foreground block truncate text-sm font-medium">
+                          {course.title}
+                        </span>
+                        <span className="text-muted-foreground mt-0.5 block text-xs">
+                          {course._count.modules} bab · {course._count.cohorts}{" "}
+                          Group belajar
+                        </span>
+                      </span>
+                      <StatusChip status={course.status} />
+                      <ArrowUpRightIcon className="text-muted-foreground group-hover/row:text-foreground size-4 shrink-0 transition-all group-hover/row:translate-x-0.5 group-hover/row:-translate-y-0.5" />
+                    </Link>
+                    {courseCohorts.length > 0 ? (
+                      <ul className="border-border bg-muted/20 border-t px-4 py-1.5 sm:pl-9">
+                        {courseCohorts.slice(0, 3).map((cohort) => (
+                          <li key={cohort.id}>
+                            <Link
+                              href={`${root}/courses/${course.id}/cohorts/${cohort.id}`}
+                              className="group/cohort hover:bg-muted/70 flex items-center gap-3 rounded-md px-2 py-2 transition-colors"
+                            >
+                              <span className="border-border bg-background inline-flex size-7 shrink-0 items-center justify-center rounded-md border">
+                                <UsersIcon className="text-muted-foreground size-3.5" />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="text-foreground block truncate text-xs font-medium">
+                                  {cohort.name}
+                                </span>
+                                <span className="text-muted-foreground block text-[11px]">
+                                  {cohort._count.enrollments} siswa ·{" "}
+                                  {cohort._count.meetings} meeting
+                                </span>
+                              </span>
+                              <StatusChip status={cohort.status} />
+                            </Link>
+                          </li>
+                        ))}
+                        {course._count.cohorts > 3 ? (
+                          <li>
+                            <Link
+                              href={`${root}/courses/${course.id}/cohorts`}
+                              className="text-muted-foreground hover:text-foreground block px-2 py-2 text-xs font-medium transition-colors"
+                            >
+                              +{course._count.cohorts - 3} Group belajar lainnya
+                            </Link>
+                          </li>
+                        ) : null}
+                      </ul>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        <Card className="rounded-lg">
+          <CardHeader>
+            <div>
+              <CardTitle className={cn(headline, "text-lg font-medium")}>
+                Mulai cepat
+              </CardTitle>
+              <CardDescription>
+                Jalan pintas untuk pekerjaan pengajar yang paling umum.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {canCreateCourse ? (
+              <QuickAction
+                icon={BookOpenIcon}
+                title="Buat course baru"
+                description="Mulai susun kurikulum dan Group belajar."
+                href={`${root}/courses/new`}
+              />
+            ) : null}
+            <QuickAction
+              icon={FileTextIcon}
+              title="Tulis materi"
+              description="Siapkan bahan ajar yang dapat dipakai di course."
+              href={`${root}/library/materials/new`}
+            />
+            <QuickAction
+              icon={ClipboardCheckIcon}
+              title="Buka antrean review"
+              description={`${pendingReviews} attempt menunggu perhatian Anda.`}
+              href={`${root}/reviews`}
+            />
+            <QuickAction
+              icon={LibraryIcon}
+              title="Kelola bahan ajar"
+              description="Temukan materi, kosakata, dan tugas Anda."
+              href={`${root}/library/materials`}
+            />
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card className="rounded-lg">
+        <CardHeader>
+          <div>
+            <CardTitle className={cn(headline, "text-lg font-medium")}>
+              Antrean review Anda
+            </CardTitle>
+            <CardDescription>
+              Jawaban tulisan dari course dan Group belajar yang Anda tangani.
+            </CardDescription>
+          </div>
+          <CardAction>
+            <TextAction href={`${root}/reviews`}>Buka antrean</TextAction>
+          </CardAction>
+        </CardHeader>
+        {reviewItems.length === 0 ? (
+          <CardContent>
+            <EmptyState
+              icon={ClipboardCheckIcon}
+              title="Semua sudah diperiksa"
+              description="Belum ada jawaban tulisan yang menunggu penilaian Anda."
+            />
+          </CardContent>
+        ) : (
+          <ul className="divide-border grid divide-y md:grid-cols-2 md:divide-x md:divide-y-0">
+            {reviewItems.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={`${root}/reviews`}
+                  className="group/row hover:bg-muted/50 flex items-center gap-4 px-4 py-4 transition-colors"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="text-foreground block truncate text-sm font-medium">
+                      {item.user.name}
+                    </span>
+                    <span className="text-muted-foreground mt-0.5 block truncate text-xs">
+                      {item.assessment.title}
+                    </span>
+                  </span>
+                  <ArrowUpRightIcon className="text-muted-foreground group-hover/row:text-foreground size-4 shrink-0 transition-all group-hover/row:translate-x-0.5 group-hover/row:-translate-y-0.5" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 export default async function DashboardPage({
   params,
 }: {
@@ -214,8 +555,16 @@ export default async function DashboardPage({
   const { organizationId: organizationSlug } = await params;
   const membership = await requireOrganizationRole(
     organizationSlug,
-    organizationManagerRoles,
+    organizationRoles,
   );
+  if (membership.role === "TEACHER") {
+    return (
+      <TeacherDashboard
+        membership={membership}
+        organizationSlug={organizationSlug}
+      />
+    );
+  }
   const { organizationId, organization, role } = membership;
 
   const [analytics, courses, cohortsPage, reviewQueue] = await Promise.all([

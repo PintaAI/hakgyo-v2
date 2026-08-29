@@ -18,6 +18,7 @@ import {
   requireCoursePermission,
   requireOrganizationPermission,
 } from "~/server/authorization";
+import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
 
 const id = z.string().min(1);
 const json = z.unknown().transform((value) => value as Prisma.InputJsonValue);
@@ -303,6 +304,45 @@ export const assessmentRouter = createTRPCRouter({
       await ctx.db.assessmentOption.delete({ where: { id: input.optionId } });
       return { deleted: true };
     }),
+  attachAsset: protectedProcedure
+    .input(z.object({ assessmentId: id, assetId: id }))
+    .mutation(async ({ ctx, input }) => {
+      const assessment = await requireAssessmentManagement(
+        ctx.db,
+        input.assessmentId,
+        ctx.actorUserId,
+      );
+      const asset = await ctx.db.asset.findFirst({
+        where: {
+          id: input.assetId,
+          organizationId: assessment.organizationId,
+          confirmedAt: { not: null },
+          deletedAt: null,
+        },
+        select: { id: true },
+      });
+      if (!asset) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Asset must be confirmed and belong to the assessment organization",
+        });
+      }
+      return ctx.db.assessmentAsset.upsert({
+        where: {
+          assessmentId_assetId: {
+            assessmentId: input.assessmentId,
+            assetId: input.assetId,
+          },
+        },
+        create: {
+          assessmentId: input.assessmentId,
+          assetId: input.assetId,
+          organizationId: assessment.organizationId,
+        },
+        update: {},
+      });
+    }),
   getForCourseItem: protectedProcedure
     .input(z.object({ courseItemId: id, attemptId: id.optional() }))
     .query(async ({ ctx, input }) => {
@@ -327,6 +367,7 @@ export const assessmentRouter = createTRPCRouter({
         where: { id: input.courseItemId },
         select: {
           id: true,
+          module: { select: { courseId: true } },
           assessment: {
             select: {
               id: true,
@@ -360,8 +401,23 @@ export const assessmentRouter = createTRPCRouter({
       if (item?.assessment?.status !== "PUBLISHED") {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
+      const now = new Date();
+      const eligibleCohorts = await ctx.db.cohortEnrollment.findMany({
+        where: {
+          userId: ctx.actorUserId,
+          status: { in: [...activeEnrollmentStatuses] },
+          cohort: {
+            courseId: item.module.courseId,
+            status: { in: [...accessGrantingCohortStatuses] },
+            OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+          },
+        },
+        orderBy: { enrolledAt: "desc" },
+        select: { cohort: { select: { id: true, name: true } } },
+      });
       return {
         ...item.assessment,
+        eligibleCohorts: eligibleCohorts.map(({ cohort }) => cohort),
         questions: orderAssessmentQuestions(
           item.assessment.questions,
           attempt?.shuffleSeed ?? attempt?.id ?? input.attemptId,
@@ -402,6 +458,8 @@ export const assessmentRouter = createTRPCRouter({
               status: { in: [...activeEnrollmentStatuses] },
               cohort: {
                 courseId: item.module.courseId,
+                status: { in: [...accessGrantingCohortStatuses] },
+                OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
                 ...(input.cohortId ? { id: input.cohortId } : {}),
               },
             },
@@ -820,6 +878,7 @@ export const assessmentRouter = createTRPCRouter({
           startedAt: true,
           submittedAt: true,
           gradedAt: true,
+          cohort: { select: { id: true, name: true } },
           answers: {
             select: {
               id: true,

@@ -688,6 +688,7 @@ model Assessment {
   courseItems           CourseItem[]
   attempts              AssessmentAttempt[]
   materialRequirements  MaterialRequirement[]
+  assets                AssessmentAsset[]
 
   @@unique([id, organizationId])
   @@index([organizationId, status])
@@ -911,12 +912,24 @@ model Asset {
   organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   uploadedBy        User?             @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   materials         MaterialAsset[]
+  assessments       AssessmentAsset[]
   vocabularyEntries VocabularyEntry[] @relation("VocabularyEntryAudio")
   vocabularyEntryImages VocabularyEntry[] @relation("VocabularyEntryImage")
 
   @@unique([id, organizationId])
   @@index([organizationId, deletedAt])
   @@index([uploadedByUserId, deletedAt])
+}
+
+model AssessmentAsset {
+  assessmentId   String
+  assetId        String
+  organizationId String
+  assessment     Assessment @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  asset          Asset      @relation(fields: [assetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([assessmentId, assetId])
+  @@index([assetId])
 }
 
 model MaterialAsset {

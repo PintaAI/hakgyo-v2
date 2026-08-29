@@ -75,6 +75,10 @@ import {
 } from "~/components/ui/table";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import {
+  formatZonedDateTimeInput,
+  parseZonedDateTimeInput,
+} from "~/lib/zoned-date-time";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Cohort = RouterOutputs["cohort"]["get"];
@@ -119,6 +123,30 @@ const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+function isValidTimeZone(value: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function formatMeetingDateTime(value: Date, timeZone: string) {
+  try {
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone,
+    }).format(value);
+  } catch {
+    return dateTimeFormatter.format(value);
+  }
+}
 
 function getErrorMessage(error: unknown) {
   if (
@@ -1120,8 +1148,8 @@ function Meetings({
                     {meeting.title}
                   </CardTitle>
                   <CardDescription>
-                    {dateTimeFormatter.format(meeting.startsAt)} ·{" "}
-                    {meeting.durationMinutes} menit
+                    {formatMeetingDateTime(meeting.startsAt, meeting.timezone)}{" "}
+                    · {meeting.durationMinutes} menit · {meeting.timezone}
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -1208,17 +1236,18 @@ function MeetingForm({
   onOpenChange: (open: boolean) => void;
 }) {
   const utils = api.useUtils();
+  const initialTimezone =
+    meeting?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [title, setTitle] = useState(meeting?.title ?? "");
   const [agenda, setAgenda] = useState(meeting?.agenda ?? "");
   const [startsAt, setStartsAt] = useState(
-    meeting ? toLocalInput(meeting.startsAt) : "",
+    meeting ? formatZonedDateTimeInput(meeting.startsAt, initialTimezone) : "",
   );
   const [duration, setDuration] = useState(
     String(meeting?.durationMinutes ?? 60),
   );
-  const [timezone, setTimezone] = useState(
-    meeting?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
-  );
+  const [timezone, setTimezone] = useState(initialTimezone);
+  const timezoneValid = isValidTimeZone(timezone);
   const create = api.cohort.createMeeting.useMutation();
   const update = api.cohort.updateMeeting.useMutation();
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -1228,7 +1257,7 @@ function MeetingForm({
         cohortId,
         title: title.trim(),
         agenda: agenda.trim() || null,
-        startsAt: new Date(startsAt),
+        startsAt: parseZonedDateTimeInput(startsAt, timezone),
         durationMinutes: Number(duration),
         timezone,
       };
@@ -1305,7 +1334,19 @@ function MeetingForm({
                 required
                 value={timezone}
                 onChange={(event) => setTimezone(event.target.value)}
+                aria-invalid={!timezoneValid}
               />
+              {!timezoneValid ? (
+                <p className="text-destructive text-xs">
+                  Timezone tidak valid. Contoh: Asia/Jakarta, Asia/Makassar,
+                  Asia/Jayapura.
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  Contoh: Asia/Jakarta. Waktu akan disimpan sesuai timezone
+                  ini.
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter className="mt-5">
@@ -1318,7 +1359,7 @@ function MeetingForm({
             </Button>
             <Button
               type="submit"
-              disabled={pending || !title.trim() || !startsAt}
+              disabled={pending || !title.trim() || !startsAt || !timezoneValid}
             >
               {pending ? (
                 <LoaderCircleIcon className="animate-spin" />
@@ -1627,9 +1668,4 @@ function toDateInput(value: Date | null) {
         .toISOString()
         .slice(0, 10)
     : "";
-}
-function toLocalInput(value: Date) {
-  return new Date(value.getTime() - value.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
 }

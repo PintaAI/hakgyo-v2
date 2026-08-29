@@ -50,7 +50,7 @@ const defaultPreferences = {
   color: "neutral",
   density: "comfortable",
   font: "geist",
-  radius: "default",
+  radius: "large",
   size: "default",
 } as const;
 
@@ -58,7 +58,7 @@ type Preferences = {
   color: "neutral" | "blue" | "green" | "orange";
   density: "compact" | "comfortable" | "spacious";
   font: "geist" | "inter" | "poppins" | "merriweather" | "jetbrains";
-  radius: "none" | "small" | "default" | "large";
+  radius: "none" | "small" | "large";
   size: "small" | "default" | "large";
 };
 
@@ -85,9 +85,7 @@ function isPreferences(value: unknown): value is Preferences {
     ["geist", "inter", "poppins", "merriweather", "jetbrains"].includes(
       String(preferences.font),
     ) &&
-    ["none", "small", "default", "large"].includes(
-      String(preferences.radius),
-    ) &&
+    ["none", "small", "large"].includes(String(preferences.radius)) &&
     ["small", "default", "large"].includes(String(preferences.size))
   );
 }
@@ -106,6 +104,14 @@ function readPreferences(): Preferences {
         };
         const legacyFont = legacyFonts[String(parsed.font)];
         if (legacyFont) parsed.font = legacyFont;
+      }
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "radius" in parsed &&
+        parsed.radius === "default"
+      ) {
+        parsed.radius = "large";
       }
       if (isPreferences(parsed)) return parsed;
     }
@@ -409,11 +415,10 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
                     Pilih seberapa tajam atau lembut permukaan terasa.
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-3 gap-2">
                   {[
                     { value: "none", label: "Kotak", radius: "rounded-none" },
                     { value: "small", label: "Halus", radius: "rounded-sm" },
-                    { value: "default", label: "Lembut", radius: "rounded-lg" },
                     { value: "large", label: "Bulat", radius: "rounded-2xl" },
                   ].map((option) => (
                     <ChoiceButton

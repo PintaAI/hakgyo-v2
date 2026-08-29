@@ -7,7 +7,14 @@ const now = new Date("2026-08-19T00:00:00.000Z");
 
 function database(input: {
   enrollment?: {
-    cohort?: { id: string; name: string } | null;
+    cohort?: {
+      id: string;
+      name: string;
+      status: "OPEN" | "IN_PROGRESS";
+      startsAt: Date | null;
+      endsAt: Date | null;
+      _count: { enrollments: number };
+    } | null;
     maxUses?: number | null;
     useCount?: number;
   };
@@ -41,7 +48,25 @@ function database(input: {
                 course: {
                   id: "course-1",
                   title: "Korean Basics",
+                  description: "Learn Korean from the basics.",
+                  thumbnailUrl: "https://example.com/course.jpg",
                   organization: { name: "Hakgyo", slug: "hakgyo" },
+                  modules: [
+                    {
+                      id: "module-1",
+                      title: "Introduction",
+                      items: [
+                        {
+                          id: "item-1",
+                          type: "MATERIAL",
+                          material: { title: "Hangul basics" },
+                          assessment: null,
+                          vocabularySet: null,
+                        },
+                      ],
+                    },
+                  ],
+                  _count: { enrollments: 12 },
                 },
                 cohort: input.enrollment.cohort ?? null,
               }
@@ -76,15 +101,36 @@ describe("resolveUnifiedInvite", () => {
     );
     const cohort = await resolveUnifiedInvite(
       database({
-        enrollment: { cohort: { id: "cohort-1", name: "August Group" } },
+        enrollment: {
+          cohort: {
+            id: "cohort-1",
+            name: "August Group",
+            status: "OPEN",
+            startsAt: null,
+            endsAt: null,
+            _count: { enrollments: 7 },
+          },
+        },
       }),
       "cohort-token-long-enough",
       now,
     );
-    expect(course).toMatchObject({ type: "COURSE", course: { id: "course-1" } });
+    expect(course).toMatchObject({
+      type: "COURSE",
+      course: { id: "course-1" },
+    });
     expect(cohort).toMatchObject({
       type: "COHORT",
       cohort: { id: "cohort-1" },
+      joinedCount: 7,
+    });
+    expect(course).toMatchObject({
+      joinedCount: 12,
+      course: {
+        moduleCount: 1,
+        itemCount: 1,
+        items: [{ title: "Hangul basics", moduleTitle: "Introduction" }],
+      },
     });
   });
 

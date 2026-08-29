@@ -21,7 +21,8 @@ const fields = z.object({
     .trim()
     .min(2)
     .max(100)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
   description: z.string().max(10000).nullable().optional(),
   thumbnailUrl: z.string().url().max(2048).nullable().optional(),
   price: z.number().int().nonnegative().max(2_147_483_647).optional(),
@@ -35,6 +36,42 @@ const fields = z.object({
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
   progressionMode: z.enum(["OPEN", "SEQUENTIAL"]).optional(),
 });
+
+function slugBase(title: string) {
+  return (
+    title
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 82) || "course"
+  );
+}
+
+async function uniqueSlug(
+  organizationId: string,
+  title: string,
+  excludeCourseId?: string,
+) {
+  const base = slugBase(title);
+  let candidate = base;
+  let suffix = 2;
+  while (
+    await db.course.findFirst({
+      where: {
+        organizationId,
+        slug: candidate,
+        ...(excludeCourseId ? { id: { not: excludeCourseId } } : {}),
+      },
+      select: { id: true },
+    })
+  ) {
+    candidate = `${base.slice(0, 100 - String(suffix).length - 1)}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
 
 export const courseRouter = createTRPCRouter({
   listPublished: publicProcedure
@@ -376,7 +413,10 @@ export const courseRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "Owner must belong to the organization",
         });
-      return db.course.create({ data: input });
+      const courseData = { ...input };
+      delete courseData.slug;
+      const slug = await uniqueSlug(input.organizationId, input.title);
+      return db.course.create({ data: { ...courseData, slug } });
     }),
   update: protectedProcedure
     .input(
@@ -390,7 +430,19 @@ export const courseRouter = createTRPCRouter({
         permission: "course.manage",
         userId: ctx.actorUserId,
       });
-      const { courseId, ...data } = input;
+      const inputData = { ...input };
+      delete inputData.slug;
+      const { courseId, ...dataWithoutCourseId } = inputData;
+      const data = inputData.title
+        ? {
+            ...dataWithoutCourseId,
+            slug: await uniqueSlug(
+              course.organizationId,
+              inputData.title,
+              courseId,
+            ),
+          }
+        : dataWithoutCourseId;
       if (data.ownerMembershipId) {
         const owner = await db.organizationMember.findFirst({
           where: {

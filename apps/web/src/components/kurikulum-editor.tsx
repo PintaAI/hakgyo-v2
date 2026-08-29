@@ -118,6 +118,19 @@ function resourceTitle(
     ?.title;
 }
 
+function resourceHref(item: CourseItem, organizationSlug: string) {
+  if (item.type === "MATERIAL" && item.materialId) {
+    return `/workspace/${organizationSlug}/library/materials/${item.materialId}`;
+  }
+  if (item.type === "ASSESSMENT" && item.assessmentId) {
+    return `/workspace/${organizationSlug}/library/assessments/${item.assessmentId}`;
+  }
+  if (item.type === "VOCABULARY_SET" && item.vocabularySetId) {
+    return `/workspace/${organizationSlug}/library/vocabulary/${item.vocabularySetId}`;
+  }
+  return null;
+}
+
 function getErrorMessage(error: unknown) {
   if (
     typeof error === "object" &&
@@ -424,6 +437,7 @@ export function KurikulumEditor({
                   isReordering={isReordering}
                   materials={materials}
                   assessments={assessments}
+                  organizationSlug={organizationSlug}
                   vocabularySets={vocabularySets}
                   onAddItem={() => setItemModule(module)}
                   onDeleteItem={(item) =>
@@ -514,6 +528,7 @@ function SortableModuleCard({
   isItemUpdatePending,
   materials,
   assessments,
+  organizationSlug,
   vocabularySets,
   onAddItem,
   onDeleteItem,
@@ -527,6 +542,7 @@ function SortableModuleCard({
   isItemUpdatePending: boolean;
   materials: Material[];
   assessments: Assessment[];
+  organizationSlug: string;
   vocabularySets: VocabularySet[];
   onAddItem: () => void;
   onDeleteItem: (item: CourseItem) => void;
@@ -617,6 +633,7 @@ function SortableModuleCard({
                 moduleId={module.id}
                 isPending={isItemUpdatePending}
                 isReordering={isReordering}
+                href={resourceHref(item, organizationSlug)}
                 title={
                   resourceTitle(item, materials, assessments, vocabularySets) ??
                   "Resource tidak tersedia"
@@ -647,6 +664,7 @@ function SortableItemRow({
   moduleId,
   isPending,
   isReordering,
+  href,
   title,
   onTogglePublished,
   onDeleteItem,
@@ -655,6 +673,7 @@ function SortableItemRow({
   moduleId: string;
   isPending: boolean;
   isReordering: boolean;
+  href: string | null;
   title: string;
   onTogglePublished: (item: CourseItem, checked: boolean) => void;
   onDeleteItem: () => void;
@@ -694,15 +713,26 @@ function SortableItemRow({
       >
         <GripVerticalIcon className="size-4" />
       </button>
-      <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
-        <Icon className="text-muted-foreground size-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{title}</span>
-        <span className="text-muted-foreground mt-0.5 block text-[11px] tracking-wide uppercase">
-          {meta.label}
+      <Link
+        href={href ?? "#"}
+        aria-disabled={!href}
+        tabIndex={href ? undefined : -1}
+        className={cn(
+          "flex min-w-0 flex-1 items-center gap-3 rounded-md",
+          href && "hover:bg-muted/60 -my-1 px-1 py-1 transition-colors",
+          !href && "pointer-events-none",
+        )}
+      >
+        <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
+          <Icon className="text-muted-foreground size-4" />
         </span>
-      </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{title}</span>
+          <span className="text-muted-foreground mt-0.5 block text-[11px] tracking-wide uppercase">
+            {meta.label}
+          </span>
+        </span>
+      </Link>
       <div className="flex shrink-0 items-center gap-1">
         <div className="mr-1 hidden items-center gap-2 sm:flex">
           <Label

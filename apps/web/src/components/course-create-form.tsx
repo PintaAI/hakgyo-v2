@@ -19,17 +19,6 @@ import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
-function slugify(value: string) {
-  const base = value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 82);
-  const suffix = Date.now().toString(36).slice(-6);
-  return `${base || "course"}-${suffix}`;
-}
 
 function getErrorMessage(error: unknown) {
   if (
@@ -74,7 +63,6 @@ export function CourseCreateForm({
         organizationId,
         ownerMembershipId,
         title: cleanTitle,
-        slug: slugify(cleanTitle),
         description: description.trim() || null,
       });
       await utils.course.list.invalidate({ organizationId });

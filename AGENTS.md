@@ -83,6 +83,11 @@ bun --cwd apps/mobile run typecheck
 - The entry point is `apps/mobile/index.ts`, which registers `apps/mobile/App.tsx` with Expo.
 - Import `global.css` in the app entry and use NativeWind classes for styling unless a native API requires a `StyleSheet`.
 - Keep the `hakgyo` deep-link scheme aligned between `apps/mobile/app.json`, the Expo auth client, and Better Auth `trustedOrigins`.
+- Native tabs use a nested `Stack` layout per tab. Keep tab root headers hidden by default; enable a header only for a tab that needs one.
+- The Home tab uses an iOS-only transparent large-title header with `scrollEdgeEffects: { top: "soft" }` for iOS 26+ Liquid Glass behavior. Do not add `headerBlurEffect` alongside `scrollEdgeEffects`, because Expo documents that the effects can overlap.
+- For transparent native headers, put the first `ScrollView` directly in the screen and use `contentInsetAdjustmentBehavior="automatic"`. Avoid manual `useSafeAreaInsets()` padding, which can double-apply navigator insets.
+- Native tab tinting should use the semantic `primary` color family (`background`, `primary`, `foreground`, `border`), not the sidebar palette.
+- Wrap the root native navigator in Expo Router’s `ThemeProvider` using `DarkTheme`/`DefaultTheme` selected from `useColorScheme()`. This prevents white flashes during iOS 26 native-tab transitions and Liquid Glass header rendering.
 - Validate UI changes on both iOS and Android when platform-specific behavior is involved.
 
 ## Change and Verification Guidelines

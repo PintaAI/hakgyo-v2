@@ -16,14 +16,25 @@ import {
   RotateCcwIcon,
   SendIcon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
+import { DynamicBlockNoteEditor } from "~/components/editor";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
+import { Label } from "~/components/ui/label";
 import { Progress } from "~/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import { toBlockNoteDocument } from "~/lib/blocknote/document";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
@@ -34,19 +45,15 @@ type Answer = {
   optionIds: string[];
 };
 
-function jsonText(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean")
-    return String(value);
-  if (Array.isArray(value))
-    return value.map(jsonText).filter(Boolean).join(" ");
-  if (value && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    if (record.text) return jsonText(record.text);
-    if (record.content) return jsonText(record.content);
-    return Object.values(record).map(jsonText).filter(Boolean).join(" ");
-  }
-  return "";
+function RichAssessmentContent({ value }: { value: unknown }) {
+  const { resolvedTheme } = useTheme();
+  return (
+    <DynamicBlockNoteEditor
+      editable={false}
+      initialContent={toBlockNoteDocument(value)}
+      theme={resolvedTheme === "dark" ? "dark" : "light"}
+    />
+  );
 }
 
 export function AssessmentIntroduction({
@@ -60,10 +67,20 @@ export function AssessmentIntroduction({
 }) {
   const router = useRouter();
   const start = api.assessment.startAttempt.useMutation();
+  const [selectedCohortId, setSelectedCohortId] = useState<string | undefined>(
+    undefined,
+  );
+  const requiresCohortSelection = assessment.eligibleCohorts.length > 1;
+  const cohortId =
+    assessment.eligibleCohorts.length === 1
+      ? assessment.eligibleCohorts[0]?.id
+      : assessment.eligibleCohorts.length === 0
+        ? undefined
+        : selectedCohortId;
 
   const startAssessment = async () => {
     try {
-      const attempt = await start.mutateAsync({ courseItemId });
+      const attempt = await start.mutateAsync({ courseItemId, cohortId });
       router.push(
         `/learn/${courseId}/items/${courseItemId}/attempts/${attempt.id}`,
       );
@@ -130,8 +147,53 @@ export function AssessmentIntroduction({
           {assessment.instructions ? (
             <div className="bg-muted/30 mt-7 rounded-md border p-5">
               <p className="font-semibold">Petunjuk pengerjaan</p>
-              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                {jsonText(assessment.instructions)}
+              <div className="mt-2 overflow-hidden text-sm">
+                <RichAssessmentContent value={assessment.instructions} />
+              </div>
+            </div>
+          ) : null}
+
+          {requiresCohortSelection ? (
+            <div className="mt-7 max-w-sm space-y-2">
+              <Label htmlFor="assessment-cohort">Group belajar</Label>
+              <Select
+                value={selectedCohortId}
+                onValueChange={(value) =>
+                  setSelectedCohortId(value ?? undefined)
+                }
+              >
+                <SelectTrigger id="assessment-cohort" className="w-full">
+                  <SelectValue placeholder="Pilih group belajar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assessment.eligibleCohorts.map((cohort) => (
+                    <SelectItem key={cohort.id} value={cohort.id}>
+                      {cohort.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Hasil assessment akan dicatat untuk group yang dipilih.
+              </p>
+            </div>
+          ) : assessment.eligibleCohorts.length === 1 ? (
+            <div className="bg-muted/30 mt-7 rounded-md border p-4">
+              <p className="text-sm">
+                Tercatat untuk group:{" "}
+                <span className="font-semibold">
+                  {assessment.eligibleCohorts[0]?.name}
+                </span>
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Hasil assessment akan dicatat untuk group ini.
+              </p>
+            </div>
+          ) : assessment.eligibleCohorts.length === 0 ? (
+            <div className="bg-muted/30 mt-7 rounded-md border p-4">
+              <p className="text-muted-foreground text-sm">
+                Kamu belum terdaftar di group mana pun untuk course ini. Hasil
+                tetap akan disimpan tanpa terikat group.
               </p>
             </div>
           ) : null}
@@ -143,7 +205,11 @@ export function AssessmentIntroduction({
             </p>
             <Button
               onClick={startAssessment}
-              disabled={start.isPending || !assessment.questions.length}
+              disabled={
+                start.isPending ||
+                !assessment.questions.length ||
+                (requiresCohortSelection && !cohortId)
+              }
               size="lg"
               className="px-5"
             >
@@ -226,7 +292,12 @@ export function AssessmentAttempt({
       let savedLate = false;
       if (payload.length) {
         try {
-          await save.mutateAsync({ attemptId: attempt.id, answers: payload });
+          for (let index = 0; index < payload.length; index += 200) {
+            await save.mutateAsync({
+              attemptId: attempt.id,
+              answers: payload.slice(index, index + 200),
+            });
+          }
         } catch (error) {
           const code =
             typeof error === "object" &&
@@ -316,9 +387,12 @@ export function AssessmentAttempt({
               <RotateCcwIcon className="size-7" />
             )}
           </span>
-          <Badge variant="secondary" className="mt-6">
-            Attempt #{attempt.attemptNumber}
-          </Badge>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Badge variant="secondary">Attempt #{attempt.attemptNumber}</Badge>
+            {attempt.cohort ? (
+              <Badge variant="outline">{attempt.cohort.name}</Badge>
+            ) : null}
+          </div>
           <h1 className="mt-3 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight">
             {attempt.status === "IN_REVIEW"
               ? "Jawaban sedang diperiksa"
@@ -380,9 +454,17 @@ export function AssessmentAttempt({
         </Link>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{assessment.title}</p>
-          <p className="text-muted-foreground text-xs">
-            Attempt #{attempt.attemptNumber}
-          </p>
+          <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+            <span>Attempt #{attempt.attemptNumber}</span>
+            {attempt.cohort ? (
+              <>
+                <span>·</span>
+                <Badge variant="outline" className="text-xs font-normal">
+                  {attempt.cohort.name}
+                </Badge>
+              </>
+            ) : null}
+          </div>
         </div>
         {secondsLeft !== null ? (
           <div
@@ -405,9 +487,9 @@ export function AssessmentAttempt({
               {question.points} poin
             </span>
           </div>
-          <h1 className="mt-6 font-[family-name:var(--font-hanken-grotesk)] text-xl leading-relaxed font-medium md:text-2xl">
-            {jsonText(question.prompt)}
-          </h1>
+          <div className="mt-6 overflow-hidden text-xl leading-relaxed font-medium md:text-2xl">
+            <RichAssessmentContent value={question.prompt} />
+          </div>
           {question.type === "MULTIPLE_CHOICE" ? (
             <p className="text-muted-foreground mt-2 text-sm">
               Pilih semua jawaban yang benar.
@@ -434,10 +516,10 @@ export function AssessmentAttempt({
               question.options.map((option, index) => {
                 const selected = answer?.optionIds.includes(option.id) ?? false;
                 return (
-                  <label
+                  <div
                     key={option.id}
                     className={cn(
-                      "flex cursor-pointer items-center gap-4 rounded-md border p-4 transition-colors",
+                      "flex items-center gap-4 rounded-md border p-4 transition-colors",
                       selected
                         ? "border-foreground bg-muted/60"
                         : "hover:bg-muted/50",
@@ -445,6 +527,7 @@ export function AssessmentAttempt({
                   >
                     {question.type === "MULTIPLE_CHOICE" ? (
                       <Checkbox
+                        aria-label={`Pilih opsi ${index + 1}`}
                         checked={selected}
                         onCheckedChange={() =>
                           updateOptions(question.id, option.id, true)
@@ -452,6 +535,7 @@ export function AssessmentAttempt({
                       />
                     ) : (
                       <input
+                        aria-label={`Pilih opsi ${index + 1}`}
                         type="radio"
                         name={question.id}
                         checked={selected}
@@ -464,10 +548,10 @@ export function AssessmentAttempt({
                     <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
                       {String.fromCharCode(65 + index)}
                     </span>
-                    <span className="leading-relaxed">
-                      {jsonText(option.content)}
-                    </span>
-                  </label>
+                    <div className="min-w-0 flex-1 overflow-hidden leading-relaxed">
+                      <RichAssessmentContent value={option.content} />
+                    </div>
+                  </div>
                 );
               })
             )}

@@ -412,7 +412,7 @@ async function main() {
         objectKey: "vocab-images/annyeonghaseyo.jpg",
         fileName: "annyeonghaseyo.jpg",
         contentType: "image/jpeg",
-        size: 0,
+        size: 24_576,
       },
     },
     {
@@ -424,7 +424,7 @@ async function main() {
         objectKey: "vocab-images/gamsahamnida.jpg",
         fileName: "gamsahamnida.jpg",
         contentType: "image/jpeg",
-        size: 0,
+        size: 24_576,
       },
     },
     {
@@ -436,7 +436,7 @@ async function main() {
         objectKey: "vocab-images/annyeonghi-gaseyo.jpg",
         fileName: "annyeonghi-gaseyo.jpg",
         contentType: "image/jpeg",
-        size: 0,
+        size: 24_576,
       },
     },
   ];

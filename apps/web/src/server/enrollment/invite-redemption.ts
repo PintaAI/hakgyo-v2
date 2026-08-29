@@ -7,9 +7,19 @@ export async function consumeEnrollmentInvite(
   token: string,
   now: Date,
 ) {
-  const invite = await tx.enrollmentInvite.findUnique({ where: { token } });
+  const invite = await tx.enrollmentInvite.findUnique({
+    where: { token },
+    include: { cohort: { select: { status: true, endsAt: true } } },
+  });
   if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
-  if (invite.revokedAt || (invite.expiresAt && invite.expiresAt <= now)) {
+  if (
+    invite.revokedAt ||
+    (invite.expiresAt && invite.expiresAt <= now) ||
+    (invite.cohort &&
+      invite.cohort.status !== "OPEN" &&
+      invite.cohort.status !== "IN_PROGRESS") ||
+    (invite.cohort?.endsAt && invite.cohort.endsAt <= now)
+  ) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Invite is no longer valid",
@@ -66,21 +76,12 @@ export async function redeemEnrollmentInvite(
 
   if (existing?.status === "ACTIVE" || existing?.status === "COMPLETED") {
     if (invite.cohortId) {
-      await tx.courseEnrollment.upsert({
-        where: {
-          courseId_userId: {
-            courseId: invite.courseId,
-            userId: input.userId,
-          },
-        },
-        create: {
-          courseId: invite.courseId,
-          userId: input.userId,
-          status: "ACTIVE",
-          source: "INVITE",
-        },
-        update: { status: "ACTIVE", completedAt: null },
-      });
+      await grantCohortCourseAccess(
+        tx,
+        invite.courseId,
+        input.userId,
+        input.now,
+      );
     }
     return {
       type: invite.cohortId ? ("COHORT" as const) : ("COURSE" as const),
@@ -89,22 +90,8 @@ export async function redeemEnrollmentInvite(
     };
   }
 
-  await tx.courseEnrollment.upsert({
-    where: {
-      courseId_userId: {
-        courseId: invite.courseId,
-        userId: input.userId,
-      },
-    },
-    create: {
-      courseId: invite.courseId,
-      userId: input.userId,
-      status: "ACTIVE",
-      source: "INVITE",
-    },
-    update: { status: "ACTIVE", completedAt: null },
-  });
   if (invite.cohortId) {
+    await grantCohortCourseAccess(tx, invite.courseId, input.userId, input.now);
     await tx.cohortEnrollment.upsert({
       where: {
         cohortId_userId: {
@@ -120,6 +107,27 @@ export async function redeemEnrollmentInvite(
       },
       update: { status: "ACTIVE", completedAt: null },
     });
+  } else {
+    await tx.courseEnrollment.upsert({
+      where: {
+        courseId_userId: {
+          courseId: invite.courseId,
+          userId: input.userId,
+        },
+      },
+      create: {
+        courseId: invite.courseId,
+        userId: input.userId,
+        status: "ACTIVE",
+        source: "INVITE",
+      },
+      update: {
+        status: "ACTIVE",
+        source: "INVITE",
+        completedAt: null,
+        expiresAt: null,
+      },
+    });
   }
 
   return {
@@ -127,4 +135,38 @@ export async function redeemEnrollmentInvite(
     courseId: invite.courseId,
     cohortId: invite.cohortId,
   };
+}
+
+async function grantCohortCourseAccess(
+  tx: Prisma.TransactionClient,
+  courseId: string,
+  userId: string,
+  now: Date,
+) {
+  const enrollment = await tx.courseEnrollment.findUnique({
+    where: { courseId_userId: { courseId, userId } },
+    select: { id: true, status: true, source: true, expiresAt: true },
+  });
+  const hasIndependentAccess =
+    enrollment &&
+    enrollment.source !== "COHORT" &&
+    (enrollment.status === "ACTIVE" || enrollment.status === "COMPLETED") &&
+    (enrollment.expiresAt === null || enrollment.expiresAt > now);
+  if (hasIndependentAccess) return;
+
+  await tx.courseEnrollment.upsert({
+    where: { courseId_userId: { courseId, userId } },
+    create: {
+      courseId,
+      userId,
+      status: "ACTIVE",
+      source: "COHORT",
+    },
+    update: {
+      status: "ACTIVE",
+      source: "COHORT",
+      completedAt: null,
+      expiresAt: null,
+    },
+  });
 }

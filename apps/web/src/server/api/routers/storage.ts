@@ -1,4 +1,11 @@
 import {
+  createCourseThumbnailKey,
+  courseThumbnailContentTypes,
+  getCourseThumbnailPath,
+  MAX_COURSE_THUMBNAIL_SIZE,
+  parseCourseThumbnailKey,
+} from "~/lib/course-thumbnail";
+import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
@@ -26,6 +33,7 @@ import {
 } from "~/lib/profile-image";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+  requireCoursePermission,
   requireCourseItemAccess,
   requireOrganizationPermission,
 } from "~/server/authorization";
@@ -59,6 +67,100 @@ const getExpectedSize = (key: string) => {
 };
 
 export const storageRouter = createTRPCRouter({
+  createCourseThumbnailUploadUrl: protectedProcedure
+    .input(
+      z.object({
+        courseId: z.string().min(1),
+        contentType: z.enum(courseThumbnailContentTypes),
+        fileSize: z.number().int().positive().max(MAX_COURSE_THUMBNAIL_SIZE),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const course = await requireCoursePermission({
+        courseId: input.courseId,
+        permission: "course.manage",
+        userId: ctx.actorUserId,
+      });
+      const key = createCourseThumbnailKey(
+        input.courseId,
+        input.fileSize,
+        input.contentType,
+      );
+      const uploadUrl = await getSignedUrl(
+        r2,
+        new PutObjectCommand({
+          Bucket: r2Bucket,
+          Key: key,
+          ContentType: input.contentType,
+        }),
+        { expiresIn: SIGNED_URL_TTL_SECONDS },
+      );
+      return {
+        courseId: course.id,
+        key,
+        uploadUrl,
+        expiresIn: SIGNED_URL_TTL_SECONDS,
+        headers: { "Content-Type": input.contentType },
+      };
+    }),
+
+  confirmCourseThumbnailUpload: protectedProcedure
+    .input(z.object({ courseId: z.string().min(1), key: documentKeySchema }))
+    .mutation(async ({ ctx, input }) => {
+      await requireCoursePermission({
+        courseId: input.courseId,
+        permission: "course.manage",
+        userId: ctx.actorUserId,
+      });
+      const parsed = parseCourseThumbnailKey(input.key, input.courseId);
+      if (!parsed) throw new TRPCError({ code: "BAD_REQUEST" });
+      let object;
+      try {
+        object = await r2.send(
+          new HeadObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+        );
+      } catch (cause) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Uploaded thumbnail was not found",
+          cause,
+        });
+      }
+      if (
+        object.ContentLength !== parsed.size ||
+        object.ContentType !== parsed.contentType
+      ) {
+        await r2.send(
+          new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+        );
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Uploaded thumbnail does not match the signed request",
+        });
+      }
+      return {
+        key: input.key,
+        thumbnailUrl: getCourseThumbnailPath(input.courseId, parsed.fileName),
+      };
+    }),
+
+  deleteCourseThumbnail: protectedProcedure
+    .input(z.object({ courseId: z.string().min(1), key: documentKeySchema }))
+    .mutation(async ({ ctx, input }) => {
+      await requireCoursePermission({
+        courseId: input.courseId,
+        permission: "course.manage",
+        userId: ctx.actorUserId,
+      });
+      if (!parseCourseThumbnailKey(input.key, input.courseId)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      await r2.send(
+        new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+      );
+      return { deleted: true };
+    }),
+
   createProfileImageUploadUrl: protectedProcedure
     .input(
       z.object({
@@ -505,7 +607,12 @@ export const storageRouter = createTRPCRouter({
     }),
 
   createDownloadUrl: protectedProcedure
-    .input(z.object({ assetId: z.string().min(1) }))
+    .input(
+      z.object({
+        assetId: z.string().min(1),
+        disposition: z.enum(["attachment", "inline"]).default("attachment"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.actorUserId;
       const asset = await db.asset.findFirst({
@@ -531,6 +638,13 @@ export const storageRouter = createTRPCRouter({
               material: { select: { courseItems: { select: { id: true } } } },
             },
           },
+          assessments: {
+            select: {
+              assessment: {
+                select: { courseItems: { select: { id: true } } },
+              },
+            },
+          },
           vocabularyEntries: {
             select: {
               vocabularySet: {
@@ -551,6 +665,9 @@ export const storageRouter = createTRPCRouter({
         const courseItemIds = new Set([
           ...asset.materials.flatMap(({ material }) =>
             material.courseItems.map(({ id }) => id),
+          ),
+          ...asset.assessments.flatMap(({ assessment }) =>
+            assessment.courseItems.map(({ id }) => id),
           ),
           ...asset.vocabularyEntries.flatMap(({ vocabularySet }) =>
             vocabularySet.courseItems.map(({ id }) => id),
@@ -581,7 +698,7 @@ export const storageRouter = createTRPCRouter({
         new GetObjectCommand({
           Bucket: r2Bucket,
           Key: asset.objectKey,
-          ResponseContentDisposition: "attachment",
+          ResponseContentDisposition: input.disposition,
         }),
         { expiresIn: SIGNED_URL_TTL_SECONDS },
       );
@@ -602,6 +719,7 @@ export const storageRouter = createTRPCRouter({
           _count: {
             select: {
               materials: true,
+              assessments: true,
               vocabularyEntries: true,
             },
           },
@@ -610,7 +728,11 @@ export const storageRouter = createTRPCRouter({
       if (asset?.uploadedByUserId !== ctx.actorUserId) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
-      if (asset._count.materials > 0 || asset._count.vocabularyEntries > 0) {
+      if (
+        asset._count.materials > 0 ||
+        asset._count.assessments > 0 ||
+        asset._count.vocabularyEntries > 0
+      ) {
         throw new TRPCError({
           code: "CONFLICT",
           message: "Asset is still referenced",

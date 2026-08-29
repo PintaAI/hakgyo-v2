@@ -10,6 +10,7 @@ import {
 } from "~/lib/access";
 import { getSession } from "~/server/better-auth/server";
 import { db } from "~/server/db";
+import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
 
 export const requireSession = cache(async () => {
   const session = await getSession();
@@ -18,6 +19,7 @@ export const requireSession = cache(async () => {
 });
 
 export const getSignedInDestination = cache(async (userId: string) => {
+  const now = new Date();
   const memberships = await db.organizationMember.findMany({
     where: { userId },
     orderBy: { createdAt: "asc" },
@@ -39,12 +41,18 @@ export const getSignedInDestination = cache(async (userId: string) => {
       OR: [
         {
           enrollments: {
-            some: { userId, status: { in: ["ACTIVE", "COMPLETED"] } },
+            some: {
+              userId,
+              status: { in: ["ACTIVE", "COMPLETED"] },
+              source: { not: "COHORT" },
+            },
           },
         },
         {
           cohorts: {
             some: {
+              status: { in: [...accessGrantingCohortStatuses] },
+              OR: [{ endsAt: null }, { endsAt: { gt: now } }],
               enrollments: {
                 some: { userId, status: { in: ["ACTIVE", "COMPLETED"] } },
               },

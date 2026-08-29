@@ -2,6 +2,8 @@
 
 import {
   useDeferredValue,
+  useEffect,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
@@ -18,6 +20,7 @@ import {
   ClipboardIcon,
   CrownIcon,
   FilePenLineIcon,
+  ImageIcon,
   Layers3Icon,
   LayoutDashboardIcon,
   LinkIcon,
@@ -29,6 +32,7 @@ import {
   Settings2Icon,
   ShieldCheckIcon,
   Trash2Icon,
+  UploadIcon,
   UserPlusIcon,
   UserRoundCheckIcon,
   UsersIcon,
@@ -80,6 +84,12 @@ import {
 } from "~/components/ui/table";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import {
+  courseThumbnailContentTypes,
+  getManagedCourseThumbnailKey,
+  MAX_COURSE_THUMBNAIL_SIZE,
+  type CourseThumbnailContentType,
+} from "~/lib/course-thumbnail";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type CourseView =
@@ -2052,8 +2062,12 @@ function SettingsSection({
   const router = useRouter();
   const utils = api.useUtils();
   const [title, setTitle] = useState(course.title);
-  const [slug, setSlug] = useState(course.slug);
   const [description, setDescription] = useState(course.description ?? "");
+  const [thumbnailUrl, setThumbnailUrl] = useState(course.thumbnailUrl);
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(
+    null,
+  );
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const [price, setPrice] = useState(String(course.price));
   const [currency, setCurrency] = useState(course.currency);
   const [enrollmentMode, setEnrollmentMode] = useState(
@@ -2064,7 +2078,117 @@ function SettingsSection({
   );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const updateCourse = api.course.update.useMutation();
+  const createThumbnailUpload =
+    api.storage.createCourseThumbnailUploadUrl.useMutation();
+  const confirmThumbnailUpload =
+    api.storage.confirmCourseThumbnailUpload.useMutation();
+  const deleteThumbnail = api.storage.deleteCourseThumbnail.useMutation();
   const deleteCourse = api.course.delete.useMutation();
+  const thumbnailBusy =
+    createThumbnailUpload.isPending ||
+    confirmThumbnailUpload.isPending ||
+    deleteThumbnail.isPending;
+
+  useEffect(() => {
+    return () => {
+      if (thumbnailPreviewUrl) URL.revokeObjectURL(thumbnailPreviewUrl);
+    };
+  }, [thumbnailPreviewUrl]);
+
+  async function uploadThumbnail(file: File) {
+    if (
+      !courseThumbnailContentTypes.includes(
+        file.type as CourseThumbnailContentType,
+      )
+    ) {
+      toast.error("Gunakan gambar JPEG, PNG, WebP, atau GIF.");
+      return;
+    }
+    if (file.size > MAX_COURSE_THUMBNAIL_SIZE) {
+      toast.error("Thumbnail maksimal 5 MB.");
+      return;
+    }
+
+    let uploadedKey: string | null = null;
+    const previousKey = getManagedCourseThumbnailKey(
+      thumbnailUrl,
+      course.id,
+    );
+    try {
+      const upload = await createThumbnailUpload.mutateAsync({
+        courseId: course.id,
+        contentType: file.type as CourseThumbnailContentType,
+        fileSize: file.size,
+      });
+      uploadedKey = upload.key;
+      const response = await fetch(upload.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: upload.headers,
+      });
+      if (!response.ok) {
+        throw new Error(`Upload thumbnail gagal (${response.status}).`);
+      }
+      const confirmed = await confirmThumbnailUpload.mutateAsync({
+        courseId: course.id,
+        key: upload.key,
+      });
+      await updateCourse.mutateAsync({
+        courseId: course.id,
+        thumbnailUrl: confirmed.thumbnailUrl,
+      });
+      uploadedKey = null;
+      setThumbnailUrl(confirmed.thumbnailUrl);
+      setThumbnailPreviewUrl(null);
+      await Promise.all([
+        utils.course.get.invalidate({ courseId: course.id }),
+        utils.course.list.invalidate({ organizationId }),
+      ]);
+      if (previousKey && previousKey !== confirmed.key) {
+        await deleteThumbnail
+          .mutateAsync({ courseId: course.id, key: previousKey })
+          .catch(() => undefined);
+      }
+      toast.success("Thumbnail course diperbarui.");
+      router.refresh();
+    } catch (error) {
+      if (uploadedKey) {
+        await deleteThumbnail
+          .mutateAsync({ courseId: course.id, key: uploadedKey })
+          .catch(() => undefined);
+      }
+      toast.error(getErrorMessage(error));
+    }
+  }
+
+  function selectThumbnail(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) return;
+    setThumbnailPreviewUrl(URL.createObjectURL(file));
+    void uploadThumbnail(file);
+  }
+
+  async function removeThumbnail() {
+    const key = getManagedCourseThumbnailKey(thumbnailUrl, course.id);
+    try {
+      await updateCourse.mutateAsync({ courseId: course.id, thumbnailUrl: null });
+      if (key) {
+        await deleteThumbnail
+          .mutateAsync({ courseId: course.id, key })
+          .catch(() => undefined);
+      }
+      setThumbnailUrl(null);
+      await Promise.all([
+        utils.course.get.invalidate({ courseId: course.id }),
+        utils.course.list.invalidate({ organizationId }),
+      ]);
+      toast.success("Thumbnail course dihapus.");
+      router.refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2072,7 +2196,6 @@ function SettingsSection({
       await updateCourse.mutateAsync({
         courseId: course.id,
         title: title.trim(),
-        slug: slug.trim(),
         description: description.trim() || null,
         price: Number(price),
         currency: currency.trim().toUpperCase(),
@@ -2139,15 +2262,16 @@ function SettingsSection({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="settings-slug">Slug</Label>
-              <Input
+              <Label htmlFor="settings-slug">Slug otomatis</Label>
+              <div
                 id="settings-slug"
-                maxLength={100}
-                pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                required
-                value={slug}
-                onChange={(event) => setSlug(event.target.value)}
-              />
+                className="bg-muted text-muted-foreground rounded-lg border px-2.5 py-2 text-sm"
+              >
+                {course.slug}
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Slug dibuat otomatis dari nama course dan dijaga tetap unik.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="settings-description">Deskripsi</Label>
@@ -2158,6 +2282,68 @@ function SettingsSection({
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="settings-thumbnail">Thumbnail course</Label>
+              <div className="flex flex-wrap items-center gap-4 rounded-lg border p-3">
+                {thumbnailPreviewUrl || thumbnailUrl ? (
+                  <Image
+                    src={thumbnailPreviewUrl ?? thumbnailUrl ?? ""}
+                    alt="Thumbnail course"
+                    width={160}
+                    height={90}
+                    unoptimized
+                    className="aspect-video rounded-md object-cover"
+                  />
+                ) : (
+                  <div className="bg-muted text-muted-foreground flex aspect-video w-40 items-center justify-center rounded-md">
+                    <ImageIcon className="size-6" />
+                  </div>
+                )}
+                <div className="min-w-48 flex-1 space-y-2">
+                  <Input
+                    ref={thumbnailInputRef}
+                    id="settings-thumbnail"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="sr-only"
+                    type="file"
+                    onChange={selectThumbnail}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    JPEG, PNG, WebP, atau GIF. Maksimal 5 MB.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={thumbnailBusy || updateCourse.isPending}
+                      onClick={() => thumbnailInputRef.current?.click()}
+                    >
+                      {thumbnailBusy ? (
+                        <LoaderCircleIcon className="animate-spin" />
+                      ) : (
+                        <UploadIcon />
+                      )}
+                      {thumbnailBusy
+                        ? "Mengunggah..."
+                        : thumbnailUrl
+                          ? "Ganti thumbnail"
+                          : "Pilih gambar"}
+                    </Button>
+                    {thumbnailUrl ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={thumbnailBusy || updateCourse.isPending}
+                        onClick={() => void removeThumbnail()}
+                      >
+                        Hapus thumbnail
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -2231,7 +2417,6 @@ function SettingsSection({
             disabled={
               updateCourse.isPending ||
               !title.trim() ||
-              !slug.trim() ||
               currency.trim().length !== 3
             }
           >

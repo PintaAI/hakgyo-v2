@@ -10,6 +10,7 @@ import {
   LanguagesIcon,
   LockIcon,
   RouteIcon,
+  SmartphoneIcon,
 } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
@@ -76,17 +77,28 @@ export default async function LearningCoursePage({
                 ? "Hebat, semua aktivitas di course ini sudah kamu selesaikan."
                 : "Bangun pemahaman sedikit demi sedikit. Progress kamu tersimpan otomatis."}
             </p>
-            {nextItem ? (
-              <Link
-                href={`/learn/${courseId}/items/${nextItem.id}`}
+            <div className="mt-6 flex flex-wrap gap-2">
+              {nextItem ? (
+                <Link
+                  href={`/learn/${courseId}/items/${nextItem.id}`}
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "bg-[#f5f3e9] text-[#171915] hover:bg-white",
+                  )}
+                >
+                  Lanjut: {nextItem.title} <ArrowRightIcon />
+                </Link>
+              ) : null}
+              <a
+                href={`hakgyo://courses/${encodeURIComponent(courseId)}`}
                 className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "mt-6 bg-[#f5f3e9] text-[#171915] hover:bg-white",
+                  buttonVariants({ variant: "outline", size: "lg" }),
+                  "border-white/25 bg-white/5 text-[#f5f3e9] hover:bg-white/10 hover:text-white",
                 )}
               >
-                Lanjut: {nextItem.title} <ArrowRightIcon />
-              </Link>
-            ) : null}
+                <SmartphoneIcon /> Buka di aplikasi
+              </a>
+            </div>
           </div>
           <div className="border-l border-white/15 pl-5">
             <div className="flex items-end justify-between">

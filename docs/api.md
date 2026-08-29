@@ -862,6 +862,23 @@ query({ courseId: string }): CohortWithCounts[]
 - Scope: pengelola course.
 - Counts: staff, enrollments, meetings.
 
+### `cohort.listForCurrentMember`
+
+```ts
+query({
+  organizationId: string;
+  status?: CohortStatus;
+  limit?: number;
+  cursor?: string;
+  includeTotal?: boolean;
+}): Paginated<CohortWithCourseAndCounts>
+```
+
+- Owner/admin melihat seluruh Group belajar organization.
+- Teacher mode `SIMPLE` hanya melihat Group belajar dengan exact staff assignment.
+- Teacher mode `ADVANCED` melihat Group belajar pada course miliknya dan Group belajar dengan exact staff assignment.
+- Counts: staff, enrollments, meetings.
+
 ### `cohort.get`
 
 ```ts

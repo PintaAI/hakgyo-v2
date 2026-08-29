@@ -186,18 +186,14 @@ export function AppSidebar({
   const { setOpenMobile } = useSidebar();
   const workspaceRoot = `/workspace/${organizationSlug}`;
   const isManager = role === "OWNER" || role === "ADMIN";
-  const workspaceHome = `${workspaceRoot}/${isManager ? "dashboard" : "courses"}`;
+  const workspaceHome = `${workspaceRoot}/dashboard`;
 
   const navigation: NavigationItem[] = [
-    ...(isManager
-      ? [
-          {
-            title: "Dashboard",
-            href: `${workspaceRoot}/dashboard`,
-            icon: LayoutDashboardIcon,
-          },
-        ]
-      : []),
+    {
+      title: "Dashboard",
+      href: `${workspaceRoot}/dashboard`,
+      icon: LayoutDashboardIcon,
+    },
     {
       title: "Courses",
       href: `${workspaceRoot}/courses`,

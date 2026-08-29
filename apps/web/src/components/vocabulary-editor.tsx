@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -27,7 +26,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
-import { Button, buttonVariants } from "~/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -127,7 +126,7 @@ export function VocabularyEditor({
       canDelete={canDelete}
       isDeleting={deleteSet.isPending}
       isSaving={createSet.isPending || updateSet.isPending}
-      organizationSlug={organizationSlug}
+      onBack={() => router.back()}
       vocabularySet={vocabularySet}
       entryBusy={
         createEntry.isPending || updateEntry.isPending || deleteEntry.isPending
@@ -223,7 +222,7 @@ function VocabularySetForm({
   initialTitle,
   isDeleting,
   isSaving,
-  organizationSlug,
+  onBack,
   vocabularySet,
   entryBusy,
   onCreateEntry,
@@ -237,7 +236,7 @@ function VocabularySetForm({
   initialTitle: string;
   isDeleting: boolean;
   isSaving: boolean;
-  organizationSlug: string;
+  onBack: () => void;
   vocabularySet?: VocabularySet;
   entryBusy: boolean;
   onCreateEntry: (entry: EntryFields) => Promise<boolean>;
@@ -270,13 +269,15 @@ function VocabularySetForm({
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex min-w-0 items-center gap-3">
-            <Link
+            <Button
+              type="button"
               aria-label="Kembali ke kosakata"
-              href={`/workspace/${organizationSlug}/library/vocabulary`}
-              className={buttonVariants({ variant: "outline", size: "icon" })}
+              variant="outline"
+              size="icon"
+              onClick={onBack}
             >
               <ArrowLeftIcon />
-            </Link>
+            </Button>
             <div className="min-w-0">
               <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
                 <LanguagesIcon className="size-3.5" />

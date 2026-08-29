@@ -53,10 +53,7 @@ export default async function WorkspaceLayout({
               orientation="vertical"
               className="mr-2 data-vertical:h-4 data-vertical:self-center"
             />
-            <WorkspaceBreadcrumb
-              organizationSlug={organizationSlug}
-              role={role}
-            />
+            <WorkspaceBreadcrumb organizationSlug={organizationSlug} />
           </div>
         </header>
         <div className="flex-1 p-4 md:p-6 lg:p-8">{children}</div>

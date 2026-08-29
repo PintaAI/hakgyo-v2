@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rorez.hakgyo",
@@ -27,6 +27,39 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-secure-store"]
+    "plugins": [
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-background-task",
+      "expo-quick-actions",
+      "expo-widgets",
+      "expo-sharing",
+      "expo-router",
+      "expo-splash-screen"
+    ],
+    "extra": {
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ExpoWidgetsTarget",
+                  "bundleIdentifier": "com.rorez.hakgyo.ExpoWidgetsTarget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.rorez.hakgyo"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "942928d2-590a-4ca4-831f-247fa79f83e7"
+      },
+      "router": {}
+    },
+    "owner": "rorez"
   }
 }

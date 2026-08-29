@@ -11,8 +11,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "~/components/ui/breadcrumb";
-import type { OrganizationRole } from "~/lib/access";
-
 const sectionLabels: Record<string, string> = {
   courses: "Courses",
   dashboard: "Dashboard",
@@ -24,17 +22,13 @@ const sectionLabels: Record<string, string> = {
 
 export function WorkspaceBreadcrumb({
   organizationSlug,
-  role,
 }: {
   organizationSlug: string;
-  role: OrganizationRole;
 }) {
   const pathname = usePathname();
   const section = pathname.split("/").filter(Boolean)[2];
   const currentLabel = (section && sectionLabels[section]) ?? "Workspace";
-  const workspaceHome = `/workspace/${organizationSlug}/${
-    role === "TEACHER" ? "courses" : "dashboard"
-  }`;
+  const workspaceHome = `/workspace/${organizationSlug}/dashboard`;
 
   return (
     <Breadcrumb>

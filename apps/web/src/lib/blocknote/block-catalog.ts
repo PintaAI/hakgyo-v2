@@ -1,8 +1,10 @@
 export const calloutBlockType = "callout";
+export const assetAudioBlockType = "assetAudio";
+export const assetImageBlockType = "assetImage";
 export const calloutTones = ["info", "tip", "warning", "success"] as const;
 
 export const hakgyoBlockCatalog = {
-  catalogVersion: 1,
+  catalogVersion: 2,
   editor: "BlockNote",
   format: {
     description:
@@ -34,6 +36,28 @@ export const hakgyoBlockCatalog = {
     { type: "file", purpose: "A downloadable file reference." },
   ],
   customBlocks: [
+    {
+      type: assetAudioBlockType,
+      purpose: "Play a securely stored audio asset inside learning content.",
+      content: "none",
+      props: {
+        assetId: { type: "string", default: "" },
+        fileName: { type: "string", default: "" },
+        contentType: { type: "string", default: "" },
+        caption: { type: "string", default: "" },
+      },
+    },
+    {
+      type: assetImageBlockType,
+      purpose: "Display a securely stored image asset inside learning content.",
+      content: "none",
+      props: {
+        assetId: { type: "string", default: "" },
+        fileName: { type: "string", default: "" },
+        contentType: { type: "string", default: "" },
+        caption: { type: "string", default: "" },
+      },
+    },
     {
       type: calloutBlockType,
       purpose:

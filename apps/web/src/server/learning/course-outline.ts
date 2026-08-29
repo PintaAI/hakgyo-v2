@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { EnrollmentStatus } from "../../../generated/prisma/enums";
 import { canManageContent } from "~/server/authorization/permissions";
 import { db } from "~/server/db";
+import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
 import {
   evaluateOpenModules,
   evaluateSequentialModules,
@@ -24,6 +25,8 @@ export async function getCourseOutlineForUser(
     select: {
       id: true,
       title: true,
+      description: true,
+      thumbnailUrl: true,
       status: true,
       progressionMode: true,
       owner: { select: { userId: true } },
@@ -34,6 +37,9 @@ export async function getCourseOutlineForUser(
       },
       organization: {
         select: {
+          id: true,
+          name: true,
+          slug: true,
           permissionMode: true,
           members: {
             where: { userId },
@@ -51,6 +57,7 @@ export async function getCourseOutlineForUser(
         where: {
           userId,
           status: { in: [...activeEnrollmentStatuses] },
+          source: { not: "COHORT" },
           OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         },
         select: { id: true },
@@ -108,7 +115,11 @@ export async function getCourseOutlineForUser(
     where: {
       userId,
       status: { in: [...activeEnrollmentStatuses] },
-      cohort: { courseId },
+      cohort: {
+        courseId,
+        status: { in: [...accessGrantingCohortStatuses] },
+        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      },
     },
     select: { id: true },
   });
@@ -149,6 +160,13 @@ export async function getCourseOutlineForUser(
   return {
     id: course.id,
     title: course.title,
+    description: course.description,
+    thumbnailUrl: course.thumbnailUrl,
+    organization: {
+      id: course.organization.id,
+      name: course.organization.name,
+      slug: course.organization.slug,
+    },
     status: course.status,
     progressionMode: course.progressionMode,
     canManage,

@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 
 import { EnrollmentStatus } from "../../../generated/prisma/enums";
 import { db } from "~/server/db";
+import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
 import { getCourseOutlineForUser } from "~/server/learning/course-outline";
 import {
   canAccessLearningContent,
@@ -198,7 +199,7 @@ export async function requireCohortPermission(input: {
 }) {
   const cohort = await db.cohort.findUnique({
     where: { id: input.cohortId },
-    select: { courseId: true },
+    select: { courseId: true, status: true, endsAt: true },
   });
   if (!cohort) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -284,6 +285,7 @@ export async function requireCourseItemAccess(input: {
                 where: {
                   userId: input.userId,
                   status: { in: [...activeEnrollmentStatuses] },
+                  source: { not: "COHORT" },
                   OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
                 },
                 select: { id: true },
@@ -303,7 +305,11 @@ export async function requireCourseItemAccess(input: {
     where: {
       userId: input.userId,
       status: { in: [...activeEnrollmentStatuses] },
-      cohort: { courseId: course.id },
+      cohort: {
+        courseId: course.id,
+        status: { in: [...accessGrantingCohortStatuses] },
+        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      },
     },
     select: { id: true },
   });
