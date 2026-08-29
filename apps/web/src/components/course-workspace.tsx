@@ -74,6 +74,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Switch } from "~/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -95,7 +96,8 @@ import { api, type RouterOutputs } from "~/trpc/react";
 type CourseView =
   "overview" | "cohorts" | "learners" | "invites" | "access" | "settings";
 
-type Course = RouterOutputs["course"]["get"];
+type CourseWorkspaceData = RouterOutputs["course"]["getWorkspaceOverview"];
+type Course = CourseWorkspaceData["course"];
 type Enrollment =
   RouterOutputs["enrollment"]["listCourseEnrollments"]["items"][number];
 
@@ -218,23 +220,31 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 }
 
 export function CourseWorkspace({
-  course,
-  organizationId,
-  organizationSlug,
+  workspace: initialWorkspace,
 }: {
-  course: Course;
-  organizationId: string;
-  organizationSlug: string;
+  workspace: CourseWorkspaceData;
 }) {
+  const workspaceInput = {
+    courseId: initialWorkspace.course.id,
+    organizationSlug: initialWorkspace.organization.slug,
+  };
+  const workspaceQuery = api.course.getWorkspaceOverview.useQuery(
+    workspaceInput,
+    { initialData: initialWorkspace },
+  );
+  const workspace = workspaceQuery.data;
+  const { access: courseAccess, course, organization, overview } = workspace;
+  const organizationId = organization.id;
+  const organizationSlug = organization.slug;
   const router = useRouter();
   const searchParams = useSearchParams();
   const utils = api.useUtils();
   const root = `/workspace/${organizationSlug}/courses/${course.id}`;
-  const canManageCourse = course.access.canManageCourse;
-  const canViewCohorts = course.access.canViewCohorts;
-  const canManageContent = course.access.canManageContent;
+  const canManageCourse = courseAccess.canManageCourse;
+  const canViewCohorts = courseAccess.canViewCohorts;
+  const canManageContent = courseAccess.canManageContent;
   const canManageAccess =
-    canManageCourse && course.access.usesAdvancedPermissions;
+    canManageCourse && courseAccess.usesAdvancedPermissions;
   const availableViews = canManageCourse
     ? views.filter(({ value }) => value !== "access" || canManageAccess)
     : views.filter(
@@ -248,7 +258,11 @@ export function CourseWorkspace({
     availableViews.some(({ value }) => value === requestedView)
       ? requestedView
       : "overview";
-  const isOverview = view === "overview";
+  const viewCounts: Partial<Record<CourseView, number>> = {
+    cohorts: overview?.stats.cohortCount,
+    learners: overview?.stats.activeLearnerCount,
+    invites: overview?.stats.activeInviteCount,
+  };
   const [learnerSearch, setLearnerSearch] = useState("");
   const deferredLearnerSearch = useDeferredValue(
     learnerSearch.trim().toLowerCase(),
@@ -264,53 +278,49 @@ export function CourseWorkspace({
   }
 
   const cohorts = api.cohort.list.useInfiniteQuery(
-    { courseId: course.id, includeTotal: true },
+    { courseId: course.id },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      enabled:
-        canViewCohorts &&
-        (isOverview || view === "cohorts" || view === "invites"),
+      enabled: canViewCohorts && (view === "cohorts" || view === "invites"),
     },
   );
   const learners = api.enrollment.listCourseEnrollments.useInfiniteQuery(
     {
       courseId: course.id,
       search: deferredLearnerSearch || undefined,
-      includeTotal: true,
     },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      enabled: canManageCourse && (isOverview || view === "learners"),
+      enabled: canManageCourse && view === "learners",
     },
   );
   const invites = api.enrollment.listInvites.useInfiniteQuery(
-    { courseId: course.id, includeTotal: true },
+    { courseId: course.id },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      enabled: canManageCourse && (isOverview || view === "invites"),
+      enabled: canManageCourse && view === "invites",
     },
   );
   const cohortItems = cohorts.data?.pages.flatMap((page) => page.items);
   const learnerItems = learners.data?.pages.flatMap((page) => page.items);
   const inviteItems = invites.data?.pages.flatMap((page) => page.items);
-  const learnerActiveTotal = learners.data?.pages[0]?.activeTotal;
   const access = api.course.getAccess.useQuery(
     { courseId: course.id },
     { enabled: canManageAccess && view === "access" },
   );
 
   const updateCourse = api.course.update.useMutation();
-  const modules = course.modules.length;
-  const items = course.modules.reduce(
-    (total, module) => total + module.items.length,
-    0,
-  );
+
+  async function refreshWorkspace() {
+    await utils.course.getWorkspaceOverview.invalidate(workspaceInput);
+  }
 
   async function changeCourseStatus(status: Course["status"]) {
     try {
       await updateCourse.mutateAsync({ courseId: course.id, status });
       await Promise.all([
         utils.course.get.invalidate({ courseId: course.id }),
+        refreshWorkspace(),
         utils.course.list.invalidate({ organizationId }),
       ]);
       toast.success(
@@ -425,147 +435,125 @@ export function CourseWorkspace({
         </div>
       </header>
 
-      <nav
-        aria-label="Course management"
-        className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      <Tabs
+        value={view}
+        onValueChange={(nextView) => navigate(nextView as CourseView)}
+        className="gap-8"
       >
-        <div className="flex min-w-max items-center gap-1">
-          {availableViews.map(({ value, label, icon: Icon }) => (
-            <button
-              type="button"
-              key={value}
-              aria-current={view === value ? "page" : undefined}
-              onClick={() => navigate(value)}
-              className={cn(
-                "after:bg-foreground focus-visible:bg-muted relative flex h-11 items-center gap-2 px-3 text-sm font-medium transition-colors outline-none after:absolute after:right-3 after:bottom-0 after:left-3 after:h-0.5 after:opacity-0",
-                view === value
-                  ? "text-foreground after:opacity-100"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="size-4" />
-              {label}
-            </button>
-          ))}
+        <div className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList
+            variant="line"
+            aria-label="Course management"
+            className="h-11 min-w-max justify-start rounded-none p-0"
+          >
+            {availableViews.map(({ value, label, icon: Icon }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="h-11 flex-none rounded-none px-3 py-0 group-data-horizontal/tabs:after:inset-x-3 group-data-horizontal/tabs:after:bottom-0"
+              >
+                <Icon className="size-4" />
+                {label}
+                {viewCounts[value] !== undefined && viewCounts[value] > 0 ? (
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    ({viewCounts[value]})
+                  </span>
+                ) : null}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </nav>
 
-      {view === "overview" ? (
-        <OverviewSection
-          course={course}
-          cohorts={cohortItems}
-          cohortsPending={cohorts.isPending}
-          learners={learnerItems}
-          learnersActiveTotal={learnerActiveTotal}
-          learnersPending={learners.isPending}
-          invites={inviteItems}
-          invitesPending={invites.isPending}
-          items={items}
-          modules={modules}
-          root={root}
-          canManageContent={canManageContent}
-          canManageCourse={canManageCourse}
-          onNavigate={navigate}
-        />
-      ) : null}
-      {view === "cohorts" ? (
-        <CohortsSection
-          canCreate={canManageCourse}
-          courseId={course.id}
-          data={cohortItems}
-          error={cohorts.error}
-          isPending={cohorts.isPending}
-          hasMore={cohorts.hasNextPage}
-          isLoadingMore={cohorts.isFetchingNextPage}
-          onLoadMore={() => void cohorts.fetchNextPage()}
-          root={root}
-        />
-      ) : null}
-      {view === "learners" ? (
-        <LearnersSection
-          courseId={course.id}
-          data={learnerItems}
-          error={learners.error}
-          isPending={learners.isPending}
-          search={learnerSearch}
-          onSearchChange={setLearnerSearch}
-          hasMore={learners.hasNextPage}
-          isLoadingMore={learners.isFetchingNextPage}
-          onLoadMore={() => void learners.fetchNextPage()}
-          onNavigate={navigate}
-        />
-      ) : null}
-      {view === "invites" ? (
-        <InvitesSection
-          courseId={course.id}
-          cohorts={cohortItems}
-          data={inviteItems}
-          error={invites.error}
-          isPending={invites.isPending}
-          hasMore={invites.hasNextPage}
-          isLoadingMore={invites.isFetchingNextPage}
-          onLoadMore={() => void invites.fetchNextPage()}
-        />
-      ) : null}
-      {view === "access" ? (
-        <AccessSection
-          courseId={course.id}
-          data={access.data}
-          error={access.error}
-          isPending={access.isPending}
-        />
-      ) : null}
-      {view === "settings" ? (
-        <SettingsSection
-          course={course}
-          coursesHref={`/workspace/${organizationSlug}/courses`}
-          organizationId={organizationId}
-          onStatusChange={changeCourseStatus}
-        />
-      ) : null}
+        <TabsContent value="overview">
+          <OverviewSection
+            course={course}
+            overview={overview}
+            root={root}
+            canManageContent={canManageContent}
+            canManageCourse={canManageCourse}
+            onNavigate={navigate}
+          />
+        </TabsContent>
+        <TabsContent value="cohorts">
+          <CohortsSection
+            canCreate={canManageCourse}
+            courseId={course.id}
+            data={cohortItems}
+            error={cohorts.error}
+            isPending={cohorts.isPending}
+            hasMore={cohorts.hasNextPage}
+            isLoadingMore={cohorts.isFetchingNextPage}
+            onLoadMore={() => void cohorts.fetchNextPage()}
+            onWorkspaceChange={refreshWorkspace}
+            root={root}
+          />
+        </TabsContent>
+        <TabsContent value="learners">
+          <LearnersSection
+            courseId={course.id}
+            data={learnerItems}
+            error={learners.error}
+            isPending={learners.isPending}
+            search={learnerSearch}
+            onSearchChange={setLearnerSearch}
+            hasMore={learners.hasNextPage}
+            isLoadingMore={learners.isFetchingNextPage}
+            onLoadMore={() => void learners.fetchNextPage()}
+            onNavigate={navigate}
+            onWorkspaceChange={refreshWorkspace}
+          />
+        </TabsContent>
+        <TabsContent value="invites">
+          <InvitesSection
+            courseId={course.id}
+            cohorts={cohortItems}
+            data={inviteItems}
+            error={invites.error}
+            isPending={invites.isPending}
+            hasMore={invites.hasNextPage}
+            isLoadingMore={invites.isFetchingNextPage}
+            onLoadMore={() => void invites.fetchNextPage()}
+            onWorkspaceChange={refreshWorkspace}
+          />
+        </TabsContent>
+        <TabsContent value="access">
+          <AccessSection
+            courseId={course.id}
+            data={access.data}
+            error={access.error}
+            isPending={access.isPending}
+            onWorkspaceChange={refreshWorkspace}
+          />
+        </TabsContent>
+        <TabsContent value="settings">
+          <SettingsSection
+            course={course}
+            coursesHref={`/workspace/${organizationSlug}/courses`}
+            organizationId={organizationId}
+            onStatusChange={changeCourseStatus}
+            onWorkspaceChange={refreshWorkspace}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
 function OverviewSection({
   course,
-  cohorts,
-  cohortsPending,
-  learners,
-  learnersActiveTotal,
-  learnersPending,
-  invites,
-  invitesPending,
-  items,
-  modules,
+  overview,
   root,
   canManageContent,
   canManageCourse,
   onNavigate,
 }: {
   course: Course;
-  cohorts?: RouterOutputs["cohort"]["list"]["items"];
-  cohortsPending: boolean;
-  learners?: RouterOutputs["enrollment"]["listCourseEnrollments"]["items"];
-  learnersActiveTotal?: number;
-  learnersPending: boolean;
-  invites?: RouterOutputs["enrollment"]["listInvites"]["items"];
-  invitesPending: boolean;
-  items: number;
-  modules: number;
+  overview: CourseWorkspaceData["overview"];
   root: string;
   canManageContent: boolean;
   canManageCourse: boolean;
   onNavigate: (view: CourseView) => void;
 }) {
-  const activeLearners =
-    learnersActiveTotal ??
-    learners?.filter((enrollment) => enrollment.status === "ACTIVE").length;
-  const activeInvites = invites?.filter(
-    (invite) =>
-      !invite.revokedAt && (!invite.expiresAt || invite.expiresAt > new Date()),
-  ).length;
-
   if (!canManageCourse) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
@@ -627,25 +615,20 @@ function OverviewSection({
     );
   }
 
+  if (!overview) return null;
+
+  const { modules, stats } = overview;
+
   return (
     <div className="space-y-4">
       <section
         aria-label="Course summary"
         className="grid grid-cols-2 gap-y-6 border-y py-5 sm:grid-cols-4"
       >
-        <Stat label="Bab" value={modules} />
-        <Stat
-          label="Group belajar"
-          value={cohortsPending ? "–" : (cohorts?.length ?? 0)}
-        />
-        <Stat
-          label="Siswa aktif"
-          value={learnersPending ? "–" : (activeLearners ?? 0)}
-        />
-        <Stat
-          label="Invite aktif"
-          value={invitesPending ? "–" : (activeInvites ?? 0)}
-        />
+        <Stat label="Bab" value={stats.moduleCount} />
+        <Stat label="Group belajar" value={stats.cohortCount} />
+        <Stat label="Siswa aktif" value={stats.activeLearnerCount} />
+        <Stat label="Invite aktif" value={stats.activeInviteCount} />
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
@@ -669,7 +652,7 @@ function OverviewSection({
               </Link>
             </CardAction>
           </CardHeader>
-          {course.modules.length === 0 ? (
+          {modules.length === 0 ? (
             <CardContent>
               <SectionEmpty
                 icon={Layers3Icon}
@@ -690,7 +673,7 @@ function OverviewSection({
             </CardContent>
           ) : (
             <ol className="divide-border divide-y">
-              {course.modules.slice(0, 5).map((module, index) => (
+              {modules.map((module, index) => (
                 <li
                   key={module.id}
                   className="flex items-center gap-4 px-4 py-3"
@@ -703,7 +686,7 @@ function OverviewSection({
                       {module.title}
                     </span>
                     <span className="text-muted-foreground mt-0.5 block text-xs">
-                      {module.items.length} item
+                      {module.itemCount} item
                     </span>
                   </span>
                 </li>
@@ -711,7 +694,7 @@ function OverviewSection({
             </ol>
           )}
           <div className="bg-muted/40 text-muted-foreground flex items-center justify-between border-t px-4 py-3 text-xs">
-            <span>{items} total learning item</span>
+            <span>{stats.itemCount} total learning item</span>
             <span>
               {course.progressionMode === "OPEN" ? "Akses terbuka" : "Bertahap"}
             </span>
@@ -793,6 +776,7 @@ function CohortsSection({
   hasMore,
   isLoadingMore,
   onLoadMore,
+  onWorkspaceChange,
   root,
 }: {
   canCreate: boolean;
@@ -803,6 +787,7 @@ function CohortsSection({
   hasMore: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
+  onWorkspaceChange: () => Promise<void>;
   root: string;
 }) {
   const utils = api.useUtils();
@@ -826,7 +811,10 @@ function CohortsSection({
         startsAt: startsAt ? new Date(`${startsAt}T00:00:00`) : null,
         endsAt: endsAt ? new Date(`${endsAt}T23:59:59`) : null,
       });
-      await utils.cohort.list.invalidate({ courseId });
+      await Promise.all([
+        utils.cohort.list.invalidate({ courseId }),
+        onWorkspaceChange(),
+      ]);
       setOpen(false);
       setName("");
       setDescription("");
@@ -1044,6 +1032,7 @@ function LearnersSection({
   isLoadingMore,
   onLoadMore,
   onNavigate,
+  onWorkspaceChange,
 }: {
   courseId: string;
   data?: RouterOutputs["enrollment"]["listCourseEnrollments"]["items"];
@@ -1055,6 +1044,7 @@ function LearnersSection({
   isLoadingMore: boolean;
   onLoadMore: () => void;
   onNavigate: (view: CourseView) => void;
+  onWorkspaceChange: () => Promise<void>;
 }) {
   const utils = api.useUtils();
   const [addOpen, setAddOpen] = useState(false);
@@ -1077,7 +1067,10 @@ function LearnersSection({
         status,
         expiresAt: enrollment.expiresAt,
       });
-      await utils.enrollment.listCourseEnrollments.invalidate({ courseId });
+      await Promise.all([
+        utils.enrollment.listCourseEnrollments.invalidate({ courseId }),
+        onWorkspaceChange(),
+      ]);
       toast.success(`Status ${enrollment.user.name} diperbarui.`);
     } catch (cause) {
       toast.error(getErrorMessage(cause));
@@ -1093,7 +1086,10 @@ function LearnersSection({
         status,
         expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59`) : null,
       });
-      await utils.enrollment.listCourseEnrollments.invalidate({ courseId });
+      await Promise.all([
+        utils.enrollment.listCourseEnrollments.invalidate({ courseId }),
+        onWorkspaceChange(),
+      ]);
       setAddOpen(false);
       setEmail("");
       setStatus("ACTIVE");
@@ -1110,7 +1106,10 @@ function LearnersSection({
         courseId,
         userId: enrollment.user.id,
       });
-      await utils.enrollment.listCourseEnrollments.invalidate({ courseId });
+      await Promise.all([
+        utils.enrollment.listCourseEnrollments.invalidate({ courseId }),
+        onWorkspaceChange(),
+      ]);
       setRemoving(null);
       toast.success(`Siswa ${enrollment.user.name} dihapus dari course.`);
     } catch (cause) {
@@ -1406,6 +1405,7 @@ function InvitesSection({
   hasMore,
   isLoadingMore,
   onLoadMore,
+  onWorkspaceChange,
 }: {
   courseId: string;
   cohorts?: RouterOutputs["cohort"]["list"]["items"];
@@ -1415,6 +1415,7 @@ function InvitesSection({
   hasMore: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
+  onWorkspaceChange: () => Promise<void>;
 }) {
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
@@ -1435,7 +1436,10 @@ function InvitesSection({
         expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59`) : null,
         maxUses: oneTime ? 1 : maxUses ? Number(maxUses) : null,
       });
-      await utils.enrollment.listInvites.invalidate({ courseId });
+      await Promise.all([
+        utils.enrollment.listInvites.invalidate({ courseId }),
+        onWorkspaceChange(),
+      ]);
       setNewToken(invite.token);
       toast.success(
         "Invite berhasil dibuat. Salin link sebelum menutup dialog.",
@@ -1455,7 +1459,10 @@ function InvitesSection({
   async function revoke(inviteId: string) {
     try {
       await revokeInvite.mutateAsync({ inviteId });
-      await utils.enrollment.listInvites.invalidate({ courseId });
+      await Promise.all([
+        utils.enrollment.listInvites.invalidate({ courseId }),
+        onWorkspaceChange(),
+      ]);
       toast.success("Invite dicabut.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
@@ -1726,13 +1733,14 @@ function AccessSection({
   data,
   error,
   isPending,
+  onWorkspaceChange,
 }: {
   courseId: string;
   data?: RouterOutputs["course"]["getAccess"];
   error: { message: string } | null;
   isPending: boolean;
+  onWorkspaceChange: () => Promise<void>;
 }) {
-  const router = useRouter();
   const utils = api.useUtils();
   const [editorMembershipId, setEditorMembershipId] = useState("");
   const [ownerMembershipId, setOwnerMembershipId] = useState("");
@@ -1745,8 +1753,8 @@ function AccessSection({
     await Promise.all([
       utils.course.get.invalidate({ courseId }),
       utils.course.getAccess.invalidate({ courseId }),
+      onWorkspaceChange(),
     ]);
-    router.refresh();
   }
 
   async function grantEditor() {
@@ -2053,11 +2061,13 @@ function SettingsSection({
   coursesHref,
   organizationId,
   onStatusChange,
+  onWorkspaceChange,
 }: {
   course: Course;
   coursesHref: string;
   organizationId: string;
   onStatusChange: (status: Course["status"]) => Promise<void>;
+  onWorkspaceChange: () => Promise<void>;
 }) {
   const router = useRouter();
   const utils = api.useUtils();
@@ -2089,6 +2099,15 @@ function SettingsSection({
     confirmThumbnailUpload.isPending ||
     deleteThumbnail.isPending;
 
+  async function refreshCourse() {
+    await Promise.all([
+      utils.course.get.invalidate({ courseId: course.id }),
+      utils.course.list.invalidate({ organizationId }),
+      onWorkspaceChange(),
+    ]);
+    router.refresh();
+  }
+
   useEffect(() => {
     return () => {
       if (thumbnailPreviewUrl) URL.revokeObjectURL(thumbnailPreviewUrl);
@@ -2110,10 +2129,7 @@ function SettingsSection({
     }
 
     let uploadedKey: string | null = null;
-    const previousKey = getManagedCourseThumbnailKey(
-      thumbnailUrl,
-      course.id,
-    );
+    const previousKey = getManagedCourseThumbnailKey(thumbnailUrl, course.id);
     try {
       const upload = await createThumbnailUpload.mutateAsync({
         courseId: course.id,
@@ -2140,17 +2156,13 @@ function SettingsSection({
       uploadedKey = null;
       setThumbnailUrl(confirmed.thumbnailUrl);
       setThumbnailPreviewUrl(null);
-      await Promise.all([
-        utils.course.get.invalidate({ courseId: course.id }),
-        utils.course.list.invalidate({ organizationId }),
-      ]);
+      await refreshCourse();
       if (previousKey && previousKey !== confirmed.key) {
         await deleteThumbnail
           .mutateAsync({ courseId: course.id, key: previousKey })
           .catch(() => undefined);
       }
       toast.success("Thumbnail course diperbarui.");
-      router.refresh();
     } catch (error) {
       if (uploadedKey) {
         await deleteThumbnail
@@ -2172,19 +2184,18 @@ function SettingsSection({
   async function removeThumbnail() {
     const key = getManagedCourseThumbnailKey(thumbnailUrl, course.id);
     try {
-      await updateCourse.mutateAsync({ courseId: course.id, thumbnailUrl: null });
+      await updateCourse.mutateAsync({
+        courseId: course.id,
+        thumbnailUrl: null,
+      });
       if (key) {
         await deleteThumbnail
           .mutateAsync({ courseId: course.id, key })
           .catch(() => undefined);
       }
       setThumbnailUrl(null);
-      await Promise.all([
-        utils.course.get.invalidate({ courseId: course.id }),
-        utils.course.list.invalidate({ organizationId }),
-      ]);
+      await refreshCourse();
       toast.success("Thumbnail course dihapus.");
-      router.refresh();
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -2205,12 +2216,8 @@ function SettingsSection({
             : (enrollmentMode as "OPEN" | "INVITE_ONLY"),
         progressionMode,
       });
-      await Promise.all([
-        utils.course.get.invalidate({ courseId: course.id }),
-        utils.course.list.invalidate({ organizationId }),
-      ]);
+      await refreshCourse();
       toast.success("Pengaturan course disimpan.");
-      router.refresh();
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }

@@ -273,12 +273,7 @@ async function TeacherDashboard({
 
   return (
     <div
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        body,
-        "mx-auto w-full max-w-6xl space-y-10",
-      )}
+      className={cn(hanken.variable, inter.variable, body, "w-full space-y-10")}
     >
       <header className="border-foreground/15 relative overflow-hidden rounded-xl border p-6 sm:p-8">
         <div className="bg-muted/70 pointer-events-none absolute -top-20 -right-16 size-56 rounded-full blur-3xl" />
@@ -583,12 +578,7 @@ export default async function DashboardPage({
 
   return (
     <div
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        body,
-        "mx-auto w-full max-w-6xl space-y-10",
-      )}
+      className={cn(hanken.variable, inter.variable, body, "w-full space-y-10")}
     >
       <header className="flex flex-wrap items-end justify-between gap-6">
         <div className="min-w-0">

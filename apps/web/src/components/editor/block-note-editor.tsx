@@ -36,7 +36,9 @@ export type BlockNoteDocument = HakgyoBlock[];
 
 export type BlockNoteEditorProps = {
   initialContent?: HakgyoPartialBlock[];
+  autoFocus?: boolean;
   editable?: boolean;
+  trailingBlock?: boolean;
   onChange?: (document: BlockNoteDocument) => void;
   theme?: "light" | "dark";
   uploadAsset?: UploadEditorAsset;
@@ -44,7 +46,9 @@ export type BlockNoteEditorProps = {
 
 export function BlockNoteEditor({
   initialContent,
+  autoFocus,
   editable = true,
+  trailingBlock = true,
   onChange,
   theme = "light",
   uploadAsset,
@@ -52,6 +56,7 @@ export function BlockNoteEditor({
   const editor = useCreateBlockNote({
     initialContent,
     schema: hakgyoBlockNoteSchema,
+    trailingBlock,
   });
 
   const slashMenuItems = (editor: HakgyoBlockNoteEditor) => [
@@ -100,6 +105,7 @@ export function BlockNoteEditor({
   return (
     <AssetUploadProvider value={uploadAsset ?? null}>
       <BlockNoteView
+        autoFocus={autoFocus}
         editable={editable}
         editor={editor}
         onChange={() => onChange?.(editor.document)}

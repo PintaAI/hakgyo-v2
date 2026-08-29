@@ -266,10 +266,7 @@ function MaterialEditorForm({
   }
 
   return (
-    <form
-      className="mx-auto flex w-full max-w-6xl flex-col gap-6"
-      onSubmit={handleSubmit}
-    >
+    <form className="flex w-full flex-col gap-6" onSubmit={handleSubmit}>
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex min-w-0 items-center gap-3">
           <Button
@@ -341,7 +338,7 @@ function MaterialEditorForm({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-        <section className="bg-card min-w-0 overflow-hidden rounded-xl border shadow-xs">
+        <section className="min-w-0 overflow-hidden rounded-xl border bg-white shadow-xs dark:bg-[#1f1f1f]">
           <div className="border-b px-5 py-4">
             <h2 className="font-heading font-semibold">Konten pelajaran</h2>
             <p className="text-muted-foreground text-sm">

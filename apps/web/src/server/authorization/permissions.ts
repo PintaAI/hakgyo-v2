@@ -74,6 +74,27 @@ export function getCourseCapabilities(scope: CourseScope) {
   };
 }
 
+export function evaluateCourseAccess(scope: CourseScope) {
+  const capabilities = getCourseCapabilities(scope);
+
+  return {
+    allowed: {
+      view: capabilities.view,
+      manage: capabilities.manage,
+      manageContent: capabilities.manageContent,
+    },
+    access: {
+      canManageCourse: capabilities.manage,
+      canManageContent: capabilities.manageContent,
+      canViewCohorts: capabilities.viewCohorts,
+      canViewAllCohorts: capabilities.viewAllCohorts,
+      canCreateCohort: capabilities.createCohort,
+      canManageCohortInvites: capabilities.manageCohortInvites,
+      usesAdvancedPermissions: capabilities.usesAdvancedPermissions,
+    },
+  };
+}
+
 export function getCohortCapabilities(input: {
   course: ReturnType<typeof getCourseCapabilities>;
   staffRole?: CohortStaffRole;

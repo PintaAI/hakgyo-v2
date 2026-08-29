@@ -2,7 +2,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 
 export default function CoursesLoading() {
   return (
-    <div className="mx-auto w-full max-w-6xl animate-pulse space-y-8">
+    <div className="w-full animate-pulse space-y-8">
       <div className="flex items-end justify-between gap-4">
         <div className="space-y-3">
           <Skeleton className="h-3 w-24" />

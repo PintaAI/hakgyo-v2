@@ -45,7 +45,7 @@ export default async function KurikulumPage({
       className={cn(
         hanken.variable,
         inter.variable,
-        "mx-auto w-full max-w-6xl font-[family-name:var(--font-inter)]",
+        "w-full font-[family-name:var(--font-inter)]",
       )}
     >
       <KurikulumEditor

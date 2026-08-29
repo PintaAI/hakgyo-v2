@@ -117,7 +117,7 @@ export function MaterialLibrary({
     });
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="space-y-1">
           <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">

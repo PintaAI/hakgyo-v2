@@ -2,7 +2,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 
 export default function CohortWorkspaceLoading() {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8">
+    <div className="w-full space-y-8">
       <Skeleton className="h-9 w-40" />
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="space-y-3">

@@ -8,6 +8,7 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
+import { fetchStats } from "~/server/foundation/fetch-stats";
 import { pageInput, pageResult } from "~/server/api/pagination";
 import {
   canDemoteOwner,
@@ -498,18 +499,28 @@ export const organizationRouter = createTRPCRouter({
       });
 
       const organizationScope = { organizationId: input.organizationId };
-      const [
-        members,
-        courses,
-        cohorts,
-        enrollments,
-        materials,
-        vocabularySets,
-        assessments,
-        attemptsInReview,
-        upcomingMeetings,
-      ] = await Promise.all([
-        ctx.db.organizationMember.count({ where: organizationScope }),
+      const [stats, courses, cohorts, enrollments] = await Promise.all([
+        fetchStats({
+          members: () =>
+            ctx.db.organizationMember.count({ where: organizationScope }),
+          materials: () => ctx.db.material.count({ where: organizationScope }),
+          vocabularySets: () =>
+            ctx.db.vocabularySet.count({ where: organizationScope }),
+          assessments: () =>
+            ctx.db.assessment.count({ where: organizationScope }),
+          attemptsInReview: () =>
+            ctx.db.assessmentAttempt.count({
+              where: { ...organizationScope, status: "IN_REVIEW" },
+            }),
+          upcomingMeetings: () =>
+            ctx.db.cohortMeeting.count({
+              where: {
+                ...organizationScope,
+                status: "SCHEDULED",
+                startsAt: { gte: new Date() },
+              },
+            }),
+        }),
         ctx.db.course.groupBy({
           by: ["status"],
           where: organizationScope,
@@ -525,26 +536,13 @@ export const organizationRouter = createTRPCRouter({
           where: { course: organizationScope },
           _count: { _all: true },
         }),
-        ctx.db.material.count({ where: organizationScope }),
-        ctx.db.vocabularySet.count({ where: organizationScope }),
-        ctx.db.assessment.count({ where: organizationScope }),
-        ctx.db.assessmentAttempt.count({
-          where: { ...organizationScope, status: "IN_REVIEW" },
-        }),
-        ctx.db.cohortMeeting.count({
-          where: {
-            ...organizationScope,
-            status: "SCHEDULED",
-            startsAt: { gte: new Date() },
-          },
-        }),
       ]);
 
       const sum = (groups: Array<{ _count: { _all: number } }>) =>
         groups.reduce((total, group) => total + group._count._all, 0);
 
       return {
-        members,
+        members: stats.members,
         courses: {
           total: sum(courses),
           byStatus: Object.fromEntries(
@@ -563,8 +561,15 @@ export const organizationRouter = createTRPCRouter({
             enrollments.map((group) => [group.status, group._count._all]),
           ),
         },
-        content: { materials, vocabularySets, assessments },
-        actionItems: { attemptsInReview, upcomingMeetings },
+        content: {
+          materials: stats.materials,
+          vocabularySets: stats.vocabularySets,
+          assessments: stats.assessments,
+        },
+        actionItems: {
+          attemptsInReview: stats.attemptsInReview,
+          upcomingMeetings: stats.upcomingMeetings,
+        },
       };
     }),
 

@@ -11,6 +11,10 @@ import {
 import { orderAssessmentQuestions } from "~/server/assessment-order";
 import { isAssessmentExpired } from "~/server/assessment-timing";
 import {
+  MAX_ASSESSMENT_OPTIONS,
+  MIN_ASSESSMENT_OPTIONS,
+} from "~/lib/assessment-options";
+import {
   activeEnrollmentStatuses,
   requireCohortPermission,
   requireContentAuthor,
@@ -253,11 +257,21 @@ export const assessmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const question = await ctx.db.assessmentQuestion.findUnique({
         where: { id: input.questionId },
-        select: { assessmentId: true, type: true },
+        select: {
+          assessmentId: true,
+          type: true,
+          _count: { select: { options: true } },
+        },
       });
       if (!question) throw new TRPCError({ code: "NOT_FOUND" });
       if (question.type === "WRITTEN")
         throw new TRPCError({ code: "BAD_REQUEST" });
+      if (question._count.options >= MAX_ASSESSMENT_OPTIONS) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Sebuah soal pilihan maksimal memiliki empat opsi.",
+        });
+      }
       await requireAssessmentManagement(
         ctx.db,
         question.assessmentId,
@@ -276,7 +290,10 @@ export const assessmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const option = await ctx.db.assessmentOption.findUnique({
         where: { id: input.optionId },
-        select: { question: { select: { assessmentId: true } } },
+        select: {
+          questionId: true,
+          question: { select: { assessmentId: true, type: true } },
+        },
       });
       if (!option) throw new TRPCError({ code: "NOT_FOUND" });
       await requireAssessmentManagement(
@@ -285,6 +302,27 @@ export const assessmentRouter = createTRPCRouter({
         ctx.actorUserId,
       );
       const { optionId, ...data } = input;
+
+      if (data.isCorrect && option.question.type === "SINGLE_CHOICE") {
+        return ctx.db.$transaction(
+          async (tx) => {
+            await tx.assessmentOption.updateMany({
+              where: {
+                questionId: option.questionId,
+                id: { not: optionId },
+                isCorrect: true,
+              },
+              data: { isCorrect: false },
+            });
+            return tx.assessmentOption.update({
+              where: { id: optionId },
+              data,
+            });
+          },
+          { isolationLevel: "Serializable" },
+        );
+      }
+
       return ctx.db.assessmentOption.update({ where: { id: optionId }, data });
     }),
   deleteOption: protectedProcedure
@@ -292,7 +330,15 @@ export const assessmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const option = await ctx.db.assessmentOption.findUnique({
         where: { id: input.optionId },
-        select: { question: { select: { assessmentId: true } } },
+        select: {
+          question: {
+            select: {
+              assessmentId: true,
+              type: true,
+              _count: { select: { options: true } },
+            },
+          },
+        },
       });
       if (!option) throw new TRPCError({ code: "NOT_FOUND" });
       await requireAssessmentManagement(
@@ -301,6 +347,15 @@ export const assessmentRouter = createTRPCRouter({
         ctx.actorUserId,
         "delete",
       );
+      if (
+        option.question.type !== "WRITTEN" &&
+        option.question._count.options <= MIN_ASSESSMENT_OPTIONS
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Sebuah soal pilihan harus memiliki minimal dua opsi.",
+        });
+      }
       await ctx.db.assessmentOption.delete({ where: { id: input.optionId } });
       return { deleted: true };
     }),

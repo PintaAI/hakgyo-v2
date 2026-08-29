@@ -306,7 +306,7 @@ export function ReviewQueue({
   );
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8">
+    <div className="w-full space-y-8">
       <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div className="space-y-2">
           <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">

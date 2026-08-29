@@ -11,6 +11,7 @@ import {
   requireOrganizationMembership,
   requireOrganizationPermission,
 } from "~/server/authorization";
+import { getCourseWorkspaceOverview } from "~/server/course/workspace-overview";
 import { db } from "~/server/db";
 
 const id = z.string().min(1);
@@ -269,6 +270,19 @@ export const courseRouter = createTRPCRouter({
       });
       return { ...course, access: access.access };
     }),
+  getWorkspaceOverview: protectedProcedure
+    .input(
+      z.object({
+        courseId: id,
+        organizationSlug: z.string().min(1),
+      }),
+    )
+    .query(({ ctx, input }) =>
+      getCourseWorkspaceOverview({
+        ...input,
+        userId: ctx.actorUserId,
+      }),
+    ),
   getAccess: protectedProcedure
     .input(z.object({ courseId: id }))
     .query(async ({ ctx, input }) => {

@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button";
 
 export default function CoursesError({ reset }: { reset: () => void }) {
   return (
-    <div className="mx-auto flex min-h-80 w-full max-w-6xl flex-col items-center justify-center rounded-lg border border-dashed px-6 text-center">
+    <div className="flex min-h-80 w-full flex-col items-center justify-center rounded-lg border border-dashed px-6 text-center">
       <AlertCircleIcon className="text-destructive size-7" />
       <h1 className="font-heading mt-4 text-xl font-semibold">
         Courses belum dapat dimuat

@@ -42,7 +42,7 @@ export default async function NewCoursePage({
       className={cn(
         hanken.variable,
         inter.variable,
-        "mx-auto w-full max-w-5xl font-[family-name:var(--font-inter)]",
+        "w-full font-[family-name:var(--font-inter)]",
       )}
     >
       <CourseCreateForm

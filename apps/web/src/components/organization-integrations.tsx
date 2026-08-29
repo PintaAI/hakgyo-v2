@@ -73,7 +73,7 @@ export function OrganizationIntegrations({
   const isConnected = zoom?.status === "CONNECTED";
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <div className="space-y-1">
         <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
           <PlugZapIcon className="size-4" />
@@ -182,8 +182,8 @@ export function OrganizationIntegrations({
                 <p className="font-medium">Buat meeting dari Hakgyo</p>
                 <p className="text-muted-foreground mt-1 max-w-lg text-sm">
                   Otorisasi akun Zoom Anda untuk membuat, memperbarui, dan
-                  membatalkan meeting Group belajar tanpa membagikan
-                  kredensial kepada anggota.
+                  membatalkan meeting Group belajar tanpa membagikan kredensial
+                  kepada anggota.
                 </p>
               </div>
               <a

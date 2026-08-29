@@ -228,7 +228,7 @@ export function OrganizationGeneralSettings({
     permissionMode ?? organization.data.permissionMode;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <div className="space-y-1">
         <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
           <Settings2Icon className="size-4" />
@@ -238,8 +238,8 @@ export function OrganizationGeneralSettings({
           Pengaturan umum
         </h1>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          Kelola bagaimana organisasi Anda diidentifikasi, mengatur akses public/private course,
-          dan berbagi sumber belajar dengan teacher.
+          Kelola bagaimana organisasi Anda diidentifikasi, mengatur akses
+          public/private course, dan berbagi sumber belajar dengan teacher.
         </p>
       </div>
 
@@ -348,7 +348,9 @@ export function OrganizationGeneralSettings({
 
             <div className="flex items-start justify-between gap-6 rounded-xl border p-4">
               <div className="grid gap-1">
-                <Label htmlFor="open-enrollment">Public course secara default</Label>
+                <Label htmlFor="open-enrollment">
+                  Public course secara default
+                </Label>
                 <p className="text-muted-foreground text-xs">
                   {effectiveEnrollmentMode === "OPEN"
                     ? "Course baru akan menjadi public — siswa dapat menemukan dan mendaftar sendiri."

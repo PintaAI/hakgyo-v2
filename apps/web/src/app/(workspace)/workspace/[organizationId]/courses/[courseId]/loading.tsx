@@ -2,7 +2,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 
 export default function CourseWorkspaceLoading() {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8">
+    <div className="w-full space-y-8">
       <Skeleton className="h-9 w-36" />
       <header className="bg-muted rounded-lg px-5 py-6 sm:px-7 sm:py-8">
         <Skeleton className="h-3 w-40" />

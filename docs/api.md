@@ -479,6 +479,22 @@ query({ courseId: string }): ManagedCourseDetail
 - Scope: owner/admin organization atau teacher pemilik course.
 - Memuat owner, module, dan item terurut.
 
+### `course.getWorkspaceOverview`
+
+```ts
+query({
+  courseId: string;
+  organizationSlug: string;
+}): CourseWorkspaceOverview
+```
+
+- Scope: organization member dengan akses `course.view`.
+- Memvalidasi course terhadap slug organization dari route.
+- Mengembalikan metadata course, access capabilities, lima module pertama,
+  dan exact counts untuk statistik overview.
+- Statistik manager dihitung paralel; list cohort, learner, dan invite diambil
+  terpisah hanya ketika tab terkait dibuka.
+
 ### Course Fields
 
 Dipakai oleh `course.create` dan `course.update`:

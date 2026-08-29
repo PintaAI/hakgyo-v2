@@ -17,6 +17,23 @@ function plainText(value: unknown): string {
   return "";
 }
 
+export function getBlockNotePlainText(value: unknown): string {
+  if (!Array.isArray(value)) return plainText(value).trim();
+
+  return value
+    .map((block) => {
+      if (!block || typeof block !== "object") return "";
+      const record = block as Record<string, unknown>;
+      return [plainText(record.content), getBlockNotePlainText(record.children)]
+        .filter(Boolean)
+        .join(" ");
+    })
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function toBlockNoteDocument(value: unknown): HakgyoPartialBlock[] {
   if (
     Array.isArray(value) &&

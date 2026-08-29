@@ -20,7 +20,7 @@ export default async function Layout({
         { href: `${root}/mcp`, label: "MCP Server" },
       ]}
     >
-      {children}
+      <div className="mx-auto w-full max-w-4xl">{children}</div>
     </Subnav>
   );
 }

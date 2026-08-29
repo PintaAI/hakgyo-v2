@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   canAccessLearningContent,
+  evaluateCourseAccess,
   getCohortCapabilities,
   getCourseCapabilities,
   hasPermission,
@@ -32,6 +33,23 @@ describe("organization permissions", () => {
 });
 
 describe("course capabilities", () => {
+  test("exposes the stable access contract used by API responses", () => {
+    expect(
+      evaluateCourseAccess({ ...outsideScope, isCourseEditor: true }),
+    ).toEqual({
+      allowed: { view: true, manage: false, manageContent: true },
+      access: {
+        canManageCourse: false,
+        canManageContent: true,
+        canViewCohorts: false,
+        canViewAllCohorts: false,
+        canCreateCohort: false,
+        canManageCohortInvites: false,
+        usesAdvancedPermissions: true,
+      },
+    });
+  });
+
   test("organization managers and course owner have full course access", () => {
     for (const scope of [
       { ...outsideScope, organizationRole: "ADMIN" as const },

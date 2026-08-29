@@ -4,6 +4,7 @@ import { cohortRouter } from "~/server/api/routers/cohort";
 import { contentRouter } from "~/server/api/routers/content";
 import { courseRouter } from "~/server/api/routers/course";
 import { enrollmentRouter } from "~/server/api/routers/enrollment";
+import { gamificationRouter } from "~/server/api/routers/gamification";
 import { learningRouter } from "~/server/api/routers/learning";
 import { inviteRouter } from "~/server/api/routers/invite";
 import { organizationRouter } from "~/server/api/routers/organization";
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
   content: contentRouter,
   course: courseRouter,
   enrollment: enrollmentRouter,
+  gamification: gamificationRouter,
   learning: learningRouter,
   invite: inviteRouter,
   organization: organizationRouter,

@@ -65,6 +65,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -271,6 +272,12 @@ export function CohortWorkspace({
   const learnerItems = learners.data?.pages.flatMap((page) => page.items);
   const meetingItems = meetings.data?.pages.flatMap((page) => page.items);
   const learnerActiveTotal = learners.data?.pages[0]?.activeTotal;
+  const meetingTotal = meetings.data?.pages[0]?.total;
+  const viewCounts: Partial<Record<CohortView, number>> = {
+    learners: learnerActiveTotal,
+    staff: cohort.staff.length,
+    meetings: meetingTotal,
+  };
 
   function navigate(nextView: CohortView) {
     if (nextView === view) return;
@@ -338,85 +345,90 @@ export function CohortWorkspace({
         </div>
       </header>
 
-      <nav
-        aria-label="Pengelolaan Group belajar"
-        className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      <Tabs
+        value={view}
+        onValueChange={(nextView) => navigate(nextView as CohortView)}
+        className="gap-8"
       >
-        <div className="flex min-w-max items-center gap-1">
-          {availableViews.map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              type="button"
-              aria-current={view === value ? "page" : undefined}
-              onClick={() => navigate(value)}
-              className={cn(
-                "after:bg-foreground focus-visible:bg-muted relative flex h-11 items-center gap-2 px-3 text-sm font-medium outline-none after:absolute after:right-3 after:bottom-0 after:left-3 after:h-0.5 after:opacity-0",
-                view === value
-                  ? "text-foreground after:opacity-100"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="size-4" />
-              {label}
-            </button>
-          ))}
+        <div className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList
+            variant="line"
+            aria-label="Pengelolaan Group belajar"
+            className="h-11 min-w-max justify-start rounded-none p-0"
+          >
+            {availableViews.map(({ value, label, icon: Icon }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="h-11 flex-none rounded-none px-3 py-0 group-data-horizontal/tabs:after:inset-x-3 group-data-horizontal/tabs:after:bottom-0"
+              >
+                <Icon className="size-4" />
+                {label}
+                {viewCounts[value] !== undefined && viewCounts[value] > 0 ? (
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    ({viewCounts[value]})
+                  </span>
+                ) : null}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </nav>
 
-      {view === "overview" ? (
-        <Overview
-          cohort={cohort}
-          learners={learnerItems}
-          learnersActiveTotal={learnerActiveTotal}
-          learnersPending={learners.isPending}
-          meetings={meetingItems}
-          meetingsPending={meetings.isPending}
-          onNavigate={navigate}
-        />
-      ) : null}
-      {view === "learners" ? (
-        <Learners
-          cohortId={cohort.id}
-          data={learnerItems}
-          error={learners.error}
-          pending={learners.isPending}
-          search={learnerSearch}
-          onSearchChange={setLearnerSearch}
-          hasMore={learners.hasNextPage}
-          isLoadingMore={learners.isFetchingNextPage}
-          onLoadMore={() => void learners.fetchNextPage()}
-        />
-      ) : null}
-      {view === "staff" ? (
-        <Staff canManage={cohort.access.manageStaff} cohort={cohort} />
-      ) : null}
-      {view === "meetings" ? (
-        <Meetings
-          cohortId={cohort.id}
-          data={meetingItems}
-          error={meetings.error}
-          organizationSlug={organizationSlug}
-          canManage={cohort.access.manageMeetings}
-          pending={meetings.isPending}
-          hasMore={meetings.hasNextPage}
-          isLoadingMore={meetings.isFetchingNextPage}
-          onLoadMore={() => void meetings.fetchNextPage()}
-        />
-      ) : null}
-      {view === "reviews" ? (
-        <ReviewQueue
-          organizationId={cohort.organizationId}
-          cohortId={cohort.id}
-          cohortName={cohort.name}
-        />
-      ) : null}
-      {view === "invites" ? (
-        <CohortInvites
-          courseId={cohort.courseId}
-          cohortId={cohort.id}
-          cohortName={cohort.name}
-        />
-      ) : null}
+        <TabsContent value="overview">
+          <Overview
+            cohort={cohort}
+            learners={learnerItems}
+            learnersActiveTotal={learnerActiveTotal}
+            learnersPending={learners.isPending}
+            meetings={meetingItems}
+            meetingsPending={meetings.isPending}
+            onNavigate={navigate}
+          />
+        </TabsContent>
+        <TabsContent value="learners">
+          <Learners
+            cohortId={cohort.id}
+            data={learnerItems}
+            error={learners.error}
+            pending={learners.isPending}
+            search={learnerSearch}
+            onSearchChange={setLearnerSearch}
+            hasMore={learners.hasNextPage}
+            isLoadingMore={learners.isFetchingNextPage}
+            onLoadMore={() => void learners.fetchNextPage()}
+          />
+        </TabsContent>
+        <TabsContent value="staff">
+          <Staff canManage={cohort.access.manageStaff} cohort={cohort} />
+        </TabsContent>
+        <TabsContent value="meetings">
+          <Meetings
+            cohortId={cohort.id}
+            data={meetingItems}
+            error={meetings.error}
+            organizationSlug={organizationSlug}
+            canManage={cohort.access.manageMeetings}
+            pending={meetings.isPending}
+            hasMore={meetings.hasNextPage}
+            isLoadingMore={meetings.isFetchingNextPage}
+            onLoadMore={() => void meetings.fetchNextPage()}
+          />
+        </TabsContent>
+        <TabsContent value="reviews">
+          <ReviewQueue
+            organizationId={cohort.organizationId}
+            cohortId={cohort.id}
+            cohortName={cohort.name}
+          />
+        </TabsContent>
+        <TabsContent value="invites">
+          <CohortInvites
+            courseId={cohort.courseId}
+            cohortId={cohort.id}
+            cohortName={cohort.name}
+          />
+        </TabsContent>
+      </Tabs>
 
       {cohort.access.update ? (
         <EditCohort

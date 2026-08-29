@@ -10,6 +10,7 @@ import {
 import { db } from "~/server/db";
 import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
 import { getCourseOutlineForUser } from "~/server/learning/course-outline";
+import { recordGamificationActivity } from "~/server/gamification/record-activity";
 import {
   passesAssessmentRequirement,
   passesRequirementPolicy,
@@ -250,16 +251,33 @@ export const learningRouter = createTRPCRouter({
       if (existing && input.status === "IN_PROGRESS") return existing;
 
       const completedAt = input.status === "COMPLETED" ? new Date() : null;
-      return ctx.db.contentProgress.upsert({
-        where: {
-          courseItemId_userId: {
-            courseItemId: input.courseItemId,
-            userId: ctx.actorUserId,
+      return ctx.db.$transaction(async (tx) => {
+        const progress = await tx.contentProgress.upsert({
+          where: {
+            courseItemId_userId: {
+              courseItemId: input.courseItemId,
+              userId: ctx.actorUserId,
+            },
           },
-        },
-        create: { ...input, userId: ctx.actorUserId, completedAt },
-        update: { status: input.status, completedAt },
-        select: { status: true, startedAt: true, completedAt: true },
+          create: { ...input, userId: ctx.actorUserId, completedAt },
+          update: { status: input.status, completedAt },
+          select: { status: true, startedAt: true, completedAt: true },
+        });
+
+        if (input.status === "COMPLETED") {
+          await recordGamificationActivity(tx, {
+            action:
+              item.type === "MATERIAL"
+                ? "MATERIAL_COMPLETED"
+                : "VOCABULARY_REVIEWED",
+            idempotencyKey: `content-completed:${ctx.actorUserId}:${input.courseItemId}`,
+            metadata: { courseItemId: input.courseItemId },
+            occurredAt: completedAt ?? undefined,
+            userId: ctx.actorUserId,
+          });
+        }
+
+        return progress;
       });
     }),
   getCourseOutline: protectedProcedure

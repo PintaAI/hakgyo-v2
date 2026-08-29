@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { hasBlockNoteContent, toBlockNoteDocument } from "./document";
+import {
+  getBlockNotePlainText,
+  hasBlockNoteContent,
+  toBlockNoteDocument,
+} from "./document";
 
 describe("assessment BlockNote document compatibility", () => {
   test("normalizes legacy string JSON into a paragraph", () => {
@@ -23,5 +27,17 @@ describe("assessment BlockNote document compatibility", () => {
     expect(hasBlockNoteContent([{ type: "paragraph", content: "" }])).toBe(
       false,
     );
+  });
+
+  test("extracts readable text from a nested BlockNote document", () => {
+    expect(
+      getBlockNotePlainText([
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Apa ibu kota" }],
+          children: [{ type: "paragraph", content: "Indonesia?" }],
+        },
+      ]),
+    ).toBe("Apa ibu kota Indonesia?");
   });
 });

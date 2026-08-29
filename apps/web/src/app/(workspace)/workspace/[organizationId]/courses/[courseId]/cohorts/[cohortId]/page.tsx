@@ -43,7 +43,7 @@ export default async function CohortPage({
       className={cn(
         hanken.variable,
         inter.variable,
-        "mx-auto w-full max-w-6xl font-[family-name:var(--font-inter)]",
+        "w-full font-[family-name:var(--font-inter)]",
       )}
     >
       <CohortWorkspace

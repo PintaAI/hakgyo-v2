@@ -90,7 +90,7 @@ export function McpServerSettings({ endpoint }: { endpoint: string }) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <div className="space-y-1">
         <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
           <ServerCogIcon className="size-4" />

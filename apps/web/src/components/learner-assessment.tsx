@@ -35,6 +35,7 @@ import {
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import { toBlockNoteDocument } from "~/lib/blocknote/document";
+import { getAssessmentOptionLabel } from "~/lib/assessment-options";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
@@ -546,7 +547,7 @@ export function AssessmentAttempt({
                       />
                     )}
                     <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
-                      {String.fromCharCode(65 + index)}
+                      {getAssessmentOptionLabel(index)}
                     </span>
                     <div className="min-w-0 flex-1 overflow-hidden leading-relaxed">
                       <RichAssessmentContent value={option.content} />

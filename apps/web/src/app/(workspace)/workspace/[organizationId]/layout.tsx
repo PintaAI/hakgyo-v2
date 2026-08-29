@@ -56,7 +56,9 @@ export default async function WorkspaceLayout({
             <WorkspaceBreadcrumb organizationSlug={organizationSlug} />
           </div>
         </header>
-        <div className="flex-1 p-4 md:p-6 lg:p-8">{children}</div>
+        <div className="flex-1 p-4 md:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-7xl">{children}</div>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

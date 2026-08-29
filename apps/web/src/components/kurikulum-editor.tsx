@@ -194,9 +194,16 @@ export function KurikulumEditor({
     (total, module) => total + module.items.length,
     0,
   );
+  const workspaceQueryInput = {
+    courseId: course.id,
+    organizationSlug,
+  };
 
   async function refreshCourse() {
-    await utils.course.get.invalidate({ courseId: course.id });
+    await Promise.all([
+      utils.course.get.invalidate({ courseId: course.id }),
+      utils.course.getWorkspaceOverview.invalidate(workspaceQueryInput),
+    ]);
     router.refresh();
   }
 
@@ -210,6 +217,7 @@ export function KurikulumEditor({
       });
       await Promise.all([
         utils.course.get.invalidate({ courseId: course.id }),
+        utils.course.getWorkspaceOverview.invalidate(workspaceQueryInput),
         utils.learning.getCourseOutline.invalidate({ courseId: course.id }),
       ]);
       router.refresh();

@@ -7,6 +7,7 @@ import { getCourseOutlineForUser } from "~/server/learning/course-outline";
 import {
   canAccessLearningContent,
   canManageContent,
+  evaluateCourseAccess,
   getCohortCapabilities,
   getCourseCapabilities,
   hasPermission,
@@ -159,26 +160,18 @@ export async function requireCoursePermission(input: {
   userId: string;
 }) {
   const result = await getCourseScope(input.courseId, input.userId);
-  const capabilities = getCourseCapabilities(result.scope);
+  const evaluation = evaluateCourseAccess(result.scope);
   const allowed =
     input.permission === "course.view"
-      ? capabilities.view
+      ? evaluation.allowed.view
       : input.permission === "course.manage"
-        ? capabilities.manage
-        : capabilities.manageContent;
+        ? evaluation.allowed.manage
+        : evaluation.allowed.manageContent;
 
   if (!allowed) return forbidden();
   return {
     ...result.course,
-    access: {
-      canManageCourse: capabilities.manage,
-      canManageContent: capabilities.manageContent,
-      canViewCohorts: capabilities.viewCohorts,
-      canViewAllCohorts: capabilities.viewAllCohorts,
-      canCreateCohort: capabilities.createCohort,
-      canManageCohortInvites: capabilities.manageCohortInvites,
-      usesAdvancedPermissions: capabilities.usesAdvancedPermissions,
-    },
+    access: evaluation.access,
   };
 }
 

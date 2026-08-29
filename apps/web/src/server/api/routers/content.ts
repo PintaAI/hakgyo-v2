@@ -745,7 +745,19 @@ export const contentRouter = createTRPCRouter({
         },
         orderBy: { updatedAt: "desc" },
         include: {
-          entries: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+          entries: {
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            include: {
+              audioAsset: {
+                select: {
+                  id: true,
+                  fileName: true,
+                  contentType: true,
+                  size: true,
+                },
+              },
+            },
+          },
         },
       });
     }),

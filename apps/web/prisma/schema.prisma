@@ -30,6 +30,9 @@ model User {
   cohortEnrollments       CohortEnrollment[]
   contentProgress         ContentProgress[]
   assessmentAttempts      AssessmentAttempt[]
+  activityEvents          UserActivityEvent[]
+  achievements            UserAchievement[]
+  gamification            UserGamification?
   uploadedAssets          Asset[]
   oauthClients            OauthClient[]
   oauthRefreshTokens      OauthRefreshToken[]
@@ -383,6 +386,13 @@ enum EnrollmentSource {
 enum ProgressStatus {
   IN_PROGRESS
   COMPLETED
+}
+
+enum GamificationAction {
+  MATERIAL_COMPLETED
+  ASSESSMENT_SUBMITTED
+  ASSESSMENT_PASSED
+  VOCABULARY_REVIEWED
 }
 
 model Organization {
@@ -832,6 +842,47 @@ model ContentProgress {
 
   @@unique([courseItemId, userId])
   @@index([userId, status])
+}
+
+model UserActivityEvent {
+  id                  String             @id @default(cuid())
+  userId              String
+  action              GamificationAction
+  xpAwarded           Int
+  contributesToStreak Boolean
+  activityDate        DateTime           @db.Date
+  occurredAt          DateTime           @default(now())
+  idempotencyKey      String             @unique
+  metadata            Json?
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@index([userId, activityDate])
+  @@index([userId, action, occurredAt])
+}
+
+model UserGamification {
+  userId              String    @id
+  totalXp             Int       @default(0)
+  completedActivities Int       @default(0)
+  currentStreak       Int       @default(0)
+  longestStreak       Int       @default(0)
+  lastActivityDate    DateTime? @db.Date
+  timeZone            String    @default("UTC")
+  updatedAt           DateTime  @updatedAt
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserAchievement {
+  id       String   @id @default(cuid())
+  userId   String
+  code     String
+  earnedAt DateTime @default(now())
+  metadata Json?
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, code])
+  @@index([userId, earnedAt])
 }
 
 model AssessmentAttempt {

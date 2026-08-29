@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangleIcon,
@@ -10,10 +10,8 @@ import {
   FileQuestionIcon,
   LoaderCircleIcon,
   PlusIcon,
-  SaveIcon,
   Settings2Icon,
   Trash2Icon,
-  XIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -49,16 +47,153 @@ import {
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
+import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
 import {
+  getBlockNotePlainText,
   hasBlockNoteContent,
   toBlockNoteDocument,
 } from "~/lib/blocknote/document";
+import {
+  getAssessmentOptionLabel,
+  MAX_ASSESSMENT_OPTIONS,
+  MIN_ASSESSMENT_OPTIONS,
+} from "~/lib/assessment-options";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Assessment = RouterOutputs["assessment"]["get"];
 type Question = Assessment["questions"][number];
 type QuestionType = Question["type"];
 type Status = Assessment["status"];
+type UpdatedOption = RouterOutputs["assessment"]["updateOption"];
+type UpdatedQuestion = RouterOutputs["assessment"]["updateQuestion"];
+type QuestionFields = {
+  type: QuestionType;
+  prompt: BlockNoteDocument;
+  explanation: BlockNoteDocument | null;
+  points: number;
+};
+
+const assessmentStatusLabels: Record<Status, string> = {
+  DRAFT: "Draft",
+  PUBLISHED: "Published",
+  ARCHIVED: "Archived",
+};
+
+const questionTypeLabels: Record<QuestionType, string> = {
+  SINGLE_CHOICE: "Pilihan tunggal",
+  MULTIPLE_CHOICE: "Pilihan ganda",
+  WRITTEN: "Jawaban tertulis",
+};
+
+function updateCorrectOption(
+  assessment: Assessment | undefined,
+  questionId: string,
+  optionId: string,
+  checked: boolean,
+) {
+  if (!assessment) return assessment;
+
+  return {
+    ...assessment,
+    questions: assessment.questions.map((question) =>
+      question.id === questionId
+        ? {
+            ...question,
+            options: question.options.map((option) => {
+              const isCorrect =
+                option.id === optionId
+                  ? checked
+                  : checked && question.type === "SINGLE_CHOICE"
+                    ? false
+                    : option.isCorrect;
+              return isCorrect === option.isCorrect
+                ? option
+                : { ...option, isCorrect };
+            }),
+          }
+        : question,
+    ),
+  };
+}
+
+function replaceQuestion(
+  assessment: Assessment | undefined,
+  replacement: Question | undefined,
+) {
+  if (!assessment || !replacement) return assessment;
+  return {
+    ...assessment,
+    questions: assessment.questions.map((question) =>
+      question.id === replacement.id ? replacement : question,
+    ),
+  };
+}
+
+function updateQuestionFields(
+  assessment: Assessment | undefined,
+  updated: UpdatedQuestion,
+) {
+  if (!assessment) return assessment;
+  return {
+    ...assessment,
+    questions: assessment.questions.map((question) =>
+      question.id === updated.id ? { ...question, ...updated } : question,
+    ),
+  };
+}
+
+function updateOptionContent(
+  assessment: Assessment | undefined,
+  updated: UpdatedOption,
+) {
+  if (!assessment) return assessment;
+  return {
+    ...assessment,
+    questions: assessment.questions.map((question) => {
+      if (!question.options.some((option) => option.id === updated.id)) {
+        return question;
+      }
+      return {
+        ...question,
+        options: question.options.map((option) =>
+          option.id === updated.id ? { ...option, ...updated } : option,
+        ),
+      };
+    }),
+  };
+}
+
+function appendOption(
+  assessment: Assessment | undefined,
+  questionId: string,
+  option: Question["options"][number],
+) {
+  if (!assessment) return assessment;
+  return {
+    ...assessment,
+    questions: assessment.questions.map((question) =>
+      question.id === questionId
+        ? { ...question, options: [...question.options, option] }
+        : question,
+    ),
+  };
+}
+
+function removeOption(assessment: Assessment | undefined, optionId: string) {
+  if (!assessment) return assessment;
+  return {
+    ...assessment,
+    questions: assessment.questions.map((question) => {
+      if (!question.options.some((option) => option.id === optionId)) {
+        return question;
+      }
+      return {
+        ...question,
+        options: question.options.filter((option) => option.id !== optionId),
+      };
+    }),
+  };
+}
 
 function getPublishValidationError(questions: Question[]) {
   if (questions.length === 0) {
@@ -70,7 +205,7 @@ function getPublishValidationError(questions: Question[]) {
       return `Soal ${index + 1} belum memiliki pertanyaan.`;
     }
     if (question.type === "WRITTEN") continue;
-    if (question.options.length < 2) {
+    if (question.options.length < MIN_ASSESSMENT_OPTIONS) {
       return `Soal ${index + 1} harus memiliki setidaknya dua opsi.`;
     }
     if (
@@ -142,9 +277,10 @@ export function AssessmentEditor({
   const confirmUpload = api.storage.confirmUpload.useMutation();
   const discardUpload = api.storage.deleteDocument.useMutation();
   const attachAsset = api.assessment.attachAsset.useMutation();
+  const createdAssessmentIdRef = useRef<string | null>(null);
   const canDelete = Boolean(organization.data);
 
-  async function refresh() {
+  async function refreshQuestions() {
     await Promise.all([
       utils.assessment.list.invalidate({ organizationId }),
       assessmentId
@@ -238,25 +374,26 @@ export function AssessmentEditor({
       assessment={assessment.data}
       canDelete={canDelete}
       isDeleting={deleteAssessment.isPending}
-      isSaving={createAssessment.isPending || updateAssessment.isPending}
       onBack={() => router.back()}
       uploadAsset={uploadAsset}
       questionBusy={
         createQuestion.isPending ||
-        updateQuestion.isPending ||
         deleteQuestion.isPending ||
         createOption.isPending ||
-        updateOption.isPending ||
         deleteOption.isPending
       }
       onAddOption={async (questionId) => {
         try {
-          await createOption.mutateAsync({
+          const created = await createOption.mutateAsync({
             questionId,
             content: [{ type: "paragraph", content: "Pilihan baru" }],
             isCorrect: false,
           });
-          await refresh();
+          if (assessmentId) {
+            utils.assessment.get.setData({ assessmentId }, (current) =>
+              appendOption(current, questionId, created),
+            );
+          }
           toast.success("Opsi ditambahkan.");
         } catch (error) {
           toast.error(errorMessage(error));
@@ -272,7 +409,7 @@ export function AssessmentEditor({
             explanation: null,
             points: 1,
           });
-          await refresh();
+          await refreshQuestions();
           toast.success("Soal ditambahkan.");
         } catch (error) {
           toast.error(errorMessage(error));
@@ -292,7 +429,11 @@ export function AssessmentEditor({
       onDeleteOption={async (optionId) => {
         try {
           await deleteOption.mutateAsync({ optionId });
-          await refresh();
+          if (assessmentId) {
+            utils.assessment.get.setData({ assessmentId }, (current) =>
+              removeOption(current, optionId),
+            );
+          }
           toast.success("Opsi dihapus.");
         } catch (error) {
           toast.error(errorMessage(error));
@@ -301,22 +442,31 @@ export function AssessmentEditor({
       onDeleteQuestion={async (questionId) => {
         try {
           await deleteQuestion.mutateAsync({ questionId });
-          await refresh();
+          await refreshQuestions();
           toast.success("Soal dihapus.");
         } catch (error) {
           toast.error(errorMessage(error));
         }
       }}
       onSave={async (value) => {
+        const targetAssessmentId =
+          assessmentId ?? createdAssessmentIdRef.current;
         try {
-          if (assessmentId) {
-            await updateAssessment.mutateAsync({
-              assessmentId,
+          if (targetAssessmentId) {
+            const updated = await updateAssessment.mutateAsync({
+              assessmentId: targetAssessmentId,
               ...value,
               editorSchemaVersion: 1,
             });
-            await refresh();
-            toast.success("Pengaturan assessment disimpan.");
+            utils.assessment.get.setData(
+              { assessmentId: targetAssessmentId },
+              (current) => (current ? { ...current, ...updated } : current),
+            );
+            utils.assessment.list.setData({ organizationId }, (current) =>
+              current?.map((item) =>
+                item.id === targetAssessmentId ? { ...item, ...updated } : item,
+              ),
+            );
             return;
           }
 
@@ -325,6 +475,7 @@ export function AssessmentEditor({
             ...value,
             editorSchemaVersion: 1,
           });
+          createdAssessmentIdRef.current = created.id;
           await utils.assessment.list.invalidate({ organizationId });
           toast.success("Assessment dibuat. Tambahkan soal pertama Anda.");
           router.replace(
@@ -332,13 +483,20 @@ export function AssessmentEditor({
           );
         } catch (error) {
           toast.error(errorMessage(error));
+          throw error;
         }
       }}
       onSaveOption={async (optionId, content) => {
         try {
-          await updateOption.mutateAsync({ optionId, content });
-          await refresh();
-          toast.success("Opsi disimpan.");
+          const updated = await updateOption.mutateAsync({
+            optionId,
+            content,
+          });
+          if (assessmentId) {
+            utils.assessment.get.setData({ assessmentId }, (current) =>
+              updateOptionContent(current, updated),
+            );
+          }
           return true;
         } catch (error) {
           toast.error(errorMessage(error));
@@ -347,9 +505,15 @@ export function AssessmentEditor({
       }}
       onSaveQuestion={async (questionId, value) => {
         try {
-          await updateQuestion.mutateAsync({ questionId, ...value });
-          await refresh();
-          toast.success("Soal disimpan.");
+          const updated = await updateQuestion.mutateAsync({
+            questionId,
+            ...value,
+          });
+          if (assessmentId) {
+            utils.assessment.get.setData({ assessmentId }, (current) =>
+              updateQuestionFields(current, updated),
+            );
+          }
           return true;
         } catch (error) {
           toast.error(errorMessage(error));
@@ -357,22 +521,23 @@ export function AssessmentEditor({
         }
       }}
       onToggleCorrect={async (question, optionId, checked) => {
+        if (!assessmentId) return;
+        const queryInput = { assessmentId };
+        await utils.assessment.get.cancel(queryInput);
+        const previous = utils.assessment.get.getData(queryInput);
+        const previousQuestion = previous?.questions.find(
+          (current) => current.id === question.id,
+        );
+        utils.assessment.get.setData(queryInput, (current) =>
+          updateCorrectOption(current, question.id, optionId, checked),
+        );
+
         try {
-          if (checked && question.type === "SINGLE_CHOICE") {
-            await Promise.all(
-              question.options
-                .filter((option) => option.id !== optionId && option.isCorrect)
-                .map((option) =>
-                  updateOption.mutateAsync({
-                    optionId: option.id,
-                    isCorrect: false,
-                  }),
-                ),
-            );
-          }
           await updateOption.mutateAsync({ optionId, isCorrect: checked });
-          await refresh();
         } catch (error) {
+          utils.assessment.get.setData(queryInput, (current) =>
+            replaceQuestion(current, previousQuestion),
+          );
           toast.error(errorMessage(error));
         }
       }}
@@ -392,11 +557,25 @@ type AssessmentFields = {
   shuffleOptions: boolean;
 };
 
+type AssessmentDraft = Omit<
+  AssessmentFields,
+  | "description"
+  | "instructions"
+  | "maxAttempts"
+  | "passingScore"
+  | "timeLimitMinutes"
+> & {
+  description: string;
+  instructions: BlockNoteDocument;
+  maxAttempts: string;
+  passingScore: string;
+  timeLimitMinutes: string;
+};
+
 function AssessmentEditorForm({
   assessment,
   canDelete,
   isDeleting,
-  isSaving,
   onBack,
   uploadAsset,
   questionBusy,
@@ -413,7 +592,6 @@ function AssessmentEditorForm({
   assessment?: Assessment;
   canDelete: boolean;
   isDeleting: boolean;
-  isSaving: boolean;
   onBack: () => void;
   uploadAsset?: UploadEditorAsset;
   questionBusy: boolean;
@@ -429,12 +607,7 @@ function AssessmentEditorForm({
   ) => Promise<boolean>;
   onSaveQuestion: (
     questionId: string,
-    value: {
-      type: QuestionType;
-      prompt: BlockNoteDocument;
-      explanation: BlockNoteDocument | null;
-      points: number;
-    },
+    value: QuestionFields,
   ) => Promise<boolean>;
   onToggleCorrect: (
     question: Question,
@@ -465,16 +638,121 @@ function AssessmentEditorForm({
   const [shuffleOptions, setShuffleOptions] = useState(
     assessment?.shuffleOptions ?? false,
   );
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
+  const scrollAnimationFrameRef = useRef<number | null>(null);
+  const questionMapItems = useMemo(
+    () =>
+      assessment?.questions.map((question, index) => ({
+        id: question.id,
+        index,
+        label: getBlockNotePlainText(question.prompt) || `Soal ${index + 1}`,
+        points: question.points,
+      })) ?? [],
+    [assessment?.questions],
+  );
+  const questionIdKey = useMemo(
+    () => questionMapItems.map((item) => item.id).join("\u0000"),
+    [questionMapItems],
+  );
 
-  async function saveSettings() {
-    const normalizedTitle = title.trim();
+  useEffect(
+    () => () => {
+      if (scrollAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(scrollAnimationFrameRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!questionIdKey) return;
+
+    const visibleHeights = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const questionId = (entry.target as HTMLElement).dataset.questionId;
+          if (!questionId) continue;
+          visibleHeights.set(
+            questionId,
+            entry.isIntersecting ? entry.intersectionRect.height : 0,
+          );
+        }
+
+        let nextQuestionId: string | null = null;
+        let largestVisibleHeight = 0;
+        for (const [questionId, visibleHeight] of visibleHeights) {
+          if (visibleHeight > largestVisibleHeight) {
+            nextQuestionId = questionId;
+            largestVisibleHeight = visibleHeight;
+          }
+        }
+        setActiveQuestionId(nextQuestionId);
+      },
+      {
+        rootMargin: "-80px 0px -20% 0px",
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+      },
+    );
+
+    for (const questionId of questionIdKey.split("\u0000")) {
+      const element = document.getElementById(
+        `assessment-question-${questionId}`,
+      );
+      if (element) observer.observe(element);
+    }
+
+    return () => observer.disconnect();
+  }, [questionIdKey]);
+
+  const navigateToQuestion = (questionId: string) => {
+    const questionElement = document.getElementById(
+      `assessment-question-${questionId}`,
+    );
+    if (!questionElement) return;
+
+    if (scrollAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(scrollAnimationFrameRef.current);
+    }
+    const startY = window.scrollY;
+    const questionRect = questionElement.getBoundingClientRect();
+    const targetY = Math.max(
+      0,
+      startY +
+        questionRect.top -
+        Math.max(24, (window.innerHeight - questionRect.height) / 2),
+    );
+    const distance = targetY - startY;
+    let startedAt: number | null = null;
+
+    const animateScroll = (now: number) => {
+      startedAt ??= now;
+      const progress = Math.min((now - startedAt) / 500, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      window.scrollTo(0, startY + distance * easedProgress);
+      if (progress < 1) {
+        scrollAnimationFrameRef.current = requestAnimationFrame(animateScroll);
+      } else {
+        scrollAnimationFrameRef.current = null;
+      }
+    };
+    scrollAnimationFrameRef.current = requestAnimationFrame(animateScroll);
+    setActiveQuestionId(questionId);
+  };
+
+  const {
+    cancel: cancelSettingsSave,
+    flush: flushSettingsSave,
+    schedule: scheduleSettingsSave,
+  } = useDebouncedAutosave<AssessmentDraft>(async (draft) => {
+    const normalizedTitle = draft.title.trim();
     if (!normalizedTitle) {
       toast.error("Judul assessment wajib diisi.");
       return;
     }
-    const parsedPassingScore = optionalInteger(passingScore, 0, 100);
-    const parsedMaxAttempts = optionalInteger(maxAttempts, 1);
-    const parsedTimeLimit = optionalInteger(timeLimitMinutes, 1);
+    const parsedPassingScore = optionalInteger(draft.passingScore, 0, 100);
+    const parsedMaxAttempts = optionalInteger(draft.maxAttempts, 1);
+    const parsedTimeLimit = optionalInteger(draft.timeLimitMinutes, 1);
     if (
       parsedPassingScore === undefined ||
       parsedMaxAttempts === undefined ||
@@ -483,7 +761,7 @@ function AssessmentEditorForm({
       toast.error("Nilai pengaturan angka belum valid.");
       return;
     }
-    if (status === "PUBLISHED") {
+    if (draft.status === "PUBLISHED") {
       if (!assessment) {
         toast.error(
           "Buat assessment sebagai draft terlebih dahulu, lalu tambahkan soal sebelum publish.",
@@ -498,28 +776,66 @@ function AssessmentEditorForm({
     }
     await onSave({
       title: normalizedTitle,
-      description: description.trim() || null,
-      status,
-      instructions: hasBlockNoteContent(instructions) ? instructions : null,
+      description: draft.description.trim() || null,
+      status: draft.status,
+      instructions: hasBlockNoteContent(draft.instructions)
+        ? draft.instructions
+        : null,
       passingScore: parsedPassingScore,
       maxAttempts: parsedMaxAttempts,
       timeLimitMinutes: parsedTimeLimit,
-      shuffleQuestions,
-      shuffleOptions,
+      shuffleQuestions: draft.shuffleQuestions,
+      shuffleOptions: draft.shuffleOptions,
     });
-  }
+  });
+
+  const skipInitialSettingsSave = useRef(true);
+
+  useEffect(() => {
+    if (skipInitialSettingsSave.current) {
+      skipInitialSettingsSave.current = false;
+      return;
+    }
+
+    scheduleSettingsSave({
+      description,
+      instructions,
+      maxAttempts,
+      passingScore,
+      shuffleOptions,
+      shuffleQuestions,
+      status,
+      timeLimitMinutes,
+      title,
+    });
+  }, [
+    description,
+    instructions,
+    maxAttempts,
+    passingScore,
+    shuffleOptions,
+    shuffleQuestions,
+    status,
+    scheduleSettingsSave,
+    timeLimitMinutes,
+    title,
+  ]);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex min-w-0 items-center gap-3">
             <Button
-              type="button"
               aria-label="Kembali ke assessment"
-              variant="outline"
+              onClick={() => {
+                void flushSettingsSave()
+                  .then(onBack)
+                  .catch(() => undefined);
+              }}
               size="icon"
-              onClick={onBack}
+              type="button"
+              variant="outline"
             >
               <ArrowLeftIcon />
             </Button>
@@ -556,7 +872,12 @@ function AssessmentEditorForm({
                     <AlertDialogCancel>Batal</AlertDialogCancel>
                     <AlertDialogAction
                       disabled={isDeleting}
-                      onClick={onDelete}
+                      onClick={() => {
+                        cancelSettingsSave();
+                        void flushSettingsSave()
+                          .then(onDelete)
+                          .catch(() => undefined);
+                      }}
                       variant="destructive"
                     >
                       {isDeleting && (
@@ -568,34 +889,33 @@ function AssessmentEditorForm({
                 </AlertDialogContent>
               </AlertDialog>
             ) : null}
-            <Button
-              disabled={isSaving || isDeleting}
-              onClick={() => void saveSettings()}
-              type="button"
-            >
-              {isSaving ? (
-                <LoaderCircleIcon
-                  className="animate-spin"
-                  data-icon="inline-start"
-                />
-              ) : (
-                <SaveIcon data-icon="inline-start" />
-              )}
-              {assessment ? "Simpan perubahan" : "Buat assessment"}
-            </Button>
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-          <section className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings2Icon className="size-4" />
-                  Pengaturan assessment
-                </CardTitle>
+          <section className="grid min-w-0 gap-6">
+            <Card className="gap-0 py-0 shadow-sm">
+              <CardHeader className="relative overflow-hidden rounded-none bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-6">
+                <div className="pointer-events-none absolute top-0 right-0 size-44 translate-x-14 -translate-y-20 rounded-full border border-current opacity-10" />
+                <div className="pointer-events-none absolute top-0 right-0 size-28 translate-x-8 -translate-y-12 rounded-full border border-current opacity-10" />
+                <div className="relative flex items-start gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                    <Settings2Icon className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold tracking-[0.18em] text-[#aaa99f] uppercase">
+                      Setup assessment
+                    </p>
+                    <CardTitle className="mt-1 text-xl font-semibold text-[#f5f3e9]">
+                      Pengaturan assessment
+                    </CardTitle>
+                    <p className="mt-1 text-sm leading-relaxed text-[#aaa99f]">
+                      Atur identitas dan petunjuk sebelum menyusun soal.
+                    </p>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="grid gap-5">
+              <CardContent className="grid gap-5 p-5 sm:p-6">
                 <div className="grid gap-2">
                   <Label htmlFor="assessment-title">Judul</Label>
                   <Input
@@ -620,12 +940,13 @@ function AssessmentEditorForm({
                 </div>
                 <div className="grid gap-2">
                   <Label>Petunjuk pengerjaan</Label>
-                  <div className="min-h-36 overflow-hidden rounded-lg border py-3">
+                  <div className="overflow-hidden rounded-lg border">
                     <DynamicBlockNoteEditor
                       initialContent={toBlockNoteDocument(
                         assessment?.instructions,
                       )}
                       onChange={setInstructions}
+                      trailingBlock={false}
                       theme={editorTheme}
                       uploadAsset={uploadAsset}
                     />
@@ -638,8 +959,8 @@ function AssessmentEditorForm({
             </Card>
 
             {assessment ? (
-              <section className="grid gap-4">
-                <div className="flex items-end justify-between gap-4">
+              <section className="grid gap-4 border-t pt-6">
+                <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <h2 className="font-heading text-xl font-semibold">Soal</h2>
                     <p className="text-muted-foreground text-sm">
@@ -647,9 +968,21 @@ function AssessmentEditorForm({
                       ini belum menyediakan pengurutan manual.
                     </p>
                   </div>
-                  <Badge variant="secondary">
-                    {assessment.questions.length} soal
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {assessment.questions.length} soal
+                    </Badge>
+                    <Button
+                      disabled={questionBusy}
+                      onClick={onAddQuestion}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <PlusIcon data-icon="inline-start" />
+                      Tambah soal
+                    </Button>
+                  </div>
                 </div>
 
                 {assessment.questions.length ? (
@@ -657,6 +990,7 @@ function AssessmentEditorForm({
                     {assessment.questions.map((question, index) => (
                       <QuestionCard
                         busy={questionBusy}
+                        highlighted={activeQuestionId === question.id}
                         index={index}
                         key={question.id}
                         onAddOption={onAddOption}
@@ -676,105 +1010,137 @@ function AssessmentEditorForm({
                     Tambahkan soal pertama untuk mulai membangun assessment.
                   </div>
                 )}
-
-                <Button
-                  className="w-full sm:w-fit"
-                  disabled={questionBusy}
-                  onClick={onAddQuestion}
-                  type="button"
-                  variant="outline"
-                >
-                  <PlusIcon data-icon="inline-start" />
-                  Tambah soal
-                </Button>
               </section>
             ) : (
               <div className="bg-muted/20 text-muted-foreground rounded-xl border border-dashed px-6 py-10 text-center text-sm">
-                Simpan detail assessment terlebih dahulu, lalu tambahkan soal
-                dan opsi jawaban.
+                Isi detail assessment terlebih dahulu, lalu tambahkan soal dan
+                opsi jawaban. Perubahan disimpan otomatis.
               </div>
             )}
           </section>
 
-          <aside className="bg-card grid gap-5 rounded-xl border p-5 shadow-xs lg:sticky lg:top-6">
-            <div className="grid gap-2">
-              <Label htmlFor="assessment-status">Status</Label>
-              <Select
-                disabled={!assessment}
-                value={status}
-                onValueChange={(value) => {
-                  if (
-                    value === "DRAFT" ||
-                    value === "PUBLISHED" ||
-                    value === "ARCHIVED"
-                  ) {
-                    setStatus(value);
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full" id="assessment-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="PUBLISHED">Published</SelectItem>
-                  <SelectItem value="ARCHIVED">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-              {!assessment ? (
+          <aside className="grid min-w-0 gap-4 lg:sticky lg:top-6">
+            <div className="bg-card grid gap-5 rounded-xl border p-5 shadow-xs">
+              <div className="grid gap-2">
+                <Label htmlFor="assessment-status">Status</Label>
+                <Select
+                  disabled={!assessment}
+                  value={status}
+                  onValueChange={(value) => {
+                    if (
+                      value === "DRAFT" ||
+                      value === "PUBLISHED" ||
+                      value === "ARCHIVED"
+                    ) {
+                      setStatus(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full" id="assessment-status">
+                    <SelectValue>{assessmentStatusLabels[status]}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">Draft</SelectItem>
+                    <SelectItem value="PUBLISHED">Published</SelectItem>
+                    <SelectItem value="ARCHIVED">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!assessment ? (
+                  <p className="text-muted-foreground text-xs">
+                    Assessment baru disimpan sebagai draft. Tambahkan soal lalu
+                    publish dari halaman edit.
+                  </p>
+                ) : status === "PUBLISHED" && !assessment.questions.length ? (
+                  <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                    <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                    Tambahkan soal sebelum memasang assessment ke course.
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="grid gap-4 border-t pt-5">
+                <NumberField
+                  id="assessment-passing-score"
+                  label="Nilai lulus (%)"
+                  max={100}
+                  min={0}
+                  onChange={setPassingScore}
+                  placeholder="Kosongkan jika tidak ada"
+                  value={passingScore}
+                />
+                <NumberField
+                  id="assessment-max-attempts"
+                  label="Maksimal percobaan"
+                  min={1}
+                  onChange={setMaxAttempts}
+                  placeholder="Kosongkan jika tidak dibatasi"
+                  value={maxAttempts}
+                />
+                <NumberField
+                  id="assessment-time-limit"
+                  label="Batas waktu (menit)"
+                  min={1}
+                  onChange={setTimeLimitMinutes}
+                  placeholder="Kosongkan jika tanpa batas"
+                  value={timeLimitMinutes}
+                />
+              </div>
+
+              <div className="grid gap-4 border-t pt-5">
+                <ToggleField
+                  checked={shuffleQuestions}
+                  description="Acak urutan soal untuk setiap attempt."
+                  label="Acak soal"
+                  onCheckedChange={setShuffleQuestions}
+                />
+                <ToggleField
+                  checked={shuffleOptions}
+                  description="Acak urutan opsi untuk setiap attempt."
+                  label="Acak opsi"
+                  onCheckedChange={setShuffleOptions}
+                />
+              </div>
+            </div>
+
+            <div className="bg-card grid gap-3 rounded-xl border p-4 shadow-xs">
+              <div>
+                <h2 className="font-heading text-sm font-semibold">
+                  Peta soal
+                </h2>
                 <p className="text-muted-foreground text-xs">
-                  Assessment baru disimpan sebagai draft. Tambahkan soal lalu
-                  publish dari halaman edit.
+                  Lompat langsung ke soal yang ingin diedit.
                 </p>
-              ) : status === "PUBLISHED" && !assessment.questions.length ? (
-                <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
-                  <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
-                  Tambahkan soal sebelum memasang assessment ke course.
+              </div>
+              {assessment?.questions.length ? (
+                <nav aria-label="Navigasi soal" className="grid min-w-0 gap-1">
+                  {questionMapItems.map((item) => (
+                    <Button
+                      aria-current={
+                        activeQuestionId === item.id ? "location" : undefined
+                      }
+                      className="h-auto w-full min-w-0 justify-start gap-2 px-2 py-2"
+                      key={item.id}
+                      onClick={() => navigateToQuestion(item.id)}
+                      type="button"
+                      variant={
+                        activeQuestionId === item.id ? "secondary" : "ghost"
+                      }
+                    >
+                      <span className="bg-muted text-muted-foreground flex size-6 shrink-0 items-center justify-center rounded text-xs font-medium">
+                        {item.index + 1}
+                      </span>
+                      <span className="min-w-0 truncate">{item.label}</span>
+                      <span className="text-muted-foreground ml-auto text-xs">
+                        {item.points} poin
+                      </span>
+                    </Button>
+                  ))}
+                </nav>
+              ) : (
+                <p className="text-muted-foreground rounded-md border border-dashed px-3 py-4 text-center text-xs">
+                  Belum ada soal.
                 </p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-4 border-t pt-5">
-              <NumberField
-                id="assessment-passing-score"
-                label="Nilai lulus (%)"
-                max={100}
-                min={0}
-                onChange={setPassingScore}
-                placeholder="Kosongkan jika tidak ada"
-                value={passingScore}
-              />
-              <NumberField
-                id="assessment-max-attempts"
-                label="Maksimal percobaan"
-                min={1}
-                onChange={setMaxAttempts}
-                placeholder="Kosongkan jika tidak dibatasi"
-                value={maxAttempts}
-              />
-              <NumberField
-                id="assessment-time-limit"
-                label="Batas waktu (menit)"
-                min={1}
-                onChange={setTimeLimitMinutes}
-                placeholder="Kosongkan jika tanpa batas"
-                value={timeLimitMinutes}
-              />
-            </div>
-
-            <div className="grid gap-4 border-t pt-5">
-              <ToggleField
-                checked={shuffleQuestions}
-                description="Acak urutan soal untuk setiap attempt."
-                label="Acak soal"
-                onCheckedChange={setShuffleQuestions}
-              />
-              <ToggleField
-                checked={shuffleOptions}
-                description="Acak urutan opsi untuk setiap attempt."
-                label="Acak opsi"
-                onCheckedChange={setShuffleOptions}
-              />
+              )}
             </div>
           </aside>
         </div>
@@ -839,33 +1205,21 @@ function ToggleField({
   );
 }
 
-function QuestionCard({
-  busy,
-  index,
-  onAddOption,
-  onDeleteOption,
-  onDeleteQuestion,
-  onSave,
-  onSaveOption,
-  onToggleCorrect,
-  question,
-  theme,
-  uploadAsset,
-}: {
+type QuestionDraft = {
+  explanation: BlockNoteDocument;
+  points: string;
+  prompt: BlockNoteDocument;
+  type: QuestionType;
+};
+
+type QuestionCardProps = {
   busy: boolean;
+  highlighted: boolean;
   index: number;
   onAddOption: (questionId: string) => Promise<void>;
   onDeleteOption: (optionId: string) => Promise<void>;
   onDeleteQuestion: (questionId: string) => Promise<void>;
-  onSave: (
-    questionId: string,
-    value: {
-      type: QuestionType;
-      prompt: BlockNoteDocument;
-      explanation: BlockNoteDocument | null;
-      points: number;
-    },
-  ) => Promise<boolean>;
+  onSave: (questionId: string, value: QuestionFields) => Promise<boolean>;
   onSaveOption: (
     optionId: string,
     content: BlockNoteDocument,
@@ -878,7 +1232,22 @@ function QuestionCard({
   question: Question;
   theme: "light" | "dark";
   uploadAsset?: UploadEditorAsset;
-}) {
+};
+
+const QuestionCard = memo(function QuestionCard({
+  busy,
+  highlighted,
+  index,
+  onAddOption,
+  onDeleteOption,
+  onDeleteQuestion,
+  onSave,
+  onSaveOption,
+  onToggleCorrect,
+  question,
+  theme,
+  uploadAsset,
+}: QuestionCardProps) {
   const [type, setType] = useState<QuestionType>(question.type);
   const [prompt, setPrompt] = useState<BlockNoteDocument>(
     toBlockNoteDocument(question.prompt) as BlockNoteDocument,
@@ -887,28 +1256,51 @@ function QuestionCard({
     toBlockNoteDocument(question.explanation) as BlockNoteDocument,
   );
   const [points, setPoints] = useState(String(question.points));
+  const [correctAnswerBusy, setCorrectAnswerBusy] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const parsedPoints = Number(points);
-    if (!hasBlockNoteContent(prompt)) {
-      toast.error("Pertanyaan wajib diisi.");
-      return;
-    }
-    if (!Number.isInteger(parsedPoints) || parsedPoints < 1) {
-      toast.error("Poin soal harus berupa bilangan bulat positif.");
-      return;
-    }
-    await onSave(question.id, {
-      type,
-      prompt,
-      explanation: hasBlockNoteContent(explanation) ? explanation : null,
-      points: parsedPoints,
+  const { cancel: cancelQuestionSave, schedule: scheduleQuestionSave } =
+    useDebouncedAutosave<QuestionDraft>(async (draft) => {
+      const parsedPoints = Number(draft.points);
+      if (!hasBlockNoteContent(draft.prompt)) {
+        toast.error("Pertanyaan wajib diisi.");
+        return;
+      }
+      if (!Number.isInteger(parsedPoints) || parsedPoints < 1) {
+        toast.error("Poin soal harus berupa bilangan bulat positif.");
+        return;
+      }
+
+      const saved = await onSave(question.id, {
+        type: draft.type,
+        prompt: draft.prompt,
+        explanation: hasBlockNoteContent(draft.explanation)
+          ? draft.explanation
+          : null,
+        points: parsedPoints,
+      });
+      if (!saved) throw new Error("Question autosave failed");
     });
-  }
+  const skipInitialQuestionSave = useRef(true);
+
+  useEffect(() => {
+    if (skipInitialQuestionSave.current) {
+      skipInitialQuestionSave.current = false;
+      return;
+    }
+
+    scheduleQuestionSave({ explanation, points, prompt, type });
+  }, [explanation, points, prompt, scheduleQuestionSave, type]);
 
   return (
-    <Card>
+    <Card
+      className={
+        highlighted
+          ? "bg-muted/20 scroll-mt-24 transition-colors duration-300"
+          : "scroll-mt-24 transition-colors duration-300"
+      }
+      data-question-id={question.id}
+      id={`assessment-question-${question.id}`}
+    >
       <CardHeader className="border-b">
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="flex items-center gap-2">
@@ -942,7 +1334,10 @@ function QuestionCard({
                 <AlertDialogCancel>Batal</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={busy}
-                  onClick={() => onDeleteQuestion(question.id)}
+                  onClick={() => {
+                    cancelQuestionSave();
+                    void onDeleteQuestion(question.id);
+                  }}
                   variant="destructive"
                 >
                   Hapus
@@ -952,14 +1347,15 @@ function QuestionCard({
           </AlertDialog>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-5 pt-5">
-        <form className="grid gap-4" onSubmit={handleSubmit}>
+      <CardContent className="grid gap-5">
+        <div className="grid gap-4">
           <div className="grid gap-2">
             <Label>Pertanyaan</Label>
-            <div className="min-h-40 overflow-hidden rounded-lg border py-3">
+            <div className="overflow-hidden rounded-lg border">
               <DynamicBlockNoteEditor
                 initialContent={toBlockNoteDocument(question.prompt)}
                 onChange={setPrompt}
+                trailingBlock={false}
                 theme={theme}
                 uploadAsset={uploadAsset}
               />
@@ -984,7 +1380,7 @@ function QuestionCard({
                   className="w-full"
                   id={`question-type-${question.id}`}
                 >
-                  <SelectValue />
+                  <SelectValue>{questionTypeLabels[type]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="SINGLE_CHOICE">Pilihan tunggal</SelectItem>
@@ -1006,26 +1402,17 @@ function QuestionCard({
           </div>
           <div className="grid gap-2">
             <Label>Penjelasan jawaban (opsional)</Label>
-            <div className="min-h-28 overflow-hidden rounded-lg border py-3">
+            <div className="overflow-hidden rounded-lg border">
               <DynamicBlockNoteEditor
                 initialContent={toBlockNoteDocument(question.explanation)}
                 onChange={setExplanation}
+                trailingBlock={false}
                 theme={theme}
                 uploadAsset={uploadAsset}
               />
             </div>
           </div>
-          <div className="flex justify-end">
-            <Button disabled={busy} type="submit">
-              {busy ? (
-                <LoaderCircleIcon className="animate-spin" />
-              ) : (
-                <SaveIcon />
-              )}
-              Simpan soal
-            </Button>
-          </div>
-        </form>
+        </div>
 
         {type === "WRITTEN" && question.options.length ? (
           <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
@@ -1039,7 +1426,7 @@ function QuestionCard({
         ) : null}
 
         {type !== "WRITTEN" || question.options.length ? (
-          <div className="grid gap-3 border-t pt-5">
+          <div className="grid gap-3 border-t pt-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="font-heading font-semibold">Opsi jawaban</h3>
@@ -1053,14 +1440,18 @@ function QuestionCard({
               </div>
               {type !== "WRITTEN" ? (
                 <Button
-                  disabled={busy}
+                  disabled={
+                    busy || question.options.length >= MAX_ASSESSMENT_OPTIONS
+                  }
                   onClick={() => onAddOption(question.id)}
                   size="sm"
                   type="button"
                   variant="outline"
                 >
                   <PlusIcon data-icon="inline-start" />
-                  Tambah opsi
+                  {question.options.length >= MAX_ASSESSMENT_OPTIONS
+                    ? "Maksimal 4 opsi"
+                    : "Tambah opsi"}
                 </Button>
               ) : null}
             </div>
@@ -1069,12 +1460,22 @@ function QuestionCard({
                 {question.options.map((option, optionIndex) => (
                   <OptionRow
                     busy={busy}
+                    canDelete={
+                      type === "WRITTEN" ||
+                      question.options.length > MIN_ASSESSMENT_OPTIONS
+                    }
+                    correctAnswerBusy={correctAnswerBusy}
                     index={optionIndex}
                     key={option.id}
                     onDelete={() => onDeleteOption(option.id)}
-                    onToggleCorrect={(checked) =>
-                      onToggleCorrect(question, option.id, checked)
-                    }
+                    onToggleCorrect={async (checked) => {
+                      setCorrectAnswerBusy(true);
+                      try {
+                        await onToggleCorrect(question, option.id, checked);
+                      } finally {
+                        setCorrectAnswerBusy(false);
+                      }
+                    }}
                     onSave={(content) => onSaveOption(option.id, content)}
                     option={option}
                     theme={theme}
@@ -1098,19 +1499,25 @@ function QuestionCard({
       </CardContent>
     </Card>
   );
+}, areQuestionCardPropsEqual);
+
+function areQuestionCardPropsEqual(
+  previous: QuestionCardProps,
+  next: QuestionCardProps,
+) {
+  return (
+    previous.busy === next.busy &&
+    previous.highlighted === next.highlighted &&
+    previous.index === next.index &&
+    previous.question === next.question &&
+    previous.theme === next.theme
+  );
 }
 
-function OptionRow({
-  busy,
-  index,
-  onDelete,
-  onSave,
-  onToggleCorrect,
-  option,
-  theme,
-  uploadAsset,
-}: {
+type OptionRowProps = {
   busy: boolean;
+  canDelete: boolean;
+  correctAnswerBusy: boolean;
   index: number;
   onDelete: () => Promise<void>;
   onSave: (content: BlockNoteDocument) => Promise<boolean>;
@@ -1118,80 +1525,132 @@ function OptionRow({
   option: Question["options"][number];
   theme: "light" | "dark";
   uploadAsset?: UploadEditorAsset;
-}) {
+};
+
+const OptionRow = memo(function OptionRow({
+  busy,
+  canDelete,
+  correctAnswerBusy,
+  index,
+  onDelete,
+  onSave,
+  onToggleCorrect,
+  option,
+  theme,
+  uploadAsset,
+}: OptionRowProps) {
   const [content, setContent] = useState<BlockNoteDocument>(
     toBlockNoteDocument(option.content) as BlockNoteDocument,
   );
   const [editing, setEditing] = useState(false);
+  const editorAreaRef = useRef<HTMLDivElement>(null);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!hasBlockNoteContent(content)) {
+  const {
+    cancel: cancelOptionSave,
+    flush: flushOptionSave,
+    schedule: scheduleOptionSave,
+  } = useDebouncedAutosave<BlockNoteDocument>(async (nextContent) => {
+    if (!hasBlockNoteContent(nextContent)) {
       toast.error("Isi opsi wajib diisi.");
       return;
     }
-    const saved = await onSave(content);
-    if (saved) setEditing(false);
-  }
 
-  if (editing) {
-    return (
-      <form
-        className="grid gap-3 rounded-lg border p-3"
-        onSubmit={handleSubmit}
-      >
-        <div className="min-h-28 overflow-hidden rounded-lg border py-3">
-          <DynamicBlockNoteEditor
-            initialContent={toBlockNoteDocument(option.content)}
-            onChange={setContent}
-            theme={theme}
-            uploadAsset={uploadAsset}
-          />
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button
-            disabled={busy}
-            onClick={() => {
-              setContent(
-                toBlockNoteDocument(option.content) as BlockNoteDocument,
-              );
-              setEditing(false);
-            }}
-            type="button"
-            variant="ghost"
-          >
-            <XIcon /> Batal
-          </Button>
-          <Button disabled={busy} type="submit">
-            {busy ? (
-              <LoaderCircleIcon className="animate-spin" />
-            ) : (
-              <SaveIcon />
-            )}
-            Simpan opsi
-          </Button>
-        </div>
-      </form>
-    );
-  }
+    const saved = await onSave(nextContent);
+    if (!saved) throw new Error("Option autosave failed");
+  });
+  const skipInitialOptionSave = useRef(true);
+
+  useEffect(() => {
+    if (!editing) return;
+    if (skipInitialOptionSave.current) {
+      skipInitialOptionSave.current = false;
+      return;
+    }
+
+    scheduleOptionSave(content);
+  }, [content, editing, scheduleOptionSave]);
+
+  useEffect(() => {
+    if (!editing) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        editorAreaRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+
+      setEditing(false);
+      void flushOptionSave().catch(() => undefined);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [editing, flushOptionSave]);
+
+  const beginEditing = () => {
+    if (busy) return;
+    skipInitialOptionSave.current = true;
+    setEditing(true);
+  };
 
   return (
     <div className="bg-muted/20 flex items-center gap-2 rounded-lg border px-3 py-2">
       <Checkbox
         aria-label={`Tandai opsi ${index + 1} sebagai jawaban benar`}
         checked={option.isCorrect}
-        disabled={busy}
+        disabled={busy || correctAnswerBusy}
         onCheckedChange={(checked) => void onToggleCorrect(checked === true)}
       />
-      <span className="text-muted-foreground w-5 text-center text-xs font-medium">
-        {String.fromCharCode(65 + index)}
+      <span className="text-foreground w-8 shrink-0 text-center text-2xl leading-none font-semibold">
+        {getAssessmentOptionLabel(index)}
       </span>
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <DynamicBlockNoteEditor
-          editable={false}
-          initialContent={toBlockNoteDocument(option.content)}
-          theme={theme}
-        />
+      <div
+        className="min-w-0 flex-1 overflow-hidden rounded-md"
+        ref={editorAreaRef}
+      >
+        <div
+          aria-disabled={!editing && busy ? true : undefined}
+          aria-label={!editing ? `Edit opsi ${index + 1}` : undefined}
+          aria-readonly={!editing ? "true" : undefined}
+          className={
+            editing
+              ? undefined
+              : "focus-visible:ring-ring cursor-text focus-visible:ring-2 focus-visible:outline-hidden"
+          }
+          onClick={
+            editing
+              ? undefined
+              : (event) => {
+                  event.preventDefault();
+                  beginEditing();
+                }
+          }
+          onKeyDown={
+            editing
+              ? undefined
+              : (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    beginEditing();
+                  }
+                }
+          }
+          role={!editing ? "textbox" : undefined}
+          tabIndex={!editing && !busy ? 0 : undefined}
+        >
+          <DynamicBlockNoteEditor
+            autoFocus={editing}
+            editable={editing}
+            initialContent={toBlockNoteDocument(option.content)}
+            onChange={setContent}
+            trailingBlock={false}
+            theme={theme}
+            uploadAsset={uploadAsset}
+          />
+        </div>
       </div>
       {option.isCorrect ? (
         <Badge variant="secondary">
@@ -1199,22 +1658,12 @@ function OptionRow({
           Benar
         </Badge>
       ) : null}
-      <Button
-        aria-label={`Edit opsi ${index + 1}`}
-        disabled={busy}
-        onClick={() => setEditing(true)}
-        size="icon-sm"
-        type="button"
-        variant="ghost"
-      >
-        <span className="text-xs">Edit</span>
-      </Button>
       <AlertDialog>
         <AlertDialogTrigger
           render={
             <Button
               aria-label={`Hapus opsi ${index + 1}`}
-              disabled={busy}
+              disabled={busy || !canDelete}
               size="icon-sm"
               type="button"
               variant="ghost"
@@ -1232,12 +1681,34 @@ function OptionRow({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={onDelete} variant="destructive">
+            <AlertDialogAction
+              onClick={() => {
+                cancelOptionSave();
+                void flushOptionSave()
+                  .then(onDelete)
+                  .catch(() => undefined);
+              }}
+              variant="destructive"
+            >
               Hapus
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}, areOptionRowPropsEqual);
+
+function areOptionRowPropsEqual(
+  previous: OptionRowProps,
+  next: OptionRowProps,
+) {
+  return (
+    previous.busy === next.busy &&
+    previous.canDelete === next.canDelete &&
+    previous.correctAnswerBusy === next.correctAnswerBusy &&
+    previous.index === next.index &&
+    previous.option === next.option &&
+    previous.theme === next.theme
   );
 }
