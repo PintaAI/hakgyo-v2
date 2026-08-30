@@ -171,6 +171,7 @@ export function AppSidebar({
   organization,
   role,
   recentCourses,
+  cohortShortcuts,
   ...props
 }: ComponentProps<typeof Sidebar> & {
   organizationSlug: string;
@@ -181,11 +182,17 @@ export function AppSidebar({
     title: string;
     thumbnailUrl: string | null;
   }>;
+  cohortShortcuts: Array<{
+    id: string;
+    name: string;
+    course: { id: string; title: string; thumbnailUrl: string | null };
+  }>;
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const workspaceRoot = `/workspace/${organizationSlug}`;
   const isManager = role === "OWNER" || role === "ADMIN";
+  const showCohortShortcuts = role === "OWNER" || role === "TEACHER";
   const workspaceHome = `${workspaceRoot}/dashboard`;
 
   const navigation: NavigationItem[] = [
@@ -327,6 +334,57 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {showCohortShortcuts && cohortShortcuts.length > 0 ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Group belajar</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {cohortShortcuts.map((cohort) => {
+                  const href = `${workspaceRoot}/courses/${cohort.course.id}/cohorts/${cohort.id}`;
+                  const active = isRouteActive(pathname, {
+                    title: cohort.name,
+                    href,
+                  });
+
+                  return (
+                    <SidebarMenuItem key={cohort.id}>
+                      <SidebarMenuButton
+                        isActive={active}
+                        tooltip={`${cohort.name} · ${cohort.course.title}`}
+                        render={
+                          <Link
+                            href={href}
+                            aria-current={active ? "page" : undefined}
+                            onClick={closeMobileSidebar}
+                          />
+                        }
+                      >
+                        {cohort.course.thumbnailUrl ? (
+                          <Image
+                            src={cohort.course.thumbnailUrl}
+                            alt=""
+                            width={24}
+                            height={24}
+                            unoptimized
+                            className="size-6 shrink-0 rounded-md object-cover"
+                          />
+                        ) : (
+                          <UsersIcon />
+                        )}
+                        <span className="min-w-0">
+                          <span className="block truncate">{cohort.name}</span>
+                          <span className="text-sidebar-foreground/50 block truncate text-[0.65rem] group-data-[collapsible=icon]:hidden">
+                            {cohort.course.title}
+                          </span>
+                        </span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
         {isManager ? (
           <SidebarGroup>
             <SidebarGroupLabel>Organisasi</SidebarGroupLabel>

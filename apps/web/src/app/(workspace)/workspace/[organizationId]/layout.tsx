@@ -23,9 +23,19 @@ export default async function WorkspaceLayout({
     cookies(),
     requireOrganizationMembershipBySlug(organizationSlug),
   ]);
-  const courses = await api.course.list({
-    organizationId: membership.organizationId,
-  });
+  const role = membership.role;
+  const showCohortShortcuts = role === "OWNER" || role === "TEACHER";
+  const [courses, cohortShortcutsPage] = await Promise.all([
+    api.course.list({
+      organizationId: membership.organizationId,
+    }),
+    showCohortShortcuts
+      ? api.cohort.listForCurrentMember({
+          organizationId: membership.organizationId,
+          limit: 50,
+        })
+      : null,
+  ]);
   const recentCourses = courses
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
     .slice(0, 3)
@@ -35,7 +45,6 @@ export default async function WorkspaceLayout({
       thumbnailUrl: course.thumbnailUrl,
     }));
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
-  const role = membership.role;
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
@@ -44,6 +53,7 @@ export default async function WorkspaceLayout({
         organization={membership.organization}
         role={role}
         recentCourses={recentCourses}
+        cohortShortcuts={cohortShortcutsPage?.items ?? []}
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear">

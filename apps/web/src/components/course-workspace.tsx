@@ -673,24 +673,32 @@ function OverviewSection({
             </CardContent>
           ) : (
             <ol className="divide-border divide-y">
-              {modules.map((module, index) => (
-                <li
-                  key={module.id}
-                  className="flex items-center gap-4 px-4 py-3"
-                >
-                  <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-semibold tabular-nums">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      {module.title}
-                    </span>
-                    <span className="text-muted-foreground mt-0.5 block text-xs">
-                      {module.itemCount} item
-                    </span>
-                  </span>
-                </li>
-              ))}
+              {modules.map((module, index) => {
+                const href = canManageContent
+                  ? `${root}/kurikulum`
+                  : `/learn/${course.id}`;
+                return (
+                  <li key={module.id}>
+                    <Link
+                      href={href}
+                      className="hover:bg-muted/50 flex items-center gap-4 px-4 py-3 transition-colors"
+                    >
+                      <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-semibold tabular-nums">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                          {module.title}
+                        </span>
+                        <span className="text-muted-foreground mt-0.5 block text-xs">
+                          {module.itemCount} item
+                        </span>
+                      </span>
+                      <ArrowRightIcon className="text-muted-foreground size-4 shrink-0" />
+                    </Link>
+                  </li>
+                );
+              })}
             </ol>
           )}
           <div className="bg-muted/40 text-muted-foreground flex items-center justify-between border-t px-4 py-3 text-xs">

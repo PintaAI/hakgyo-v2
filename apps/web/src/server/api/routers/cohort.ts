@@ -151,7 +151,7 @@ export const cohortRouter = createTRPCRouter({
           cursor: input.cursor ? { id: input.cursor } : undefined,
           skip: input.cursor ? 1 : undefined,
           include: {
-            course: { select: { id: true, title: true } },
+            course: { select: { id: true, title: true, thumbnailUrl: true } },
             _count: {
               select: { staff: true, enrollments: true, meetings: true },
             },
