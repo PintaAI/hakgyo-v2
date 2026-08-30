@@ -7,10 +7,7 @@ import { useTheme } from "next-themes";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  BookOpenIcon,
   CheckCircle2Icon,
-  DownloadIcon,
-  FileIcon,
   LanguagesIcon,
   LoaderCircleIcon,
   RotateCcwIcon,
@@ -54,7 +51,6 @@ export function LearnerCourseItem({
   const router = useRouter();
   const utils = api.useUtils();
   const markProgress = api.learning.markContentProgress.useMutation();
-  const download = api.storage.createDownloadUrl.useMutation();
   const { resolvedTheme } = useTheme();
   const [cardIndex, setCardIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -104,15 +100,6 @@ export function LearnerCourseItem({
     }
   };
 
-  const downloadAsset = async (assetId: string) => {
-    try {
-      const result = await download.mutateAsync({ assetId });
-      window.open(result.downloadUrl, "_blank", "noopener,noreferrer");
-    } catch {
-      toast.error("File tidak dapat diunduh saat ini.");
-    }
-  };
-
   const material = item.material;
   const vocabulary = item.vocabularySet;
   const entries = vocabulary?.entries ?? [];
@@ -140,7 +127,20 @@ export function LearnerCourseItem({
         >
           <ArrowLeftIcon /> Kembali ke course
         </Link>
-        {completed ? (
+        {material && !completed ? (
+          <Button
+            onClick={completeItem}
+            disabled={markProgress.isPending}
+            size="sm"
+          >
+            {markProgress.isPending ? (
+              <LoaderCircleIcon className="animate-spin" />
+            ) : (
+              <CheckCircle2Icon />
+            )}
+            Tandai selesai
+          </Button>
+        ) : completed ? (
           <Badge variant="outline">
             <CheckCircle2Icon /> Selesai
           </Badge>
@@ -148,76 +148,14 @@ export function LearnerCourseItem({
       </div>
 
       {material ? (
-        <article className="bg-card ring-foreground/10 overflow-hidden rounded-lg ring-1">
-          <header className="bg-muted/30 border-b px-6 py-8 md:px-10 md:py-10">
-            <div className="relative">
-              <Badge variant="secondary">
-                <BookOpenIcon /> Materi belajar
-              </Badge>
-              <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
-                {material.title}
-              </h1>
-              {material.description ? (
-                <p className="text-muted-foreground mt-3 max-w-2xl leading-relaxed">
-                  {material.description}
-                </p>
-              ) : null}
-            </div>
-          </header>
-          <div className="px-2 py-8 md:px-6 md:py-10 [&_.bn-container]:mx-auto [&_.bn-container]:max-w-3xl [&_.bn-editor]:bg-transparent [&_.bn-editor]:px-4">
-            <DynamicBlockNoteEditor
-              initialContent={material.content as HakgyoPartialBlock[]}
-              editable={false}
-              theme={resolvedTheme === "dark" ? "dark" : "light"}
-            />
-          </div>
-          {material.assets.length ? (
-            <aside className="bg-muted/30 mx-6 mb-6 rounded-md border p-4 md:mx-10 md:mb-8">
-              <p className="mb-3 text-sm font-semibold">Lampiran materi</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {material.assets.map(({ asset }) => (
-                  <button
-                    type="button"
-                    key={asset.id}
-                    onClick={() => downloadAsset(asset.id)}
-                    disabled={download.isPending}
-                    className="hover:bg-background flex items-center gap-3 rounded-md border p-3 text-left transition-colors"
-                  >
-                    <span className="bg-muted flex size-9 items-center justify-center rounded-lg">
-                      <FileIcon className="size-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
-                        {asset.fileName}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {Math.max(1, Math.round(asset.size / 1024))} KB
-                      </span>
-                    </span>
-                    <DownloadIcon className="text-muted-foreground size-4" />
-                  </button>
-                ))}
-              </div>
-            </aside>
-          ) : null}
-          <footer className="bg-muted/30 flex flex-col gap-3 border-t p-5 sm:flex-row sm:items-center sm:justify-between md:px-10">
-            <p className="text-muted-foreground text-sm">
-              Sudah memahami materi ini?
-            </p>
-            <Button
-              onClick={completeItem}
-              disabled={completed || markProgress.isPending}
-              size="lg"
-            >
-              {markProgress.isPending ? (
-                <LoaderCircleIcon className="animate-spin" />
-              ) : (
-                <CheckCircle2Icon />
-              )}
-              {completed ? "Sudah selesai" : "Tandai selesai"}
-            </Button>
-          </footer>
-        </article>
+        <div className="[&_.bn-container]:mx-auto [&_.bn-container]:max-w-none [&_.bn-editor]:bg-transparent [&_.bn-editor]:px-0">
+          <DynamicBlockNoteEditor
+            initialContent={material.content as HakgyoPartialBlock[]}
+            editable={false}
+            theme={resolvedTheme === "dark" ? "dark" : "light"}
+            trailingBlock={false}
+          />
+        </div>
       ) : vocabulary ? (
         <div className="space-y-6">
           <header className="relative overflow-hidden rounded-lg bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-7 sm:py-8">

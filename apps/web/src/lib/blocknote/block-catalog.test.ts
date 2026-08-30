@@ -5,7 +5,11 @@ import {
   assetImageBlockType,
   calloutBlockType,
   calloutTones,
+  grammarBlockThemes,
+  grammarBlockType,
   hakgyoBlockCatalog,
+  lessonPageBlockType,
+  lessonPageThemes,
 } from "./block-catalog";
 
 describe("Hakgyo BlockNote catalog", () => {
@@ -18,6 +22,8 @@ describe("Hakgyo BlockNote catalog", () => {
       assetAudioBlockType,
       assetImageBlockType,
       calloutBlockType,
+      lessonPageBlockType,
+      grammarBlockType,
     ]);
     const callout = hakgyoBlockCatalog.customBlocks.find(
       (block) => block.type === calloutBlockType,
@@ -26,5 +32,21 @@ describe("Hakgyo BlockNote catalog", () => {
     if (!callout || !("example" in callout)) return;
     expect(callout.example.type).toBe(calloutBlockType);
     expect(calloutTones).toContain(callout.example.props.tone);
+
+    const lessonPage = hakgyoBlockCatalog.customBlocks.find(
+      (block) => block.type === lessonPageBlockType,
+    );
+    expect(lessonPage).toBeDefined();
+    if (!lessonPage || !("example" in lessonPage)) return;
+    expect(lessonPage.example.type).toBe(lessonPageBlockType);
+    expect(lessonPageThemes).toContain(lessonPage.example.props.theme);
+
+    const grammar = hakgyoBlockCatalog.customBlocks.find(
+      (block) => block.type === grammarBlockType,
+    );
+    expect(grammar).toBeDefined();
+    if (!grammar || !("example" in grammar)) return;
+    expect(grammar.example.type).toBe(grammarBlockType);
+    expect(grammarBlockThemes).toContain(grammar.example.props.theme);
   });
 });

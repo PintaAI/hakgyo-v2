@@ -25,7 +25,7 @@ const mediaProps = {
   caption: { default: "" },
 };
 
-function AssetUrl({
+export function AssetUrl({
   assetId,
   children,
 }: {

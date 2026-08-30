@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -13,6 +13,7 @@ import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
 import { DynamicBlockNoteEditor } from "~/components/editor";
+import type { UploadEditorAsset } from "~/components/editor/asset-upload-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,7 +91,97 @@ export function MaterialEditor({
   const createMaterialItem = api.content.createMaterialItem.useMutation();
   const updateMaterial = api.content.updateMaterial.useMutation();
   const deleteMaterial = api.content.deleteMaterial.useMutation();
+  const createUpload = api.storage.createUploadUrl.useMutation();
+  const confirmUpload = api.storage.confirmUpload.useMutation();
+  const discardUpload = api.storage.deleteDocument.useMutation();
+  const attachAsset = api.content.attachMaterialAsset.useMutation();
+  const pendingAssetIdsRef = useRef(new Set<string>());
   const canDelete = Boolean(organization.data);
+
+  const uploadAsset: UploadEditorAsset = async (file, kind) => {
+    const expectedPrefix = kind === "audio" ? "audio/" : "image/";
+    const maximumSize = kind === "audio" ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (!file.type.startsWith(expectedPrefix)) {
+      throw new Error(
+        kind === "audio"
+          ? "Pilih file audio yang valid."
+          : "Pilih file gambar yang valid.",
+      );
+    }
+    if (file.size > maximumSize) {
+      throw new Error(
+        kind === "audio"
+          ? "Ukuran audio maksimal 50 MB."
+          : "Ukuran gambar maksimal 10 MB.",
+      );
+    }
+
+    const upload = await createUpload.mutateAsync({
+      organizationId,
+      fileName: file.name,
+      contentType: file.type,
+      fileSize: file.size,
+    });
+    let retained = false;
+    try {
+      const response = await fetch(upload.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: upload.headers,
+      });
+      if (!response.ok) {
+        throw new Error(`Upload media gagal (${response.status}).`);
+      }
+      const asset = await confirmUpload.mutateAsync({ key: upload.key });
+      if (materialId) {
+        await attachAsset.mutateAsync({
+          organizationId,
+          materialId,
+          assetId: asset.assetId,
+        });
+      } else {
+        pendingAssetIdsRef.current.add(asset.assetId);
+      }
+      retained = true;
+      return {
+        assetId: asset.assetId,
+        fileName: file.name,
+        contentType: asset.contentType,
+      };
+    } catch (error) {
+      if (!retained) {
+        await discardUpload
+          .mutateAsync({ key: upload.key })
+          .catch(() => undefined);
+      }
+      throw error;
+    }
+  };
+
+  async function attachPendingAssets(targetMaterialId: string) {
+    const assetIds = [...pendingAssetIdsRef.current];
+    if (!assetIds.length) return;
+
+    const results = await Promise.allSettled(
+      assetIds.map((assetId) =>
+        attachAsset.mutateAsync({
+          organizationId,
+          materialId: targetMaterialId,
+          assetId,
+        }),
+      ),
+    );
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        pendingAssetIdsRef.current.delete(assetIds[index]!);
+      }
+    });
+    if (results.some((result) => result.status === "rejected")) {
+      toast.warning(
+        "Materi tersimpan, tetapi beberapa gambar belum berhasil ditautkan.",
+      );
+    }
+  }
 
   if (materialId && material.isPending) {
     return (
@@ -134,6 +225,7 @@ export function MaterialEditor({
       }
       saveLabel={attachTo ? "Simpan dan tambahkan" : undefined}
       theme={resolvedTheme === "dark" ? "dark" : "light"}
+      uploadAsset={uploadAsset}
       onBack={() => router.back()}
       onDelete={async () => {
         if (!materialId) return;
@@ -179,7 +271,7 @@ export function MaterialEditor({
           };
 
           if (attachTo) {
-            await createMaterialItem.mutateAsync({
+            const created = await createMaterialItem.mutateAsync({
               moduleId: attachTo.moduleId,
               title,
               description,
@@ -187,6 +279,7 @@ export function MaterialEditor({
               editorSchemaVersion: 1,
               requirementPolicy,
             });
+            await attachPendingAssets(created.material.id);
             await utils.content.listMaterials.invalidate({ organizationId });
             toast.success(`Materi ditambahkan ke ${attachTo.moduleTitle}.`);
             router.replace(attachTo.curriculumHref);
@@ -194,6 +287,7 @@ export function MaterialEditor({
           }
 
           const created = await createMaterial.mutateAsync(materialInput);
+          await attachPendingAssets(created.id);
           await utils.content.listMaterials.invalidate({ organizationId });
           toast.success("Materi dibuat.");
           router.replace(
@@ -219,6 +313,7 @@ function MaterialEditorForm({
   contextLabel,
   saveLabel,
   theme,
+  uploadAsset,
   onBack,
   onDelete,
   onSave,
@@ -234,6 +329,7 @@ function MaterialEditorForm({
   contextLabel?: string;
   saveLabel?: string;
   theme: "light" | "dark";
+  uploadAsset: UploadEditorAsset;
   onBack: () => void;
   onDelete: () => Promise<void>;
   onSave: (value: {
@@ -354,6 +450,7 @@ function MaterialEditorForm({
               initialContent={initialContent}
               onChange={setContent}
               theme={theme}
+              uploadAsset={uploadAsset}
             />
           </div>
         </section>

@@ -13,12 +13,20 @@ import {
   useCreateBlockNote,
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
-import { HeadphonesIcon, ImageIcon, LightbulbIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  HeadphonesIcon,
+  ImageIcon,
+  LayoutTemplateIcon,
+  LightbulbIcon,
+} from "lucide-react";
 
 import {
   assetAudioBlockType,
   assetImageBlockType,
   calloutBlockType,
+  grammarBlockType,
+  lessonPageBlockType,
 } from "~/lib/blocknote/block-catalog";
 
 import {
@@ -87,6 +95,28 @@ export function BlockNoteEditor({
           },
         ]
       : []),
+    {
+      title: "Lesson page",
+      subtext: "Pembuka visual dengan foto, dialog, fokus, dan tujuan belajar.",
+      aliases: ["lesson", "chapter", "cover", "materi", "halaman"],
+      group: "Blok Hakgyo",
+      icon: <LayoutTemplateIcon className="size-4" />,
+      onItemClick: () =>
+        insertOrUpdateBlockForSlashMenu(editor, {
+          type: lessonPageBlockType,
+        }),
+    },
+    {
+      title: "Grammar",
+      subtext: "Jelaskan pola tata bahasa, aturan, contoh, dan tip penggunaan.",
+      aliases: ["grammar", "tata bahasa", "문법", "conjugation"],
+      group: "Blok Hakgyo",
+      icon: <BookOpenIcon className="size-4" />,
+      onItemClick: () =>
+        insertOrUpdateBlockForSlashMenu(editor, {
+          type: grammarBlockType,
+        }),
+    },
     {
       title: "Callout",
       subtext: "Sorot catatan, tip, peringatan, atau poin penting.",
