@@ -112,6 +112,28 @@ async function requireOwnedContent(
   });
 }
 
+async function requireVocabularyAsset(
+  assetId: string,
+  organizationId: string,
+  kind: "audio" | "image",
+) {
+  const asset = await db.asset.findFirst({
+    where: {
+      id: assetId,
+      organizationId,
+      confirmedAt: { not: null },
+      deletedAt: null,
+    },
+    select: { contentType: true },
+  });
+  if (!asset?.contentType.startsWith(`${kind}/`)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `${kind === "audio" ? "Audio" : "Image"} asset must belong to the organization and have a valid content type`,
+    });
+  }
+}
+
 export const contentRouter = createTRPCRouter({
   createModule: protectedProcedure
     .input(
@@ -756,6 +778,14 @@ export const contentRouter = createTRPCRouter({
                   size: true,
                 },
               },
+              imageAsset: {
+                select: {
+                  id: true,
+                  fileName: true,
+                  contentType: true,
+                  size: true,
+                },
+              },
             },
           },
         },
@@ -846,6 +876,7 @@ export const contentRouter = createTRPCRouter({
         definition: z.string().trim().min(1).max(5000),
         examples: json.optional(),
         audioAssetId: id.nullable().optional(),
+        imageAssetId: id.nullable().optional(),
         metadata: json.optional(),
       }),
     )
@@ -862,21 +893,20 @@ export const contentRouter = createTRPCRouter({
         ctx.actorUserId,
         vocabularySet.createdByMembershipId,
       );
-      if (
-        input.audioAssetId &&
-        !(await db.asset.findFirst({
-          where: {
-            id: input.audioAssetId,
-            organizationId: input.organizationId,
-            confirmedAt: { not: null },
-            deletedAt: null,
-          },
-        }))
-      )
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Audio asset must belong to the organization",
-        });
+      if (input.audioAssetId) {
+        await requireVocabularyAsset(
+          input.audioAssetId,
+          input.organizationId,
+          "audio",
+        );
+      }
+      if (input.imageAssetId) {
+        await requireVocabularyAsset(
+          input.imageAssetId,
+          input.organizationId,
+          "image",
+        );
+      }
       return db.vocabularyEntry.create({ data: input });
     }),
   updateVocabularyEntry: protectedProcedure
@@ -888,6 +918,7 @@ export const contentRouter = createTRPCRouter({
         definition: z.string().trim().min(1).max(5000).optional(),
         examples: json.optional(),
         audioAssetId: id.nullable().optional(),
+        imageAssetId: id.nullable().optional(),
         metadata: json.optional(),
       }),
     )
@@ -902,21 +933,20 @@ export const contentRouter = createTRPCRouter({
         ctx.actorUserId,
         entry.vocabularySet.createdByMembershipId,
       );
-      if (
-        input.audioAssetId &&
-        !(await db.asset.findFirst({
-          where: {
-            id: input.audioAssetId,
-            organizationId: input.organizationId,
-            confirmedAt: { not: null },
-            deletedAt: null,
-          },
-        }))
-      )
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Audio asset must belong to the organization",
-        });
+      if (input.audioAssetId) {
+        await requireVocabularyAsset(
+          input.audioAssetId,
+          input.organizationId,
+          "audio",
+        );
+      }
+      if (input.imageAssetId) {
+        await requireVocabularyAsset(
+          input.imageAssetId,
+          input.organizationId,
+          "image",
+        );
+      }
       const { organizationId, entryId, ...data } = input;
       const result = await db.vocabularyEntry.updateMany({
         where: { id: entryId, organizationId },

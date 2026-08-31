@@ -10,6 +10,8 @@ import { createReactBlockSpec } from "@blocknote/react";
 
 import { calloutBlockType, calloutTones } from "~/lib/blocknote/block-catalog";
 
+import { CustomBlockToolbar } from "./custom-block-toolbar";
+
 const toneStyles = {
   info: {
     className:
@@ -57,25 +59,38 @@ export const calloutBlock = createReactBlockSpec(
         calloutTones[(currentToneIndex + 1) % calloutTones.length];
 
       return (
-        <div
-          className={`my-1 grid grid-cols-[auto_1fr] gap-x-3 rounded-xl border-l-4 px-4 py-3 ${tone.className}`}
-        >
-          <button
-            aria-label="Ubah nada callout"
-            className="mt-0.5 flex h-fit items-center gap-1.5 rounded-md px-1 py-0.5 text-xs font-bold tracking-wide uppercase transition hover:bg-black/5 dark:hover:bg-white/10"
-            contentEditable={false}
-            disabled={!editor.isEditable}
-            onClick={() =>
-              editor.isEditable &&
-              editor.updateBlock(block, { props: { tone: nextTone } })
-            }
-            title="Ubah nada callout"
-            type="button"
+        <div className="my-1 w-full" data-custom-block>
+          <div className="mb-1 flex justify-end">
+            <CustomBlockToolbar
+              block={block}
+              editable={editor.isEditable}
+              onClear={() =>
+                editor.updateBlock(block, {
+                  content: "",
+                })
+              }
+            />
+          </div>
+          <div
+            className={`grid grid-cols-[auto_1fr] gap-x-3 rounded-xl border-l-4 px-4 py-3 ${tone.className}`}
           >
-            <Icon aria-hidden="true" className="size-4" />
-            {tone.label}
-          </button>
-          <div className="min-w-0 leading-7" ref={contentRef} />
+            <button
+              aria-label="Ubah nada callout"
+              className="mt-0.5 flex h-fit items-center gap-1.5 rounded-md px-1 py-0.5 text-xs font-bold tracking-wide uppercase transition hover:bg-black/5 dark:hover:bg-white/10"
+              contentEditable={false}
+              disabled={!editor.isEditable}
+              onClick={() =>
+                editor.isEditable &&
+                editor.updateBlock(block, { props: { tone: nextTone } })
+              }
+              title="Ubah nada callout"
+              type="button"
+            >
+              <Icon aria-hidden="true" className="size-4" />
+              {tone.label}
+            </button>
+            <div className="min-w-0 leading-7" ref={contentRef} />
+          </div>
         </div>
       );
     },

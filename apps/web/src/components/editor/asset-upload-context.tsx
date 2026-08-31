@@ -10,10 +10,17 @@ export type UploadedEditorAsset = {
 
 export type UploadEditorAsset = (
   file: File,
-  kind: "audio" | "image",
+  kind: "audio" | "file" | "image",
 ) => Promise<UploadedEditorAsset>;
 
-const AssetUploadContext = createContext<UploadEditorAsset | null>(null);
+export type RemoveEditorAsset = (assetId: string) => Promise<void>;
+
+export type EditorAssetStorage = {
+  upload: UploadEditorAsset;
+  remove?: RemoveEditorAsset;
+};
+
+const AssetUploadContext = createContext<EditorAssetStorage | null>(null);
 
 export const AssetUploadProvider = AssetUploadContext.Provider;
 

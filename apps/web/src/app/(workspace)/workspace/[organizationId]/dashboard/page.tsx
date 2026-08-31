@@ -53,7 +53,7 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
 const courseStatus = {
   DRAFT: { label: "Draf", chip: "border-border text-muted-foreground" },
   PUBLISHED: {
-    label: "Terbit",
+    label: "Published",
     chip: "border-foreground/70 text-foreground",
   },
   ARCHIVED: { label: "Arsip", chip: "border-border text-muted-foreground" },
@@ -616,7 +616,7 @@ export default async function DashboardPage({
         />
         <StatCard
           icon={BookCheckIcon}
-          label="Diterbitkan"
+          label="Published"
           value={analytics.courses.byStatus.PUBLISHED ?? 0}
           href={`${root}/courses`}
         />

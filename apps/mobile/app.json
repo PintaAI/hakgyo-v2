@@ -35,7 +35,8 @@
       "expo-widgets",
       "expo-sharing",
       "expo-router",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "expo-audio"
     ],
     "extra": {
       "eas": {

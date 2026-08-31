@@ -17,6 +17,7 @@ import {
   grammarBlockType,
 } from "~/lib/blocknote/block-catalog";
 
+import { CustomBlockToolbar } from "./custom-block-toolbar";
 import { EditableBlockText } from "./editable-block-text";
 
 type RuleRow = {
@@ -58,6 +59,25 @@ const grammarBlockProps = {
   tipKo: { default: grammarBlockDefaults.tipKo },
   tipTranslation: { default: grammarBlockDefaults.tipTranslation },
 };
+
+const emptyGrammarProps = {
+  theme: grammarBlockDefaults.theme,
+  showTip: false,
+  number: "",
+  eyebrow: "",
+  title: "",
+  descriptionKo: "",
+  descriptionTranslation: "",
+  ruleColumnOne: "",
+  ruleColumnTwo: "",
+  ruleColumnThree: "",
+  ruleRows: "[]",
+  examplesLabel: "",
+  examples: "[]",
+  tipTitle: "",
+  tipKo: "",
+  tipTranslation: "",
+} as const;
 
 function defaultRuleRows(): RuleRow[] {
   return grammarBlockRuleRows.map((row) => ({ ...row }));
@@ -158,8 +178,9 @@ export const grammarBlock = createReactBlockSpec(
 
       return (
         <article
-          className="bg-card text-card-foreground ring-foreground/10 my-4 w-full min-w-0 overflow-hidden rounded-xl ring-1"
+          className="text-foreground my-4 w-full min-w-0 bg-transparent"
           contentEditable={false}
+          data-custom-block
         >
           {editable ? (
             <div className="border-border bg-muted/40 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2.5">
@@ -204,6 +225,13 @@ export const grammarBlock = createReactBlockSpec(
                   <LightbulbIcon className="size-3.5" />
                   {block.props.showTip ? "Sembunyikan tip" : "Tampilkan tip"}
                 </button>
+                <CustomBlockToolbar
+                  block={block}
+                  editable={editable}
+                  onClear={() =>
+                    editor.updateBlock(block, { props: emptyGrammarProps })
+                  }
+                />
               </div>
             </div>
           ) : null}
@@ -309,7 +337,9 @@ export const grammarBlock = createReactBlockSpec(
                     className="border-border w-full border-l px-3 py-2 text-xs font-semibold tracking-wide uppercase"
                     editable={editable}
                     onChange={(ruleColumnThree) =>
-                      editor.updateBlock(block, { props: { ruleColumnThree } })
+                      editor.updateBlock(block, {
+                        props: { ruleColumnThree },
+                      })
                     }
                     value={block.props.ruleColumnThree}
                   />

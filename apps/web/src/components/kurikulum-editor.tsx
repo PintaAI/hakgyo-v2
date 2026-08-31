@@ -304,7 +304,7 @@ export function KurikulumEditor({
     try {
       await updateItem.mutateAsync({ itemId: item.id, isPublished: checked });
       await refreshCourse();
-      toast.success(checked ? "Item diterbitkan." : "Item dijadikan draf.");
+      toast.success(checked ? "Item published." : "Item dijadikan draf.");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -747,7 +747,7 @@ function SortableItemRow({
             htmlFor={`published-${item.id}`}
             className="text-muted-foreground text-xs font-normal"
           >
-            {item.isPublished ? "Terbit" : "Draf"}
+            {item.isPublished ? "Published" : "Draf"}
           </Label>
           <Switch
             id={`published-${item.id}`}
@@ -757,7 +757,7 @@ function SortableItemRow({
           />
         </div>
         <Button
-          aria-label={item.isPublished ? "Jadikan item draf" : "Terbitkan item"}
+          aria-label={item.isPublished ? "Jadikan item draf" : "Publish item"}
           disabled={isPending}
           size="icon-sm"
           variant="ghost"

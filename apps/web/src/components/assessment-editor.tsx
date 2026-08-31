@@ -19,8 +19,8 @@ import { toast } from "sonner";
 import {
   DynamicBlockNoteEditor,
   type BlockNoteDocument,
+  type EditorAssetStorageOptions,
 } from "~/components/editor";
-import type { UploadEditorAsset } from "~/components/editor/asset-upload-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -273,10 +273,8 @@ export function AssessmentEditor({
   const createOption = api.assessment.createOption.useMutation();
   const updateOption = api.assessment.updateOption.useMutation();
   const deleteOption = api.assessment.deleteOption.useMutation();
-  const createUpload = api.storage.createUploadUrl.useMutation();
-  const confirmUpload = api.storage.confirmUpload.useMutation();
-  const discardUpload = api.storage.deleteDocument.useMutation();
   const attachAsset = api.assessment.attachAsset.useMutation();
+  const detachAsset = api.assessment.detachAsset.useMutation();
   const createdAssessmentIdRef = useRef<string | null>(null);
   const canDelete = Boolean(organization.data);
 
@@ -289,60 +287,15 @@ export function AssessmentEditor({
     ]);
   }
 
-  const uploadAsset: UploadEditorAsset | undefined = assessmentId
-    ? async (file, kind) => {
-        const expectedPrefix = kind === "audio" ? "audio/" : "image/";
-        const maximumSize =
-          kind === "audio" ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
-        if (!file.type.startsWith(expectedPrefix)) {
-          throw new Error(
-            kind === "audio"
-              ? "Pilih file audio yang valid."
-              : "Pilih file gambar yang valid.",
-          );
-        }
-        if (file.size > maximumSize) {
-          throw new Error(
-            kind === "audio"
-              ? "Ukuran audio maksimal 50 MB."
-              : "Ukuran gambar maksimal 10 MB.",
-          );
-        }
-
-        const upload = await createUpload.mutateAsync({
-          organizationId,
-          fileName: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-        });
-        let attached = false;
-        try {
-          const response = await fetch(upload.uploadUrl, {
-            method: "PUT",
-            body: file,
-            headers: upload.headers,
-          });
-          if (!response.ok)
-            throw new Error(`Upload media gagal (${response.status}).`);
-          const asset = await confirmUpload.mutateAsync({ key: upload.key });
-          await attachAsset.mutateAsync({
-            assessmentId,
-            assetId: asset.assetId,
-          });
-          attached = true;
-          return {
-            assetId: asset.assetId,
-            fileName: file.name,
-            contentType: asset.contentType,
-          };
-        } catch (error) {
-          if (!attached) {
-            await discardUpload
-              .mutateAsync({ key: upload.key })
-              .catch(() => undefined);
-          }
-          throw error;
-        }
+  const assetStorage: EditorAssetStorageOptions | undefined = assessmentId
+    ? {
+        organizationId,
+        onAttach: async (assetId) => {
+          await attachAsset.mutateAsync({ assessmentId, assetId });
+        },
+        onDetach: async (assetId) => {
+          await detachAsset.mutateAsync({ assessmentId, assetId });
+        },
       }
     : undefined;
 
@@ -375,7 +328,7 @@ export function AssessmentEditor({
       canDelete={canDelete}
       isDeleting={deleteAssessment.isPending}
       onBack={() => router.back()}
-      uploadAsset={uploadAsset}
+      assetStorage={assetStorage}
       questionBusy={
         createQuestion.isPending ||
         deleteQuestion.isPending ||
@@ -577,7 +530,7 @@ function AssessmentEditorForm({
   canDelete,
   isDeleting,
   onBack,
-  uploadAsset,
+  assetStorage,
   questionBusy,
   onAddOption,
   onAddQuestion,
@@ -593,7 +546,7 @@ function AssessmentEditorForm({
   canDelete: boolean;
   isDeleting: boolean;
   onBack: () => void;
-  uploadAsset?: UploadEditorAsset;
+  assetStorage?: EditorAssetStorageOptions;
   questionBusy: boolean;
   onAddOption: (questionId: string) => Promise<void>;
   onAddQuestion: () => Promise<void>;
@@ -948,7 +901,7 @@ function AssessmentEditorForm({
                       onChange={setInstructions}
                       trailingBlock={false}
                       theme={editorTheme}
-                      uploadAsset={uploadAsset}
+                      assetStorage={assetStorage}
                     />
                   </div>
                   <p className="text-muted-foreground text-xs">
@@ -1001,7 +954,7 @@ function AssessmentEditorForm({
                         onToggleCorrect={onToggleCorrect}
                         question={question}
                         theme={editorTheme}
-                        uploadAsset={uploadAsset}
+                        assetStorage={assetStorage}
                       />
                     ))}
                   </div>
@@ -1231,7 +1184,7 @@ type QuestionCardProps = {
   ) => Promise<void>;
   question: Question;
   theme: "light" | "dark";
-  uploadAsset?: UploadEditorAsset;
+  assetStorage?: EditorAssetStorageOptions;
 };
 
 const QuestionCard = memo(function QuestionCard({
@@ -1246,7 +1199,7 @@ const QuestionCard = memo(function QuestionCard({
   onToggleCorrect,
   question,
   theme,
-  uploadAsset,
+  assetStorage,
 }: QuestionCardProps) {
   const [type, setType] = useState<QuestionType>(question.type);
   const [prompt, setPrompt] = useState<BlockNoteDocument>(
@@ -1357,7 +1310,7 @@ const QuestionCard = memo(function QuestionCard({
                 onChange={setPrompt}
                 trailingBlock={false}
                 theme={theme}
-                uploadAsset={uploadAsset}
+                assetStorage={assetStorage}
               />
             </div>
           </div>
@@ -1408,7 +1361,7 @@ const QuestionCard = memo(function QuestionCard({
                 onChange={setExplanation}
                 trailingBlock={false}
                 theme={theme}
-                uploadAsset={uploadAsset}
+                assetStorage={assetStorage}
               />
             </div>
           </div>
@@ -1479,7 +1432,7 @@ const QuestionCard = memo(function QuestionCard({
                     onSave={(content) => onSaveOption(option.id, content)}
                     option={option}
                     theme={theme}
-                    uploadAsset={uploadAsset}
+                    assetStorage={assetStorage}
                   />
                 ))}
               </div>
@@ -1524,7 +1477,7 @@ type OptionRowProps = {
   onToggleCorrect: (checked: boolean) => Promise<void>;
   option: Question["options"][number];
   theme: "light" | "dark";
-  uploadAsset?: UploadEditorAsset;
+  assetStorage?: EditorAssetStorageOptions;
 };
 
 const OptionRow = memo(function OptionRow({
@@ -1537,7 +1490,7 @@ const OptionRow = memo(function OptionRow({
   onToggleCorrect,
   option,
   theme,
-  uploadAsset,
+  assetStorage,
 }: OptionRowProps) {
   const [content, setContent] = useState<BlockNoteDocument>(
     toBlockNoteDocument(option.content) as BlockNoteDocument,
@@ -1648,7 +1601,7 @@ const OptionRow = memo(function OptionRow({
             onChange={setContent}
             trailingBlock={false}
             theme={theme}
-            uploadAsset={uploadAsset}
+            assetStorage={assetStorage}
           />
         </div>
       </div>

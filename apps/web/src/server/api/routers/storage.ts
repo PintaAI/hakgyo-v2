@@ -749,4 +749,48 @@ export const storageRouter = createTRPCRouter({
       });
       return { deleted: true };
     }),
+
+  deleteAsset: protectedProcedure
+    .input(z.object({ assetId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const asset = await db.asset.findUnique({
+        where: { id: input.assetId },
+        select: {
+          id: true,
+          objectKey: true,
+          uploadedByUserId: true,
+          deletedAt: true,
+          _count: {
+            select: {
+              materials: true,
+              assessments: true,
+              vocabularyEntries: true,
+            },
+          },
+        },
+      });
+      if (asset?.uploadedByUserId !== ctx.actorUserId) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      if (
+        asset._count.materials > 0 ||
+        asset._count.assessments > 0 ||
+        asset._count.vocabularyEntries > 0
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Asset is still referenced",
+        });
+      }
+      if (asset.deletedAt) return { deleted: true };
+
+      await r2.send(
+        new DeleteObjectCommand({ Bucket: r2Bucket, Key: asset.objectKey }),
+      );
+      await db.asset.update({
+        where: { id: asset.id },
+        data: { deletedAt: new Date() },
+      });
+      return { deleted: true };
+    }),
 });

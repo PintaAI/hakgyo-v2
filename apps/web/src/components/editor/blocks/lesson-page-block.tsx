@@ -20,6 +20,7 @@ import {
 
 import { useEditorAssetUpload } from "../asset-upload-context";
 import { AssetUrl } from "./asset-media-block";
+import { CustomBlockToolbar } from "./custom-block-toolbar";
 import { EditableBlockText as EditableText } from "./editable-block-text";
 
 const lessonPageThemeStyles = {
@@ -68,6 +69,31 @@ const lessonPageProps = {
   objectiveTwo: { default: lessonPageDefaults.objectiveTwo },
 };
 
+const emptyLessonPageProps = {
+  theme: "rose",
+  assetId: "",
+  fileName: "",
+  contentType: "",
+  eyebrow: "",
+  chapterNumber: "",
+  title: "",
+  subtitle: "",
+  question: "",
+  answer: "",
+  grammarLabel: "",
+  grammarTitle: "",
+  grammarDescription: "",
+  vocabularyLabel: "",
+  vocabularyTitle: "",
+  vocabularyDescription: "",
+  cultureLabel: "",
+  cultureTitle: "",
+  cultureDescription: "",
+  objectivesLabel: "",
+  objectiveOne: "",
+  objectiveTwo: "",
+} as const;
+
 function LessonHeroImage({
   assetId,
   editable,
@@ -95,7 +121,7 @@ function LessonHeroImage({
     if (!file || !upload) return;
     setUploading(true);
     try {
-      onUploaded(await upload(file, "image"));
+      onUploaded(await upload.upload(file, "image"));
       toast.success("Gambar lesson page diperbarui.");
     } catch (error) {
       toast.error(
@@ -240,37 +266,49 @@ export const lessonPageBlock = createReactBlockSpec(
 
       return (
         <article
-          className="bg-card text-card-foreground ring-foreground/10 my-4 w-full min-w-0 overflow-hidden rounded-xl ring-1"
+          className="text-foreground my-4 w-full min-w-0 bg-transparent"
           contentEditable={false}
+          data-custom-block
         >
           {editable ? (
             <div className="border-border bg-muted/40 flex items-center justify-between gap-3 border-b px-4 py-2.5">
               <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
                 <PaletteIcon className="size-3.5" /> Palet
               </div>
-              <div className="flex items-center gap-1.5">
-                {lessonPageThemes.map((theme) => {
-                  const option = lessonPageThemeStyles[theme];
-                  const selected = block.props.theme === theme;
-                  return (
-                    <button
-                      aria-label={`Gunakan palet ${option.label}`}
-                      aria-pressed={selected}
-                      className={`ring-foreground/10 focus-visible:ring-ring grid size-7 place-items-center rounded-md ring-1 transition focus-visible:ring-2 focus-visible:outline-none ${selected ? "bg-background shadow-xs" : "hover:bg-background/70"}`}
-                      key={theme}
-                      onClick={() =>
-                        editor.updateBlock(block, { props: { theme } })
-                      }
-                      title={option.label}
-                      type="button"
-                    >
-                      <span
-                        className="size-3.5 rounded-full"
-                        style={{ backgroundColor: option.accent }}
-                      />
-                    </button>
-                  );
-                })}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  {lessonPageThemes.map((theme) => {
+                    const option = lessonPageThemeStyles[theme];
+                    const selected = block.props.theme === theme;
+                    return (
+                      <button
+                        aria-label={`Gunakan palet ${option.label}`}
+                        aria-pressed={selected}
+                        className={`ring-foreground/10 focus-visible:ring-ring grid size-7 place-items-center rounded-md ring-1 transition focus-visible:ring-2 focus-visible:outline-none ${selected ? "bg-background shadow-xs" : "hover:bg-background/70"}`}
+                        key={theme}
+                        onClick={() =>
+                          editor.updateBlock(block, { props: { theme } })
+                        }
+                        title={option.label}
+                        type="button"
+                      >
+                        <span
+                          className="size-3.5 rounded-full"
+                          style={{ backgroundColor: option.accent }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+                <CustomBlockToolbar
+                  block={block}
+                  editable={editable}
+                  onClear={() =>
+                    editor.updateBlock(block, {
+                      props: emptyLessonPageProps,
+                    })
+                  }
+                />
               </div>
             </div>
           ) : null}

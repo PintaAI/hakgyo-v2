@@ -265,9 +265,17 @@ export default function CourseDetailScreen() {
                       </Text>
                     ) : (
                       module.items.map((item, itemIndex) => (
-                        <View
+                        <Pressable
                           className={`flex-row items-center gap-3 px-5 py-4 ${itemIndex > 0 ? "border-t border-border" : ""}`}
+                          disabled={locked || item.type !== "MATERIAL"}
                           key={item.id}
+                          onPress={() =>
+                            router.push({
+                              pathname:
+                                "/courses/[courseId]/items/[courseItemId]",
+                              params: { courseId, courseItemId: item.id },
+                            })
+                          }
                         >
                           <View
                             className={`size-9 items-center justify-center rounded-lg ${item.isCompleted ? "bg-primary" : "bg-muted"}`}
@@ -294,9 +302,11 @@ export default function CourseDetailScreen() {
                               ? "Done"
                               : locked
                                 ? "Locked"
-                                : "Ready"}
+                                : item.type === "MATERIAL"
+                                  ? "Open"
+                                  : "Ready"}
                           </Text>
-                        </View>
+                        </Pressable>
                       ))
                     )}
                   </View>

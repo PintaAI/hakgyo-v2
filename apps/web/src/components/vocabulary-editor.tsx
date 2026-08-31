@@ -1,21 +1,25 @@
 "use client";
 
 import {
+  useDeferredValue,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
-  HeadphonesIcon,
+  CheckCircle2Icon,
+  ImageIcon,
   LanguagesIcon,
   LoaderCircleIcon,
-  PencilIcon,
   PlusIcon,
-  SaveIcon,
+  SearchIcon,
+  Settings2Icon,
   Trash2Icon,
   UploadIcon,
   Volume2Icon,
@@ -39,7 +43,16 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
 import { Textarea } from "~/components/ui/textarea";
+import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type VocabularySet = RouterOutputs["content"]["listVocabularySets"][number];
@@ -112,6 +125,55 @@ function AudioPlayer({ assetId }: { assetId: string }) {
   );
 }
 
+function AssetImage({ assetId, alt }: { assetId: string; alt: string }) {
+  const utils = api.useUtils();
+  const [result, setResult] = useState<{
+    assetId: string;
+    url: string | null;
+    failed: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void utils.client.storage.createDownloadUrl
+      .mutate({ assetId, disposition: "inline" })
+      .then(({ downloadUrl }) => {
+        if (active) setResult({ assetId, url: downloadUrl, failed: false });
+      })
+      .catch(() => {
+        if (active) setResult({ assetId, url: null, failed: true });
+      });
+    return () => {
+      active = false;
+    };
+  }, [assetId, utils.client]);
+
+  if (result?.assetId === assetId && result.failed) {
+    return (
+      <div className="text-destructive flex h-20 items-center justify-center text-xs">
+        Gambar gagal dimuat.
+      </div>
+    );
+  }
+  if (result?.assetId !== assetId || !result.url) {
+    return (
+      <div className="text-muted-foreground flex h-20 items-center justify-center">
+        <LoaderCircleIcon className="size-4 animate-spin" />
+      </div>
+    );
+  }
+  return (
+    <Image
+      alt={alt}
+      className="h-20 w-full object-cover"
+      height={160}
+      src={result.url}
+      unoptimized
+      width={320}
+    />
+  );
+}
+
 export function VocabularyEditor({
   organizationId,
   organizationSlug,
@@ -137,7 +199,11 @@ export function VocabularyEditor({
   const createUpload = api.storage.createUploadUrl.useMutation();
   const confirmUpload = api.storage.confirmUpload.useMutation();
   const discardUpload = api.storage.deleteDocument.useMutation();
-  const [uploadingEntryId, setUploadingEntryId] = useState<string | null>(null);
+  const createdVocabularySetIdRef = useRef<string | null>(null);
+  const [uploadingAsset, setUploadingAsset] = useState<{
+    entryId: string;
+    kind: "audio" | "image";
+  } | null>(null);
   const canDelete = Boolean(organization.data);
   const vocabularySet = vocabularySets.data?.find(
     (set) => set.id === vocabularySetId,
@@ -145,6 +211,73 @@ export function VocabularyEditor({
 
   async function refreshVocabulary() {
     await utils.content.listVocabularySets.invalidate({ organizationId });
+  }
+
+  async function uploadEntryAsset(
+    entryId: string,
+    file: File,
+    kind: "audio" | "image",
+  ) {
+    if (!file.type.startsWith(`${kind}/`)) {
+      toast.error(
+        kind === "audio"
+          ? "Pilih file audio yang valid."
+          : "Pilih file gambar yang valid.",
+      );
+      return;
+    }
+    const maximumSize = kind === "audio" ? 50 : 10;
+    if (file.size > maximumSize * 1024 * 1024) {
+      toast.error(
+        `Ukuran ${kind === "audio" ? "audio" : "gambar"} maksimal ${maximumSize} MB.`,
+      );
+      return;
+    }
+
+    setUploadingAsset({ entryId, kind });
+    let uploadedKey: string | null = null;
+    let attached = false;
+    try {
+      const upload = await createUpload.mutateAsync({
+        organizationId,
+        fileName: file.name,
+        contentType: file.type,
+        fileSize: file.size,
+      });
+      uploadedKey = upload.key;
+      const response = await fetch(upload.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: upload.headers,
+      });
+      if (!response.ok) {
+        throw new Error(
+          `Upload ${kind === "audio" ? "audio" : "gambar"} gagal (${response.status}).`,
+        );
+      }
+      const asset = await confirmUpload.mutateAsync({ key: upload.key });
+      await updateEntry.mutateAsync(
+        kind === "audio"
+          ? { organizationId, entryId, audioAssetId: asset.assetId }
+          : { organizationId, entryId, imageAssetId: asset.assetId },
+      );
+      attached = true;
+      await refreshVocabulary();
+      toast.success(
+        kind === "audio"
+          ? "Audio pelafalan ditambahkan."
+          : "Gambar ilustrasi ditambahkan.",
+      );
+    } catch (error) {
+      if (uploadedKey && !attached) {
+        await discardUpload
+          .mutateAsync({ key: uploadedKey })
+          .catch(() => undefined);
+      }
+      toast.error(errorMessage(error));
+    } finally {
+      setUploadingAsset(null);
+    }
   }
 
   if (vocabularySetId && vocabularySets.isPending) {
@@ -235,17 +368,31 @@ export function VocabularyEditor({
           toast.error(errorMessage(error));
         }
       }}
-      onSave={async ({ title, description }) => {
+      onRemoveImage={async (entryId) => {
         try {
-          if (vocabularySetId) {
+          await updateEntry.mutateAsync({
+            organizationId,
+            entryId,
+            imageAssetId: null,
+          });
+          await refreshVocabulary();
+          toast.success("Gambar ilustrasi dilepas.");
+        } catch (error) {
+          toast.error(errorMessage(error));
+        }
+      }}
+      onSave={async ({ title, description }) => {
+        const targetVocabularySetId =
+          vocabularySetId ?? createdVocabularySetIdRef.current;
+        try {
+          if (targetVocabularySetId) {
             await updateSet.mutateAsync({
               organizationId,
-              vocabularySetId,
+              vocabularySetId: targetVocabularySetId,
               title,
               description,
             });
             await refreshVocabulary();
-            toast.success("Set kosakata disimpan.");
             return;
           }
 
@@ -254,6 +401,7 @@ export function VocabularyEditor({
             title,
             description,
           });
+          createdVocabularySetIdRef.current = created.id;
           await refreshVocabulary();
           toast.success("Set kosakata dibuat. Tambahkan istilah pertama Anda.");
           router.replace(
@@ -261,69 +409,26 @@ export function VocabularyEditor({
           );
         } catch (error) {
           toast.error(errorMessage(error));
+          throw error;
         }
       }}
       onUpdateEntry={async (entryId, entry) => {
         try {
           await updateEntry.mutateAsync({ organizationId, entryId, ...entry });
           await refreshVocabulary();
-          toast.success("Entri kosakata disimpan.");
           return true;
         } catch (error) {
           toast.error(errorMessage(error));
           return false;
         }
       }}
-      onUploadAudio={async (entryId, file) => {
-        if (!file.type.startsWith("audio/")) {
-          toast.error("Pilih file audio yang valid.");
-          return;
-        }
-        if (file.size > 50 * 1024 * 1024) {
-          toast.error("Ukuran audio maksimal 50 MB.");
-          return;
-        }
-
-        setUploadingEntryId(entryId);
-        let uploadedKey: string | null = null;
-        let attached = false;
-        try {
-          const upload = await createUpload.mutateAsync({
-            organizationId,
-            fileName: file.name,
-            contentType: file.type,
-            fileSize: file.size,
-          });
-          uploadedKey = upload.key;
-          const response = await fetch(upload.uploadUrl, {
-            method: "PUT",
-            body: file,
-            headers: upload.headers,
-          });
-          if (!response.ok) {
-            throw new Error(`Upload audio gagal (${response.status}).`);
-          }
-          const asset = await confirmUpload.mutateAsync({ key: upload.key });
-          await updateEntry.mutateAsync({
-            organizationId,
-            entryId,
-            audioAssetId: asset.assetId,
-          });
-          attached = true;
-          await refreshVocabulary();
-          toast.success("Audio pelafalan ditambahkan.");
-        } catch (error) {
-          if (uploadedKey && !attached) {
-            await discardUpload
-              .mutateAsync({ key: uploadedKey })
-              .catch(() => undefined);
-          }
-          toast.error(errorMessage(error));
-        } finally {
-          setUploadingEntryId(null);
-        }
-      }}
-      uploadingEntryId={uploadingEntryId}
+      onUploadAudio={(entryId, file) =>
+        uploadEntryAsset(entryId, file, "audio")
+      }
+      onUploadImage={(entryId, file) =>
+        uploadEntryAsset(entryId, file, "image")
+      }
+      uploadingAsset={uploadingAsset}
     />
   );
 }
@@ -347,10 +452,12 @@ function VocabularySetForm({
   onDelete,
   onDeleteEntry,
   onRemoveAudio,
+  onRemoveImage,
   onSave,
   onUpdateEntry,
   onUploadAudio,
-  uploadingEntryId,
+  onUploadImage,
+  uploadingAsset,
 }: {
   canDelete: boolean;
   initialDescription: string;
@@ -364,28 +471,188 @@ function VocabularySetForm({
   onDelete: () => Promise<void>;
   onDeleteEntry: (entryId: string) => Promise<void>;
   onRemoveAudio: (entryId: string) => Promise<void>;
+  onRemoveImage: (entryId: string) => Promise<void>;
   onSave: (value: {
     title: string;
     description: string | null;
   }) => Promise<void>;
   onUpdateEntry: (entryId: string, entry: EntryFields) => Promise<boolean>;
   onUploadAudio: (entryId: string, file: File) => Promise<void>;
-  uploadingEntryId: string | null;
+  onUploadImage: (entryId: string, file: File) => Promise<void>;
+  uploadingAsset: {
+    entryId: string;
+    kind: "audio" | "image";
+  } | null;
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
+  const [search, setSearch] = useState("");
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(
+    null,
+  );
+  const mapNavRef = useRef<HTMLElement>(null);
+  const scrollAnimationFrameRef = useRef<number | null>(null);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
+  const entryMapItems = useMemo(
+    () =>
+      vocabularySet?.entries.map((entry, index) => ({
+        id: entry.id,
+        index,
+        term: entry.term,
+      })) ?? [],
+    [vocabularySet?.entries],
+  );
+  const visibleEntries = useMemo(
+    () =>
+      vocabularySet?.entries.filter((entry) =>
+        `${entry.term} ${entry.definition} ${examplesToText(entry.examples)}`
+          .toLocaleLowerCase()
+          .includes(deferredSearch),
+      ) ?? [],
+    [deferredSearch, vocabularySet?.entries],
+  );
+  const entryIdKey = useMemo(
+    () => visibleEntries.map((entry) => entry.id).join("\u0000"),
+    [visibleEntries],
+  );
+  const { flush: flushDetailsSave, schedule: scheduleDetailsSave } =
+    useDebouncedAutosave<{ title: string; description: string }>(
+      async (draft) => {
+        const normalizedTitle = draft.title.trim();
+        if (!normalizedTitle) return;
+        await onSave({
+          title: normalizedTitle,
+          description: draft.description.trim() || null,
+        });
+      },
+    );
+  const skipInitialDetailsSave = useRef(true);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const normalizedTitle = title.trim();
-    if (!normalizedTitle) {
-      toast.error("Judul set kosakata wajib diisi.");
+  useEffect(
+    () => () => {
+      if (scrollAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(scrollAnimationFrameRef.current);
+      }
+      if (highlightTimeoutRef.current !== null) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (skipInitialDetailsSave.current) {
+      skipInitialDetailsSave.current = false;
       return;
     }
-    await onSave({
-      title: normalizedTitle,
-      description: description.trim() || null,
-    });
+    scheduleDetailsSave({ description, title });
+  }, [description, scheduleDetailsSave, title]);
+
+  useEffect(() => {
+    if (!entryIdKey) return;
+
+    const visibleHeights = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const item of entries) {
+          const entryId = (item.target as HTMLElement).dataset.entryId;
+          if (!entryId) continue;
+          visibleHeights.set(
+            entryId,
+            item.isIntersecting ? item.intersectionRect.height : 0,
+          );
+        }
+        let nextId: string | null = null;
+        let largestHeight = 0;
+        for (const [entryId, height] of visibleHeights) {
+          if (height > largestHeight) {
+            nextId = entryId;
+            largestHeight = height;
+          }
+        }
+        setActiveEntryId(nextId);
+      },
+      {
+        rootMargin: "-80px 0px -20% 0px",
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+      },
+    );
+
+    for (const entryId of entryIdKey.split("\u0000")) {
+      const element = document.getElementById(`vocabulary-entry-${entryId}`);
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, [entryIdKey]);
+
+  useEffect(() => {
+    if (!activeEntryId || !mapNavRef.current) return;
+    const map = mapNavRef.current;
+    const activeItem = document.getElementById(
+      `vocabulary-map-entry-${activeEntryId}`,
+    );
+    if (!activeItem) return;
+
+    const mapRect = map.getBoundingClientRect();
+    const itemRect = activeItem.getBoundingClientRect();
+    const topOverflow = itemRect.top - mapRect.top;
+    const bottomOverflow = itemRect.bottom - mapRect.bottom;
+    if (topOverflow < 0) {
+      map.scrollTo({
+        behavior: "smooth",
+        top: map.scrollTop + topOverflow - 4,
+      });
+    } else if (bottomOverflow > 0) {
+      map.scrollTo({
+        behavior: "smooth",
+        top: map.scrollTop + bottomOverflow + 4,
+      });
+    }
+  }, [activeEntryId]);
+
+  function navigateToEntry(entryId: string) {
+    const entryElement = document.getElementById(`vocabulary-entry-${entryId}`);
+    if (!entryElement) return;
+
+    if (scrollAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(scrollAnimationFrameRef.current);
+    }
+    const startY = window.scrollY;
+    const entryRect = entryElement.getBoundingClientRect();
+    const targetY = Math.max(
+      0,
+      startY +
+        entryRect.top -
+        Math.max(24, (window.innerHeight - entryRect.height) / 2),
+    );
+    const distance = targetY - startY;
+    let startedAt: number | null = null;
+
+    const animateScroll = (now: number) => {
+      startedAt ??= now;
+      const progress = Math.min((now - startedAt) / 500, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      window.scrollTo(0, startY + distance * easedProgress);
+      if (progress < 1) {
+        scrollAnimationFrameRef.current = requestAnimationFrame(animateScroll);
+      } else {
+        scrollAnimationFrameRef.current = null;
+      }
+    };
+    scrollAnimationFrameRef.current = requestAnimationFrame(animateScroll);
+    setActiveEntryId(entryId);
+    setHighlightedEntryId(entryId);
+    if (highlightTimeoutRef.current !== null) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedEntryId(null);
+      highlightTimeoutRef.current = null;
+    }, 2000);
   }
 
   return (
@@ -397,7 +664,11 @@ function VocabularySetForm({
             aria-label="Kembali ke kosakata"
             variant="outline"
             size="icon"
-            onClick={onBack}
+            onClick={() => {
+              void flushDetailsSave()
+                .then(onBack)
+                .catch(() => undefined);
+            }}
           >
             <ArrowLeftIcon />
           </Button>
@@ -412,6 +683,20 @@ function VocabularySetForm({
           </div>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto">
+          <span className="text-muted-foreground hidden items-center gap-1.5 text-xs sm:flex">
+            {isSaving ? (
+              <LoaderCircleIcon className="size-3.5 animate-spin" />
+            ) : !title.trim() ? (
+              <LanguagesIcon className="size-3.5" />
+            ) : (
+              <CheckCircle2Icon className="size-3.5" />
+            )}
+            {isSaving
+              ? "Menyimpan..."
+              : title.trim()
+                ? "Disimpan otomatis"
+                : "Judul wajib diisi"}
+          </span>
           {vocabularySet && canDelete && (
             <AlertDialog>
               <AlertDialogTrigger
@@ -447,59 +732,126 @@ function VocabularySetForm({
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <Button
-            disabled={isSaving || isDeleting}
-            form="vocabulary-details-form"
-            type="submit"
-          >
-            {isSaving ? (
-              <LoaderCircleIcon
-                className="animate-spin"
-                data-icon="inline-start"
-              />
-            ) : (
-              <SaveIcon data-icon="inline-start" />
-            )}
-            {vocabularySet ? "Simpan perubahan" : "Buat set"}
-          </Button>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-        <section className="grid min-w-0 gap-4">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="font-heading text-xl font-semibold">
-                Daftar kosakata
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Susun istilah, arti, contoh, dan audio pelafalan.
-              </p>
-            </div>
-            <Badge variant="secondary">
-              {vocabularySet?.entries.length ?? 0} entri
-            </Badge>
-          </div>
+        <section className="grid min-w-0 gap-6">
+          <Card className="gap-0 overflow-hidden py-0 shadow-sm">
+            <CardHeader className="relative overflow-hidden rounded-none bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-6">
+              <div className="pointer-events-none absolute top-0 right-0 size-44 translate-x-14 -translate-y-20 rounded-full border border-current opacity-10" />
+              <div className="pointer-events-none absolute top-0 right-0 size-28 translate-x-8 -translate-y-12 rounded-full border border-current opacity-10" />
+              <div className="relative flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                  <Settings2Icon className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold tracking-[0.18em] text-[#aaa99f] uppercase">
+                    Setup kosakata
+                  </p>
+                  <CardTitle className="mt-1 text-xl font-semibold text-[#f5f3e9]">
+                    Identitas set
+                  </CardTitle>
+                  <p className="mt-1 text-sm leading-relaxed text-[#aaa99f]">
+                    Beri konteks singkat agar set mudah ditemukan dan digunakan
+                    kembali.
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-5 p-5 sm:p-6">
+              <div className="grid gap-2">
+                <Label htmlFor="vocabulary-title">Judul</Label>
+                <Input
+                  autoFocus={!vocabularySet}
+                  id="vocabulary-title"
+                  maxLength={200}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Mis. Bahasa Korea untuk perjalanan"
+                  value={title}
+                />
+                {!title.trim() ? (
+                  <p className="text-destructive text-xs">
+                    Isi judul untuk membuat dan menyimpan set ini.
+                  </p>
+                ) : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="vocabulary-description">Deskripsi</Label>
+                <Textarea
+                  id="vocabulary-description"
+                  maxLength={10000}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Jelaskan topik atau kapan siswa akan memakai istilah ini."
+                  rows={3}
+                  value={description}
+                />
+                <p className="text-muted-foreground text-xs">
+                  Perubahan disimpan otomatis setelah Anda berhenti mengetik.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
           {vocabularySet ? (
-            <>
-              <NewEntryForm busy={entryBusy} onCreate={onCreateEntry} />
-              {vocabularySet.entries.length ? (
+            <section className="grid gap-4 border-t pt-6">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="font-heading text-xl font-semibold">
+                    Istilah
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    Tambahkan definisi, contoh pemakaian, dan audio pelafalan.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    {vocabularySet.entries.length} istilah
+                  </Badge>
+                  <NewEntryForm busy={entryBusy} onCreate={onCreateEntry} />
+                </div>
+              </div>
+              {visibleEntries.length ? (
                 <div className="grid gap-3">
-                  {vocabularySet.entries.map((entry, index) => (
+                  {visibleEntries.map((entry) => (
                     <VocabularyEntryCard
                       busy={entryBusy}
                       canDelete={canDelete}
                       entry={entry}
-                      index={index}
+                      highlighted={highlightedEntryId === entry.id}
+                      index={vocabularySet.entries.findIndex(
+                        (item) => item.id === entry.id,
+                      )}
                       key={entry.id}
                       onDelete={() => onDeleteEntry(entry.id)}
                       onRemoveAudio={() => onRemoveAudio(entry.id)}
+                      onRemoveImage={() => onRemoveImage(entry.id)}
                       onUpdate={(value) => onUpdateEntry(entry.id, value)}
                       onUploadAudio={(file) => onUploadAudio(entry.id, file)}
-                      uploading={uploadingEntryId === entry.id}
+                      onUploadImage={(file) => onUploadImage(entry.id, file)}
+                      uploadingAudio={
+                        uploadingAsset?.entryId === entry.id &&
+                        uploadingAsset.kind === "audio"
+                      }
+                      uploadingImage={
+                        uploadingAsset?.entryId === entry.id &&
+                        uploadingAsset.kind === "image"
+                      }
                     />
                   ))}
+                </div>
+              ) : deferredSearch ? (
+                <div className="text-muted-foreground bg-muted/20 rounded-xl border border-dashed px-6 py-10 text-center text-sm">
+                  Tidak ada istilah yang cocok dengan “{search.trim()}”.
+                  <Button
+                    className="mx-auto mt-3"
+                    onClick={() => setSearch("")}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Hapus pencarian
+                  </Button>
                 </div>
               ) : (
                 <div className="text-muted-foreground bg-muted/20 rounded-xl border border-dashed px-6 py-14 text-center text-sm">
@@ -507,7 +859,7 @@ function VocabularySetForm({
                   Tambahkan istilah pertama untuk mulai membangun set ini.
                 </div>
               )}
-            </>
+            </section>
           ) : (
             <div className="text-muted-foreground bg-muted/20 rounded-xl border border-dashed px-6 py-14 text-center text-sm">
               <LanguagesIcon className="mx-auto mb-3 size-7 opacity-50" />
@@ -516,59 +868,98 @@ function VocabularySetForm({
           )}
         </section>
 
-        <form
-          className="bg-card grid gap-5 rounded-xl border p-5 shadow-xs lg:sticky lg:top-6"
-          id="vocabulary-details-form"
-          onSubmit={handleSubmit}
-        >
-          <div>
-            <p className="font-heading font-semibold">Detail set</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Informasi ini ditampilkan saat set dipilih untuk course.
-            </p>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="vocabulary-title">Judul</Label>
-            <Input
-              autoFocus={!vocabularySet}
-              id="vocabulary-title"
-              maxLength={200}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Mis. Perjalanan penting"
-              value={title}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="vocabulary-description">Deskripsi</Label>
-            <Textarea
-              id="vocabulary-description"
-              maxLength={10000}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Kapan siswa akan memakai kata-kata ini?"
-              rows={7}
-              value={description}
-            />
-          </div>
-          {vocabularySet ? (
-            <div className="bg-muted/40 grid grid-cols-2 gap-3 rounded-lg border p-3 text-center">
-              <div>
-                <p className="font-heading text-lg font-semibold">
-                  {vocabularySet.entries.length}
-                </p>
-                <p className="text-muted-foreground text-xs">Entri</p>
-              </div>
-              <div>
-                <p className="font-heading text-lg font-semibold">
-                  {
-                    vocabularySet.entries.filter((entry) => entry.audioAssetId)
-                      .length
-                  }
-                </p>
-                <p className="text-muted-foreground text-xs">Dengan audio</p>
-              </div>
+        <aside className="grid min-w-0 gap-4 lg:sticky lg:top-6 lg:h-[calc(100svh-12rem)] lg:max-h-[calc(100svh-12rem)] lg:grid-rows-[auto_minmax(0,1fr)] lg:overflow-hidden">
+          <div className="bg-card grid gap-4 rounded-xl border p-4 shadow-xs">
+            <div className="grid gap-1">
+              <h2 className="font-heading text-sm font-semibold">
+                Cari istilah
+              </h2>
+              <p className="text-muted-foreground text-xs">
+                Temukan istilah, definisi, atau contoh dengan cepat.
+              </p>
             </div>
-          ) : null}
-        </form>
+            <div className="relative">
+              <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+              <Input
+                aria-label="Cari istilah dalam set"
+                className="pl-8"
+                disabled={!vocabularySet?.entries.length}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Cari dalam set"
+                value={search}
+              />
+            </div>
+            {vocabularySet ? (
+              <div className="bg-muted/40 grid grid-cols-2 gap-3 rounded-lg border p-3 text-center">
+                <div>
+                  <p className="font-heading text-lg font-semibold">
+                    {vocabularySet.entries.length}
+                  </p>
+                  <p className="text-muted-foreground text-xs">Entri</p>
+                </div>
+                <div>
+                  <p className="font-heading text-lg font-semibold">
+                    {
+                      vocabularySet.entries.filter(
+                        (entry) => entry.audioAssetId,
+                      ).length
+                    }
+                  </p>
+                  <p className="text-muted-foreground text-xs">Dengan audio</p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="bg-card grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden rounded-xl border p-4 shadow-xs">
+            <div>
+              <h2 className="font-heading text-sm font-semibold">
+                Peta istilah
+              </h2>
+              <p className="text-muted-foreground text-xs">
+                Lompat langsung ke istilah yang ingin diedit.
+              </p>
+            </div>
+            {entryMapItems.length ? (
+              <nav
+                aria-label="Navigasi istilah"
+                className="grid min-h-0 min-w-0 gap-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]"
+                ref={mapNavRef}
+              >
+                {entryMapItems.map((item) => {
+                  const hidden = !visibleEntries.some(
+                    (entry) => entry.id === item.id,
+                  );
+                  return (
+                    <Button
+                      aria-current={
+                        activeEntryId === item.id ? "location" : undefined
+                      }
+                      className="h-auto w-full min-w-0 justify-start gap-2 px-2 py-2"
+                      disabled={hidden}
+                      id={`vocabulary-map-entry-${item.id}`}
+                      key={item.id}
+                      onClick={() => navigateToEntry(item.id)}
+                      type="button"
+                      variant={
+                        activeEntryId === item.id ? "secondary" : "ghost"
+                      }
+                    >
+                      <span className="bg-muted text-muted-foreground flex size-6 shrink-0 items-center justify-center rounded text-xs font-medium">
+                        {item.index + 1}
+                      </span>
+                      <span className="min-w-0 truncate">{item.term}</span>
+                    </Button>
+                  );
+                })}
+              </nav>
+            ) : (
+              <p className="text-muted-foreground rounded-md border border-dashed px-3 py-4 text-center text-xs">
+                Belum ada istilah.
+              </p>
+            )}
+          </div>
+        </aside>
       </div>
     </div>
   );
@@ -581,6 +972,8 @@ function NewEntryForm({
   busy: boolean;
   onCreate: (entry: EntryFields) => Promise<boolean>;
 }) {
+  const termInputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
   const [term, setTerm] = useState("");
   const [definition, setDefinition] = useState("");
   const [examples, setExamples] = useState("");
@@ -600,21 +993,30 @@ function NewEntryForm({
       setTerm("");
       setDefinition("");
       setExamples("");
+      setOpen(false);
+      requestAnimationFrame(() => termInputRef.current?.focus());
     }
   }
 
   return (
-    <Card className="bg-muted/10 border-dashed">
-      <CardHeader className="border-b border-dashed">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg">
-            <PlusIcon className="size-4" />
-          </span>
-          Tambah entri
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-4 lg:grid-cols-2" onSubmit={handleSubmit}>
+    <Dialog onOpenChange={setOpen} open={open}>
+      <DialogTrigger
+        render={
+          <Button size="sm" type="button">
+            <PlusIcon data-icon="inline-start" />
+            Tambah entri
+          </Button>
+        }
+      />
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Tambah entri kosakata</DialogTitle>
+          <DialogDescription>
+            Tambahkan istilah, definisi, contoh pemakaian, dan audio nanti dari
+            kartu istilah.
+          </DialogDescription>
+        </DialogHeader>
+        <form className="grid gap-4" onSubmit={handleSubmit}>
           <div className="grid gap-2">
             <Label htmlFor="new-vocabulary-term">Istilah</Label>
             <Input
@@ -622,6 +1024,7 @@ function NewEntryForm({
               maxLength={500}
               onChange={(event) => setTerm(event.target.value)}
               placeholder="Istilah atau frasa"
+              ref={termInputRef}
               value={term}
             />
           </div>
@@ -635,7 +1038,7 @@ function NewEntryForm({
               value={definition}
             />
           </div>
-          <div className="grid gap-2 lg:col-span-2">
+          <div className="grid gap-2">
             <Label htmlFor="new-vocabulary-examples">Contoh</Label>
             <Textarea
               id="new-vocabulary-examples"
@@ -645,7 +1048,7 @@ function NewEntryForm({
               value={examples}
             />
           </div>
-          <div className="flex justify-end lg:col-span-2">
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <Button disabled={busy} type="submit">
               {busy ? (
                 <LoaderCircleIcon
@@ -659,8 +1062,8 @@ function NewEntryForm({
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -668,49 +1071,66 @@ function VocabularyEntryCard({
   busy,
   canDelete,
   entry,
+  highlighted,
   index,
   onDelete,
   onRemoveAudio,
+  onRemoveImage,
   onUpdate,
   onUploadAudio,
-  uploading,
+  onUploadImage,
+  uploadingAudio,
+  uploadingImage,
 }: {
   busy: boolean;
   canDelete: boolean;
   entry: VocabularyEntry;
+  highlighted: boolean;
   index: number;
   onDelete: () => Promise<void>;
   onRemoveAudio: () => Promise<void>;
+  onRemoveImage: () => Promise<void>;
   onUpdate: (entry: EntryFields) => Promise<boolean>;
   onUploadAudio: (file: File) => Promise<void>;
-  uploading: boolean;
+  onUploadImage: (file: File) => Promise<void>;
+  uploadingAudio: boolean;
+  uploadingImage: boolean;
 }) {
   const audioInputRef = useRef<HTMLInputElement>(null);
-  const [editing, setEditing] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [term, setTerm] = useState(entry.term);
   const [definition, setDefinition] = useState(entry.definition);
   const [examples, setExamples] = useState(examplesToText(entry.examples));
+  const [saveState, setSaveState] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const { cancel: cancelEntrySave, schedule: scheduleEntrySave } =
+    useDebouncedAutosave<EntryFields>(async (draft) => {
+      if (!draft.term.trim() || !draft.definition.trim()) {
+        setSaveState("error");
+        return;
+      }
+      setSaveState("saving");
+      const saved = await onUpdate({
+        term: draft.term.trim(),
+        definition: draft.definition.trim(),
+        examples: draft.examples,
+      });
+      setSaveState(saved ? "saved" : "error");
+    });
+  const skipInitialEntrySave = useRef(true);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!term.trim() || !definition.trim()) {
-      toast.error("Istilah dan definisi wajib diisi.");
+  useEffect(() => {
+    if (skipInitialEntrySave.current) {
+      skipInitialEntrySave.current = false;
       return;
     }
-    const saved = await onUpdate({
-      term: term.trim(),
-      definition: definition.trim(),
+    scheduleEntrySave({
+      term,
+      definition,
       examples: parseExamples(examples),
     });
-    if (saved) setEditing(false);
-  }
-
-  function cancelEditing() {
-    setTerm(entry.term);
-    setDefinition(entry.definition);
-    setExamples(examplesToText(entry.examples));
-    setEditing(false);
-  }
+  }, [definition, examples, scheduleEntrySave, term]);
 
   function selectAudio(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -718,110 +1138,154 @@ function VocabularyEntryCard({
     if (file) void onUploadAudio(file);
   }
 
-  if (editing) {
-    return (
-      <Card className="overflow-hidden">
-        <CardHeader className="bg-muted/25 flex-row items-center justify-between border-b py-3">
-          <CardTitle className="text-sm">Edit entri {index + 1}</CardTitle>
-          <Button
-            aria-label="Batalkan edit"
-            onClick={cancelEditing}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <XIcon />
-          </Button>
-        </CardHeader>
-        <CardContent className="pt-5">
-          <form className="grid gap-4 lg:grid-cols-2" onSubmit={handleSubmit}>
-            <div className="grid gap-2">
-              <Label htmlFor={`term-${entry.id}`}>Istilah</Label>
-              <Input
-                id={`term-${entry.id}`}
-                maxLength={500}
-                onChange={(event) => setTerm(event.target.value)}
-                value={term}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor={`definition-${entry.id}`}>Definisi</Label>
-              <Input
-                id={`definition-${entry.id}`}
-                maxLength={5000}
-                onChange={(event) => setDefinition(event.target.value)}
-                value={definition}
-              />
-            </div>
-            <div className="grid gap-2 lg:col-span-2">
-              <Label htmlFor={`examples-${entry.id}`}>Contoh</Label>
-              <Textarea
-                id={`examples-${entry.id}`}
-                onChange={(event) => setExamples(event.target.value)}
-                rows={2}
-                value={examples}
-              />
-            </div>
-            <div className="flex justify-end gap-2 lg:col-span-2">
-              <Button type="button" variant="outline" onClick={cancelEditing}>
-                <XIcon data-icon="inline-start" />
-                Batal
-              </Button>
-              <Button disabled={busy} type="submit">
-                {busy && <LoaderCircleIcon className="animate-spin" />}
-                Simpan entri
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    );
+  function selectImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) void onUploadImage(file);
   }
 
-  const exampleList = parseExamples(examplesToText(entry.examples));
-
   return (
-    <Card className="group overflow-hidden transition-shadow hover:shadow-sm">
-      <CardContent className="flex gap-4 p-5">
-        <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
-          {index + 1}
+    <Card
+      className={
+        highlighted
+          ? "border-primary/40 bg-primary/5 ring-primary/20 group scroll-mt-24 gap-0 overflow-hidden py-0 shadow-sm ring-2 transition-[background-color,border-color,box-shadow] duration-500"
+          : "group focus-within:border-foreground/20 scroll-mt-24 gap-0 overflow-hidden py-0 transition-[background-color,border-color,box-shadow] duration-500 focus-within:shadow-sm"
+      }
+      data-entry-id={entry.id}
+      id={`vocabulary-entry-${entry.id}`}
+    >
+      <CardContent className="grid gap-4 p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="bg-primary/10 text-primary flex size-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold">
+              {index + 1}
+            </span>
+            <p className="text-muted-foreground text-xs font-medium">
+              Entri {index + 1}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={
+                saveState === "error"
+                  ? "text-destructive flex items-center gap-1.5 text-xs"
+                  : "text-muted-foreground flex items-center gap-1.5 text-xs"
+              }
+            >
+              {saveState === "saving" ? (
+                <LoaderCircleIcon className="size-3.5 animate-spin" />
+              ) : saveState === "saved" ? (
+                <CheckCircle2Icon className="size-3.5" />
+              ) : null}
+              {saveState === "saving"
+                ? "Menyimpan"
+                : saveState === "saved"
+                  ? "Tersimpan"
+                  : saveState === "error"
+                    ? "Istilah dan definisi wajib diisi"
+                    : "Simpan otomatis"}
+            </span>
+            {canDelete ? (
+              <AlertDialog>
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      aria-label="Hapus entri"
+                      disabled={busy}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    />
+                  }
+                >
+                  <Trash2Icon />
+                </AlertDialogTrigger>
+                <AlertDialogContent size="sm">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Hapus &ldquo;{term}&rdquo;?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Entri kosakata ini akan dihapus permanen.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        cancelEntrySave();
+                        void onDelete();
+                      }}
+                      variant="destructive"
+                    >
+                      Hapus
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : null}
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="font-heading text-lg font-semibold tracking-tight">
-            {entry.term}
-          </h3>
-          <p className="mt-1 text-sm leading-relaxed">{entry.definition}</p>
-          {exampleList.length > 0 && (
-            <ul className="text-muted-foreground mt-3 grid gap-1 border-l-2 pl-3 text-sm italic">
-              {exampleList.map((example, exampleIndex) => (
-                <li key={`${entry.id}-${exampleIndex}`}>
-                  &ldquo;{example}&rdquo;
-                </li>
-              ))}
-            </ul>
-          )}
-          {entry.audioAssetId ? (
-            <div className="bg-muted/35 mt-4 grid gap-2 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-              <div className="min-w-0">
-                <p className="mb-2 flex items-center gap-2 truncate text-xs font-medium">
-                  <Volume2Icon className="size-3.5 shrink-0" />
-                  {entry.audioAsset?.fileName ?? "Audio pelafalan"}
-                </p>
-                <AudioPlayer assetId={entry.audioAssetId} />
-              </div>
-              <Button
-                disabled={busy}
-                onClick={() => void onRemoveAudio()}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                <XIcon /> Lepas
-              </Button>
-            </div>
-          ) : null}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label
+              className="text-muted-foreground text-[11px] tracking-wide uppercase"
+              htmlFor={`term-${entry.id}`}
+            >
+              Istilah
+            </Label>
+            <Input
+              className="font-heading h-10 text-base font-semibold"
+              id={`term-${entry.id}`}
+              maxLength={500}
+              onChange={(event) => {
+                setTerm(event.target.value);
+                setSaveState("idle");
+              }}
+              value={term}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label
+              className="text-muted-foreground text-[11px] tracking-wide uppercase"
+              htmlFor={`definition-${entry.id}`}
+            >
+              Definisi
+            </Label>
+            <Input
+              className="h-10"
+              id={`definition-${entry.id}`}
+              maxLength={5000}
+              onChange={(event) => {
+                setDefinition(event.target.value);
+                setSaveState("idle");
+              }}
+              value={definition}
+            />
+          </div>
+          <div className="grid gap-1.5 sm:col-span-2">
+            <Label
+              className="text-muted-foreground text-[11px] tracking-wide uppercase"
+              htmlFor={`examples-${entry.id}`}
+            >
+              Contoh pemakaian
+            </Label>
+            <Textarea
+              className="min-h-16 resize-y"
+              id={`examples-${entry.id}`}
+              onChange={(event) => {
+                setExamples(event.target.value);
+                setSaveState("idle");
+              }}
+              placeholder="Satu contoh per baris"
+              rows={1}
+              value={examples}
+            />
+          </div>
         </div>
-        <div className="flex shrink-0 flex-col gap-1 sm:flex-row">
+
+        <div className="bg-muted/25 -mx-4 -mb-4 grid gap-3 border-t p-4 sm:-mx-5 sm:-mb-5 sm:px-5 lg:grid-cols-2">
           <input
             accept="audio/*"
             className="hidden"
@@ -829,66 +1293,115 @@ function VocabularyEntryCard({
             ref={audioInputRef}
             type="file"
           />
-          <Button
-            aria-label={entry.audioAssetId ? "Ganti audio" : "Tambah audio"}
-            disabled={busy}
-            onClick={() => audioInputRef.current?.click()}
-            size="icon-sm"
-            title={entry.audioAssetId ? "Ganti audio" : "Tambah audio"}
-            type="button"
-            variant="ghost"
-          >
-            {uploading ? (
-              <LoaderCircleIcon className="animate-spin" />
-            ) : entry.audioAssetId ? (
-              <HeadphonesIcon />
+          <input
+            accept="image/*"
+            className="hidden"
+            onChange={selectImage}
+            ref={imageInputRef}
+            type="file"
+          />
+
+          <div className="bg-background min-w-0 overflow-hidden rounded-lg border">
+            {entry.imageAssetId ? (
+              <AssetImage assetId={entry.imageAssetId} alt={term} />
             ) : (
-              <UploadIcon />
+              <div className="text-muted-foreground flex h-20 flex-col items-center justify-center gap-1.5 border-b border-dashed text-xs">
+                <ImageIcon className="size-5" />
+                Belum ada ilustrasi
+              </div>
             )}
-          </Button>
-          <Button
-            aria-label="Edit entri"
-            disabled={busy}
-            onClick={() => setEditing(true)}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <PencilIcon />
-          </Button>
-          {canDelete ? (
-            <AlertDialog>
-              <AlertDialogTrigger
-                render={
+            <div className="flex items-center justify-between gap-2 border-t px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Ilustrasi</p>
+                <p className="text-muted-foreground truncate text-[11px]">
+                  {entry.imageAsset?.fileName ?? "Gambar pendukung istilah"}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  disabled={busy}
+                  onClick={() => imageInputRef.current?.click()}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  {uploadingImage ? (
+                    <LoaderCircleIcon className="animate-spin" />
+                  ) : (
+                    <UploadIcon />
+                  )}
+                  {entry.imageAssetId ? "Ganti" : "Tambah"}
+                </Button>
+                {entry.imageAssetId ? (
                   <Button
-                    aria-label="Hapus entri"
+                    aria-label="Lepas gambar"
                     disabled={busy}
+                    onClick={() => void onRemoveImage()}
                     size="icon-sm"
                     type="button"
                     variant="ghost"
-                  />
-                }
-              >
-                <Trash2Icon />
-              </AlertDialogTrigger>
-              <AlertDialogContent size="sm">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Hapus &ldquo;{entry.term}&rdquo;?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Entri kosakata ini akan dihapus permanen.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete} variant="destructive">
-                    Hapus
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : null}
+                  >
+                    <XIcon />
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-background grid min-w-0 grid-rows-[1fr_auto] overflow-hidden rounded-lg border">
+            <div className="flex min-h-20 items-center p-3">
+              {entry.audioAssetId ? (
+                <div className="w-full min-w-0">
+                  <p className="mb-1.5 flex items-center gap-2 truncate text-xs font-medium">
+                    <Volume2Icon className="size-3.5 shrink-0" />
+                    {entry.audioAsset?.fileName ?? "Audio pelafalan"}
+                  </p>
+                  <AudioPlayer assetId={entry.audioAssetId} />
+                </div>
+              ) : (
+                <div className="text-muted-foreground flex w-full flex-col items-center justify-center gap-1.5 text-xs">
+                  <Volume2Icon className="size-5" />
+                  Belum ada audio pelafalan
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Pelafalan</p>
+                <p className="text-muted-foreground truncate text-[11px]">
+                  Audio untuk membantu pengucapan
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  disabled={busy}
+                  onClick={() => audioInputRef.current?.click()}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  {uploadingAudio ? (
+                    <LoaderCircleIcon className="animate-spin" />
+                  ) : (
+                    <UploadIcon />
+                  )}
+                  {entry.audioAssetId ? "Ganti" : "Tambah"}
+                </Button>
+                {entry.audioAssetId ? (
+                  <Button
+                    aria-label="Lepas audio"
+                    disabled={busy}
+                    onClick={() => void onRemoveAudio()}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <XIcon />
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

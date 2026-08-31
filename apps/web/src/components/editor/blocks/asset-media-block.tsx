@@ -17,12 +17,20 @@ import {
 import { api } from "~/trpc/react";
 
 import { useEditorAssetUpload } from "../asset-upload-context";
+import { CustomBlockToolbar } from "./custom-block-toolbar";
+
+const emptyMediaProps = {
+  assetId: "",
+  fileName: "",
+  contentType: "",
+  caption: "",
+} as const;
 
 const mediaProps = {
-  assetId: { default: "" },
-  fileName: { default: "" },
-  contentType: { default: "" },
-  caption: { default: "" },
+  assetId: { default: emptyMediaProps.assetId },
+  fileName: { default: emptyMediaProps.fileName },
+  contentType: { default: emptyMediaProps.contentType },
+  caption: { default: emptyMediaProps.caption },
 };
 
 export function AssetUrl({
@@ -77,16 +85,16 @@ function MediaPicker({
   }) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const upload = useEditorAssetUpload();
+  const storage = useEditorAssetUpload();
   const [uploading, setUploading] = useState(false);
 
   async function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file || !upload) return;
+    if (!file || !storage) return;
     setUploading(true);
     try {
-      onUploaded(await upload(file, kind));
+      onUploaded(await storage.upload(file, kind));
       toast.success(kind === "audio" ? "Audio diunggah." : "Gambar diunggah.");
     } catch (error) {
       toast.error(
@@ -107,11 +115,11 @@ function MediaPicker({
         type="file"
       />
       <p className="text-muted-foreground text-sm">
-        {upload
+        {storage
           ? "Pilih file untuk block ini."
           : "Upload media tidak tersedia di sini."}
       </p>
-      {upload ? (
+      {storage ? (
         <button
           className="bg-primary text-primary-foreground inline-flex h-9 items-center gap-2 rounded-md px-4 text-sm font-medium disabled:opacity-50"
           disabled={uploading}
@@ -139,9 +147,19 @@ export const assetAudioBlock = createReactBlockSpec(
   {
     render: ({ block, editor }) => (
       <div
-        className="my-2 w-full rounded-xl border p-4"
+        className="my-2 w-full bg-transparent"
         contentEditable={false}
+        data-custom-block
       >
+        <div className="mb-3 flex justify-end">
+          <CustomBlockToolbar
+            block={block}
+            editable={editor.isEditable}
+            onClear={() =>
+              editor.updateBlock(block, { props: emptyMediaProps })
+            }
+          />
+        </div>
         {block.props.assetId ? (
           <AssetUrl assetId={block.props.assetId}>
             {(url, loading) =>
@@ -198,9 +216,19 @@ export const assetImageBlock = createReactBlockSpec(
   {
     render: ({ block, editor }) => (
       <figure
-        className="my-2 w-full rounded-xl border p-3"
+        className="my-2 w-full bg-transparent"
         contentEditable={false}
+        data-custom-block
       >
+        <div className="mb-3 flex justify-end">
+          <CustomBlockToolbar
+            block={block}
+            editable={editor.isEditable}
+            onClear={() =>
+              editor.updateBlock(block, { props: emptyMediaProps })
+            }
+          />
+        </div>
         {block.props.assetId ? (
           <AssetUrl assetId={block.props.assetId}>
             {(url, loading) =>

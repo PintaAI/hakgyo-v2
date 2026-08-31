@@ -4,12 +4,14 @@ import {
   assetAudioBlockType,
   assetImageBlockType,
   calloutBlockType,
+  conversationBlockType,
   grammarBlockType,
   lessonPageBlockType,
 } from "~/lib/blocknote/block-catalog";
 
 import { assetAudioBlock, assetImageBlock } from "./blocks/asset-media-block";
 import { calloutBlock } from "./blocks/callout-block";
+import { conversationBlock } from "./blocks/conversation-block";
 import { grammarBlock } from "./blocks/grammar-block";
 import { lessonPageBlock } from "./blocks/lesson-page-block";
 
@@ -17,6 +19,7 @@ export const hakgyoBlockNoteSchema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     [calloutBlockType]: calloutBlock,
+    [conversationBlockType]: conversationBlock,
     [assetAudioBlockType]: assetAudioBlock,
     [assetImageBlockType]: assetImageBlock,
     [lessonPageBlockType]: lessonPageBlock,

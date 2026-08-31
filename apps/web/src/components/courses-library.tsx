@@ -28,7 +28,7 @@ type CourseFilter = "ALL" | Course["status"];
 const statusMeta = {
   DRAFT: { label: "Draf", className: "border-border text-muted-foreground" },
   PUBLISHED: {
-    label: "Terbit",
+    label: "Published",
     className: "border-foreground/70 text-foreground",
   },
   ARCHIVED: {
@@ -211,7 +211,7 @@ export function CoursesLibrary({
               active={filter === "PUBLISHED"}
               count={counts.PUBLISHED}
               icon={BookCheckIcon}
-              label="Diterbitkan"
+              label="Published"
               onClick={() => setFilter("PUBLISHED")}
             />
             <FilterStat

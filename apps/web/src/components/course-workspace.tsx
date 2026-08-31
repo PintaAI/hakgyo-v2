@@ -109,7 +109,7 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
 
 const courseStatus = {
   DRAFT: { label: "Draf", variant: "secondary" as const },
-  PUBLISHED: { label: "Terbit", variant: "default" as const },
+  PUBLISHED: { label: "Published", variant: "default" as const },
   ARCHIVED: { label: "Arsip", variant: "outline" as const },
 };
 
@@ -325,7 +325,7 @@ export function CourseWorkspace({
       ]);
       toast.success(
         status === "PUBLISHED"
-          ? "Course berhasil diterbitkan."
+          ? "Course published."
           : status === "ARCHIVED"
             ? "Course dipindahkan ke arsip."
             : "Course dikembalikan menjadi draf.",
@@ -428,7 +428,7 @@ export function CourseWorkspace({
                 ) : (
                   <CheckIcon />
                 )}
-                Terbitkan
+                Publish
               </Button>
             ) : null}
           </div>
@@ -636,7 +636,7 @@ function OverviewSection({
           <CardHeader className="border-b">
             <div>
               <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
-                Ikhtisar kurikulum
+                kurikulum
               </CardTitle>
               <CardDescription>
                 Struktur pembelajaran yang tersedia saat ini.

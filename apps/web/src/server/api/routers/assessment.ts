@@ -398,6 +398,17 @@ export const assessmentRouter = createTRPCRouter({
         update: {},
       });
     }),
+  detachAsset: protectedProcedure
+    .input(z.object({ assessmentId: id, assetId: id }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAssessmentManagement(
+        ctx.db,
+        input.assessmentId,
+        ctx.actorUserId,
+      );
+      await ctx.db.assessmentAsset.deleteMany({ where: input });
+      return { detached: true };
+    }),
   getForCourseItem: protectedProcedure
     .input(z.object({ courseItemId: id, attemptId: id.optional() }))
     .query(async ({ ctx, input }) => {

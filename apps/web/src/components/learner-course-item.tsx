@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { DynamicBlockNoteEditor } from "~/components/editor/dynamic-block-note-editor";
+import { DynamicLearnerBlockNoteDocument } from "~/components/editor/dynamic-learner-block-note-document";
 import type { HakgyoPartialBlock } from "~/components/editor/block-note-schema";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -148,14 +148,10 @@ export function LearnerCourseItem({
       </div>
 
       {material ? (
-        <div className="[&_.bn-container]:mx-auto [&_.bn-container]:max-w-none [&_.bn-editor]:bg-transparent [&_.bn-editor]:px-0">
-          <DynamicBlockNoteEditor
-            initialContent={material.content as HakgyoPartialBlock[]}
-            editable={false}
-            theme={resolvedTheme === "dark" ? "dark" : "light"}
-            trailingBlock={false}
-          />
-        </div>
+        <DynamicLearnerBlockNoteDocument
+          content={material.content as HakgyoPartialBlock[]}
+          theme={resolvedTheme === "dark" ? "dark" : "light"}
+        />
       ) : vocabulary ? (
         <div className="space-y-6">
           <header className="relative overflow-hidden rounded-lg bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-7 sm:py-8">

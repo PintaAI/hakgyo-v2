@@ -3,9 +3,110 @@ export const assetAudioBlockType = "assetAudio";
 export const assetImageBlockType = "assetImage";
 export const grammarBlockType = "grammar";
 export const lessonPageBlockType = "lessonPage";
+export const conversationBlockType = "conversation";
 export const calloutTones = ["info", "tip", "warning", "success"] as const;
 export const grammarBlockThemes = ["amber", "blue", "green", "rose"] as const;
 export const lessonPageThemes = ["rose", "ocean", "forest", "sunset"] as const;
+export const conversationBlockThemes = [
+  "violet",
+  "blue",
+  "green",
+  "rose",
+] as const;
+
+export const conversationBlockLines = [
+  {
+    speaker: "다라",
+    korean: "아지자 씨, 오늘 친구를 만날 거예요?",
+    translation: "Aziza, are you going to meet your friend today?",
+  },
+  {
+    speaker: "아지자",
+    korean: "아니요, 친구가 너무 바빠서 못 만나요.",
+    translation: "No, my friend is too busy so we can’t meet.",
+  },
+  {
+    speaker: "다라",
+    korean: "그럼 뭐 할 거예요?",
+    translation: "Then what are you going to do?",
+  },
+  {
+    speaker: "아지자",
+    korean: "기숙사에서 책을 읽을 거예요.",
+    translation: "I’m going to read a book in the dormitory.",
+  },
+] as const;
+
+export const conversationBlockQuestions = [
+  {
+    korean: "아지자 씨는 오늘 친구를 만날 거예요?",
+    translation: "Is Aziza going to meet a friend today?",
+  },
+  {
+    korean: "다라 씨는 오늘 뭐 할 거예요?",
+    translation: "What is Dara going to do today?",
+  },
+] as const;
+
+export const speakingPracticeExpressions = [
+  { korean: "친구를 만나다", translation: "meet a friend" },
+  { korean: "일이 많다", translation: "have a lot of work" },
+] as const;
+
+export const speakingPracticeDialogue = [
+  { speaker: "가", korean: "주말에 친구를 만났어요?" },
+  { speaker: "나", korean: "아니요, 친구를 못 만났어요." },
+  { speaker: "가", korean: "왜 못 만났어요?" },
+  { speaker: "나", korean: "일이 많아서 못 만났어요." },
+] as const;
+
+export const conversationSpeakingPracticeDefaults = {
+  practiceAssetId: "",
+  practiceFileName: "",
+  practiceContentType: "",
+  practicePromptKo: "제시된 표현을 활용하여 대화해 보세요.",
+  practicePromptTranslation:
+    "Practice speaking using the provided expressions.",
+  practiceExpressions: JSON.stringify(speakingPracticeExpressions),
+  practiceDialogue: JSON.stringify(speakingPracticeDialogue),
+} as const;
+
+export const pronunciationBlockExamples = [
+  { korean: "두다", pronunciation: "[투다]" },
+  { korean: "다리", pronunciation: "[타리]" },
+] as const;
+
+export const conversationPronunciationDefaults = {
+  pronunciationEyebrow: "발음 · PRONUNCIATION",
+  pronunciationAudioTrack: "89",
+  pronunciationSymbol: "ㄷ",
+  pronunciationDescriptionKo:
+    "‘ㄷ’는 어두의 초성에 올 때는 무성음으로 발음되고 모음 사이에 올 때는 유성음으로 발음됩니다.",
+  pronunciationDescriptionTranslation:
+    "When ㄷ appears at the beginning of a syllable, it is pronounced as a voiceless sound. Between vowels, it becomes voiced.",
+  pronunciationExamples: JSON.stringify(pronunciationBlockExamples),
+} as const;
+
+export const conversationBlockDefaults = {
+  theme: "violet",
+  showTip: true,
+  assetId: "",
+  fileName: "",
+  contentType: "",
+  eyebrow: "대화 · CONVERSATION",
+  number: "02",
+  audioTrack: "90",
+  lines: JSON.stringify(conversationBlockLines),
+  questionsLabel: "대답해 봐요! · ANSWER ME!",
+  questions: JSON.stringify(conversationBlockQuestions),
+  tipTitle: "-지 못하다",
+  tipBody:
+    "‘못’ 대신에 ‘-지 못하다’를 동사 뒤에 붙여 부정의 뜻을 나타낼 수 있어요.",
+  tipTranslation:
+    "-지 못하다 can be attached to verbs to express negation instead of 못.",
+  ...conversationSpeakingPracticeDefaults,
+  ...conversationPronunciationDefaults,
+} as const;
 
 export const grammarBlockRuleRows = [
   { condition: "ㅏ, ㅗ", form: "-아요", example: "가다 → 가요" },
@@ -84,7 +185,7 @@ const lessonPageTextProps = Object.fromEntries(
 );
 
 export const hakgyoBlockCatalog = {
-  catalogVersion: 4,
+  catalogVersion: 7,
   editor: "BlockNote",
   format: {
     description:
@@ -232,6 +333,117 @@ export const hakgyoBlockCatalog = {
       example: {
         type: grammarBlockType,
         props: grammarBlockDefaults,
+        children: [],
+      },
+    },
+    {
+      type: conversationBlockType,
+      purpose:
+        "Present a bilingual textbook-style conversation with speaker turns, comprehension questions, optional contextual artwork, and a language tip.",
+      content: "none",
+      props: {
+        theme: {
+          type: "string",
+          enum: conversationBlockThemes,
+          default: conversationBlockDefaults.theme,
+        },
+        showTip: { type: "boolean", default: true },
+        assetId: { type: "string", default: "" },
+        fileName: { type: "string", default: "" },
+        contentType: { type: "string", default: "" },
+        eyebrow: { type: "string", default: conversationBlockDefaults.eyebrow },
+        number: { type: "string", default: conversationBlockDefaults.number },
+        audioTrack: {
+          type: "string",
+          default: conversationBlockDefaults.audioTrack,
+        },
+        lines: { type: "string", default: conversationBlockDefaults.lines },
+        questionsLabel: {
+          type: "string",
+          default: conversationBlockDefaults.questionsLabel,
+        },
+        questions: {
+          type: "string",
+          default: conversationBlockDefaults.questions,
+        },
+        tipTitle: {
+          type: "string",
+          default: conversationBlockDefaults.tipTitle,
+        },
+        tipBody: {
+          type: "string",
+          default: conversationBlockDefaults.tipBody,
+        },
+        tipTranslation: {
+          type: "string",
+          default: conversationBlockDefaults.tipTranslation,
+        },
+        practiceAssetId: { type: "string", default: "" },
+        practiceFileName: { type: "string", default: "" },
+        practiceContentType: { type: "string", default: "" },
+        practicePromptKo: {
+          type: "string",
+          default: conversationBlockDefaults.practicePromptKo,
+        },
+        practicePromptTranslation: {
+          type: "string",
+          default: conversationBlockDefaults.practicePromptTranslation,
+        },
+        practiceExpressions: {
+          type: "string",
+          default: conversationBlockDefaults.practiceExpressions,
+        },
+        practiceDialogue: {
+          type: "string",
+          default: conversationBlockDefaults.practiceDialogue,
+        },
+        pronunciationEyebrow: {
+          type: "string",
+          default: conversationBlockDefaults.pronunciationEyebrow,
+        },
+        pronunciationAudioTrack: {
+          type: "string",
+          default: conversationBlockDefaults.pronunciationAudioTrack,
+        },
+        pronunciationSymbol: {
+          type: "string",
+          default: conversationBlockDefaults.pronunciationSymbol,
+        },
+        pronunciationDescriptionKo: {
+          type: "string",
+          default: conversationBlockDefaults.pronunciationDescriptionKo,
+        },
+        pronunciationDescriptionTranslation: {
+          type: "string",
+          default:
+            conversationBlockDefaults.pronunciationDescriptionTranslation,
+        },
+        pronunciationExamples: {
+          type: "string",
+          default: conversationBlockDefaults.pronunciationExamples,
+        },
+      },
+      guidance: {
+        useWhen: [
+          "A lesson introduces a dialogue between two or more speakers.",
+          "The dialogue needs bilingual lines and short comprehension checks.",
+        ],
+        jsonProps: {
+          lines:
+            "JSON array of { speaker, korean, translation } objects. The editor can add and remove turns.",
+          questions:
+            "JSON array of { korean, translation } objects. The editor can add and remove questions.",
+          practiceExpressions:
+            "JSON array of { korean, translation } objects used by the speaking-practice section.",
+          practiceDialogue:
+            "JSON array of { speaker, korean } objects used by the speaking-practice section.",
+          pronunciationExamples:
+            "JSON array of { korean, pronunciation } objects used by the pronunciation section.",
+        },
+      },
+      example: {
+        type: conversationBlockType,
+        props: conversationBlockDefaults,
         children: [],
       },
     },
