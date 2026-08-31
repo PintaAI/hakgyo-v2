@@ -7,6 +7,8 @@ import {
   calloutTones,
   conversationBlockThemes,
   conversationBlockType,
+  cultureBlockThemes,
+  cultureBlockType,
   grammarBlockThemes,
   grammarBlockType,
   hakgyoBlockCatalog,
@@ -21,12 +23,13 @@ describe("Hakgyo BlockNote catalog", () => {
     );
 
     expect(customTypes).toEqual([
+      lessonPageBlockType,
+      conversationBlockType,
+      grammarBlockType,
+      cultureBlockType,
+      calloutBlockType,
       assetAudioBlockType,
       assetImageBlockType,
-      calloutBlockType,
-      lessonPageBlockType,
-      grammarBlockType,
-      conversationBlockType,
     ]);
     const callout = hakgyoBlockCatalog.customBlocks.find(
       (block) => block.type === calloutBlockType,
@@ -61,5 +64,14 @@ describe("Hakgyo BlockNote catalog", () => {
     expect(conversationBlockThemes).toContain(conversation.example.props.theme);
     expect(conversation.example.props.practicePromptKo).not.toBe("");
     expect(conversation.example.props.pronunciationEyebrow).not.toBe("");
+
+    const culture = hakgyoBlockCatalog.customBlocks.find(
+      (block) => block.type === cultureBlockType,
+    );
+    expect(culture).toBeDefined();
+    if (!culture || !("example" in culture)) return;
+    expect(culture.example.type).toBe(cultureBlockType);
+    expect(cultureBlockThemes).toContain(culture.example.props.theme);
+    expect(culture.example.props.checklistItems).not.toBe("");
   });
 });

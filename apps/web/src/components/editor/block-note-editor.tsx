@@ -16,6 +16,7 @@ import {
 import { BlockNoteView } from "@blocknote/shadcn";
 import {
   BookOpenIcon,
+  Building2Icon,
   HeadphonesIcon,
   ImageIcon,
   LayoutTemplateIcon,
@@ -29,6 +30,7 @@ import {
   assetImageBlockType,
   calloutBlockType,
   conversationBlockType,
+  cultureBlockType,
   grammarBlockType,
   lessonPageBlockType,
 } from "~/lib/blocknote/block-catalog";
@@ -63,11 +65,15 @@ function collectAssetIds(blocks: HakgyoBlock[]) {
       block.type === assetAudioBlockType ||
       block.type === assetImageBlockType ||
       block.type === conversationBlockType ||
-      block.type === lessonPageBlockType
+      block.type === lessonPageBlockType ||
+      block.type === cultureBlockType
     ) {
       if (block.props.assetId) assetIds.add(block.props.assetId);
       if (block.type === conversationBlockType && block.props.practiceAssetId) {
         assetIds.add(block.props.practiceAssetId);
+      }
+      if (block.type === cultureBlockType && block.props.secondAssetId) {
+        assetIds.add(block.props.secondAssetId);
       }
     } else if (
       block.type === "audio" ||
@@ -221,33 +227,6 @@ export function BlockNoteEditor({
   const assetIdsRef = useRef(collectAssetIds(editor.document));
 
   const slashMenuItems = (editor: HakgyoBlockNoteEditor) => [
-    ...getDefaultReactSlashMenuItems(editor),
-    ...(uploadAsset
-      ? [
-          {
-            title: "Audio assessment",
-            subtext: "Unggah dan putar audio dari asset storage.",
-            aliases: ["audio", "sound", "listening", "suara"],
-            group: "Media Hakgyo",
-            icon: <HeadphonesIcon className="size-4" />,
-            onItemClick: () =>
-              insertOrUpdateBlockForSlashMenu(editor, {
-                type: assetAudioBlockType,
-              }),
-          },
-          {
-            title: "Gambar assessment",
-            subtext: "Unggah gambar dari asset storage.",
-            aliases: ["image", "picture", "gambar", "foto"],
-            group: "Media Hakgyo",
-            icon: <ImageIcon className="size-4" />,
-            onItemClick: () =>
-              insertOrUpdateBlockForSlashMenu(editor, {
-                type: assetImageBlockType,
-              }),
-          },
-        ]
-      : []),
     {
       title: "Lesson page",
       subtext: "Pembuka visual dengan foto, dialog, fokus, dan tujuan belajar.",
@@ -282,6 +261,17 @@ export function BlockNoteEditor({
         }),
     },
     {
+      title: "Culture & Information",
+      subtext: "Artikel budaya bilingual dengan foto dan self assessment.",
+      aliases: ["culture", "budaya", "문화", "정보", "information"],
+      group: "Blok Hakgyo",
+      icon: <Building2Icon className="size-4" />,
+      onItemClick: () =>
+        insertOrUpdateBlockForSlashMenu(editor, {
+          type: cultureBlockType,
+        }),
+    },
+    {
       title: "Callout",
       subtext: "Sorot catatan, tip, peringatan, atau poin penting.",
       aliases: ["callout", "note", "tip", "warning"],
@@ -294,6 +284,33 @@ export function BlockNoteEditor({
           content: "Tambahkan tip belajar yang mudah diingat...",
         }),
     },
+    ...(uploadAsset
+      ? [
+          {
+            title: "Audio assessment",
+            subtext: "Unggah dan putar audio dari asset storage.",
+            aliases: ["audio", "sound", "listening", "suara"],
+            group: "Media Hakgyo",
+            icon: <HeadphonesIcon className="size-4" />,
+            onItemClick: () =>
+              insertOrUpdateBlockForSlashMenu(editor, {
+                type: assetAudioBlockType,
+              }),
+          },
+          {
+            title: "Gambar assessment",
+            subtext: "Unggah gambar dari asset storage.",
+            aliases: ["image", "picture", "gambar", "foto"],
+            group: "Media Hakgyo",
+            icon: <ImageIcon className="size-4" />,
+            onItemClick: () =>
+              insertOrUpdateBlockForSlashMenu(editor, {
+                type: assetImageBlockType,
+              }),
+          },
+        ]
+      : []),
+    ...getDefaultReactSlashMenuItems(editor),
   ];
 
   return (
