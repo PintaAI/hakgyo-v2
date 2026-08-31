@@ -21,6 +21,7 @@ import {
   conversationBlockDefaults,
   conversationBlockLines,
   conversationBlockQuestions,
+  conversationBlockSectionVariants,
   conversationBlockThemes,
   conversationBlockType,
   pronunciationBlockExamples,
@@ -68,6 +69,10 @@ const themeStyles = {
 
 const conversationProps = {
   theme: { default: "violet", values: [...conversationBlockThemes] },
+  sectionVariant: {
+    default: conversationBlockDefaults.sectionVariant,
+    values: [...conversationBlockSectionVariants],
+  },
   showTip: { default: true },
   assetId: { default: conversationBlockDefaults.assetId },
   fileName: { default: conversationBlockDefaults.fileName },
@@ -116,6 +121,7 @@ const conversationProps = {
 
 const emptyConversationProps = {
   theme: conversationBlockDefaults.theme,
+  sectionVariant: conversationBlockDefaults.sectionVariant,
   showTip: false,
   assetId: "",
   fileName: "",
@@ -367,6 +373,11 @@ export const conversationBlock = createReactBlockSpec(
     render: ({ block, editor }) => {
       const editable = editor.isEditable;
       const scheme = themeStyles[block.props.theme];
+      const sectionVariant = block.props.sectionVariant ?? "both";
+      const showUsefulExpression =
+        sectionVariant === "useful-expression" || sectionVariant === "both";
+      const showPronunciation =
+        sectionVariant === "pronunciation" || sectionVariant === "both";
       const lines = parseLines(block.props.lines);
       const questions = parseQuestions(block.props.questions);
       const practiceExpressions = parsePracticeExpressions(
@@ -431,6 +442,33 @@ export const conversationBlock = createReactBlockSpec(
                           className="size-3.5 rounded-full"
                           style={{ backgroundColor: option.accent }}
                         />
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="border-border flex items-center gap-1 rounded-md border p-0.5">
+                  {conversationBlockSectionVariants.map((variant) => {
+                    const label =
+                      variant === "useful-expression"
+                        ? "Useful expression"
+                        : variant === "pronunciation"
+                          ? "Pronunciation"
+                          : "Both";
+                    const selected = sectionVariant === variant;
+                    return (
+                      <button
+                        aria-pressed={selected}
+                        className={`rounded px-2 py-1 text-[0.65rem] font-medium transition ${selected ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}
+                        key={variant}
+                        onClick={() =>
+                          editor.updateBlock(block, {
+                            props: { sectionVariant: variant },
+                          })
+                        }
+                        title={`Tampilkan ${label}`}
+                        type="button"
+                      >
+                        {label}
                       </button>
                     );
                   })}
@@ -714,309 +752,165 @@ export const conversationBlock = createReactBlockSpec(
             ) : null}
           </div>
 
-          <section className="border-border min-w-0 border-t px-4 py-5 sm:px-6 sm:py-6">
-            <div className="mb-5 flex min-w-0 items-start gap-3">
-              <span
-                className="grid size-9 shrink-0 place-items-center rounded-lg text-white"
-                style={{ backgroundColor: scheme.accent }}
-              >
-                <MessageCircleMoreIcon className="size-4.5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <EditableBlockText
-                  ariaLabel="Instruksi latihan berbicara"
-                  className="text-foreground w-full text-sm font-semibold"
+          {showUsefulExpression ? (
+            <section className="border-border min-w-0 border-t px-4 py-5 sm:px-6 sm:py-6">
+              <div className="mb-5 flex min-w-0 items-start gap-3">
+                <span
+                  className="grid size-9 shrink-0 place-items-center rounded-lg text-white"
+                  style={{ backgroundColor: scheme.accent }}
+                >
+                  <MessageCircleMoreIcon className="size-4.5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <EditableBlockText
+                    ariaLabel="Instruksi latihan berbicara"
+                    className="text-foreground w-full text-sm font-semibold"
+                    editable={editable}
+                    onChange={(practicePromptKo) =>
+                      editor.updateBlock(block, { props: { practicePromptKo } })
+                    }
+                    value={block.props.practicePromptKo}
+                  />
+                  <EditableBlockText
+                    ariaLabel="Terjemahan instruksi latihan berbicara"
+                    className="text-muted-foreground mt-1 w-full text-xs"
+                    editable={editable}
+                    onChange={(practicePromptTranslation) =>
+                      editor.updateBlock(block, {
+                        props: { practicePromptTranslation },
+                      })
+                    }
+                    value={block.props.practicePromptTranslation}
+                  />
+                </div>
+              </div>
+
+              <div className="grid min-w-0 gap-4 sm:grid-cols-2 sm:items-start">
+                <ConversationImage
+                  assetId={block.props.practiceAssetId}
+                  contextLabel="Speaking practice context"
                   editable={editable}
-                  onChange={(practicePromptKo) =>
-                    editor.updateBlock(block, { props: { practicePromptKo } })
-                  }
-                  value={block.props.practicePromptKo}
-                />
-                <EditableBlockText
-                  ariaLabel="Terjemahan instruksi latihan berbicara"
-                  className="text-muted-foreground mt-1 w-full text-xs"
-                  editable={editable}
-                  onChange={(practicePromptTranslation) =>
+                  emptyText="Tambahkan gambar untuk latihan berbicara."
+                  fileName={block.props.practiceFileName}
+                  onUploaded={(asset) =>
                     editor.updateBlock(block, {
-                      props: { practicePromptTranslation },
+                      props: {
+                        practiceAssetId: asset.assetId,
+                        practiceFileName: asset.fileName,
+                        practiceContentType: asset.contentType,
+                      },
                     })
                   }
-                  value={block.props.practicePromptTranslation}
+                  successMessage="Gambar latihan diperbarui."
                 />
-              </div>
-            </div>
 
-            <div className="grid min-w-0 gap-4 sm:grid-cols-2 sm:items-start">
-              <ConversationImage
-                assetId={block.props.practiceAssetId}
-                contextLabel="Speaking practice context"
-                editable={editable}
-                emptyText="Tambahkan gambar untuk latihan berbicara."
-                fileName={block.props.practiceFileName}
-                onUploaded={(asset) =>
-                  editor.updateBlock(block, {
-                    props: {
-                      practiceAssetId: asset.assetId,
-                      practiceFileName: asset.fileName,
-                      practiceContentType: asset.contentType,
-                    },
-                  })
-                }
-                successMessage="Gambar latihan diperbarui."
-              />
-
-              <div className="bg-muted/55 ring-foreground/10 h-full min-w-0 rounded-xl p-3 ring-1">
-                <p className="text-muted-foreground mb-2 text-[0.65rem] font-semibold tracking-wide uppercase">
-                  Expression bank
-                </p>
-                <div className="divide-border divide-y">
-                  {practiceExpressions.map((expression, index) => (
-                    <div
-                      className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 py-2"
-                      key={index}
-                    >
-                      <div className="min-w-0">
-                        <EditableBlockText
-                          ariaLabel={`Ekspresi latihan ${index + 1}`}
-                          className="text-foreground w-full text-sm font-medium"
-                          editable={editable}
-                          onChange={(korean) => {
-                            const next = [...practiceExpressions];
-                            next[index] = { ...expression, korean };
-                            updatePracticeExpressions(next);
-                          }}
-                          value={expression.korean}
-                        />
-                        <EditableBlockText
-                          ariaLabel={`Terjemahan ekspresi ${index + 1}`}
-                          className="text-muted-foreground mt-0.5 w-full text-xs"
-                          editable={editable}
-                          onChange={(translation) => {
-                            const next = [...practiceExpressions];
-                            next[index] = { ...expression, translation };
-                            updatePracticeExpressions(next);
-                          }}
-                          value={expression.translation}
-                        />
-                      </div>
-                      {editable ? (
-                        <button
-                          aria-label={`Hapus ekspresi ${index + 1}`}
-                          className="text-muted-foreground hover:text-destructive grid size-7 place-items-center disabled:opacity-30"
-                          disabled={practiceExpressions.length === 1}
-                          onClick={() =>
-                            updatePracticeExpressions(
-                              practiceExpressions.filter(
-                                (_, item) => item !== index,
-                              ),
-                            )
-                          }
-                          type="button"
-                        >
-                          <Trash2Icon className="size-3.5" />
-                        </button>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-                {editable ? (
-                  <button
-                    className="text-muted-foreground hover:text-foreground mt-2 flex w-full items-center justify-center gap-1 text-xs"
-                    disabled={practiceExpressions.length >= 12}
-                    onClick={() =>
-                      updatePracticeExpressions([
-                        ...practiceExpressions,
-                        { korean: "", translation: "" },
-                      ])
-                    }
-                    type="button"
-                  >
-                    <PlusIcon className="size-3.5" /> Tambah ekspresi
-                  </button>
-                ) : null}
-              </div>
-
-              <div className="bg-background/80 ring-foreground/10 min-w-0 space-y-2 rounded-xl p-4 ring-1 sm:col-span-2">
-                {practiceDialogue.map((line, index) => (
-                  <div
-                    className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_auto] gap-2"
-                    key={index}
-                  >
-                    <EditableBlockText
-                      ariaLabel={`Pembicara latihan ${index + 1}`}
-                      className="text-foreground w-full text-sm font-semibold"
-                      editable={editable}
-                      onChange={(speaker) => {
-                        const next = [...practiceDialogue];
-                        next[index] = { ...line, speaker };
-                        updatePracticeDialogue(next);
-                      }}
-                      value={line.speaker}
-                    />
-                    <EditableBlockText
-                      ariaLabel={`Dialog latihan ${index + 1}`}
-                      className="text-foreground w-full text-sm leading-relaxed"
-                      editable={editable}
-                      onChange={(korean) => {
-                        const next = [...practiceDialogue];
-                        next[index] = { ...line, korean };
-                        updatePracticeDialogue(next);
-                      }}
-                      value={line.korean}
-                    />
-                    {editable ? (
-                      <button
-                        aria-label={`Hapus dialog latihan ${index + 1}`}
-                        className="text-muted-foreground hover:text-destructive grid size-7 place-items-center disabled:opacity-30"
-                        disabled={practiceDialogue.length === 1}
-                        onClick={() =>
-                          updatePracticeDialogue(
-                            practiceDialogue.filter(
-                              (_, item) => item !== index,
-                            ),
-                          )
-                        }
-                        type="button"
+                <div className="bg-muted/55 ring-foreground/10 h-full min-w-0 rounded-xl p-3 ring-1">
+                  <p className="text-muted-foreground mb-2 text-[0.65rem] font-semibold tracking-wide uppercase">
+                    Useful expression
+                  </p>
+                  <div className="divide-border divide-y">
+                    {practiceExpressions.map((expression, index) => (
+                      <div
+                        className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 py-2"
+                        key={index}
                       >
-                        <Trash2Icon className="size-3.5" />
-                      </button>
-                    ) : null}
+                        <div className="min-w-0">
+                          <EditableBlockText
+                            ariaLabel={`Ekspresi latihan ${index + 1}`}
+                            className="text-foreground w-full text-sm font-medium"
+                            editable={editable}
+                            onChange={(korean) => {
+                              const next = [...practiceExpressions];
+                              next[index] = { ...expression, korean };
+                              updatePracticeExpressions(next);
+                            }}
+                            value={expression.korean}
+                          />
+                          <EditableBlockText
+                            ariaLabel={`Terjemahan ekspresi ${index + 1}`}
+                            className="text-muted-foreground mt-0.5 w-full text-xs"
+                            editable={editable}
+                            onChange={(translation) => {
+                              const next = [...practiceExpressions];
+                              next[index] = { ...expression, translation };
+                              updatePracticeExpressions(next);
+                            }}
+                            value={expression.translation}
+                          />
+                        </div>
+                        {editable ? (
+                          <button
+                            aria-label={`Hapus ekspresi ${index + 1}`}
+                            className="text-muted-foreground hover:text-destructive grid size-7 place-items-center disabled:opacity-30"
+                            disabled={practiceExpressions.length === 1}
+                            onClick={() =>
+                              updatePracticeExpressions(
+                                practiceExpressions.filter(
+                                  (_, item) => item !== index,
+                                ),
+                              )
+                            }
+                            type="button"
+                          >
+                            <Trash2Icon className="size-3.5" />
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {editable ? (
-                  <button
-                    className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 text-xs"
-                    disabled={practiceDialogue.length >= 12}
-                    onClick={() =>
-                      updatePracticeDialogue([
-                        ...practiceDialogue,
-                        { speaker: "", korean: "" },
-                      ])
-                    }
-                    type="button"
-                  >
-                    <PlusIcon className="size-3.5" /> Tambah dialog
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </section>
-
-          <section className="bg-muted/45 border-border min-w-0 border-t">
-            <header
-              className="flex min-w-0 items-center gap-3 px-4 py-3 text-white sm:px-5"
-              style={{ backgroundColor: scheme.accent }}
-            >
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/15">
-                <Volume2Icon className="size-4" />
-              </span>
-              <EditableBlockText
-                ariaLabel="Label pelafalan"
-                className="min-w-0 flex-1 text-sm font-bold tracking-[0.08em] text-white uppercase"
-                editable={editable}
-                onChange={(pronunciationEyebrow) =>
-                  editor.updateBlock(block, {
-                    props: { pronunciationEyebrow },
-                  })
-                }
-                value={block.props.pronunciationEyebrow}
-              />
-              <div className="flex shrink-0 items-center gap-1 border-l border-white/30 pl-3 text-xs text-white">
-                <HeadphonesIcon className="size-4" />
-                <EditableBlockText
-                  ariaLabel="Nomor audio pelafalan"
-                  className="w-8 text-xs text-white"
-                  editable={editable}
-                  onChange={(pronunciationAudioTrack) =>
-                    editor.updateBlock(block, {
-                      props: { pronunciationAudioTrack },
-                    })
-                  }
-                  value={block.props.pronunciationAudioTrack}
-                />
-              </div>
-            </header>
-
-            <div className="grid min-w-0 gap-5 p-4 sm:grid-cols-[8rem_minmax(0,1fr)] sm:p-6">
-              <div className="bg-background ring-foreground/10 grid aspect-square place-items-center rounded-full ring-1">
-                <EditableBlockText
-                  ariaLabel="Karakter pelafalan"
-                  className="text-foreground w-full text-center text-5xl font-medium"
-                  editable={editable}
-                  onChange={(pronunciationSymbol) =>
-                    editor.updateBlock(block, {
-                      props: { pronunciationSymbol },
-                    })
-                  }
-                  value={block.props.pronunciationSymbol}
-                />
-              </div>
-
-              <div className="min-w-0 space-y-4">
-                <div className="space-y-2">
-                  <EditableBlockText
-                    ariaLabel="Penjelasan pelafalan"
-                    className="text-foreground w-full text-sm leading-relaxed"
-                    editable={editable}
-                    onChange={(pronunciationDescriptionKo) =>
-                      editor.updateBlock(block, {
-                        props: { pronunciationDescriptionKo },
-                      })
-                    }
-                    value={block.props.pronunciationDescriptionKo}
-                  />
-                  <EditableBlockText
-                    ariaLabel="Terjemahan penjelasan pelafalan"
-                    className="text-muted-foreground w-full text-xs leading-relaxed"
-                    editable={editable}
-                    onChange={(pronunciationDescriptionTranslation) =>
-                      editor.updateBlock(block, {
-                        props: { pronunciationDescriptionTranslation },
-                      })
-                    }
-                    value={block.props.pronunciationDescriptionTranslation}
-                  />
+                  {editable ? (
+                    <button
+                      className="text-muted-foreground hover:text-foreground mt-2 flex w-full items-center justify-center gap-1 text-xs"
+                      disabled={practiceExpressions.length >= 12}
+                      onClick={() =>
+                        updatePracticeExpressions([
+                          ...practiceExpressions,
+                          { korean: "", translation: "" },
+                        ])
+                      }
+                      type="button"
+                    >
+                      <PlusIcon className="size-3.5" /> Tambah ekspresi
+                    </button>
+                  ) : null}
                 </div>
 
-                <div className="bg-card ring-foreground/10 divide-border min-w-0 divide-y rounded-lg px-3 ring-1">
-                  {pronunciationExamples.map((example, index) => (
+                <div className="bg-background/80 ring-foreground/10 min-w-0 space-y-2 rounded-xl p-4 ring-1 sm:col-span-2">
+                  {practiceDialogue.map((line, index) => (
                     <div
-                      className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 py-2.5"
+                      className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_auto] gap-2"
                       key={index}
                     >
-                      <span className="text-muted-foreground text-xs tabular-nums">
-                        {index + 1}
-                      </span>
                       <EditableBlockText
-                        ariaLabel={`Kata pelafalan ${index + 1}`}
-                        className="text-foreground w-full text-sm"
+                        ariaLabel={`Pembicara latihan ${index + 1}`}
+                        className="text-foreground w-full text-sm font-semibold"
+                        editable={editable}
+                        onChange={(speaker) => {
+                          const next = [...practiceDialogue];
+                          next[index] = { ...line, speaker };
+                          updatePracticeDialogue(next);
+                        }}
+                        value={line.speaker}
+                      />
+                      <EditableBlockText
+                        ariaLabel={`Dialog latihan ${index + 1}`}
+                        className="text-foreground w-full text-sm leading-relaxed"
                         editable={editable}
                         onChange={(korean) => {
-                          const next = [...pronunciationExamples];
-                          next[index] = { ...example, korean };
-                          updatePronunciationExamples(next);
+                          const next = [...practiceDialogue];
+                          next[index] = { ...line, korean };
+                          updatePracticeDialogue(next);
                         }}
-                        value={example.korean}
-                      />
-                      <EditableBlockText
-                        ariaLabel={`Bunyi pelafalan ${index + 1}`}
-                        className="text-foreground w-full text-sm font-medium"
-                        editable={editable}
-                        onChange={(pronunciation) => {
-                          const next = [...pronunciationExamples];
-                          next[index] = { ...example, pronunciation };
-                          updatePronunciationExamples(next);
-                        }}
-                        value={example.pronunciation}
+                        value={line.korean}
                       />
                       {editable ? (
                         <button
-                          aria-label={`Hapus contoh pelafalan ${index + 1}`}
+                          aria-label={`Hapus dialog latihan ${index + 1}`}
                           className="text-muted-foreground hover:text-destructive grid size-7 place-items-center disabled:opacity-30"
-                          disabled={pronunciationExamples.length === 1}
+                          disabled={practiceDialogue.length === 1}
                           onClick={() =>
-                            updatePronunciationExamples(
-                              pronunciationExamples.filter(
+                            updatePracticeDialogue(
+                              practiceDialogue.filter(
                                 (_, item) => item !== index,
                               ),
                             )
@@ -1030,23 +924,171 @@ export const conversationBlock = createReactBlockSpec(
                   ))}
                   {editable ? (
                     <button
-                      className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 py-2 text-xs"
-                      disabled={pronunciationExamples.length >= 12}
+                      className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 text-xs"
+                      disabled={practiceDialogue.length >= 12}
                       onClick={() =>
-                        updatePronunciationExamples([
-                          ...pronunciationExamples,
-                          { korean: "", pronunciation: "" },
+                        updatePracticeDialogue([
+                          ...practiceDialogue,
+                          { speaker: "", korean: "" },
                         ])
                       }
                       type="button"
                     >
-                      <PlusIcon className="size-3.5" /> Tambah contoh
+                      <PlusIcon className="size-3.5" /> Tambah dialog
                     </button>
                   ) : null}
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          ) : null}
+
+          {showPronunciation ? (
+            <section className="bg-muted/45 border-border min-w-0 border-t">
+              <header
+                className="flex min-w-0 items-center gap-3 px-4 py-3 text-white sm:px-5"
+                style={{ backgroundColor: scheme.accent }}
+              >
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/15">
+                  <Volume2Icon className="size-4" />
+                </span>
+                <EditableBlockText
+                  ariaLabel="Label pelafalan"
+                  className="min-w-0 flex-1 text-sm font-bold tracking-[0.08em] text-white uppercase"
+                  editable={editable}
+                  onChange={(pronunciationEyebrow) =>
+                    editor.updateBlock(block, {
+                      props: { pronunciationEyebrow },
+                    })
+                  }
+                  value={block.props.pronunciationEyebrow}
+                />
+                <div className="flex shrink-0 items-center gap-1 border-l border-white/30 pl-3 text-xs text-white">
+                  <HeadphonesIcon className="size-4" />
+                  <EditableBlockText
+                    ariaLabel="Nomor audio pelafalan"
+                    className="w-8 text-xs text-white"
+                    editable={editable}
+                    onChange={(pronunciationAudioTrack) =>
+                      editor.updateBlock(block, {
+                        props: { pronunciationAudioTrack },
+                      })
+                    }
+                    value={block.props.pronunciationAudioTrack}
+                  />
+                </div>
+              </header>
+
+              <div className="grid min-w-0 gap-5 p-4 sm:grid-cols-[8rem_minmax(0,1fr)] sm:p-6">
+                <div className="bg-background ring-foreground/10 grid aspect-square place-items-center rounded-full ring-1">
+                  <EditableBlockText
+                    ariaLabel="Karakter pelafalan"
+                    className="text-foreground w-full text-center text-5xl font-medium"
+                    editable={editable}
+                    onChange={(pronunciationSymbol) =>
+                      editor.updateBlock(block, {
+                        props: { pronunciationSymbol },
+                      })
+                    }
+                    value={block.props.pronunciationSymbol}
+                  />
+                </div>
+
+                <div className="min-w-0 space-y-4">
+                  <div className="space-y-2">
+                    <EditableBlockText
+                      ariaLabel="Penjelasan pelafalan"
+                      className="text-foreground w-full text-sm leading-relaxed"
+                      editable={editable}
+                      onChange={(pronunciationDescriptionKo) =>
+                        editor.updateBlock(block, {
+                          props: { pronunciationDescriptionKo },
+                        })
+                      }
+                      value={block.props.pronunciationDescriptionKo}
+                    />
+                    <EditableBlockText
+                      ariaLabel="Terjemahan penjelasan pelafalan"
+                      className="text-muted-foreground w-full text-xs leading-relaxed"
+                      editable={editable}
+                      onChange={(pronunciationDescriptionTranslation) =>
+                        editor.updateBlock(block, {
+                          props: { pronunciationDescriptionTranslation },
+                        })
+                      }
+                      value={block.props.pronunciationDescriptionTranslation}
+                    />
+                  </div>
+
+                  <div className="bg-card ring-foreground/10 divide-border min-w-0 divide-y rounded-lg px-3 ring-1">
+                    {pronunciationExamples.map((example, index) => (
+                      <div
+                        className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 py-2.5"
+                        key={index}
+                      >
+                        <span className="text-muted-foreground text-xs tabular-nums">
+                          {index + 1}
+                        </span>
+                        <EditableBlockText
+                          ariaLabel={`Kata pelafalan ${index + 1}`}
+                          className="text-foreground w-full text-sm"
+                          editable={editable}
+                          onChange={(korean) => {
+                            const next = [...pronunciationExamples];
+                            next[index] = { ...example, korean };
+                            updatePronunciationExamples(next);
+                          }}
+                          value={example.korean}
+                        />
+                        <EditableBlockText
+                          ariaLabel={`Bunyi pelafalan ${index + 1}`}
+                          className="text-foreground w-full text-sm font-medium"
+                          editable={editable}
+                          onChange={(pronunciation) => {
+                            const next = [...pronunciationExamples];
+                            next[index] = { ...example, pronunciation };
+                            updatePronunciationExamples(next);
+                          }}
+                          value={example.pronunciation}
+                        />
+                        {editable ? (
+                          <button
+                            aria-label={`Hapus contoh pelafalan ${index + 1}`}
+                            className="text-muted-foreground hover:text-destructive grid size-7 place-items-center disabled:opacity-30"
+                            disabled={pronunciationExamples.length === 1}
+                            onClick={() =>
+                              updatePronunciationExamples(
+                                pronunciationExamples.filter(
+                                  (_, item) => item !== index,
+                                ),
+                              )
+                            }
+                            type="button"
+                          >
+                            <Trash2Icon className="size-3.5" />
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
+                    {editable ? (
+                      <button
+                        className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 py-2 text-xs"
+                        disabled={pronunciationExamples.length >= 12}
+                        onClick={() =>
+                          updatePronunciationExamples([
+                            ...pronunciationExamples,
+                            { korean: "", pronunciation: "" },
+                          ])
+                        }
+                        type="button"
+                      >
+                        <PlusIcon className="size-3.5" /> Tambah contoh
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
         </article>
       );
     },

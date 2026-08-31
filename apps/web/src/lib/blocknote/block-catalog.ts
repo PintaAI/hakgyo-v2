@@ -13,6 +13,11 @@ export const conversationBlockThemes = [
   "green",
   "rose",
 ] as const;
+export const conversationBlockSectionVariants = [
+  "useful-expression",
+  "pronunciation",
+  "both",
+] as const;
 
 export const conversationBlockLines = [
   {
@@ -89,6 +94,7 @@ export const conversationPronunciationDefaults = {
 
 export const conversationBlockDefaults = {
   theme: "violet",
+  sectionVariant: "both",
   showTip: true,
   assetId: "",
   fileName: "",
@@ -185,7 +191,7 @@ const lessonPageTextProps = Object.fromEntries(
 );
 
 export const hakgyoBlockCatalog = {
-  catalogVersion: 7,
+  catalogVersion: 8,
   editor: "BlockNote",
   format: {
     description:
@@ -346,6 +352,11 @@ export const hakgyoBlockCatalog = {
           type: "string",
           enum: conversationBlockThemes,
           default: conversationBlockDefaults.theme,
+        },
+        sectionVariant: {
+          type: "string",
+          enum: conversationBlockSectionVariants,
+          default: conversationBlockDefaults.sectionVariant,
         },
         showTip: { type: "boolean", default: true },
         assetId: { type: "string", default: "" },
