@@ -15,33 +15,34 @@ datasource db {
 }
 
 model User {
-  id                      String               @id
-  name                    String //@db.Text
-  email                   String
-  emailVerified           Boolean              @default(false)
-  image                   String? //@db.Text
-  createdAt               DateTime             @default(now())
-  updatedAt               DateTime             @default(now()) @updatedAt
-  suspendedAt             DateTime?
-  deletedAt               DateTime?
-  sessions                Session[]
-  accounts                Account[]
-  organizationMemberships OrganizationMember[]
-  acceptedOrganizationInvites OrganizationInvite[] @relation("OrganizationInviteAcceptedBy")
-  courseEnrollments       CourseEnrollment[]
-  cohortEnrollments       CohortEnrollment[]
-  contentProgress         ContentProgress[]
-  assessmentAttempts      AssessmentAttempt[]
-  activityEvents          UserActivityEvent[]
-  achievements            UserAchievement[]
-  gamification            UserGamification?
-  uploadedAssets          Asset[]
-  oauthClients            OauthClient[]
-  oauthRefreshTokens      OauthRefreshToken[]
-  oauthAccessTokens       OauthAccessToken[]
-  oauthConsents           OauthConsent[]
-  adminActions            AdminAuditLog[] @relation("AdminAuditActor")
-  adminActionTargets      AdminAuditLog[] @relation("AdminAuditTarget")
+  id                          String                       @id
+  name                        String //@db.Text
+  email                       String
+  emailVerified               Boolean                      @default(false)
+  image                       String? //@db.Text
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @default(now()) @updatedAt
+  suspendedAt                 DateTime?
+  deletedAt                   DateTime?
+  sessions                    Session[]
+  accounts                    Account[]
+  organizationMemberships     OrganizationMember[]
+  acceptedOrganizationInvites OrganizationInvite[]         @relation("OrganizationInviteAcceptedBy")
+  courseEnrollments           CourseEnrollment[]
+  cohortEnrollments           CohortEnrollment[]
+  assessmentEventParticipants AssessmentEventParticipant[]
+  contentProgress             ContentProgress[]
+  assessmentAttempts          AssessmentAttempt[]
+  activityEvents              UserActivityEvent[]
+  achievements                UserAchievement[]
+  gamification                UserGamification?
+  uploadedAssets              Asset[]
+  oauthClients                OauthClient[]
+  oauthRefreshTokens          OauthRefreshToken[]
+  oauthAccessTokens           OauthAccessToken[]
+  oauthConsents               OauthConsent[]
+  adminActions                AdminAuditLog[]              @relation("AdminAuditActor")
+  adminActionTargets          AdminAuditLog[]              @relation("AdminAuditTarget")
 
   @@unique([email])
   @@map("user")
@@ -388,6 +389,31 @@ enum AssessmentAttemptStatus {
   GRADED
 }
 
+enum AssessmentEventType {
+  QUICK_ASSESSMENT
+  TRYOUT
+}
+
+enum AssessmentEventScope {
+  COHORT
+  COURSE
+}
+
+enum AssessmentEventStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum AssessmentEventAuditAction {
+  OPENED
+  CLOSED
+  CANCELLED
+  ATTEMPT_INVALIDATED
+  RESULT_ADJUSTED
+}
+
 enum EnrollmentStatus {
   PENDING
   ACTIVE
@@ -433,6 +459,7 @@ model Organization {
   courses                Course[]
   materials              Material[]
   assessments            Assessment[]
+  assessmentEvents       AssessmentEvent[]
   vocabularySets         VocabularySet[]
   zoomConnection         ZoomConnection?
   assets                 Asset[]
@@ -440,25 +467,28 @@ model Organization {
 }
 
 model OrganizationMember {
-  id                        String               @id @default(cuid())
-  organizationId            String
-  userId                    String
-  role                      OrganizationRole
-  createdAt                 DateTime             @default(now())
-  updatedAt                 DateTime             @updatedAt
-  organization              Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user                      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ownedCourses              Course[]             @relation("CourseOwner")
-  courseCollaborations      CourseCollaborator[]
-  cohortStaffMemberships    CohortStaff[]
-  createdMaterials          Material[]           @relation("MaterialCreator")
-  createdAssessments        Assessment[]         @relation("AssessmentCreator")
-  createdVocabularySets     VocabularySet[]      @relation("VocabularySetCreator")
-  createdEnrollmentInvites  EnrollmentInvite[]   @relation("EnrollmentInviteCreator")
-  reviewedAssessmentAnswers AssessmentAnswer[]   @relation("AssessmentAnswerReviewer")
-  connectedZoomAccounts     ZoomConnection[]     @relation("ZoomConnectionCreator")
-  createdCohortMeetings     CohortMeeting[]      @relation("CohortMeetingCreator")
-  sentOrganizationInvites   OrganizationInvite[] @relation("OrganizationInviteSender")
+  id                           String                       @id @default(cuid())
+  organizationId               String
+  userId                       String
+  role                         OrganizationRole
+  createdAt                    DateTime                     @default(now())
+  updatedAt                    DateTime                     @updatedAt
+  organization                 Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                         User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownedCourses                 Course[]                     @relation("CourseOwner")
+  courseCollaborations         CourseCollaborator[]
+  cohortStaffMemberships       CohortStaff[]
+  createdMaterials             Material[]                   @relation("MaterialCreator")
+  createdAssessments           Assessment[]                 @relation("AssessmentCreator")
+  createdVocabularySets        VocabularySet[]              @relation("VocabularySetCreator")
+  createdEnrollmentInvites     EnrollmentInvite[]           @relation("EnrollmentInviteCreator")
+  reviewedAssessmentAnswers    AssessmentAnswer[]           @relation("AssessmentAnswerReviewer")
+  connectedZoomAccounts        ZoomConnection[]             @relation("ZoomConnectionCreator")
+  createdCohortMeetings        CohortMeeting[]              @relation("CohortMeetingCreator")
+  createdAssessmentEvents      AssessmentEvent[]            @relation("AssessmentEventCreator")
+  assessmentEventAudits        AssessmentEventAudit[]       @relation("AssessmentEventAuditActor")
+  invalidatedEventParticipants AssessmentEventParticipant[] @relation("AssessmentEventParticipantInvalidator")
+  sentOrganizationInvites      OrganizationInvite[]         @relation("OrganizationInviteSender")
 
   @@unique([organizationId, userId])
   @@unique([id, organizationId])
@@ -466,22 +496,22 @@ model OrganizationMember {
 }
 
 model OrganizationInvite {
-  id                    String             @id @default(cuid())
+  id                    String              @id @default(cuid())
   organizationId        String
   email                 String
   role                  OrganizationRole
-  tokenHash             String             @unique
-  pendingKey            String?            @unique
+  tokenHash             String              @unique
+  pendingKey            String?             @unique
   invitedByMembershipId String?
   acceptedByUserId      String?
   expiresAt             DateTime
   acceptedAt            DateTime?
   revokedAt             DateTime?
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invitedBy             OrganizationMember? @relation("OrganizationInviteSender", fields: [invitedByMembershipId], references: [id], onDelete: SetNull)
-  acceptedBy            User?              @relation("OrganizationInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  acceptedBy            User?               @relation("OrganizationInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
   @@index([email, acceptedAt, revokedAt])
@@ -509,6 +539,7 @@ model Course {
   cohorts           Cohort[]
   enrollments       CourseEnrollment[]
   enrollmentInvites EnrollmentInvite[]
+  assessmentEvents  AssessmentEvent[]
 
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
@@ -552,6 +583,7 @@ model Cohort {
   enrollmentInvites  EnrollmentInvite[]
   meetings           CohortMeeting[]
   assessmentAttempts AssessmentAttempt[]
+  assessmentEvents   AssessmentEvent[]
 
   @@unique([id, courseId])
   @@unique([id, organizationId])
@@ -634,23 +666,24 @@ model CourseModule {
 }
 
 model CourseItem {
-  id              String              @id @default(cuid())
-  moduleId        String
-  organizationId  String
-  type            CourseItemType
-  position        Int
-  materialId      String?
-  assessmentId    String?
-  vocabularySetId String?
-  isPublished     Boolean             @default(false)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  module          CourseModule        @relation(fields: [moduleId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  material        Material?           @relation(fields: [materialId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  assessment      Assessment?         @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  vocabularySet   VocabularySet?      @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  progress        ContentProgress[]
-  attempts        AssessmentAttempt[]
+  id               String              @id @default(cuid())
+  moduleId         String
+  organizationId   String
+  type             CourseItemType
+  position         Int
+  materialId       String?
+  assessmentId     String?
+  vocabularySetId  String?
+  isPublished      Boolean             @default(false)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  module           CourseModule        @relation(fields: [moduleId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  material         Material?           @relation(fields: [materialId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  assessment       Assessment?         @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  vocabularySet    VocabularySet?      @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  progress         ContentProgress[]
+  attempts         AssessmentAttempt[]
+  assessmentEvents AssessmentEvent[]
 
   @@unique([moduleId, position])
   @@unique([id, organizationId])
@@ -913,31 +946,105 @@ model UserAchievement {
 }
 
 model AssessmentAttempt {
-  id             String                  @id @default(cuid())
-  assessmentId   String
-  courseItemId   String
-  organizationId String
-  cohortId       String?
-  userId         String
-  attemptNumber  Int
-  shuffleSeed    String?
-  status         AssessmentAttemptStatus @default(IN_PROGRESS)
-  score          Int?
-  maxScore       Int?
-  startedAt      DateTime                @default(now())
-  submittedAt    DateTime?
-  gradedAt       DateTime?
-  assessment     Assessment              @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  courseItem     CourseItem              @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  cohort         Cohort?                 @relation(fields: [cohortId], references: [id], onDelete: SetNull)
-  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  answers        AssessmentAnswer[]
+  id                String                  @id @default(cuid())
+  assessmentId      String
+  courseItemId      String
+  organizationId    String
+  cohortId          String?
+  userId            String
+  attemptNumber     Int
+  shuffleSeed       String?
+  status            AssessmentAttemptStatus @default(IN_PROGRESS)
+  score             Int?
+  maxScore          Int?
+  startedAt         DateTime                @default(now())
+  submittedAt       DateTime?
+  gradedAt          DateTime?
+  assessmentEventId String?
+  assessment        Assessment              @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  courseItem        CourseItem              @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  cohort            Cohort?                 @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers           AssessmentAnswer[]
+  assessmentEvent   AssessmentEvent?        @relation(fields: [assessmentEventId], references: [id], onDelete: Restrict)
+  eventAudits       AssessmentEventAudit[]
 
   @@unique([courseItemId, userId, attemptNumber])
   @@unique([id, organizationId])
+  @@unique([assessmentEventId, userId])
   @@index([assessmentId])
   @@index([cohortId, status])
   @@index([userId, status])
+  @@index([assessmentEventId, status])
+}
+
+model AssessmentEvent {
+  id                    String                       @id @default(cuid())
+  organizationId        String
+  courseId              String
+  cohortId              String?
+  courseItemId          String
+  createdByMembershipId String
+  type                  AssessmentEventType
+  scope                 AssessmentEventScope
+  title                 String
+  durationMinutes       Int
+  status                AssessmentEventStatus        @default(DRAFT)
+  shuffleQuestions      Boolean                      @default(true)
+  openedAt              DateTime?
+  closesAt              DateTime?
+  closedAt              DateTime?
+  cancelledAt           DateTime?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  organization          Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course                Course                       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  cohort                Cohort?                      @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  courseItem            CourseItem                   @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  createdBy             OrganizationMember           @relation("AssessmentEventCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  participants          AssessmentEventParticipant[]
+  attempts              AssessmentAttempt[]
+  audits                AssessmentEventAudit[]
+
+  @@unique([id, organizationId])
+  @@index([courseId, status, createdAt])
+  @@index([cohortId, status, createdAt])
+  @@index([courseItemId])
+  @@index([createdByMembershipId])
+}
+
+model AssessmentEventParticipant {
+  eventId                   String
+  userId                    String
+  invalidatedAt             DateTime?
+  invalidationReason        String?
+  invalidatedByMembershipId String?
+  createdAt                 DateTime            @default(now())
+  event                     AssessmentEvent     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user                      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invalidatedBy             OrganizationMember? @relation("AssessmentEventParticipantInvalidator", fields: [invalidatedByMembershipId], references: [id], onDelete: Restrict)
+
+  @@id([eventId, userId])
+  @@index([userId, createdAt])
+  @@index([invalidatedByMembershipId])
+}
+
+model AssessmentEventAudit {
+  id                String                     @id @default(cuid())
+  eventId           String
+  actorMembershipId String
+  attemptId         String?
+  action            AssessmentEventAuditAction
+  reason            String?
+  metadata          Json?
+  createdAt         DateTime                   @default(now())
+  event             AssessmentEvent            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actor             OrganizationMember         @relation("AssessmentEventAuditActor", fields: [actorMembershipId], references: [id], onDelete: Restrict)
+  attempt           AssessmentAttempt?         @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, createdAt])
+  @@index([actorMembershipId])
+  @@index([attemptId])
 }
 
 model AssessmentAnswer {
@@ -975,23 +1082,23 @@ model AssessmentAnswerSelection {
 }
 
 model Asset {
-  id                String            @id @default(cuid())
-  organizationId    String
-  uploadedByUserId  String?
-  objectKey         String            @unique
-  fileName          String
-  contentType       String
-  size              Int
-  etag              String?
-  confirmedAt       DateTime?
-  deletedAt         DateTime?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  uploadedBy        User?             @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
-  materials         MaterialAsset[]
-  assessments       AssessmentAsset[]
-  vocabularyEntries VocabularyEntry[] @relation("VocabularyEntryAudio")
+  id                    String            @id @default(cuid())
+  organizationId        String
+  uploadedByUserId      String?
+  objectKey             String            @unique
+  fileName              String
+  contentType           String
+  size                  Int
+  etag                  String?
+  confirmedAt           DateTime?
+  deletedAt             DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  organization          Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  uploadedBy            User?             @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  materials             MaterialAsset[]
+  assessments           AssessmentAsset[]
+  vocabularyEntries     VocabularyEntry[] @relation("VocabularyEntryAudio")
   vocabularyEntryImages VocabularyEntry[] @relation("VocabularyEntryImage")
 
   @@unique([id, organizationId])

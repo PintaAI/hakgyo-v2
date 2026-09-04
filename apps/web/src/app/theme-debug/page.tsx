@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { AppSettings } from "~/components/app-settings";
 import { BlockNoteEditor } from "~/components/editor/block-note-editor";
@@ -19,25 +19,29 @@ const debugTheme = {
 } as const;
 
 function ThemeValues() {
-  const [values, setValues] = useState<Record<string, string>>({});
+  const outputRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     const styles = getComputedStyle(document.documentElement);
-    setValues(
-      Object.fromEntries(
-        [
-          "--background",
-          "--card",
-          "--foreground",
-          "--card-foreground",
-          "--app-background-dark",
-          "--app-card-dark",
-        ].map((name) => [name, styles.getPropertyValue(name).trim()]),
-      ),
-    );
+    if (outputRef.current) {
+      outputRef.current.textContent = JSON.stringify(
+        Object.fromEntries(
+          [
+            "--background",
+            "--card",
+            "--foreground",
+            "--card-foreground",
+            "--app-background-dark",
+            "--app-card-dark",
+          ].map((name) => [name, styles.getPropertyValue(name).trim()]),
+        ),
+        null,
+        2,
+      );
+    }
   }, []);
 
-  return <pre id="theme-debug-values">{JSON.stringify(values, null, 2)}</pre>;
+  return <pre ref={outputRef} id="theme-debug-values" />;
 }
 
 export default function ThemeDebugPage() {

@@ -10,6 +10,7 @@ import {
   CompassIcon,
   GraduationCapIcon,
   LayoutDashboardIcon,
+  TrophyIcon,
 } from "lucide-react";
 
 import { User } from "~/components/user";
@@ -84,6 +85,18 @@ export function LearnerSidebar({
                 >
                   <LayoutDashboardIcon />
                   <span>Dashboard</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isActive(pathname, "/learn/assessments")}
+                  tooltip="Assessment events"
+                  render={
+                    <Link href="/learn/assessments" onClick={closeMobile} />
+                  }
+                >
+                  <TrophyIcon />
+                  <span>Assessment events</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

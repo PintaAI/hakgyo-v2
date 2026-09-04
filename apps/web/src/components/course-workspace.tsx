@@ -34,6 +34,7 @@ import {
   Settings2Icon,
   ShieldCheckIcon,
   Trash2Icon,
+  TrophyIcon,
   UserPlusIcon,
   UserRoundCheckIcon,
   UsersIcon,
@@ -52,6 +53,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { AssessmentEventManager } from "~/components/assessment-event-manager";
 import {
   Avatar,
   AvatarFallback,
@@ -110,7 +112,13 @@ import {
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type CourseView =
-  "overview" | "cohorts" | "learners" | "invites" | "access" | "settings";
+  | "overview"
+  | "cohorts"
+  | "learners"
+  | "tryouts"
+  | "invites"
+  | "access"
+  | "settings";
 
 type CourseWorkspaceData = RouterOutputs["course"]["getWorkspaceOverview"];
 type Course = CourseWorkspaceData["course"];
@@ -152,6 +160,7 @@ const views = [
   { value: "overview", label: "Overview", icon: LayoutDashboardIcon },
   { value: "cohorts", label: "Group belajar", icon: CalendarDaysIcon },
   { value: "learners", label: "Siswa", icon: UsersIcon },
+  { value: "tryouts", label: "Tryout", icon: TrophyIcon },
   { value: "invites", label: "Invites", icon: MailPlusIcon },
   { value: "access", label: "Akses", icon: ShieldCheckIcon },
   { value: "settings", label: "Settings", icon: Settings2Icon },
@@ -587,6 +596,9 @@ export function CourseWorkspace({
             onLoadMore={() => void invites.fetchNextPage()}
             onWorkspaceChange={refreshWorkspace}
           />
+        </TabsContent>
+        <TabsContent value="tryouts">
+          <AssessmentEventManager courseId={course.id} />
         </TabsContent>
         <TabsContent value="access">
           <AccessSection

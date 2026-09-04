@@ -15,6 +15,7 @@ import {
   CalendarDaysIcon,
   CheckIcon,
   ClipboardCheckIcon,
+  ClipboardListIcon,
   ExternalLinkIcon,
   LayoutDashboardIcon,
   LoaderCircleIcon,
@@ -33,6 +34,7 @@ import {
 import { toast } from "sonner";
 
 import { CohortInvites } from "~/components/cohort-invites";
+import { AssessmentEventManager } from "~/components/assessment-event-manager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,6 +94,7 @@ type CohortView =
   | "learners"
   | "staff"
   | "meetings"
+  | "assessments"
   | "reviews"
   | "invites"
   | "settings";
@@ -101,6 +104,7 @@ const views = [
   { value: "learners", label: "Siswa", icon: UsersIcon },
   { value: "staff", label: "Staff", icon: UserRoundCogIcon },
   { value: "meetings", label: "Meetings", icon: VideoIcon },
+  { value: "assessments", label: "Assessment events", icon: ClipboardListIcon },
   { value: "reviews", label: "Review tugas", icon: ClipboardCheckIcon },
   { value: "invites", label: "Invite", icon: MailPlusIcon },
   { value: "settings", label: "Pengaturan", icon: Settings2Icon },
@@ -239,6 +243,7 @@ export function CohortWorkspace({
   const cohort = cohortQuery.data;
   const availableViews = views.filter(({ value }) => {
     if (value === "learners") return cohort.access.manageLearners;
+    if (value === "assessments") return cohort.access.reviewAssessments;
     if (value === "reviews") return cohort.access.reviewAssessments;
     if (value === "invites") return cohort.access.manageInvites;
     if (value === "settings") return cohort.access.update;
@@ -417,6 +422,13 @@ export function CohortWorkspace({
         <TabsContent value="reviews">
           <ReviewQueue
             organizationId={cohort.organizationId}
+            cohortId={cohort.id}
+            cohortName={cohort.name}
+          />
+        </TabsContent>
+        <TabsContent value="assessments">
+          <AssessmentEventManager
+            courseId={cohort.courseId}
             cohortId={cohort.id}
             cohortName={cohort.name}
           />

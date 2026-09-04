@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -260,15 +260,20 @@ export function AssessmentAttempt({
   const initialSeconds = assessment.timeLimitMinutes
     ? Math.max(
         0,
-        assessment.timeLimitMinutes * 60 -
-          Math.floor(
-            (serverTime.getTime() - attempt.startedAt.getTime()) / 1000,
-          ),
+        Math.floor(
+          ((assessment.attemptDeadline?.getTime() ??
+            attempt.startedAt.getTime() +
+              assessment.timeLimitMinutes * 60_000) -
+            serverTime.getTime()) /
+            1000,
+        ),
       )
     : null;
   const [secondsLeft, setSecondsLeft] = useState<number | null>(initialSeconds);
   const save = api.assessment.saveAnswers.useMutation();
+  const autosave = api.assessment.saveAnswers.useMutation();
   const submit = api.assessment.submitAttempt.useMutation();
+  const lastAutosaved = useRef("");
   const question = assessment.questions[current];
   const answeredCount = assessment.questions.filter((entry) => {
     const answer = answers[entry.id];
@@ -276,7 +281,12 @@ export function AssessmentAttempt({
       answer && (answer.optionIds.length > 0 || Boolean(answer.content?.trim()))
     );
   }).length;
-  const isFinished = attempt.status !== "IN_PROGRESS";
+  const eventEndedIncomplete = Boolean(
+    assessment.event &&
+    assessment.event.status !== "OPEN" &&
+    attempt.status === "IN_PROGRESS",
+  );
+  const isFinished = attempt.status !== "IN_PROGRESS" || eventEndedIncomplete;
   const scorePercent =
     attempt.score !== null && attempt.maxScore
       ? Math.round((attempt.score / attempt.maxScore) * 100)
@@ -287,9 +297,7 @@ export function AssessmentAttempt({
   const submitAssessment = async () => {
     if (submit.isPending || save.isPending || isFinished) return;
     try {
-      const payload = Object.values(answers).filter(
-        (answer) => answer.optionIds.length || answer.content?.trim(),
-      );
+      const payload = Object.values(answers);
       let savedLate = false;
       if (payload.length) {
         try {
@@ -350,6 +358,30 @@ export function AssessmentAttempt({
     return () => window.clearTimeout(timer);
   }, [secondsLeft, isFinished]);
 
+  useEffect(() => {
+    if (isFinished || secondsLeft === 0) return;
+    const payload = Object.values(answers);
+    if (!payload.length) return;
+    const signature = JSON.stringify(payload);
+    if (signature === lastAutosaved.current) return;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          for (let index = 0; index < payload.length; index += 200) {
+            await autosave.mutateAsync({
+              attemptId: attempt.id,
+              answers: payload.slice(index, index + 200),
+            });
+          }
+          lastAutosaved.current = signature;
+        } catch {
+          // Submission still performs a final save and reports any error.
+        }
+      })();
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [answers, attempt.id, autosave, isFinished, secondsLeft]);
+
   const updateOptions = (
     questionId: string,
     optionId: string,
@@ -395,16 +427,20 @@ export function AssessmentAttempt({
             ) : null}
           </div>
           <h1 className="mt-3 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight">
-            {attempt.status === "IN_REVIEW"
-              ? "Jawaban sedang diperiksa"
-              : passed
-                ? "Kamu berhasil!"
-                : "Belum lulus, tetap lanjut."}
+            {eventEndedIncomplete
+              ? "Attempt tidak selesai"
+              : attempt.status === "IN_REVIEW"
+                ? "Jawaban sedang diperiksa"
+                : passed
+                  ? "Kamu berhasil!"
+                  : "Belum lulus, tetap lanjut."}
           </h1>
           <p className="text-muted-foreground mx-auto mt-3 max-w-lg">
-            {attempt.status === "IN_REVIEW"
-              ? "Pengajar akan memeriksa jawaban tertulis kamu. Nilai akan tampil setelah proses review selesai."
-              : `Kamu memperoleh ${attempt.score ?? 0} dari ${attempt.maxScore ?? 0} poin.`}
+            {eventEndedIncomplete
+              ? "Event telah ditutup sebelum jawaban kamu dikirim."
+              : attempt.status === "IN_REVIEW"
+                ? "Pengajar akan memeriksa jawaban tertulis kamu. Nilai akan tampil setelah proses review selesai."
+                : `Kamu memperoleh ${attempt.score ?? 0} dari ${attempt.maxScore ?? 0} poin.`}
           </p>
           {scorePercent !== null ? (
             <div className="bg-muted/30 mx-auto mt-8 max-w-sm rounded-md border p-5">
@@ -417,14 +453,85 @@ export function AssessmentAttempt({
               />
             </div>
           ) : null}
+          {assessment.answersRevealed ? (
+            <div className="mt-8 space-y-4 text-left">
+              <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
+                Review jawaban
+              </h2>
+              {assessment.questions.map((entry, index) => {
+                const answer = attempt.answers.find(
+                  (candidate) => candidate.questionId === entry.id,
+                );
+                const selected = new Set(
+                  answer?.selectedOptions.map(({ optionId }) => optionId) ?? [],
+                );
+                return (
+                  <div key={entry.id} className="rounded-md border p-5">
+                    <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                      Soal {index + 1}
+                    </p>
+                    <div className="mt-2 overflow-hidden text-sm font-medium">
+                      <RichAssessmentContent value={entry.prompt} />
+                    </div>
+                    {entry.type === "WRITTEN" ? (
+                      <div className="bg-muted/30 mt-3 rounded-md p-3 text-sm whitespace-pre-wrap">
+                        {typeof answer?.content === "string" && answer.content
+                          ? answer.content
+                          : "Tidak dijawab"}
+                      </div>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {entry.options.map((option) => (
+                          <div
+                            key={option.id}
+                            className={cn(
+                              "rounded-md border px-3 py-2 text-sm",
+                              option.isCorrect
+                                ? "border-emerald-500/40 bg-emerald-500/10"
+                                : selected.has(option.id)
+                                  ? "border-red-500/40 bg-red-500/10"
+                                  : "text-muted-foreground",
+                            )}
+                          >
+                            <span className="mr-2 font-semibold">
+                              {option.isCorrect
+                                ? "Benar"
+                                : selected.has(option.id)
+                                  ? "Pilihan kamu"
+                                  : ""}
+                            </span>
+                            <RichAssessmentContent value={option.content} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {entry.explanation ? (
+                      <div className="bg-muted/30 mt-3 rounded-md p-3 text-sm">
+                        <p className="mb-1 font-semibold">Penjelasan</p>
+                        <RichAssessmentContent value={entry.explanation} />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : assessment.event ? (
+            <p className="text-muted-foreground mt-6 text-sm">
+              Jawaban benar dan penjelasan tersedia setelah event ditutup.
+            </p>
+          ) : null}
           <div className="mt-8 flex flex-col justify-center gap-2 sm:flex-row">
             <Link
-              href={`/learn/${courseId}`}
+              href={
+                assessment.event
+                  ? `/learn/assessments/${assessment.event.id}`
+                  : `/learn/${courseId}`
+              }
               className={buttonVariants({ variant: "outline", size: "lg" })}
             >
-              Kembali ke course
+              {assessment.event ? "Lihat leaderboard" : "Kembali ke course"}
             </Link>
-            {!passed && attempt.status === "GRADED" ? (
+            {!assessment.event && !passed && attempt.status === "GRADED" ? (
               <Link
                 href={`/learn/${courseId}/items/${courseItemId}`}
                 className={buttonVariants({ size: "lg" })}

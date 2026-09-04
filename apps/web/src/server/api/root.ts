@@ -1,5 +1,6 @@
 import { accountRouter } from "~/server/api/routers/account";
 import { assessmentRouter } from "~/server/api/routers/assessment";
+import { assessmentEventRouter } from "~/server/api/routers/assessment-event";
 import { cohortRouter } from "~/server/api/routers/cohort";
 import { contentRouter } from "~/server/api/routers/content";
 import { courseRouter } from "~/server/api/routers/course";
@@ -21,6 +22,7 @@ import { db } from "~/server/db";
 export const appRouter = createTRPCRouter({
   account: accountRouter,
   assessment: assessmentRouter,
+  assessmentEvent: assessmentEventRouter,
   cohort: cohortRouter,
   content: contentRouter,
   course: courseRouter,

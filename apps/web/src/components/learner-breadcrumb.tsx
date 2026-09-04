@@ -16,11 +16,13 @@ export function LearnerBreadcrumb() {
   const pathname = usePathname();
   const currentLabel = pathname.includes("/attempts/")
     ? "Assessment"
-    : pathname.includes("/items/")
-      ? "Aktivitas"
-      : pathname === "/learn/courses"
-        ? "Dashboard"
-        : "Course";
+    : pathname.startsWith("/learn/assessments")
+      ? "Assessment events"
+      : pathname.includes("/items/")
+        ? "Aktivitas"
+        : pathname === "/learn/courses"
+          ? "Dashboard"
+          : "Course";
 
   return (
     <Breadcrumb>

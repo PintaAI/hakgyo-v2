@@ -32,4 +32,27 @@ describe("assessment deadlines", () => {
     ).toBe(false);
     expect(getAssessmentDeadline(startedAt, null)).toBeNull();
   });
+
+  test("uses an event close time when it comes first", () => {
+    const closesAt = new Date("2026-08-20T10:10:00.000Z");
+    expect(getAssessmentDeadline(startedAt, 30, closesAt)).toEqual(closesAt);
+    expect(
+      isAssessmentExpired(
+        startedAt,
+        30,
+        new Date("2026-08-20T10:10:00.000Z"),
+        closesAt,
+      ),
+    ).toBe(true);
+  });
+
+  test("keeps the attempt limit when it comes before event close", () => {
+    expect(
+      getAssessmentDeadline(
+        startedAt,
+        10,
+        new Date("2026-08-20T11:00:00.000Z"),
+      )?.toISOString(),
+    ).toBe("2026-08-20T10:10:00.000Z");
+  });
 });

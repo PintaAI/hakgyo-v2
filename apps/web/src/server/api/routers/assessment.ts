@@ -9,7 +9,10 @@ import {
   groupScoresByValue,
 } from "~/server/assessment-logic";
 import { orderAssessmentQuestions } from "~/server/assessment-order";
-import { isAssessmentExpired } from "~/server/assessment-timing";
+import {
+  getAssessmentDeadline,
+  isAssessmentExpired,
+} from "~/server/assessment-timing";
 import {
   MAX_ASSESSMENT_OPTIONS,
   MIN_ASSESSMENT_OPTIONS,
@@ -412,10 +415,6 @@ export const assessmentRouter = createTRPCRouter({
   getForCourseItem: protectedProcedure
     .input(z.object({ courseItemId: id, attemptId: id.optional() }))
     .query(async ({ ctx, input }) => {
-      await requireCourseItemAccess({
-        courseItemId: input.courseItemId,
-        userId: ctx.actorUserId,
-      });
       const attempt = input.attemptId
         ? await ctx.db.assessmentAttempt.findFirst({
             where: {
@@ -423,11 +422,44 @@ export const assessmentRouter = createTRPCRouter({
               courseItemId: input.courseItemId,
               userId: ctx.actorUserId,
             },
-            select: { id: true, shuffleSeed: true },
+            select: {
+              id: true,
+              shuffleSeed: true,
+              startedAt: true,
+              status: true,
+              assessmentEvent: {
+                select: {
+                  id: true,
+                  title: true,
+                  type: true,
+                  status: true,
+                  durationMinutes: true,
+                  closesAt: true,
+                  shuffleQuestions: true,
+                  participants: {
+                    where: { userId: ctx.actorUserId },
+                    select: { invalidatedAt: true },
+                  },
+                },
+              },
+            },
           })
         : null;
       if (input.attemptId && !attempt) {
         throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      const eventParticipant = attempt?.assessmentEvent?.participants[0];
+      if (
+        attempt?.assessmentEvent &&
+        (!eventParticipant || eventParticipant.invalidatedAt)
+      ) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (!attempt?.assessmentEvent) {
+        await requireCourseItemAccess({
+          courseItemId: input.courseItemId,
+          userId: ctx.actorUserId,
+        });
       }
       const item = await ctx.db.courseItem.findUnique({
         where: { id: input.courseItemId },
@@ -452,11 +484,17 @@ export const assessmentRouter = createTRPCRouter({
                   id: true,
                   type: true,
                   prompt: true,
+                  explanation: true,
                   points: true,
                   position: true,
                   options: {
                     orderBy: { position: "asc" },
-                    select: { id: true, content: true, position: true },
+                    select: {
+                      id: true,
+                      content: true,
+                      position: true,
+                      isCorrect: true,
+                    },
                   },
                 },
               },
@@ -481,15 +519,47 @@ export const assessmentRouter = createTRPCRouter({
         orderBy: { enrolledAt: "desc" },
         select: { cohort: { select: { id: true, name: true } } },
       });
+      const answersRevealed =
+        attempt?.assessmentEvent?.status === "CLOSED" &&
+        attempt.status !== "IN_PROGRESS";
+      const questions = orderAssessmentQuestions(
+        item.assessment.questions,
+        attempt?.shuffleSeed ?? attempt?.id ?? input.attemptId,
+        attempt?.assessmentEvent?.shuffleQuestions ??
+          item.assessment.shuffleQuestions,
+        item.assessment.shuffleOptions,
+      ).map(({ explanation, options, ...question }) => ({
+        ...question,
+        explanation: answersRevealed ? explanation : null,
+        options: options.map(({ isCorrect, ...option }) => ({
+          ...option,
+          ...(answersRevealed ? { isCorrect } : {}),
+        })),
+      }));
       return {
         ...item.assessment,
+        timeLimitMinutes:
+          attempt?.assessmentEvent?.durationMinutes ??
+          item.assessment.timeLimitMinutes,
+        attemptDeadline:
+          attempt?.assessmentEvent
+            ? getAssessmentDeadline(
+                attempt.startedAt,
+                attempt.assessmentEvent.durationMinutes,
+                attempt.assessmentEvent.closesAt,
+              )
+            : null,
+        event: attempt?.assessmentEvent
+          ? {
+              id: attempt.assessmentEvent.id,
+              title: attempt.assessmentEvent.title,
+              type: attempt.assessmentEvent.type,
+              status: attempt.assessmentEvent.status,
+            }
+          : null,
+        answersRevealed,
         eligibleCohorts: eligibleCohorts.map(({ cohort }) => cohort),
-        questions: orderAssessmentQuestions(
-          item.assessment.questions,
-          attempt?.shuffleSeed ?? attempt?.id ?? input.attemptId,
-          item.assessment.shuffleQuestions,
-          item.assessment.shuffleOptions,
-        ),
+        questions,
       };
     }),
 
@@ -632,15 +702,36 @@ export const assessmentRouter = createTRPCRouter({
           assessmentId: true,
           startedAt: true,
           assessment: { select: { timeLimitMinutes: true } },
+          assessmentEvent: {
+            select: {
+              status: true,
+              durationMinutes: true,
+              closesAt: true,
+              participants: {
+                where: { userId: ctx.actorUserId },
+                select: { invalidatedAt: true },
+              },
+            },
+          },
         },
       });
       if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
       if (attempt.userId !== ctx.actorUserId)
         throw new TRPCError({ code: "FORBIDDEN" });
-      await requireCourseItemAccess({
-        courseItemId: attempt.courseItemId,
-        userId: ctx.actorUserId,
-      });
+      if (attempt.assessmentEvent) {
+        if (
+          attempt.assessmentEvent.status !== "OPEN" ||
+          !attempt.assessmentEvent.participants[0] ||
+          attempt.assessmentEvent.participants[0].invalidatedAt
+        ) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED" });
+        }
+      } else {
+        await requireCourseItemAccess({
+          courseItemId: attempt.courseItemId,
+          userId: ctx.actorUserId,
+        });
+      }
       if (attempt.status !== "IN_PROGRESS")
         throw new TRPCError({ code: "CONFLICT" });
       if (
@@ -660,16 +751,34 @@ export const assessmentRouter = createTRPCRouter({
             assessmentId: true,
             startedAt: true,
             assessment: { select: { timeLimitMinutes: true } },
+            assessmentEvent: {
+              select: {
+                status: true,
+                durationMinutes: true,
+                closesAt: true,
+              },
+            },
           },
         });
         if (currentAttempt?.status !== "IN_PROGRESS") {
           throw new TRPCError({ code: "CONFLICT" });
         }
         if (
+          currentAttempt.assessmentEvent &&
+          currentAttempt.assessmentEvent.status !== "OPEN"
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "This assessment event is no longer open",
+          });
+        }
+        if (
           isAssessmentExpired(
             currentAttempt.startedAt,
-            currentAttempt.assessment.timeLimitMinutes,
+            currentAttempt.assessmentEvent?.durationMinutes ??
+              currentAttempt.assessment.timeLimitMinutes,
             new Date(),
+            currentAttempt.assessmentEvent?.closesAt,
           )
         ) {
           throw new TRPCError({
@@ -796,15 +905,38 @@ export const assessmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const attempt = await ctx.db.assessmentAttempt.findUnique({
         where: { id: input.attemptId },
-        select: { userId: true, status: true, courseItemId: true },
+        select: {
+          userId: true,
+          status: true,
+          courseItemId: true,
+          assessmentEvent: {
+            select: {
+              status: true,
+              participants: {
+                where: { userId: ctx.actorUserId },
+                select: { invalidatedAt: true },
+              },
+            },
+          },
+        },
       });
       if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
       if (attempt.userId !== ctx.actorUserId)
         throw new TRPCError({ code: "FORBIDDEN" });
-      await requireCourseItemAccess({
-        courseItemId: attempt.courseItemId,
-        userId: ctx.actorUserId,
-      });
+      if (attempt.assessmentEvent) {
+        if (
+          attempt.assessmentEvent.status !== "OPEN" ||
+          !attempt.assessmentEvent.participants[0] ||
+          attempt.assessmentEvent.participants[0].invalidatedAt
+        ) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED" });
+        }
+      } else {
+        await requireCourseItemAccess({
+          courseItemId: attempt.courseItemId,
+          userId: ctx.actorUserId,
+        });
+      }
       if (attempt.status !== "IN_PROGRESS")
         throw new TRPCError({ code: "CONFLICT" });
       return ctx.db.$transaction(async (tx) => {
@@ -814,20 +946,30 @@ export const assessmentRouter = createTRPCRouter({
             assessment: {
               include: { questions: { include: { options: true } } },
             },
+            assessmentEvent: {
+              select: {
+                status: true,
+                durationMinutes: true,
+                closesAt: true,
+              },
+            },
             answers: { include: { selectedOptions: true } },
           },
         });
         if (
           full?.status !== "IN_PROGRESS" ||
-          full.assessment.status !== "PUBLISHED"
+          full.assessment.status !== "PUBLISHED" ||
+          (full.assessmentEvent && full.assessmentEvent.status !== "OPEN")
         ) {
           throw new TRPCError({ code: "CONFLICT" });
         }
         const now = new Date();
         const expired = isAssessmentExpired(
           full.startedAt,
-          full.assessment.timeLimitMinutes,
+          full.assessmentEvent?.durationMinutes ??
+            full.assessment.timeLimitMinutes,
           now,
+          full.assessmentEvent?.closesAt,
         );
         const answers = new Map(
           full.answers.map((answer) => [answer.questionId, answer]),
@@ -903,7 +1045,7 @@ export const assessmentRouter = createTRPCRouter({
           maxScore > 0 &&
           (full.assessment.passingScore === null ||
             (score / maxScore) * 100 >= full.assessment.passingScore);
-        if (passed) {
+        if (passed && !full.assessmentEvent) {
           await tx.contentProgress.upsert({
             where: {
               courseItemId_userId: {
@@ -944,6 +1086,18 @@ export const assessmentRouter = createTRPCRouter({
           startedAt: true,
           submittedAt: true,
           gradedAt: true,
+          assessmentEvent: {
+            select: {
+              id: true,
+              title: true,
+              type: true,
+              status: true,
+              participants: {
+                where: { userId: ctx.actorUserId },
+                select: { invalidatedAt: true, invalidationReason: true },
+              },
+            },
+          },
           cohort: { select: { id: true, name: true } },
           answers: {
             select: {
@@ -959,10 +1113,12 @@ export const assessmentRouter = createTRPCRouter({
         },
       });
       if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireCourseItemAccess({
-        courseItemId: attempt.courseItemId,
-        userId: ctx.actorUserId,
-      });
+      if (!attempt.assessmentEvent) {
+        await requireCourseItemAccess({
+          courseItemId: attempt.courseItemId,
+          userId: ctx.actorUserId,
+        });
+      }
       if (attempt.status === "IN_PROGRESS" || attempt.status === "IN_REVIEW") {
         return {
           ...attempt,
@@ -1004,6 +1160,7 @@ export const assessmentRouter = createTRPCRouter({
           where: { id: input.attemptId },
           include: {
             assessment: { select: { passingScore: true } },
+            assessmentEvent: { select: { id: true } },
             answers: {
               include: { question: { select: { points: true, type: true } } },
             },
@@ -1063,7 +1220,7 @@ export const assessmentRouter = createTRPCRouter({
           (attempt.assessment.passingScore === null ||
             (score / attempt.maxScore) * 100 >=
               attempt.assessment.passingScore);
-        if (passed) {
+        if (passed && !attempt.assessmentEvent) {
           await tx.contentProgress.upsert({
             where: {
               courseItemId_userId: {
