@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -27,6 +26,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
+import { ImageUpload } from "~/components/ui/image-upload";
 import { Label } from "~/components/ui/label";
 import {
   Sidebar,
@@ -106,7 +106,6 @@ export function AccountSettings({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
-  const [profileImage, setProfileImage] = useState<File | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [section, setSection] = useState<AccountSection>("profile");
   const deletionBlockers = api.account.deletionBlockers.useQuery(undefined, {
@@ -167,19 +166,13 @@ export function AccountSettings({
     }
   }
 
-  async function uploadProfileImage() {
-    if (!profileImage) {
-      toast.error("Pilih gambar terlebih dahulu.");
-      return;
-    }
-    if (profileImage.size > MAX_PROFILE_IMAGE_SIZE) {
+  async function uploadProfileImage(file: File) {
+    if (file.size > MAX_PROFILE_IMAGE_SIZE) {
       toast.error("Foto profile maksimal 5 MB.");
       return;
     }
     if (
-      !profileImageContentTypes.includes(
-        profileImage.type as ProfileImageContentType,
-      )
+      !profileImageContentTypes.includes(file.type as ProfileImageContentType)
     ) {
       toast.error("Gunakan gambar JPEG, PNG, WebP, atau GIF.");
       return;
@@ -189,13 +182,13 @@ export function AccountSettings({
     setPendingAction("profile-image");
     try {
       const upload = await createImageUpload.mutateAsync({
-        contentType: profileImage.type as ProfileImageContentType,
-        fileSize: profileImage.size,
+        contentType: file.type as ProfileImageContentType,
+        fileSize: file.size,
       });
       uploadedKey = upload.key;
       const response = await fetch(upload.uploadUrl, {
         method: "PUT",
-        body: profileImage,
+        body: file,
         headers: upload.headers,
       });
       if (!response.ok) {
@@ -205,7 +198,6 @@ export function AccountSettings({
       await confirmImageUpload.mutateAsync({ key: upload.key });
       uploadedKey = null;
       await Promise.all([refetchSession(), utils.account.me.invalidate()]);
-      setProfileImage(null);
       toast.success("Foto profile diperbarui.");
     } catch (error) {
       if (uploadedKey) {
@@ -226,7 +218,6 @@ export function AccountSettings({
     try {
       await deleteProfileImage.mutateAsync();
       await Promise.all([refetchSession(), utils.account.me.invalidate()]);
-      setProfileImage(null);
       toast.success("Foto profile dihapus.");
     } catch (error) {
       toast.error(errorMessage(error));
@@ -430,64 +421,31 @@ export function AccountSettings({
                     <CardTitle>Profile</CardTitle>
                     <CardDescription>
                       Email Anda adalah {email}. Perubahan email memerlukan alur
-                      pengiriman email terverifikasi dan belum tersedia saat ini.
+                      pengiriman email terverifikasi dan belum tersedia saat
+                      ini.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-6">
-                    <div className="flex flex-wrap items-center gap-4">
-                      <Avatar size="lg">
-                        {session.user.image ? (
-                          <AvatarImage
-                            src={session.user.image}
-                            alt="Foto profile"
-                          />
-                        ) : null}
-                        <AvatarFallback>
-                          {(session.user.name || session.user.email)
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="grid gap-2">
-                        <Label htmlFor="account-image">Foto profile</Label>
-                        <Input
-                          accept={profileImageContentTypes.join(",")}
-                          disabled={isBusy}
-                          id="account-image"
-                          key={session.user.image ?? "no-profile-image"}
-                          onChange={(event) =>
-                            setProfileImage(event.target.files?.[0] ?? null)
-                          }
-                          type="file"
-                        />
-                        <p className="text-muted-foreground text-xs">
-                          JPEG, PNG, WebP, atau GIF. Maksimal 5 MB.
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            disabled={isBusy || !profileImage}
-                            onClick={() => void uploadProfileImage()}
-                            type="button"
-                            variant="outline"
-                          >
-                            {pendingAction === "profile-image"
-                              ? "Mengunggah..."
-                              : "Unggah gambar"}
-                          </Button>
-                          {session.user.image ? (
-                            <Button
-                              disabled={isBusy}
-                              onClick={() => void removeProfileImage()}
-                              type="button"
-                              variant="destructive"
-                            >
-                              {pendingAction === "remove-profile-image"
-                                ? "Menghapus..."
-                                : "Hapus gambar"}
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="account-image">Foto profile</Label>
+                      <ImageUpload
+                        id="account-image"
+                        value={session.user.image}
+                        alt="Foto profile"
+                        accept={profileImageContentTypes.join(",")}
+                        helpText="JPEG, PNG, WebP, atau GIF. Maksimal 5 MB."
+                        isPending={isBusy}
+                        onUpload={uploadProfileImage}
+                        onRemove={removeProfileImage}
+                        previewClassName="aspect-square w-20 rounded-full"
+                        placeholder={
+                          <span className="text-sm font-semibold">
+                            {(session.user.name || session.user.email)
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </span>
+                        }
+                      />
                     </div>
                     <form className="grid gap-4" onSubmit={saveProfile}>
                       <div className="grid gap-2">
@@ -539,7 +497,9 @@ export function AccountSettings({
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                           <div className="grid gap-2">
-                            <Label htmlFor="new-password">Kata sandi baru</Label>
+                            <Label htmlFor="new-password">
+                              Kata sandi baru
+                            </Label>
                             <Input
                               autoComplete="new-password"
                               id="new-password"
@@ -574,10 +534,10 @@ export function AccountSettings({
                           disabled={isBusy}
                           type="submit"
                         >
-{pendingAction === "password"
+                          {pendingAction === "password"
                             ? "Mengubah..."
                             : "Ubah kata sandi"}
-                      </Button>
+                        </Button>
                       </form>
                     ) : (
                       <p className="text-muted-foreground text-sm">
@@ -663,7 +623,8 @@ export function AccountSettings({
                         >
                           <div className="min-w-0">
                             <p className="truncate font-medium">
-                              {userSession.userAgent ?? "Perangkat tidak dikenal"}
+                              {userSession.userAgent ??
+                                "Perangkat tidak dikenal"}
                               {isCurrent ? " (saat ini)" : ""}
                             </p>
                             <p className="text-muted-foreground text-xs">

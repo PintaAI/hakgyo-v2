@@ -13,17 +13,23 @@ import {
   hakgyoBlockNoteSchema,
   type HakgyoPartialBlock,
 } from "./block-note-schema";
+import {
+  ResourceReferenceProvider,
+  type LearnerReferenceResources,
+} from "./resource-reference-context";
 
 const assetUrlPrefix = "hakgyo-asset:";
 
 export type LearnerBlockNoteDocumentProps = {
   content: HakgyoPartialBlock[];
   theme: "light" | "dark";
+  resources?: LearnerReferenceResources;
 };
 
 export function LearnerBlockNoteDocument({
   content,
   theme,
+  resources,
 }: LearnerBlockNoteDocumentProps) {
   const utils = api.useUtils();
   const editor = useCreateBlockNote({
@@ -40,11 +46,18 @@ export function LearnerBlockNoteDocument({
     trailingBlock: false,
   });
 
-  return (
+  const document = (
     <div className="[&_.bn-container]:mx-auto [&_.bn-container]:max-w-none [&_.bn-editor]:bg-transparent [&_.bn-editor]:px-0">
       <AssetUploadProvider value={null}>
         <BlockNoteView editable={false} editor={editor} theme={theme} />
       </AssetUploadProvider>
     </div>
+  );
+  return resources ? (
+    <ResourceReferenceProvider learnerResources={resources}>
+      {document}
+    </ResourceReferenceProvider>
+  ) : (
+    document
   );
 }

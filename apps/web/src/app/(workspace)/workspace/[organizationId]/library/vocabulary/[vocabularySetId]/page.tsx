@@ -4,10 +4,13 @@ import { api, HydrateClient } from "~/trpc/server";
 
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ organizationId: string; vocabularySetId: string }>;
+  searchParams: Promise<{ pickerToken?: string; returnTo?: string }>;
 }) {
   const { organizationId: organizationSlug, vocabularySetId } = await params;
+  const { pickerToken, returnTo } = await searchParams;
   const membership =
     await requireOrganizationMembershipBySlug(organizationSlug);
   const organizationId = membership.organizationId;
@@ -19,6 +22,8 @@ export default async function Page({
         organizationId={organizationId}
         organizationSlug={organizationSlug}
         vocabularySetId={vocabularySetId}
+        pickerToken={pickerToken}
+        returnTo={returnTo}
       />
     </HydrateClient>
   );

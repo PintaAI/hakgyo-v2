@@ -401,7 +401,7 @@ function CourseThumbnail({
       aria-hidden="true"
       className={cn(
         "flex size-8 shrink-0 items-center justify-center rounded-md border",
-        active ? "border-white/15 bg-white/10" : "bg-muted",
+        active ? "border-background/15 bg-background/10" : "bg-muted",
       )}
     >
       <BookOpenIcon className="size-3.5" />

@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   assetAudioBlockType,
   assetImageBlockType,
+  assessmentReferenceBlockType,
   calloutBlockType,
   calloutTones,
   conversationBlockThemes,
@@ -14,6 +15,7 @@ import {
   hakgyoBlockCatalog,
   lessonPageBlockType,
   lessonPageThemes,
+  vocabularyReferenceBlockType,
 } from "./block-catalog";
 
 describe("Hakgyo BlockNote catalog", () => {
@@ -27,6 +29,8 @@ describe("Hakgyo BlockNote catalog", () => {
       conversationBlockType,
       grammarBlockType,
       cultureBlockType,
+      vocabularyReferenceBlockType,
+      assessmentReferenceBlockType,
       calloutBlockType,
       assetAudioBlockType,
       assetImageBlockType,

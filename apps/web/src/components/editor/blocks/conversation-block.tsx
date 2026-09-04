@@ -61,10 +61,10 @@ type PronunciationExample = {
 };
 
 const themeStyles = {
-  violet: { label: "Violet", accent: "#7653b6" },
-  blue: { label: "Blue", accent: "#3478a8" },
-  green: { label: "Green", accent: "#4f8468" },
-  rose: { label: "Rose", accent: "#bc5f7b" },
+  violet: { label: "Violet", accent: "var(--chart-3)" },
+  blue: { label: "Blue", accent: "var(--chart-1)" },
+  green: { label: "Green", accent: "var(--chart-2)" },
+  rose: { label: "Rose", accent: "var(--chart-4)" },
 } as const;
 
 const conversationProps = {
@@ -948,7 +948,7 @@ export const conversationBlock = createReactBlockSpec(
                 className="flex min-w-0 items-center gap-3 px-4 py-3 text-white sm:px-5"
                 style={{ backgroundColor: scheme.accent }}
               >
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/15">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-background/15">
                   <Volume2Icon className="size-4" />
                 </span>
                 <EditableBlockText

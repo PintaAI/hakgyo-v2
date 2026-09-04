@@ -121,7 +121,7 @@ export function McpServerSettings({ endpoint }: { endpoint: string }) {
               </div>
             </div>
             <Badge className="gap-1.5 bg-emerald-600 text-white">
-              <span className="size-1.5 rounded-full bg-white" /> Aktif
+              <span className="size-1.5 rounded-full bg-background" /> Aktif
             </Badge>
           </div>
         </CardHeader>

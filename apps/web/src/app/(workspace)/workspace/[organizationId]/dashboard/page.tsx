@@ -1,9 +1,11 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Hanken_Grotesk, Inter } from "next/font/google";
 
 import { type ReactNode } from "react";
 import {
   ArrowUpRightIcon,
+  ActivityIcon,
   BookCheckIcon,
   BookOpenIcon,
   CalendarDaysIcon,
@@ -73,6 +75,13 @@ const cohortStatus = {
   },
 } as const;
 
+const activityLabels = {
+  MATERIAL_COMPLETED: "Menyelesaikan materi",
+  ASSESSMENT_SUBMITTED: "Mengumpulkan tugas",
+  ASSESSMENT_PASSED: "Lulus assessment",
+  VOCABULARY_REVIEWED: "Meninjau kosakata",
+} as const;
+
 function StatCard({
   icon: Icon,
   label,
@@ -87,21 +96,23 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="group/stat bg-card ring-foreground/10 hover:bg-muted/60 focus-visible:ring-ring focus-visible:outline-ring flex flex-col gap-3 rounded-lg p-5 ring-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+      className="group/stat hover:bg-muted/50 focus-visible:ring-ring focus-visible:outline-ring flex min-w-0 items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
     >
-      <span className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground font-sans text-xs font-semibold tracking-[0.14em] uppercase">
+      <span className="bg-muted text-muted-foreground group-hover/stat:text-foreground inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors">
+        <Icon className="size-3.5" />
+      </span>
+      <span className="min-w-0">
+        <span className="text-muted-foreground block truncate font-sans text-[10px] font-semibold tracking-[0.12em] uppercase">
           {label}
         </span>
-        <Icon className="text-muted-foreground group-hover/stat:text-foreground size-4 transition-colors" />
-      </span>
-      <span
-        className={cn(
-          headline,
-          "text-foreground text-4xl font-medium tracking-tight tabular-nums",
-        )}
-      >
-        {value}
+        <span
+          className={cn(
+            headline,
+            "text-foreground block text-xl leading-none font-medium tracking-tight tabular-nums",
+          )}
+        >
+          {value}
+        </span>
       </span>
     </Link>
   );
@@ -123,6 +134,25 @@ function StatusChip({
       )}
     >
       {meta.label}
+    </span>
+  );
+}
+
+function CourseThumbnail({ thumbnailUrl }: { thumbnailUrl: string | null }) {
+  return (
+    <span className="border-border bg-muted relative inline-flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border">
+      {thumbnailUrl ? (
+        <Image
+          src={thumbnailUrl}
+          alt=""
+          fill
+          unoptimized
+          sizes="44px"
+          className="object-cover transition-transform duration-300 group-hover/row:scale-105"
+        />
+      ) : (
+        <BookOpenIcon className="text-muted-foreground size-4" />
+      )}
     </span>
   );
 }
@@ -238,6 +268,68 @@ function QuickAction({
   );
 }
 
+function RecentActivity({
+  items,
+}: {
+  items: Array<{
+    id: string;
+    action: keyof typeof activityLabels;
+    occurredAt: Date;
+    xpAwarded: number;
+    user: { name: string };
+  }>;
+}) {
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <div>
+          <CardTitle className={cn(headline, "text-lg font-medium")}>
+            Aktivitas terbaru
+          </CardTitle>
+          <CardDescription>
+            Aktivitas pembelajaran terakhir di workspace ini.
+          </CardDescription>
+        </div>
+      </CardHeader>
+      {items.length === 0 ? (
+        <CardContent>
+          <EmptyState
+            icon={ActivityIcon}
+            title="Belum ada aktivitas"
+            description="Aktivitas pembelajaran anggota akan muncul di sini."
+          />
+        </CardContent>
+      ) : (
+        <ul className="divide-border divide-y">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-center gap-3 px-4 py-3">
+              <span className="bg-muted text-muted-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-md">
+                <ActivityIcon className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="text-foreground block truncate text-sm font-medium">
+                  {item.user.name}
+                </span>
+                <span className="text-muted-foreground block truncate text-xs">
+                  {activityLabels[item.action]}
+                </span>
+              </span>
+              <span className="text-muted-foreground shrink-0 text-right text-xs">
+                <span className="text-foreground block font-medium tabular-nums">
+                  +{item.xpAwarded} XP
+                </span>
+                <time dateTime={item.occurredAt.toISOString()}>
+                  {dateFormatter.format(item.occurredAt)}
+                </time>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
 async function TeacherDashboard({
   membership,
   organizationSlug,
@@ -300,51 +392,50 @@ async function TeacherDashboard({
             Pengajar
           </span>
         </div>
+        <section
+          aria-label="Ringkasan pengajar"
+          className="border-foreground/15 relative mt-6 grid grid-cols-2 gap-x-2 gap-y-1 border-t pt-4 sm:grid-cols-3 lg:grid-cols-6"
+        >
+          <StatCard
+            icon={BookOpenIcon}
+            label="Course saya"
+            value={courses.length}
+            href={`${root}/courses`}
+          />
+          <StatCard
+            icon={BookCheckIcon}
+            label="Sudah terbit"
+            value={
+              courses.filter((course) => course.status === "PUBLISHED").length
+            }
+            href={`${root}/courses`}
+          />
+          <StatCard
+            icon={CalendarDaysIcon}
+            label="Group belajar"
+            value={cohortCount}
+            href={`${root}/courses`}
+          />
+          <StatCard
+            icon={FileTextIcon}
+            label="Materi saya"
+            value={materials.length}
+            href={`${root}/library/materials`}
+          />
+          <StatCard
+            icon={LibraryIcon}
+            label="Tugas saya"
+            value={assessments.length}
+            href={`${root}/library/assessments`}
+          />
+          <StatCard
+            icon={ClipboardCheckIcon}
+            label="Perlu direview"
+            value={pendingReviews}
+            href={`${root}/reviews`}
+          />
+        </section>
       </header>
-
-      <section
-        aria-label="Ringkasan pengajar"
-        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
-      >
-        <StatCard
-          icon={BookOpenIcon}
-          label="Course saya"
-          value={courses.length}
-          href={`${root}/courses`}
-        />
-        <StatCard
-          icon={BookCheckIcon}
-          label="Sudah terbit"
-          value={
-            courses.filter((course) => course.status === "PUBLISHED").length
-          }
-          href={`${root}/courses`}
-        />
-        <StatCard
-          icon={CalendarDaysIcon}
-          label="Group belajar"
-          value={cohortCount}
-          href={`${root}/courses`}
-        />
-        <StatCard
-          icon={FileTextIcon}
-          label="Materi saya"
-          value={materials.length}
-          href={`${root}/library/materials`}
-        />
-        <StatCard
-          icon={LibraryIcon}
-          label="Tugas saya"
-          value={assessments.length}
-          href={`${root}/library/assessments`}
-        />
-        <StatCard
-          icon={ClipboardCheckIcon}
-          label="Perlu direview"
-          value={pendingReviews}
-          href={`${root}/reviews`}
-        />
-      </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,1fr)]">
         <Card className="rounded-lg">
@@ -396,6 +487,7 @@ async function TeacherDashboard({
                       href={`${root}/courses/${course.id}`}
                       className="group/row hover:bg-muted/50 flex items-center gap-4 px-4 py-3 transition-colors"
                     >
+                      <CourseThumbnail thumbnailUrl={course.thumbnailUrl} />
                       <span className="min-w-0 flex-1">
                         <span className="text-foreground block truncate text-sm font-medium">
                           {course.title}
@@ -409,7 +501,7 @@ async function TeacherDashboard({
                       <ArrowUpRightIcon className="text-muted-foreground group-hover/row:text-foreground size-4 shrink-0 transition-all group-hover/row:translate-x-0.5 group-hover/row:-translate-y-0.5" />
                     </Link>
                     {courseCohorts.length > 0 ? (
-                      <ul className="border-border bg-muted/20 border-t px-4 py-1.5 sm:pl-9">
+                      <ul className="border-border bg-muted/20 border-t px-4 py-1.5 sm:pl-[4.75rem]">
                         {courseCohorts.slice(0, 3).map((cohort) => (
                           <li key={cohort.id}>
                             <Link
@@ -562,7 +654,8 @@ export default async function DashboardPage({
   }
   const { organizationId, organization, role } = membership;
 
-  const [analytics, courses, cohortsPage, reviewQueue] = await Promise.all([
+  const [analytics, courses, cohortsPage, reviewQueue, activity] =
+    await Promise.all([
     api.organization.getDashboardAnalytics({ organizationId }),
     api.course.list({ organizationId }),
     api.cohort.listByOrganization({ organizationId, limit: 5 }),
@@ -570,7 +663,8 @@ export default async function DashboardPage({
       organizationId,
       limit: 3,
     }),
-  ]);
+      api.organization.getRecentActivity({ organizationId }),
+    ]);
   const cohorts = cohortsPage.items;
   const reviewItems = reviewQueue.items;
 
@@ -580,7 +674,9 @@ export default async function DashboardPage({
     <div
       className={cn(hanken.variable, inter.variable, body, "w-full space-y-10")}
     >
-      <header className="flex flex-wrap items-end justify-between gap-6">
+      <header className="border-border relative overflow-hidden rounded-xl border p-6 sm:p-8">
+        <div className="bg-muted/50 pointer-events-none absolute -top-20 -right-16 size-56 rounded-full blur-3xl" />
+        <div className="relative flex flex-wrap items-end justify-between gap-6">
         <div className="min-w-0">
           <p className="text-muted-foreground font-sans text-xs font-semibold tracking-[0.18em] uppercase">
             Workspace · {organization.slug}
@@ -598,56 +694,56 @@ export default async function DashboardPage({
             antrean review untuk organisasi Anda.
           </p>
         </div>
-        <span className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-sans text-xs font-medium">
-          <ShieldCheckIcon className="size-3.5" />
-          {role === "OWNER" ? "Pemilik" : "Admin"}
-        </span>
+          <span className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-sans text-xs font-medium">
+            <ShieldCheckIcon className="size-3.5" />
+            {role === "OWNER" ? "Pemilik" : "Admin"}
+          </span>
+        </div>
+        <section
+          aria-label="Ringkasan organisasi"
+          className="border-border relative mt-6 grid grid-cols-2 gap-x-2 gap-y-1 border-t pt-4 sm:grid-cols-3 lg:grid-cols-6"
+        >
+          <StatCard
+            icon={BookOpenIcon}
+            label="Total course"
+            value={analytics.courses.total}
+            href={`${root}/courses`}
+          />
+          <StatCard
+            icon={BookCheckIcon}
+            label="Published"
+            value={analytics.courses.byStatus.PUBLISHED ?? 0}
+            href={`${root}/courses`}
+          />
+          <StatCard
+            icon={CalendarDaysIcon}
+            label="Total Group belajar"
+            value={analytics.cohorts.total}
+            href={`${root}/courses`}
+          />
+          <StatCard
+            icon={UsersIcon}
+            label="Group belajar berjalan"
+            value={
+              (analytics.cohorts.byStatus.OPEN ?? 0) +
+              (analytics.cohorts.byStatus.IN_PROGRESS ?? 0)
+            }
+            href={`${root}/courses`}
+          />
+          <StatCard
+            icon={UsersIcon}
+            label="Anggota"
+            value={analytics.members}
+            href={`${root}/members`}
+          />
+          <StatCard
+            icon={ClipboardCheckIcon}
+            label="Menunggu review"
+            value={analytics.actionItems.attemptsInReview}
+            href={`${root}/reviews`}
+            />
+          </section>
       </header>
-
-      <section
-        aria-label="Ringkasan organisasi"
-        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
-      >
-        <StatCard
-          icon={BookOpenIcon}
-          label="Total course"
-          value={analytics.courses.total}
-          href={`${root}/courses`}
-        />
-        <StatCard
-          icon={BookCheckIcon}
-          label="Published"
-          value={analytics.courses.byStatus.PUBLISHED ?? 0}
-          href={`${root}/courses`}
-        />
-        <StatCard
-          icon={CalendarDaysIcon}
-          label="Total Group belajar"
-          value={analytics.cohorts.total}
-          href={`${root}/courses`}
-        />
-        <StatCard
-          icon={UsersIcon}
-          label="Group belajar berjalan"
-          value={
-            (analytics.cohorts.byStatus.OPEN ?? 0) +
-            (analytics.cohorts.byStatus.IN_PROGRESS ?? 0)
-          }
-          href={`${root}/courses`}
-        />
-        <StatCard
-          icon={UsersIcon}
-          label="Anggota"
-          value={analytics.members}
-          href={`${root}/members`}
-        />
-        <StatCard
-          icon={ClipboardCheckIcon}
-          label="Menunggu review"
-          value={analytics.actionItems.attemptsInReview}
-          href={`${root}/reviews`}
-        />
-      </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="grid gap-4 lg:col-span-2">
@@ -693,6 +789,7 @@ export default async function DashboardPage({
                       href={`${root}/courses/${course.id}`}
                       className="group/row hover:bg-muted/50 flex items-center gap-4 px-4 py-3 transition-colors"
                     >
+                      <CourseThumbnail thumbnailUrl={course.thumbnailUrl} />
                       <span className="min-w-0 flex-1">
                         <span className="text-foreground block truncate text-sm font-medium">
                           {course.title}
@@ -864,6 +961,7 @@ export default async function DashboardPage({
           </Card>
         </div>
       </section>
+      <RecentActivity items={activity} />
     </div>
   );
 }

@@ -169,6 +169,8 @@ export const cohortRouter = createTRPCRouter({
         courseId: id,
         search: z.string().trim().max(200).optional(),
         status: cohortFields.shape.status,
+        sort: z.enum(["name", "createdAt", "updatedAt"]).default("updatedAt"),
+        sortDirection: z.enum(["asc", "desc"]).default("desc"),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -198,14 +200,27 @@ export const cohortRouter = createTRPCRouter({
               },
             }),
       };
-      const [items, total] = await Promise.all([
+      const orderBy =
+        input.sort === "name"
+          ? [{ name: input.sortDirection }, { id: input.sortDirection }]
+          : input.sort === "createdAt"
+            ? [{ createdAt: input.sortDirection }, { id: input.sortDirection }]
+            : [{ updatedAt: input.sortDirection }, { id: input.sortDirection }];
+      const [cohorts, total] = await Promise.all([
         db.cohort.findMany({
           where,
-          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          orderBy,
           take: input.limit + 1,
           cursor: input.cursor ? { id: input.cursor } : undefined,
           skip: input.cursor ? 1 : undefined,
           include: {
+            enrollments: {
+              orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
+              take: 4,
+              select: {
+                user: { select: { id: true, name: true, image: true } },
+              },
+            },
             _count: {
               select: { staff: true, enrollments: true, meetings: true },
             },
@@ -215,6 +230,10 @@ export const cohortRouter = createTRPCRouter({
           ? db.cohort.count({ where })
           : Promise.resolve(undefined),
       ]);
+      const items = cohorts.map(({ enrollments, ...cohort }) => ({
+        ...cohort,
+        learnerPreview: enrollments.map(({ user }) => user),
+      }));
       return pageResult(items, input.limit, total);
     }),
   get: protectedProcedure

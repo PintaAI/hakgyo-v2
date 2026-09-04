@@ -9,6 +9,7 @@ import { learningRouter } from "~/server/api/routers/learning";
 import { inviteRouter } from "~/server/api/routers/invite";
 import { organizationRouter } from "~/server/api/routers/organization";
 import { storageRouter } from "~/server/api/routers/storage";
+import { superadminRouter } from "~/server/api/routers/superadmin";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { db } from "~/server/db";
 
@@ -29,6 +30,7 @@ export const appRouter = createTRPCRouter({
   invite: inviteRouter,
   organization: organizationRouter,
   storage: storageRouter,
+  superadmin: superadminRouter,
 });
 
 // export type definition of API

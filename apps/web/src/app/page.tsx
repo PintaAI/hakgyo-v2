@@ -84,7 +84,7 @@ export default function Home() {
             className="group flex items-center gap-3 font-bold tracking-tight"
             aria-label="Hakgyo, beranda"
           >
-            <span className="bg-primary text-primary-foreground grid size-10 place-items-center rounded-[0.9rem] shadow-[3px_3px_0_var(--foreground)] transition-transform group-hover:-rotate-6">
+            <span className="bg-primary text-primary-foreground grid size-10 place-items-center rounded-[0.9rem] shadow-lg transition-transform group-hover:-rotate-6">
               <GraduationCapIcon className="size-5" aria-hidden="true" />
             </span>
             <span className="text-xl">hakgyo</span>
@@ -122,7 +122,7 @@ export default function Home() {
         <div className="absolute inset-0 [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [mask-image:linear-gradient(to_bottom,black,transparent_85%)] [background-size:42px_42px]" />
         <div className="relative mx-auto grid max-w-7xl gap-16 px-5 pt-16 pb-24 sm:px-8 sm:pt-24 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-10 lg:pt-28 lg:pb-32">
           <div>
-            <div className="border-border bg-card inline-flex -rotate-1 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold tracking-[0.12em] uppercase shadow-[3px_3px_0_var(--border)]">
+            <div className="border-border bg-card inline-flex -rotate-1 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold tracking-[0.12em] uppercase shadow-lg">
               <span className="bg-primary size-2 rounded-full" />
               Ruang belajar digital
             </div>
@@ -141,7 +141,7 @@ export default function Home() {
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/auth"
-                className="bg-primary text-primary-foreground group focus-visible:outline-ring inline-flex min-h-14 items-center justify-center gap-3 rounded-full px-7 font-bold shadow-[5px_5px_0_var(--foreground)] transition hover:-translate-y-1 hover:shadow-[7px_7px_0_var(--foreground)] focus-visible:outline-2 focus-visible:outline-offset-4"
+                className="bg-primary text-primary-foreground group focus-visible:outline-ring inline-flex min-h-14 items-center justify-center gap-3 rounded-full px-7 font-bold shadow-lg transition hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-4"
               >
                 Mulai belajar
                 <ArrowRightIcon
@@ -182,7 +182,7 @@ export default function Home() {
             <div className="border-foreground bg-accent text-accent-foreground absolute -bottom-8 -left-5 z-10 hidden -rotate-3 rounded-full border-2 px-5 py-2 text-sm font-bold sm:block">
               Semua progres, satu tempat
             </div>
-            <div className="bg-primary border-foreground rotate-[1.5deg] rounded-[2rem] border-2 p-2 shadow-[14px_18px_0_var(--border)]">
+            <div className="bg-primary border-foreground rotate-[1.5deg] rounded-[2rem] border-2 p-2 shadow-lg">
               <div className="bg-card overflow-hidden rounded-[1.45rem]">
                 <div className="border-border flex items-center justify-between border-b px-5 py-4">
                   <div className="flex items-center gap-2">
@@ -315,7 +315,7 @@ export default function Home() {
               kerumitan. Hakgyo menyatukan proses penting dalam alur yang fokus.
             </p>
           </div>
-          <div className="mt-16 grid gap-px overflow-hidden rounded-[2rem] border border-white/15 bg-white/15 lg:grid-cols-3">
+          <div className="mt-16 grid gap-px overflow-hidden rounded-[2rem] border border-background/15 bg-background/15 lg:grid-cols-3">
             {features.map(({ icon: Icon, number, title, description }) => (
               <article
                 className="bg-primary hover:bg-primary-foreground/5 p-7 transition sm:p-9"
@@ -361,7 +361,7 @@ export default function Home() {
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <article className="bg-card border-border rounded-[2rem] border p-7 shadow-[5px_5px_0_var(--border)]">
+            <article className="bg-card border-border rounded-[2rem] border p-7 shadow-lg">
               <VideoIcon className="text-primary size-7" aria-hidden="true" />
               <h3 className="mt-8 text-xl font-bold">Belajar sinkron</h3>
               <p className="text-muted-foreground mt-3 leading-7">

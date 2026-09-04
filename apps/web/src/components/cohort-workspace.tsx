@@ -62,6 +62,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -87,7 +88,13 @@ type CohortEnrollment =
   RouterOutputs["enrollment"]["listCohortEnrollments"]["items"][number];
 type Meeting = RouterOutputs["cohort"]["listMeetings"]["items"][number];
 type CohortView =
-  "overview" | "learners" | "staff" | "meetings" | "reviews" | "invites";
+  | "overview"
+  | "learners"
+  | "staff"
+  | "meetings"
+  | "reviews"
+  | "invites"
+  | "settings";
 
 const views = [
   { value: "overview", label: "Overview", icon: LayoutDashboardIcon },
@@ -96,6 +103,7 @@ const views = [
   { value: "meetings", label: "Meetings", icon: VideoIcon },
   { value: "reviews", label: "Review tugas", icon: ClipboardCheckIcon },
   { value: "invites", label: "Invite", icon: MailPlusIcon },
+  { value: "settings", label: "Pengaturan", icon: Settings2Icon },
 ] satisfies Array<{ value: CohortView; label: string; icon: LucideIcon }>;
 
 const validViews = new Set<CohortView>(views.map(({ value }) => value));
@@ -224,7 +232,6 @@ export function CohortWorkspace({
   organizationSlug: string;
 }) {
   const searchParams = useSearchParams();
-  const [editOpen, setEditOpen] = useState(false);
   const cohortQuery = api.cohort.get.useQuery(
     { cohortId: initialCohort.id },
     { initialData: initialCohort },
@@ -234,6 +241,7 @@ export function CohortWorkspace({
     if (value === "learners") return cohort.access.manageLearners;
     if (value === "reviews") return cohort.access.reviewAssessments;
     if (value === "invites") return cohort.access.manageInvites;
+    if (value === "settings") return cohort.access.update;
     return true;
   });
   const requestedView = searchParams.get("view") as CohortView | null;
@@ -301,7 +309,7 @@ export function CohortWorkspace({
         Kembali ke {cohort.course.title}
       </Link>
 
-      <header className="relative overflow-hidden rounded-lg bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-7 sm:py-8">
+      <header className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
         {cohort.course.thumbnailUrl ? (
           <Image
             src={cohort.course.thumbnailUrl}
@@ -314,14 +322,14 @@ export function CohortWorkspace({
           />
         ) : null}
         <div className="pointer-events-none absolute inset-0 bg-black/70" />
-        <div className="pointer-events-none absolute top-0 right-0 size-48 translate-x-14 -translate-y-16 rounded-full border border-white/20" />
+        <div className="pointer-events-none absolute top-0 right-0 size-48 translate-x-14 -translate-y-16 rounded-full border border-background/20" />
         <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold tracking-[0.18em] text-white/60 uppercase">
                 {cohort.course.title} · Group belajar
               </span>
-              <Badge className="border-white/30 bg-white/10 text-white">
+              <Badge className="border-white/30 bg-background/10 text-white">
                 {statusLabels[cohort.status]}
               </Badge>
             </div>
@@ -333,15 +341,6 @@ export function CohortWorkspace({
                 "Kelola peserta didik, pengajar, dan jadwal Group belajar dari workspace ini."}
             </p>
           </div>
-          {cohort.access.update ? (
-            <Button
-              className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
-              onClick={() => setEditOpen(true)}
-            >
-              <PencilIcon data-icon="inline-start" />
-              Edit Group belajar
-            </Button>
-          ) : null}
         </div>
       </header>
 
@@ -382,6 +381,7 @@ export function CohortWorkspace({
             learnersPending={learners.isPending}
             meetings={meetingItems}
             meetingsPending={meetings.isPending}
+            canManageMeetings={cohort.access.manageMeetings}
             onNavigate={navigate}
           />
         </TabsContent>
@@ -428,17 +428,14 @@ export function CohortWorkspace({
             cohortName={cohort.name}
           />
         </TabsContent>
+        <TabsContent value="settings">
+          <Settings
+            canDelete={cohort.access.delete}
+            cohort={cohort}
+            courseRoot={courseRoot}
+          />
+        </TabsContent>
       </Tabs>
-
-      {cohort.access.update ? (
-        <EditCohort
-          canDelete={cohort.access.delete}
-          cohort={cohort}
-          courseRoot={courseRoot}
-          open={editOpen}
-          onOpenChange={setEditOpen}
-        />
-      ) : null}
     </div>
   );
 }
@@ -450,6 +447,7 @@ function Overview({
   learnersPending,
   meetings,
   meetingsPending,
+  canManageMeetings,
   onNavigate,
 }: {
   cohort: Cohort;
@@ -458,6 +456,7 @@ function Overview({
   learnersPending: boolean;
   meetings?: RouterOutputs["cohort"]["listMeetings"]["items"];
   meetingsPending: boolean;
+  canManageMeetings: boolean;
   onNavigate: (view: CohortView) => void;
 }) {
   const active =
@@ -466,6 +465,10 @@ function Overview({
     0;
   const upcoming =
     meetings?.filter(({ startsAt }) => startsAt > new Date()).length ?? 0;
+  const nextMeeting = meetings?.find(
+    ({ startsAt, status, joinUrl }) =>
+      joinUrl && (status === "STARTED" || startsAt > new Date()),
+  );
   const occupancy = cohort.capacity
     ? `${Math.round((active / cohort.capacity) * 100)}%`
     : "–";
@@ -584,6 +587,47 @@ function Overview({
           </div>
         </Card>
       </div>
+      <Card className="gap-0 rounded-lg py-0">
+        <CardHeader className="border-b py-4">
+          <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
+            Aksi cepat
+          </CardTitle>
+          <CardDescription>
+            Akses tindakan yang paling sering digunakan untuk Group belajar ini.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2 p-4">
+          {nextMeeting ? (
+            <a
+              href={nextMeeting.joinUrl ?? undefined}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants()}
+            >
+              <VideoIcon />
+              Mulai Zoom
+              <ExternalLinkIcon />
+            </a>
+          ) : null}
+          {canManageMeetings ? (
+            <Button variant="outline" onClick={() => onNavigate("meetings")}>
+              <PlusIcon />
+              Buat meeting Zoom
+            </Button>
+          ) : null}
+          {cohort.whatsappGroupUrl ? (
+            <a
+              href={cohort.whatsappGroupUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Buka grup WhatsApp
+              <ExternalLinkIcon />
+            </a>
+          ) : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -1355,8 +1399,7 @@ function MeetingForm({
                 </p>
               ) : (
                 <p className="text-muted-foreground text-xs">
-                  Contoh: Asia/Jakarta. Waktu akan disimpan sesuai timezone
-                  ini.
+                  Contoh: Asia/Jakarta. Waktu akan disimpan sesuai timezone ini.
                 </p>
               )}
             </div>
@@ -1387,18 +1430,14 @@ function MeetingForm({
   );
 }
 
-function EditCohort({
+function Settings({
   canDelete,
   cohort,
   courseRoot,
-  open,
-  onOpenChange,
 }: {
   canDelete: boolean;
   cohort: Cohort;
   courseRoot: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
   const utils = api.useUtils();
@@ -1439,7 +1478,6 @@ function EditCohort({
             : (enrollmentMode as "OPEN" | "INVITE_ONLY"),
       });
       await utils.cohort.get.invalidate({ cohortId: cohort.id });
-      onOpenChange(false);
       toast.success("Group belajar diperbarui.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
@@ -1457,141 +1495,179 @@ function EditCohort({
     }
   }
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-          <form onSubmit={submit}>
-            <DialogHeader>
-              <DialogTitle>Edit Group belajar</DialogTitle>
-              <DialogDescription>
-                Perbarui informasi, periode, dan aturan enrollment.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-5 space-y-4">
+    <section className="space-y-5">
+      <SectionHeading
+        title="Pengaturan"
+        description="Perbarui informasi, periode, dan aturan Group belajar."
+      />
+      <form onSubmit={submit} className="space-y-4">
+        <Card className="gap-0 rounded-lg py-0">
+          <CardHeader className="border-b py-4">
+            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
+              Informasi umum
+            </CardTitle>
+            <CardDescription>
+              Nama dan deskripsi yang dilihat siswa di workspace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 py-5">
+            <div className="space-y-2">
+              <Label htmlFor="settings-cohort-name">Nama Group belajar</Label>
+              <Input
+                id="settings-cohort-name"
+                required
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="settings-cohort-description">Deskripsi</Label>
+              <Textarea
+                id="settings-cohort-description"
+                placeholder="Jelaskan tujuan dan aktivitas Group belajar ini."
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+              <p className="text-muted-foreground text-xs">
+                Kosongkan untuk menggunakan deskripsi default.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-0 rounded-lg py-0">
+          <CardHeader className="border-b py-4">
+            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
+              Status & akses
+            </CardTitle>
+            <CardDescription>
+              Atur visibilitas, enrollment, kapasitas, dan harga cohort.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 py-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldSelect
+                id="settings-cohort-status"
+                label="Status"
+                value={status}
+                onChange={(value) => setStatus(value as Cohort["status"])}
+                options={Object.entries(statusLabels)}
+              />
+              <FieldSelect
+                id="settings-cohort-enrollment"
+                label="Tipe akses"
+                value={enrollmentMode}
+                onChange={setEnrollmentMode}
+                options={[
+                  ["INHERIT", "Ikuti course"],
+                  ["OPEN", "Public course"],
+                  ["INVITE_ONLY", "Private course"],
+                ]}
+              />
               <div className="space-y-2">
-                <Label htmlFor="edit-cohort-name">Nama</Label>
+                <Label htmlFor="settings-cohort-capacity">Kapasitas</Label>
                 <Input
-                  id="edit-cohort-name"
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  id="settings-cohort-capacity"
+                  type="number"
+                  min={1}
+                  placeholder="Tidak terbatas"
+                  value={capacity}
+                  onChange={(event) => setCapacity(event.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-cohort-description">Deskripsi</Label>
-                <Textarea
-                  id="edit-cohort-description"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
+                <Label htmlFor="settings-cohort-price">Harga (IDR)</Label>
+                <Input
+                  id="settings-cohort-price"
+                  type="number"
+                  min={0}
+                  placeholder="Ikuti course"
+                  value={price}
+                  onChange={(event) => setPrice(event.target.value)}
                 />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FieldSelect
-                  id="edit-cohort-status"
-                  label="Status"
-                  value={status}
-                  onChange={(value) => setStatus(value as Cohort["status"])}
-                  options={Object.entries(statusLabels)}
-                />
-                <FieldSelect
-                  id="edit-cohort-enrollment"
-                  label="Tipe akses"
-                  value={enrollmentMode}
-                  onChange={setEnrollmentMode}
-                  options={[
-                    ["INHERIT", "Ikuti course"],
-                    ["OPEN", "Public course"],
-                    ["INVITE_ONLY", "Private course"],
-                  ]}
-                />
-                <div className="space-y-2">
-                  <Label htmlFor="edit-cohort-capacity">Kapasitas</Label>
-                  <Input
-                    id="edit-cohort-capacity"
-                    type="number"
-                    min={1}
-                    value={capacity}
-                    onChange={(event) => setCapacity(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-cohort-price">Harga (IDR)</Label>
-                  <Input
-                    id="edit-cohort-price"
-                    type="number"
-                    min={0}
-                    placeholder="Ikuti course"
-                    value={price}
-                    onChange={(event) => setPrice(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="edit-cohort-whatsapp">WhatsApp URL</Label>
-                  <Input
-                    id="edit-cohort-whatsapp"
-                    type="url"
-                    value={whatsapp}
-                    onChange={(event) => setWhatsapp(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-cohort-start">Mulai</Label>
-                  <Input
-                    id="edit-cohort-start"
-                    type="date"
-                    value={startsAt}
-                    onChange={(event) => setStartsAt(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-cohort-end">Selesai</Label>
-                  <Input
-                    id="edit-cohort-end"
-                    type="date"
-                    min={startsAt || undefined}
-                    value={endsAt}
-                    onChange={(event) => setEndsAt(event.target.value)}
-                  />
-                </div>
               </div>
             </div>
-            <DialogFooter className="mt-5 justify-between sm:justify-between">
-              {canDelete ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2Icon />
-                  Hapus
-                </Button>
-              ) : (
-                <span />
-              )}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={!name.trim() || update.isPending}
-                >
-                  {update.isPending ? (
-                    <LoaderCircleIcon className="animate-spin" />
-                  ) : (
-                    <CheckIcon />
-                  )}
-                  Simpan
-                </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-0 rounded-lg py-0">
+          <CardHeader className="border-b py-4">
+            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
+              Jadwal & tautan
+            </CardTitle>
+            <CardDescription>
+              Periode Group belajar dan tautan komunitas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 py-5">
+            <div className="space-y-2">
+              <Label htmlFor="settings-cohort-whatsapp">WhatsApp URL</Label>
+              <Input
+                id="settings-cohort-whatsapp"
+                type="url"
+                placeholder="https://chat.whatsapp.com/..."
+                value={whatsapp}
+                onChange={(event) => setWhatsapp(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="settings-cohort-start">Mulai</Label>
+                <DatePicker
+                  id="settings-cohort-start"
+                  value={startsAt}
+                  onChange={setStartsAt}
+                />
               </div>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <div className="space-y-2">
+                <Label htmlFor="settings-cohort-end">Selesai</Label>
+                <DatePicker
+                  id="settings-cohort-end"
+                  min={startsAt || undefined}
+                  value={endsAt}
+                  onChange={setEndsAt}
+                />
+              </div>
+            </div>
+          </CardContent>
+          <div className="flex justify-end border-t px-4 py-3">
+            <Button type="submit" disabled={!name.trim() || update.isPending}>
+              {update.isPending ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : (
+                <CheckIcon />
+              )}
+              Simpan pengaturan
+            </Button>
+          </div>
+        </Card>
+      </form>
+
+      {canDelete ? (
+        <Card className="border-destructive/20 gap-0 rounded-lg py-0">
+          <CardHeader className="border-b py-4">
+            <CardTitle className="text-destructive font-[family-name:var(--font-hanken-grotesk)] text-lg">
+              Zona berbahaya
+            </CardTitle>
+            <CardDescription>
+              Hapus Group belajar beserta siswa, staff, invite, dan meeting
+              terkait. Tindakan ini permanen.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium">Hapus {cohort.name} permanen</p>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2Icon />
+              Hapus Group belajar
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {canDelete ? (
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <AlertDialogContent>
@@ -1618,7 +1694,7 @@ function EditCohort({
           </AlertDialogContent>
         </AlertDialog>
       ) : null}
-    </>
+    </section>
   );
 }
 
@@ -1629,7 +1705,7 @@ function SectionHeading({
 }: {
   title: string;
   description: string;
-  action: ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">

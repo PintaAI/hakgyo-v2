@@ -26,19 +26,19 @@ import { EditableBlockText as EditableText } from "./editable-block-text";
 const lessonPageThemeStyles = {
   rose: {
     label: "Rose",
-    accent: "#d45d80",
+    accent: "var(--primary)",
   },
   ocean: {
     label: "Ocean",
-    accent: "#3182a8",
+    accent: "var(--chart-1)",
   },
   forest: {
     label: "Forest",
-    accent: "#4d8b68",
+    accent: "var(--chart-2)",
   },
   sunset: {
     label: "Sunset",
-    accent: "#e2724f",
+    accent: "var(--destructive)",
   },
 } as const;
 

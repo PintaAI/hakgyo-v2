@@ -59,6 +59,10 @@ import {
   MIN_ASSESSMENT_OPTIONS,
 } from "~/lib/assessment-options";
 import { api, type RouterOutputs } from "~/trpc/react";
+import {
+  completeResourcePicker,
+  resourcePickerQuery,
+} from "~/lib/resource-picker-callback";
 
 type Assessment = RouterOutputs["assessment"]["get"];
 type Question = Assessment["questions"][number];
@@ -252,10 +256,14 @@ export function AssessmentEditor({
   organizationId,
   organizationSlug,
   assessmentId,
+  pickerToken,
+  returnTo,
 }: {
   organizationId: string;
   organizationSlug: string;
   assessmentId?: string;
+  pickerToken?: string;
+  returnTo?: string;
 }) {
   const router = useRouter();
   const utils = api.useUtils();
@@ -327,7 +335,20 @@ export function AssessmentEditor({
       assessment={assessment.data}
       canDelete={canDelete}
       isDeleting={deleteAssessment.isPending}
-      onBack={() => router.back()}
+      onBack={() => {
+        if (
+          assessment.data?.id &&
+          completeResourcePicker({
+            resourceId: assessment.data.id,
+            resourceType: "assessment",
+            returnTo,
+            token: pickerToken,
+          })
+        ) {
+          return;
+        }
+        router.back();
+      }}
       assetStorage={assetStorage}
       questionBusy={
         createQuestion.isPending ||
@@ -432,7 +453,7 @@ export function AssessmentEditor({
           await utils.assessment.list.invalidate({ organizationId });
           toast.success("Assessment dibuat. Tambahkan soal pertama Anda.");
           router.replace(
-            `/workspace/${organizationSlug}/library/assessments/${created.id}`,
+            `/workspace/${organizationSlug}/library/assessments/${created.id}${resourcePickerQuery(pickerToken, returnTo)}`,
           );
         } catch (error) {
           toast.error(errorMessage(error));
@@ -848,21 +869,21 @@ function AssessmentEditorForm({
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
           <section className="grid min-w-0 gap-6">
             <Card className="gap-0 py-0 shadow-sm">
-              <CardHeader className="relative overflow-hidden rounded-none bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-6">
+              <CardHeader className="relative overflow-hidden rounded-none bg-foreground px-5 py-6 text-background sm:px-6">
                 <div className="pointer-events-none absolute top-0 right-0 size-44 translate-x-14 -translate-y-20 rounded-full border border-current opacity-10" />
                 <div className="pointer-events-none absolute top-0 right-0 size-28 translate-x-8 -translate-y-12 rounded-full border border-current opacity-10" />
                 <div className="relative flex items-start gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background/10">
                     <Settings2Icon className="size-5" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold tracking-[0.18em] text-[#aaa99f] uppercase">
+                    <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
                       Setup assessment
                     </p>
-                    <CardTitle className="mt-1 text-xl font-semibold text-[#f5f3e9]">
+                    <CardTitle className="mt-1 text-xl font-semibold text-background">
                       Pengaturan assessment
                     </CardTitle>
-                    <p className="mt-1 text-sm leading-relaxed text-[#aaa99f]">
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                       Atur identitas dan petunjuk sebelum menyusun soal.
                     </p>
                   </div>

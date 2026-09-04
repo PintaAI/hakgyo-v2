@@ -2,17 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ImageUpIcon,
-  LoaderCircleIcon,
-  SaveIcon,
-  Settings2Icon,
-  Trash2Icon,
-} from "lucide-react";
+import { LoaderCircleIcon, SaveIcon, Settings2Icon } from "lucide-react";
 import { toast } from "sonner";
 
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
+import { OrganizationThemeSettings } from "~/components/organization-theme-settings";
 import {
   Card,
   CardContent,
@@ -21,6 +15,7 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { ImageUpload } from "~/components/ui/image-upload";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import {
@@ -28,6 +23,7 @@ import {
   organizationLogoContentTypes,
   type OrganizationLogoContentType,
 } from "~/lib/organization-logo";
+import { processOrganizationLogo } from "~/lib/organization-logo-processing";
 import { api } from "~/trpc/react";
 
 type EnrollmentMode = "OPEN" | "INVITE_ONLY";
@@ -62,7 +58,6 @@ export function OrganizationGeneralSettings({
   const discardLogoUpload =
     api.storage.discardOrganizationLogoUpload.useMutation();
   const deleteLogo = api.storage.deleteOrganizationLogo.useMutation();
-  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [enrollmentMode, setEnrollmentMode] = useState<EnrollmentMode | null>(
     null,
   );
@@ -121,18 +116,14 @@ export function OrganizationGeneralSettings({
     }
   }
 
-  async function uploadLogo() {
-    if (!logoFile) {
-      toast.error("Pilih gambar terlebih dahulu.");
-      return;
-    }
-    if (logoFile.size > MAX_ORGANIZATION_LOGO_SIZE) {
+  async function uploadLogo(file: File) {
+    if (file.size <= 0 || file.size > MAX_ORGANIZATION_LOGO_SIZE) {
       toast.error("Logo organisasi maksimal 5 MB.");
       return;
     }
     if (
       !organizationLogoContentTypes.includes(
-        logoFile.type as OrganizationLogoContentType,
+        file.type as OrganizationLogoContentType,
       )
     ) {
       toast.error("Gunakan gambar JPEG, PNG, WebP, atau GIF.");
@@ -141,15 +132,16 @@ export function OrganizationGeneralSettings({
 
     let uploadedKey: string | null = null;
     try {
+      const processedFile = await processOrganizationLogo(file);
       const upload = await createLogoUpload.mutateAsync({
         organizationId,
-        contentType: logoFile.type as OrganizationLogoContentType,
-        fileSize: logoFile.size,
+        contentType: processedFile.type as OrganizationLogoContentType,
+        fileSize: processedFile.size,
       });
       uploadedKey = upload.key;
       const response = await fetch(upload.uploadUrl, {
         method: "PUT",
-        body: logoFile,
+        body: processedFile,
         headers: upload.headers,
       });
       if (!response.ok) {
@@ -165,7 +157,6 @@ export function OrganizationGeneralSettings({
         utils.organization.get.invalidate({ organizationId }),
         utils.organization.list.invalidate(),
       ]);
-      setLogoFile(null);
       router.refresh();
       toast.success("Logo organisasi diperbarui.");
     } catch (error) {
@@ -190,7 +181,6 @@ export function OrganizationGeneralSettings({
         utils.organization.get.invalidate({ organizationId }),
         utils.organization.list.invalidate(),
       ]);
-      setLogoFile(null);
       router.refresh();
       toast.success("Logo organisasi dihapus.");
     } catch (error) {
@@ -266,66 +256,26 @@ export function OrganizationGeneralSettings({
               </p>
             </div>
 
-            <div className="flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center">
-              <Avatar className="size-16 rounded-xl after:rounded-xl">
-                {organization.data.logoUrl ? (
-                  <AvatarImage
-                    src={organization.data.logoUrl}
-                    alt={`Logo ${organization.data.name}`}
-                    className="rounded-xl"
-                  />
-                ) : null}
-                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground rounded-xl text-xl font-semibold">
-                  {organization.data.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid min-w-0 flex-1 gap-2">
-                <Label htmlFor="organization-logo">Logo organisasi</Label>
-                <Input
-                  id="organization-logo"
-                  type="file"
-                  accept={organizationLogoContentTypes.join(",")}
-                  disabled={logoBusy}
-                  key={organization.data.logoUrl ?? "no-organization-logo"}
-                  onChange={(event) =>
-                    setLogoFile(event.target.files?.[0] ?? null)
-                  }
-                />
-                <p className="text-muted-foreground text-xs">
-                  JPEG, PNG, WebP, atau GIF. Maksimal 5 MB.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={logoBusy || !logoFile}
-                    onClick={() => void uploadLogo()}
-                  >
-                    {createLogoUpload.isPending ||
-                    confirmLogoUpload.isPending ? (
-                      <LoaderCircleIcon className="animate-spin" />
-                    ) : (
-                      <ImageUpIcon />
-                    )}
-                    Unggah logo
-                  </Button>
-                  {organization.data.logoUrl ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      disabled={logoBusy}
-                      onClick={() => void removeLogo()}
-                    >
-                      {deleteLogo.isPending ? (
-                        <LoaderCircleIcon className="animate-spin" />
-                      ) : (
-                        <Trash2Icon />
-                      )}
-                      Hapus logo
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="organization-logo">Logo organisasi</Label>
+              <ImageUpload
+                id="organization-logo"
+                value={organization.data.logoUrl}
+                alt={`Logo ${organization.data.name}`}
+                accept={organizationLogoContentTypes.join(",")}
+                helpText="JPEG, PNG, WebP, atau GIF. Maksimal 5 MB; otomatis diperkecil dan dikompresi."
+                isPending={logoBusy}
+                onUpload={uploadLogo}
+                onRemove={removeLogo}
+                replaceLabel="Ganti logo"
+                removeLabel="Hapus logo"
+                previewClassName="aspect-square w-20 rounded-xl"
+                placeholder={
+                  <span className="text-xl font-semibold">
+                    {organization.data.name.charAt(0).toUpperCase()}
+                  </span>
+                }
+              />
             </div>
 
             <div className="grid gap-2">
@@ -436,6 +386,13 @@ export function OrganizationGeneralSettings({
           </div>
         </Card>
       </form>
+
+      <OrganizationThemeSettings
+        enabled={organization.data.themeEnabled}
+        logoUrl={organization.data.logoUrl}
+        organizationId={organizationId}
+        theme={organization.data.theme}
+      />
     </div>
   );
 }

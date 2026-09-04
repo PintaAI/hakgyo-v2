@@ -15,6 +15,8 @@ import {
   passesAssessmentRequirement,
   passesRequirementPolicy,
 } from "~/server/learning/material-completion";
+import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
+import { getLearnerMaterialReferences } from "~/server/material-reference-service";
 
 export const learningRouter = createTRPCRouter({
   listMyCourses: protectedProcedure.query(({ ctx }) => {
@@ -71,8 +73,11 @@ export const learningRouter = createTRPCRouter({
         where: { id: input.courseItemId },
         select: {
           id: true,
+          moduleId: true,
+          organizationId: true,
           type: true,
           position: true,
+          module: { select: { courseId: true } },
           material: {
             select: {
               id: true,
@@ -118,8 +123,25 @@ export const learningRouter = createTRPCRouter({
                       size: true,
                     },
                   },
+                  imageAsset: {
+                    select: {
+                      id: true,
+                      fileName: true,
+                      contentType: true,
+                      size: true,
+                    },
+                  },
                 },
               },
+            },
+          },
+          assessment: {
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              status: true,
+              _count: { select: { questions: true } },
             },
           },
           progress: {
@@ -129,8 +151,69 @@ export const learningRouter = createTRPCRouter({
           },
         },
       });
-      if (!item || item.type === "ASSESSMENT") return null;
-      return item;
+      if (!item) return null;
+      const embeddedResources = item.material
+        ? await getLearnerMaterialReferences(ctx.db, {
+            content: item.material.content,
+            moduleId: item.moduleId,
+            organizationId: item.organizationId,
+          })
+        : { vocabularySets: [], assessments: [] };
+      return {
+        ...item,
+        embeddedResources: {
+          ...embeddedResources,
+          courseId: item.module.courseId,
+          sourceCourseItemId: item.id,
+        },
+      };
+    }),
+  getVocabularyPractice: protectedProcedure
+    .input(
+      z.object({
+        vocabularySetId: z.string().min(1),
+        sourceCourseItemId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await requireCourseItemAccess({
+        courseItemId: input.sourceCourseItemId,
+        userId: ctx.actorUserId,
+      });
+      const source = await ctx.db.courseItem.findUnique({
+        where: { id: input.sourceCourseItemId },
+        select: {
+          organizationId: true,
+          moduleId: true,
+          material: { select: { content: true } },
+          module: { select: { courseId: true } },
+        },
+      });
+      if (
+        !source?.material ||
+        !collectMaterialReferenceIds(
+          source.material.content,
+        ).vocabularySetIds.includes(input.vocabularySetId)
+      ) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      const vocabularySet = await ctx.db.vocabularySet.findFirst({
+        where: {
+          id: input.vocabularySetId,
+          organizationId: source.organizationId,
+          courseItems: {
+            some: { moduleId: source.moduleId, isPublished: true },
+          },
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          _count: { select: { entries: true } },
+        },
+      });
+      if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
+      return { ...vocabularySet, courseId: source.module.courseId };
     }),
   markContentProgress: protectedProcedure
     .input(
@@ -161,6 +244,9 @@ export const learningRouter = createTRPCRouter({
                 },
               },
             },
+          },
+          module: {
+            select: { course: { select: { organizationId: true } } },
           },
         },
       });
@@ -272,6 +358,7 @@ export const learningRouter = createTRPCRouter({
                 : "VOCABULARY_REVIEWED",
             idempotencyKey: `content-completed:${ctx.actorUserId}:${input.courseItemId}`,
             metadata: { courseItemId: input.courseItemId },
+            organizationId: item.module.course.organizationId,
             occurredAt: completedAt ?? undefined,
             userId: ctx.actorUserId,
           });

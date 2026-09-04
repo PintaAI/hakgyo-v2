@@ -272,7 +272,7 @@ export function CoursesLibrary({
                       className={cn(
                         "group/row focus-visible:ring-ring relative flex min-h-28 items-center gap-3 overflow-hidden px-4 py-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset sm:gap-4",
                         course.thumbnailUrl
-                          ? "bg-[#171915] text-white"
+                          ? "bg-foreground text-background"
                           : "hover:bg-muted/50 focus-visible:bg-muted/50",
                       )}
                     >

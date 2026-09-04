@@ -184,7 +184,7 @@ export function InviteRedemption({ token }: { token: string }) {
         <InviteBrand />
 
         <div className="grid items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.75fr)]">
-          <section className="relative flex min-h-[18rem] items-end overflow-hidden rounded-xl bg-[#171915] p-4 text-[#f5f3e9] sm:min-h-[28rem] sm:p-8">
+          <section className="relative flex min-h-[18rem] items-end overflow-hidden rounded-xl bg-foreground p-4 text-background sm:min-h-[28rem] sm:p-8">
             {thumbnailUrl ? (
               <Image
                 src={thumbnailUrl}
@@ -200,16 +200,16 @@ export function InviteRedemption({ token }: { token: string }) {
             <div className="pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
             <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
             <div className="relative max-w-2xl">
-              <Badge className="border-white/20 bg-white/10 text-[#f5f3e9]">
+              <Badge className="border-background/20 bg-background/10 text-background">
                 {typeLabels[data.type]}
               </Badge>
-              <p className="mt-4 text-[10px] font-semibold tracking-[0.18em] text-[#aaa99f] uppercase sm:mt-6 sm:text-[11px]">
+              <p className="mt-4 text-[10px] font-semibold tracking-[0.18em] text-muted-foreground uppercase sm:mt-6 sm:text-[11px]">
                 {data.organization.name}
               </p>
               <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-2xl leading-tight font-medium tracking-tight sm:mt-3 sm:text-5xl">
                 {title}
               </h1>
-              <p className="mt-3 flex items-center gap-2 text-xs leading-relaxed text-[#aaa99f] sm:mt-4 sm:text-sm">
+              <p className="mt-3 flex items-center gap-2 text-xs leading-relaxed text-muted-foreground sm:mt-4 sm:text-sm">
                 {data.type === "ORGANIZATION" ? (
                   <Building2Icon className="size-4" data-icon="inline-start" />
                 ) : data.type === "COHORT" ? (
@@ -220,7 +220,7 @@ export function InviteRedemption({ token }: { token: string }) {
                 {description}
               </p>
               {data.type !== "ORGANIZATION" && data.course.description ? (
-                <p className="mt-3 line-clamp-2 max-w-xl text-xs leading-relaxed text-[#aaa99f] sm:mt-4 sm:line-clamp-3 sm:text-sm">
+                <p className="mt-3 line-clamp-2 max-w-xl text-xs leading-relaxed text-muted-foreground sm:mt-4 sm:line-clamp-3 sm:text-sm">
                   {data.course.description}
                 </p>
               ) : null}

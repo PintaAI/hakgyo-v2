@@ -52,7 +52,7 @@ export default async function AuthPage({
               className="group inline-flex w-fit items-center gap-3 font-bold tracking-tight"
               aria-label="Kembali ke beranda Hakgyo"
             >
-              <span className="bg-primary text-primary-foreground grid size-10 place-items-center rounded-[0.9rem] shadow-[3px_3px_0_var(--foreground)] transition-transform group-hover:-rotate-6">
+              <span className="bg-primary text-primary-foreground grid size-10 place-items-center rounded-[0.9rem] shadow-lg transition-transform group-hover:-rotate-6">
                 <GraduationCapIcon className="size-5" aria-hidden="true" />
               </span>
               <span className="text-xl">hakgyo</span>
@@ -71,7 +71,7 @@ export default async function AuthPage({
               Masuk untuk mengakses course, mengikuti materi, dan melanjutkan
               progres dari tempat terakhir.
             </p>
-            <div className="bg-card/80 border-primary/15 mt-12 rotate-[-2deg] rounded-2xl border p-5 shadow-[6px_6px_0_var(--border)] backdrop-blur-md">
+            <div className="bg-card/80 border-primary/15 mt-12 rotate-[-2deg] rounded-2xl border p-5 shadow-lg backdrop-blur-md">
               <p className="font-serif text-lg leading-8 italic">
                 “Pendidikan bukan persiapan untuk hidup; pendidikan adalah hidup
                 itu sendiri.”

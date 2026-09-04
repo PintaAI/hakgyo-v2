@@ -58,12 +58,12 @@ export default async function LearningCoursePage({
         <ArrowLeftIcon /> Dashboard
       </Link>
 
-      <section className="relative overflow-hidden rounded-lg bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-7 sm:py-8">
+      <section className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
         <div className="pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
         <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
         <div className="relative grid gap-8 md:grid-cols-[1fr_15rem] md:items-end">
           <div>
-            <span className="text-[11px] font-semibold tracking-[0.18em] text-[#aaa99f] uppercase">
+            <span className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
               <RouteIcon className="mr-1.5 inline size-3.5" />
               {course.progressionMode === "SEQUENTIAL"
                 ? "Belajar berurutan"
@@ -72,7 +72,7 @@ export default async function LearningCoursePage({
             <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
               {course.title}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#aaa99f]">
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               {completed === allItems.length && allItems.length
                 ? "Hebat, semua aktivitas di course ini sudah kamu selesaikan."
                 : "Bangun pemahaman sedikit demi sedikit. Progress kamu tersimpan otomatis."}
@@ -83,7 +83,7 @@ export default async function LearningCoursePage({
                   href={`/learn/${courseId}/items/${nextItem.id}`}
                   className={cn(
                     buttonVariants({ size: "lg" }),
-                    "bg-[#f5f3e9] text-[#171915] hover:bg-white",
+                    "bg-background text-foreground hover:bg-background",
                   )}
                 >
                   Lanjut: {nextItem.title} <ArrowRightIcon />
@@ -93,30 +93,30 @@ export default async function LearningCoursePage({
                 href={`hakgyo://courses/${encodeURIComponent(courseId)}`}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
-                  "border-white/25 bg-white/5 text-[#f5f3e9] hover:bg-white/10 hover:text-white",
+                  "border-background/25 bg-background/5 text-background hover:bg-background/10 hover:text-background",
                 )}
               >
                 <SmartphoneIcon /> Buka di aplikasi
               </a>
             </div>
           </div>
-          <div className="border-l border-white/15 pl-5">
+          <div className="border-l border-background/15 pl-5">
             <div className="flex items-end justify-between">
               <div>
                 <span className="text-3xl font-semibold tabular-nums">
                   {percent}%
                 </span>
-                <p className="mt-1 text-xs text-[#aaa99f]">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Progress keseluruhan
                 </p>
               </div>
-              <span className="text-xs text-[#aaa99f]">
+              <span className="text-xs text-muted-foreground">
                 {completed}/{allItems.length}
               </span>
             </div>
             <Progress
               value={percent}
-              className="mt-4 [&_[data-slot=progress-indicator]]:bg-[#f5f3e9] [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-white/20"
+              className="mt-4 [&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-background/20"
             />
           </div>
         </div>

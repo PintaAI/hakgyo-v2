@@ -267,7 +267,7 @@ export default function CourseDetailScreen() {
                       module.items.map((item, itemIndex) => (
                         <Pressable
                           className={`flex-row items-center gap-3 px-5 py-4 ${itemIndex > 0 ? "border-t border-border" : ""}`}
-                          disabled={locked || item.type !== "MATERIAL"}
+                          disabled={locked}
                           key={item.id}
                           onPress={() =>
                             router.push({
@@ -302,9 +302,7 @@ export default function CourseDetailScreen() {
                               ? "Done"
                               : locked
                                 ? "Locked"
-                                : item.type === "MATERIAL"
-                                  ? "Open"
-                                  : "Ready"}
+                                : "Open"}
                           </Text>
                         </Pressable>
                       ))

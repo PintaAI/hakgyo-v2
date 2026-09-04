@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -313,11 +314,10 @@ export function CohortInvites({
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="cohort-invite-expiry">Berlaku hingga</Label>
-                    <Input
+                    <DatePicker
                       id="cohort-invite-expiry"
-                      type="date"
                       value={expiresAt}
-                      onChange={(event) => setExpiresAt(event.target.value)}
+                      onChange={setExpiresAt}
                     />
                   </div>
                   <div className="space-y-2">

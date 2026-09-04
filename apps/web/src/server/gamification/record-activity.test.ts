@@ -42,10 +42,16 @@ describe("recordGamificationActivity", () => {
     const result = await recordGamificationActivity(tx, {
       action: "MATERIAL_COMPLETED",
       idempotencyKey: "content-completed:user-1:item-1",
+      organizationId: "organization-1",
       occurredAt: new Date("2026-08-29T12:00:00.000Z"),
       userId: "user-1",
     });
 
+    expect(createdEvents).toEqual([
+      expect.objectContaining({
+        data: [expect.objectContaining({ organizationId: "organization-1" })],
+      }),
+    ]);
     expect(result).toEqual({
       awarded: true,
       newAchievementCodes: ["FIRST_ACTIVITY", "STREAK_3"],
@@ -57,7 +63,6 @@ describe("recordGamificationActivity", () => {
       },
       xpAwarded: 20,
     });
-    expect(createdEvents).toHaveLength(1);
     expect(createdAchievements).toHaveLength(1);
   });
 
@@ -79,6 +84,7 @@ describe("recordGamificationActivity", () => {
     const result = await recordGamificationActivity(tx, {
       action: "MATERIAL_COMPLETED",
       idempotencyKey: "content-completed:user-1:item-1",
+      organizationId: "organization-1",
       userId: "user-1",
     });
 

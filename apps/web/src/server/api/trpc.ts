@@ -14,6 +14,7 @@ import { ZodError } from "zod";
 import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
 import { hasAuthenticatedActor } from "~/server/api/trpc-principal";
+import { getSuperadminUser } from "~/server/authorization/superadmin";
 
 /**
  * 1. CONTEXT
@@ -28,9 +29,19 @@ import { hasAuthenticatedActor } from "~/server/api/trpc-principal";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await auth.api.getSession({
+  const authSession = await auth.api.getSession({
     headers: opts.headers,
   });
+  const user = authSession
+    ? await db.user.findUnique({
+        where: { id: authSession.user.id },
+        select: { suspendedAt: true, deletedAt: true },
+      })
+    : null;
+  const session =
+    authSession && user && !user.suspendedAt && !user.deletedAt
+      ? authSession
+      : null;
   return {
     db,
     session,
@@ -151,3 +162,10 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+export const superadminProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    const user = await getSuperadminUser(ctx.actorUserId);
+    return next({ ctx: { superadmin: user } });
+  },
+);

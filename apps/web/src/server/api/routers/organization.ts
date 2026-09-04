@@ -8,6 +8,7 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
+import { generateOrganizationTheme } from "~/server/ai/organization-theme";
 import { fetchStats } from "~/server/foundation/fetch-stats";
 import { pageInput, pageResult } from "~/server/api/pagination";
 import {
@@ -489,6 +490,104 @@ export const organizationRouter = createTRPCRouter({
       }
     }),
 
+  generateTheme: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.actorUserId,
+      });
+      const organization = await ctx.db.organization.findUnique({
+        where: { id: input.organizationId },
+        select: { name: true, logoUrl: true },
+      });
+      if (!organization) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      if (!organization.logoUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Unggah logo organisasi sebelum membuat tema.",
+        });
+      }
+
+      try {
+        const theme = await generateOrganizationTheme({
+          logoUrl: organization.logoUrl,
+          organizationName: organization.name,
+        });
+        return await ctx.db.organization.update({
+          where: { id: input.organizationId },
+          data: { theme, themeEnabled: true },
+          select: { theme: true, themeEnabled: true, updatedAt: true },
+        });
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "OPENAI_API_KEY_MISSING"
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "OPENAI_API_KEY belum dikonfigurasi di server.",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "AI belum berhasil membuat tema. Silakan coba lagi.",
+          cause: error,
+        });
+      }
+    }),
+
+  setThemeEnabled: protectedProcedure
+    .input(
+      z.object({
+        organizationId: id,
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.actorUserId,
+      });
+      const organization = await ctx.db.organization.findUnique({
+        where: { id: input.organizationId },
+        select: { theme: true },
+      });
+      if (!organization) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      if (input.enabled && !organization.theme) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Buat tema organisasi terlebih dahulu.",
+        });
+      }
+      return ctx.db.organization.update({
+        where: { id: input.organizationId },
+        data: { themeEnabled: input.enabled },
+        select: { theme: true, themeEnabled: true, updatedAt: true },
+      });
+    }),
+
+  resetTheme: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.actorUserId,
+      });
+      return ctx.db.organization.update({
+        where: { id: input.organizationId },
+        data: { theme: Prisma.DbNull, themeEnabled: true },
+        select: { theme: true, themeEnabled: true, updatedAt: true },
+      });
+    }),
+
   getDashboardAnalytics: protectedProcedure
     .input(z.object({ organizationId: id }))
     .query(async ({ ctx, input }) => {
@@ -571,6 +670,29 @@ export const organizationRouter = createTRPCRouter({
           upcomingMeetings: stats.upcomingMeetings,
         },
       };
+    }),
+
+  getRecentActivity: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .query(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.actorUserId,
+      });
+
+      return ctx.db.userActivityEvent.findMany({
+        where: { organizationId: input.organizationId },
+        orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+        take: 10,
+        select: {
+          id: true,
+          action: true,
+          occurredAt: true,
+          xpAwarded: true,
+          user: { select: { name: true } },
+        },
+      });
     }),
 
   listMembers: protectedProcedure

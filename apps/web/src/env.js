@@ -32,6 +32,8 @@ export const env = createEnv({
       ),
     BETTER_AUTH_GOOGLE_CLIENT_ID: z.string(),
     BETTER_AUTH_GOOGLE_CLIENT_SECRET: z.string(),
+    SUPERADMIN_EMAILS: z.string().default(""),
+    OPENAI_API_KEY: z.string().min(1).optional(),
     DATABASE_URL: z.string().url(),
     DIRECT_URL: z.string().url(),
     CLOUDFLARE_R2_ENDPOINT: z.string().url(),
@@ -69,6 +71,8 @@ export const env = createEnv({
     BETTER_AUTH_GOOGLE_CLIENT_ID: process.env.BETTER_AUTH_GOOGLE_CLIENT_ID,
     BETTER_AUTH_GOOGLE_CLIENT_SECRET:
       process.env.BETTER_AUTH_GOOGLE_CLIENT_SECRET,
+    SUPERADMIN_EMAILS: process.env.SUPERADMIN_EMAILS,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     DATABASE_URL: process.env.DATABASE_URL,
     DIRECT_URL: process.env.DIRECT_URL,
     CLOUDFLARE_R2_ENDPOINT: process.env.CLOUDFLARE_R2_ENDPOINT,

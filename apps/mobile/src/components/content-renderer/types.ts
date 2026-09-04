@@ -24,6 +24,32 @@ export type InlineNode = InlineLinkNode | InlineTextNode;
 
 export type AssetUrlResolver = (assetId: string) => Promise<string | null>;
 
+export type ResourceReferenceData = {
+  vocabularySets: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    courseItemId: string | null;
+    entries: Array<{
+      id: string;
+      term: string;
+      definition: string;
+      examples: unknown;
+      audioAsset: { id: string; fileName: string } | null;
+      imageAsset: { id: string; fileName: string } | null;
+    }>;
+  }>;
+  assessments: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    questionCount: number;
+    courseItemId: string | null;
+  }>;
+};
+
+export type ResourceReferenceType = "assessment" | "vocabulary";
+
 export type BlockRendererProps = {
   block: ContentBlock;
   depth: number;
@@ -37,6 +63,12 @@ export type NativeContentRendererProps = {
   content: unknown;
   emptyState?: ReactNode;
   onOpenUrl?: (url: string) => void | Promise<void>;
+  onOpenResource?: (
+    type: ResourceReferenceType,
+    resourceId: string,
+    courseItemId: string | null,
+  ) => void;
   renderers?: Readonly<Record<string, ContentBlockRenderer>>;
+  resourceReferences?: ResourceReferenceData;
   resolveAssetUrl?: AssetUrlResolver;
 };

@@ -236,7 +236,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
         )}
 
         <button
-          className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-ring flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 font-black shadow-[3px_3px_0_var(--foreground)] transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-ring flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 font-black shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
           disabled={submitting}
           type="submit"
         >

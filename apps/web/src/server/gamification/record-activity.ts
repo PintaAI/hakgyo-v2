@@ -13,6 +13,7 @@ type RecordActivityInput = {
   action: GamificationAction;
   idempotencyKey: string;
   metadata?: Prisma.InputJsonValue;
+  organizationId: string;
   occurredAt?: Date;
   userId: string;
 };
@@ -39,6 +40,7 @@ export async function recordGamificationActivity(
         contributesToStreak: reward.contributesToStreak,
         idempotencyKey: input.idempotencyKey,
         metadata: input.metadata,
+        organizationId: input.organizationId,
         occurredAt,
         userId: input.userId,
         xpAwarded: reward.xp,

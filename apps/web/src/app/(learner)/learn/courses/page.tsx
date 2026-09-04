@@ -169,7 +169,7 @@ export default async function LearningCoursesPage() {
       </section>
 
       {active ? (
-        <section className="relative overflow-hidden rounded-lg bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-7 sm:py-8">
+        <section className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
           {active.thumbnailUrl ? (
             <Image
               src={active.thumbnailUrl}
@@ -186,13 +186,13 @@ export default async function LearningCoursesPage() {
           <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
           <div className="relative grid gap-8 md:grid-cols-[1fr_14rem] md:items-end">
             <div className="min-w-0">
-              <span className="text-[11px] font-semibold tracking-[0.18em] text-[#aaa99f] uppercase">
+              <span className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
                 Lanjutkan belajar · {active.organization.name}
               </span>
               <h2 className="mt-4 max-w-3xl font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
                 {active.title}
               </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#aaa99f]">
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                 {active.nextItem
                   ? `${active.nextModule?.title} · ${active.nextItem.title}`
                   : "Semua aktivitas pada course ini telah diselesaikan."}
@@ -205,7 +205,7 @@ export default async function LearningCoursesPage() {
                 }
                 className={cn(
                   buttonVariants(),
-                  "mt-6 bg-[#f5f3e9] text-[#171915] hover:bg-white",
+                  "mt-6 bg-background text-foreground hover:bg-background",
                 )}
               >
                 {active.nextItem ? "Lanjutkan aktivitas" : "Lihat course"}
@@ -217,14 +217,14 @@ export default async function LearningCoursesPage() {
                 <span className="font-[family-name:var(--font-hanken-grotesk)] text-4xl font-medium tabular-nums">
                   {active.percent}%
                 </span>
-                <span className="text-xs text-[#aaa99f]">
+                <span className="text-xs text-muted-foreground">
                   {active.completed}/{active.items.length}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-[#aaa99f]">Progress course</p>
+              <p className="mt-1 text-xs text-muted-foreground">Progress course</p>
               <Progress
                 value={active.percent}
-                className="mt-4 [&_[data-slot=progress-indicator]]:bg-[#f5f3e9] [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-white/20"
+                className="mt-4 [&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-background/20"
               />
             </div>
           </div>

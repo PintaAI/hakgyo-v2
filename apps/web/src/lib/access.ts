@@ -33,6 +33,7 @@ export const routeAccess = {
     "/onboarding",
     "/organizations",
     "/workspace",
+    "/superadmin",
   ],
   workspace: {
     defaultRoles: allOrganizationRoles,

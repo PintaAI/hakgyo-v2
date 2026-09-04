@@ -29,5 +29,6 @@ export const config = {
     "/onboarding",
     "/organizations/:path*",
     "/workspace/:path*",
+    "/superadmin/:path*",
   ],
 };

@@ -76,7 +76,7 @@ export const calloutBlock = createReactBlockSpec(
           >
             <button
               aria-label="Ubah nada callout"
-              className="mt-0.5 flex h-fit items-center gap-1.5 rounded-md px-1 py-0.5 text-xs font-bold tracking-wide uppercase transition hover:bg-black/5 dark:hover:bg-white/10"
+              className="mt-0.5 flex h-fit items-center gap-1.5 rounded-md px-1 py-0.5 text-xs font-bold tracking-wide uppercase transition hover:bg-foreground/5 dark:hover:bg-background/10"
               contentEditable={false}
               disabled={!editor.isEditable}
               onClick={() =>

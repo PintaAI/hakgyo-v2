@@ -23,6 +23,7 @@ import {
   organizationLogoContentTypes,
   parseOrganizationLogoKey,
 } from "~/lib/organization-logo";
+import { hasImageSignature } from "~/lib/image-signature";
 import {
   createProfileImageKey,
   getManagedProfileImageKey,
@@ -65,6 +66,74 @@ const getExpectedSize = (key: string) => {
 
   return expectedSize;
 };
+
+async function removeObject(key: string) {
+  try {
+    await r2.send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }));
+  } catch (error) {
+    console.error("Failed to remove rejected upload", error);
+  }
+}
+
+async function validateOrganizationLogoObject(
+  key: string,
+  expectedSize: number,
+  expectedContentType: string,
+) {
+  let object;
+  try {
+    object = await r2.send(
+      new HeadObjectCommand({ Bucket: r2Bucket, Key: key }),
+    );
+  } catch (cause) {
+    const status = (cause as { $metadata?: { httpStatusCode?: number } })
+      .$metadata?.httpStatusCode;
+    throw new TRPCError({
+      code: status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
+      message: status === 404 ? "Uploaded logo was not found" : undefined,
+      cause,
+    });
+  }
+
+  if (
+    object.ContentLength !== expectedSize ||
+    object.ContentType !== expectedContentType
+  ) {
+    await removeObject(key);
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Uploaded logo does not match the signed request",
+    });
+  }
+
+  let headerBytes: Uint8Array;
+  try {
+    const headerObject = await r2.send(
+      new GetObjectCommand({
+        Bucket: r2Bucket,
+        Key: key,
+        Range: "bytes=0-15",
+      }),
+    );
+    if (!headerObject.Body) throw new Error("Uploaded logo has no body");
+    headerBytes = await headerObject.Body.transformToByteArray();
+  } catch (cause) {
+    await removeObject(key);
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Uploaded logo could not be validated",
+      cause,
+    });
+  }
+
+  if (!hasImageSignature(headerBytes, expectedContentType)) {
+    await removeObject(key);
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Uploaded file is not a valid organization logo",
+    });
+  }
+}
 
 export const storageRouter = createTRPCRouter({
   createCourseThumbnailUploadUrl: protectedProcedure
@@ -362,33 +431,11 @@ export const storageRouter = createTRPCRouter({
         });
       }
 
-      let object;
-      try {
-        object = await r2.send(
-          new HeadObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-        );
-      } catch (cause) {
-        const status = (cause as { $metadata?: { httpStatusCode?: number } })
-          .$metadata?.httpStatusCode;
-        throw new TRPCError({
-          code: status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
-          message: status === 404 ? "Uploaded logo was not found" : undefined,
-          cause,
-        });
-      }
-
-      if (
-        object.ContentLength !== parsed.size ||
-        object.ContentType !== parsed.contentType
-      ) {
-        await r2.send(
-          new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-        );
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Uploaded logo does not match the signed request",
-        });
-      }
+      await validateOrganizationLogoObject(
+        input.key,
+        parsed.size,
+        parsed.contentType,
+      );
 
       const organization = await db.organization.findUniqueOrThrow({
         where: { id: input.organizationId },

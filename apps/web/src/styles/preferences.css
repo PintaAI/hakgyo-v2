@@ -1,5 +1,87 @@
 /* Hakgyo app preferences — runtime token overrides via data attributes */
-/* Injected by apps/web/src/components/app-settings.tsx via document.documentElement.dataset */
+/* Injected by apps/web/src/components/app-settings.tsx via document.documentElement */
+
+:root[data-app-background="generated"] {
+  --background: var(--app-background-light);
+  --card: var(--app-card-light);
+  --popover: var(--app-card-light);
+  --sidebar: var(--app-sidebar-light);
+  --sidebar-accent: color-mix(
+    in oklch,
+    var(--app-sidebar-light) 92%,
+    var(--foreground)
+  );
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: color-mix(
+    in oklch,
+    var(--app-sidebar-light) 84%,
+    var(--foreground)
+  );
+  --sidebar-ring: var(--primary);
+}
+
+:root.dark[data-app-background="generated"] {
+  --background: var(--app-background-dark);
+  --card: var(--app-card-dark);
+  --popover: var(--app-card-dark);
+  --sidebar: var(--app-sidebar-dark);
+  --sidebar-accent: color-mix(
+    in oklch,
+    var(--app-sidebar-dark) 90%,
+    var(--foreground)
+  );
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: color-mix(
+    in oklch,
+    var(--app-sidebar-dark) 82%,
+    var(--foreground)
+  );
+  --sidebar-ring: var(--primary);
+}
+
+:root[data-app-foreground="generated"] {
+  --foreground: var(--app-foreground-light);
+  --card-foreground: var(--app-foreground-light);
+  --popover-foreground: var(--app-foreground-light);
+  --secondary-foreground: var(--app-foreground-light);
+  --accent-foreground: var(--app-foreground-light);
+  --sidebar-foreground: var(--app-foreground-light);
+  --muted-foreground: color-mix(
+    in oklch,
+    var(--app-foreground-light) 68%,
+    transparent
+  );
+}
+
+:root.dark[data-app-foreground="generated"] {
+  --foreground: var(--app-foreground-dark);
+  --card-foreground: var(--app-foreground-dark);
+  --popover-foreground: var(--app-foreground-dark);
+  --secondary-foreground: var(--app-foreground-dark);
+  --accent-foreground: var(--app-foreground-dark);
+  --sidebar-foreground: var(--app-foreground-dark);
+  --muted-foreground: color-mix(
+    in oklch,
+    var(--app-foreground-dark) 68%,
+    transparent
+  );
+}
+
+:root[data-app-color="generated"] {
+  --primary: var(--app-primary-light);
+  --primary-foreground: var(--app-primary-foreground-light);
+  --ring: var(--app-primary-light);
+  --sidebar-primary: var(--app-primary-light);
+  --sidebar-primary-foreground: var(--app-primary-foreground-light);
+}
+
+:root.dark[data-app-color="generated"] {
+  --primary: var(--app-primary-dark);
+  --primary-foreground: var(--app-primary-foreground-dark);
+  --ring: var(--app-primary-dark);
+  --sidebar-primary: var(--app-primary-dark);
+  --sidebar-primary-foreground: var(--app-primary-foreground-dark);
+}
 
 :root[data-app-font="inter"] {
   --app-font-family: var(--font-inter), ui-sans-serif, sans-serif;
@@ -47,44 +129,13 @@
   --radius: 1rem;
 }
 
-:root[data-app-color="blue"] {
-  --primary: oklch(0.55 0.2 255);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.62 0.17 255);
-  --sidebar-primary: oklch(0.55 0.2 255);
-}
-
-:root[data-app-color="green"] {
-  --primary: oklch(0.53 0.15 155);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.62 0.13 155);
-  --sidebar-primary: oklch(0.53 0.15 155);
-}
-
-:root[data-app-color="orange"] {
-  --primary: oklch(0.62 0.2 45);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.68 0.16 45);
-  --sidebar-primary: oklch(0.62 0.2 45);
-}
-
-:root.dark[data-app-color="blue"] {
-  --primary: oklch(0.7 0.15 250);
-  --primary-foreground: oklch(0.16 0.03 250);
-  --ring: oklch(0.62 0.17 250);
-  --sidebar-primary: oklch(0.7 0.15 250);
-}
-
-:root.dark[data-app-color="green"] {
-  --primary: oklch(0.72 0.15 155);
-  --primary-foreground: oklch(0.15 0.03 155);
-  --ring: oklch(0.62 0.13 155);
-  --sidebar-primary: oklch(0.72 0.15 155);
-}
-
-:root.dark[data-app-color="orange"] {
-  --primary: oklch(0.75 0.17 55);
-  --primary-foreground: oklch(0.18 0.03 45);
-  --ring: oklch(0.68 0.16 55);
-  --sidebar-primary: oklch(0.75 0.17 55);
+:root[data-app-shadow="custom"] {
+  --shadow-2xs: var(--app-shadow-2xs);
+  --shadow-xs: var(--app-shadow-xs);
+  --shadow-sm: var(--app-shadow-sm);
+  --shadow-md: var(--app-shadow-md);
+  --shadow-lg: var(--app-shadow-lg);
+  --shadow-xl: var(--app-shadow-xl);
+  --shadow-2xl: var(--app-shadow-2xl);
+  --shadow: var(--app-shadow-sm);
 }

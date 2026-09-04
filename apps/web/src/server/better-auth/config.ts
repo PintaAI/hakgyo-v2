@@ -29,6 +29,21 @@ export const auth = betterAuth({
         },
       },
     },
+    session: {
+      create: {
+        before: async (session) => {
+          const user = await db.user.findUnique({
+            where: { id: session.userId },
+            select: { suspendedAt: true, deletedAt: true },
+          });
+          if (user?.suspendedAt || user?.deletedAt) {
+            throw new APIError("FORBIDDEN", {
+              message: "This account is not active",
+            });
+          }
+        },
+      },
+    },
   },
   emailAndPassword: {
     enabled: true,

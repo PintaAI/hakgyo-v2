@@ -22,3 +22,4 @@ client_secret_*.json
 
 # generated (prisma generate output)
 generated/
+.vercel

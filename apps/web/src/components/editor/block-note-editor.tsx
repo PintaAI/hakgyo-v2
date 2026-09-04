@@ -22,10 +22,13 @@ import {
   LayoutTemplateIcon,
   LightbulbIcon,
   MessagesSquareIcon,
+  NotebookTabsIcon,
+  ClipboardCheckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  assessmentReferenceBlockType,
   assetAudioBlockType,
   assetImageBlockType,
   calloutBlockType,
@@ -33,6 +36,7 @@ import {
   cultureBlockType,
   grammarBlockType,
   lessonPageBlockType,
+  vocabularyReferenceBlockType,
 } from "~/lib/blocknote/block-catalog";
 
 import {
@@ -49,6 +53,10 @@ import {
 import { DynamicLearnerBlockNoteDocument } from "./dynamic-learner-block-note-document";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
 import { api } from "~/trpc/react";
+import {
+  ResourceReferenceProvider,
+  type EditorResourceLibrary,
+} from "./resource-reference-context";
 
 const assetUrlPrefix = "hakgyo-asset:";
 
@@ -106,6 +114,7 @@ export type BlockNoteEditorProps = {
   onChange?: (document: BlockNoteDocument) => void;
   theme?: "light" | "dark";
   assetStorage?: EditorAssetStorageOptions;
+  resourceLibrary?: EditorResourceLibrary;
 };
 
 export function BlockNoteEditor({
@@ -116,6 +125,7 @@ export function BlockNoteEditor({
   onChange,
   theme = "light",
   assetStorage,
+  resourceLibrary,
 }: BlockNoteEditorProps) {
   const [previewBlock, setPreviewBlock] = useState<HakgyoBlock | null>(null);
   const utils = api.useUtils();
@@ -271,6 +281,33 @@ export function BlockNoteEditor({
           type: cultureBlockType,
         }),
     },
+    ...(resourceLibrary
+      ? [
+          {
+            title: "Vocabulary set",
+            subtext:
+              "Tampilkan kosakata live dari library dan tautkan latihan hafalan.",
+            aliases: ["vocabulary", "vocab", "kosakata", "어휘"],
+            group: "Blok Hakgyo",
+            icon: <NotebookTabsIcon className="size-4" />,
+            onItemClick: () =>
+              insertOrUpdateBlockForSlashMenu(editor, {
+                type: vocabularyReferenceBlockType,
+              }),
+          },
+          {
+            title: "Assessment",
+            subtext: "Tampilkan ringkasan assessment live dan tombol mulai.",
+            aliases: ["assessment", "quiz", "test", "ujian", "penilaian"],
+            group: "Blok Hakgyo",
+            icon: <ClipboardCheckIcon className="size-4" />,
+            onItemClick: () =>
+              insertOrUpdateBlockForSlashMenu(editor, {
+                type: assessmentReferenceBlockType,
+              }),
+          },
+        ]
+      : []),
     {
       title: "Callout",
       subtext: "Sorot catatan, tip, peringatan, atau poin penting.",
@@ -314,59 +351,61 @@ export function BlockNoteEditor({
   ];
 
   return (
-    <BlockPreviewProvider
-      previewBlock={(block) => setPreviewBlock(block as HakgyoBlock)}
-    >
-      <AssetUploadProvider
-        value={
-          uploadAsset ? { upload: uploadAsset, remove: removeAsset } : null
-        }
+    <ResourceReferenceProvider editorLibrary={resourceLibrary}>
+      <BlockPreviewProvider
+        previewBlock={(block) => setPreviewBlock(block as HakgyoBlock)}
       >
-        <BlockNoteView
-          autoFocus={autoFocus}
-          editable={editable}
-          editor={editor}
-          onChange={() => {
-            const currentAssetIds = collectAssetIds(editor.document);
-            if (removeAsset) {
-              for (const assetId of assetIdsRef.current) {
-                if (!currentAssetIds.has(assetId)) {
-                  void removeAsset(assetId).catch(() =>
-                    toast.error("File gagal dihapus dari penyimpanan."),
-                  );
+        <AssetUploadProvider
+          value={
+            uploadAsset ? { upload: uploadAsset, remove: removeAsset } : null
+          }
+        >
+          <BlockNoteView
+            autoFocus={autoFocus}
+            editable={editable}
+            editor={editor}
+            onChange={() => {
+              const currentAssetIds = collectAssetIds(editor.document);
+              if (removeAsset) {
+                for (const assetId of assetIdsRef.current) {
+                  if (!currentAssetIds.has(assetId)) {
+                    void removeAsset(assetId).catch(() =>
+                      toast.error("File gagal dihapus dari penyimpanan."),
+                    );
+                  }
                 }
               }
-            }
-            assetIdsRef.current = currentAssetIds;
-            onChange?.(editor.document);
-          }}
-          slashMenu={false}
-          theme={theme}
-        >
-          <SuggestionMenuController
-            getItems={async (query) =>
-              filterSuggestionItems(slashMenuItems(editor), query)
-            }
-            triggerCharacter="/"
-          />
-        </BlockNoteView>
-      </AssetUploadProvider>
-
-      <Dialog
-        onOpenChange={(open) => {
-          if (!open) setPreviewBlock(null);
-        }}
-        open={previewBlock !== null}
-      >
-        <DialogContent className="bg-background h-[min(52rem,calc(100svh-2rem))] gap-0 overflow-y-auto p-0 sm:max-w-5xl">
-          {previewBlock ? (
-            <DynamicLearnerBlockNoteDocument
-              content={[previewBlock]}
-              theme={theme}
+              assetIdsRef.current = currentAssetIds;
+              onChange?.(editor.document);
+            }}
+            slashMenu={false}
+            theme={theme}
+          >
+            <SuggestionMenuController
+              getItems={async (query) =>
+                filterSuggestionItems(slashMenuItems(editor), query)
+              }
+              triggerCharacter="/"
             />
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </BlockPreviewProvider>
+          </BlockNoteView>
+        </AssetUploadProvider>
+
+        <Dialog
+          onOpenChange={(open) => {
+            if (!open) setPreviewBlock(null);
+          }}
+          open={previewBlock !== null}
+        >
+          <DialogContent className="bg-background h-[min(52rem,calc(100svh-2rem))] gap-0 overflow-y-auto p-0 sm:max-w-5xl">
+            {previewBlock ? (
+              <DynamicLearnerBlockNoteDocument
+                content={[previewBlock]}
+                theme={theme}
+              />
+            ) : null}
+          </DialogContent>
+        </Dialog>
+      </BlockPreviewProvider>
+    </ResourceReferenceProvider>
   );
 }

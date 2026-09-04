@@ -188,6 +188,7 @@ export function MaterialEditor({
       saveLabel={attachTo ? "Simpan dan tambahkan" : undefined}
       theme={resolvedTheme === "dark" ? "dark" : "light"}
       assetStorage={assetStorage}
+      resourceLibrary={{ organizationId, organizationSlug }}
       onBack={() => router.back()}
       onDelete={async () => {
         if (!materialId) return;
@@ -276,6 +277,7 @@ function MaterialEditorForm({
   saveLabel,
   theme,
   assetStorage,
+  resourceLibrary,
   onBack,
   onDelete,
   onSave,
@@ -292,6 +294,10 @@ function MaterialEditorForm({
   saveLabel?: string;
   theme: "light" | "dark";
   assetStorage: EditorAssetStorageOptions;
+  resourceLibrary: {
+    organizationId: string;
+    organizationSlug: string;
+  };
   onBack: () => void;
   onDelete: () => Promise<void>;
   onSave: (value: {
@@ -396,7 +402,7 @@ function MaterialEditorForm({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-        <section className="min-w-0 overflow-hidden rounded-xl border bg-white shadow-xs dark:bg-[#1f1f1f]">
+        <section className="bg-card min-w-0 overflow-hidden rounded-xl border shadow-xs">
           <div className="border-b px-5 py-4">
             <h2 className="font-heading font-semibold">Konten pelajaran</h2>
             <p className="text-muted-foreground text-sm">
@@ -413,6 +419,7 @@ function MaterialEditorForm({
               onChange={setContent}
               theme={theme}
               assetStorage={assetStorage}
+              resourceLibrary={resourceLibrary}
             />
           </div>
         </section>

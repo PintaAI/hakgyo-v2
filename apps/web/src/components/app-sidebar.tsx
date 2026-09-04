@@ -172,6 +172,7 @@ export function AppSidebar({
   role,
   recentCourses,
   cohortShortcuts,
+  showSuperadmin,
   ...props
 }: ComponentProps<typeof Sidebar> & {
   organizationSlug: string;
@@ -187,6 +188,7 @@ export function AppSidebar({
     name: string;
     course: { id: string; title: string; thumbnailUrl: string | null };
   }>;
+  showSuperadmin: boolean;
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
@@ -411,6 +413,36 @@ export function AppSidebar({
                     </SidebarMenuItem>
                   );
                 })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
+        {showSuperadmin ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>System</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isRouteActive(pathname, {
+                      title: "Superadmin",
+                      href: "/superadmin",
+                    })}
+                    tooltip="Superadmin"
+                    render={
+                      <Link
+                        href="/superadmin"
+                        aria-current={
+                          pathname === "/superadmin" ? "page" : undefined
+                        }
+                        onClick={closeMobileSidebar}
+                      />
+                    }
+                  >
+                    <CrownIcon />
+                    <span>Superadmin</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

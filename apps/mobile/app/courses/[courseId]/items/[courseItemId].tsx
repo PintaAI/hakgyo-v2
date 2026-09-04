@@ -1,5 +1,5 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -38,8 +38,19 @@ export default function CourseItemScreen() {
     { enabled: Boolean(session && courseItemId), retry: false },
   );
   const markProgress = api.learning.markContentProgress.useMutation();
+  const assessmentQuery = api.assessment.getForCourseItem.useQuery(
+    { courseItemId },
+    {
+      enabled: Boolean(session && courseItemId && itemQuery.data?.assessment),
+      retry: false,
+    },
+  );
+  const startAssessment = api.assessment.startAttempt.useMutation();
+  const [selectedCohortId, setSelectedCohortId] = useState<string>();
   const item = itemQuery.data;
   const material = item?.material;
+  const vocabulary = item?.vocabularySet;
+  const assessment = assessmentQuery.data;
   const completed = item?.progress[0]?.status === "COMPLETED";
 
   useEffect(() => {
@@ -54,12 +65,12 @@ export default function CourseItemScreen() {
   }, [courseId, courseItemId, isSessionPending, session]);
 
   useEffect(() => {
-    if (material && item && item.progress.length === 0) {
+    if ((material || vocabulary) && item && item.progress.length === 0) {
       markProgress.mutate({ courseItemId, status: "IN_PROGRESS" });
     }
     // Progress creation is idempotent and should run only when the item loads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseItemId, item?.id, item?.progress.length, material]);
+  }, [courseItemId, item?.id, item?.progress.length, material, vocabulary]);
 
   async function completeMaterial() {
     try {
@@ -77,10 +88,31 @@ export default function CourseItemScreen() {
     }
   }
 
+  async function beginAssessment() {
+    if (!assessment) return;
+    const cohorts = assessment.eligibleCohorts;
+    const cohortId =
+      cohorts.length === 1 ? cohorts[0]?.id : selectedCohortId;
+    try {
+      const attempt = await startAssessment.mutateAsync({
+        courseItemId,
+        cohortId,
+      });
+      router.push({
+        pathname:
+          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+        params: { courseId, courseItemId, attemptId: attempt.id },
+      });
+    } catch {
+      // The mutation error is shown next to the action.
+    }
+  }
+
   const loading =
     isSessionPending ||
     (!session && Boolean(courseItemId)) ||
-    itemQuery.isPending;
+    itemQuery.isPending ||
+    (Boolean(item?.assessment) && assessmentQuery.isPending);
 
   return (
     <>
@@ -90,7 +122,11 @@ export default function CourseItemScreen() {
           headerBackButtonDisplayMode:
             Platform.OS === "ios" ? "minimal" : undefined,
           headerShadowVisible: false,
-          headerTitle: material?.title ?? "Material",
+          headerTitle:
+            material?.title ??
+            vocabulary?.title ??
+            item?.assessment?.title ??
+            "Learning activity",
           headerLargeTitle: false,
           headerStyle: {
             backgroundColor:
@@ -110,13 +146,13 @@ export default function CourseItemScreen() {
             Loading material…
           </Text>
         </View>
-      ) : itemQuery.isError || !item || !material ? (
+      ) : itemQuery.isError || !item ? (
         <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
           <Text className="text-xl font-black text-foreground">
             Material unavailable
           </Text>
           <Text className="text-center text-sm leading-5 text-muted-foreground">
-            This activity is unavailable or is not a material lesson.
+            This activity is unavailable or you no longer have access.
           </Text>
           <Pressable
             className="rounded-full border border-border px-5 py-3"
@@ -124,6 +160,127 @@ export default function CourseItemScreen() {
           >
             <Text className="font-bold text-foreground">Go back</Text>
           </Pressable>
+        </View>
+      ) : item.assessment ? (
+        assessment ? (
+          <ScrollView
+            className="flex-1 bg-background"
+            contentContainerClassName="gap-6 px-5 pb-14 pt-4"
+            contentInsetAdjustmentBehavior="automatic"
+          >
+            <View className="gap-4 rounded-xl border border-border bg-card p-6">
+              <View className="size-12 items-center justify-center rounded-xl bg-primary/10">
+                <Text className="text-xl font-black text-primary">A</Text>
+              </View>
+              <View className="gap-2">
+                <Text className="text-xs font-black uppercase tracking-[2px] text-muted-foreground">
+                  Assessment · {assessment.questions.length} questions
+                </Text>
+                <Text className="text-3xl font-black leading-10 tracking-tight text-foreground">
+                  {assessment.title}
+                </Text>
+                {assessment.description ? (
+                  <Text className="text-sm leading-6 text-muted-foreground">
+                    {assessment.description}
+                  </Text>
+                ) : null}
+              </View>
+              {assessment.eligibleCohorts.length > 1 ? (
+                <View className="gap-2 border-t border-border pt-4">
+                  <Text className="text-sm font-bold text-foreground">
+                    Choose study group
+                  </Text>
+                  {assessment.eligibleCohorts.map((cohort) => (
+                    <Pressable
+                      className={`rounded-xl border px-4 py-3 ${selectedCohortId === cohort.id ? "border-primary bg-primary/10" : "border-border"}`}
+                      key={cohort.id}
+                      onPress={() => setSelectedCohortId(cohort.id)}
+                    >
+                      <Text className="font-bold text-foreground">
+                        {cohort.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                className="items-center rounded-full bg-primary px-5 py-4 disabled:opacity-50"
+                disabled={
+                  startAssessment.isPending ||
+                  assessment.questions.length === 0 ||
+                  (assessment.eligibleCohorts.length > 1 && !selectedCohortId)
+                }
+                onPress={() => void beginAssessment()}
+              >
+                <Text className="font-black text-primary-foreground">
+                  {startAssessment.isPending ? "Starting…" : "Start assessment"}
+                </Text>
+              </Pressable>
+              {startAssessment.isError ? (
+                <Text className="text-center text-sm text-destructive">
+                  {startAssessment.error.message}
+                </Text>
+              ) : null}
+            </View>
+          </ScrollView>
+        ) : (
+          <View className="flex-1 items-center justify-center bg-background px-6">
+            <Text className="text-center text-sm text-destructive">
+              Assessment unavailable.
+            </Text>
+          </View>
+        )
+      ) : vocabulary ? (
+        <ScrollView
+          className="flex-1 bg-background"
+          contentContainerClassName="gap-5 px-5 pb-14 pt-4"
+          contentInsetAdjustmentBehavior="automatic"
+        >
+          <View className="gap-2 border-b border-border pb-6">
+            <Text className="text-xs font-black uppercase tracking-[2px] text-primary">
+              Vocabulary · {vocabulary.entries.length} words
+            </Text>
+            <Text className="text-3xl font-black leading-10 tracking-tight text-foreground">
+              {vocabulary.title}
+            </Text>
+            {vocabulary.description ? (
+              <Text className="text-sm leading-6 text-muted-foreground">
+                {vocabulary.description}
+              </Text>
+            ) : null}
+          </View>
+          {vocabulary.entries.map((entry) => (
+            <View
+              className="gap-1 rounded-xl border border-border bg-card p-5"
+              key={entry.id}
+            >
+              <Text className="text-lg font-black text-foreground">
+                {entry.term}
+              </Text>
+              <Text className="text-sm leading-6 text-muted-foreground">
+                {entry.definition}
+              </Text>
+            </View>
+          ))}
+          <Pressable
+            accessibilityRole="button"
+            className={`items-center rounded-full px-5 py-4 ${completed ? "bg-muted" : "bg-primary"}`}
+            disabled={completed || markProgress.isPending}
+            onPress={() => void completeMaterial()}
+          >
+            <Text
+              className={`font-black ${completed ? "text-muted-foreground" : "text-primary-foreground"}`}
+            >
+              {completed ? "Vocabulary completed" : "Mark as completed"}
+            </Text>
+          </Pressable>
+        </ScrollView>
+      ) : !material ? (
+        <View className="flex-1 items-center justify-center bg-background px-6">
+          <Text className="text-center text-sm text-muted-foreground">
+            This activity is not available in the mobile app yet.
+          </Text>
         </View>
       ) : (
         <ScrollView
@@ -147,7 +304,27 @@ export default function CourseItemScreen() {
 
           <NativeContentRenderer
             content={material.content}
+            resourceReferences={item.embeddedResources}
             resolveAssetUrl={resolveAssetUrl}
+            onOpenResource={(type, resourceId, targetCourseItemId) => {
+              if (type === "vocabulary") {
+                router.push({
+                  pathname: "/vocabulary/[vocabularySetId]",
+                  params: {
+                    vocabularySetId: resourceId,
+                    sourceCourseItemId: courseItemId,
+                    courseId,
+                  },
+                });
+                return;
+              }
+              if (targetCourseItemId) {
+                router.push({
+                  pathname: "/courses/[courseId]/items/[courseItemId]",
+                  params: { courseId, courseItemId: targetCourseItemId },
+                });
+              }
+            }}
           />
 
           <Pressable

@@ -2,28 +2,30 @@
 
 import {
   useDeferredValue,
-  useEffect,
-  useRef,
   useState,
   type FormEvent,
   type ReactNode,
 } from "react";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArchiveIcon,
+  ArrowDownAZIcon,
+  ArrowDownIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
+  ArrowUpIcon,
   CalendarDaysIcon,
   CheckIcon,
   ClipboardIcon,
+  ClockIcon,
   CrownIcon,
   FilePenLineIcon,
-  ImageIcon,
   Layers3Icon,
   LayoutDashboardIcon,
   LinkIcon,
+  ListFilterIcon,
   LoaderCircleIcon,
   MailPlusIcon,
   MoreHorizontalIcon,
@@ -32,7 +34,6 @@ import {
   Settings2Icon,
   ShieldCheckIcon,
   Trash2Icon,
-  UploadIcon,
   UserPlusIcon,
   UserRoundCheckIcon,
   UsersIcon,
@@ -51,7 +52,13 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import {
@@ -70,8 +77,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
+import { ImageUpload } from "~/components/ui/image-upload";
 import { Label } from "~/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -100,6 +116,10 @@ type CourseWorkspaceData = RouterOutputs["course"]["getWorkspaceOverview"];
 type Course = CourseWorkspaceData["course"];
 type Enrollment =
   RouterOutputs["enrollment"]["listCourseEnrollments"]["items"][number];
+type Cohort = RouterOutputs["cohort"]["list"]["items"][number];
+type CohortStatus = Cohort["status"];
+type CohortSort = "updatedAt" | "createdAt" | "name";
+type SortDirection = "asc" | "desc";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -162,6 +182,34 @@ function getInitials(name: string) {
     .map((part) => part[0])
     .join("")
     .toUpperCase();
+}
+
+function LearnerAvatarStack({
+  learners,
+  total,
+}: {
+  learners: RouterOutputs["cohort"]["list"]["items"][number]["learnerPreview"];
+  total: number;
+}) {
+  const remaining = Math.max(total - learners.length, 0);
+
+  return (
+    <AvatarGroup aria-label={`${total} peserta`}>
+      {learners.map((learner) => (
+        <Avatar key={learner.id} size="sm" title={learner.name}>
+          {learner.image ? (
+            <AvatarImage src={learner.image} alt={learner.name} />
+          ) : null}
+          <AvatarFallback>{getInitials(learner.name)}</AvatarFallback>
+        </Avatar>
+      ))}
+      {remaining > 0 ? (
+        <AvatarGroupCount className="text-[0.65rem] font-medium">
+          +{remaining}
+        </AvatarGroupCount>
+      ) : null}
+    </AvatarGroup>
+  );
 }
 
 function SectionEmpty({
@@ -267,6 +315,14 @@ export function CourseWorkspace({
   const deferredLearnerSearch = useDeferredValue(
     learnerSearch.trim().toLowerCase(),
   );
+  const [cohortSearch, setCohortSearch] = useState("");
+  const [appliedCohortSearch, setAppliedCohortSearch] = useState("");
+  const [cohortStatusFilter, setCohortStatusFilter] = useState<
+    CohortStatus | "ALL"
+  >("ALL");
+  const [cohortSort, setCohortSort] = useState<CohortSort>("updatedAt");
+  const [cohortSortDirection, setCohortSortDirection] =
+    useState<SortDirection>("desc");
 
   function navigate(nextView: CourseView) {
     if (nextView === view) return;
@@ -278,7 +334,13 @@ export function CourseWorkspace({
   }
 
   const cohorts = api.cohort.list.useInfiniteQuery(
-    { courseId: course.id },
+    {
+      courseId: course.id,
+      search: appliedCohortSearch || undefined,
+      status: cohortStatusFilter === "ALL" ? undefined : cohortStatusFilter,
+      sort: cohortSort,
+      sortDirection: cohortSortDirection,
+    },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       enabled: canViewCohorts && (view === "cohorts" || view === "invites"),
@@ -349,7 +411,7 @@ export function CourseWorkspace({
         Semua courses
       </Link>
 
-      <header className="relative overflow-hidden rounded-lg bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-7 sm:py-8">
+      <header className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
         {course.thumbnailUrl ? (
           <Image
             src={course.thumbnailUrl}
@@ -367,12 +429,12 @@ export function CourseWorkspace({
         <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold tracking-[0.18em] text-[#aaa99f] uppercase dark:text-[#5f605a]">
+              <span className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase dark:text-muted-foreground">
                 Workspace course
               </span>
               <Badge
                 variant={courseStatus[course.status].variant}
-                className="border-white/20"
+                className="border-background/20"
               >
                 {courseStatus[course.status].label}
               </Badge>
@@ -380,7 +442,7 @@ export function CourseWorkspace({
             <h1 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
               {course.title}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#aaa99f] dark:text-[#5f605a]">
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground">
               {course.description ??
                 "Belum ada deskripsi. Tambahkan konteks course melalui Settings."}
             </p>
@@ -391,7 +453,7 @@ export function CourseWorkspace({
                 href={`${root}/kurikulum`}
                 className={cn(
                   buttonVariants({ variant: "outline" }),
-                  "border-white/20 bg-white/5 text-[#f5f3e9] hover:bg-white/10 hover:text-white",
+                  "border-background/20 bg-background/5 text-background hover:bg-background/10 hover:text-background",
                 )}
               >
                 <FilePenLineIcon data-icon="inline-start" />
@@ -402,7 +464,7 @@ export function CourseWorkspace({
                 href={`/learn/${course.id}`}
                 className={cn(
                   buttonVariants({ variant: "outline" }),
-                  "border-white/20 bg-white/5 text-[#f5f3e9] hover:bg-white/10 hover:text-white",
+                  "border-background/20 bg-background/5 text-background hover:bg-background/10 hover:text-background",
                 )}
               >
                 <Layers3Icon data-icon="inline-start" />
@@ -411,7 +473,7 @@ export function CourseWorkspace({
             )}
             {canManageCourse && course.status === "PUBLISHED" ? (
               <Button
-                className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
+                className="bg-background text-foreground hover:bg-background"
                 disabled={updateCourse.isPending}
                 onClick={() => changeCourseStatus("DRAFT")}
               >
@@ -419,7 +481,7 @@ export function CourseWorkspace({
               </Button>
             ) : canManageCourse ? (
               <Button
-                className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
+                className="bg-background text-foreground hover:bg-background"
                 disabled={updateCourse.isPending}
                 onClick={() => changeCourseStatus("PUBLISHED")}
               >
@@ -483,6 +545,16 @@ export function CourseWorkspace({
             isPending={cohorts.isPending}
             hasMore={cohorts.hasNextPage}
             isLoadingMore={cohorts.isFetchingNextPage}
+            search={cohortSearch}
+            appliedSearch={appliedCohortSearch}
+            statusFilter={cohortStatusFilter}
+            sort={cohortSort}
+            sortDirection={cohortSortDirection}
+            onSearchChange={setCohortSearch}
+            onSearch={() => setAppliedCohortSearch(cohortSearch.trim())}
+            onStatusFilterChange={setCohortStatusFilter}
+            onSortChange={setCohortSort}
+            onSortDirectionChange={setCohortSortDirection}
             onLoadMore={() => void cohorts.fetchNextPage()}
             onWorkspaceChange={refreshWorkspace}
             root={root}
@@ -781,8 +853,18 @@ function CohortsSection({
   data,
   error,
   isPending,
+  search,
+  appliedSearch,
+  statusFilter,
+  sort,
+  sortDirection,
   hasMore,
   isLoadingMore,
+  onSearchChange,
+  onSearch,
+  onStatusFilterChange,
+  onSortChange,
+  onSortDirectionChange,
   onLoadMore,
   onWorkspaceChange,
   root,
@@ -792,8 +874,18 @@ function CohortsSection({
   data?: RouterOutputs["cohort"]["list"]["items"];
   error: { message: string } | null;
   isPending: boolean;
+  search: string;
+  appliedSearch: string;
+  statusFilter: CohortStatus | "ALL";
+  sort: CohortSort;
+  sortDirection: SortDirection;
   hasMore: boolean;
   isLoadingMore: boolean;
+  onSearchChange: (value: string) => void;
+  onSearch: () => void;
+  onStatusFilterChange: (value: CohortStatus | "ALL") => void;
+  onSortChange: (value: CohortSort) => void;
+  onSortDirectionChange: (value: SortDirection) => void;
   onLoadMore: () => void;
   onWorkspaceChange: () => Promise<void>;
   root: string;
@@ -806,6 +898,7 @@ function CohortsSection({
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const createCohort = api.cohort.create.useMutation();
+  const hasActiveFilters = Boolean(appliedSearch || statusFilter !== "ALL");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -854,16 +947,130 @@ function CohortsSection({
         ) : null}
       </div>
 
+      <div className="bg-card flex flex-col gap-3 rounded-xl border p-3 lg:flex-row lg:items-center">
+        <form
+          className="flex min-w-0 flex-1 gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSearch();
+          }}
+        >
+          <div className="relative min-w-0 flex-1">
+            <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+            <Input
+              aria-label="Cari Group belajar"
+              className="pl-8"
+              placeholder="Cari nama Group belajar"
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+            />
+          </div>
+          <Button type="submit" variant="outline">
+            <SearchIcon />
+            Cari
+          </Button>
+        </form>
+        <div className="grid gap-2 sm:flex">
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => {
+              if (value) onStatusFilterChange(value);
+            }}
+          >
+            <SelectTrigger
+              aria-label="Filter status"
+              className="w-full sm:w-40"
+            >
+              <ListFilterIcon className="text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="ALL">Semua status</SelectItem>
+              {Object.entries(cohortStatus).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={sort}
+            onValueChange={(value) => {
+              if (value) onSortChange(value);
+            }}
+          >
+            <SelectTrigger
+              aria-label="Urutkan Group belajar"
+              className="w-full sm:w-44"
+            >
+              {sort === "name" ? (
+                <ArrowDownAZIcon className="text-muted-foreground" />
+              ) : sort === "createdAt" ? (
+                <CalendarDaysIcon className="text-muted-foreground" />
+              ) : (
+                <ClockIcon className="text-muted-foreground" />
+              )}
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="updatedAt">
+                <ClockIcon /> Aktivitas terakhir
+              </SelectItem>
+              <SelectItem value="createdAt">
+                <CalendarDaysIcon /> Tanggal dibuat
+              </SelectItem>
+              <SelectItem value="name">
+                <ArrowDownAZIcon /> Nama
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={sortDirection}
+            onValueChange={(value) => {
+              if (value) onSortDirectionChange(value);
+            }}
+          >
+            <SelectTrigger
+              aria-label="Arah pengurutan"
+              className="w-full sm:w-36"
+            >
+              {sortDirection === "asc" ? (
+                <ArrowUpIcon className="text-muted-foreground" />
+              ) : (
+                <ArrowDownIcon className="text-muted-foreground" />
+              )}
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="asc">
+                <ArrowUpIcon /> Ascending
+              </SelectItem>
+              <SelectItem value="desc">
+                <ArrowDownIcon /> Descending
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {isPending || error ? <QueryState error={error} /> : null}
       {!isPending && !error && data?.length === 0 ? (
         <Card className="rounded-lg">
           <CardContent>
             <SectionEmpty
-              icon={CalendarDaysIcon}
-              title="Belum ada Group belajar"
-              description="Group belajar membantu mengatur periode belajar, pengajar, meeting, dan kelompok peserta didik."
+              icon={hasActiveFilters ? SearchIcon : CalendarDaysIcon}
+              title={
+                hasActiveFilters
+                  ? "Group belajar tidak ditemukan"
+                  : "Belum ada Group belajar"
+              }
+              description={
+                hasActiveFilters
+                  ? "Coba kata kunci atau status yang berbeda."
+                  : "Group belajar membantu mengatur periode belajar, pengajar, meeting, dan kelompok peserta didik."
+              }
               action={
-                canCreate ? (
+                canCreate && !hasActiveFilters ? (
                   <Button
                     className="mt-4"
                     size="sm"
@@ -879,52 +1086,71 @@ function CohortsSection({
         </Card>
       ) : null}
       {!isPending && !error && data && data.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {data.map((cohort) => (
-            <Link
-              key={cohort.id}
-              href={`${root}/cohorts/${cohort.id}`}
-              className="group bg-card ring-foreground/10 hover:bg-muted/40 hover:ring-foreground/20 rounded-lg p-5 ring-1 transition-colors"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <Badge variant="outline">{cohortStatus[cohort.status]}</Badge>
-                  <h3 className="mt-3 truncate font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
-                    {cohort.name}
-                  </h3>
-                  <p className="text-muted-foreground mt-1 line-clamp-2 min-h-8 text-xs leading-relaxed">
-                    {cohort.description ?? "Belum ada deskripsi Group belajar."}
-                  </p>
-                </div>
-                <ArrowRightIcon className="text-muted-foreground group-hover:text-foreground mt-1 size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-              </div>
-              <div className="text-muted-foreground mt-5 grid grid-cols-3 gap-3 border-t pt-4 text-xs">
-                <span>
-                  <strong className="text-foreground block text-base font-medium tabular-nums">
-                    {cohort._count.enrollments}
-                  </strong>
-                  learners
-                </span>
-                <span>
-                  <strong className="text-foreground block text-base font-medium tabular-nums">
-                    {cohort._count.staff}
-                  </strong>
-                  staff
-                </span>
-                <span>
-                  <strong className="text-foreground block text-base font-medium tabular-nums">
-                    {cohort._count.meetings}
-                  </strong>
-                  meetings
-                </span>
-              </div>
-            </Link>
-          ))}
+        <div className="space-y-3">
+          <Card className="gap-0 overflow-hidden rounded-xl py-0">
+            <div className="divide-y">
+              {data.map((cohort) => (
+                <Link
+                  key={cohort.id}
+                  href={`${root}/cohorts/${cohort.id}`}
+                  className="group hover:bg-muted/40 grid gap-4 px-5 py-4 transition-colors md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center"
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full">
+                      <CalendarDaysIcon className="size-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate font-[family-name:var(--font-hanken-grotesk)] font-medium">
+                          {cohort.name}
+                        </h3>
+                        <Badge variant="outline">
+                          {cohortStatus[cohort.status]}
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground mt-1 line-clamp-1 text-xs">
+                        {cohort.description ??
+                          "Belum ada deskripsi Group belajar."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-muted-foreground flex items-center gap-5 pl-13 text-xs md:pl-0">
+                    <span className="flex items-center gap-2.5">
+                      <LearnerAvatarStack
+                        learners={cohort.learnerPreview}
+                        total={cohort._count.enrollments}
+                      />
+                      {cohort._count.enrollments} peserta
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <CalendarDaysIcon className="size-3.5" />
+                      <strong className="text-foreground font-medium tabular-nums">
+                        {cohort._count.meetings}
+                      </strong>
+                      meeting
+                    </span>
+                    <span className="hidden min-w-28 xl:block">
+                      {sort === "updatedAt" ? "Aktivitas" : "Dibuat"}{" "}
+                      <strong className="text-foreground font-medium">
+                        {dateFormatter.format(
+                          sort === "updatedAt"
+                            ? cohort.updatedAt
+                            : cohort.createdAt,
+                        )}
+                      </strong>
+                    </span>
+                  </div>
+                  <ArrowRightIcon className="text-muted-foreground group-hover:text-foreground hidden size-4 transition-transform group-hover:translate-x-1 md:block" />
+                </Link>
+              ))}
+            </div>
+          </Card>
+
           {hasMore ? (
             <Button
               type="button"
               variant="outline"
-              className="md:col-span-2"
+              className="w-full"
               disabled={isLoadingMore}
               onClick={onLoadMore}
             >
@@ -982,21 +1208,19 @@ function CohortsSection({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cohort-start">Mulai</Label>
-                    <Input
+                    <DatePicker
                       id="cohort-start"
-                      type="date"
                       value={startsAt}
-                      onChange={(event) => setStartsAt(event.target.value)}
+                      onChange={setStartsAt}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cohort-end">Selesai</Label>
-                    <Input
+                    <DatePicker
                       id="cohort-end"
                       min={startsAt || undefined}
-                      type="date"
                       value={endsAt}
-                      onChange={(event) => setEndsAt(event.target.value)}
+                      onChange={setEndsAt}
                     />
                   </div>
                 </div>
@@ -1331,11 +1555,10 @@ function LearnersSection({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="learner-expiry">Akses hingga</Label>
-                  <Input
+                  <DatePicker
                     id="learner-expiry"
-                    type="date"
                     value={expiresAt}
-                    onChange={(event) => setExpiresAt(event.target.value)}
+                    onChange={setExpiresAt}
                   />
                 </div>
               </div>
@@ -1694,11 +1917,10 @@ function InvitesSection({
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="invite-expiry">Berlaku hingga</Label>
-                    <Input
+                    <DatePicker
                       id="invite-expiry"
-                      type="date"
                       value={expiresAt}
-                      onChange={(event) => setExpiresAt(event.target.value)}
+                      onChange={setExpiresAt}
                     />
                   </div>
                   <div className="space-y-2">
@@ -2082,10 +2304,6 @@ function SettingsSection({
   const [title, setTitle] = useState(course.title);
   const [description, setDescription] = useState(course.description ?? "");
   const [thumbnailUrl, setThumbnailUrl] = useState(course.thumbnailUrl);
-  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(
-    null,
-  );
-  const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const [price, setPrice] = useState(String(course.price));
   const [currency, setCurrency] = useState(course.currency);
   const [enrollmentMode, setEnrollmentMode] = useState(
@@ -2115,12 +2333,6 @@ function SettingsSection({
     ]);
     router.refresh();
   }
-
-  useEffect(() => {
-    return () => {
-      if (thumbnailPreviewUrl) URL.revokeObjectURL(thumbnailPreviewUrl);
-    };
-  }, [thumbnailPreviewUrl]);
 
   async function uploadThumbnail(file: File) {
     if (
@@ -2163,7 +2375,6 @@ function SettingsSection({
       });
       uploadedKey = null;
       setThumbnailUrl(confirmed.thumbnailUrl);
-      setThumbnailPreviewUrl(null);
       await refreshCourse();
       if (previousKey && previousKey !== confirmed.key) {
         await deleteThumbnail
@@ -2179,14 +2390,6 @@ function SettingsSection({
       }
       toast.error(getErrorMessage(error));
     }
-  }
-
-  function selectThumbnail(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    event.target.value = "";
-    if (!file) return;
-    setThumbnailPreviewUrl(URL.createObjectURL(file));
-    void uploadThumbnail(file);
   }
 
   async function removeThumbnail() {
@@ -2300,65 +2503,18 @@ function SettingsSection({
             </div>
             <div className="space-y-2">
               <Label htmlFor="settings-thumbnail">Thumbnail course</Label>
-              <div className="flex flex-wrap items-center gap-4 rounded-lg border p-3">
-                {thumbnailPreviewUrl || thumbnailUrl ? (
-                  <Image
-                    src={thumbnailPreviewUrl ?? thumbnailUrl ?? ""}
-                    alt="Thumbnail course"
-                    width={160}
-                    height={90}
-                    unoptimized
-                    className="aspect-video rounded-md object-cover"
-                  />
-                ) : (
-                  <div className="bg-muted text-muted-foreground flex aspect-video w-40 items-center justify-center rounded-md">
-                    <ImageIcon className="size-6" />
-                  </div>
-                )}
-                <div className="min-w-48 flex-1 space-y-2">
-                  <Input
-                    ref={thumbnailInputRef}
-                    id="settings-thumbnail"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="sr-only"
-                    type="file"
-                    onChange={selectThumbnail}
-                  />
-                  <p className="text-muted-foreground text-xs">
-                    JPEG, PNG, WebP, atau GIF. Maksimal 5 MB.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={thumbnailBusy || updateCourse.isPending}
-                      onClick={() => thumbnailInputRef.current?.click()}
-                    >
-                      {thumbnailBusy ? (
-                        <LoaderCircleIcon className="animate-spin" />
-                      ) : (
-                        <UploadIcon />
-                      )}
-                      {thumbnailBusy
-                        ? "Mengunggah..."
-                        : thumbnailUrl
-                          ? "Ganti thumbnail"
-                          : "Pilih gambar"}
-                    </Button>
-                    {thumbnailUrl ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={thumbnailBusy || updateCourse.isPending}
-                        onClick={() => void removeThumbnail()}
-                      >
-                        Hapus thumbnail
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
+              <ImageUpload
+                id="settings-thumbnail"
+                value={thumbnailUrl}
+                alt="Thumbnail course"
+                accept={courseThumbnailContentTypes.join(",")}
+                helpText="JPEG, PNG, WebP, atau GIF. Maksimal 5 MB."
+                isPending={thumbnailBusy || updateCourse.isPending}
+                onUpload={uploadThumbnail}
+                onRemove={removeThumbnail}
+                replaceLabel="Ganti thumbnail"
+                removeLabel="Hapus thumbnail"
+              />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

@@ -33,10 +33,10 @@ type GrammarExample = {
 };
 
 const grammarThemeStyles = {
-  amber: { label: "Amber", accent: "#d97706" },
-  blue: { label: "Blue", accent: "#2563eb" },
-  green: { label: "Green", accent: "#16803c" },
-  rose: { label: "Rose", accent: "#d14b70" },
+  amber: { label: "Amber", accent: "var(--chart-5)" },
+  blue: { label: "Blue", accent: "var(--primary)" },
+  green: { label: "Green", accent: "var(--chart-2)" },
+  rose: { label: "Rose", accent: "var(--destructive)" },
 } as const;
 
 const grammarBlockProps = {

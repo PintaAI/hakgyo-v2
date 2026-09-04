@@ -32,10 +32,10 @@ type ChecklistItem = {
 };
 
 const cultureThemeStyles = {
-  teal: { label: "Teal", accent: "#14b8a6" },
-  rose: { label: "Rose", accent: "#d14b70" },
-  ocean: { label: "Ocean", accent: "#3182a8" },
-  amber: { label: "Amber", accent: "#d97706" },
+  teal: { label: "Teal", accent: "var(--chart-1)" },
+  rose: { label: "Rose", accent: "var(--destructive)" },
+  ocean: { label: "Ocean", accent: "var(--chart-1)" },
+  amber: { label: "Amber", accent: "var(--chart-5)" },
 } as const;
 
 const cultureBlockProps = {
@@ -465,7 +465,7 @@ export const cultureBlock = createReactBlockSpec(
                     </div>
                   </div>
                   <div className="flex items-center gap-1 pt-1">
-                    <span className="border-border grid size-5 place-items-center rounded border bg-white">
+                    <span className="border-border grid size-5 place-items-center rounded border bg-background">
                       <span className="bg-muted-foreground/40 size-3 rounded-sm opacity-0" />
                     </span>
                     {editable ? (

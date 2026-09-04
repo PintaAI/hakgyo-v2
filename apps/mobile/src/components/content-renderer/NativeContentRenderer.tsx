@@ -12,7 +12,9 @@ export function NativeContentRenderer({
   content,
   emptyState,
   onOpenUrl,
+  onOpenResource,
   renderers,
+  resourceReferences,
   resolveAssetUrl,
 }: NativeContentRendererProps) {
   const blocks = useMemo(() => normalizeContent(content), [content]);
@@ -28,7 +30,9 @@ export function NativeContentRenderer({
   return (
     <ContentRendererProvider
       onOpenUrl={onOpenUrl}
+      onOpenResource={onOpenResource}
       renderers={rendererMap}
+      resourceReferences={resourceReferences}
       resolveAssetUrl={resolveAssetUrl}
     >
       {blocks.length ? (

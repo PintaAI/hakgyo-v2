@@ -1,4 +1,5 @@
-import { Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Pressable, Text, TextInput, View } from "react-native";
 
 import { InlineContent } from "./inline-content";
 import { assetSource, ContentAudio, ContentImage } from "./media";
@@ -7,6 +8,7 @@ import { useContentRenderer } from "./context";
 import type { BlockRendererProps, ContentBlockRenderer } from "./types";
 
 const accentPalettes = {
+  teal: "#14b8a6",
   violet: "#7653b6",
   blue: "#3478a8",
   green: "#4f8468",
@@ -60,6 +62,187 @@ function CustomAssetImage({ block }: BlockRendererProps) {
       caption={stringProp(block.props, "caption")}
       source={assetSource(stringProp(block.props, "assetId"))}
     />
+  );
+}
+
+function firstExample(value: unknown) {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    const example = value.find((item) => typeof item === "string");
+    return typeof example === "string" ? example : null;
+  }
+  if (value && typeof value === "object" && "example" in value) {
+    const example = (value as { example?: unknown }).example;
+    return typeof example === "string" ? example : null;
+  }
+  return null;
+}
+
+function VocabularyReference({ block }: BlockRendererProps) {
+  const { onOpenResource, resourceReferences } = useContentRenderer();
+  const [query, setQuery] = useState("");
+  const vocabularySetId = stringProp(block.props, "vocabularySetId");
+  const resource = resourceReferences?.vocabularySets.find(
+    (set) => set.id === vocabularySetId,
+  );
+  const entries = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return resource?.entries ?? [];
+    return (resource?.entries ?? []).filter((entry) =>
+      `${entry.term} ${entry.definition}`
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [query, resource]);
+
+  if (!resource) {
+    return (
+      <View className="rounded-xl border border-dashed border-border p-5">
+        <Text className="text-sm text-muted-foreground">
+          Vocabulary set unavailable.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="overflow-hidden rounded-xl border border-border bg-card">
+      <View className="gap-2 border-b border-border bg-muted/40 p-5">
+        <Text className="text-xs font-black uppercase tracking-[1.5px] text-primary">
+          Vocabulary
+        </Text>
+        <Text className="text-2xl font-black text-foreground">
+          {resource.title}
+        </Text>
+        {resource.description ? (
+          <Text className="text-sm leading-5 text-muted-foreground">
+            {resource.description}
+          </Text>
+        ) : null}
+        <Text className="text-xs font-bold text-muted-foreground">
+          {resource.entries.length} words
+        </Text>
+      </View>
+      <View className="gap-3 p-4">
+        {resource.entries.length > 8 ? (
+          <TextInput
+            accessibilityLabel="Search vocabulary"
+            className="rounded-xl border border-border bg-background px-4 py-3 text-foreground"
+            onChangeText={setQuery}
+            placeholder="Search words or meanings…"
+            placeholderTextColor="#737373"
+            value={query}
+          />
+        ) : null}
+        {entries.map((entry) => (
+          <View
+            className="gap-3 rounded-xl border border-border p-4"
+            key={entry.id}
+          >
+            {entry.imageAsset ? (
+              <ContentImage
+                accessibilityLabel={entry.term}
+                source={assetSource(entry.imageAsset.id)}
+              />
+            ) : null}
+            <View className="gap-1">
+              <Text className="text-lg font-black text-foreground">
+                {entry.term}
+              </Text>
+              <Text className="text-sm leading-5 text-muted-foreground">
+                {entry.definition}
+              </Text>
+              {firstExample(entry.examples) ? (
+                <Text className="mt-1 text-sm italic leading-5 text-foreground">
+                  “{firstExample(entry.examples)}”
+                </Text>
+              ) : null}
+            </View>
+            {entry.audioAsset ? (
+              <ContentAudio
+                fileName={entry.audioAsset.fileName}
+                source={assetSource(entry.audioAsset.id)}
+              />
+            ) : null}
+          </View>
+        ))}
+        {!entries.length ? (
+          <Text className="py-5 text-center text-sm text-muted-foreground">
+            {resource.entries.length
+              ? "No matching vocabulary."
+              : "This set has no vocabulary yet."}
+          </Text>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          className="items-center rounded-full bg-primary px-5 py-4"
+          onPress={() =>
+            onOpenResource?.(
+              "vocabulary",
+              resource.id,
+              resource.courseItemId,
+            )
+          }
+        >
+          <Text className="font-black text-primary-foreground">
+            Hafalkan kosakata →
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function AssessmentReference({ block }: BlockRendererProps) {
+  const { onOpenResource, resourceReferences } = useContentRenderer();
+  const assessmentId = stringProp(block.props, "assessmentId");
+  const resource = resourceReferences?.assessments.find(
+    (assessment) => assessment.id === assessmentId,
+  );
+
+  if (!resource) {
+    return (
+      <View className="rounded-xl border border-dashed border-border p-5">
+        <Text className="text-sm text-muted-foreground">
+          Assessment unavailable.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="gap-4 rounded-xl border border-border bg-card p-5">
+      <View className="size-12 items-center justify-center rounded-xl bg-primary/10">
+        <Text className="text-xl font-black text-primary">A</Text>
+      </View>
+      <View className="gap-1">
+        <Text className="text-xs font-black uppercase tracking-[1.5px] text-muted-foreground">
+          Assessment · {resource.questionCount} questions
+        </Text>
+        <Text className="text-xl font-black text-foreground">
+          {resource.title}
+        </Text>
+        {resource.description ? (
+          <Text className="text-sm leading-5 text-muted-foreground">
+            {resource.description}
+          </Text>
+        ) : null}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        className={`items-center rounded-full px-5 py-4 ${resource.courseItemId ? "bg-primary" : "bg-muted"}`}
+        disabled={!resource.courseItemId}
+        onPress={() =>
+          onOpenResource?.("assessment", resource.id, resource.courseItemId)
+        }
+      >
+        <Text
+          className={`font-black ${resource.courseItemId ? "text-primary-foreground" : "text-muted-foreground"}`}
+        >
+          {resource.courseItemId ? "Start assessment →" : "Not available"}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -310,8 +493,120 @@ function Grammar({ block }: BlockRendererProps) {
   );
 }
 
+function Culture({ block }: BlockRendererProps) {
+  const accent = accentFor(stringProp(block.props, "theme"), "teal");
+  const firstAssetId = stringProp(block.props, "assetId");
+  const secondAssetId = stringProp(block.props, "secondAssetId");
+  const checklist = parseJsonArray(block.props.checklistItems, (item) => ({
+    ko: typeof item.ko === "string" ? item.ko : "",
+    en: typeof item.en === "string" ? item.en : "",
+  }));
+
+  return (
+    <View className="gap-6">
+      <View className="gap-3 border-b border-border pb-5">
+        <AccentDot
+          accent={accent}
+          label={stringProp(block.props, "eyebrow")}
+        />
+        <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
+          {stringProp(block.props, "titleKo")}
+        </Text>
+        <Text className="text-sm font-bold leading-5 text-muted-foreground">
+          {stringProp(block.props, "titleEn")}
+        </Text>
+      </View>
+
+      <View className="gap-2">
+        <Text className="text-base leading-7 text-foreground">
+          {stringProp(block.props, "bodyKo1")}
+        </Text>
+        <Text className="text-sm leading-6 text-muted-foreground">
+          {stringProp(block.props, "bodyEn1")}
+        </Text>
+      </View>
+
+      {firstAssetId ? (
+        <ContentImage
+          accessibilityLabel={stringProp(
+            block.props,
+            "fileName",
+            "Culture image",
+          )}
+          source={assetSource(firstAssetId)}
+        />
+      ) : null}
+      {secondAssetId ? (
+        <ContentImage
+          accessibilityLabel={stringProp(
+            block.props,
+            "secondFileName",
+            "Culture image",
+          )}
+          source={assetSource(secondAssetId)}
+        />
+      ) : null}
+
+      <View className="gap-2">
+        <Text className="text-base leading-7 text-foreground">
+          {stringProp(block.props, "bodyKo2")}
+        </Text>
+        <Text className="text-sm leading-6 text-muted-foreground">
+          {stringProp(block.props, "bodyEn2")}
+        </Text>
+      </View>
+
+      <View className="gap-4 border-t border-border pt-5">
+        <View className="flex-row items-center gap-2">
+          <View
+            className="size-8 items-center justify-center rounded-lg"
+            style={{ backgroundColor: accent }}
+          >
+            <Text className="font-black text-white">✓</Text>
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="text-sm font-black text-foreground">
+              {stringProp(block.props, "checklistTitleKo")}
+            </Text>
+            <Text className="text-xs uppercase tracking-[1.5px] text-muted-foreground">
+              {stringProp(block.props, "checklistTitleEn")}
+            </Text>
+          </View>
+        </View>
+        <View className="overflow-hidden rounded-xl border border-border">
+          {checklist.map((item, index) => (
+            <View
+              className={`flex-row gap-3 p-4 ${index > 0 ? "border-t border-border" : ""}`}
+              key={index}
+            >
+              <View
+                className="mt-2 size-2 rounded-full"
+                style={{ backgroundColor: accent }}
+              />
+              <View className="min-w-0 flex-1 gap-1">
+                <Text className="text-sm leading-6 text-foreground">
+                  {item.ko}
+                </Text>
+                <Text className="text-xs leading-5 text-muted-foreground">
+                  {item.en}
+                </Text>
+              </View>
+              <View className="mt-1 size-5 rounded-md border border-border" />
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function Conversation({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "violet");
+  const sectionVariant = stringProp(block.props, "sectionVariant", "both");
+  const showUsefulExpression =
+    sectionVariant === "useful-expression" || sectionVariant === "both";
+  const showPronunciation =
+    sectionVariant === "pronunciation" || sectionVariant === "both";
   const lines = parseJsonArray(block.props.lines, (line) => ({
     speaker: typeof line.speaker === "string" ? line.speaker : "",
     korean: typeof line.korean === "string" ? line.korean : "",
@@ -439,54 +734,57 @@ function Conversation({ block }: BlockRendererProps) {
         </View>
       ) : null}
 
-      <View className="gap-4 border-t border-border pt-6">
-        <AccentDot accent={accent} label="Speaking practice" />
-        <View>
-          <Text className="text-base font-bold leading-6 text-foreground">
-            {stringProp(block.props, "practicePromptKo")}
-          </Text>
-          <Text className="mt-1 text-xs leading-5 text-muted-foreground">
-            {stringProp(block.props, "practicePromptTranslation")}
-          </Text>
+      {showUsefulExpression ? (
+        <View className="gap-4 border-t border-border pt-6">
+          <AccentDot accent={accent} label="Speaking practice" />
+          <View>
+            <Text className="text-base font-bold leading-6 text-foreground">
+              {stringProp(block.props, "practicePromptKo")}
+            </Text>
+            <Text className="mt-1 text-xs leading-5 text-muted-foreground">
+              {stringProp(block.props, "practicePromptTranslation")}
+            </Text>
+          </View>
+          {practiceAssetId ? (
+            <ContentImage
+              accessibilityLabel={stringProp(
+                block.props,
+                "practiceFileName",
+                "Speaking practice",
+              )}
+              source={assetSource(practiceAssetId)}
+            />
+          ) : null}
+          <View className="gap-3 rounded-xl bg-muted/55 p-4">
+            <SectionLabel>Expression bank</SectionLabel>
+            {expressions.map((expression, index) => (
+              <View key={index}>
+                <Text className="text-sm font-bold text-foreground">
+                  {expression.korean}
+                </Text>
+                <Text className="mt-0.5 text-xs text-muted-foreground">
+                  {expression.translation}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <View className="gap-3 rounded-xl border border-border p-4">
+            {practiceDialogue.map((line, index) => (
+              <View className="flex-row gap-3" key={index}>
+                <Text className="w-6 font-black text-foreground">
+                  {line.speaker}
+                </Text>
+                <Text className="min-w-0 flex-1 text-sm leading-6 text-foreground">
+                  {line.korean}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
-        {practiceAssetId ? (
-          <ContentImage
-            accessibilityLabel={stringProp(
-              block.props,
-              "practiceFileName",
-              "Speaking practice",
-            )}
-            source={assetSource(practiceAssetId)}
-          />
-        ) : null}
-        <View className="gap-3 rounded-xl bg-muted/55 p-4">
-          <SectionLabel>Expression bank</SectionLabel>
-          {expressions.map((expression, index) => (
-            <View key={index}>
-              <Text className="text-sm font-bold text-foreground">
-                {expression.korean}
-              </Text>
-              <Text className="mt-0.5 text-xs text-muted-foreground">
-                {expression.translation}
-              </Text>
-            </View>
-          ))}
-        </View>
-        <View className="gap-3 rounded-xl border border-border p-4">
-          {practiceDialogue.map((line, index) => (
-            <View className="flex-row gap-3" key={index}>
-              <Text className="w-6 font-black text-foreground">
-                {line.speaker}
-              </Text>
-              <Text className="min-w-0 flex-1 text-sm leading-6 text-foreground">
-                {line.korean}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
+      ) : null}
 
-      <View className="overflow-hidden rounded-xl bg-muted/55">
+      {showPronunciation ? (
+        <View className="overflow-hidden rounded-xl bg-muted/55">
         <View
           className="flex-row items-center justify-between gap-3 p-4"
           style={{ backgroundColor: accent }}
@@ -529,7 +827,8 @@ function Conversation({ block }: BlockRendererProps) {
             ))}
           </View>
         </View>
-      </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -543,4 +842,7 @@ export const customBlockRenderers: Readonly<
   lessonPage: LessonPage,
   grammar: Grammar,
   conversation: Conversation,
+  culture: Culture,
+  vocabularyReference: VocabularyReference,
+  assessmentReference: AssessmentReference,
 };

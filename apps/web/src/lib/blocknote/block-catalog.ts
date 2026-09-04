@@ -5,6 +5,8 @@ export const grammarBlockType = "grammar";
 export const lessonPageBlockType = "lessonPage";
 export const conversationBlockType = "conversation";
 export const cultureBlockType = "culture";
+export const vocabularyReferenceBlockType = "vocabularyReference";
+export const assessmentReferenceBlockType = "assessmentReference";
 export const calloutTones = ["info", "tip", "warning", "success"] as const;
 export const grammarBlockThemes = ["amber", "blue", "green", "rose"] as const;
 export const lessonPageThemes = ["rose", "ocean", "forest", "sunset"] as const;
@@ -232,7 +234,7 @@ const lessonPageTextProps = Object.fromEntries(
 );
 
 export const hakgyoBlockCatalog = {
-  catalogVersion: 9,
+  catalogVersion: 10,
   editor: "BlockNote",
   format: {
     description:
@@ -497,6 +499,44 @@ export const hakgyoBlockCatalog = {
       example: {
         type: cultureBlockType,
         props: cultureBlockDefaults,
+        children: [],
+      },
+    },
+    {
+      type: vocabularyReferenceBlockType,
+      purpose:
+        "Embed a live vocabulary set from the organization library and link learners to vocabulary practice.",
+      content: "none",
+      props: {
+        vocabularySetId: { type: "string", default: "" },
+      },
+      guidance: {
+        useWhen: [
+          "A lesson should display the current entries from an existing vocabulary set.",
+        ],
+      },
+      example: {
+        type: vocabularyReferenceBlockType,
+        props: { vocabularySetId: "vocabulary-set-id" },
+        children: [],
+      },
+    },
+    {
+      type: assessmentReferenceBlockType,
+      purpose:
+        "Embed a live summary of an existing assessment and let learners launch it.",
+      content: "none",
+      props: {
+        assessmentId: { type: "string", default: "" },
+      },
+      guidance: {
+        useWhen: [
+          "A lesson should introduce an assessment that is also attached to the module.",
+        ],
+      },
+      example: {
+        type: assessmentReferenceBlockType,
+        props: { assessmentId: "assessment-id" },
         children: [],
       },
     },

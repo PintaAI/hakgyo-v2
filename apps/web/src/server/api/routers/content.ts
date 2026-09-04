@@ -8,6 +8,10 @@ import {
   requireCoursePermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
+import {
+  assertPublishedMaterialReferences,
+  sanitizeMaterialContent,
+} from "~/server/material-reference-service";
 
 const id = z.string().min(1);
 const json = z.custom<Prisma.InputJsonValue>((value) => value !== undefined);
@@ -275,6 +279,18 @@ export const contentRouter = createTRPCRouter({
         ctx.actorUserId,
         resource.createdByMembershipId,
       );
+      if (input.isPublished && input.relation.type === "MATERIAL") {
+        const material = await db.material.findUnique({
+          where: { id: input.relation.materialId },
+          select: { content: true },
+        });
+        if (!material) throw new TRPCError({ code: "NOT_FOUND" });
+        await assertPublishedMaterialReferences(db, {
+          content: material.content,
+          moduleId: input.moduleId,
+          organizationId: courseModule.organizationId,
+        });
+      }
       return db.$transaction(async (tx) => {
         const aggregate = await tx.courseItem.aggregate({
           where: { moduleId: input.moduleId },
@@ -304,6 +320,10 @@ export const contentRouter = createTRPCRouter({
         where: { id: input.itemId },
         select: {
           organizationId: true,
+          moduleId: true,
+          isPublished: true,
+          materialId: true,
+          material: { select: { content: true } },
           module: { select: { courseId: true } },
         },
       });
@@ -351,6 +371,35 @@ export const contentRouter = createTRPCRouter({
           ctx.actorUserId,
           resource.createdByMembershipId,
         );
+      }
+      if (
+        (input.isPublished ?? item.isPublished) &&
+        (input.relation || input.isPublished === true)
+      ) {
+        const materialId =
+          input.relation?.type === "MATERIAL"
+            ? input.relation.materialId
+            : input.relation
+              ? null
+              : item.materialId;
+        const content =
+          input.relation?.type === "MATERIAL"
+            ? (
+                await db.material.findUnique({
+                  where: { id: input.relation.materialId },
+                  select: { content: true },
+                })
+              )?.content
+            : input.relation
+              ? null
+              : item.material?.content;
+        if (materialId && content) {
+          await assertPublishedMaterialReferences(db, {
+            content,
+            moduleId: item.moduleId,
+            organizationId: item.organizationId,
+          });
+        }
       }
       return db.courseItem.update({
         where: { id: input.itemId },
@@ -469,8 +518,13 @@ export const contentRouter = createTRPCRouter({
         input.organizationId,
         ctx.actorUserId,
       );
+      const content = await sanitizeMaterialContent(
+        db,
+        input.organizationId,
+        input.content,
+      );
       return db.material.create({
-        data: { ...input, createdByMembershipId: member.id },
+        data: { ...input, content, createdByMembershipId: member.id },
       });
     }),
   createMaterialItem: protectedProcedure
@@ -502,6 +556,18 @@ export const contentRouter = createTRPCRouter({
         ctx.actorUserId,
       );
       const { moduleId, isPublished, ...materialData } = input;
+      const content = await sanitizeMaterialContent(
+        db,
+        courseModule.organizationId,
+        materialData.content,
+      );
+      if (isPublished) {
+        await assertPublishedMaterialReferences(db, {
+          content,
+          moduleId,
+          organizationId: courseModule.organizationId,
+        });
+      }
 
       return db.$transaction(async (tx) => {
         const aggregate = await tx.courseItem.aggregate({
@@ -511,6 +577,7 @@ export const contentRouter = createTRPCRouter({
         const material = await tx.material.create({
           data: {
             ...materialData,
+            content,
             organizationId: courseModule.organizationId,
             createdByMembershipId: member.id,
           },
@@ -544,7 +611,13 @@ export const contentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const material = await db.material.findFirst({
         where: { id: input.materialId, organizationId: input.organizationId },
-        select: { createdByMembershipId: true },
+        select: {
+          createdByMembershipId: true,
+          courseItems: {
+            where: { isPublished: true },
+            select: { moduleId: true },
+          },
+        },
       });
       if (!material) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
@@ -553,9 +626,22 @@ export const contentRouter = createTRPCRouter({
         material.createdByMembershipId,
       );
       const { organizationId, materialId, ...data } = input;
+      const content =
+        data.content === undefined
+          ? undefined
+          : await sanitizeMaterialContent(db, organizationId, data.content);
+      if (content !== undefined) {
+        for (const item of material.courseItems) {
+          await assertPublishedMaterialReferences(db, {
+            content,
+            moduleId: item.moduleId,
+            organizationId,
+          });
+        }
+      }
       const result = await db.material.updateMany({
         where: { id: materialId, organizationId },
-        data,
+        data: { ...data, content },
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
       return db.material.findUniqueOrThrow({ where: { id: materialId } });

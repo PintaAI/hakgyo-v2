@@ -11,11 +11,24 @@ import {
 import { getSession } from "~/server/better-auth/server";
 import { db } from "~/server/db";
 import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { getSuperadminUser } from "~/server/authorization/superadmin";
 
 export const requireSession = cache(async () => {
   const session = await getSession();
   if (!session?.user) redirect(routeAccess.signInPath);
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { suspendedAt: true, deletedAt: true },
+  });
+  if (!user || user.suspendedAt || user.deletedAt) {
+    redirect(routeAccess.signInPath);
+  }
   return session;
+});
+
+export const requireSuperadminSession = cache(async () => {
+  const session = await requireSession();
+  return getSuperadminUser(session.user.id);
 });
 
 export const getSignedInDestination = cache(async (userId: string) => {
@@ -85,6 +98,8 @@ export const requireOrganizationMembershipBySlug = cache(
             name: true,
             slug: true,
             logoUrl: true,
+            theme: true,
+            themeEnabled: true,
             permissionMode: true,
             teacherCanCreateCourse: true,
           },

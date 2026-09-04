@@ -22,6 +22,8 @@ model User {
   image                   String? //@db.Text
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @default(now()) @updatedAt
+  suspendedAt             DateTime?
+  deletedAt               DateTime?
   sessions                Session[]
   accounts                Account[]
   organizationMemberships OrganizationMember[]
@@ -38,9 +40,28 @@ model User {
   oauthRefreshTokens      OauthRefreshToken[]
   oauthAccessTokens       OauthAccessToken[]
   oauthConsents           OauthConsent[]
+  adminActions            AdminAuditLog[] @relation("AdminAuditActor")
+  adminActionTargets      AdminAuditLog[] @relation("AdminAuditTarget")
 
   @@unique([email])
   @@map("user")
+}
+
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String
+  targetUserId String?
+  targetId     String?
+  targetType   String?
+  action       String
+  outcome      String
+  createdAt    DateTime @default(now())
+  actor        User     @relation("AdminAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  target       User?    @relation("AdminAuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([targetUserId, createdAt])
+  @@map("adminAuditLog")
 }
 
 model Session {
@@ -400,6 +421,8 @@ model Organization {
   name                   String
   slug                   String                     @unique
   logoUrl                String?
+  theme                  Json?
+  themeEnabled           Boolean                    @default(true)
   defaultEnrollmentMode  EnrollmentMode             @default(INVITE_ONLY)
   permissionMode         OrganizationPermissionMode @default(SIMPLE)
   teacherCanCreateCourse Boolean                    @default(true)
@@ -413,6 +436,7 @@ model Organization {
   vocabularySets         VocabularySet[]
   zoomConnection         ZoomConnection?
   assets                 Asset[]
+  activityEvents         UserActivityEvent[]
 }
 
 model OrganizationMember {
@@ -847,6 +871,7 @@ model ContentProgress {
 model UserActivityEvent {
   id                  String             @id @default(cuid())
   userId              String
+  organizationId      String
   action              GamificationAction
   xpAwarded           Int
   contributesToStreak Boolean
@@ -855,10 +880,12 @@ model UserActivityEvent {
   idempotencyKey      String             @unique
   metadata            Json?
   user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization        Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([userId, occurredAt])
   @@index([userId, activityDate])
   @@index([userId, action, occurredAt])
+  @@index([organizationId, occurredAt])
 }
 
 model UserGamification {

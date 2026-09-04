@@ -42,6 +42,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { ImageUpload } from "~/components/ui/image-upload";
 import { Label } from "~/components/ui/label";
 import {
   Dialog,
@@ -54,6 +55,10 @@ import {
 import { Textarea } from "~/components/ui/textarea";
 import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
 import { api, type RouterOutputs } from "~/trpc/react";
+import {
+  completeResourcePicker,
+  resourcePickerQuery,
+} from "~/lib/resource-picker-callback";
 
 type VocabularySet = RouterOutputs["content"]["listVocabularySets"][number];
 type VocabularyEntry = VocabularySet["entries"][number];
@@ -178,10 +183,14 @@ export function VocabularyEditor({
   organizationId,
   organizationSlug,
   vocabularySetId,
+  pickerToken,
+  returnTo,
 }: {
   organizationId: string;
   organizationSlug: string;
   vocabularySetId?: string;
+  pickerToken?: string;
+  returnTo?: string;
 }) {
   const router = useRouter();
   const utils = api.useUtils();
@@ -310,7 +319,20 @@ export function VocabularyEditor({
       canDelete={canDelete}
       isDeleting={deleteSet.isPending}
       isSaving={createSet.isPending || updateSet.isPending}
-      onBack={() => router.back()}
+      onBack={() => {
+        if (
+          vocabularySet?.id &&
+          completeResourcePicker({
+            resourceId: vocabularySet.id,
+            resourceType: "vocabulary",
+            returnTo,
+            token: pickerToken,
+          })
+        ) {
+          return;
+        }
+        router.back();
+      }}
       vocabularySet={vocabularySet}
       entryBusy={
         createEntry.isPending ||
@@ -405,7 +427,7 @@ export function VocabularyEditor({
           await refreshVocabulary();
           toast.success("Set kosakata dibuat. Tambahkan istilah pertama Anda.");
           router.replace(
-            `/workspace/${organizationSlug}/library/vocabulary/${created.id}`,
+            `/workspace/${organizationSlug}/library/vocabulary/${created.id}${resourcePickerQuery(pickerToken, returnTo)}`,
           );
         } catch (error) {
           toast.error(errorMessage(error));
@@ -738,21 +760,21 @@ function VocabularySetForm({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
         <section className="grid min-w-0 gap-6">
           <Card className="gap-0 overflow-hidden py-0 shadow-sm">
-            <CardHeader className="relative overflow-hidden rounded-none bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-6">
+            <CardHeader className="relative overflow-hidden rounded-none bg-foreground px-5 py-6 text-background sm:px-6">
               <div className="pointer-events-none absolute top-0 right-0 size-44 translate-x-14 -translate-y-20 rounded-full border border-current opacity-10" />
               <div className="pointer-events-none absolute top-0 right-0 size-28 translate-x-8 -translate-y-12 rounded-full border border-current opacity-10" />
               <div className="relative flex items-start gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background/10">
                   <Settings2Icon className="size-5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold tracking-[0.18em] text-[#aaa99f] uppercase">
+                  <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
                     Setup kosakata
                   </p>
-                  <CardTitle className="mt-1 text-xl font-semibold text-[#f5f3e9]">
+                  <CardTitle className="mt-1 text-xl font-semibold text-background">
                     Identitas set
                   </CardTitle>
-                  <p className="mt-1 text-sm leading-relaxed text-[#aaa99f]">
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                     Beri konteks singkat agar set mudah ditemukan dan digunakan
                     kembali.
                   </p>
@@ -1097,7 +1119,6 @@ function VocabularyEntryCard({
   uploadingImage: boolean;
 }) {
   const audioInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const [term, setTerm] = useState(entry.term);
   const [definition, setDefinition] = useState(entry.definition);
   const [examples, setExamples] = useState(examplesToText(entry.examples));
@@ -1136,12 +1157,6 @@ function VocabularyEntryCard({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (file) void onUploadAudio(file);
-  }
-
-  function selectImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (file) void onUploadImage(file);
   }
 
   return (
@@ -1293,60 +1308,52 @@ function VocabularyEntryCard({
             ref={audioInputRef}
             type="file"
           />
-          <input
+          <ImageUpload
+            id={`vocabulary-image-${entry.id}`}
+            value={entry.imageAssetId ? "asset" : null}
+            alt={term}
             accept="image/*"
-            className="hidden"
-            onChange={selectImage}
-            ref={imageInputRef}
-            type="file"
-          />
-
-          <div className="bg-background min-w-0 overflow-hidden rounded-lg border">
-            {entry.imageAssetId ? (
-              <AssetImage assetId={entry.imageAssetId} alt={term} />
-            ) : (
-              <div className="text-muted-foreground flex h-20 flex-col items-center justify-center gap-1.5 border-b border-dashed text-xs">
+            helpText={
+              <>
+                <span className="font-medium">Ilustrasi</span>
+                <span className="text-muted-foreground ml-1 truncate">
+                  {entry.imageAsset?.fileName ?? "Gambar pendukung istilah"}
+                </span>
+              </>
+            }
+            isPending={busy || uploadingImage}
+            onUpload={onUploadImage}
+            onRemove={onRemoveImage}
+            uploadLabel="Tambah"
+            replaceLabel="Ganti"
+            removeLabel="Lepas gambar"
+            className="bg-background min-w-0 rounded-lg"
+            previewClassName="h-20 w-32"
+            placeholder={
+              <div className="flex flex-col items-center gap-1.5 text-xs">
                 <ImageIcon className="size-5" />
                 Belum ada ilustrasi
               </div>
-            )}
-            <div className="flex items-center justify-between gap-2 border-t px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-xs font-medium">Ilustrasi</p>
-                <p className="text-muted-foreground truncate text-[11px]">
-                  {entry.imageAsset?.fileName ?? "Gambar pendukung istilah"}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  disabled={busy}
-                  onClick={() => imageInputRef.current?.click()}
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  {uploadingImage ? (
-                    <LoaderCircleIcon className="animate-spin" />
-                  ) : (
-                    <UploadIcon />
-                  )}
-                  {entry.imageAssetId ? "Ganti" : "Tambah"}
-                </Button>
-                {entry.imageAssetId ? (
-                  <Button
-                    aria-label="Lepas gambar"
-                    disabled={busy}
-                    onClick={() => void onRemoveImage()}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <XIcon />
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          </div>
+            }
+            renderPreview={(previewUrl) =>
+              previewUrl ? (
+                <Image
+                  alt={term}
+                  className="h-20 w-32 rounded-md object-cover"
+                  height={80}
+                  src={previewUrl}
+                  unoptimized
+                  width={128}
+                />
+              ) : entry.imageAssetId ? (
+                <AssetImage assetId={entry.imageAssetId} alt={term} />
+              ) : (
+                <div className="bg-muted text-muted-foreground flex h-20 w-32 items-center justify-center rounded-md">
+                  <ImageIcon className="size-5" />
+                </div>
+              )
+            }
+          />
 
           <div className="bg-background grid min-w-0 grid-rows-[1fr_auto] overflow-hidden rounded-lg border">
             <div className="flex min-h-20 items-center p-3">

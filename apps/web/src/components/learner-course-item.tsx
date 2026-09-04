@@ -150,33 +150,34 @@ export function LearnerCourseItem({
       {material ? (
         <DynamicLearnerBlockNoteDocument
           content={material.content as HakgyoPartialBlock[]}
+          resources={item.embeddedResources}
           theme={resolvedTheme === "dark" ? "dark" : "light"}
         />
       ) : vocabulary ? (
         <div className="space-y-6">
-          <header className="relative overflow-hidden rounded-lg bg-[#171915] px-5 py-6 text-[#f5f3e9] sm:px-7 sm:py-8">
+          <header className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
             <div className="pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
             <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
             <div className="relative">
-              <Badge className="border-white/15 bg-white/10 text-white">
+              <Badge className="border-white/15 bg-background/10 text-white">
                 <LanguagesIcon /> Studio kosakata
               </Badge>
               <h1 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-5xl">
                 {vocabulary.title}
               </h1>
               {vocabulary.description ? (
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#aaa99f]">
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                   {vocabulary.description}
                 </p>
               ) : null}
               <div className="mt-6 max-w-md">
-                <div className="mb-2 flex justify-between text-xs text-[#aaa99f]">
+                <div className="mb-2 flex justify-between text-xs text-muted-foreground">
                   <span>{reviewed.size} kata dipelajari</span>
                   <span>{reviewPercent}%</span>
                 </div>
                 <Progress
                   value={reviewPercent}
-                  className="[&_[data-slot=progress-indicator]]:bg-[#f5f3e9] [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-white/20"
+                  className="[&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-background/20"
                 />
               </div>
             </div>
