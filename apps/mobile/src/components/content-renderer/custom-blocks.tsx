@@ -177,11 +177,7 @@ function VocabularyReference({ block }: BlockRendererProps) {
           accessibilityRole="button"
           className="items-center rounded-full bg-primary px-5 py-4"
           onPress={() =>
-            onOpenResource?.(
-              "vocabulary",
-              resource.id,
-              resource.courseItemId,
-            )
+            onOpenResource?.("vocabulary", resource.id, resource.courseItemId)
           }
         >
           <Text className="font-black text-primary-foreground">
@@ -505,10 +501,7 @@ function Culture({ block }: BlockRendererProps) {
   return (
     <View className="gap-6">
       <View className="gap-3 border-b border-border pb-5">
-        <AccentDot
-          accent={accent}
-          label={stringProp(block.props, "eyebrow")}
-        />
+        <AccentDot accent={accent} label={stringProp(block.props, "eyebrow")} />
         <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
           {stringProp(block.props, "titleKo")}
         </Text>
@@ -602,7 +595,11 @@ function Culture({ block }: BlockRendererProps) {
 
 function Conversation({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "violet");
-  const sectionVariant = stringProp(block.props, "sectionVariant", "both");
+  const sectionVariant = stringProp(
+    block.props,
+    "sectionVariant",
+    "pronunciation",
+  );
   const showUsefulExpression =
     sectionVariant === "useful-expression" || sectionVariant === "both";
   const showPronunciation =
@@ -632,6 +629,14 @@ function Conversation({ block }: BlockRendererProps) {
     (line) => ({
       speaker: typeof line.speaker === "string" ? line.speaker : "",
       korean: typeof line.korean === "string" ? line.korean : "",
+    }),
+  );
+  const usefulExpressionDialogue = parseJsonArray(
+    block.props.usefulExpressionDialogue,
+    (line) => ({
+      speaker: typeof line.speaker === "string" ? line.speaker : "",
+      korean: typeof line.korean === "string" ? line.korean : "",
+      translation: typeof line.translation === "string" ? line.translation : "",
     }),
   );
   const pronunciationExamples = parseJsonArray(
@@ -734,99 +739,144 @@ function Conversation({ block }: BlockRendererProps) {
         </View>
       ) : null}
 
+      <View className="gap-4 border-t border-border pt-6">
+        <AccentDot accent={accent} label="Speaking practice" />
+        <View>
+          <Text className="text-base font-bold leading-6 text-foreground">
+            {stringProp(block.props, "practicePromptKo")}
+          </Text>
+          <Text className="mt-1 text-xs leading-5 text-muted-foreground">
+            {stringProp(block.props, "practicePromptTranslation")}
+          </Text>
+        </View>
+        {practiceAssetId ? (
+          <ContentImage
+            accessibilityLabel={stringProp(
+              block.props,
+              "practiceFileName",
+              "Speaking practice",
+            )}
+            source={assetSource(practiceAssetId)}
+          />
+        ) : null}
+        <View className="gap-3 rounded-xl bg-muted/55 p-4">
+          <SectionLabel>Provided expressions</SectionLabel>
+          {expressions.map((expression, index) => (
+            <View key={index}>
+              <Text className="text-sm font-bold text-foreground">
+                {expression.korean}
+              </Text>
+              <Text className="mt-0.5 text-xs text-muted-foreground">
+                {expression.translation}
+              </Text>
+            </View>
+          ))}
+        </View>
+        <View className="gap-3 rounded-xl border border-border p-4">
+          {practiceDialogue.map((line, index) => (
+            <View className="flex-row gap-3" key={index}>
+              <Text className="w-6 font-black text-foreground">
+                {line.speaker}
+              </Text>
+              <Text className="min-w-0 flex-1 text-sm leading-6 text-foreground">
+                {line.korean}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
       {showUsefulExpression ? (
-        <View className="gap-4 border-t border-border pt-6">
-          <AccentDot accent={accent} label="Speaking practice" />
-          <View>
-            <Text className="text-base font-bold leading-6 text-foreground">
-              {stringProp(block.props, "practicePromptKo")}
+        <View className="overflow-hidden rounded-xl bg-muted/55">
+          <View
+            className="flex-row items-center justify-between gap-3 p-4"
+            style={{ backgroundColor: accent }}
+          >
+            <Text className="min-w-0 flex-1 text-xs font-black uppercase tracking-[1.5px] text-white">
+              {stringProp(block.props, "usefulExpressionEyebrow")}
             </Text>
-            <Text className="mt-1 text-xs leading-5 text-muted-foreground">
-              {stringProp(block.props, "practicePromptTranslation")}
+            <Text className="text-xs font-bold text-white">
+              Audio {stringProp(block.props, "usefulExpressionAudioTrack")}
             </Text>
           </View>
-          {practiceAssetId ? (
-            <ContentImage
-              accessibilityLabel={stringProp(
-                block.props,
-                "practiceFileName",
-                "Speaking practice",
-              )}
-              source={assetSource(practiceAssetId)}
-            />
-          ) : null}
-          <View className="gap-3 rounded-xl bg-muted/55 p-4">
-            <SectionLabel>Expression bank</SectionLabel>
-            {expressions.map((expression, index) => (
-              <View key={index}>
-                <Text className="text-sm font-bold text-foreground">
-                  {expression.korean}
-                </Text>
-                <Text className="mt-0.5 text-xs text-muted-foreground">
-                  {expression.translation}
-                </Text>
-              </View>
-            ))}
-          </View>
-          <View className="gap-3 rounded-xl border border-border p-4">
-            {practiceDialogue.map((line, index) => (
-              <View className="flex-row gap-3" key={index}>
-                <Text className="w-6 font-black text-foreground">
-                  {line.speaker}
-                </Text>
-                <Text className="min-w-0 flex-1 text-sm leading-6 text-foreground">
-                  {line.korean}
-                </Text>
-              </View>
-            ))}
+          <View className="gap-4 p-4">
+            <View className="items-center rounded-xl bg-background p-5">
+              <Text className="text-center text-xl font-black leading-7 text-foreground">
+                {stringProp(block.props, "usefulExpressionPhraseKo")}
+              </Text>
+              <View className="my-3 h-px w-full bg-border" />
+              <Text className="text-center text-sm font-bold text-muted-foreground">
+                {stringProp(block.props, "usefulExpressionPhraseTranslation")}
+              </Text>
+            </View>
+            <View className="gap-3 rounded-xl bg-background p-4">
+              {usefulExpressionDialogue.map((line, index) => (
+                <View className="flex-row gap-3" key={index}>
+                  <Text className="w-6 font-black text-foreground">
+                    {line.speaker}
+                  </Text>
+                  <View className="min-w-0 flex-1 gap-1">
+                    <Text className="text-sm font-bold leading-6 text-foreground">
+                      {line.korean}
+                    </Text>
+                    <Text className="text-xs leading-5 text-muted-foreground">
+                      {line.translation}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+            <Text className="text-xs leading-5 text-muted-foreground">
+              {stringProp(block.props, "usefulExpressionNote")}
+            </Text>
           </View>
         </View>
       ) : null}
 
       {showPronunciation ? (
         <View className="overflow-hidden rounded-xl bg-muted/55">
-        <View
-          className="flex-row items-center justify-between gap-3 p-4"
-          style={{ backgroundColor: accent }}
-        >
-          <Text className="min-w-0 flex-1 text-xs font-black uppercase tracking-[1.5px] text-white">
-            {stringProp(block.props, "pronunciationEyebrow")}
-          </Text>
-          <Text className="text-xs font-bold text-white">
-            Audio {stringProp(block.props, "pronunciationAudioTrack")}
-          </Text>
-        </View>
-        <View className="gap-4 p-4">
-          <View className="size-24 self-center items-center justify-center rounded-full bg-background">
-            <Text className="text-5xl font-black text-foreground">
-              {stringProp(block.props, "pronunciationSymbol")}
+          <View
+            className="flex-row items-center justify-between gap-3 p-4"
+            style={{ backgroundColor: accent }}
+          >
+            <Text className="min-w-0 flex-1 text-xs font-black uppercase tracking-[1.5px] text-white">
+              {stringProp(block.props, "pronunciationEyebrow")}
+            </Text>
+            <Text className="text-xs font-bold text-white">
+              Audio {stringProp(block.props, "pronunciationAudioTrack")}
             </Text>
           </View>
-          <Text className="text-sm leading-6 text-foreground">
-            {stringProp(block.props, "pronunciationDescriptionKo")}
-          </Text>
-          <Text className="text-xs leading-5 text-muted-foreground">
-            {stringProp(block.props, "pronunciationDescriptionTranslation")}
-          </Text>
-          <View className="overflow-hidden rounded-xl bg-background">
-            {pronunciationExamples.map((example, index) => (
-              <View
-                className={`flex-row items-center gap-3 px-4 py-3 ${index > 0 ? "border-t border-border" : ""}`}
-                key={index}
-              >
-                <Text className="text-xs text-muted-foreground">
-                  {index + 1}
-                </Text>
-                <Text className="min-w-0 flex-1 text-sm text-foreground">
-                  {example.korean}
-                </Text>
-                <Text className="text-sm font-black text-foreground">
-                  {example.pronunciation}
-                </Text>
-              </View>
-            ))}
+          <View className="gap-4 p-4">
+            <View className="size-24 self-center items-center justify-center rounded-full bg-background">
+              <Text className="text-5xl font-black text-foreground">
+                {stringProp(block.props, "pronunciationSymbol")}
+              </Text>
+            </View>
+            <Text className="text-sm leading-6 text-foreground">
+              {stringProp(block.props, "pronunciationDescriptionKo")}
+            </Text>
+            <Text className="text-xs leading-5 text-muted-foreground">
+              {stringProp(block.props, "pronunciationDescriptionTranslation")}
+            </Text>
+            <View className="overflow-hidden rounded-xl bg-background">
+              {pronunciationExamples.map((example, index) => (
+                <View
+                  className={`flex-row items-center gap-3 px-4 py-3 ${index > 0 ? "border-t border-border" : ""}`}
+                  key={index}
+                >
+                  <Text className="text-xs text-muted-foreground">
+                    {index + 1}
+                  </Text>
+                  <Text className="min-w-0 flex-1 text-sm text-foreground">
+                    {example.korean}
+                  </Text>
+                  <Text className="text-sm font-black text-foreground">
+                    {example.pronunciation}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
         </View>
       ) : null}
     </View>

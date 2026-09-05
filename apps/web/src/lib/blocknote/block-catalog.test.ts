@@ -67,6 +67,7 @@ describe("Hakgyo BlockNote catalog", () => {
     expect(conversation.example.type).toBe(conversationBlockType);
     expect(conversationBlockThemes).toContain(conversation.example.props.theme);
     expect(conversation.example.props.practicePromptKo).not.toBe("");
+    expect(conversation.example.props.usefulExpressionPhraseKo).not.toBe("");
     expect(conversation.example.props.pronunciationEyebrow).not.toBe("");
 
     const culture = hakgyoBlockCatalog.customBlocks.find(

@@ -67,6 +67,12 @@ bun --cwd apps/mobile run typecheck
 - Never commit `apps/web/.env` or secrets.
 - Edit `apps/web/prisma/schema.prisma` for schema changes, then use the appropriate Prisma command. The generated client under `apps/web/generated/prisma` is generated output and should not be edited manually.
 
+## Browser Verification
+
+- Use `https://jennie-linux.tail2268a1.ts.net` for browser checks against the shared development server.
+- For authenticated checks, sign in at `/auth` with the seeded owner account `owner@hakgyo.test` and password `Hakgyo123!`. The complete seeded account list remains authoritative in `apps/web/prisma/seed.ts`.
+- The isolated conversation-block preview is available at `/conversation-block-preview`; append `?variant=useful-expression`, `?variant=pronunciation`, or `?variant=both` to inspect each supporting-panel state.
+
 ## Web Conventions
 
 - Use the App Router under `apps/web/src/app`.

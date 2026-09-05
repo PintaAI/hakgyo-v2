@@ -69,6 +69,19 @@ export const speakingPracticeDialogue = [
   { speaker: "나", korean: "일이 많아서 못 만났어요." },
 ] as const;
 
+export const usefulExpressionDialogue = [
+  {
+    speaker: "가",
+    korean: "안녕하세요? 처음 뵙겠습니다.",
+    translation: "Hello. It is a pleasure to meet you.",
+  },
+  {
+    speaker: "나",
+    korean: "안녕하세요? 잘 부탁드립니다.",
+    translation: "Hello. Nice to meet you as well.",
+  },
+] as const;
+
 export const conversationSpeakingPracticeDefaults = {
   practiceAssetId: "",
   practiceFileName: "",
@@ -78,6 +91,16 @@ export const conversationSpeakingPracticeDefaults = {
     "Practice speaking using the provided expressions.",
   practiceExpressions: JSON.stringify(speakingPracticeExpressions),
   practiceDialogue: JSON.stringify(speakingPracticeDialogue),
+} as const;
+
+export const conversationUsefulExpressionDefaults = {
+  usefulExpressionEyebrow: "유용한 표현 · USEFUL EXPRESSION",
+  usefulExpressionAudioTrack: "31",
+  usefulExpressionPhraseKo: "잘 부탁드립니다.",
+  usefulExpressionPhraseTranslation: "Nice to meet you.",
+  usefulExpressionDialogue: JSON.stringify(usefulExpressionDialogue),
+  usefulExpressionNote:
+    "There is no exact equivalent of ‘잘 부탁드립니다’ in English. It is commonly used when meeting someone for the first time and expresses a hope for a good relationship.",
 } as const;
 
 export const pronunciationBlockExamples = [
@@ -98,7 +121,7 @@ export const conversationPronunciationDefaults = {
 
 export const conversationBlockDefaults = {
   theme: "violet",
-  sectionVariant: "both",
+  sectionVariant: "pronunciation",
   showTip: true,
   assetId: "",
   fileName: "",
@@ -115,6 +138,7 @@ export const conversationBlockDefaults = {
   tipTranslation:
     "-지 못하다 can be attached to verbs to express negation instead of 못.",
   ...conversationSpeakingPracticeDefaults,
+  ...conversationUsefulExpressionDefaults,
   ...conversationPronunciationDefaults,
 } as const;
 
@@ -367,6 +391,30 @@ export const hakgyoBlockCatalog = {
           type: "string",
           default: conversationBlockDefaults.practiceDialogue,
         },
+        usefulExpressionEyebrow: {
+          type: "string",
+          default: conversationBlockDefaults.usefulExpressionEyebrow,
+        },
+        usefulExpressionAudioTrack: {
+          type: "string",
+          default: conversationBlockDefaults.usefulExpressionAudioTrack,
+        },
+        usefulExpressionPhraseKo: {
+          type: "string",
+          default: conversationBlockDefaults.usefulExpressionPhraseKo,
+        },
+        usefulExpressionPhraseTranslation: {
+          type: "string",
+          default: conversationBlockDefaults.usefulExpressionPhraseTranslation,
+        },
+        usefulExpressionDialogue: {
+          type: "string",
+          default: conversationBlockDefaults.usefulExpressionDialogue,
+        },
+        usefulExpressionNote: {
+          type: "string",
+          default: conversationBlockDefaults.usefulExpressionNote,
+        },
         pronunciationEyebrow: {
           type: "string",
           default: conversationBlockDefaults.pronunciationEyebrow,
@@ -407,6 +455,8 @@ export const hakgyoBlockCatalog = {
             "JSON array of { korean, translation } objects used by the speaking-practice section.",
           practiceDialogue:
             "JSON array of { speaker, korean } objects used by the speaking-practice section.",
+          usefulExpressionDialogue:
+            "JSON array of { speaker, korean, translation } objects used by the useful-expression panel.",
           pronunciationExamples:
             "JSON array of { korean, pronunciation } objects used by the pronunciation section.",
         },
