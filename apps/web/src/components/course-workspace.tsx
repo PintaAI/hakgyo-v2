@@ -420,7 +420,7 @@ export function CourseWorkspace({
         Semua courses
       </Link>
 
-      <header className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
+      <header className="border-border bg-background text-foreground relative overflow-hidden rounded-lg border px-5 py-6 sm:px-7 sm:py-8">
         {course.thumbnailUrl ? (
           <Image
             src={course.thumbnailUrl}
@@ -432,26 +432,26 @@ export function CourseWorkspace({
             className="object-cover"
           />
         ) : null}
-        <div className="pointer-events-none absolute inset-0 bg-black/65" />
-        <div className="pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
-        <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
+        <div className="bg-background/85 pointer-events-none absolute inset-0 backdrop-blur-[2px]" />
+        <div className="border-border pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border" />
+        <div className="border-border pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border" />
         <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase dark:text-muted-foreground">
+              <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
                 Workspace course
               </span>
               <Badge
                 variant={courseStatus[course.status].variant}
-                className="border-background/20"
+                className="border-border bg-muted text-muted-foreground"
               >
                 {courseStatus[course.status].label}
               </Badge>
             </div>
-            <h1 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
+            <h1 className="text-foreground mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
               {course.title}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground">
+            <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
               {course.description ??
                 "Belum ada deskripsi. Tambahkan konteks course melalui Settings."}
             </p>
@@ -462,7 +462,7 @@ export function CourseWorkspace({
                 href={`${root}/kurikulum`}
                 className={cn(
                   buttonVariants({ variant: "outline" }),
-                  "border-background/20 bg-background/5 text-background hover:bg-background/10 hover:text-background",
+                  "bg-background/70 hover:bg-accent hover:text-accent-foreground backdrop-blur",
                 )}
               >
                 <FilePenLineIcon data-icon="inline-start" />
@@ -473,7 +473,7 @@ export function CourseWorkspace({
                 href={`/learn/${course.id}`}
                 className={cn(
                   buttonVariants({ variant: "outline" }),
-                  "border-background/20 bg-background/5 text-background hover:bg-background/10 hover:text-background",
+                  "bg-background/70 hover:bg-accent hover:text-accent-foreground backdrop-blur",
                 )}
               >
                 <Layers3Icon data-icon="inline-start" />
@@ -482,7 +482,6 @@ export function CourseWorkspace({
             )}
             {canManageCourse && course.status === "PUBLISHED" ? (
               <Button
-                className="bg-background text-foreground hover:bg-background"
                 disabled={updateCourse.isPending}
                 onClick={() => changeCourseStatus("DRAFT")}
               >
@@ -490,7 +489,6 @@ export function CourseWorkspace({
               </Button>
             ) : canManageCourse ? (
               <Button
-                className="bg-background text-foreground hover:bg-background"
                 disabled={updateCourse.isPending}
                 onClick={() => changeCourseStatus("PUBLISHED")}
               >

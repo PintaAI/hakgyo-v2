@@ -314,7 +314,7 @@ export function CohortWorkspace({
         Kembali ke {cohort.course.title}
       </Link>
 
-      <header className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
+      <header className="border-border bg-background text-foreground relative overflow-hidden rounded-lg border px-5 py-6 sm:px-7 sm:py-8">
         {cohort.course.thumbnailUrl ? (
           <Image
             src={cohort.course.thumbnailUrl}
@@ -326,22 +326,22 @@ export function CohortWorkspace({
             className="object-cover"
           />
         ) : null}
-        <div className="pointer-events-none absolute inset-0 bg-black/70" />
-        <div className="pointer-events-none absolute top-0 right-0 size-48 translate-x-14 -translate-y-16 rounded-full border border-background/20" />
+        <div className="bg-background/85 pointer-events-none absolute inset-0 backdrop-blur-[2px]" />
+        <div className="border-border pointer-events-none absolute top-0 right-0 size-48 translate-x-14 -translate-y-16 rounded-full border" />
         <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold tracking-[0.18em] text-white/60 uppercase">
+              <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
                 {cohort.course.title} · Group belajar
               </span>
-              <Badge className="border-white/30 bg-background/10 text-white">
+              <Badge className="border-border bg-muted text-muted-foreground">
                 {statusLabels[cohort.status]}
               </Badge>
             </div>
-            <h1 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
+            <h1 className="text-foreground mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
               {cohort.name}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65">
+            <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
               {cohort.description ??
                 "Kelola peserta didik, pengajar, dan jadwal Group belajar dari workspace ini."}
             </p>
