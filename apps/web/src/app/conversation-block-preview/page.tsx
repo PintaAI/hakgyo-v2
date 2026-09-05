@@ -1,4 +1,4 @@
-import { BlockNoteEditor } from "~/components/editor";
+import { DynamicBlockNoteEditor } from "~/components/editor";
 import {
   conversationBlockDefaults,
   conversationBlockType,
@@ -7,7 +7,7 @@ import {
 export default function ConversationBlockPreviewPage() {
   return (
     <main className="mx-auto max-w-5xl p-8">
-      <BlockNoteEditor
+      <DynamicBlockNoteEditor
         editable={false}
         initialContent={[
           {

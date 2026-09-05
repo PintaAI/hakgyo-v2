@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 import { AppSettings } from "~/components/app-settings";
-import { BlockNoteEditor } from "~/components/editor/block-note-editor";
+import { DynamicBlockNoteEditor } from "~/components/editor";
 import { OrganizationThemeProvider } from "~/components/organization-theme-provider";
 
 const debugTheme = {
@@ -49,7 +49,7 @@ export default function ThemeDebugPage() {
     <OrganizationThemeProvider theme={debugTheme}>
       <AppSettings open={false} onOpenChange={() => undefined} />
       <ThemeValues />
-      <BlockNoteEditor
+      <DynamicBlockNoteEditor
         initialContent={[{ type: "paragraph", content: "Theme probe" }]}
         trailingBlock={false}
         theme="dark"
