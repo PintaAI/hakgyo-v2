@@ -118,15 +118,20 @@ function resourceTitle(
     ?.title;
 }
 
-function resourceHref(item: CourseItem, organizationSlug: string) {
+function resourceHref(
+  item: CourseItem,
+  organizationSlug: string,
+  courseId: string,
+  moduleId: string,
+) {
   if (item.type === "MATERIAL" && item.materialId) {
     return `/workspace/${organizationSlug}/library/materials/${item.materialId}`;
   }
   if (item.type === "ASSESSMENT" && item.assessmentId) {
-    return `/workspace/${organizationSlug}/library/assessments/${item.assessmentId}`;
+    return `/workspace/${organizationSlug}/courses/${courseId}/kurikulum/${moduleId}/assessments/${item.assessmentId}`;
   }
   if (item.type === "VOCABULARY_SET" && item.vocabularySetId) {
-    return `/workspace/${organizationSlug}/library/vocabulary/${item.vocabularySetId}`;
+    return `/workspace/${organizationSlug}/courses/${courseId}/kurikulum/${moduleId}/vocabulary/${item.vocabularySetId}`;
   }
   return null;
 }
@@ -356,8 +361,8 @@ export function KurikulumEditor({
             {course.title}
           </h1>
           <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
-            Susun alur belajar menjadi bab, lalu hubungkan material, tugas, dan
-            vocabulary yang sudah tersedia.
+            Susun alur belajar menjadi bab, lalu buat atau hubungkan materi,
+            assessment, dan vocabulary tanpa perlu membuka library.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -445,6 +450,7 @@ export function KurikulumEditor({
                   isReordering={isReordering}
                   materials={materials}
                   assessments={assessments}
+                  courseId={course.id}
                   organizationSlug={organizationSlug}
                   vocabularySets={vocabularySets}
                   onAddItem={() => setItemModule(module)}
@@ -532,6 +538,7 @@ export function KurikulumEditor({
 function SortableModuleCard({
   module,
   moduleIndex,
+  courseId,
   isReordering,
   isItemUpdatePending,
   materials,
@@ -546,6 +553,7 @@ function SortableModuleCard({
 }: {
   module: CourseModule;
   moduleIndex: number;
+  courseId: string;
   isReordering: boolean;
   isItemUpdatePending: boolean;
   materials: Material[];
@@ -641,7 +649,7 @@ function SortableModuleCard({
                 moduleId={module.id}
                 isPending={isItemUpdatePending}
                 isReordering={isReordering}
-                href={resourceHref(item, organizationSlug)}
+                href={resourceHref(item, organizationSlug, courseId, module.id)}
                 title={
                   resourceTitle(item, materials, assessments, vocabularySets) ??
                   "Resource tidak tersedia"
@@ -981,58 +989,97 @@ function ItemDialog({
     }
   }
 
+  const createHref = module
+    ? `/workspace/${organizationSlug}/courses/${courseId}/kurikulum/${module.id}/${
+        type === "MATERIAL"
+          ? "materials"
+          : type === "ASSESSMENT"
+            ? "assessments"
+            : "vocabulary"
+      }/new`
+    : "#";
+  const resourceLabel = itemMeta[type].label.toLowerCase();
+  const createLabel =
+    type === "MATERIAL"
+      ? "Buat materi"
+      : type === "VOCABULARY_SET"
+        ? "Buat set kosa kata"
+        : "Buat tugas";
+
   return (
     <Dialog open={Boolean(module)} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>Tambah learning item</DialogTitle>
             <DialogDescription>
-              Buat materi baru atau hubungkan resource yang sudah tersedia ke
-              bab {module?.title}.
+              Buka editor lengkap untuk membuat resource baru, atau pilih dari
+              library untuk bab {module?.title}.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-5 space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="item-type">Jenis resource</Label>
-              <select
-                id="item-type"
-                className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
-                value={type}
-                onChange={(event) => changeType(event.target.value as ItemType)}
-              >
-                <option value="MATERIAL">Material</option>
-                <option value="ASSESSMENT">Tugas</option>
-                <option value="VOCABULARY_SET">Set kosakata</option>
-              </select>
+              <Label>Jenis resource</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["MATERIAL", "VOCABULARY_SET", "ASSESSMENT"] as const).map(
+                  (itemType) => {
+                    const meta = itemMeta[itemType];
+                    const Icon = meta.icon;
+                    return (
+                      <button
+                        key={itemType}
+                        type="button"
+                        aria-pressed={type === itemType}
+                        className={cn(
+                          "hover:bg-muted flex min-w-0 flex-col items-center gap-2 rounded-lg border px-2 py-3 text-center text-xs font-medium transition-colors sm:flex-row sm:px-3 sm:text-left sm:text-sm",
+                          type === itemType &&
+                            "border-primary bg-primary/5 text-primary ring-primary/20 ring-2",
+                        )}
+                        onClick={() => changeType(itemType)}
+                      >
+                        <Icon className="size-4 shrink-0" />
+                        <span className="truncate">{meta.label}</span>
+                      </button>
+                    );
+                  },
+                )}
+              </div>
             </div>
-            {type === "MATERIAL" && module ? (
-              <div className="bg-muted/30 flex items-center justify-between gap-4 rounded-lg border p-4">
+
+            {module ? (
+              <div className="bg-primary/5 flex items-center justify-between gap-4 rounded-xl border p-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium">Mulai materi baru</p>
+                  <p className="text-sm font-semibold">
+                    Buat {resourceLabel} baru
+                  </p>
                   <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                    Materi akan otomatis ditambahkan ke bab ini setelah
-                    disimpan.
+                    Gunakan editor lengkap. Resource akan otomatis ditambahkan
+                    ke bab ini dan tombol kembali membawa Anda ke kurikulum.
                   </p>
                 </div>
                 <Link
-                  href={`/workspace/${organizationSlug}/courses/${courseId}/kurikulum/${module.id}/materials/new`}
+                  href={createHref}
                   className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
                 >
                   <PlusIcon data-icon="inline-start" />
-                  Buat baru
+                  {createLabel}
                 </Link>
               </div>
             ) : null}
+
+            <div className="relative flex items-center py-1">
+              <div className="grow border-t" />
+              <span className="text-muted-foreground px-3 text-xs">
+                atau pilih dari library
+              </span>
+              <div className="grow border-t" />
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="item-resource">
-                {type === "MATERIAL"
-                  ? "Atau pilih dari bahan ajar"
-                  : "Resource"}
-              </Label>
+              <Label htmlFor="item-resource">{itemMeta[type].label}</Label>
               <select
                 id="item-resource"
-                className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2 disabled:opacity-50"
+                className="border-input bg-background focus-visible:ring-ring h-10 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2 disabled:opacity-50"
                 disabled={resources.length === 0}
                 required
                 value={resourceId}
@@ -1040,8 +1087,8 @@ function ItemDialog({
               >
                 <option value="">
                   {resources.length === 0
-                    ? "Belum ada resource tersedia"
-                    : "Pilih resource"}
+                    ? `Belum ada ${resourceLabel} tersedia`
+                    : `Pilih ${resourceLabel}`}
                 </option>
                 {resources.map((resource) => (
                   <option key={resource.id} value={resource.id}>
@@ -1052,9 +1099,8 @@ function ItemDialog({
               {resources.length === 0 ? (
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                   <CircleOffIcon className="size-3.5" />
-                  {type === "MATERIAL"
-                    ? "Belum ada materi lain di bahan ajar."
-                    : `Buat ${itemMeta[type].label.toLowerCase()} terlebih dahulu.`}
+                  Library masih kosong. Gunakan “{createLabel}” untuk membuat
+                  yang pertama.
                 </p>
               ) : null}
             </div>
@@ -1062,7 +1108,7 @@ function ItemDialog({
               <div>
                 <Label htmlFor="item-published">Langsung publish</Label>
                 <p className="text-muted-foreground mt-0.5 text-xs">
-                  Siswa dapat melihat item setelah course diterbitkan.
+                  Berlaku saat memilih resource yang sudah ada.
                 </p>
               </div>
               <Switch

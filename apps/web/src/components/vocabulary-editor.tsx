@@ -185,12 +185,19 @@ export function VocabularyEditor({
   vocabularySetId,
   pickerToken,
   returnTo,
+  attachTo,
 }: {
   organizationId: string;
   organizationSlug: string;
   vocabularySetId?: string;
   pickerToken?: string;
   returnTo?: string;
+  attachTo?: {
+    moduleId: string;
+    moduleTitle: string;
+    curriculumHref: string;
+    editorBaseHref: string;
+  };
 }) {
   const router = useRouter();
   const utils = api.useUtils();
@@ -200,6 +207,7 @@ export function VocabularyEditor({
   );
   const organization = api.organization.get.useQuery({ organizationId });
   const createSet = api.content.createVocabularySet.useMutation();
+  const createSetItem = api.content.createVocabularySetItem.useMutation();
   const updateSet = api.content.updateVocabularySet.useMutation();
   const deleteSet = api.content.deleteVocabularySet.useMutation();
   const createEntry = api.content.createVocabularyEntry.useMutation();
@@ -213,7 +221,7 @@ export function VocabularyEditor({
     entryId: string;
     kind: "audio" | "image";
   } | null>(null);
-  const canDelete = Boolean(organization.data);
+  const canDelete = Boolean(organization.data) && !attachTo;
   const vocabularySet = vocabularySets.data?.find(
     (set) => set.id === vocabularySetId,
   );
@@ -316,10 +324,19 @@ export function VocabularyEditor({
       key={vocabularySet?.id ?? "new-vocabulary-set"}
       initialDescription={vocabularySet?.description ?? ""}
       initialTitle={vocabularySet?.title ?? ""}
+      contextLabel={
+        attachTo ? `Set kosakata untuk ${attachTo.moduleTitle}` : undefined
+      }
       canDelete={canDelete}
       isDeleting={deleteSet.isPending}
-      isSaving={createSet.isPending || updateSet.isPending}
+      isSaving={
+        createSet.isPending || createSetItem.isPending || updateSet.isPending
+      }
       onBack={() => {
+        if (attachTo) {
+          router.replace(attachTo.curriculumHref);
+          return;
+        }
         if (
           vocabularySet?.id &&
           completeResourcePicker({
@@ -418,16 +435,32 @@ export function VocabularyEditor({
             return;
           }
 
-          const created = await createSet.mutateAsync({
-            organizationId,
-            title,
-            description,
-          });
-          createdVocabularySetIdRef.current = created.id;
+          const createdId = attachTo
+            ? (
+                await createSetItem.mutateAsync({
+                  moduleId: attachTo.moduleId,
+                  title,
+                  description,
+                })
+              ).vocabularySet.id
+            : (
+                await createSet.mutateAsync({
+                  organizationId,
+                  title,
+                  description,
+                })
+              ).id;
+          createdVocabularySetIdRef.current = createdId;
           await refreshVocabulary();
-          toast.success("Set kosakata dibuat. Tambahkan istilah pertama Anda.");
+          toast.success(
+            attachTo
+              ? `Set kosakata ditambahkan ke ${attachTo.moduleTitle}. Tambahkan istilah pertama Anda.`
+              : "Set kosakata dibuat. Tambahkan istilah pertama Anda.",
+          );
           router.replace(
-            `/workspace/${organizationSlug}/library/vocabulary/${created.id}${resourcePickerQuery(pickerToken, returnTo)}`,
+            attachTo
+              ? `${attachTo.editorBaseHref}/${createdId}`
+              : `/workspace/${organizationSlug}/library/vocabulary/${createdId}${resourcePickerQuery(pickerToken, returnTo)}`,
           );
         } catch (error) {
           toast.error(errorMessage(error));
@@ -463,6 +496,7 @@ type EntryFields = {
 
 function VocabularySetForm({
   canDelete,
+  contextLabel,
   initialDescription,
   initialTitle,
   isDeleting,
@@ -482,6 +516,7 @@ function VocabularySetForm({
   uploadingAsset,
 }: {
   canDelete: boolean;
+  contextLabel?: string;
   initialDescription: string;
   initialTitle: string;
   isDeleting: boolean;
@@ -697,7 +732,8 @@ function VocabularySetForm({
           <div className="min-w-0">
             <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
               <LanguagesIcon className="size-3.5" />
-              {vocabularySet ? "Edit set kosakata" : "Set kosakata baru"}
+              {contextLabel ??
+                (vocabularySet ? "Edit set kosakata" : "Set kosakata baru")}
             </div>
             <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
               {title.trim() || "Set kosakata tanpa judul"}
@@ -764,17 +800,17 @@ function VocabularySetForm({
               <div className="pointer-events-none absolute top-0 right-0 size-44 translate-x-14 -translate-y-20 rounded-full border border-current opacity-10" />
               <div className="pointer-events-none absolute top-0 right-0 size-28 translate-x-8 -translate-y-12 rounded-full border border-current opacity-10" />
               <div className="relative flex items-start gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background/10">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background/10">
                   <Settings2Icon className="size-5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                    <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
                     Setup kosakata
                   </p>
-                  <CardTitle className="mt-1 text-xl font-semibold text-background">
+                    <CardTitle className="mt-1 text-xl font-semibold text-background">
                     Identitas set
                   </CardTitle>
-                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                     Beri konteks singkat agar set mudah ditemukan dan digunakan
                     kembali.
                   </p>

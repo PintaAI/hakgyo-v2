@@ -258,12 +258,19 @@ export function AssessmentEditor({
   assessmentId,
   pickerToken,
   returnTo,
+  attachTo,
 }: {
   organizationId: string;
   organizationSlug: string;
   assessmentId?: string;
   pickerToken?: string;
   returnTo?: string;
+  attachTo?: {
+    moduleId: string;
+    moduleTitle: string;
+    curriculumHref: string;
+    editorBaseHref: string;
+  };
 }) {
   const router = useRouter();
   const utils = api.useUtils();
@@ -273,6 +280,7 @@ export function AssessmentEditor({
   );
   const organization = api.organization.get.useQuery({ organizationId });
   const createAssessment = api.assessment.create.useMutation();
+  const createAssessmentItem = api.content.createAssessmentItem.useMutation();
   const updateAssessment = api.assessment.update.useMutation();
   const deleteAssessment = api.assessment.delete.useMutation();
   const createQuestion = api.assessment.createQuestion.useMutation();
@@ -284,7 +292,7 @@ export function AssessmentEditor({
   const attachAsset = api.assessment.attachAsset.useMutation();
   const detachAsset = api.assessment.detachAsset.useMutation();
   const createdAssessmentIdRef = useRef<string | null>(null);
-  const canDelete = Boolean(organization.data);
+  const canDelete = Boolean(organization.data) && !attachTo;
 
   async function refreshQuestions() {
     await Promise.all([
@@ -333,9 +341,16 @@ export function AssessmentEditor({
     <AssessmentEditorForm
       key={assessment.data?.id ?? "new-assessment"}
       assessment={assessment.data}
+      contextLabel={
+        attachTo ? `Assessment untuk ${attachTo.moduleTitle}` : undefined
+      }
       canDelete={canDelete}
       isDeleting={deleteAssessment.isPending}
       onBack={() => {
+        if (attachTo) {
+          router.replace(attachTo.curriculumHref);
+          return;
+        }
         if (
           assessment.data?.id &&
           completeResourcePicker({
@@ -444,16 +459,39 @@ export function AssessmentEditor({
             return;
           }
 
-          const created = await createAssessment.mutateAsync({
-            organizationId,
-            ...value,
-            editorSchemaVersion: 1,
-          });
-          createdAssessmentIdRef.current = created.id;
+          const createdId = attachTo
+            ? (
+                await createAssessmentItem.mutateAsync({
+                  moduleId: attachTo.moduleId,
+                  title: value.title,
+                  description: value.description,
+                  editorSchemaVersion: 1,
+                  instructions: value.instructions ?? undefined,
+                  passingScore: value.passingScore,
+                  maxAttempts: value.maxAttempts,
+                  timeLimitMinutes: value.timeLimitMinutes,
+                  shuffleQuestions: value.shuffleQuestions,
+                  shuffleOptions: value.shuffleOptions,
+                })
+              ).assessment.id
+            : (
+                await createAssessment.mutateAsync({
+                  organizationId,
+                  ...value,
+                  editorSchemaVersion: 1,
+                })
+              ).id;
+          createdAssessmentIdRef.current = createdId;
           await utils.assessment.list.invalidate({ organizationId });
-          toast.success("Assessment dibuat. Tambahkan soal pertama Anda.");
+          toast.success(
+            attachTo
+              ? `Assessment ditambahkan ke ${attachTo.moduleTitle}. Tambahkan soal pertama Anda.`
+              : "Assessment dibuat. Tambahkan soal pertama Anda.",
+          );
           router.replace(
-            `/workspace/${organizationSlug}/library/assessments/${created.id}${resourcePickerQuery(pickerToken, returnTo)}`,
+            attachTo
+              ? `${attachTo.editorBaseHref}/${createdId}`
+              : `/workspace/${organizationSlug}/library/assessments/${createdId}${resourcePickerQuery(pickerToken, returnTo)}`,
           );
         } catch (error) {
           toast.error(errorMessage(error));
@@ -549,6 +587,7 @@ type AssessmentDraft = Omit<
 function AssessmentEditorForm({
   assessment,
   canDelete,
+  contextLabel,
   isDeleting,
   onBack,
   assetStorage,
@@ -565,6 +604,7 @@ function AssessmentEditorForm({
 }: {
   assessment?: Assessment;
   canDelete: boolean;
+  contextLabel?: string;
   isDeleting: boolean;
   onBack: () => void;
   assetStorage?: EditorAssetStorageOptions;
@@ -816,7 +856,8 @@ function AssessmentEditorForm({
             <div className="min-w-0">
               <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
                 <ClipboardCheckIcon className="size-3.5" />
-                {assessment ? "Edit assessment" : "Assessment baru"}
+                {contextLabel ??
+                  (assessment ? "Edit assessment" : "Assessment baru")}
               </div>
               <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
                 {title.trim() || "Assessment tanpa judul"}

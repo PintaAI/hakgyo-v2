@@ -15,6 +15,9 @@ import {
 
 const id = z.string().min(1);
 const json = z.custom<Prisma.InputJsonValue>((value) => value !== undefined);
+const serializedJson = z
+  .unknown()
+  .transform((value) => value as Prisma.InputJsonValue);
 const blockNoteDocument = z
   .array(z.record(z.string(), z.unknown()))
   .min(1)
@@ -33,7 +36,6 @@ const requirementRelation = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("VOCABULARY_SET"), vocabularySetId: id }),
 ]);
-
 async function reorder(
   model: "courseModule" | "courseItem" | "materialRequirement",
   parent: Record<string, string>,
@@ -594,6 +596,125 @@ export const contentRouter = createTRPCRouter({
         });
 
         return { material, item };
+      });
+    }),
+  createVocabularySetItem: protectedProcedure
+    .input(
+      z.object({
+        moduleId: id,
+        title: z.string().trim().min(1).max(200),
+        description: z.string().max(10000).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const courseModule = await db.courseModule.findUnique({
+        where: { id: input.moduleId },
+        select: { courseId: true, organizationId: true },
+      });
+      if (!courseModule) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await requireCoursePermission({
+        courseId: courseModule.courseId,
+        permission: "content.manage",
+        userId: ctx.actorUserId,
+      });
+      const member = await requireContentOrganization(
+        courseModule.organizationId,
+        ctx.actorUserId,
+      );
+
+      return db.$transaction(async (tx) => {
+        const aggregate = await tx.courseItem.aggregate({
+          where: { moduleId: input.moduleId },
+          _max: { position: true },
+        });
+        const vocabularySet = await tx.vocabularySet.create({
+          data: {
+            organizationId: courseModule.organizationId,
+            createdByMembershipId: member.id,
+            title: input.title,
+            description: input.description,
+          },
+        });
+        const item = await tx.courseItem.create({
+          data: {
+            moduleId: input.moduleId,
+            organizationId: courseModule.organizationId,
+            type: "VOCABULARY_SET",
+            vocabularySetId: vocabularySet.id,
+            isPublished: false,
+            position: (aggregate._max.position ?? -1) + 1,
+          },
+        });
+
+        return { vocabularySet, item };
+      });
+    }),
+  createAssessmentItem: protectedProcedure
+    .input(
+      z.object({
+        moduleId: id,
+        title: z.string().trim().min(1).max(200),
+        description: z.string().max(10000).nullable().optional(),
+        editorSchemaVersion: z.number().int().positive().optional(),
+        instructions: serializedJson.optional(),
+        passingScore: z.number().int().min(0).max(100).nullable().optional(),
+        maxAttempts: z.number().int().positive().nullable().optional(),
+        timeLimitMinutes: z.number().int().positive().nullable().optional(),
+        shuffleQuestions: z.boolean().optional(),
+        shuffleOptions: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const courseModule = await db.courseModule.findUnique({
+        where: { id: input.moduleId },
+        select: { courseId: true, organizationId: true },
+      });
+      if (!courseModule) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await requireCoursePermission({
+        courseId: courseModule.courseId,
+        permission: "content.manage",
+        userId: ctx.actorUserId,
+      });
+      const member = await requireContentOrganization(
+        courseModule.organizationId,
+        ctx.actorUserId,
+      );
+
+      return db.$transaction(async (tx) => {
+        const aggregate = await tx.courseItem.aggregate({
+          where: { moduleId: input.moduleId },
+          _max: { position: true },
+        });
+        const assessment = await tx.assessment.create({
+          data: {
+            organizationId: courseModule.organizationId,
+            createdByMembershipId: member.id,
+            title: input.title,
+            description: input.description,
+            editorSchemaVersion: input.editorSchemaVersion,
+            instructions: input.instructions,
+            passingScore: input.passingScore,
+            maxAttempts: input.maxAttempts,
+            timeLimitMinutes: input.timeLimitMinutes,
+            shuffleQuestions: input.shuffleQuestions,
+            shuffleOptions: input.shuffleOptions,
+            status: "DRAFT",
+          },
+        });
+        const item = await tx.courseItem.create({
+          data: {
+            moduleId: input.moduleId,
+            organizationId: courseModule.organizationId,
+            type: "ASSESSMENT",
+            assessmentId: assessment.id,
+            isPublished: false,
+            position: (aggregate._max.position ?? -1) + 1,
+          },
+        });
+
+        return { assessment, item };
       });
     }),
   updateMaterial: protectedProcedure
