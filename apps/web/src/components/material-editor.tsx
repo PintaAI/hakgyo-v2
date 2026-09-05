@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
+  CheckCircle2Icon,
+  CircleAlertIcon,
   FileTextIcon,
   LoaderCircleIcon,
   SaveIcon,
@@ -38,9 +40,21 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
 import { api, type RouterInputs } from "~/trpc/react";
 
 type MaterialContent = RouterInputs["content"]["createMaterial"]["content"];
+type MaterialDraft = {
+  title: string;
+  description: string;
+  content: MaterialContent;
+  requirementPolicy: "ALL" | "ANY";
+};
+type AutosaveStatus = "saved" | "pending" | "saving" | "error";
+
+function materialDraftSnapshot(draft: MaterialDraft) {
+  return JSON.stringify(draft);
+}
 
 const EMPTY_DOCUMENT: MaterialContent = [{ type: "paragraph", content: [] }];
 
@@ -201,7 +215,10 @@ export function MaterialEditor({
           toast.error(errorMessage(error));
         }
       }}
-      onSave={async ({ title, description, content, requirementPolicy }) => {
+      onSave={async (
+        { title, description, content, requirementPolicy },
+        { silent = false } = {},
+      ) => {
         try {
           if (materialId) {
             await updateMaterial.mutateAsync({
@@ -220,7 +237,7 @@ export function MaterialEditor({
               }),
               utils.content.listMaterials.invalidate({ organizationId }),
             ]);
-            toast.success("Materi disimpan.");
+            if (!silent) toast.success("Materi disimpan.");
             return;
           }
 
@@ -257,7 +274,8 @@ export function MaterialEditor({
             `/workspace/${organizationSlug}/library/materials/${created.id}`,
           );
         } catch (error) {
-          toast.error(errorMessage(error));
+          if (!silent) toast.error(errorMessage(error));
+          throw error;
         }
       }}
     />
@@ -300,12 +318,15 @@ function MaterialEditorForm({
   };
   onBack: () => void;
   onDelete: () => Promise<void>;
-  onSave: (value: {
-    title: string;
-    description: string | null;
-    content: MaterialContent;
-    requirementPolicy: "ALL" | "ANY";
-  }) => Promise<void>;
+  onSave: (
+    value: {
+      title: string;
+      description: string | null;
+      content: MaterialContent;
+      requirementPolicy: "ALL" | "ANY";
+    },
+    options?: { silent?: boolean },
+  ) => Promise<void>;
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -313,6 +334,107 @@ function MaterialEditorForm({
   const [requirementPolicy, setRequirementPolicy] = useState(
     initialRequirementPolicy,
   );
+  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>("saved");
+  const latestDraftRef = useRef<MaterialDraft>({
+    title: initialTitle,
+    description: initialDescription,
+    content: initialContent,
+    requirementPolicy: initialRequirementPolicy,
+  });
+  const lastSavedDraftRef = useRef(
+    materialDraftSnapshot({
+      title: initialTitle,
+      description: initialDescription,
+      content: initialContent,
+      requirementPolicy: initialRequirementPolicy,
+    }),
+  );
+
+  const {
+    cancel: cancelAutosave,
+    flush: flushAutosave,
+    schedule: scheduleAutosave,
+  } = useDebouncedAutosave<MaterialDraft>(async (draft) => {
+    const normalizedTitle = draft.title.trim();
+    if (!normalizedTitle) return;
+
+    setAutosaveStatus("saving");
+    try {
+      await onSave(
+        {
+          title: normalizedTitle,
+          description: draft.description.trim() || null,
+          content: draft.content,
+          requirementPolicy: draft.requirementPolicy,
+        },
+        { silent: true },
+      );
+      lastSavedDraftRef.current = materialDraftSnapshot(draft);
+      setAutosaveStatus(
+        materialDraftSnapshot(latestDraftRef.current) ===
+          lastSavedDraftRef.current
+          ? "saved"
+          : "pending",
+      );
+    } catch (error) {
+      setAutosaveStatus("error");
+      throw error;
+    }
+  });
+
+  useEffect(() => {
+    if (!materialId) return;
+
+    const draft = { title, description, content, requirementPolicy };
+    latestDraftRef.current = draft;
+    if (materialDraftSnapshot(draft) === lastSavedDraftRef.current) {
+      cancelAutosave();
+      return;
+    }
+
+    if (!title.trim()) {
+      cancelAutosave();
+      return;
+    }
+
+    scheduleAutosave(draft);
+  }, [
+    cancelAutosave,
+    content,
+    description,
+    materialId,
+    requirementPolicy,
+    scheduleAutosave,
+    title,
+  ]);
+
+  useEffect(() => {
+    if (
+      !materialId ||
+      (autosaveStatus !== "pending" &&
+        autosaveStatus !== "saving" &&
+        autosaveStatus !== "error")
+    ) {
+      return;
+    }
+
+    const warnAboutUnsavedChanges = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnAboutUnsavedChanges);
+    return () =>
+      window.removeEventListener("beforeunload", warnAboutUnsavedChanges);
+  }, [autosaveStatus, materialId]);
+
+  function trackDraft(nextDraft: MaterialDraft) {
+    latestDraftRef.current = nextDraft;
+    setAutosaveStatus(
+      materialDraftSnapshot(nextDraft) === lastSavedDraftRef.current
+        ? "saved"
+        : "pending",
+    );
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -321,12 +443,28 @@ function MaterialEditorForm({
       toast.error("Judul materi wajib diisi.");
       return;
     }
-    await onSave({
-      title: normalizedTitle,
-      description: description.trim() || null,
-      content,
-      requirementPolicy,
-    });
+    try {
+      if (materialId) {
+        const draft = { title, description, content, requirementPolicy };
+        latestDraftRef.current = draft;
+        scheduleAutosave(draft);
+        await flushAutosave();
+        toast.success("Materi disimpan.");
+        return;
+      }
+
+      await onSave({
+        title: normalizedTitle,
+        description: description.trim() || null,
+        content,
+        requirementPolicy,
+      });
+    } catch {
+      // Save errors are displayed by the autosave status or the mutation owner.
+      if (materialId) {
+        toast.error("Perubahan belum berhasil disimpan. Silakan coba lagi.");
+      }
+    }
   }
 
   return (
@@ -338,7 +476,23 @@ function MaterialEditorForm({
             aria-label="Kembali ke materi"
             variant="outline"
             size="icon"
-            onClick={onBack}
+            onClick={() => {
+              if (!materialId) {
+                onBack();
+                return;
+              }
+              if (!title.trim()) {
+                toast.error("Isi judul materi sebelum meninggalkan editor.");
+                return;
+              }
+              void flushAutosave()
+                .then(onBack)
+                .catch(() =>
+                  toast.error(
+                    "Perubahan belum berhasil disimpan. Silakan coba lagi.",
+                  ),
+                );
+            }}
           >
             <ArrowLeftIcon />
           </Button>
@@ -353,6 +507,33 @@ function MaterialEditorForm({
           </div>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto">
+          {materialId && (
+            <span
+              aria-live="polite"
+              className={`flex items-center gap-1.5 text-xs ${
+                autosaveStatus === "error"
+                  ? "text-destructive"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {autosaveStatus === "saving" ? (
+                <LoaderCircleIcon className="size-3.5 animate-spin" />
+              ) : autosaveStatus === "error" ? (
+                <CircleAlertIcon className="size-3.5" />
+              ) : autosaveStatus === "saved" ? (
+                <CheckCircle2Icon className="size-3.5" />
+              ) : (
+                <SaveIcon className="size-3.5" />
+              )}
+              {autosaveStatus === "saving"
+                ? "Menyimpan..."
+                : autosaveStatus === "error"
+                  ? "Gagal menyimpan otomatis"
+                  : autosaveStatus === "saved"
+                    ? "Disimpan otomatis"
+                    : "Perubahan belum disimpan"}
+            </span>
+          )}
           {materialId && canDelete && (
             <AlertDialog>
               <AlertDialogTrigger
@@ -374,8 +555,11 @@ function MaterialEditorForm({
                 <AlertDialogFooter>
                   <AlertDialogCancel>Batal</AlertDialogCancel>
                   <AlertDialogAction
-                    disabled={isDeleting}
-                    onClick={onDelete}
+                    disabled={isDeleting || isSaving}
+                    onClick={() => {
+                      cancelAutosave();
+                      void onDelete();
+                    }}
                     variant="destructive"
                   >
                     {isDeleting && (
@@ -416,7 +600,17 @@ function MaterialEditorForm({
           <div className="min-h-[32rem] py-5">
             <DynamicBlockNoteEditor
               initialContent={initialContent}
-              onChange={setContent}
+              onChange={(value) => {
+                setContent(value);
+                if (materialId) {
+                  trackDraft({
+                    title,
+                    description,
+                    content: value,
+                    requirementPolicy,
+                  });
+                }
+              }}
               theme={theme}
               assetStorage={assetStorage}
               resourceLibrary={resourceLibrary}
@@ -431,7 +625,18 @@ function MaterialEditorForm({
               autoFocus={!materialId}
               id="material-title"
               maxLength={200}
-              onChange={(event) => setTitle(event.target.value)}
+              onChange={(event) => {
+                const nextTitle = event.target.value;
+                setTitle(nextTitle);
+                if (materialId) {
+                  trackDraft({
+                    title: nextTitle,
+                    description,
+                    content,
+                    requirementPolicy,
+                  });
+                }
+              }}
               placeholder="Mis. Memperkenalkan diri"
               value={title}
             />
@@ -441,7 +646,18 @@ function MaterialEditorForm({
             <Textarea
               id="material-description"
               maxLength={10000}
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={(event) => {
+                const nextDescription = event.target.value;
+                setDescription(nextDescription);
+                if (materialId) {
+                  trackDraft({
+                    title,
+                    description: nextDescription,
+                    content,
+                    requirementPolicy,
+                  });
+                }
+              }}
               placeholder="Apa yang akan dikerjakan siswa?"
               rows={6}
               value={description}
@@ -458,6 +674,14 @@ function MaterialEditorForm({
               onValueChange={(value) => {
                 if (value === "ALL" || value === "ANY") {
                   setRequirementPolicy(value);
+                  if (materialId) {
+                    trackDraft({
+                      title,
+                      description,
+                      content,
+                      requirementPolicy: value,
+                    });
+                  }
                 }
               }}
             >
