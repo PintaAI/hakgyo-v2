@@ -9,6 +9,7 @@ import {
   groupScoresByValue,
 } from "~/server/assessment-logic";
 import { orderAssessmentQuestions } from "~/server/assessment-order";
+import { shouldRevealAssessmentAnswers } from "~/server/assessment-result-policy";
 import {
   getAssessmentDeadline,
   isAssessmentExpired,
@@ -563,8 +564,15 @@ export const assessmentRouter = createTRPCRouter({
         orderBy: { enrolledAt: "desc" },
         select: { cohort: { select: { id: true, name: true } } },
       });
-      const answersRevealed = attempt?.status === "GRADED" &&
-        (!attempt.assessmentEvent || attempt.assessmentEvent.status === "CLOSED");
+      const answersRevealed = shouldRevealAssessmentAnswers({
+        attemptStatus: attempt?.status ?? "IN_PROGRESS",
+        event: attempt?.assessmentEvent
+          ? {
+              type: attempt.assessmentEvent.type,
+              status: attempt.assessmentEvent.status,
+            }
+          : null,
+      });
       const questions = orderAssessmentQuestions(
         item.assessment.questions,
         attempt?.shuffleSeed ?? attempt?.id ?? input.attemptId,

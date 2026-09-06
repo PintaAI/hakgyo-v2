@@ -12,6 +12,10 @@ import {
 } from "react-native";
 
 import { authClient } from "../../src/lib/auth-client";
+import {
+  assessmentAttemptPresentation,
+  latestStandaloneAttemptForItem,
+} from "../../src/lib/assessment-state";
 import { api } from "../../src/lib/trpc";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 
@@ -39,6 +43,10 @@ export default function CourseDetailScreen() {
     { courseId },
     { enabled: Boolean(session && courseId), retry: false },
   );
+  const attemptsQuery = api.assessment.listMyAttempts.useQuery(undefined, {
+    enabled: Boolean(session && courseId),
+    retry: false,
+  });
 
   useEffect(() => {
     if (!isSessionPending && !session && courseId) {
@@ -50,6 +58,9 @@ export default function CourseDetailScreen() {
   }, [courseId, isSessionPending, session]);
 
   const course = courseQuery.data;
+  const courseAttempts = attemptsQuery.data?.filter(
+    (attempt) => attempt.courseItem.module.courseId === courseId,
+  );
   const allItems = course?.modules.flatMap((module) => module.items) ?? [];
   const completedCount = allItems.filter((item) => item.isCompleted).length;
   const progress = allItems.length
@@ -132,8 +143,13 @@ export default function CourseDetailScreen() {
           contentInsetAdjustmentBehavior="automatic"
           refreshControl={
             <RefreshControl
-              onRefresh={() => void courseQuery.refetch()}
-              refreshing={courseQuery.isRefetching}
+              onRefresh={() => {
+                void courseQuery.refetch();
+                void attemptsQuery.refetch();
+              }}
+              refreshing={
+                courseQuery.isRefetching || attemptsQuery.isRefetching
+              }
               tintColor={colors.primary}
             />
           }
@@ -264,48 +280,83 @@ export default function CourseDetailScreen() {
                         No activities in this module.
                       </Text>
                     ) : (
-                      module.items.map((item, itemIndex) => (
-                        <Pressable
-                          className={`flex-row items-center gap-3 px-5 py-4 ${itemIndex > 0 ? "border-t border-border" : ""}`}
-                          disabled={locked}
-                          key={item.id}
-                          onPress={() =>
-                            router.push({
-                              pathname:
-                                "/courses/[courseId]/items/[courseItemId]",
-                              params: { courseId, courseItemId: item.id },
-                            })
-                          }
-                        >
-                          <View
-                            className={`size-9 items-center justify-center rounded-lg ${item.isCompleted ? "bg-primary" : "bg-muted"}`}
+                      module.items.map((item, itemIndex) => {
+                        const attempt =
+                          item.type === "ASSESSMENT"
+                            ? latestStandaloneAttemptForItem(
+                                courseAttempts,
+                                item.id,
+                              )
+                            : undefined;
+                        const assessmentState =
+                          item.type === "ASSESSMENT"
+                            ? assessmentAttemptPresentation(attempt)
+                            : undefined;
+
+                        return (
+                          <Pressable
+                            accessibilityHint={assessmentState?.action}
+                            className={`flex-row items-center gap-3 px-5 py-4 ${itemIndex > 0 ? "border-t border-border" : ""}`}
+                            disabled={locked}
+                            key={item.id}
+                            onPress={() => {
+                              if (attempt) {
+                                router.push({
+                                  pathname:
+                                    "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                                  params: {
+                                    courseId,
+                                    courseItemId: item.id,
+                                    attemptId: attempt.id,
+                                  },
+                                });
+                                return;
+                              }
+                              router.push({
+                                pathname:
+                                  "/courses/[courseId]/items/[courseItemId]",
+                                params: { courseId, courseItemId: item.id },
+                              });
+                            }}
                           >
-                            <Text
-                              className={`text-xs font-black ${item.isCompleted ? "text-primary-foreground" : "text-muted-foreground"}`}
+                            <View
+                              className={`size-9 items-center justify-center rounded-lg ${item.isCompleted ? "bg-primary" : "bg-muted"}`}
                             >
-                              {item.isCompleted ? "✓" : itemMarks[item.type]}
-                            </Text>
-                          </View>
-                          <View className="min-w-0 flex-1">
-                            <Text
-                              className="font-bold text-foreground"
-                              numberOfLines={2}
-                            >
-                              {item.title}
-                            </Text>
-                            <Text className="mt-1 text-xs text-muted-foreground">
-                              {itemLabels[item.type]}
-                            </Text>
-                          </View>
-                          <Text className="text-xs font-bold text-muted-foreground">
-                            {item.isCompleted
-                              ? "Done"
-                              : locked
-                                ? "Locked"
-                                : "Open"}
-                          </Text>
-                        </Pressable>
-                      ))
+                              <Text
+                                className={`text-xs font-black ${item.isCompleted ? "text-primary-foreground" : "text-muted-foreground"}`}
+                              >
+                                {item.isCompleted ? "✓" : itemMarks[item.type]}
+                              </Text>
+                            </View>
+                            <View className="min-w-0 flex-1">
+                              <Text
+                                className="font-bold text-foreground"
+                                numberOfLines={2}
+                              >
+                                {item.title}
+                              </Text>
+                              <Text className="mt-1 text-xs text-muted-foreground">
+                                {itemLabels[item.type]}
+                              </Text>
+                            </View>
+                            <View className="max-w-32 items-end gap-1">
+                              <Text
+                                className={`text-right text-xs font-bold ${attempt?.status === "GRADED" ? "text-primary" : "text-muted-foreground"}`}
+                              >
+                                {locked
+                                  ? "Locked"
+                                  : (assessmentState?.detail ??
+                                    (item.isCompleted ? "Done" : "Open"))}
+                              </Text>
+                              {attempt && !locked ? (
+                                <Text className="text-right text-xs font-bold text-primary">
+                                  {assessmentState?.action} ›
+                                </Text>
+                              ) : null}
+                            </View>
+                          </Pressable>
+                        );
+                      })
                     )}
                   </View>
                 );

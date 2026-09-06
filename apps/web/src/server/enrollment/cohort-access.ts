@@ -74,3 +74,17 @@ export async function reconcileCohortCourseAccess(
     data: { status: "CANCELLED", completedAt: null },
   });
 }
+
+export async function removeCohortEnrollmentAndReconcile(
+  tx: Prisma.TransactionClient,
+  input: { cohortId: string; courseId: string; userId: string },
+) {
+  const removed = await tx.cohortEnrollment.deleteMany({
+    where: { cohortId: input.cohortId, userId: input.userId },
+  });
+  await reconcileCohortCourseAccess(tx, {
+    courseId: input.courseId,
+    userIds: [input.userId],
+  });
+  return removed;
+}

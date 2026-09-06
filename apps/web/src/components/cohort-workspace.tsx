@@ -671,6 +671,8 @@ function Learners({
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<CohortEnrollment["status"]>("ACTIVE");
   const mutation = api.enrollment.setCohortEnrollment.useMutation();
+  const removeEnrollment = api.enrollment.removeCohortEnrollment.useMutation();
+  const [removing, setRemoving] = useState<CohortEnrollment | null>(null);
   const visible = data;
 
   async function save(email: string, status: CohortEnrollment["status"]) {
@@ -691,6 +693,25 @@ function Learners({
       setOpen(false);
       setEmail("");
       setStatus("ACTIVE");
+    }
+  }
+
+  async function removeLearner(enrollment: CohortEnrollment) {
+    try {
+      await removeEnrollment.mutateAsync({
+        cohortId,
+        userId: enrollment.user.id,
+      });
+      await Promise.all([
+        utils.enrollment.listCohortEnrollments.invalidate({ cohortId }),
+        utils.cohort.get.invalidate({ cohortId }),
+      ]);
+      setRemoving(null);
+      toast.success(
+        `Siswa ${enrollment.user.name} dihapus dari Group belajar.`,
+      );
+    } catch (cause) {
+      toast.error(getErrorMessage(cause));
     }
   }
 
@@ -750,7 +771,10 @@ function Learners({
                   <TableHead className="pl-4">Siswa</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Terdaftar</TableHead>
-                  <TableHead className="pr-4 text-right">Status</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
+                  <TableHead className="pr-4 text-right">
+                    <span className="sr-only">Aksi</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -770,11 +794,12 @@ function Learners({
                     <TableCell className="text-muted-foreground text-xs">
                       {dateFormatter.format(enrollment.enrolledAt)}
                     </TableCell>
-                    <TableCell className="pr-4 text-right">
+                    <TableCell className="text-right">
                       <select
+                        aria-label={`Status ${enrollment.user.name}`}
                         className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
                         value={enrollment.status}
-                        disabled={mutation.isPending}
+                        disabled={mutation.isPending || removeEnrollment.isPending}
                         onChange={(event) =>
                           save(
                             enrollment.user.email,
@@ -790,6 +815,18 @@ function Learners({
                           ),
                         )}
                       </select>
+                    </TableCell>
+                    <TableCell className="pr-4 text-right">
+                      <Button
+                        aria-label={`Hapus ${enrollment.user.name} dari Group belajar`}
+                        size="icon-sm"
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-destructive"
+                        disabled={removeEnrollment.isPending}
+                        onClick={() => setRemoving(enrollment)}
+                      >
+                        <Trash2Icon />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -884,6 +921,44 @@ function Learners({
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(removing)}
+        onOpenChange={(value) => {
+          if (!value) setRemoving(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Trash2Icon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              Hapus {removing?.user.name} dari Group belajar?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Siswa akan dikeluarkan dari Group belajar ini. Akses course yang
+              berasal dari Group belajar juga akan dicabut jika siswa tidak
+              memiliki Group belajar aktif lain untuk course yang sama.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removeEnrollment.isPending}
+              onClick={() => removing && removeLearner(removing)}
+            >
+              {removeEnrollment.isPending ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : (
+                <Trash2Icon />
+              )}
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

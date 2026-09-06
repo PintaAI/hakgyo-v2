@@ -11,11 +11,14 @@ import {
   View,
 } from "react-native";
 
-import { NativeContentRenderer } from "../../../../../../src/components/content-renderer";
+import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
+import {
+  NativeContentRenderer,
+  useApiAssetResolver,
+} from "../../../../../../src/components/content-renderer";
 import { api } from "../../../../../../src/lib/trpc";
 import { authClient } from "../../../../../../src/lib/auth-client";
 import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-draft";
-import { useApiAssetResolver } from "../../../../../../src/components/content-renderer";
 
 type Answer = { content?: string; optionIds: string[] };
 
@@ -41,7 +44,16 @@ export default function AssessmentAttemptScreen() {
   );
   const attempt = api.assessment.getMyAttempt.useQuery(
     { attemptId },
-    { enabled: Boolean(attemptId), retry: false },
+    {
+      enabled: Boolean(attemptId),
+      retry: false,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        return status === "IN_REVIEW" || status === "SUBMITTED"
+          ? 15_000
+          : false;
+      },
+    },
   );
   const saveAnswers = api.assessment.saveAnswers.useMutation();
   const submitAttempt = api.assessment.submitAttempt.useMutation();
@@ -221,6 +233,20 @@ export default function AssessmentAttemptScreen() {
     );
   }
 
+  function leaveResult() {
+    if (assessment.data?.event) {
+      router.replace({
+        pathname: "/events/[eventId]",
+        params: { eventId: assessment.data.event.id },
+      });
+      return;
+    }
+    router.replace({
+      pathname: "/courses/[courseId]",
+      params: { courseId },
+    });
+  }
+
   return (
     <>
       <Stack.Screen
@@ -246,34 +272,49 @@ export default function AssessmentAttemptScreen() {
           </Pressable>
         </View>
       ) : result ? (
-        <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
-          <View className="size-16 items-center justify-center rounded-full bg-primary/10">
-            <Text className="text-2xl font-black text-primary">✓</Text>
-          </View>
-          <Text className="text-2xl font-black text-foreground">
-            {result.status === "IN_REVIEW"
-              ? "Submitted for review"
-              : "Assessment complete"}
-          </Text>
-          {result.status === "GRADED" ? (
-            <Text className="text-lg text-muted-foreground">
-              Score: {result.score}/{result.maxScore}
+        <ScrollView
+          className="flex-1 bg-background"
+          contentContainerClassName="gap-6 px-5 pb-14 pt-6"
+          contentInsetAdjustmentBehavior="automatic"
+        >
+          <View className="items-center gap-3 py-4">
+            <View className="size-16 items-center justify-center rounded-full bg-primary/10">
+              <Text className="text-2xl font-black text-primary">✓</Text>
+            </View>
+            <Text className="text-center text-2xl font-black text-foreground">
+              {result.status === "IN_REVIEW"
+                ? "Awaiting review"
+                : "Assessment reviewed"}
             </Text>
-          ) : null}
+            {result.status === "GRADED" ? (
+              <Text className="text-lg text-muted-foreground">
+                Score: {result.score}/{result.maxScore}
+              </Text>
+            ) : (
+              <Text className="text-center text-sm leading-5 text-muted-foreground">
+                Your detailed result will appear here after the teacher finishes
+                reviewing it.
+              </Text>
+            )}
+          </View>
+
+          <AssessmentResultReview
+            assessment={assessment.data}
+            attempt={attempt.data}
+            resolveAssetUrl={resolveAssetUrl}
+          />
+
           <Pressable
-            className="rounded-full bg-primary px-6 py-4"
-            onPress={() =>
-              router.replace({
-                pathname: "/courses/[courseId]",
-                params: { courseId },
-              })
-            }
+            className="items-center rounded-full bg-primary px-6 py-4"
+            onPress={leaveResult}
           >
             <Text className="font-black text-primary-foreground">
-              Return to course
+              {assessment.data.event
+                ? "View score & leaderboard"
+                : "Return to course"}
             </Text>
           </Pressable>
-        </View>
+        </ScrollView>
       ) : question ? (
         <ScrollView
           className="flex-1 bg-background"

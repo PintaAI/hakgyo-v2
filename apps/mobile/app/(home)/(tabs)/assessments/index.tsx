@@ -8,6 +8,7 @@ import {
   StudyScreen,
 } from "../../../../src/components/learning-ui";
 import { CourseActivities } from "../../../../src/components/course-activities";
+import { assessmentAttemptPresentation } from "../../../../src/lib/assessment-state";
 import { dateLabel } from "../../../../src/lib/study";
 
 export default function PracticeTab() {
@@ -36,19 +37,22 @@ export default function PracticeTab() {
         {events.data?.length === 0 ? (
           <Empty>Invited tryouts and live assessments will appear here.</Empty>
         ) : null}
-        {events.data?.map((event) => (
-          <Row
-            key={event.id}
-            title={event.title}
-            detail={`${event.type === "TRYOUT" ? "Tryout" : "Quick assessment"} · ${event.course.title} · ${event.status.toLowerCase()}${event.closesAt ? ` · closes ${dateLabel(event.closesAt)}` : ""}`}
-            onPress={() =>
-              router.push({
-                pathname: "/events/[eventId]",
-                params: { eventId: event.id },
-              })
-            }
-          />
-        ))}
+        {events.data?.map((event) => {
+          const attemptState = assessmentAttemptPresentation(event.attempts[0]);
+          return (
+            <Row
+              key={event.id}
+              title={event.title}
+              detail={`${event.type === "TRYOUT" ? "Tryout" : "On-demand assessment"} · ${event.course.title} · ${attemptState.detail}${event.closesAt ? ` · closes ${dateLabel(event.closesAt)}` : ""}`}
+              onPress={() =>
+                router.push({
+                  pathname: "/events/[eventId]",
+                  params: { eventId: event.id },
+                })
+              }
+            />
+          );
+        })}
       </Section>
       <Section title="Recent attempts">
         <QueryState
@@ -59,25 +63,30 @@ export default function PracticeTab() {
         {attempts.data?.length === 0 ? (
           <Empty>Your saved attempts and results will appear here.</Empty>
         ) : null}
-        {attempts.data?.map((attempt) => (
-          <Row
-            key={attempt.id}
-            title={attempt.assessment.title}
-            disabled={!!attempt.assessmentEvent?.participants[0]?.invalidatedAt}
-            detail={`${attempt.status === "IN_PROGRESS" ? "Resume" : attempt.status === "IN_REVIEW" ? "Awaiting review" : `${attempt.score ?? 0} / ${attempt.maxScore ?? 0}`} · ${dateLabel(attempt.startedAt)}`}
-            onPress={() =>
-              router.push({
-                pathname:
-                  "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                params: {
-                  courseId: attempt.courseItem.module.courseId,
-                  courseItemId: attempt.courseItemId,
-                  attemptId: attempt.id,
-                },
-              })
-            }
-          />
-        ))}
+        {attempts.data?.map((attempt) => {
+          const attemptState = assessmentAttemptPresentation(attempt);
+          return (
+            <Row
+              key={attempt.id}
+              title={attempt.assessment.title}
+              disabled={
+                !!attempt.assessmentEvent?.participants[0]?.invalidatedAt
+              }
+              detail={`${attemptState.detail} · ${dateLabel(attempt.startedAt)}`}
+              onPress={() =>
+                router.push({
+                  pathname:
+                    "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                  params: {
+                    courseId: attempt.courseItem.module.courseId,
+                    courseItemId: attempt.courseItemId,
+                    attemptId: attempt.id,
+                  },
+                })
+              }
+            />
+          );
+        })}
         {attempts.data?.length === 50 ? (
           <Empty>Showing your 50 most recent attempts.</Empty>
         ) : null}

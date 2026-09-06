@@ -11,6 +11,7 @@ import {
   getOpenEnrollmentUpdate,
 } from "~/server/enrollment/open-enrollment";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
+import { removeCohortEnrollmentAndReconcile } from "~/server/enrollment/cohort-access";
 import { pageInput, pageResult } from "~/server/api/pagination";
 
 const id = z.string().min(1);
@@ -464,6 +465,23 @@ export const enrollmentRouter = createTRPCRouter({
         }
         return cohortEnrollment;
       });
+    }),
+
+  removeCohortEnrollment: protectedProcedure
+    .input(z.object({ cohortId: id, userId: id }))
+    .mutation(async ({ ctx, input }) => {
+      const cohort = await requireCohortPermission({
+        cohortId: input.cohortId,
+        permission: "learners.manage",
+        userId: ctx.actorUserId,
+      });
+      return ctx.db.$transaction((tx) =>
+        removeCohortEnrollmentAndReconcile(tx, {
+          cohortId: input.cohortId,
+          courseId: cohort.courseId,
+          userId: input.userId,
+        }),
+      );
     }),
 
   createInvite: protectedProcedure

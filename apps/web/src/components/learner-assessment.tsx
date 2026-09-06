@@ -526,6 +526,11 @@ export function AssessmentAttempt({
                 );
               })}
             </div>
+          ) : assessment.event?.type === "TRYOUT" ? (
+            <p className="text-muted-foreground mt-6 text-sm">
+              Tryout hanya menampilkan nilai dan leaderboard. Jawaban benar dan
+              penjelasan tidak dipublikasikan.
+            </p>
           ) : assessment.event ? (
             <p className="text-muted-foreground mt-6 text-sm">
               Jawaban benar dan penjelasan tersedia setelah event ditutup.

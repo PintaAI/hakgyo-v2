@@ -8,6 +8,7 @@ import {
   Section,
   StudyScreen,
 } from "../../src/components/learning-ui";
+import { assessmentAttemptPresentation } from "../../src/lib/assessment-state";
 import { dateLabel } from "../../src/lib/study";
 
 export default function AssessmentEventScreen() {
@@ -19,6 +20,7 @@ export default function AssessmentEventScreen() {
   const start = api.assessmentEvent.startAttempt.useMutation();
   const event = query.data;
   const attempt = event?.attempts[0];
+  const attemptState = assessmentAttemptPresentation(attempt);
   const invalidated = !!event?.participants[0]?.invalidatedAt;
   const open =
     event?.status === "OPEN" &&
@@ -72,11 +74,7 @@ export default function AssessmentEventScreen() {
             ) : null}
             {attempt && attempt.status !== "IN_PROGRESS" ? (
               <Text className="text-lg font-semibold text-foreground">
-                {attempt.status === "IN_REVIEW"
-                  ? "Submitted for review"
-                  : attempt.maxScore
-                    ? `Result: ${attempt.score ?? 0} / ${attempt.maxScore}`
-                    : "Submitted"}
+                {attemptState.detail}
               </Text>
             ) : null}
             <Action
@@ -91,9 +89,7 @@ export default function AssessmentEventScreen() {
               {start.isPending
                 ? "Starting…"
                 : attempt
-                  ? attempt.status === "IN_PROGRESS"
-                    ? "Resume attempt"
-                    : "View attempt"
+                  ? attemptState.action
                   : open
                     ? "Start timed attempt"
                     : "Not open for attempts"}

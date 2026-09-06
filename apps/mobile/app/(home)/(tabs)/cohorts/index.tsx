@@ -15,6 +15,7 @@ import {
   meetingState,
   safeExternalUrl,
 } from "../../../../src/lib/study";
+import { assessmentAttemptPresentation } from "../../../../src/lib/assessment-state";
 
 async function openLink(value: string, kind: "zoom" | "whatsapp") {
   const url = safeExternalUrl(value, kind);
@@ -37,6 +38,7 @@ async function openLink(value: string, kind: "zoom" | "whatsapp") {
 
 export default function CohortsTab() {
   const query = api.learning.listMyCohorts.useQuery();
+  const events = api.assessmentEvent.listForLearner.useQuery();
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30_000);
@@ -45,13 +47,21 @@ export default function CohortsTab() {
   return (
     <StudyScreen
       title="Cohorts"
-      refreshing={query.isRefetching}
-      onRefresh={() => void query.refetch()}
+      refreshing={query.isRefetching || events.isRefetching}
+      onRefresh={() => {
+        void query.refetch();
+        void events.refetch();
+      }}
     >
       <QueryState
         pending={query.isPending}
         error={query.error}
         retry={() => void query.refetch()}
+      />
+      <QueryState
+        pending={events.isPending}
+        error={events.error}
+        retry={() => void events.refetch()}
       />
       {query.data?.length === 0 ? (
         <Empty>
@@ -62,6 +72,8 @@ export default function CohortsTab() {
         const meetings = cohort.meetings.filter(
           (meeting) => meetingState(meeting, now) !== "ended",
         );
+        const cohortEvents =
+          events.data?.filter((event) => event.cohort?.id === cohort.id) ?? [];
         return (
           <Section key={cohort.id} title={cohort.name}>
             <Row
@@ -87,6 +99,37 @@ export default function CohortsTab() {
             ) : (
               <Empty>A discussion link hasn’t been shared yet.</Empty>
             )}
+            {!events.isPending && !events.error ? (
+              <View className="gap-1 rounded-2xl bg-muted px-5 py-2">
+                <Text className="pt-3 text-xs font-semibold uppercase tracking-wider text-primary">
+                  Assessments ({cohortEvents.length})
+                </Text>
+                {cohortEvents.length === 0 ? (
+                  <Empty>No assessment events in this cohort.</Empty>
+                ) : (
+                  cohortEvents.map((event) => {
+                    const attempt = event.attempts[0];
+                    const state = assessmentAttemptPresentation(attempt);
+                    const timing = event.closesAt
+                      ? ` · closes ${dateLabel(event.closesAt)}`
+                      : "";
+                    return (
+                      <Row
+                        key={event.id}
+                        title={event.title}
+                        detail={`${event.type === "TRYOUT" ? "Tryout" : "On-demand assessment"} · ${state.detail}${timing}`}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/events/[eventId]",
+                            params: { eventId: event.id },
+                          })
+                        }
+                      />
+                    );
+                  })
+                )}
+              </View>
+            ) : null}
             {meetings.length === 0 ? (
               <Empty>No upcoming sessions in this cohort.</Empty>
             ) : (
