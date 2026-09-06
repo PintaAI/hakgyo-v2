@@ -310,118 +310,129 @@ export const grammarBlock = createReactBlockSpec(
                 />
               </section>
 
-              <section className="ring-foreground/10 min-w-0 overflow-hidden rounded-lg ring-1">
-                <div
-                  className={`bg-muted/50 border-border hidden border-b sm:grid ${editable ? "grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)_2.5rem]" : "grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)]"}`}
-                >
-                  <EditableBlockText
-                    ariaLabel="Judul kolom aturan pertama"
-                    className="w-full px-3 py-2 text-xs font-semibold tracking-wide uppercase"
-                    editable={editable}
-                    onChange={(ruleColumnOne) =>
-                      editor.updateBlock(block, { props: { ruleColumnOne } })
-                    }
-                    value={block.props.ruleColumnOne}
-                  />
-                  <EditableBlockText
-                    ariaLabel="Judul kolom aturan kedua"
-                    className="border-border w-full border-l px-3 py-2 text-xs font-semibold tracking-wide uppercase"
-                    editable={editable}
-                    onChange={(ruleColumnTwo) =>
-                      editor.updateBlock(block, { props: { ruleColumnTwo } })
-                    }
-                    value={block.props.ruleColumnTwo}
-                  />
-                  <EditableBlockText
-                    ariaLabel="Judul kolom aturan ketiga"
-                    className="border-border w-full border-l px-3 py-2 text-xs font-semibold tracking-wide uppercase"
-                    editable={editable}
-                    onChange={(ruleColumnThree) =>
-                      editor.updateBlock(block, {
-                        props: { ruleColumnThree },
-                      })
-                    }
-                    value={block.props.ruleColumnThree}
-                  />
-                  {editable ? (
-                    <span className="border-border border-l" />
-                  ) : null}
-                </div>
-
-                <div className="divide-border divide-y">
-                  {ruleRows.map((row, index) => (
-                    <div
-                      className={`grid min-w-0 ${editable ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)_2.5rem]" : "sm:grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)]"}`}
-                      key={index}
-                    >
-                      <RuleCell
-                        editable={editable}
-                        label={block.props.ruleColumnOne}
-                        onChange={(condition) => {
-                          const next = [...ruleRows];
-                          next[index] = { ...row, condition };
-                          updateRuleRows(next);
-                        }}
-                        value={row.condition}
-                      />
-                      <RuleCell
-                        editable={editable}
-                        label={block.props.ruleColumnTwo}
-                        onChange={(form) => {
-                          const next = [...ruleRows];
-                          next[index] = { ...row, form };
-                          updateRuleRows(next);
-                        }}
-                        value={row.form}
-                      />
-                      <RuleCell
-                        editable={editable}
-                        label={block.props.ruleColumnThree}
-                        onChange={(example) => {
-                          const next = [...ruleRows];
-                          next[index] = { ...row, example };
-                          updateRuleRows(next);
-                        }}
-                        value={row.example}
-                      />
-                      {editable ? (
-                        <div className="border-border flex items-center justify-end border-t px-2 py-2 sm:justify-center sm:border-t-0 sm:border-l">
-                          <button
-                            aria-label={`Hapus aturan ${index + 1}`}
-                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive grid size-7 place-items-center rounded-md transition disabled:opacity-30"
-                            disabled={ruleRows.length === 1}
-                            onClick={() =>
-                              updateRuleRows(
-                                ruleRows.filter(
-                                  (_, rowIndex) => rowIndex !== index,
-                                ),
-                              )
-                            }
-                            type="button"
-                          >
-                            <Trash2Icon className="size-3.5" />
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-                {editable ? (
-                  <button
-                    className="border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1.5 border-t px-3 py-2 text-xs font-medium transition disabled:opacity-40"
-                    disabled={ruleRows.length >= 12}
-                    onClick={() =>
-                      updateRuleRows([
-                        ...ruleRows,
-                        { condition: "", form: "", example: "" },
-                      ])
-                    }
-                    type="button"
+              {ruleRows.length > 0 ? (
+                <section className="ring-foreground/10 min-w-0 overflow-hidden rounded-lg ring-1">
+                  <div
+                    className={`bg-muted/50 border-border hidden border-b sm:grid ${editable ? "grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)_2.5rem]" : "grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)]"}`}
                   >
-                    <PlusIcon className="size-3.5" /> Tambah aturan
-                  </button>
-                ) : null}
-              </section>
+                    <EditableBlockText
+                      ariaLabel="Judul kolom aturan pertama"
+                      className="w-full px-3 py-2 text-xs font-semibold tracking-wide uppercase"
+                      editable={editable}
+                      onChange={(ruleColumnOne) =>
+                        editor.updateBlock(block, { props: { ruleColumnOne } })
+                      }
+                      value={block.props.ruleColumnOne}
+                    />
+                    <EditableBlockText
+                      ariaLabel="Judul kolom aturan kedua"
+                      className="border-border w-full border-l px-3 py-2 text-xs font-semibold tracking-wide uppercase"
+                      editable={editable}
+                      onChange={(ruleColumnTwo) =>
+                        editor.updateBlock(block, { props: { ruleColumnTwo } })
+                      }
+                      value={block.props.ruleColumnTwo}
+                    />
+                    <EditableBlockText
+                      ariaLabel="Judul kolom aturan ketiga"
+                      className="border-border w-full border-l px-3 py-2 text-xs font-semibold tracking-wide uppercase"
+                      editable={editable}
+                      onChange={(ruleColumnThree) =>
+                        editor.updateBlock(block, {
+                          props: { ruleColumnThree },
+                        })
+                      }
+                      value={block.props.ruleColumnThree}
+                    />
+                    {editable ? (
+                      <span className="border-border border-l" />
+                    ) : null}
+                  </div>
+
+                  <div className="divide-border divide-y">
+                    {ruleRows.map((row, index) => (
+                      <div
+                        className={`grid min-w-0 ${editable ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)_2.5rem]" : "sm:grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)]"}`}
+                        key={index}
+                      >
+                        <RuleCell
+                          editable={editable}
+                          label={block.props.ruleColumnOne}
+                          onChange={(condition) => {
+                            const next = [...ruleRows];
+                            next[index] = { ...row, condition };
+                            updateRuleRows(next);
+                          }}
+                          value={row.condition}
+                        />
+                        <RuleCell
+                          editable={editable}
+                          label={block.props.ruleColumnTwo}
+                          onChange={(form) => {
+                            const next = [...ruleRows];
+                            next[index] = { ...row, form };
+                            updateRuleRows(next);
+                          }}
+                          value={row.form}
+                        />
+                        <RuleCell
+                          editable={editable}
+                          label={block.props.ruleColumnThree}
+                          onChange={(example) => {
+                            const next = [...ruleRows];
+                            next[index] = { ...row, example };
+                            updateRuleRows(next);
+                          }}
+                          value={row.example}
+                        />
+                        {editable ? (
+                          <div className="border-border flex items-center justify-end border-t px-2 py-2 sm:justify-center sm:border-t-0 sm:border-l">
+                            <button
+                              aria-label={`Hapus aturan ${index + 1}`}
+                              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive grid size-7 place-items-center rounded-md transition disabled:opacity-30"
+                              onClick={() =>
+                                updateRuleRows(
+                                  ruleRows.filter(
+                                    (_, rowIndex) => rowIndex !== index,
+                                  ),
+                                )
+                              }
+                              type="button"
+                            >
+                              <Trash2Icon className="size-3.5" />
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                  {editable ? (
+                    <button
+                      className="border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1.5 border-t px-3 py-2 text-xs font-medium transition disabled:opacity-40"
+                      disabled={ruleRows.length >= 12}
+                      onClick={() =>
+                        updateRuleRows([
+                          ...ruleRows,
+                          { condition: "", form: "", example: "" },
+                        ])
+                      }
+                      type="button"
+                    >
+                      <PlusIcon className="size-3.5" /> Tambah aturan
+                    </button>
+                  ) : null}
+                </section>
+              ) : editable ? (
+                <button
+                  className="border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed px-3 py-3 text-xs font-medium transition"
+                  onClick={() =>
+                    updateRuleRows([{ condition: "", form: "", example: "" }])
+                  }
+                  type="button"
+                >
+                  <PlusIcon className="size-3.5" /> Tambah tabel aturan
+                </button>
+              ) : null}
 
               <section className="min-w-0">
                 <EditableBlockText
