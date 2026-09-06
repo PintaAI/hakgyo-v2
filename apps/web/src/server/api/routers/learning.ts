@@ -19,6 +19,46 @@ import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references
 import { getLearnerMaterialReferences } from "~/server/material-reference-service";
 
 export const learningRouter = createTRPCRouter({
+  // Enrollment-scoped student view. Staff membership alone must not populate
+  // the mobile learning experience or expose meeting links.
+  listMyCohorts: protectedProcedure.query(({ ctx }) =>
+    ctx.db.cohort.findMany({
+      where: {
+        status: { in: [...accessGrantingCohortStatuses] },
+        OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+        course: { status: "PUBLISHED" },
+        enrollments: {
+          some: {
+            userId: ctx.actorUserId,
+            status: { in: [...activeEnrollmentStatuses] },
+          },
+        },
+      },
+      orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        startsAt: true,
+        endsAt: true,
+        whatsappGroupUrl: true,
+        course: { select: { id: true, title: true } },
+        meetings: {
+          where: { status: { in: ["SCHEDULED", "STARTED"] } },
+          orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+          select: {
+            id: true,
+            title: true,
+            agenda: true,
+            startsAt: true,
+            durationMinutes: true,
+            status: true,
+            joinUrl: true,
+          },
+        },
+      },
+    }),
+  ),
   listMyCourses: protectedProcedure.query(({ ctx }) => {
     const now = new Date();
     return ctx.db.course.findMany({
@@ -185,15 +225,18 @@ export const learningRouter = createTRPCRouter({
         select: {
           organizationId: true,
           moduleId: true,
+          vocabularySetId: true,
           material: { select: { content: true } },
           module: { select: { courseId: true } },
         },
       });
       if (
-        !source?.material ||
-        !collectMaterialReferenceIds(
-          source.material.content,
-        ).vocabularySetIds.includes(input.vocabularySetId)
+        !source ||
+        (source.vocabularySetId !== input.vocabularySetId &&
+          (!source.material ||
+            !collectMaterialReferenceIds(
+              source.material.content,
+            ).vocabularySetIds.includes(input.vocabularySetId)))
       ) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
@@ -210,10 +253,29 @@ export const learningRouter = createTRPCRouter({
           title: true,
           description: true,
           _count: { select: { entries: true } },
+          courseItems: {
+            where: { moduleId: source.moduleId, isPublished: true },
+            orderBy: [{ position: "asc" }, { id: "asc" }],
+            select: { id: true },
+          },
+          entries: {
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            select: { id: true, term: true, definition: true, examples: true },
+          },
         },
       });
       if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
-      return { ...vocabularySet, courseId: source.module.courseId };
+      const practiceCourseItemId = vocabularySet.courseItems[0]?.id;
+      if (!practiceCourseItemId) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireCourseItemAccess({
+        courseItemId: practiceCourseItemId,
+        userId: ctx.actorUserId,
+      });
+      return {
+        ...vocabularySet,
+        courseId: source.module.courseId,
+        practiceCourseItemId,
+      };
     }),
   markContentProgress: protectedProcedure
     .input(

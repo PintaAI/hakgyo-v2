@@ -19,16 +19,20 @@ export default function HomeTabsLayout() {
       rippleColor={Platform.OS === "android" ? colors.border : undefined}
     >
       <NativeTabs.Trigger name="home">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="learn">
+        <NativeTabs.Trigger.Label>Learn</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="book.fill" md="menu_book" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="cohorts">
         <NativeTabs.Trigger.Label>Cohorts</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="person.3.fill" md="groups" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="assessments">
-        <NativeTabs.Trigger.Label>Assessments</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="checklist" md="checklist" />
+        <NativeTabs.Trigger.Label>Practice</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="brain.head.profile" md="psychology" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>

@@ -1,156 +1,112 @@
 import { router, Stack } from "expo-router";
-
+import { Text, View } from "react-native";
+import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
-import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+  Action,
+  Empty,
+  QueryState,
+  Row,
+  Section,
+  StudyScreen,
+} from "../../../../src/components/learning-ui";
+import { LearningProgress } from "../../../../src/components/learning-progress";
+import { CourseActivities } from "../../../../src/components/course-activities";
+import { dateLabel, meetingState } from "../../../../src/lib/study";
 
 export default function HomeTab() {
-  const { colors } = useAppTheme();
+  const { data: session } = authClient.useSession();
   const { open } = useDrawer();
-  const coursesQuery = api.learning.listMyCourses.useQuery();
-  const courses = coursesQuery.data ?? [];
-
+  const courses = api.learning.listMyCourses.useQuery();
+  const cohorts = api.learning.listMyCohorts.useQuery();
+  const utils = api.useUtils();
+  const upcoming = cohorts.data
+    ?.flatMap((cohort) =>
+      cohort.meetings.map((meeting) => ({ ...meeting, cohort: cohort.name })),
+    )
+    .filter((meeting) => meetingState(meeting) !== "ended")
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
   return (
     <>
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button
-          accessibilityLabel="Open menu"
           icon={toolbarIcons.menu}
+          accessibilityLabel="Open menu"
           onPress={open}
         />
       </Stack.Toolbar>
-      <ScrollView
-        className="flex-1 bg-background"
-        contentContainerClassName="gap-6 px-5 pt-4 pb-10"
-        contentInsetAdjustmentBehavior="automatic"
-        refreshControl={
-          <RefreshControl
-            onRefresh={() => void coursesQuery.refetch()}
-            refreshing={coursesQuery.isRefetching}
-            tintColor={colors.primary}
-          />
-        }
+      <StudyScreen
+        title="Today"
+        refreshing={courses.isRefetching || cohorts.isRefetching}
+        onRefresh={() => {
+          void utils.learning.invalidate();
+          void utils.gamification.invalidate();
+        }}
       >
-        <View className="gap-3">
-          {coursesQuery.isPending ? (
-            <View className="items-center rounded-xl border border-border bg-card px-5 py-10">
-              <ActivityIndicator color={colors.primary} />
-              <Text className="mt-3 text-sm text-muted-foreground">
-                Loading your courses…
-              </Text>
-            </View>
-          ) : coursesQuery.isError ? (
-            <View className="gap-3 rounded-xl border border-border bg-card px-5 py-5">
-              <Text className="text-sm leading-5 text-destructive">
-                We couldn’t load your courses. Check your connection and try
-                again.
-              </Text>
-              <Pressable
-                className="self-start rounded-full bg-primary px-4 py-3"
-                onPress={() => void coursesQuery.refetch()}
-              >
-                <Text className="font-bold text-primary-foreground">Retry</Text>
-              </Pressable>
-            </View>
-          ) : courses.length === 0 ? (
-            <View className="gap-2 rounded-xl border border-border bg-card px-5 py-6">
-              <Text className="text-base font-bold text-foreground">
-                No courses yet
-              </Text>
-              <Text className="text-sm leading-5 text-muted-foreground">
-                Enrolled courses will appear here when they are available.
-              </Text>
-            </View>
-          ) : (
-            courses.map((course) => (
-              <Pressable
-                accessibilityHint="Opens the course details"
-                accessibilityRole="button"
-                className={`relative min-h-48 overflow-hidden rounded-xl border border-border ${course.thumbnailUrl ? "bg-[#171915]" : "bg-card"}`}
-                key={course.id}
+        <View className="gap-2">
+          <Text className="text-2xl font-bold text-foreground">
+            Welcome back
+            {session?.user.name ? `, ${session.user.name.split(" ")[0]}` : ""}.
+          </Text>
+          <Text className="text-base text-muted-foreground">
+            A little practice, a little closer.
+          </Text>
+        </View>
+        <LearningProgress />
+        <Section title="Your daily practice">
+          <Text className="text-base leading-6 text-muted-foreground">
+            Recall a few words, then return to your next lesson.
+          </Text>
+          <Action onPress={() => router.navigate("/(home)/(tabs)/assessments")}>
+            Start practicing
+          </Action>
+        </Section>
+        <Section title="Next live session">
+          <QueryState
+            pending={cohorts.isPending}
+            error={cohorts.error}
+            retry={() => void cohorts.refetch()}
+          />
+          {upcoming ? (
+            <Row
+              title={upcoming.title}
+              detail={`${upcoming.cohort} · ${dateLabel(upcoming.startsAt)}`}
+              onPress={() => router.navigate("/(home)/(tabs)/cohorts")}
+            />
+          ) : cohorts.data ? (
+            <Empty>No upcoming live sessions.</Empty>
+          ) : null}
+        </Section>
+        <Section title="Continue learning">
+          <QueryState
+            pending={courses.isPending}
+            error={courses.error}
+            retry={() => void courses.refetch()}
+          />
+          {courses.data?.length === 0 ? (
+            <Empty>
+              Your enrolled courses will appear here when they’re available.
+            </Empty>
+          ) : null}
+          {courses.data?.map((course) => (
+            <View key={course.id} className="gap-1">
+              <Row
+                title={course.title}
+                detail={course.organization.name}
                 onPress={() =>
                   router.push({
                     pathname: "/courses/[courseId]",
                     params: { courseId: course.id },
                   })
                 }
-              >
-                {course.thumbnailUrl ? (
-                  <>
-                    <Image
-                      accessibilityIgnoresInvertColors
-                      className="absolute inset-0 z-0 size-full"
-                      resizeMode="cover"
-                      source={{ uri: course.thumbnailUrl }}
-                    />
-                    <View
-                      className="absolute inset-0 z-10"
-                      style={{ backgroundColor: "rgba(0, 0, 0, 0.68)" }}
-                    />
-                  </>
-                ) : null}
-                <View className="relative z-20 min-h-48 justify-between gap-8 p-5">
-                  <View className="gap-2">
-                    <View className="flex-row items-start justify-between gap-3">
-                      <Text
-                        className={`flex-1 text-lg font-black ${course.thumbnailUrl ? "text-white" : "text-foreground"}`}
-                      >
-                        {course.title}
-                      </Text>
-                      <View
-                        className={`rounded-full border px-2 py-1 ${course.thumbnailUrl ? "border-white/30" : "border-border"}`}
-                      >
-                        <Text
-                          className={`text-[10px] font-bold uppercase tracking-[1px] ${course.thumbnailUrl ? "text-white/80" : "text-muted-foreground"}`}
-                        >
-                          {course.progressionMode === "SEQUENTIAL"
-                            ? "Sequential"
-                            : "Open"}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text
-                      className={`text-sm font-semibold ${course.thumbnailUrl ? "text-white/70" : "text-muted-foreground"}`}
-                    >
-                      {course.organization.name}
-                    </Text>
-                  </View>
-                  {course.description ? (
-                    <Text
-                      className={`text-sm leading-5 ${course.thumbnailUrl ? "text-white/70" : "text-muted-foreground"}`}
-                      numberOfLines={3}
-                    >
-                      {course.description}
-                    </Text>
-                  ) : null}
-                  <View className="flex-row items-center justify-between gap-3">
-                    <Text
-                      className={`text-xs font-semibold uppercase tracking-[1px] ${course.thumbnailUrl ? "text-white/70" : "text-muted-foreground"}`}
-                    >
-                      Course
-                    </Text>
-                    <Text
-                      className={`text-sm font-black ${course.thumbnailUrl ? "text-white" : "text-foreground"}`}
-                    >
-                      Open →
-                    </Text>
-                  </View>
-                </View>
-              </Pressable>
-            ))
-          )}
-        </View>
-      </ScrollView>
+              />
+              <CourseActivities courseId={course.id} nextOnly />
+            </View>
+          ))}
+        </Section>
+      </StudyScreen>
     </>
   );
 }

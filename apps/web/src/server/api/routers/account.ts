@@ -5,6 +5,9 @@ import { getAccountDeletionBlockers } from "~/server/account/deletion";
 import { mcpResource, mcpScope } from "~/server/mcp/config";
 
 export const accountRouter = createTRPCRouter({
+  getMcpConnectionInfo: protectedProcedure.query(() => ({
+    resource: mcpResource,
+  })),
   me: protectedProcedure.query(({ ctx }) =>
     ctx.db.user.findUniqueOrThrow({ where: { id: ctx.actorUserId } }),
   ),

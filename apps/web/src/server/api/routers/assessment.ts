@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { Prisma } from "../../../../generated/prisma/client";
+import type { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { pageInput, pageResult } from "~/server/api/pagination";
 import {
@@ -13,6 +13,9 @@ import {
   getAssessmentDeadline,
   isAssessmentExpired,
 } from "~/server/assessment-timing";
+import { buildAssessmentAnswerContentUpdate } from "~/server/assessment-answer-content";
+import { assessmentContext, attemptSummarySelect, listRegisteredAttempts, registerInput, reviewScope, summarizeAttempt } from "~/server/assessment-register";
+import { deleteAssessmentWithProgress } from "~/server/content-resource-deletion";
 import {
   MAX_ASSESSMENT_OPTIONS,
   MIN_ASSESSMENT_OPTIONS,
@@ -120,6 +123,45 @@ async function requireReviewAccess(
 }
 
 export const assessmentRouter = createTRPCRouter({
+  listAttempts: protectedProcedure
+    .input(registerInput.extend({ organizationId: id }))
+    .query(async ({ ctx, input }) => {
+      const member = await requireOrganizationPermission({ organizationId: input.organizationId, userId: ctx.actorUserId, permission: "assessment.review" });
+      return listRegisteredAttempts(ctx.db, reviewScope(member), input);
+    }),
+  getRegisterFilters: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .query(async ({ ctx, input }) => {
+      const member = await requireOrganizationPermission({ ...input, userId: ctx.actorUserId, permission: "assessment.review" });
+      const scope = reviewScope(member);
+      const [courses, cohorts] = await Promise.all([
+        ctx.db.course.findMany({ where: { organizationId: input.organizationId, modules: { some: { items: { some: { attempts: { some: scope } } } } } }, select: { id: true, title: true }, orderBy: { title: "asc" } }),
+        ctx.db.cohort.findMany({ where: { organizationId: input.organizationId, assessmentAttempts: { some: scope } }, select: { id: true, name: true, courseId: true }, orderBy: { name: "asc" } }),
+      ]);
+      return { courses, cohorts };
+    }),
+  getReviewAttempt: protectedProcedure
+    .input(z.object({ attemptId: id }))
+    .query(async ({ ctx, input }) => {
+      await requireReviewAccess(ctx.db, input.attemptId, ctx.actorUserId);
+      const attempt = await ctx.db.assessmentAttempt.findUniqueOrThrow({ where: { id: input.attemptId }, select: {
+        ...attemptSummarySelect,
+        answers: { orderBy: { question: { position: "asc" } }, select: {
+          id: true, questionId: true, content: true, autoScore: true, manualScore: true, feedback: true, reviewedAt: true,
+          reviewedBy: { select: { user: { select: { name: true } } } },
+          selectedOptions: { select: { optionId: true } },
+          question: { select: { id: true, prompt: true, points: true, type: true } },
+        } },
+        assessment: { select: { id: true, title: true, passingScore: true, questions: {
+          orderBy: { position: "asc" }, select: { id: true, prompt: true, explanation: true, type: true, points: true, options: { orderBy: { position: "asc" }, select: { id: true, content: true, isCorrect: true } } },
+        } } },
+      } });
+      const participant = attempt.assessmentEvent ? await ctx.db.assessmentEventParticipant.findUnique({ where: { eventId_userId: { eventId: attempt.assessmentEvent.id, userId: attempt.userId } }, select: { invalidatedAt: true } }) : null;
+      return { ...summarizeAttempt(attempt, !!participant?.invalidatedAt), answers: attempt.answers, questions: attempt.assessment.questions };
+    }),
+  listMyAttemptHistory: protectedProcedure
+    .input(registerInput)
+    .query(({ ctx, input }) => listRegisteredAttempts(ctx.db, { userId: ctx.actorUserId }, input)),
   list: protectedProcedure
     .input(z.object({ organizationId: id }))
     .query(async ({ ctx, input }) => {
@@ -198,8 +240,10 @@ export const assessmentRouter = createTRPCRouter({
         ctx.actorUserId,
         "delete",
       );
-      await ctx.db.assessment.delete({ where: { id: input.assessmentId } });
-      return { deleted: true };
+      const removed = await ctx.db.$transaction((tx) =>
+        deleteAssessmentWithProgress(tx, input.assessmentId),
+      );
+      return { deleted: true, removed };
     }),
   createQuestion: protectedProcedure
     .input(questionFields.extend({ assessmentId: id }))
@@ -465,7 +509,7 @@ export const assessmentRouter = createTRPCRouter({
         where: { id: input.courseItemId },
         select: {
           id: true,
-          module: { select: { courseId: true } },
+          module: { select: { courseId: true, title: true, course: { select: { id: true, title: true } } } },
           assessment: {
             select: {
               id: true,
@@ -519,9 +563,8 @@ export const assessmentRouter = createTRPCRouter({
         orderBy: { enrolledAt: "desc" },
         select: { cohort: { select: { id: true, name: true } } },
       });
-      const answersRevealed =
-        attempt?.assessmentEvent?.status === "CLOSED" &&
-        attempt.status !== "IN_PROGRESS";
+      const answersRevealed = attempt?.status === "GRADED" &&
+        (!attempt.assessmentEvent || attempt.assessmentEvent.status === "CLOSED");
       const questions = orderAssessmentQuestions(
         item.assessment.questions,
         attempt?.shuffleSeed ?? attempt?.id ?? input.attemptId,
@@ -538,17 +581,17 @@ export const assessmentRouter = createTRPCRouter({
       }));
       return {
         ...item.assessment,
+        context: { label: attempt?.assessmentEvent?.type === "TRYOUT" ? "Tryout" : attempt?.assessmentEvent ? "Asesmen on-demand" : "Asesmen bab", title: attempt?.assessmentEvent?.title ?? item.assessment.title, courseTitle: item.module.course.title, moduleTitle: item.module.title },
         timeLimitMinutes:
           attempt?.assessmentEvent?.durationMinutes ??
           item.assessment.timeLimitMinutes,
-        attemptDeadline:
-          attempt?.assessmentEvent
-            ? getAssessmentDeadline(
-                attempt.startedAt,
-                attempt.assessmentEvent.durationMinutes,
-                attempt.assessmentEvent.closesAt,
-              )
-            : null,
+        attemptDeadline: attempt?.assessmentEvent
+          ? getAssessmentDeadline(
+              attempt.startedAt,
+              attempt.assessmentEvent.durationMinutes,
+              attempt.assessmentEvent.closesAt,
+            )
+          : null,
         event: attempt?.assessmentEvent
           ? {
               id: attempt.assessmentEvent.id,
@@ -622,6 +665,7 @@ export const assessmentRouter = createTRPCRouter({
               courseItemId: input.courseItemId,
               userId: ctx.actorUserId,
               status: "IN_PROGRESS",
+              assessmentEventId: null,
             },
             orderBy: { attemptNumber: "desc" },
           });
@@ -644,6 +688,7 @@ export const assessmentRouter = createTRPCRouter({
             where: {
               courseItemId: input.courseItemId,
               userId: ctx.actorUserId,
+              assessmentEventId: null,
             },
           });
           if (
@@ -675,7 +720,7 @@ export const assessmentRouter = createTRPCRouter({
               organizationId: item.organizationId,
               cohortId,
               userId: ctx.actorUserId,
-              attemptNumber: count + 1,
+              attemptNumber: ((await tx.assessmentAttempt.aggregate({ where: { courseItemId: input.courseItemId, userId: ctx.actorUserId }, _max: { attemptNumber: true } }))._max.attemptNumber ?? 0) + 1,
               shuffleSeed: crypto.randomUUID(),
             },
           });
@@ -848,29 +893,9 @@ export const assessmentRouter = createTRPCRouter({
           skipDuplicates: true,
         });
 
-        const contentRows = Prisma.join(
-          input.answers.map(
-            (answer) =>
-              Prisma.sql`(
-                ${answer.questionId},
-                ${answer.content !== undefined},
-                ${answer.content === undefined ? null : JSON.stringify(answer.content)}
-              )`,
-          ),
+        await tx.$executeRaw(
+          buildAssessmentAnswerContentUpdate(input.attemptId, input.answers),
         );
-        await tx.$executeRaw(Prisma.sql`
-            UPDATE "AssessmentAnswer" AS answer
-            SET
-              "content" = CASE
-                WHEN incoming."hasContent" THEN incoming."content"::jsonb
-                ELSE answer."content"
-              END,
-              "autoScore" = NULL,
-              "manualScore" = NULL
-            FROM (VALUES ${contentRows}) AS incoming("questionId", "hasContent", "content")
-            WHERE answer."attemptId" = ${input.attemptId}
-              AND answer."questionId" = incoming."questionId"
-          `);
 
         const savedAnswers = await tx.assessmentAnswer.findMany({
           where: {
@@ -1071,6 +1096,40 @@ export const assessmentRouter = createTRPCRouter({
       });
     }),
 
+  listMyAttempts: protectedProcedure.query(({ ctx }) =>
+    ctx.db.assessmentAttempt
+      .findMany({
+        where: { userId: ctx.actorUserId },
+        orderBy: [{ startedAt: "desc" }, { id: "desc" }],
+        take: 50,
+        select: {
+          id: true,
+          courseItemId: true,
+          status: true,
+          score: true,
+          maxScore: true,
+          startedAt: true,
+          assessment: { select: { title: true } },
+          courseItem: { select: { module: { select: { courseId: true } } } },
+          assessmentEvent: {
+            select: {
+              id: true,
+              participants: {
+                where: { userId: ctx.actorUserId },
+                select: { invalidatedAt: true },
+              },
+            },
+          },
+        },
+      })
+      .then((attempts) =>
+        attempts.map((attempt) => ({
+          ...attempt,
+          score: attempt.status === "GRADED" ? attempt.score : null,
+          maxScore: attempt.status === "GRADED" ? attempt.maxScore : null,
+        })),
+      ),
+  ),
   getMyAttempt: protectedProcedure
     .input(z.object({ attemptId: id }))
     .query(async ({ ctx, input }) => {
@@ -1086,11 +1145,14 @@ export const assessmentRouter = createTRPCRouter({
           startedAt: true,
           submittedAt: true,
           gradedAt: true,
+          assessment: { select: { title: true } },
+          courseItem: { select: { module: { select: { title: true, course: { select: { id: true, title: true } } } } } },
           assessmentEvent: {
             select: {
               id: true,
               title: true,
               type: true,
+              scope: true,
               status: true,
               participants: {
                 where: { userId: ctx.actorUserId },
@@ -1119,9 +1181,11 @@ export const assessmentRouter = createTRPCRouter({
           userId: ctx.actorUserId,
         });
       }
-      if (attempt.status === "IN_PROGRESS" || attempt.status === "IN_REVIEW") {
+      const context = assessmentContext(attempt);
+      if (attempt.status !== "GRADED" || attempt.assessmentEvent?.participants[0]?.invalidatedAt || attempt.assessmentEvent?.status === "CANCELLED") {
         return {
           ...attempt,
+          context,
           score: null,
           maxScore: null,
           gradedAt: null,
@@ -1131,7 +1195,7 @@ export const assessmentRouter = createTRPCRouter({
           ),
         };
       }
-      return attempt;
+      return { ...attempt, context };
     }),
 
   reviewAttempt: protectedProcedure
@@ -1160,7 +1224,7 @@ export const assessmentRouter = createTRPCRouter({
           where: { id: input.attemptId },
           include: {
             assessment: { select: { passingScore: true } },
-            assessmentEvent: { select: { id: true } },
+            assessmentEvent: { select: { id: true, status: true, participants: { select: { userId: true, invalidatedAt: true } } } },
             answers: {
               include: { question: { select: { points: true, type: true } } },
             },
@@ -1168,6 +1232,9 @@ export const assessmentRouter = createTRPCRouter({
         });
         if (attempt?.status !== "IN_REVIEW")
           throw new TRPCError({ code: "CONFLICT" });
+        if (attempt.assessmentEvent?.status === "CANCELLED" || attempt.assessmentEvent?.participants.some(p => p.userId === attempt.userId && p.invalidatedAt)) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This participation is no longer valid for review" });
+        }
         const byId = new Map(
           attempt.answers.map((answer) => [answer.id, answer]),
         );
@@ -1210,10 +1277,11 @@ export const assessmentRouter = createTRPCRouter({
           0,
         );
         const now = new Date();
-        await tx.assessmentAttempt.update({
-          where: { id: attempt.id },
+        const finalized = await tx.assessmentAttempt.updateMany({
+          where: { id: attempt.id, status: "IN_REVIEW" },
           data: { status: "GRADED", score, gradedAt: now },
         });
+        if (finalized.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "Another teacher has already completed this review" });
         const passed =
           attempt.maxScore !== null &&
           attempt.maxScore > 0 &&

@@ -82,6 +82,7 @@ export default function CourseItemScreen() {
         utils.learning.getCourseItem.invalidate({ courseItemId }),
         utils.learning.getCourseOutline.invalidate({ courseId }),
         utils.learning.listMyCourses.invalidate(),
+        utils.gamification.invalidate(),
       ]);
     } catch {
       // The mutation state renders a retryable error below the action.
@@ -91,8 +92,7 @@ export default function CourseItemScreen() {
   async function beginAssessment() {
     if (!assessment) return;
     const cohorts = assessment.eligibleCohorts;
-    const cohortId =
-      cohorts.length === 1 ? cohorts[0]?.id : selectedCohortId;
+    const cohortId = cohorts.length === 1 ? cohorts[0]?.id : selectedCohortId;
     try {
       const attempt = await startAssessment.mutateAsync({
         courseItemId,
@@ -250,6 +250,23 @@ export default function CourseItemScreen() {
               </Text>
             ) : null}
           </View>
+          <Pressable
+            accessibilityRole="button"
+            className="items-center rounded-2xl bg-primary px-5 py-4"
+            onPress={() =>
+              router.push({
+                pathname: "/vocabulary/[vocabularySetId]",
+                params: {
+                  vocabularySetId: vocabulary.id,
+                  sourceCourseItemId: courseItemId,
+                },
+              })
+            }
+          >
+            <Text className="text-base font-bold text-primary-foreground">
+              Practice these words
+            </Text>
+          </Pressable>
           {vocabulary.entries.map((entry) => (
             <View
               className="gap-1 rounded-xl border border-border bg-card p-5"

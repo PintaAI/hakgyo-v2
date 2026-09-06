@@ -105,7 +105,7 @@ const views = [
   { value: "staff", label: "Staff", icon: UserRoundCogIcon },
   { value: "meetings", label: "Meetings", icon: VideoIcon },
   { value: "assessments", label: "Assessment events", icon: ClipboardListIcon },
-  { value: "reviews", label: "Review tugas", icon: ClipboardCheckIcon },
+  { value: "reviews", label: "Hasil & review", icon: ClipboardCheckIcon },
   { value: "invites", label: "Invite", icon: MailPlusIcon },
   { value: "settings", label: "Pengaturan", icon: Settings2Icon },
 ] satisfies Array<{ value: CohortView; label: string; icon: LucideIcon }>;
@@ -422,6 +422,7 @@ export function CohortWorkspace({
         <TabsContent value="reviews">
           <ReviewQueue
             organizationId={cohort.organizationId}
+            courseId={cohort.courseId}
             cohortId={cohort.id}
             cohortName={cohort.name}
           />

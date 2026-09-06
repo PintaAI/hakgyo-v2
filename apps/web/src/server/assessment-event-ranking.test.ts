@@ -19,10 +19,18 @@ function attempt(
     startedAt: start,
     submittedAt: submittedAt ? new Date(submittedAt) : null,
     invalidatedAt,
+    status: "GRADED" as const,
   };
 }
 
 describe("assessment event ranking", () => {
+  test("never ranks provisional scores that still need teacher review", () => {
+    const ranked = rankAssessmentEventAttempts([
+      attempt("complete", 5, "2026-09-04T10:05:00.000Z"),
+      { ...attempt("pending", 9, "2026-09-04T10:04:00.000Z"), status: "IN_REVIEW" },
+    ]);
+    expect(ranked.map(({ attemptId }) => attemptId)).toEqual(["complete"]);
+  });
   test("ranks by score, completion time, then submission timestamp", () => {
     const ranked = rankAssessmentEventAttempts([
       attempt("slow-high", 9, "2026-09-04T10:10:00.000Z"),

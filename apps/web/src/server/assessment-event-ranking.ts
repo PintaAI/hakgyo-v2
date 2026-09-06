@@ -7,6 +7,7 @@ export type RankableAssessmentEventAttempt = {
   startedAt: Date;
   submittedAt: Date | null;
   invalidatedAt: Date | null;
+  status: string;
 };
 
 export type AssessmentEventLeaderboardEntry = {
@@ -33,7 +34,7 @@ export function rankAssessmentEventAttempts(
         maxScore: number;
         submittedAt: Date;
       } =>
-        attempt.invalidatedAt === null &&
+        attempt.status === "GRADED" && attempt.invalidatedAt === null &&
         attempt.score !== null &&
         attempt.maxScore !== null &&
         attempt.submittedAt !== null,

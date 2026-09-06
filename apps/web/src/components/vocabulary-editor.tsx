@@ -769,9 +769,9 @@ function VocabularySetForm({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Hapus set kosakata ini?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Ini menghapus semua entri dan tidak dapat dibatalkan.
-                    Penghapusan dapat gagal selama set dipakai oleh course atau
-                    materi.
+                    Tindakan ini permanen. Semua entri, penempatan di course,
+                    progres siswa, aktivitas XP, dan kaitan prasyarat materi
+                    akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

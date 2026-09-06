@@ -548,8 +548,8 @@ function MaterialEditorForm({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Hapus materi ini?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Tindakan ini tidak dapat dibatalkan. Penghapusan dapat gagal
-                    selama materi masih dipakai oleh sebuah course.
+                    Tindakan ini permanen. Semua penempatan materi di course,
+                    progres siswa, dan aktivitas XP terkait akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

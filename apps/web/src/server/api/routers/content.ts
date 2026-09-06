@@ -9,6 +9,11 @@ import {
 } from "~/server/authorization";
 import { db } from "~/server/db";
 import {
+  deleteCourseItemsWithProgress,
+  deleteMaterialWithProgress,
+  deleteVocabularySetWithProgress,
+} from "~/server/content-resource-deletion";
+import {
   assertPublishedMaterialReferences,
   sanitizeMaterialContent,
 } from "~/server/material-reference-service";
@@ -431,8 +436,10 @@ export const contentRouter = createTRPCRouter({
         permission: "content.manage",
         userId: ctx.actorUserId,
       });
-      await db.courseItem.delete({ where: { id: input.itemId } });
-      return { deleted: true };
+      const removed = await db.$transaction((tx) =>
+        deleteCourseItemsWithProgress(tx, [input.itemId]),
+      );
+      return { deleted: true, removed };
     }),
   reorderItems: protectedProcedure
     .input(z.object({ moduleId: id, itemIds: z.array(id).max(1000) }))
@@ -781,11 +788,10 @@ export const contentRouter = createTRPCRouter({
         material.createdByMembershipId,
         "delete",
       );
-      const result = await db.material.deleteMany({
-        where: { id: input.materialId, organizationId: input.organizationId },
-      });
-      if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
-      return { deleted: true };
+      const removed = await db.$transaction((tx) =>
+        deleteMaterialWithProgress(tx, input.materialId),
+      );
+      return { deleted: true, removed };
     }),
   attachMaterialAsset: protectedProcedure
     .input(z.object({ organizationId: id, materialId: id, assetId: id }))
@@ -1065,14 +1071,10 @@ export const contentRouter = createTRPCRouter({
         vocabularySet.createdByMembershipId,
         "delete",
       );
-      const result = await db.vocabularySet.deleteMany({
-        where: {
-          id: input.vocabularySetId,
-          organizationId: input.organizationId,
-        },
-      });
-      if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
-      return { deleted: true };
+      const removed = await db.$transaction((tx) =>
+        deleteVocabularySetWithProgress(tx, input.vocabularySetId),
+      );
+      return { deleted: true, removed };
     }),
   createVocabularyEntry: protectedProcedure
     .input(

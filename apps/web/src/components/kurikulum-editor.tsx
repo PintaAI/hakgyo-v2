@@ -64,6 +64,7 @@ import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import { defaultCourseItemPublished } from "~/lib/course-item-publication";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Course = RouterOutputs["course"]["get"];
@@ -494,6 +495,7 @@ export function KurikulumEditor({
         key={itemModule?.id ?? "no-module"}
         assessments={assessments}
         courseId={course.id}
+        courseStatus={course.status}
         materials={materials}
         module={itemModule}
         organizationSlug={organizationSlug}
@@ -920,6 +922,7 @@ function ItemDialog({
   assessments,
   vocabularySets,
   courseId,
+  courseStatus,
   organizationSlug,
   onClose,
   onSaved,
@@ -929,13 +932,15 @@ function ItemDialog({
   assessments: Assessment[];
   vocabularySets: VocabularySet[];
   courseId: string;
+  courseStatus: Course["status"];
   organizationSlug: string;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const [type, setType] = useState<ItemType>("MATERIAL");
   const [resourceId, setResourceId] = useState("");
-  const [isPublished, setIsPublished] = useState(false);
+  const publishByDefault = defaultCourseItemPublished(courseStatus);
+  const [isPublished, setIsPublished] = useState(publishByDefault);
   const createItem = api.content.createItem.useMutation();
   const resources =
     type === "MATERIAL"
@@ -947,7 +952,7 @@ function ItemDialog({
   function close() {
     setType("MATERIAL");
     setResourceId("");
-    setIsPublished(false);
+    setIsPublished(publishByDefault);
     onClose();
   }
 
@@ -955,7 +960,7 @@ function ItemDialog({
     if (open) {
       setType("MATERIAL");
       setResourceId("");
-      setIsPublished(false);
+      setIsPublished(publishByDefault);
     } else {
       close();
     }
@@ -1108,7 +1113,9 @@ function ItemDialog({
               <div>
                 <Label htmlFor="item-published">Langsung publish</Label>
                 <p className="text-muted-foreground mt-0.5 text-xs">
-                  Berlaku saat memilih resource yang sudah ada.
+                  {publishByDefault
+                    ? "Aktif secara default karena course sudah published."
+                    : "Berlaku saat memilih resource yang sudah ada."}
                 </p>
               </div>
               <Switch

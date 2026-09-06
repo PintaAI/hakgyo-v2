@@ -14,9 +14,9 @@ export default async function Page({
     organizationRoles,
   );
   const organizationId = membership.organizationId;
-  void api.assessment.listAttemptsNeedingReview.prefetchInfinite({
+  void api.assessment.listAttempts.prefetch({
     organizationId,
-    includeTotal: true,
+    status: "IN_REVIEW",
   });
 
   return (

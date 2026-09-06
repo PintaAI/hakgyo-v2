@@ -10,6 +10,7 @@ import {
   PlayIcon,
   PlusIcon,
   SquareIcon,
+  Trash2Icon,
   TrophyIcon,
   UsersIcon,
 } from "lucide-react";
@@ -51,8 +52,9 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { AssessmentReviewDetail } from "~/components/review-queue";
 
-type EventSummary = RouterOutputs["assessmentEvent"]["listManageable"][number];
+type EventSummary = RouterOutputs["assessmentEvent"]["listManageable"]["items"][number];
 
 const statusLabel = {
   DRAFT: "Draf",
@@ -106,29 +108,32 @@ export function AssessmentEventManager({
   const utils = api.useUtils();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string>();
+  const [eventPage, setEventPage] = useState(1);
+  const [participantPage, setParticipantPage] = useState(1);
+  const [participantSearch, setParticipantSearch] = useState("");
+  const [participantStatus, setParticipantStatus] = useState<"IN_PROGRESS" | "IN_REVIEW" | "GRADED" | "NOT_STARTED" | undefined>();
   const [title, setTitle] = useState("");
   const [courseItemId, setCourseItemId] = useState<string>();
-  const [type, setType] = useState<"QUICK_ASSESSMENT" | "TRYOUT">(
-    cohortId ? "QUICK_ASSESSMENT" : "TRYOUT",
-  );
+  const type = cohortId ? "QUICK_ASSESSMENT" : "TRYOUT";
   const [durationMinutes, setDurationMinutes] = useState("30");
   const [closesAt, setClosesAt] = useState(() =>
     toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60_000)),
   );
-  const input = { courseId, cohortId };
-  const events = api.assessmentEvent.listManageable.useQuery(input);
+  const input = { courseId, cohortId, page: eventPage };
+  const events = api.assessmentEvent.listManageable.useQuery(input, { refetchInterval: 30_000 });
   const assessmentItems = api.assessmentEvent.listAssessmentItems.useQuery({
     courseId,
     cohortId,
   });
   const detail = api.assessmentEvent.getManageable.useQuery(
-    { eventId: selectedEventId ?? "" },
-    { enabled: Boolean(selectedEventId) },
+    { eventId: selectedEventId ?? "", page: participantPage, search: participantSearch, status: participantStatus },
+    { enabled: Boolean(selectedEventId), refetchInterval: 30_000 },
   );
   const create = api.assessmentEvent.create.useMutation();
   const open = api.assessmentEvent.open.useMutation();
   const close = api.assessmentEvent.close.useMutation();
   const cancel = api.assessmentEvent.cancel.useMutation();
+  const deleteEvent = api.assessmentEvent.delete.useMutation();
   const invalidate = api.assessmentEvent.invalidateAttempt.useMutation();
   const adjust = api.assessmentEvent.adjustResult.useMutation();
   const pending =
@@ -136,6 +141,7 @@ export function AssessmentEventManager({
     open.isPending ||
     close.isPending ||
     cancel.isPending ||
+    deleteEvent.isPending ||
     invalidate.isPending ||
     adjust.isPending;
 
@@ -218,6 +224,22 @@ export function AssessmentEventManager({
     }
   }
 
+  async function removeEvent(eventId: string) {
+    if (
+      !window.confirm(
+        "Hapus event ini permanen? Semua attempt, jawaban, hasil, dan riwayat peserta event ini akan ikut dihapus.",
+      )
+    )
+      return;
+    try {
+      await deleteEvent.mutateAsync({ eventId });
+      toast.success("Event dihapus.");
+      await refresh();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
   async function invalidateAttempt(eventId: string, attemptId: string) {
     const invalidationReason = window.prompt("Alasan invalidasi attempt:");
     if (!invalidationReason?.trim()) return;
@@ -278,7 +300,7 @@ export function AssessmentEventManager({
           </h2>
           <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
             {cohortId
-              ? "Jalankan quick assessment atau tryout untuk snapshot peserta cohort saat ini."
+              ? "Jalankan asesmen on-demand untuk siswa aktif cohort. Hasil dan review tersedia per siswa."
               : "Jalankan tryout untuk semua peserta aktif course dan bandingkan hasilnya."}
           </p>
         </div>
@@ -296,9 +318,9 @@ export function AssessmentEventManager({
         <div className="text-destructive bg-destructive/10 rounded-md p-5 text-sm">
           {events.error.message}
         </div>
-      ) : events.data.length ? (
+      ) : events.data.items.length ? (
         <div className="grid gap-4 lg:grid-cols-2">
-          {events.data.map((event) => (
+          {events.data.items.map((event) => (
             <EventCard
               key={event.id}
               event={event}
@@ -306,7 +328,8 @@ export function AssessmentEventManager({
               onOpen={() => openEvent(event.id)}
               onClose={() => closeEvent(event.id)}
               onCancel={() => cancelEvent(event.id)}
-              onSelect={() => setSelectedEventId(event.id)}
+              onDelete={() => removeEvent(event.id)}
+              onSelect={() => { setSelectedEventId(event.id); setParticipantPage(1); setParticipantSearch(""); setParticipantStatus(undefined); }}
             />
           ))}
         </div>
@@ -320,6 +343,7 @@ export function AssessmentEventManager({
         </div>
       )}
 
+      <div className="flex items-center justify-between gap-3"><p className="text-muted-foreground text-sm">{events.data?.total ?? 0} asesmen · Halaman {eventPage}</p><div className="flex gap-2"><Button variant="outline" disabled={eventPage <= 1} onClick={() => setEventPage(p => p - 1)}>Sebelumnya</Button><Button variant="outline" disabled={!events.data || eventPage >= events.data.pageCount} onClick={() => setEventPage(p => p + 1)}>Berikutnya</Button></div></div>
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <form onSubmit={createEvent}>
@@ -330,32 +354,7 @@ export function AssessmentEventManager({
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-5 py-5">
-              {cohortId ? (
-                <div className="space-y-2">
-                  <Label htmlFor="event-type">Jenis event</Label>
-                  <Select
-                    value={type}
-                    onValueChange={(value) => {
-                      if (
-                        value === "QUICK_ASSESSMENT" ||
-                        value === "TRYOUT"
-                      ) {
-                        setType(value);
-                      }
-                    }}
-                  >
-                    <SelectTrigger id="event-type" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="QUICK_ASSESSMENT">
-                        Quick assessment
-                      </SelectItem>
-                      <SelectItem value="TRYOUT">Tryout cohort</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
+              <p className="text-muted-foreground text-sm">{cohortId ? "Asesmen on-demand · cohort" : "Tryout · course"}</p>
               <div className="space-y-2">
                 <Label htmlFor="event-title">Judul</Label>
                 <Input
@@ -455,6 +454,12 @@ export function AssessmentEventManager({
           ) : detail.data ? (
             <EventResults
               event={detail.data}
+              page={participantPage}
+              onPage={setParticipantPage}
+              search={participantSearch}
+              onSearch={value => { setParticipantSearch(value); setParticipantPage(1); }}
+              status={participantStatus}
+              onStatus={value => { setParticipantStatus(value); setParticipantPage(1); }}
               pending={pending}
               onInvalidate={invalidateAttempt}
               onAdjust={adjustResult}
@@ -472,6 +477,7 @@ function EventCard({
   onOpen,
   onClose,
   onCancel,
+  onDelete,
   onSelect,
 }: {
   event: EventSummary;
@@ -479,6 +485,7 @@ function EventCard({
   onOpen: () => void;
   onClose: () => void;
   onCancel: () => void;
+  onDelete: () => void;
   onSelect: () => void;
 }) {
   return (
@@ -544,6 +551,14 @@ function EventCard({
               <BanIcon /> Batalkan
             </Button>
           ) : null}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onDelete}
+            disabled={pending}
+          >
+            <Trash2Icon /> Hapus
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -552,11 +567,18 @@ function EventCard({
 
 function EventResults({
   event,
+  page, onPage, search, onSearch, status, onStatus,
   pending,
   onInvalidate,
   onAdjust,
 }: {
   event: RouterOutputs["assessmentEvent"]["getManageable"];
+  page: number;
+  onPage: (page: number) => void;
+  search: string;
+  onSearch: (value: string) => void;
+  status?: "IN_PROGRESS" | "IN_REVIEW" | "GRADED" | "NOT_STARTED";
+  onStatus: (value: "IN_PROGRESS" | "IN_REVIEW" | "GRADED" | "NOT_STARTED" | undefined) => void;
   pending: boolean;
   onInvalidate: (eventId: string, attemptId: string) => Promise<void>;
   onAdjust: (
@@ -566,12 +588,16 @@ function EventResults({
     maxScore: number,
   ) => Promise<void>;
 }) {
+  const [reviewId, setReviewId] = useState<string>();
   const ranks = useMemo(
     () => new Map(event.leaderboard.map((entry) => [entry.userId, entry.rank])),
     [event.leaderboard],
   );
+  if (reviewId) return <div className="space-y-4"><Button variant="outline" onClick={() => setReviewId(undefined)}>Kembali ke peserta</Button><AssessmentReviewDetail attemptId={reviewId} onDone={() => setReviewId(undefined)} /></div>;
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-2"><Badge variant="outline">Belum mulai: {event.counts.notStarted}</Badge><Badge variant="outline">Mengerjakan: {event.counts.inProgress}</Badge><Badge variant="outline">Perlu review: {event.counts.inReview}</Badge><Badge variant="outline">Selesai: {event.counts.graded}</Badge></div>
+      <div className="flex flex-wrap gap-3"><Input aria-label="Cari peserta" placeholder="Nama atau email siswa" value={search} onChange={e => onSearch(e.target.value)} /><select aria-label="Status peserta" className="bg-background rounded border px-3 py-2 text-sm" value={status ?? ""} onChange={e => onStatus((e.target.value || undefined) as typeof status)}><option value="">Semua status</option><option value="NOT_STARTED">Belum mulai</option><option value="IN_PROGRESS">Mengerjakan</option><option value="IN_REVIEW">Perlu review</option><option value="GRADED">Selesai</option></select></div>
       {event.status === "CLOSED" && event.leaderboard.length ? (
         <div className="grid gap-3 sm:grid-cols-3">
           {event.leaderboard.slice(0, 3).map((entry) => (
@@ -639,11 +665,12 @@ function EventResults({
                     </Badge>
                   </TableCell>
                   <TableCell className="tabular-nums">
-                    {attempt?.score !== null && attempt?.maxScore
+                    {attempt?.status === "GRADED" && !invalidated && attempt.score !== null && attempt.maxScore
                       ? `${attempt.score}/${attempt.maxScore}`
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right">
+                    {attempt ? <Button size="sm" variant="outline" onClick={() => setReviewId(attempt.id)}>{attempt.status === "IN_REVIEW" && !invalidated ? "Review" : "Detail"}</Button> : null}
                     {attempt?.status === "GRADED" &&
                     attempt.score !== null &&
                     attempt.maxScore !== null &&
@@ -683,6 +710,7 @@ function EventResults({
           </TableBody>
         </Table>
       </div>
+      <div className="flex items-center justify-between gap-3"><p className="text-muted-foreground text-sm">{event.participantTotal} peserta · Halaman {page} / {Math.max(1, event.pageCount)}</p><div className="flex gap-2"><Button variant="outline" disabled={page <= 1} onClick={() => onPage(page - 1)}>Sebelumnya</Button><Button variant="outline" disabled={page >= event.pageCount} onClick={() => onPage(page + 1)}>Berikutnya</Button></div></div>
     </div>
   );
 }

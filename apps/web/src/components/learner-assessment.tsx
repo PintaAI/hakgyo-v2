@@ -96,6 +96,7 @@ export function AssessmentIntroduction({
 
   return (
     <div className="mx-auto max-w-4xl">
+      <p className="text-muted-foreground mb-3 text-sm">{assessment.context.label} · {assessment.context.courseTitle} · {assessment.context.moduleTitle}</p>
       <Link
         href={`/learn/${courseId}`}
         className={cn(
@@ -229,8 +230,8 @@ export function AssessmentIntroduction({
 export function AssessmentAttempt({
   courseId,
   courseItemId,
-  assessment,
-  attempt,
+  assessment: initialAssessment,
+  attempt: initialAttempt,
   serverTime,
 }: {
   courseId: string;
@@ -241,6 +242,10 @@ export function AssessmentAttempt({
 }) {
   const router = useRouter();
   const utils = api.useUtils();
+  const attemptQuery = api.assessment.getMyAttempt.useQuery({ attemptId: initialAttempt.id }, { initialData: initialAttempt, refetchInterval: query => query.state.data?.status === "IN_REVIEW" || query.state.data?.status === "SUBMITTED" ? 15_000 : false });
+  const attempt = attemptQuery.data;
+  const assessmentQuery = api.assessment.getForCourseItem.useQuery({ courseItemId, attemptId: attempt.id }, { initialData: initialAssessment, refetchInterval: attempt.status !== "IN_PROGRESS" ? 15_000 : false });
+  const assessment = assessmentQuery.data;
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>(() =>
     Object.fromEntries(
@@ -324,6 +329,8 @@ export function AssessmentAttempt({
       const result = await submit.mutateAsync({ attemptId: attempt.id });
       await Promise.all([
         utils.assessment.getMyAttempt.invalidate({ attemptId: attempt.id }),
+        utils.assessment.getForCourseItem.invalidate({ courseItemId, attemptId: attempt.id }),
+        utils.assessment.listMyAttemptHistory.invalidate(),
         utils.learning.getCourseOutline.invalidate({ courseId }),
       ]);
       toast.success(
@@ -421,11 +428,14 @@ export function AssessmentAttempt({
             )}
           </span>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Badge>{attempt.context.label}</Badge>
             <Badge variant="secondary">Attempt #{attempt.attemptNumber}</Badge>
             {attempt.cohort ? (
               <Badge variant="outline">{attempt.cohort.name}</Badge>
             ) : null}
           </div>
+          <p className="mt-3 font-semibold">{attempt.context.title}</p>
+          <p className="text-muted-foreground mt-1 text-sm">{attempt.context.course.title} · {attempt.context.moduleTitle}</p>
           <h1 className="mt-3 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight">
             {eventEndedIncomplete
               ? "Attempt tidak selesai"
@@ -453,6 +463,7 @@ export function AssessmentAttempt({
               />
             </div>
           ) : null}
+          {attempt.status === "GRADED" ? <div className="mt-6 space-y-3 text-left">{attempt.answers.map(answer => "feedback" in answer && answer.feedback ? <div key={answer.id} className="bg-muted/40 rounded-md p-4"><p className="mb-2 text-sm font-semibold">Feedback pengajar · Soal {assessment.questions.findIndex(q => q.id === answer.questionId) + 1}</p><RichAssessmentContent value={answer.feedback} /></div> : null)}</div> : null}
           {assessment.answersRevealed ? (
             <div className="mt-8 space-y-4 text-left">
               <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">

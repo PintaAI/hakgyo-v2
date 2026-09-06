@@ -76,6 +76,10 @@ function RootNavigator() {
 
             <Stack.Protected guard={Boolean(session)}>
               <Stack.Screen name="(home)" />
+              <Stack.Screen name="events/[eventId]" />
+              <Stack.Screen name="vocabulary/[vocabularySetId]" />
+              <Stack.Screen name="courses/[courseId]/items/[courseItemId]" />
+              <Stack.Screen name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]" />
             </Stack.Protected>
           </Stack>
         </DrawerProvider>

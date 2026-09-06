@@ -1,18 +1,25 @@
 import type { SidebarSection } from "./types";
 
-// Placeholder navigation until the final mobile information architecture lands.
 export function buildSidebarSections(): SidebarSection[] {
   return [
     {
-      label: "Workspace",
+      label: "Learning",
       area: "main",
       items: [
         {
           id: "home",
-          label: "Home",
+          label: "Today",
           icon: { ios: "house.fill", android: "home" },
           route: "/(home)/(tabs)/home",
           activePaths: ["/home"],
+          replace: true,
+        },
+        {
+          id: "learn",
+          label: "Learn",
+          icon: { ios: "book.fill", android: "menu_book" },
+          route: "/(home)/(tabs)/learn",
+          activePaths: ["/learn", "/courses"],
           replace: true,
         },
         {
@@ -25,7 +32,7 @@ export function buildSidebarSections(): SidebarSection[] {
         },
         {
           id: "assessments",
-          label: "Assessments",
+          label: "Practice",
           icon: { ios: "checklist", android: "checklist" },
           route: "/(home)/(tabs)/assessments",
           activePaths: ["/assessments"],

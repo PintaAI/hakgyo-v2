@@ -879,8 +879,8 @@ function AssessmentEditorForm({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Hapus assessment ini?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Semua soal dan opsi di dalamnya akan ikut dihapus. Jika
-                      assessment sedang dipakai course, penghapusan dapat gagal.
+                      Tindakan ini permanen. Semua soal, penempatan di course,
+                      event, jawaban, hasil, dan progres siswa akan ikut dihapus.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

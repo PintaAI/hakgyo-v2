@@ -54,6 +54,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { AssessmentEventManager } from "~/components/assessment-event-manager";
+import { ReviewQueue } from "~/components/review-queue";
 import {
   Avatar,
   AvatarFallback,
@@ -116,6 +117,7 @@ type CourseView =
   | "cohorts"
   | "learners"
   | "tryouts"
+  | "reviews"
   | "invites"
   | "access"
   | "settings";
@@ -160,6 +162,7 @@ const views = [
   { value: "overview", label: "Overview", icon: LayoutDashboardIcon },
   { value: "cohorts", label: "Group belajar", icon: CalendarDaysIcon },
   { value: "learners", label: "Siswa", icon: UsersIcon },
+  { value: "reviews", label: "Hasil & review", icon: UsersIcon },
   { value: "tryouts", label: "Tryout", icon: TrophyIcon },
   { value: "invites", label: "Invites", icon: MailPlusIcon },
   { value: "access", label: "Akses", icon: ShieldCheckIcon },
@@ -597,6 +600,9 @@ export function CourseWorkspace({
         </TabsContent>
         <TabsContent value="tryouts">
           <AssessmentEventManager courseId={course.id} />
+        </TabsContent>
+        <TabsContent value="reviews">
+          <ReviewQueue organizationId={organizationId} courseId={course.id} />
         </TabsContent>
         <TabsContent value="access">
           <AccessSection

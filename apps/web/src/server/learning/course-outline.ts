@@ -84,7 +84,7 @@ export async function getCourseOutlineForUser(
                   title: true,
                   passingScore: true,
                   attempts: {
-                    where: { userId },
+                    where: { userId, assessmentEventId: null },
                     select: { status: true, score: true, maxScore: true },
                   },
                 },
