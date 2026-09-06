@@ -67,24 +67,46 @@ export function assetSource(assetId: string) {
 
 export function ContentImage({
   accessibilityLabel,
+  aspect = "4:3",
   caption,
+  fit = "cover",
   source,
 }: {
   accessibilityLabel: string;
+  aspect?: "auto" | "square" | "4:3" | "3:2";
   caption?: string;
+  fit?: "cover" | "contain";
   source?: string;
 }) {
   const resolved = useResolvedSource(source);
+  const [naturalAspectRatio, setNaturalAspectRatio] = useState(4 / 3);
+  const aspectRatio =
+    aspect === "auto"
+      ? naturalAspectRatio
+      : aspect === "square"
+        ? 1
+        : aspect === "3:2"
+          ? 3 / 2
+          : 4 / 3;
 
   return (
     <View className="gap-2">
-      <View className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted">
+      <View
+        className="w-full overflow-hidden rounded-xl bg-muted"
+        style={{ aspectRatio }}
+      >
         {resolved.status === "ready" ? (
           <Image
             accessibilityIgnoresInvertColors
             accessibilityLabel={accessibilityLabel}
             className="h-full w-full"
-            resizeMode="cover"
+            onLoad={(event) => {
+              if (aspect !== "auto") return;
+              const { height, width } = event.nativeEvent.source;
+              if (height > 0 && width > 0)
+                setNaturalAspectRatio(width / height);
+            }}
+            resizeMode={fit}
             source={{ uri: resolved.url }}
           />
         ) : resolved.status === "loading" ? (

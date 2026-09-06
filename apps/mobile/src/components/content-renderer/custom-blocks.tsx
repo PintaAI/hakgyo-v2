@@ -3,7 +3,7 @@ import { Pressable, Text, TextInput, View } from "react-native";
 
 import { InlineContent } from "./inline-content";
 import { assetSource, ContentAudio, ContentImage } from "./media";
-import { booleanProp, parseJsonArray, stringProp } from "./normalize";
+import { booleanProp, isRecord, parseJsonArray, stringProp } from "./normalize";
 import { useContentRenderer } from "./context";
 import type { BlockRendererProps, ContentBlockRenderer } from "./types";
 
@@ -415,40 +415,42 @@ function Grammar({ block }: BlockRendererProps) {
         </Text>
       </View>
 
-      <View className="gap-2">
-        <SectionLabel>Grammar rules</SectionLabel>
-        {rules.map((rule, index) => (
-          <View className="rounded-xl border border-border p-4" key={index}>
-            <View className="flex-row gap-3">
-              <Text className="w-20 text-sm text-muted-foreground">
-                {stringProp(block.props, "ruleColumnOne", "Condition")}
-              </Text>
-              <Text className="min-w-0 flex-1 text-sm font-bold text-foreground">
-                {rule.condition}
-              </Text>
+      {rules.length ? (
+        <View className="gap-2">
+          <SectionLabel>Grammar rules</SectionLabel>
+          {rules.map((rule, index) => (
+            <View className="rounded-xl border border-border p-4" key={index}>
+              <View className="flex-row gap-3">
+                <Text className="w-20 text-sm text-muted-foreground">
+                  {stringProp(block.props, "ruleColumnOne", "Condition")}
+                </Text>
+                <Text className="min-w-0 flex-1 text-sm font-bold text-foreground">
+                  {rule.condition}
+                </Text>
+              </View>
+              <View className="mt-2 flex-row gap-3">
+                <Text className="w-20 text-sm text-muted-foreground">
+                  {stringProp(block.props, "ruleColumnTwo", "Form")}
+                </Text>
+                <Text
+                  className="min-w-0 flex-1 text-sm font-black"
+                  style={{ color: accent }}
+                >
+                  {rule.form}
+                </Text>
+              </View>
+              <View className="mt-2 flex-row gap-3">
+                <Text className="w-20 text-sm text-muted-foreground">
+                  {stringProp(block.props, "ruleColumnThree", "Example")}
+                </Text>
+                <Text className="min-w-0 flex-1 text-sm text-foreground">
+                  {rule.example}
+                </Text>
+              </View>
             </View>
-            <View className="mt-2 flex-row gap-3">
-              <Text className="w-20 text-sm text-muted-foreground">
-                {stringProp(block.props, "ruleColumnTwo", "Form")}
-              </Text>
-              <Text
-                className="min-w-0 flex-1 text-sm font-black"
-                style={{ color: accent }}
-              >
-                {rule.form}
-              </Text>
-            </View>
-            <View className="mt-2 flex-row gap-3">
-              <Text className="w-20 text-sm text-muted-foreground">
-                {stringProp(block.props, "ruleColumnThree", "Example")}
-              </Text>
-              <Text className="min-w-0 flex-1 text-sm text-foreground">
-                {rule.example}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      ) : null}
 
       <View className="gap-2">
         <SectionLabel>{stringProp(block.props, "examplesLabel")}</SectionLabel>
@@ -489,106 +491,297 @@ function Grammar({ block }: BlockRendererProps) {
   );
 }
 
+type MobileCultureMedia = {
+  id: string;
+  assetId: string;
+  fileName: string;
+  alt: string;
+  caption: string;
+  aspect: "auto" | "square" | "4:3" | "3:2";
+  fit: "cover" | "contain";
+};
+
+type MobileCultureSection =
+  | { id: string; type: "text"; ko: string; en: string }
+  | {
+      id: string;
+      type: "media";
+      columns: 1 | 2;
+      images: MobileCultureMedia[];
+    }
+  | {
+      id: string;
+      type: "split";
+      mediaSide: "left" | "right";
+      mediaStack: "row" | "column";
+      ko: string;
+      en: string;
+      images: MobileCultureMedia[];
+    };
+
+function recordString(value: Record<string, unknown>, name: string) {
+  return typeof value[name] === "string" ? value[name] : "";
+}
+
+function parseCultureMedia(
+  value: unknown,
+  fallbackId: string,
+): MobileCultureMedia | null {
+  if (!isRecord(value)) return null;
+  const aspect = recordString(value, "aspect");
+  const fit = recordString(value, "fit");
+
+  return {
+    id: recordString(value, "id") || fallbackId,
+    assetId: recordString(value, "assetId"),
+    fileName: recordString(value, "fileName"),
+    alt: recordString(value, "alt"),
+    caption: recordString(value, "caption"),
+    aspect:
+      aspect === "auto" ||
+      aspect === "square" ||
+      aspect === "3:2" ||
+      aspect === "4:3"
+        ? aspect
+        : "4:3",
+    fit: fit === "contain" ? "contain" : "cover",
+  };
+}
+
+function parseCultureImages(value: unknown, sectionId: string) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(0, 2)
+    .map((image, index) =>
+      parseCultureMedia(image, `${sectionId}-image-${index + 1}`),
+    )
+    .filter((image): image is MobileCultureMedia => image !== null)
+    .filter((image) => image.assetId);
+}
+
+function parseCultureSections(value: unknown): MobileCultureSection[] {
+  if (typeof value !== "string") return [];
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .slice(0, 20)
+      .map((section, index): MobileCultureSection | null => {
+        if (!isRecord(section)) return null;
+        const id = recordString(section, "id") || `culture-${index + 1}`;
+        const ko = recordString(section, "ko");
+        const en = recordString(section, "en");
+
+        if (section.type === "text") return { id, type: "text", ko, en };
+        if (section.type === "media") {
+          return {
+            id,
+            type: "media",
+            columns: section.columns === 1 ? 1 : 2,
+            images: parseCultureImages(section.images, id),
+          };
+        }
+        if (section.type === "split") {
+          return {
+            id,
+            type: "split",
+            mediaSide: section.mediaSide === "right" ? "right" : "left",
+            mediaStack: section.mediaStack === "column" ? "column" : "row",
+            ko,
+            en,
+            images: parseCultureImages(section.images, id),
+          };
+        }
+        return null;
+      })
+      .filter((section): section is MobileCultureSection => section !== null)
+      .filter((section) =>
+        section.type === "media"
+          ? section.images.length > 0
+          : Boolean(section.ko || section.en) ||
+            (section.type === "split" && section.images.length > 0),
+      );
+  } catch {
+    return [];
+  }
+}
+
+function CultureText({ en, ko }: { en: string; ko: string }) {
+  if (!ko && !en) return null;
+  return (
+    <View className="min-w-0 gap-3">
+      {ko ? (
+        <Text className="text-base font-medium leading-7 text-foreground">
+          {ko}
+        </Text>
+      ) : null}
+      {en ? (
+        <Text className="text-sm leading-6 text-muted-foreground">{en}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function CultureMediaGroup({
+  images,
+  row,
+}: {
+  images: MobileCultureMedia[];
+  row: boolean;
+}) {
+  if (!images.length) return null;
+  return (
+    <View className={row && images.length > 1 ? "flex-row gap-3" : "gap-3"}>
+      {images.map((image) => (
+        <View
+          className={row && images.length > 1 ? "min-w-0 flex-1" : ""}
+          key={image.id}
+        >
+          <ContentImage
+            accessibilityLabel={image.alt || image.fileName || "Culture image"}
+            aspect={image.aspect}
+            caption={image.caption}
+            fit={image.fit}
+            source={assetSource(image.assetId)}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function CultureSection({ section }: { section: MobileCultureSection }) {
+  if (section.type === "text") {
+    return <CultureText en={section.en} ko={section.ko} />;
+  }
+  if (section.type === "media") {
+    return (
+      <CultureMediaGroup images={section.images} row={section.columns === 2} />
+    );
+  }
+
+  const media = (
+    <CultureMediaGroup
+      images={section.images}
+      row={section.mediaStack === "row"}
+    />
+  );
+  const text = <CultureText en={section.en} ko={section.ko} />;
+  return (
+    <View className="gap-5">
+      {section.mediaSide === "left" ? media : text}
+      {section.mediaSide === "left" ? text : media}
+    </View>
+  );
+}
+
 function Culture({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "teal");
-  const firstAssetId = stringProp(block.props, "assetId");
-  const secondAssetId = stringProp(block.props, "secondAssetId");
+  const sections = parseCultureSections(block.props.sections);
   const checklist = parseJsonArray(block.props.checklistItems, (item) => ({
     ko: typeof item.ko === "string" ? item.ko : "",
     en: typeof item.en === "string" ? item.en : "",
   }));
+  const showBanner = booleanProp(block.props, "showBanner", true);
+  const showChecklist = booleanProp(block.props, "showChecklist", true);
+  const centered =
+    stringProp(block.props, "headerAlignment", "center") === "center";
+  const compact =
+    stringProp(block.props, "spacing", "comfortable") === "compact";
+  const card = stringProp(block.props, "surface", "card") === "card";
 
   return (
-    <View className="gap-6">
-      <View className="gap-3 border-b border-border pb-5">
-        <AccentDot accent={accent} label={stringProp(block.props, "eyebrow")} />
-        <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
-          {stringProp(block.props, "titleKo")}
-        </Text>
-        <Text className="text-sm font-bold leading-5 text-muted-foreground">
-          {stringProp(block.props, "titleEn")}
-        </Text>
-      </View>
-
-      <View className="gap-2">
-        <Text className="text-base leading-7 text-foreground">
-          {stringProp(block.props, "bodyKo1")}
-        </Text>
-        <Text className="text-sm leading-6 text-muted-foreground">
-          {stringProp(block.props, "bodyEn1")}
-        </Text>
-      </View>
-
-      {firstAssetId ? (
-        <ContentImage
-          accessibilityLabel={stringProp(
-            block.props,
-            "fileName",
-            "Culture image",
-          )}
-          source={assetSource(firstAssetId)}
-        />
-      ) : null}
-      {secondAssetId ? (
-        <ContentImage
-          accessibilityLabel={stringProp(
-            block.props,
-            "secondFileName",
-            "Culture image",
-          )}
-          source={assetSource(secondAssetId)}
-        />
-      ) : null}
-
-      <View className="gap-2">
-        <Text className="text-base leading-7 text-foreground">
-          {stringProp(block.props, "bodyKo2")}
-        </Text>
-        <Text className="text-sm leading-6 text-muted-foreground">
-          {stringProp(block.props, "bodyEn2")}
-        </Text>
-      </View>
-
-      <View className="gap-4 border-t border-border pt-5">
-        <View className="flex-row items-center gap-2">
+    <View className="gap-5">
+      {showBanner ? (
+        <View className="flex-row overflow-hidden rounded-xl">
+          <View className="w-12 items-center justify-center bg-foreground px-2 py-3">
+            <Text className="text-lg font-black text-background">▦</Text>
+          </View>
           <View
-            className="size-8 items-center justify-center rounded-lg"
+            className="min-w-0 flex-1 justify-center px-4 py-3"
             style={{ backgroundColor: accent }}
           >
-            <Text className="font-black text-white">✓</Text>
-          </View>
-          <View className="min-w-0 flex-1">
-            <Text className="text-sm font-black text-foreground">
-              {stringProp(block.props, "checklistTitleKo")}
-            </Text>
-            <Text className="text-xs uppercase tracking-[1.5px] text-muted-foreground">
-              {stringProp(block.props, "checklistTitleEn")}
+            <Text className="text-sm font-black tracking-wide text-white">
+              {stringProp(block.props, "eyebrow")}
             </Text>
           </View>
         </View>
-        <View className="overflow-hidden rounded-xl border border-border">
-          {checklist.map((item, index) => (
-            <View
-              className={`flex-row gap-3 p-4 ${index > 0 ? "border-t border-border" : ""}`}
-              key={index}
-            >
-              <View
-                className="mt-2 size-2 rounded-full"
-                style={{ backgroundColor: accent }}
-              />
-              <View className="min-w-0 flex-1 gap-1">
-                <Text className="text-sm leading-6 text-foreground">
-                  {item.ko}
-                </Text>
-                <Text className="text-xs leading-5 text-muted-foreground">
-                  {item.en}
-                </Text>
-              </View>
-              <View className="mt-1 size-5 rounded-md border border-border" />
-            </View>
-          ))}
+      ) : null}
+
+      <View
+        className={`${card ? "rounded-3xl bg-muted/45 p-5" : ""} ${compact ? "gap-4" : "gap-7"}`}
+      >
+        <View className={`gap-2 ${centered ? "items-center" : ""}`}>
+          {!showBanner ? (
+            <AccentDot
+              accent={accent}
+              label={stringProp(block.props, "eyebrow")}
+            />
+          ) : null}
+          <Text
+            className={`text-3xl font-black leading-9 tracking-tight text-foreground ${centered ? "text-center" : ""}`}
+          >
+            {stringProp(block.props, "titleKo")}
+          </Text>
+          <Text
+            className={`text-sm font-bold leading-5 ${centered ? "text-center" : ""}`}
+            style={{ color: accent }}
+          >
+            {stringProp(block.props, "titleEn")}
+          </Text>
         </View>
+
+        {sections.map((section) => (
+          <CultureSection key={section.id} section={section} />
+        ))}
       </View>
+
+      {showChecklist ? (
+        <View className="gap-4 rounded-2xl border border-border p-4">
+          <View className="flex-row items-center gap-3">
+            <View
+              className="size-9 items-center justify-center rounded-lg"
+              style={{ backgroundColor: accent }}
+            >
+              <Text className="font-black text-white">✓</Text>
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text className="text-sm font-black text-foreground">
+                {stringProp(block.props, "checklistTitleKo")}
+              </Text>
+              <Text className="text-xs uppercase tracking-[1.5px] text-muted-foreground">
+                {stringProp(block.props, "checklistTitleEn")}
+              </Text>
+            </View>
+          </View>
+          {checklist.length ? (
+            <View className="overflow-hidden rounded-xl border border-border">
+              {checklist.map((item, index) => (
+                <View
+                  className={`flex-row gap-3 p-4 ${index > 0 ? "border-t border-border" : ""}`}
+                  key={index}
+                >
+                  <View
+                    className="mt-2 size-2 rounded-full"
+                    style={{ backgroundColor: accent }}
+                  />
+                  <View className="min-w-0 flex-1 gap-1">
+                    <Text className="text-sm leading-6 text-foreground">
+                      {item.ko}
+                    </Text>
+                    <Text className="text-xs leading-5 text-muted-foreground">
+                      {item.en}
+                    </Text>
+                  </View>
+                  <View className="mt-1 size-5 rounded-md border border-border" />
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
