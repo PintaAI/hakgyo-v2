@@ -1,3 +1,5 @@
+import { cultureSectionsDefault } from "./culture-content";
+
 export const calloutBlockType = "callout";
 export const assetAudioBlockType = "assetAudio";
 export const assetImageBlockType = "assetImage";
@@ -22,6 +24,9 @@ export const conversationBlockSectionVariants = [
   "both",
 ] as const;
 export const cultureBlockThemes = ["teal", "rose", "ocean", "amber"] as const;
+export const cultureBlockHeaderAlignments = ["center", "left"] as const;
+export const cultureBlockSpacings = ["comfortable", "compact"] as const;
+export const cultureBlockSurfaces = ["card", "plain"] as const;
 
 export const conversationBlockLines = [
   {
@@ -159,23 +164,15 @@ export const cultureChecklistItems = [
 
 export const cultureBlockDefaults = {
   theme: "teal",
+  headerAlignment: "center",
+  showBanner: true,
+  spacing: "comfortable",
+  surface: "card",
   eyebrow: "문화와 정보 · CULTURE & INFORMATION",
   titleKo: "한국의 온돌과 좌식 생활",
   titleEn: "Ondol and Floor-sitting Life in Korea",
-  bodyKo1:
-    "한국에는 바닥에 앉아 식사하고 휴식하는 좌식 생활이 있습니다. 가족이 바닥에 함께 앉아 대화하며 자연스럽게 유대감을 나눕니다.",
-  bodyEn1:
-    "In Korea, people often sit on the floor to eat and relax. Families sit together on the floor, talk, and naturally build closeness.",
-  assetId: "",
-  fileName: "",
-  contentType: "",
-  secondAssetId: "",
-  secondFileName: "",
-  secondContentType: "",
-  bodyKo2:
-    "이러한 생활은 바닥을 따뜻하게 하는 전통 난방인 '온돌'과 함께 이어져 왔습니다. 오늘날에도 아파트의 따뜻한 바닥에 앉아 TV를 보거나 쉬는 모습을 쉽게 볼 수 있습니다.",
-  bodyEn2:
-    "This lifestyle continued together with 'ondol', the traditional heating that keeps the floor warm. Even today, you can often see people sitting on the warm apartment floor to watch TV or rest.",
+  sections: cultureSectionsDefault,
+  showChecklist: true,
   checklistTitleKo: "확인해요",
   checklistTitleEn: "self assessment",
   checklistItems: JSON.stringify(cultureChecklistItems),
@@ -510,19 +507,27 @@ export const hakgyoBlockCatalog = {
           enum: cultureBlockThemes,
           default: cultureBlockDefaults.theme,
         },
+        headerAlignment: {
+          type: "string",
+          enum: cultureBlockHeaderAlignments,
+          default: cultureBlockDefaults.headerAlignment,
+        },
+        showBanner: { type: "boolean", default: true },
+        spacing: {
+          type: "string",
+          enum: cultureBlockSpacings,
+          default: cultureBlockDefaults.spacing,
+        },
+        surface: {
+          type: "string",
+          enum: cultureBlockSurfaces,
+          default: cultureBlockDefaults.surface,
+        },
         eyebrow: { type: "string", default: cultureBlockDefaults.eyebrow },
         titleKo: { type: "string", default: cultureBlockDefaults.titleKo },
         titleEn: { type: "string", default: cultureBlockDefaults.titleEn },
-        bodyKo1: { type: "string", default: cultureBlockDefaults.bodyKo1 },
-        bodyEn1: { type: "string", default: cultureBlockDefaults.bodyEn1 },
-        assetId: { type: "string", default: "" },
-        fileName: { type: "string", default: "" },
-        contentType: { type: "string", default: "" },
-        secondAssetId: { type: "string", default: "" },
-        secondFileName: { type: "string", default: "" },
-        secondContentType: { type: "string", default: "" },
-        bodyKo2: { type: "string", default: cultureBlockDefaults.bodyKo2 },
-        bodyEn2: { type: "string", default: cultureBlockDefaults.bodyEn2 },
+        sections: { type: "string", default: cultureBlockDefaults.sections },
+        showChecklist: { type: "boolean", default: true },
         checklistTitleKo: {
           type: "string",
           default: cultureBlockDefaults.checklistTitleKo,
@@ -542,6 +547,8 @@ export const hakgyoBlockCatalog = {
           "The material benefits from bilingual explanation and visual examples.",
         ],
         jsonProps: {
+          sections:
+            "Ordered JSON array of culture sections. Supported types: text ({ id, type, ko, en }), media ({ id, type, columns, images }), and split ({ id, type, mediaSide, mediaWidth, mediaStack, ko, en, images }). Images contain assetId, fileName, contentType, alt, caption, aspect, and fit.",
           checklistItems:
             "JSON array of { ko, en } objects. The editor can add and remove checklist rows.",
         },

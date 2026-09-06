@@ -38,6 +38,7 @@ import {
   lessonPageBlockType,
   vocabularyReferenceBlockType,
 } from "~/lib/blocknote/block-catalog";
+import { getCultureAssetIds } from "~/lib/blocknote/culture-content";
 
 import {
   AssetUploadProvider,
@@ -73,16 +74,16 @@ function collectAssetIds(blocks: HakgyoBlock[]) {
       block.type === assetAudioBlockType ||
       block.type === assetImageBlockType ||
       block.type === conversationBlockType ||
-      block.type === lessonPageBlockType ||
-      block.type === cultureBlockType
+      block.type === lessonPageBlockType
     ) {
       if (block.props.assetId) assetIds.add(block.props.assetId);
       if (block.type === conversationBlockType && block.props.practiceAssetId) {
         assetIds.add(block.props.practiceAssetId);
       }
-      if (block.type === cultureBlockType && block.props.secondAssetId) {
-        assetIds.add(block.props.secondAssetId);
-      }
+    } else if (block.type === cultureBlockType) {
+      getCultureAssetIds(block.props.sections).forEach((assetId) =>
+        assetIds.add(assetId),
+      );
     } else if (
       block.type === "audio" ||
       block.type === "file" ||
