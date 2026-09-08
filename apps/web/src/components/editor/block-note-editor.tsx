@@ -8,6 +8,7 @@ import {
   filterSuggestionItems,
   insertOrUpdateBlockForSlashMenu,
 } from "@blocknote/core/extensions";
+import { en } from "@blocknote/core/locales";
 import {
   getDefaultReactSlashMenuItems,
   SuggestionMenuController,
@@ -18,7 +19,6 @@ import {
   BookOpenIcon,
   Building2Icon,
   HeadphonesIcon,
-  ImageIcon,
   LayoutTemplateIcon,
   LightbulbIcon,
   MessagesSquareIcon,
@@ -113,6 +113,7 @@ export type BlockNoteEditorProps = {
   editable?: boolean;
   trailingBlock?: boolean;
   onChange?: (document: BlockNoteDocument) => void;
+  placeholder?: string;
   theme?: "light" | "dark";
   assetStorage?: EditorAssetStorageOptions;
   resourceLibrary?: EditorResourceLibrary;
@@ -124,6 +125,7 @@ export function BlockNoteEditor({
   editable = true,
   trailingBlock = true,
   onChange,
+  placeholder = "Tulis sesuatu atau ketik '/' untuk memilih blok",
   theme = "light",
   assetStorage,
   resourceLibrary,
@@ -214,6 +216,22 @@ export function BlockNoteEditor({
   };
 
   const editor = useCreateBlockNote({
+    dictionary: {
+      ...en,
+      placeholders: {
+        ...en.placeholders,
+        default: placeholder,
+        heading: "Judul",
+        toggleListItem: "Daftar buka-tutup",
+        bulletListItem: "Daftar",
+        numberedListItem: "Daftar",
+        checkListItem: "Daftar",
+        emptyDocument: placeholder,
+        new_comment: "Tulis komentar...",
+        edit_comment: "Edit komentar...",
+        comment_reply: "Tambahkan balasan...",
+      },
+    },
     initialContent,
     schema: hakgyoBlockNoteSchema,
     trailingBlock,
@@ -228,8 +246,10 @@ export function BlockNoteEditor({
                 : "file",
           );
           return {
-            name: asset.fileName,
-            url: `${assetUrlPrefix}${asset.assetId}`,
+            props: {
+              name: asset.fileName,
+              url: `${assetUrlPrefix}${asset.assetId}`,
+            },
           };
         }
       : undefined,
@@ -333,17 +353,6 @@ export function BlockNoteEditor({
             onItemClick: () =>
               insertOrUpdateBlockForSlashMenu(editor, {
                 type: assetAudioBlockType,
-              }),
-          },
-          {
-            title: "Gambar assessment",
-            subtext: "Unggah gambar dari asset storage.",
-            aliases: ["image", "picture", "gambar", "foto"],
-            group: "Media Hakgyo",
-            icon: <ImageIcon className="size-4" />,
-            onItemClick: () =>
-              insertOrUpdateBlockForSlashMenu(editor, {
-                type: assetImageBlockType,
               }),
           },
         ]
