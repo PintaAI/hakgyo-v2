@@ -11,7 +11,7 @@ import {
   QueryState,
   StudyScreen,
 } from "../../../../src/components/learning-ui";
-import { LearningProgress } from "../../../../src/components/learning-progress";
+import { WeeklyStreak } from "../../../../src/components/weekly-streak";
 import { CourseActivities } from "../../../../src/components/course-activities";
 import { SessionBlock } from "../../../../src/components/learn/cohort-card";
 import { meetingState } from "../../../../src/lib/study";
@@ -48,7 +48,7 @@ export default function HomeTab() {
           void utils.gamification.invalidate();
         }}
       >
-        <LearningProgress />
+        <WeeklyStreak />
         <PrimaryAction
           eyebrow="Daily practice"
           title="Start practicing"

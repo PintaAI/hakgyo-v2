@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { getStreakStage, getWeeklyProgressDays } from "./learning-progress";
+import { getStreakStage, getWeeklyProgressDays } from "./streak";
 
-describe("learning progress streak stage", () => {
+describe("streak stage", () => {
   test("replaces the stage after every seven streak days", () => {
     expect(getStreakStage(0)).toEqual({ progress: 0, tone: "green", week: 1 });
     expect(getStreakStage(7)).toEqual({ progress: 7, tone: "green", week: 1 });

@@ -11,7 +11,7 @@ import { api } from "../lib/trpc";
 import {
   getStreakStage,
   getWeeklyProgressDays,
-} from "../lib/learning-progress";
+} from "../lib/streak";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { QueryState } from "./learning-ui";
@@ -21,7 +21,7 @@ const TIER_COLORS = {
   light: { green: "#15803d", red: "#b91c1c", yellow: "#a16207" },
 } as const;
 
-export function LearningProgress() {
+export function WeeklyStreak() {
   const query = api.gamification.getMySummary.useQuery();
   const { colorScheme, colors } = useAppTheme();
   const liquidGlassAvailable =

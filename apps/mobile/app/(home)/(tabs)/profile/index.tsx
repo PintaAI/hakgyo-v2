@@ -22,7 +22,7 @@ import {
   Row,
   StudyScreen,
 } from "../../../../src/components/learning-ui";
-import { LearningProgress } from "../../../../src/components/learning-progress";
+import { WeeklyStreak } from "../../../../src/components/weekly-streak";
 import { achievementLabel, dateLabel } from "../../../../src/lib/study";
 import {
   type AvailableOrganizationTheme,
@@ -170,7 +170,7 @@ export default function ProfileTab() {
           </Text>
         </View>
       </View>
-      <LearningProgress />
+      <WeeklyStreak />
       <Card>
         <Eyebrow>Appearance</Eyebrow>
         <Text className="text-sm leading-5 text-muted-foreground">
