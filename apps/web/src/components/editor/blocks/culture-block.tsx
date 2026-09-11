@@ -76,8 +76,8 @@ const culturePresetLabels: Record<CultureSectionPreset, string> = {
   text: "Bilingual text",
   "media-one": "One image",
   "media-two": "Two images",
-  "split-image-left": "Image left",
-  "split-image-right": "Image right",
+  "split-image-left": "Gambar kiri",
+  "split-image-right": "Gambar kanan",
   "split-stack-left": "Stacked images",
 };
 
@@ -233,11 +233,11 @@ function TextPair({
       {editable || en ? (
         <div data-culture-translation style={{ color: translationColor }}>
           <EditableBlockText
-            ariaLabel="English culture text"
+          ariaLabel="Teks budaya bahasa Inggris"
             className="w-full text-sm leading-relaxed"
             editable={editable}
             onChange={(value) => onChange({ ko, en: value })}
-            placeholder="Add the English explanation…"
+            placeholder="Tambahkan penjelasan dalam bahasa Inggris…"
             value={en}
           />
         </div>
@@ -336,8 +336,8 @@ function CultureImage({
         {editable ? (
           <div className="absolute right-2 bottom-2 flex gap-1.5">
             {image.assetId ? (
-              <button
-                aria-label="Remove image"
+                <button
+                  aria-label="Hapus gambar"
                 className="bg-background/90 text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-md shadow-sm backdrop-blur"
                 onClick={onClear}
                 type="button"
@@ -367,7 +367,7 @@ function CultureImage({
       {editable ? (
         <div className="grid min-w-0 gap-2 sm:grid-cols-2">
           <select
-            aria-label="Image aspect ratio"
+            aria-label="Rasio gambar"
             className="border-border bg-background h-8 rounded-md border px-2 text-xs"
             onChange={(event) =>
               onChange({
@@ -384,7 +384,7 @@ function CultureImage({
             ))}
           </select>
           <select
-            aria-label="Image fit"
+            aria-label="Penyesuaian gambar"
             className="border-border bg-background h-8 rounded-md border px-2 text-xs"
             onChange={(event) =>
               onChange({
@@ -401,19 +401,19 @@ function CultureImage({
             ))}
           </select>
           <EditableBlockText
-            ariaLabel="Image alternative text"
+            ariaLabel="Teks alternatif gambar"
             className="text-muted-foreground w-full text-xs sm:col-span-2"
             editable
             onChange={(alt) => onChange({ ...image, alt })}
-            placeholder="Alternative text"
+            placeholder="Teks alternatif"
             value={image.alt}
           />
           <EditableBlockText
-            ariaLabel="Image caption"
+            ariaLabel="Keterangan gambar"
             className="text-muted-foreground w-full text-center text-xs italic sm:col-span-2"
             editable
             onChange={(caption) => onChange({ ...image, caption })}
-            placeholder="Optional caption"
+            placeholder="Keterangan opsional"
             value={image.caption}
           />
         </div>
@@ -722,7 +722,7 @@ export const cultureBlock = createReactBlockSpec(
                 style={{ backgroundColor: scheme.accent }}
               >
                 <EditableBlockText
-                  ariaLabel="Culture section label"
+                  ariaLabel="Label bagian budaya"
                   className="w-full text-sm font-semibold tracking-wide"
                   editable={editable}
                   onChange={(eyebrow) =>
@@ -742,7 +742,7 @@ export const cultureBlock = createReactBlockSpec(
             >
               {!block.props.showBanner ? (
                 <EditableBlockText
-                  ariaLabel="Culture section label"
+                  ariaLabel="Label bagian budaya"
                   className="text-muted-foreground mb-3 w-full text-xs font-semibold tracking-[0.14em] uppercase"
                   editable={editable}
                   onChange={(eyebrow) =>
@@ -762,7 +762,7 @@ export const cultureBlock = createReactBlockSpec(
               />
               <div style={{ color: scheme.accent }}>
                 <EditableBlockText
-                  ariaLabel="English culture title"
+                    ariaLabel="Judul budaya bahasa Inggris"
                   className="mt-1 w-full text-sm font-semibold"
                   editable={editable}
                   onChange={(titleEn) =>
@@ -977,7 +977,7 @@ export const cultureBlock = createReactBlockSpec(
                   />
                   <span className="text-muted-foreground">·</span>
                   <EditableBlockText
-                    ariaLabel="English checklist title"
+                        ariaLabel="Judul checklist bahasa Inggris"
                     className="text-muted-foreground w-auto text-xs font-semibold tracking-[0.14em] uppercase"
                     editable={editable}
                     onChange={(checklistTitleEn) =>

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { AppSidebar } from "~/components/app-sidebar";
+import { NotificationBell } from "~/components/notifications/notification-bell";
 import { OrganizationThemeBootstrap } from "~/components/organization-theme-bootstrap";
 import { OrganizationThemeProvider } from "~/components/organization-theme-provider";
 import { Separator } from "~/components/ui/separator";
@@ -79,6 +80,9 @@ export default async function WorkspaceLayout({
                   className="mr-2 data-vertical:h-4 data-vertical:self-center"
                 />
                 <WorkspaceBreadcrumb organizationSlug={organizationSlug} />
+              </div>
+              <div className="ml-auto flex items-center px-4">
+                <NotificationBell />
               </div>
             </header>
             <div className="flex-1 p-4 md:p-6 lg:p-8">

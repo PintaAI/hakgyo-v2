@@ -611,6 +611,7 @@ function MaterialEditorForm({
                   });
                 }
               }}
+              placeholder="Tulis konten pelajaran..."
               theme={theme}
               assetStorage={assetStorage}
               resourceLibrary={resourceLibrary}

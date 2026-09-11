@@ -3,6 +3,9 @@ import { describe, expect, test } from "bun:test";
 import {
   assessmentAttemptPresentation,
   assessmentResultPolicy,
+  assessmentTerminalResult,
+  canReattemptAssessment,
+  isStaleClosedOnDemandAssessment,
   latestStandaloneAttemptForItem,
 } from "./assessment-state";
 
@@ -77,5 +80,106 @@ describe("learner assessment state", () => {
       showAnswerReview: false,
       showLeaderboard: true,
     });
+  });
+
+  test("hides closed on-demand assessments after one day", () => {
+    const now = new Date("2026-09-11T12:00:00Z").getTime();
+
+    expect(
+      isStaleClosedOnDemandAssessment(
+        {
+          type: "QUICK_ASSESSMENT",
+          status: "CLOSED",
+          closedAt: new Date("2026-09-10T11:59:59Z"),
+        },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      isStaleClosedOnDemandAssessment(
+        {
+          type: "QUICK_ASSESSMENT",
+          status: "OPEN",
+          closesAt: new Date("2026-09-10T11:59:59Z"),
+          closedAt: null,
+        },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      isStaleClosedOnDemandAssessment(
+        {
+          type: "QUICK_ASSESSMENT",
+          status: "CLOSED",
+          closedAt: new Date("2026-09-10T12:00:00Z"),
+        },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      isStaleClosedOnDemandAssessment(
+        {
+          type: "TRYOUT",
+          status: "CLOSED",
+          closedAt: new Date("2026-09-01T12:00:00Z"),
+        },
+        now,
+      ),
+    ).toBe(false);
+  });
+
+  test("allows another standalone attempt only while attempts remain", () => {
+    expect(
+      canReattemptAssessment({
+        attemptNumber: 1,
+        maxAttempts: 2,
+        eventType: null,
+      }),
+    ).toBe(true);
+    expect(
+      canReattemptAssessment({
+        attemptNumber: 2,
+        maxAttempts: 2,
+        eventType: null,
+      }),
+    ).toBe(false);
+    expect(
+      canReattemptAssessment({
+        attemptNumber: 20,
+        maxAttempts: null,
+        eventType: null,
+      }),
+    ).toBe(true);
+    expect(
+      canReattemptAssessment({
+        attemptNumber: 1,
+        maxAttempts: 2,
+        eventType: "QUICK_ASSESSMENT",
+      }),
+    ).toBe(false);
+  });
+
+  test("derives terminal result data without mirroring query data into component state", () => {
+    expect(
+      assessmentTerminalResult({
+        status: "IN_PROGRESS",
+        score: null,
+        maxScore: null,
+      }),
+    ).toBeUndefined();
+    expect(
+      assessmentTerminalResult({
+        status: "SUBMITTED",
+        score: null,
+        maxScore: null,
+      }),
+    ).toEqual({ status: "IN_REVIEW", score: 0, maxScore: 0 });
+    expect(
+      assessmentTerminalResult({
+        status: "GRADED",
+        score: 8,
+        maxScore: 10,
+      }),
+    ).toEqual({ status: "GRADED", score: 8, maxScore: 10 });
   });
 });

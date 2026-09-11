@@ -19,15 +19,7 @@ export function buildSidebarSections(): SidebarSection[] {
           label: "Learn",
           icon: { ios: "book.fill", android: "menu_book" },
           route: "/(home)/(tabs)/learn",
-          activePaths: ["/learn", "/courses"],
-          replace: true,
-        },
-        {
-          id: "cohorts",
-          label: "Cohorts",
-          icon: { ios: "person.3.fill", android: "groups" },
-          route: "/(home)/(tabs)/cohorts",
-          activePaths: ["/cohorts"],
+          activePaths: ["/learn", "/courses", "/cohorts", "/events"],
           replace: true,
         },
         {

@@ -577,6 +577,33 @@ export const enrollmentRouter = createTRPCRouter({
       });
     }),
 
+  deleteInvite: protectedProcedure
+    .input(z.object({ inviteId: id }))
+    .mutation(async ({ ctx, input }) => {
+      const invite = await ctx.db.enrollmentInvite.findUnique({
+        where: { id: input.inviteId },
+        select: { courseId: true, cohortId: true },
+      });
+      if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
+      if (invite.cohortId) {
+        await requireCohortPermission({
+          cohortId: invite.cohortId,
+          permission: "invites.manage",
+          userId: ctx.actorUserId,
+        });
+      } else {
+        await requireCoursePermission({
+          courseId: invite.courseId,
+          permission: "course.manage",
+          userId: ctx.actorUserId,
+        });
+      }
+      return ctx.db.enrollmentInvite.delete({
+        where: { id: input.inviteId },
+        select: { id: true },
+      });
+    }),
+
   redeemInvite: protectedProcedure
     .input(z.object({ token: z.string().min(20).max(200) }))
     .mutation(({ ctx, input }) =>

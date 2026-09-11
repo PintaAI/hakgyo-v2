@@ -31,6 +31,8 @@ model User {
   courseEnrollments           CourseEnrollment[]
   cohortEnrollments           CohortEnrollment[]
   assessmentEventParticipants AssessmentEventParticipant[]
+  vocabularyMemory            VocabularyMemory[]
+  vocabularyRecallChallenges  VocabularyRecallChallenge[]
   contentProgress             ContentProgress[]
   assessmentAttempts          AssessmentAttempt[]
   activityEvents              UserActivityEvent[]
@@ -43,6 +45,8 @@ model User {
   oauthConsents               OauthConsent[]
   adminActions                AdminAuditLog[]              @relation("AdminAuditActor")
   adminActionTargets          AdminAuditLog[]              @relation("AdminAuditTarget")
+  pushTargets                 PushTarget[]
+  notifications               Notification[]
 
   @@unique([email])
   @@map("user")
@@ -103,6 +107,58 @@ model Account {
   @@unique([issuer, accountId], map: "account_issuer_accountId_uidx")
   @@index([userId])
   @@map("account")
+}
+
+/// One row per browser or native device a user enables notifications on.
+/// A user logged in on web + iOS + Android holds one active row per device;
+/// fan-out sends to every active row. `deviceId` is a client-generated UUID
+/// (localStorage / SecureStore) stable across token rotations.
+model PushTarget {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform        String // "web" | "expo"
+  deviceId        String
+  // Web Push (VAPID) fields
+  endpoint        String?   @unique
+  p256dh          String?
+  auth            String?
+  // Expo native fields
+  expoPushToken   String?   @unique
+  deviceName      String?
+  os              String? // e.g. "web-chrome", "ios", "android"
+  appVersion      String?
+  userAgent       String?
+  disabledAt      DateTime?
+  disabledReason  String?
+  lastSeenAt      DateTime  @default(now())
+  lastDeliveredAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@unique([userId, deviceId])
+  @@index([userId, disabledAt])
+  @@map("pushTarget")
+}
+
+/// Per-user inbox row: the source of truth shared by web and mobile.
+/// Push delivery is best-effort per device; the inbox always persists.
+model Notification {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           String
+  title          String
+  body           String
+  path           String? // web route opened on notification click
+  mobilePath     String? // expo-router route for the native tap handler
+  data           Json?
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@map("notification")
 }
 
 model Verification {
@@ -464,6 +520,7 @@ model Organization {
   zoomConnection         ZoomConnection?
   assets                 Asset[]
   activityEvents         UserActivityEvent[]
+  notifications          Notification[]
 }
 
 model OrganizationMember {
@@ -681,6 +738,7 @@ model CourseItem {
   material         Material?           @relation(fields: [materialId, organizationId], references: [id, organizationId], onDelete: Restrict)
   assessment       Assessment?         @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
   vocabularySet    VocabularySet?      @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  recallChallenges VocabularyRecallChallenge[]
   progress         ContentProgress[]
   attempts         AssessmentAttempt[]
   assessmentEvents AssessmentEvent[]
@@ -826,6 +884,8 @@ model VocabularyEntry {
   metadata        Json?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  memory          VocabularyMemory[]
+  recallChallenges VocabularyRecallChallenge[]
   vocabularySet   VocabularySet @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Cascade)
   audioAsset      Asset?        @relation("VocabularyEntryAudio", fields: [audioAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
   imageAsset      Asset?        @relation("VocabularyEntryImage", fields: [imageAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
@@ -1126,4 +1186,40 @@ model MaterialAsset {
 
   @@id([materialId, assetId])
   @@index([assetId])
+}
+
+// Evidence is scoped to a learner and library entry, shared across placements.
+model VocabularyMemory {
+  entryId       String
+  userId        String
+  contentHash   String
+  passStreak    Int       @default(0)
+  failStreak    Int       @default(0)
+  rememberedAt DateTime?
+  nextReviewAt  DateTime?
+  updatedAt     DateTime  @updatedAt
+  entry         VocabularyEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, userId])
+  @@index([userId, rememberedAt])
+}
+
+model VocabularyRecallChallenge {
+  id                 String   @id @default(cuid())
+  entryId            String
+  userId             String
+  sourceCourseItemId String
+  contentHash        String
+  prompt             String
+  expectedAnswer     String
+  createdAt          DateTime @default(now())
+  expiresAt          DateTime
+  submittedAt        DateTime?
+  correct            Boolean?
+  entry              VocabularyEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user               User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceCourseItem    CourseItem @relation(fields: [sourceCourseItemId], references: [id], onDelete: Cascade)
+
+  @@index([userId, entryId, createdAt])
 }

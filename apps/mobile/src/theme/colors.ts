@@ -68,7 +68,18 @@ export const themeColors = {
 } as const;
 
 export type ColorScheme = keyof typeof themeColors;
-export type ThemeColors = (typeof themeColors)[ColorScheme];
+export type ThemeColors = {
+  [Name in keyof (typeof themeColors)["light"]]: string;
+};
+
+export function withOpacity(color: string, opacity: number) {
+  const hex = color.match(/^#([0-9a-f]{6})$/i)?.[1];
+  if (!hex) return color;
+  const red = Number.parseInt(hex.slice(0, 2), 16);
+  const green = Number.parseInt(hex.slice(2, 4), 16);
+  const blue = Number.parseInt(hex.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+}
 
 const variableNames = {
   background: "--color-background",
@@ -104,7 +115,7 @@ const variableNames = {
   sidebarRing: "--color-sidebar-ring",
 } as const;
 
-function createThemeVariables(colors: ThemeColors) {
+export function createThemeVariables(colors: ThemeColors) {
   return Object.fromEntries(
     Object.entries(variableNames).map(([name, variable]) => [
       variable,

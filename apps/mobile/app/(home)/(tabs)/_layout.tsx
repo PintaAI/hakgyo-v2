@@ -22,13 +22,9 @@ export default function HomeTabsLayout() {
         <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="learn">
+      <NativeTabs.Trigger name="learn" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Label>Learn</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="book.fill" md="menu_book" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="cohorts">
-        <NativeTabs.Trigger.Label>Cohorts</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="person.3.fill" md="groups" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="assessments">
         <NativeTabs.Trigger.Label>Practice</NativeTabs.Trigger.Label>

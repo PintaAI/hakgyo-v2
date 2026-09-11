@@ -59,7 +59,7 @@ export function DrawerProvider({
         onClose={close}
         onOpen={open}
         open={enabled && drawerOpen}
-        overlayStyle={{ backgroundColor: "rgba(255,255,255,0)" }}
+        overlayStyle={{ backgroundColor: "transparent" }}
         renderDrawerContent={() => (
           <Sidebar onClose={close} onOpenProfile={openProfile} />
         )}
@@ -73,7 +73,7 @@ export function DrawerProvider({
             borderTopLeftRadius: screenCornerRadius,
             elevation: 18,
             flex: 1,
-            shadowColor: "#000",
+            shadowColor: "#000000",
             shadowOffset: { width: -5, height: 0 },
             shadowOpacity: colorScheme === "dark" ? 0.35 : 0.18,
             shadowRadius: 22,

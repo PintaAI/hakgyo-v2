@@ -19,6 +19,10 @@ import {
 import { api } from "../../../../../../src/lib/trpc";
 import { authClient } from "../../../../../../src/lib/auth-client";
 import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-draft";
+import {
+  assessmentTerminalResult,
+  canReattemptAssessment,
+} from "../../../../../../src/lib/assessment-state";
 
 type Answer = { content?: string; optionIds: string[] };
 
@@ -57,6 +61,7 @@ export default function AssessmentAttemptScreen() {
   );
   const saveAnswers = api.assessment.saveAnswers.useMutation();
   const submitAttempt = api.assessment.submitAttempt.useMutation();
+  const startAssessment = api.assessment.startAttempt.useMutation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const initialized = useRef<string | null>(null);
@@ -73,11 +78,13 @@ export default function AssessmentAttemptScreen() {
       : null);
   const expired = deadline !== null && now >= deadline;
   const busy = saveAnswers.isPending || submitAttempt.isPending;
-  const [result, setResult] = useState<{
+  const [submittedResult, setSubmittedResult] = useState<{
     status: "GRADED" | "IN_REVIEW";
     score: number;
     maxScore: number;
   }>();
+  const result = submittedResult ?? assessmentTerminalResult(attempt.data);
+  const hasResult = result !== undefined;
 
   useEffect(() => {
     if (!attempt.data || !storageKey || initialized.current === attemptId)
@@ -108,25 +115,16 @@ export default function AssessmentAttemptScreen() {
   }, [attempt.data, attemptId, storageKey]);
 
   useEffect(() => {
-    if (attempt.data && attempt.data.status !== "IN_PROGRESS") {
-      setResult({
-        status: attempt.data.status === "GRADED" ? "GRADED" : "IN_REVIEW",
-        score: attempt.data.score ?? 0,
-        maxScore: attempt.data.maxScore ?? 0,
-      });
-    }
-  }, [attempt.data]);
-
-  useEffect(() => {
+    if (attempt.data?.status !== "IN_PROGRESS" || deadline === null) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [attempt.data?.status, deadline]);
 
   useEffect(() => {
     if (
       !storageKey ||
       initialized.current !== attemptId ||
-      result ||
+      hasResult ||
       attempt.data?.status !== "IN_PROGRESS"
     )
       return;
@@ -140,7 +138,7 @@ export default function AssessmentAttemptScreen() {
         "Device draft unavailable. Use Save answers before leaving this screen.",
       );
     }
-  }, [answers, attemptId, storageKey, result, attempt.data?.status]);
+  }, [answers, attemptId, storageKey, hasResult, attempt.data?.status]);
 
   const question = assessment.data?.questions[currentIndex];
 
@@ -196,7 +194,7 @@ export default function AssessmentAttemptScreen() {
         await saveAnswers.mutateAsync({ attemptId, answers: payload });
       }
       const submitted = await submitAttempt.mutateAsync({ attemptId });
-      setResult(submitted);
+      setSubmittedResult(submitted);
       if (storageKey) {
         try {
           Storage.removeItemSync(storageKey);
@@ -247,11 +245,36 @@ export default function AssessmentAttemptScreen() {
     });
   }
 
+  async function reattempt() {
+    if (!assessment.data || !attempt.data || assessment.data.event) return;
+    try {
+      const nextAttempt = await startAssessment.mutateAsync({
+        courseItemId,
+        cohortId: attempt.data.cohort?.id,
+      });
+      router.push({
+        pathname:
+          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+        params: { courseId, courseItemId, attemptId: nextAttempt.id },
+      });
+    } catch {
+      // The mutation error is rendered below the action.
+    }
+  }
+
+  const canReattempt =
+    !!assessment.data &&
+    !!attempt.data &&
+    canReattemptAssessment({
+      attemptNumber: attempt.data.attemptNumber,
+      maxAttempts: assessment.data.maxAttempts,
+      eventType: assessment.data.event?.type,
+    });
+
   return (
     <>
       <Stack.Screen
         options={{
-          headerShown: true,
           title: assessment.data?.title ?? "Assessment",
         }}
       />
@@ -304,11 +327,34 @@ export default function AssessmentAttemptScreen() {
             resolveAssetUrl={resolveAssetUrl}
           />
 
+          {canReattempt ? (
+            <Pressable
+              className="items-center rounded-full bg-primary px-6 py-4 disabled:opacity-50"
+              disabled={startAssessment.isPending}
+              onPress={() => void reattempt()}
+            >
+              <Text className="font-black text-primary-foreground">
+                {startAssessment.isPending
+                  ? "Starting…"
+                  : "Re-attempt assessment"}
+              </Text>
+            </Pressable>
+          ) : null}
+          {startAssessment.isError ? (
+            <Text
+              accessibilityRole="alert"
+              className="text-center text-sm text-destructive"
+            >
+              {startAssessment.error.message}
+            </Text>
+          ) : null}
           <Pressable
-            className="items-center rounded-full bg-primary px-6 py-4"
+            className={`items-center rounded-full px-6 py-4 ${canReattempt ? "border border-border" : "bg-primary"}`}
             onPress={leaveResult}
           >
-            <Text className="font-black text-primary-foreground">
+            <Text
+              className={`font-black ${canReattempt ? "text-foreground" : "text-primary-foreground"}`}
+            >
               {assessment.data.event
                 ? "View score & leaderboard"
                 : "Return to course"}

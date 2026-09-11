@@ -29,7 +29,7 @@ export function CustomBlockToolbar({
         onClick={() => previewBlock?.(block)}
         type="button"
       >
-        <EyeIcon className="size-3.5" /> Preview
+        <EyeIcon className="size-3.5" /> Pratinjau
       </button>
       <button
         className="border-border bg-background/70 text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition"
@@ -40,7 +40,7 @@ export function CustomBlockToolbar({
         }}
         type="button"
       >
-        <RotateCcwIcon className="size-3.5" /> Clear
+        <RotateCcwIcon className="size-3.5" /> Kosongkan
       </button>
     </div>
   );

@@ -1,13 +1,16 @@
 import { TRPCError } from "@trpc/server";
+import { parseOrganizationTheme } from "@hakgyo/shared";
 import { z } from "zod";
 
 import { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+  activeEnrollmentStatuses,
   requireOrganizationMembership,
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
+import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
 import { generateOrganizationTheme } from "~/server/ai/organization-theme";
 import { fetchStats } from "~/server/foundation/fetch-stats";
 import { pageInput, pageResult } from "~/server/api/pagination";
@@ -167,6 +170,143 @@ export const organizationRouter = createTRPCRouter({
         where: { id: input.organizationId },
       });
       return { ...organization, currentRole: membership.role };
+    }),
+
+  getTheme: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .query(async ({ ctx, input }) => {
+      // Branding-only view: organization members (any role) plus learners
+      // enrolled in at least one published course of this organization.
+      const membership = await ctx.db.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId: input.organizationId,
+            userId: ctx.actorUserId,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!membership) {
+        const now = new Date();
+        const enrolledCourse = await ctx.db.course.findFirst({
+          where: {
+            organizationId: input.organizationId,
+            status: "PUBLISHED",
+            OR: [
+              {
+                enrollments: {
+                  some: {
+                    userId: ctx.actorUserId,
+                    status: { in: [...activeEnrollmentStatuses] },
+                    source: { not: "COHORT" },
+                    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+                  },
+                },
+              },
+              {
+                cohorts: {
+                  some: {
+                    status: { in: [...accessGrantingCohortStatuses] },
+                    OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+                    enrollments: {
+                      some: {
+                        userId: ctx.actorUserId,
+                        status: { in: [...activeEnrollmentStatuses] },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+          select: { id: true },
+        });
+
+        if (!enrolledCourse) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      }
+
+      const organization = await ctx.db.organization.findUnique({
+        where: { id: input.organizationId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+          theme: true,
+          themeEnabled: true,
+        },
+      });
+      if (!organization) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      return organization;
+    }),
+
+  listAvailableThemes: protectedProcedure
+    .input(z.object({ cacheScope: id }))
+    .query(async ({ ctx, input }) => {
+      if (input.cacheScope !== ctx.actorUserId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const now = new Date();
+      const organizations = await ctx.db.organization.findMany({
+        where: {
+          themeEnabled: true,
+          OR: [
+            { members: { some: { userId: ctx.actorUserId } } },
+            {
+              courses: {
+                some: {
+                  status: "PUBLISHED",
+                  OR: [
+                    {
+                      enrollments: {
+                        some: {
+                          userId: ctx.actorUserId,
+                          status: { in: [...activeEnrollmentStatuses] },
+                          source: { not: "COHORT" },
+                          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+                        },
+                      },
+                    },
+                    {
+                      cohorts: {
+                        some: {
+                          status: { in: [...accessGrantingCohortStatuses] },
+                          OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+                          enrollments: {
+                            some: {
+                              userId: ctx.actorUserId,
+                              status: { in: [...activeEnrollmentStatuses] },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+          theme: true,
+          updatedAt: true,
+        },
+      });
+
+      return organizations.flatMap((organization) => {
+        const theme = parseOrganizationTheme(organization.theme);
+        return theme ? [{ ...organization, theme }] : [];
+      });
     }),
 
   listInvites: protectedProcedure

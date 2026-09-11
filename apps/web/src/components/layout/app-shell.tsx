@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GraduationCapIcon } from "lucide-react";
 
+import { NotificationBell } from "~/components/notifications/notification-bell";
 import { User, type UserProps } from "~/components/user";
 import { NavLinks } from "./nav-links";
 
@@ -49,6 +50,7 @@ export function AppShell({
                 <NavLinks items={nav} variant="secondary" />
               </nav>
             ) : null}
+            <NotificationBell />
             <User {...userMenu} />
           </div>
         </div>

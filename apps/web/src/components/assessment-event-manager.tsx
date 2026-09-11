@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
+import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { Label } from "~/components/ui/label";
 import {
   Select,
@@ -113,7 +114,7 @@ export function AssessmentEventManager({
   const [participantSearch, setParticipantSearch] = useState("");
   const [participantStatus, setParticipantStatus] = useState<"IN_PROGRESS" | "IN_REVIEW" | "GRADED" | "NOT_STARTED" | undefined>();
   const [title, setTitle] = useState("");
-  const [courseItemId, setCourseItemId] = useState<string>();
+  const [courseItemId, setCourseItemId] = useState<string | null>(null);
   const type = cohortId ? "QUICK_ASSESSMENT" : "TRYOUT";
   const [durationMinutes, setDurationMinutes] = useState("30");
   const [closesAt, setClosesAt] = useState(() =>
@@ -149,6 +150,15 @@ export function AssessmentEventManager({
     (item) => item.id === courseItemId,
   );
 
+  const assessmentSelectItems = useMemo(
+    () =>
+      assessmentItems.data?.map((item) => ({
+        value: item.id,
+        label: `${item.module.title} · ${item.assessment?.title ?? "Assessment"}`,
+      })) ?? [],
+    [assessmentItems.data],
+  );
+
   async function refresh(eventId?: string) {
     await events.refetch();
     if (eventId) {
@@ -177,7 +187,7 @@ export function AssessmentEventManager({
       toast.success(`Event dibuka untuk ${opened.participantCount} peserta.`);
       setCreateOpen(false);
       setTitle("");
-      setCourseItemId(undefined);
+      setCourseItemId(null);
       await refresh();
     } catch (error) {
       toast.error(errorMessage(error));
@@ -373,8 +383,11 @@ export function AssessmentEventManager({
               <div className="space-y-2">
                 <Label htmlFor="event-assessment">Assessment</Label>
                 <Select
+                  items={assessmentSelectItems}
                   value={courseItemId}
-                  onValueChange={(value) => setCourseItemId(value ?? undefined)}
+                  onValueChange={(value) =>
+                    setCourseItemId((value as string | null) ?? null)
+                  }
                 >
                   <SelectTrigger id="event-assessment" className="w-full">
                     <SelectValue placeholder="Pilih assessment" />
@@ -408,13 +421,12 @@ export function AssessmentEventManager({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="event-closes">Ditutup pada</Label>
-                  <Input
+                  <DateTimePicker
                     id="event-closes"
-                    type="datetime-local"
                     min={toLocalDateTimeInput(new Date())}
                     required
                     value={closesAt}
-                    onChange={(event) => setClosesAt(event.target.value)}
+                    onChange={setClosesAt}
                   />
                 </div>
               </div>

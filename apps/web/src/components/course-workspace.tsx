@@ -28,7 +28,6 @@ import {
   ListFilterIcon,
   LoaderCircleIcon,
   MailPlusIcon,
-  MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
   Settings2Icon,
@@ -118,7 +117,6 @@ type CourseView =
   | "learners"
   | "tryouts"
   | "reviews"
-  | "invites"
   | "access"
   | "settings";
 
@@ -164,7 +162,6 @@ const views = [
   { value: "learners", label: "Siswa", icon: UsersIcon },
   { value: "reviews", label: "Hasil & review", icon: UsersIcon },
   { value: "tryouts", label: "Tryout", icon: TrophyIcon },
-  { value: "invites", label: "Invites", icon: MailPlusIcon },
   { value: "access", label: "Akses", icon: ShieldCheckIcon },
   { value: "settings", label: "Settings", icon: Settings2Icon },
 ] satisfies Array<{
@@ -311,7 +308,11 @@ export function CourseWorkspace({
         ({ value }) =>
           value === "overview" || (canViewCohorts && value === "cohorts"),
       );
-  const requestedView = searchParams.get("view") as CourseView | null;
+  const rawRequestedView = searchParams.get("view");
+  // Legacy `?view=invites` now lives inside the Siswa tab.
+  const requestedView = (
+    rawRequestedView === "invites" ? "learners" : rawRequestedView
+  ) as CourseView | null;
   const view =
     requestedView &&
     validViews.has(requestedView) &&
@@ -321,7 +322,6 @@ export function CourseWorkspace({
   const viewCounts: Partial<Record<CourseView, number>> = {
     cohorts: overview?.stats.cohortCount,
     learners: overview?.stats.activeLearnerCount,
-    invites: overview?.stats.activeInviteCount,
   };
   const [learnerSearch, setLearnerSearch] = useState("");
   const deferredLearnerSearch = useDeferredValue(
@@ -355,7 +355,7 @@ export function CourseWorkspace({
     },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      enabled: canViewCohorts && (view === "cohorts" || view === "invites"),
+      enabled: canViewCohorts && (view === "cohorts" || view === "learners"),
     },
   );
   const learners = api.enrollment.listCourseEnrollments.useInfiniteQuery(
@@ -372,7 +372,7 @@ export function CourseWorkspace({
     { courseId: course.id },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      enabled: canManageCourse && view === "invites",
+      enabled: canManageCourse && view === "learners",
     },
   );
   const cohortItems = cohorts.data?.pages.flatMap((page) => page.items);
@@ -571,32 +571,33 @@ export function CourseWorkspace({
           />
         </TabsContent>
         <TabsContent value="learners">
-          <LearnersSection
-            courseId={course.id}
-            data={learnerItems}
-            error={learners.error}
-            isPending={learners.isPending}
-            search={learnerSearch}
-            onSearchChange={setLearnerSearch}
-            hasMore={learners.hasNextPage}
-            isLoadingMore={learners.isFetchingNextPage}
-            onLoadMore={() => void learners.fetchNextPage()}
-            onNavigate={navigate}
-            onWorkspaceChange={refreshWorkspace}
-          />
-        </TabsContent>
-        <TabsContent value="invites">
-          <InvitesSection
-            courseId={course.id}
-            cohorts={cohortItems}
-            data={inviteItems}
-            error={invites.error}
-            isPending={invites.isPending}
-            hasMore={invites.hasNextPage}
-            isLoadingMore={invites.isFetchingNextPage}
-            onLoadMore={() => void invites.fetchNextPage()}
-            onWorkspaceChange={refreshWorkspace}
-          />
+          <div className="space-y-10">
+            <LearnersSection
+              courseId={course.id}
+              data={learnerItems}
+              error={learners.error}
+              isPending={learners.isPending}
+              search={learnerSearch}
+              onSearchChange={setLearnerSearch}
+              hasMore={learners.hasNextPage}
+              isLoadingMore={learners.isFetchingNextPage}
+              onLoadMore={() => void learners.fetchNextPage()}
+              onWorkspaceChange={refreshWorkspace}
+            />
+            <div className="border-t pt-8">
+              <InvitesSection
+                courseId={course.id}
+                cohorts={cohortItems}
+                data={inviteItems}
+                error={invites.error}
+                isPending={invites.isPending}
+                hasMore={invites.hasNextPage}
+                isLoadingMore={invites.isFetchingNextPage}
+                onLoadMore={() => void invites.fetchNextPage()}
+                onWorkspaceChange={refreshWorkspace}
+              />
+            </div>
+          </div>
         </TabsContent>
         <TabsContent value="tryouts">
           <AssessmentEventManager courseId={course.id} />
@@ -815,7 +816,7 @@ function OverviewSection({
                   label: "Buat dan kelola Group belajar",
                 },
                 {
-                  view: "invites" as const,
+                  view: "learners" as const,
                   icon: MailPlusIcon,
                   label: "Undang siswa",
                 },
@@ -1279,7 +1280,6 @@ function LearnersSection({
   hasMore,
   isLoadingMore,
   onLoadMore,
-  onNavigate,
   onWorkspaceChange,
 }: {
   courseId: string;
@@ -1291,7 +1291,6 @@ function LearnersSection({
   hasMore: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
-  onNavigate: (view: CourseView) => void;
   onWorkspaceChange: () => Promise<void>;
 }) {
   const utils = api.useUtils();
@@ -1377,10 +1376,6 @@ function LearnersSection({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => onNavigate("invites")}>
-            <MailPlusIcon data-icon="inline-start" />
-            Buat invite
-          </Button>
           <Button onClick={() => setAddOpen(true)}>
             <UserPlusIcon data-icon="inline-start" />
             Tambah siswa
@@ -1673,6 +1668,8 @@ function InvitesSection({
   const [newToken, setNewToken] = useState<string | null>(null);
   const createInvite = api.enrollment.createInvite.useMutation();
   const revokeInvite = api.enrollment.revokeInvite.useMutation();
+  const deleteInvite = api.enrollment.deleteInvite.useMutation();
+  const actionPending = revokeInvite.isPending || deleteInvite.isPending;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1711,6 +1708,19 @@ function InvitesSection({
         onWorkspaceChange(),
       ]);
       toast.success("Invite dicabut.");
+    } catch (cause) {
+      toast.error(getErrorMessage(cause));
+    }
+  }
+
+  async function remove(inviteId: string) {
+    try {
+      await deleteInvite.mutateAsync({ inviteId });
+      await Promise.all([
+        utils.enrollment.listInvites.invalidate({ courseId }),
+        onWorkspaceChange(),
+      ]);
+      toast.success("Invite dihapus.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -1829,15 +1839,29 @@ function InvitesSection({
                       </Badge>
                     </TableCell>
                     <TableCell className="pr-4 text-right">
-                      <Button
-                        aria-label="Cabut invite"
-                        size="icon-sm"
-                        variant="ghost"
-                        disabled={!active || revokeInvite.isPending}
-                        onClick={() => revoke(invite.id)}
-                      >
-                        <MoreHorizontalIcon />
-                      </Button>
+                      {active ? (
+                        <Button
+                          aria-label="Cabut invite"
+                          size="icon-sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          disabled={actionPending}
+                          onClick={() => revoke(invite.id)}
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      ) : (
+                        <Button
+                          aria-label="Hapus invite"
+                          size="icon-sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          disabled={actionPending}
+                          onClick={() => remove(invite.id)}
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

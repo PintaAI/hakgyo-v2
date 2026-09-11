@@ -42,8 +42,8 @@ export function AssessmentResultReview({
           Answer review is not available yet
         </Text>
         <Text className="mt-2 text-sm leading-5 text-muted-foreground">
-          Correct answers and explanations become available after this
-          on-demand assessment closes.
+          Correct answers and explanations become available after this on-demand
+          assessment closes.
         </Text>
       </View>
     );
@@ -137,16 +137,16 @@ export function AssessmentResultReview({
                     <View
                       className={`gap-2 rounded-xl border p-4 ${
                         isCorrect
-                          ? "border-emerald-500/50 bg-emerald-500/10"
+                          ? "border-primary/50 bg-primary/10"
                           : isSelected
-                            ? "border-red-500/50 bg-red-500/10"
+                            ? "border-destructive/50 bg-destructive/10"
                             : "border-border"
                       }`}
                       key={option.id}
                     >
                       {state ? (
                         <Text
-                          className={`text-xs font-black ${isCorrect ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}
+                          className={`text-xs font-black ${isCorrect ? "text-primary" : "text-destructive"}`}
                         >
                           {state}
                         </Text>

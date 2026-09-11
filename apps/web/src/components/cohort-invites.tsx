@@ -62,6 +62,8 @@ export function CohortInvites({
   );
   const createInvite = api.enrollment.createInvite.useMutation();
   const revokeInvite = api.enrollment.revokeInvite.useMutation();
+  const deleteInvite = api.enrollment.deleteInvite.useMutation();
+  const actionPending = revokeInvite.isPending || deleteInvite.isPending;
   const [open, setOpen] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
   const [maxUses, setMaxUses] = useState("");
@@ -102,6 +104,16 @@ export function CohortInvites({
       await revokeInvite.mutateAsync({ inviteId });
       await refresh();
       toast.success("Invite dicabut.");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  async function remove(inviteId: string) {
+    try {
+      await deleteInvite.mutateAsync({ inviteId });
+      await refresh();
+      toast.success("Invite dihapus.");
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -226,15 +238,27 @@ export function CohortInvites({
                         </span>
                       </div>
                     </div>
-                    <Button
-                      className="self-start sm:self-auto"
-                      variant="outline"
-                      disabled={!active || revokeInvite.isPending}
-                      onClick={() => revoke(invite.id)}
-                    >
-                      <Trash2Icon data-icon="inline-start" />
-                      Cabut
-                    </Button>
+                    {active ? (
+                      <Button
+                        className="self-start sm:self-auto"
+                        variant="outline"
+                        disabled={actionPending}
+                        onClick={() => revoke(invite.id)}
+                      >
+                        <Trash2Icon data-icon="inline-start" />
+                        Cabut
+                      </Button>
+                    ) : (
+                      <Button
+                        className="self-start sm:self-auto"
+                        variant="outline"
+                        disabled={actionPending}
+                        onClick={() => remove(invite.id)}
+                      >
+                        <Trash2Icon data-icon="inline-start" />
+                        Hapus
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );

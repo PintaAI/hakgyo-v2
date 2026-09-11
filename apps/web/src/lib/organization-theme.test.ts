@@ -50,9 +50,9 @@ describe("organization theme", () => {
     });
 
     expect(theme.primary).toBe("#2563EB");
-    expect(getContrastRatio(theme.background, "#111827")).toBeGreaterThanOrEqual(
-      10,
-    );
+    expect(
+      getContrastRatio(theme.background, "#111827"),
+    ).toBeGreaterThanOrEqual(10);
     expect(
       getContrastRatio(theme.background, theme.foreground),
     ).toBeGreaterThanOrEqual(7);
@@ -76,7 +76,18 @@ describe("organization theme", () => {
 
     expect(palette.background.light).toBe("#F8FAFC");
     expect(palette.background.dark).not.toBe(palette.background.light);
+    expect(
+      getContrastRatio(palette.background.dark, "#FFFFFF"),
+    ).toBeGreaterThan(17);
+    expect(
+      getContrastRatio(palette.primary.light, "#111827"),
+    ).toBeGreaterThanOrEqual(7);
+    expect(
+      getContrastRatio(palette.primary.dark, "#FFFFFF"),
+    ).toBeGreaterThanOrEqual(7);
     expect(palette.sidebar.dark).not.toBe(palette.background.dark);
+    expect(palette.muted.light).not.toBe(palette.card.light);
+    expect(palette.muted.dark).not.toBe(palette.card.dark);
   });
 
   test("creates serializable first-paint attributes and tokens", () => {

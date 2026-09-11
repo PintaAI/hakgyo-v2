@@ -1,3 +1,4 @@
+import { getReadableForeground } from "@hakgyo/shared";
 import { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
@@ -79,7 +80,7 @@ function firstExample(value: unknown) {
 }
 
 function VocabularyReference({ block }: BlockRendererProps) {
-  const { onOpenResource, resourceReferences } = useContentRenderer();
+  const { colors, onOpenResource, resourceReferences } = useContentRenderer();
   const [query, setQuery] = useState("");
   const vocabularySetId = stringProp(block.props, "vocabularySetId");
   const resource = resourceReferences?.vocabularySets.find(
@@ -130,7 +131,7 @@ function VocabularyReference({ block }: BlockRendererProps) {
             className="rounded-xl border border-border bg-background px-4 py-3 text-foreground"
             onChangeText={setQuery}
             placeholder="Search words or meanings…"
-            placeholderTextColor="#737373"
+            placeholderTextColor={colors.mutedForeground}
             value={query}
           />
         ) : null}
@@ -273,6 +274,7 @@ function Callout({ block }: BlockRendererProps) {
 
 function LessonPage({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "rose");
+  const accentForeground = getReadableForeground(accent);
   const assetId = stringProp(block.props, "assetId");
   const focusCards = [
     {
@@ -300,7 +302,10 @@ function LessonPage({ block }: BlockRendererProps) {
             className="size-16 items-center justify-center rounded-xl"
             style={{ backgroundColor: accent }}
           >
-            <Text className="text-2xl font-black text-white">
+            <Text
+              className="text-2xl font-black"
+              style={{ color: accentForeground }}
+            >
               {stringProp(block.props, "chapterNumber")}
             </Text>
           </View>
@@ -679,6 +684,7 @@ function CultureSection({ section }: { section: MobileCultureSection }) {
 
 function Culture({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "teal");
+  const accentForeground = getReadableForeground(accent);
   const sections = parseCultureSections(block.props.sections);
   const checklist = parseJsonArray(block.props.checklistItems, (item) => ({
     ko: typeof item.ko === "string" ? item.ko : "",
@@ -703,7 +709,10 @@ function Culture({ block }: BlockRendererProps) {
             className="min-w-0 flex-1 justify-center px-4 py-3"
             style={{ backgroundColor: accent }}
           >
-            <Text className="text-sm font-black tracking-wide text-white">
+            <Text
+              className="text-sm font-black tracking-wide"
+              style={{ color: accentForeground }}
+            >
               {stringProp(block.props, "eyebrow")}
             </Text>
           </View>
@@ -745,7 +754,9 @@ function Culture({ block }: BlockRendererProps) {
               className="size-9 items-center justify-center rounded-lg"
               style={{ backgroundColor: accent }}
             >
-              <Text className="font-black text-white">✓</Text>
+              <Text className="font-black" style={{ color: accentForeground }}>
+                ✓
+              </Text>
             </View>
             <View className="min-w-0 flex-1">
               <Text className="text-sm font-black text-foreground">
@@ -788,6 +799,7 @@ function Culture({ block }: BlockRendererProps) {
 
 function Conversation({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "violet");
+  const accentForeground = getReadableForeground(accent);
   const sectionVariant = stringProp(
     block.props,
     "sectionVariant",
@@ -850,7 +862,12 @@ function Conversation({ block }: BlockRendererProps) {
           className="size-11 items-center justify-center rounded-xl"
           style={{ backgroundColor: accent }}
         >
-          <Text className="text-lg font-black text-white">☵</Text>
+          <Text
+            className="text-lg font-black"
+            style={{ color: accentForeground }}
+          >
+            ☵
+          </Text>
         </View>
         <View className="min-w-0 flex-1">
           <SectionLabel>{stringProp(block.props, "eyebrow")}</SectionLabel>
@@ -903,7 +920,12 @@ function Conversation({ block }: BlockRendererProps) {
               className="size-6 items-center justify-center rounded-md"
               style={{ backgroundColor: accent }}
             >
-              <Text className="text-xs font-black text-white">{index + 1}</Text>
+              <Text
+                className="text-xs font-black"
+                style={{ color: accentForeground }}
+              >
+                {index + 1}
+              </Text>
             </View>
             <View className="min-w-0 flex-1 gap-1">
               <Text className="text-sm font-bold leading-5 text-foreground">
@@ -985,10 +1007,16 @@ function Conversation({ block }: BlockRendererProps) {
             className="flex-row items-center justify-between gap-3 p-4"
             style={{ backgroundColor: accent }}
           >
-            <Text className="min-w-0 flex-1 text-xs font-black uppercase tracking-[1.5px] text-white">
+            <Text
+              className="min-w-0 flex-1 text-xs font-black uppercase tracking-[1.5px]"
+              style={{ color: accentForeground }}
+            >
               {stringProp(block.props, "usefulExpressionEyebrow")}
             </Text>
-            <Text className="text-xs font-bold text-white">
+            <Text
+              className="text-xs font-bold"
+              style={{ color: accentForeground }}
+            >
               Audio {stringProp(block.props, "usefulExpressionAudioTrack")}
             </Text>
           </View>
@@ -1032,10 +1060,16 @@ function Conversation({ block }: BlockRendererProps) {
             className="flex-row items-center justify-between gap-3 p-4"
             style={{ backgroundColor: accent }}
           >
-            <Text className="min-w-0 flex-1 text-xs font-black uppercase tracking-[1.5px] text-white">
+            <Text
+              className="min-w-0 flex-1 text-xs font-black uppercase tracking-[1.5px]"
+              style={{ color: accentForeground }}
+            >
               {stringProp(block.props, "pronunciationEyebrow")}
             </Text>
-            <Text className="text-xs font-bold text-white">
+            <Text
+              className="text-xs font-bold"
+              style={{ color: accentForeground }}
+            >
               Audio {stringProp(block.props, "pronunciationAudioTrack")}
             </Text>
           </View>

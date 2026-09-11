@@ -1,11 +1,10 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { useEffect } from "react";
 import {
   ActivityIndicator,
   Image,
   Pressable,
-  Platform,
-  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -18,6 +17,7 @@ import {
 } from "../../src/lib/assessment-state";
 import { api } from "../../src/lib/trpc";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
+import { withOpacity } from "../../src/theme/colors";
 
 const itemLabels = {
   MATERIAL: "Materi",
@@ -25,11 +25,19 @@ const itemLabels = {
   VOCABULARY_SET: "Kosakata",
 } as const;
 
-const itemMarks = {
-  MATERIAL: "M",
-  ASSESSMENT: "A",
-  VOCABULARY_SET: "V",
-} as const;
+type CourseItemType = keyof typeof itemLabels;
+
+function itemIcon(type: CourseItemType): SymbolViewProps["name"] {
+  if (type === "VOCABULARY_SET") return "character.book.closed.fill";
+  if (type === "ASSESSMENT") return "checkmark.seal.fill";
+  return "doc.text.fill";
+}
+
+function itemFallback(type: CourseItemType) {
+  if (type === "VOCABULARY_SET") return "Aa";
+  if (type === "ASSESSMENT") return "✓";
+  return "•";
+}
 
 export default function CourseDetailScreen() {
   const params = useLocalSearchParams<{ courseId: string | string[] }>();
@@ -77,24 +85,7 @@ export default function CourseDetailScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerBackButtonDisplayMode:
-            Platform.OS === "ios" ? "minimal" : undefined,
-          headerShadowVisible: false,
-          headerTitle: "Course",
-          headerLargeTitle: false,
-          headerStyle: {
-            backgroundColor:
-              Platform.OS === "ios" ? "transparent" : colors.background,
-          },
-          headerTintColor: colors.foreground,
-          headerTransparent: Platform.OS === "ios",
-          scrollEdgeEffects:
-            Platform.OS === "ios" ? { top: "soft" } : undefined,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
       {isSessionPending || (!session && Boolean(courseId)) ? (
         <View className="flex-1 items-center justify-center gap-3 bg-background">
@@ -139,92 +130,68 @@ export default function CourseDetailScreen() {
       ) : (
         <ScrollView
           className="flex-1 bg-background"
-          contentContainerClassName="gap-6 px-4 pb-12 pt-3"
-          contentInsetAdjustmentBehavior="automatic"
-          refreshControl={
-            <RefreshControl
-              onRefresh={() => {
-                void courseQuery.refetch();
-                void attemptsQuery.refetch();
-              }}
-              refreshing={
-                courseQuery.isRefetching || attemptsQuery.isRefetching
-              }
-              tintColor={colors.primary}
-            />
-          }
+          contentContainerClassName="gap-8 px-5 pb-14"
+          contentInsetAdjustmentBehavior="never"
         >
-          <View className="min-h-80 overflow-hidden rounded-xl bg-[#171915]">
+          <View className="-mx-5 overflow-hidden bg-muted">
             {course.thumbnailUrl ? (
               <>
                 <Image
                   accessibilityIgnoresInvertColors
+                  blurRadius={5}
                   className="absolute inset-0 z-0 h-full w-full"
                   resizeMode="cover"
                   source={{ uri: course.thumbnailUrl }}
                 />
                 <View
                   className="absolute inset-0 z-10"
-                  style={{ backgroundColor: "rgba(0, 0, 0, 0.68)" }}
+                  style={{
+                    backgroundColor: withOpacity(colors.background, 0.72),
+                  }}
                 />
               </>
             ) : null}
-            <View className="relative z-20 flex-1 justify-between p-6">
-              <View className="self-start rounded-full border border-white/20 bg-white/10 px-3 py-2">
-                <Text className="text-[10px] font-bold uppercase tracking-[2px] text-white">
-                  {course.progressionMode === "SEQUENTIAL"
-                    ? "Sequential learning"
-                    : "Open learning"}
-                </Text>
-              </View>
-
-              <View className="gap-3">
-                <Text className="text-xs font-bold uppercase tracking-[2px] text-white/70">
+            <View className="relative z-20 justify-end gap-2 px-5 pb-6 pt-6">
+              <View className="gap-2">
+                <Text className="text-center text-xs font-semibold uppercase tracking-[1.5px] text-muted-foreground">
                   {course.organization.name}
                 </Text>
-                <Text className="text-4xl font-black leading-[42px] tracking-tight text-white">
+                <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
                   {course.title}
                 </Text>
                 {course.description ? (
                   <Text
-                    className="text-sm leading-5 text-white/75"
+                    className="text-sm leading-5 text-muted-foreground"
                     numberOfLines={3}
                   >
                     {course.description}
                   </Text>
                 ) : null}
-                <View className="mt-2 gap-2">
-                  <View className="flex-row items-end justify-between">
-                    <Text className="text-xs font-bold uppercase tracking-[1.5px] text-white/70">
-                      Overall progress
-                    </Text>
-                    <Text className="text-sm font-black text-white">
-                      {progress}% · {completedCount}/{allItems.length}
-                    </Text>
-                  </View>
-                  <View className="h-2 overflow-hidden rounded-full bg-white/20">
-                    <View
-                      className="h-full rounded-full bg-white/85"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </View>
-                </View>
+                <Text className="mt-1 text-xs font-semibold text-muted-foreground">
+                  {completedCount} of {allItems.length} completed
+                </Text>
               </View>
+            </View>
+            <View className="absolute bottom-0 left-0 right-0 z-30 h-1 bg-muted">
+              <View
+                className="h-full bg-primary"
+                style={{ width: `${progress}%` }}
+              />
             </View>
           </View>
 
-          <View className="gap-3">
-            <View className="gap-1 px-1">
-              <Text className="text-xs font-bold uppercase tracking-[2px] text-muted-foreground">
-                Learning path
-              </Text>
-              <Text className="text-2xl font-black text-foreground">
+          <View className="gap-5">
+            <View className="flex-row items-center justify-between gap-4">
+              <Text className="text-xl font-bold text-foreground">
                 Course materials
+              </Text>
+              <Text className="text-xs font-semibold text-muted-foreground">
+                {course.modules.length} modules
               </Text>
             </View>
 
             {course.modules.length === 0 ? (
-              <View className="items-center rounded-xl border border-dashed border-border bg-card px-6 py-10">
+              <View className="items-center border-y border-border px-6 py-10">
                 <Text className="text-base font-bold text-foreground">
                   No materials yet
                 </Text>
@@ -238,25 +205,41 @@ export default function CourseDetailScreen() {
 
                 return (
                   <View
-                    className={`overflow-hidden rounded-xl border border-border bg-card ${locked ? "opacity-60" : ""}`}
+                    className={`${moduleIndex > 0 ? "border-t border-border pt-6" : ""} ${locked ? "opacity-60" : ""}`}
                     key={module.id}
                   >
-                    <View className="flex-row gap-4 border-b border-border p-5">
+                    <View className="flex-row items-start gap-3">
                       <View
-                        className={`size-11 items-center justify-center rounded-lg ${module.isCompleted ? "bg-primary" : "bg-muted"}`}
+                        className={`size-9 items-center justify-center rounded-full border ${module.isCompleted ? "border-primary bg-primary" : "border-border bg-background"}`}
                       >
-                        <Text
-                          className={`font-black ${module.isCompleted ? "text-primary-foreground" : "text-foreground"}`}
-                        >
-                          {module.isCompleted
-                            ? "✓"
-                            : locked
-                              ? "—"
-                              : String(moduleIndex + 1).padStart(2, "0")}
-                        </Text>
+                        {module.isCompleted || locked ? (
+                          <SymbolView
+                            fallback={
+                              <Text
+                                className={`text-xs font-black ${module.isCompleted ? "text-primary-foreground" : "text-muted-foreground"}`}
+                              >
+                                {module.isCompleted ? "✓" : "—"}
+                              </Text>
+                            }
+                            name={
+                              module.isCompleted ? "checkmark" : "lock.fill"
+                            }
+                            size={14}
+                            tintColor={
+                              module.isCompleted
+                                ? colors.primaryForeground
+                                : colors.mutedForeground
+                            }
+                            weight="bold"
+                          />
+                        ) : (
+                          <Text className="text-xs font-bold tabular-nums text-muted-foreground">
+                            {String(moduleIndex + 1).padStart(2, "0")}
+                          </Text>
+                        )}
                       </View>
                       <View className="min-w-0 flex-1 gap-1">
-                        <Text className="text-base font-black text-foreground">
+                        <Text className="text-base font-bold text-foreground">
                           {module.title}
                         </Text>
                         {module.description ? (
@@ -267,96 +250,136 @@ export default function CourseDetailScreen() {
                             {module.description}
                           </Text>
                         ) : null}
-                        {locked ? (
-                          <Text className="mt-1 text-xs font-bold uppercase tracking-[1px] text-muted-foreground">
-                            Locked
-                          </Text>
-                        ) : null}
                       </View>
+                      <Text className="pt-1 text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground">
+                        {module.isCompleted
+                          ? "Completed"
+                          : locked
+                            ? "Locked"
+                            : `${module.items.length} activities`}
+                      </Text>
                     </View>
 
                     {module.items.length === 0 ? (
-                      <Text className="px-5 py-4 text-sm text-muted-foreground">
+                      <Text className="py-5 pl-12 text-sm text-muted-foreground">
                         No activities in this module.
                       </Text>
                     ) : (
-                      module.items.map((item, itemIndex) => {
-                        const attempt =
-                          item.type === "ASSESSMENT"
-                            ? latestStandaloneAttemptForItem(
-                                courseAttempts,
-                                item.id,
-                              )
-                            : undefined;
-                        const assessmentState =
-                          item.type === "ASSESSMENT"
-                            ? assessmentAttemptPresentation(attempt)
-                            : undefined;
+                      <View className="mt-5">
+                        {module.items.map((item, itemIndex) => {
+                          const attempt =
+                            item.type === "ASSESSMENT"
+                              ? latestStandaloneAttemptForItem(
+                                  courseAttempts,
+                                  item.id,
+                                )
+                              : undefined;
+                          const assessmentState =
+                            item.type === "ASSESSMENT"
+                              ? assessmentAttemptPresentation(attempt)
+                              : undefined;
+                          const isLast = itemIndex === module.items.length - 1;
+                          const status = locked
+                            ? "Locked"
+                            : (assessmentState?.detail ??
+                              (item.isCompleted ? "Completed" : "Ready"));
 
-                        return (
-                          <Pressable
-                            accessibilityHint={assessmentState?.action}
-                            className={`flex-row items-center gap-3 px-5 py-4 ${itemIndex > 0 ? "border-t border-border" : ""}`}
-                            disabled={locked}
-                            key={item.id}
-                            onPress={() => {
-                              if (attempt) {
-                                router.push({
-                                  pathname:
-                                    "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                                  params: {
-                                    courseId,
-                                    courseItemId: item.id,
-                                    attemptId: attempt.id,
-                                  },
-                                });
-                                return;
-                              }
-                              router.push({
-                                pathname:
-                                  "/courses/[courseId]/items/[courseItemId]",
-                                params: { courseId, courseItemId: item.id },
-                              });
-                            }}
-                          >
-                            <View
-                              className={`size-9 items-center justify-center rounded-lg ${item.isCompleted ? "bg-primary" : "bg-muted"}`}
-                            >
-                              <Text
-                                className={`text-xs font-black ${item.isCompleted ? "text-primary-foreground" : "text-muted-foreground"}`}
+                          return (
+                            <View className="flex-row" key={item.id}>
+                              <View className="w-10 items-center">
+                                {!isLast ? (
+                                  <View className="absolute bottom-0 top-8 w-px bg-border" />
+                                ) : null}
+                                <View
+                                  className={`size-8 items-center justify-center rounded-full border ${item.isCompleted ? "border-primary bg-primary" : "border-border bg-background"}`}
+                                >
+                                  <SymbolView
+                                    fallback={
+                                      <Text
+                                        className={`text-xs font-black ${item.isCompleted ? "text-primary-foreground" : "text-primary"}`}
+                                      >
+                                        {item.isCompleted
+                                          ? "✓"
+                                          : itemFallback(item.type)}
+                                      </Text>
+                                    }
+                                    name={
+                                      item.isCompleted
+                                        ? "checkmark"
+                                        : locked
+                                          ? "lock.fill"
+                                          : itemIcon(item.type)
+                                    }
+                                    size={14}
+                                    tintColor={
+                                      item.isCompleted
+                                        ? colors.primaryForeground
+                                        : locked
+                                          ? colors.mutedForeground
+                                          : colors.primary
+                                    }
+                                    weight="semibold"
+                                  />
+                                </View>
+                              </View>
+                              <Pressable
+                                accessibilityHint={assessmentState?.action}
+                                accessibilityRole="button"
+                                accessibilityState={{ disabled: locked }}
+                                className={`min-w-0 flex-1 pl-3 active:opacity-60 ${isLast ? "pb-1" : "pb-6"}`}
+                                disabled={locked}
+                                onPress={() => {
+                                  if (attempt) {
+                                    router.push({
+                                      pathname:
+                                        "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                                      params: {
+                                        courseId,
+                                        courseItemId: item.id,
+                                        attemptId: attempt.id,
+                                      },
+                                    });
+                                    return;
+                                  }
+                                  router.push({
+                                    pathname:
+                                      "/courses/[courseId]/items/[courseItemId]",
+                                    params: {
+                                      courseId,
+                                      courseItemId: item.id,
+                                    },
+                                  });
+                                }}
                               >
-                                {item.isCompleted ? "✓" : itemMarks[item.type]}
-                              </Text>
+                                <View className="flex-row items-start gap-3">
+                                  <View className="min-w-0 flex-1 gap-1">
+                                    <Text
+                                      className="text-[15px] font-semibold leading-5 text-foreground"
+                                      numberOfLines={2}
+                                    >
+                                      {item.title}
+                                    </Text>
+                                    <Text
+                                      className="text-xs leading-4 text-muted-foreground"
+                                      numberOfLines={2}
+                                    >
+                                      {itemLabels[item.type]} · {status}
+                                      {attempt && assessmentState?.action
+                                        ? ` · ${assessmentState.action}`
+                                        : ""}
+                                    </Text>
+                                  </View>
+                                  {!locked ? (
+                                    <Text className="pt-0.5 text-lg text-muted-foreground">
+                                      ›
+                                    </Text>
+                                  ) : null}
+                                </View>
+                              </Pressable>
                             </View>
-                            <View className="min-w-0 flex-1">
-                              <Text
-                                className="font-bold text-foreground"
-                                numberOfLines={2}
-                              >
-                                {item.title}
-                              </Text>
-                              <Text className="mt-1 text-xs text-muted-foreground">
-                                {itemLabels[item.type]}
-                              </Text>
-                            </View>
-                            <View className="max-w-32 items-end gap-1">
-                              <Text
-                                className={`text-right text-xs font-bold ${attempt?.status === "GRADED" ? "text-primary" : "text-muted-foreground"}`}
-                              >
-                                {locked
-                                  ? "Locked"
-                                  : (assessmentState?.detail ??
-                                    (item.isCompleted ? "Done" : "Open"))}
-                              </Text>
-                              {attempt && !locked ? (
-                                <Text className="text-right text-xs font-bold text-primary">
-                                  {assessmentState?.action} ›
-                                </Text>
-                              ) : null}
-                            </View>
-                          </Pressable>
-                        );
-                      })
+                          );
+                        })}
+                      </View>
                     )}
                   </View>
                 );

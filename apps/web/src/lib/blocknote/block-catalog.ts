@@ -99,7 +99,8 @@ export const conversationSpeakingPracticeDefaults = {
 } as const;
 
 export const conversationUsefulExpressionDefaults = {
-  usefulExpressionEyebrow: "유용한 표현 · USEFUL EXPRESSION",
+  showUsefulExpressionNote: true,
+  usefulExpressionEyebrow: "유용한 표현 · Ekspresi berguna",
   usefulExpressionAudioTrack: "31",
   usefulExpressionPhraseKo: "잘 부탁드립니다.",
   usefulExpressionPhraseTranslation: "Nice to meet you.",
@@ -114,7 +115,7 @@ export const pronunciationBlockExamples = [
 ] as const;
 
 export const conversationPronunciationDefaults = {
-  pronunciationEyebrow: "발음 · PRONUNCIATION",
+  pronunciationEyebrow: "발음 · Pelafalan",
   pronunciationAudioTrack: "89",
   pronunciationSymbol: "ㄷ",
   pronunciationDescriptionKo:
@@ -168,7 +169,7 @@ export const cultureBlockDefaults = {
   showBanner: true,
   spacing: "comfortable",
   surface: "card",
-  eyebrow: "문화와 정보 · CULTURE & INFORMATION",
+  eyebrow: "문화와 정보 · Budaya dan informasi",
   titleKo: "한국의 온돌과 좌식 생활",
   titleEn: "Ondol and Floor-sitting Life in Korea",
   sections: cultureSectionsDefault,
@@ -192,7 +193,7 @@ export const grammarBlockExamples = [
 
 export const grammarBlockTextDefaults = {
   number: "01",
-  eyebrow: "문법 · GRAMMAR",
+  eyebrow: "문법 · Tata bahasa",
   title: "-아요/어요",
   descriptionKo:
     "‘-아요/어요’는 동사나 형용사에 붙어 비격식 상황에서 문장을 끝맺을 때 사용합니다.",
@@ -228,23 +229,23 @@ export const lessonPageDefaults = {
   eyebrow: "EPS-TOPIK",
   chapterNumber: "03",
   title: "위치와 장소",
-  subtitle: "Locations and Places",
+  subtitle: "Lokasi dan tempat",
   question: "텔레비전은 어디에 있어요?",
   answer: "거실에 있어요.",
-  grammarLabel: "문법 · GRAMMAR",
+  grammarLabel: "문법 · Tata bahasa",
   grammarTitle: "이/가 있어요, 없어요",
   grammarDescription: "Ada atau tidak ada",
-  vocabularyLabel: "어휘 · VOCABULARY",
+  vocabularyLabel: "어휘 · Kosakata",
   vocabularyTitle: "가구와 전자제품",
-  vocabularyDescription: "Furniture and electronics",
-  cultureLabel: "문화와 정보 · CULTURE",
+  vocabularyDescription: "Perabotan dan perangkat elektronik",
+  cultureLabel: "문화와 정보 · Budaya dan informasi",
   cultureTitle: "한국의 도시",
-  cultureDescription: "Korea's cities",
-  objectivesLabel: "학습 목표 · LEARNING OBJECTIVES",
+  cultureDescription: "Kota-kota di Korea",
+  objectivesLabel: "학습 목표 · Tujuan pembelajaran",
   objectiveOne:
-    "집에 있는 물건에 대해 말할 수 있다.\nCan talk about items at home.",
+    "집에 있는 물건에 대해 말할 수 있다.\nDapat membicarakan benda-benda di rumah.",
   objectiveTwo:
-    "사람이나 물건이 있는 장소에 대해 말할 수 있다.\nCan talk about where a person or object is.",
+    "사람이나 물건이 있는 장소에 대해 말할 수 있다.\nDapat menjelaskan lokasi seseorang atau benda.",
 } as const;
 
 const lessonPageTextProps = Object.fromEntries(
@@ -339,6 +340,10 @@ export const hakgyoBlockCatalog = {
           default: conversationBlockDefaults.sectionVariant,
         },
         showTip: { type: "boolean", default: true },
+        showUsefulExpressionNote: {
+          type: "boolean",
+          default: conversationBlockDefaults.showUsefulExpressionNote,
+        },
         assetId: { type: "string", default: "" },
         fileName: { type: "string", default: "" },
         contentType: { type: "string", default: "" },

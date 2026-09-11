@@ -19,3 +19,8 @@ type InferProcedureOutputs<T> = T extends {
 export type { AppRouter };
 export type RouterInputs = InferProcedureInputs<AppRouter>;
 export type RouterOutputs = InferProcedureOutputs<AppRouter>;
+export type {
+  NotificationType,
+  NotifyPayload,
+  PushPlatform,
+} from "./notifications";

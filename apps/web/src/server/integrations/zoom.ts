@@ -31,8 +31,13 @@ type ZoomMeeting = {
 };
 
 class ZoomRequestError extends Error {
-  constructor(readonly status: number) {
-    super(`Zoom request failed with status ${status}`);
+  constructor(
+    readonly status: number,
+    readonly body?: string,
+  ) {
+    super(
+      `Zoom request failed with status ${status}${body ? `: ${body.slice(0, 500)}` : ""}`,
+    );
   }
 }
 
@@ -71,8 +76,19 @@ async function zoomFetch<T>(url: string, init: RequestInit): Promise<T> {
     });
   }
   if (!response.ok) {
-    console.error("Zoom rejected a request", { status: response.status });
-    throw new ZoomRequestError(response.status);
+    let body = "";
+    try {
+      body = await response.text();
+    } catch {
+      body = "";
+    }
+    console.error("Zoom rejected a request", {
+      status: response.status,
+      url,
+      method: init.method,
+      body: body.slice(0, 2000),
+    });
+    throw new ZoomRequestError(response.status, body);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -129,7 +145,7 @@ async function getAccessToken(organizationId: string) {
   try {
     return await db.$transaction(
       async (tx) => {
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${organizationId}))`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${organizationId}))`;
         const current = await tx.zoomConnection.findUnique({
           where: { organizationId },
         });
@@ -195,12 +211,13 @@ async function zoomApi<T>(
     });
   } catch (error) {
     if (!(error instanceof ZoomRequestError)) throw error;
+    const detail = error.body ? ` (${error.body.slice(0, 300)})` : "";
     throw new TRPCError({
       code: error.status === 429 ? "TOO_MANY_REQUESTS" : "BAD_REQUEST",
       message:
         error.status === 429
           ? "Zoom rate limit reached; try again shortly"
-          : "Zoom rejected the request",
+          : `Zoom rejected the request${detail}`,
     });
   }
 }

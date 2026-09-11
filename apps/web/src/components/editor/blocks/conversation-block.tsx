@@ -80,6 +80,7 @@ const conversationProps = {
     values: [...conversationBlockSectionVariants],
   },
   showTip: { default: true },
+  showUsefulExpressionNote: { default: true },
   assetId: { default: conversationBlockDefaults.assetId },
   fileName: { default: conversationBlockDefaults.fileName },
   contentType: { default: conversationBlockDefaults.contentType },
@@ -147,6 +148,7 @@ const emptyConversationProps = {
   theme: conversationBlockDefaults.theme,
   sectionVariant: conversationBlockDefaults.sectionVariant,
   showTip: false,
+  showUsefulExpressionNote: false,
   assetId: "",
   fileName: "",
   contentType: "",
@@ -512,10 +514,10 @@ export const conversationBlock = createReactBlockSpec(
                   {conversationBlockSectionVariants.map((variant) => {
                     const label =
                       variant === "useful-expression"
-                        ? "Useful expression"
+                        ? "Ekspresi berguna"
                         : variant === "pronunciation"
-                          ? "Pronunciation"
-                          : "Both";
+                          ? "Pelafalan"
+                          : "Keduanya";
                     const selected = sectionVariant === variant;
                     return (
                       <button
@@ -547,6 +549,24 @@ export const conversationBlock = createReactBlockSpec(
                 >
                   <LightbulbIcon className="size-3.5" /> Tip
                 </button>
+                {showUsefulExpression ? (
+                  <button
+                    aria-label={`${block.props.showUsefulExpressionNote ? "Sembunyikan" : "Tampilkan"} catatan ekspresi berguna`}
+                    aria-pressed={block.props.showUsefulExpressionNote}
+                    className="border-border hover:bg-background text-muted-foreground hover:text-foreground inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition"
+                    onClick={() =>
+                      editor.updateBlock(block, {
+                        props: {
+                          showUsefulExpressionNote:
+                            !block.props.showUsefulExpressionNote,
+                        },
+                      })
+                    }
+                    type="button"
+                  >
+                    <LightbulbIcon className="size-3.5" /> Catatan
+                  </button>
+                ) : null}
                 <CustomBlockToolbar
                   block={block}
                   editable={editable}
@@ -867,7 +887,7 @@ export const conversationBlock = createReactBlockSpec(
 
               <div className="bg-muted/55 ring-foreground/10 h-full min-w-0 rounded-xl p-3 ring-1">
                 <p className="text-muted-foreground mb-2 text-[0.65rem] font-semibold tracking-wide uppercase">
-                  Provided expressions
+                   Ekspresi yang digunakan
                 </p>
                 <div className="divide-border divide-y">
                   {practiceExpressions.map((expression, index) => (
@@ -1143,20 +1163,22 @@ export const conversationBlock = createReactBlockSpec(
                     ) : null}
                   </div>
 
-                  <div className="text-muted-foreground flex min-w-0 items-start gap-2 text-xs leading-relaxed">
-                    <LightbulbIcon className="mt-0.5 size-4 shrink-0" />
-                    <EditableBlockText
-                      ariaLabel="Catatan ekspresi berguna"
-                      className="w-full text-xs leading-relaxed"
-                      editable={editable}
-                      onChange={(usefulExpressionNote) =>
-                        editor.updateBlock(block, {
-                          props: { usefulExpressionNote },
-                        })
-                      }
-                      value={block.props.usefulExpressionNote}
-                    />
-                  </div>
+                  {block.props.showUsefulExpressionNote ? (
+                    <div className="text-muted-foreground flex min-w-0 items-start gap-2 text-xs leading-relaxed">
+                      <LightbulbIcon className="mt-0.5 size-4 shrink-0" />
+                      <EditableBlockText
+                        ariaLabel="Catatan ekspresi berguna"
+                        className="w-full text-xs leading-relaxed"
+                        editable={editable}
+                        onChange={(usefulExpressionNote) =>
+                          editor.updateBlock(block, {
+                            props: { usefulExpressionNote },
+                          })
+                        }
+                        value={block.props.usefulExpressionNote}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </section>

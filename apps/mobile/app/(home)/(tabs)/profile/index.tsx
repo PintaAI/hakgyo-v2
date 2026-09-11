@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   Share,
   Text,
@@ -14,26 +15,94 @@ import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
 import {
   Action,
+  Card,
   Empty,
+  Eyebrow,
   QueryState,
   Row,
-  Section,
   StudyScreen,
 } from "../../../../src/components/learning-ui";
 import { LearningProgress } from "../../../../src/components/learning-progress";
 import { achievementLabel, dateLabel } from "../../../../src/lib/study";
+import {
+  type AvailableOrganizationTheme,
+  useAppTheme,
+} from "../../../../src/providers/AppThemeProvider";
+
+function ThemeOption({
+  theme,
+  selected,
+  onSelect,
+}: {
+  theme: AvailableOrganizationTheme | null;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onSelect}
+      className={`flex-row items-center gap-3 rounded-xl px-3 py-3 active:opacity-70 ${
+        selected ? "bg-primary/10" : ""
+      }`}
+    >
+      <View
+        className="size-5 rounded-full border-2 border-primary p-1"
+        accessibilityElementsHidden
+      >
+        {selected ? <View className="flex-1 rounded-full bg-primary" /> : null}
+      </View>
+      <View className="flex-1 gap-1">
+        <Text className="text-base font-semibold text-foreground">
+          {theme?.name ?? "Hakgyo Default"}
+        </Text>
+        <Text className="text-sm text-muted-foreground">
+          {theme ? "Organization theme" : "Standard application theme"}
+        </Text>
+      </View>
+      {theme ? (
+        <View className="flex-row overflow-hidden rounded-full border border-border">
+          <View
+            className="size-6"
+            style={{ backgroundColor: theme.theme.background }}
+          />
+          <View
+            className="size-6"
+            style={{ backgroundColor: theme.theme.primary }}
+          />
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
 
 export default function ProfileTab() {
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const {
+    activeTheme,
+    availableThemes,
+    colors,
+    isRefreshingThemes,
+    refreshThemes,
+    selectTheme,
+  } = useAppTheme();
   const progress = api.gamification.getMySummary.useQuery();
   const connections = api.account.listMcpAuthorizations.useQuery();
   const connector = api.account.getMcpConnectionInfo.useQuery();
   const revoke = api.account.revokeMcpAuthorization.useMutation({
     onSuccess: () => connections.refetch(),
   });
+  const displayName = session?.user.name || "Hakgyo learner";
+  const initials = displayName
+    .trim()
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase())
+    .slice(0, 2)
+    .join("");
 
   const handleSignOut = async () => {
     setError(null);
@@ -63,21 +132,72 @@ export default function ProfileTab() {
       onRefresh={() => {
         void progress.refetch();
         void connections.refetch();
+        void refreshThemes();
       }}
-      refreshing={progress.isRefetching || connections.isRefetching}
+      refreshing={
+        progress.isRefetching || connections.isRefetching || isRefreshingThemes
+      }
     >
-      <View className="items-center gap-1">
-        {session?.user.name ? (
-          <Text className="text-base font-bold text-foreground">
-            {session.user.name}
+      <View className="flex-row items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4">
+        <View
+          className="size-14 items-center justify-center overflow-hidden rounded-full"
+          style={{ backgroundColor: colors.primary }}
+        >
+          {session?.user.image ? (
+            <Image
+              className="size-full"
+              resizeMode="cover"
+              source={{ uri: session.user.image }}
+            />
+          ) : (
+            <Text
+              className="text-lg font-extrabold"
+              style={{ color: colors.primaryForeground }}
+            >
+              {initials || "H"}
+            </Text>
+          )}
+        </View>
+        <View className="min-w-0 flex-1 gap-0.5">
+          <Text
+            className="text-xl font-black tracking-tight text-foreground"
+            numberOfLines={1}
+          >
+            {displayName}
           </Text>
-        ) : null}
-        <Text className="text-sm text-muted-foreground">
-          {session?.user.email}
-        </Text>
+          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
+            {session?.user.email ?? "Not signed in"}
+          </Text>
+        </View>
       </View>
       <LearningProgress />
-      <Section title="Milestones">
+      <Card>
+        <Eyebrow>Appearance</Eyebrow>
+        <Text className="text-sm leading-5 text-muted-foreground">
+          Choose a theme from an organization where you have an active course.
+          Your choice is stored on this device.
+        </Text>
+        <View accessibilityRole="radiogroup" className="gap-1">
+          <ThemeOption
+            theme={null}
+            selected={!activeTheme}
+            onSelect={() => void selectTheme(null)}
+          />
+          {availableThemes.map((theme) => (
+            <ThemeOption
+              key={theme.organizationId}
+              theme={theme}
+              selected={activeTheme?.organizationId === theme.organizationId}
+              onSelect={() => void selectTheme(theme.organizationId)}
+            />
+          ))}
+        </View>
+        {availableThemes.length === 0 ? (
+          <Empty>No organization themes are available yet.</Empty>
+        ) : null}
+      </Card>
+      <Card>
+        <Eyebrow>Milestones</Eyebrow>
         {progress.data?.achievements.length === 0 ? (
           <Empty>
             Complete your first learning activity to earn a milestone.
@@ -90,8 +210,9 @@ export default function ProfileTab() {
             detail={dateLabel(achievement.earnedAt)}
           />
         ))}
-      </Section>
-      <Section title="Learning activity">
+      </Card>
+      <Card>
+        <Eyebrow>Learning activity</Eyebrow>
         {progress.data?.recentActivity.map((activity, index) => (
           <Row
             key={index}
@@ -102,8 +223,9 @@ export default function ProfileTab() {
         <Text className="text-xs text-muted-foreground">
           Course streaks currently use UTC days.
         </Text>
-      </Section>
-      <Section title="Connected AI apps">
+      </Card>
+      <Card>
+        <Eyebrow>Connected AI apps</Eyebrow>
         <Text className="text-sm leading-5 text-muted-foreground">
           Use Hakgyo’s connector with a compatible AI app. Authorization happens
           in that app’s browser sign-in flow.
@@ -172,7 +294,7 @@ export default function ProfileTab() {
             {revoke.error.message}
           </Text>
         ) : null}
-      </Section>
+      </Card>
 
       {error ? (
         <Text
@@ -184,7 +306,7 @@ export default function ProfileTab() {
       ) : null}
 
       <Pressable
-        className="min-w-48 items-center rounded-full border border-border px-5 py-4"
+        className="items-center rounded-2xl border border-border bg-card px-5 py-4 active:opacity-70"
         disabled={isSigningOut}
         onPress={() => void handleSignOut()}
         style={{ opacity: isSigningOut ? 0.6 : 1 }}
@@ -192,7 +314,7 @@ export default function ProfileTab() {
         {isSigningOut ? (
           <ActivityIndicator />
         ) : (
-          <Text className="font-bold text-foreground">Sign out</Text>
+          <Text className="text-base font-bold text-foreground">Sign out</Text>
         )}
       </Pressable>
     </StudyScreen>

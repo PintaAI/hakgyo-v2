@@ -9,8 +9,10 @@ import { useDrawerProgress } from "react-native-drawer-layout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authClient } from "../../lib/auth-client";
+import { api } from "../../lib/trpc";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { GlassBox } from "../GlassBox";
+import { CourseCard } from "../learn/course-card";
 import { buildSidebarSections } from "./config";
 import { getCurrentAppArea, isSidebarItemActive } from "./routing";
 import type { AppArea, SidebarItem } from "./types";
@@ -42,12 +44,8 @@ function SidebarNavRow({
   isSubItem?: boolean;
   onPress: () => void;
 }) {
-  const { colorScheme, colors } = useAppTheme();
+  const { colors } = useAppTheme();
   const iconSize = isSubItem ? 14 : 16;
-  const surface =
-    colorScheme === "dark" ? "rgba(255,255,255,0.035)" : "rgba(15,23,42,0.028)";
-  const separatorLine =
-    colorScheme === "dark" ? "rgba(255,255,255,0.12)" : "rgba(15,23,42,0.1)";
 
   return (
     <Pressable
@@ -56,8 +54,8 @@ function SidebarNavRow({
       onPress={onPress}
       style={[
         {
-          backgroundColor: isActive ? surface : "transparent",
-          borderColor: separatorLine,
+          backgroundColor: isActive ? colors.sidebarAccent : "transparent",
+          borderColor: colors.sidebarBorder,
           borderWidth: isActive ? 1 : 0,
         },
         isSubItem && { marginLeft: 28, paddingLeft: 8 },
@@ -66,7 +64,9 @@ function SidebarNavRow({
       <View className="flex-row items-center gap-2.5">
         <View
           className="size-7 items-center justify-center rounded-full"
-          style={{ backgroundColor: isActive ? "transparent" : surface }}
+          style={{
+            backgroundColor: isActive ? "transparent" : colors.sidebarAccent,
+          }}
         >
           <SymbolView
             fallback={
@@ -101,6 +101,7 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
   const pathname = usePathname();
   const currentArea = getCurrentAppArea();
   const progress = useDrawerProgress();
+  const coursesQuery = api.learning.listMyCourses.useQuery();
   const sections = buildSidebarSections();
   const displayName = session?.user.name || "Hakgyo learner";
   const email =
@@ -243,6 +244,29 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
             </View>
           </View>
         ))}
+        {coursesQuery.data?.length ? (
+          <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
+            <View className="mb-1.5 flex-row items-center justify-between px-2">
+              <Text
+                className="text-xs font-semibold uppercase tracking-[1.6px]"
+                style={{ color: colors.mutedForeground }}
+              >
+                Courses
+              </Text>
+              <Text
+                className="text-xs font-bold"
+                style={{ color: colors.mutedForeground }}
+              >
+                {coursesQuery.data.length}
+              </Text>
+            </View>
+            <View style={{ gap: 10 }}>
+              {coursesQuery.data.map((course) => (
+                <CourseCard course={course} key={course.id} />
+              ))}
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
 
       <Pressable
@@ -256,10 +280,7 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
           glassEffectStyle="regular"
           isInteractive
           style={{
-            backgroundColor:
-              colorScheme === "dark"
-                ? "rgba(255,255,255,0.08)"
-                : "rgba(255,255,255,0.62)",
+            backgroundColor: colors.card,
             borderColor: colors.border,
             borderRadius: 24,
             borderWidth: 1,

@@ -375,7 +375,7 @@ export function AssessmentEditor({
         try {
           const created = await createOption.mutateAsync({
             questionId,
-            content: [{ type: "paragraph", content: "Pilihan baru" }],
+            content: [{ type: "paragraph", content: "" }],
             isCorrect: false,
           });
           if (assessmentId) {
@@ -961,6 +961,7 @@ function AssessmentEditorForm({
                         assessment?.instructions,
                       )}
                       onChange={setInstructions}
+                      placeholder="Tulis petunjuk pengerjaan..."
                       trailingBlock={false}
                       theme={editorTheme}
                       assetStorage={assetStorage}
@@ -1370,6 +1371,7 @@ const QuestionCard = memo(function QuestionCard({
               <DynamicBlockNoteEditor
                 initialContent={toBlockNoteDocument(question.prompt)}
                 onChange={setPrompt}
+                placeholder="Tulis pertanyaan..."
                 trailingBlock={false}
                 theme={theme}
                 assetStorage={assetStorage}
@@ -1421,6 +1423,7 @@ const QuestionCard = memo(function QuestionCard({
               <DynamicBlockNoteEditor
                 initialContent={toBlockNoteDocument(question.explanation)}
                 onChange={setExplanation}
+                placeholder="Tulis penjelasan jawaban..."
                 trailingBlock={false}
                 theme={theme}
                 assetStorage={assetStorage}
@@ -1661,6 +1664,7 @@ const OptionRow = memo(function OptionRow({
             editable={editing}
             initialContent={toBlockNoteDocument(option.content)}
             onChange={setContent}
+            placeholder="Tulis opsi jawaban..."
             trailingBlock={false}
             theme={theme}
             assetStorage={assetStorage}

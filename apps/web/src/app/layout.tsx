@@ -1,6 +1,6 @@
 import "~/styles/globals.css";
 
-import { type Metadata } from "next";
+import { type Metadata, type Viewport } from "next";
 import {
   Geist,
   Inter,
@@ -10,6 +10,7 @@ import {
 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
+import { PwaProvider } from "~/components/pwa/serwist-provider";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { Toaster } from "~/components/ui/sonner";
 import { env } from "~/env";
@@ -36,7 +37,22 @@ export const metadata: Metadata = {
   publisher: "Hakgyo",
   formatDetection: { email: false, address: false, telephone: false },
   robots: { index: true, follow: true },
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Hakgyo",
+  },
+  icons: [
+    { rel: "icon", url: "/favicon.ico" },
+    { rel: "apple-touch-icon", url: "/icons/apple-touch-icon-180.png" },
+  ],
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f766e",
+  width: "device-width",
+  initialScale: 1,
 };
 
 const geist = Geist({
@@ -82,7 +98,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <TRPCReactProvider>{children}</TRPCReactProvider>
+            <TRPCReactProvider>
+              <PwaProvider>{children}</PwaProvider>
+            </TRPCReactProvider>
           </TooltipProvider>
           <Toaster />
         </ThemeProvider>

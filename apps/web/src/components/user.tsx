@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 import { AccountSettings } from "~/components/account-settings";
 import { AppSettings } from "~/components/app-settings";
+import { getWebDeviceId } from "~/components/notifications/use-push";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import {
@@ -33,6 +34,7 @@ import {
 } from "~/components/ui/sidebar";
 import type { OrganizationRole } from "~/lib/access";
 import { authClient, type Session } from "~/server/better-auth/client";
+import { api } from "~/trpc/react";
 
 function getInitials(name: string) {
   return name
@@ -166,6 +168,7 @@ export function User({ role, variant = "header" }: UserProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const disableDevice = api.notification.disableDevice.useMutation();
 
   if (isPending) {
     if (variant === "sidebar") {
@@ -227,6 +230,13 @@ export function User({ role, variant = "header" }: UserProps) {
   const signOut = async () => {
     setIsSigningOut(true);
     try {
+      // Best-effort: disable push for THIS browser only. Other devices
+      // (phone, laptop) keep working. Never blocks logout on failure.
+      try {
+        await disableDevice.mutateAsync({ deviceId: getWebDeviceId() });
+      } catch {
+        // Session may already be invalid — logout proceeds regardless.
+      }
       const result = await authClient.signOut();
       if (result.error) {
         toast.error(result.error.message ?? "Keluar gagal.");

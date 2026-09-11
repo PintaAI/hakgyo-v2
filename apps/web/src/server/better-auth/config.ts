@@ -58,6 +58,14 @@ export const auth = betterAuth({
         }
       },
       afterDelete: async (user) => {
+        const { disableAllUserTargets } = await import(
+          "~/server/notifications/dispatch"
+        );
+        await disableAllUserTargets(user.id, "account deleted").catch(
+          (error) => {
+            console.error("Failed to disable push targets on delete", error);
+          },
+        );
         const key = getManagedProfileImageKey(user.image, user.id);
         if (!key) return;
         try {

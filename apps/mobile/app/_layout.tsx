@@ -19,20 +19,34 @@ void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function RootNavigator() {
   const { data: session, isPending } = authClient.useSession();
-  const { colorScheme, colors } = useAppTheme();
+  const { colorScheme, colors, isHydrated } = useAppTheme();
 
   useEffect(() => {
-    if (!isPending) {
+    if (!isPending && isHydrated) {
       void SplashScreen.hideAsync().catch(() => undefined);
     }
-  }, [isPending]);
+  }, [isHydrated, isPending]);
 
-  if (isPending) return null;
+  if (isPending || !isHydrated) return null;
+
+  const baseNavigationTheme = colorScheme === "dark" ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...baseNavigationTheme,
+    colors: {
+      ...baseNavigationTheme.colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.card,
+      text: colors.foreground,
+      border: colors.border,
+      notification: colors.primary,
+    },
+  };
 
   return (
     <>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={navigationTheme}>
         <DrawerProvider enabled={Boolean(session)}>
           <Stack
             screenOptions={{
@@ -43,7 +57,30 @@ function RootNavigator() {
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="courses/[courseId]" />
+            <Stack.Screen
+              name="courses/[courseId]"
+              options={{
+                headerShown: false,
+                ...Platform.select({
+                  ios: {
+                    presentation: "formSheet",
+                    sheetAllowedDetents: [1],
+                    sheetGrabberVisible: false,
+                    sheetCornerRadius: 28,
+                    sheetExpandsWhenScrolledToEdge: true,
+                  },
+                  default: {
+                    presentation: "formSheet",
+                    sheetAllowedDetents: [1],
+                    sheetInitialDetentIndex: 0,
+                    sheetCornerRadius: 28,
+                    sheetElevation: 24,
+                    sheetGrabberVisible: false,
+                    sheetLargestUndimmedDetentIndex: "none",
+                  },
+                }),
+              }}
+            />
 
             <Stack.Protected guard={!session}>
               <Stack.Screen name="(onboarding)" />
@@ -78,8 +115,14 @@ function RootNavigator() {
               <Stack.Screen name="(home)" />
               <Stack.Screen name="events/[eventId]" />
               <Stack.Screen name="vocabulary/[vocabularySetId]" />
-              <Stack.Screen name="courses/[courseId]/items/[courseItemId]" />
-              <Stack.Screen name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]" />
+              <Stack.Screen
+                name="courses/[courseId]/items/[courseItemId]"
+                options={{ headerShown: true }}
+              />
+              <Stack.Screen
+                name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"
+                options={{ headerShown: true }}
+              />
             </Stack.Protected>
           </Stack>
         </DrawerProvider>
@@ -92,11 +135,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AppThemeProvider>
-          <TRPCProvider>
+        <TRPCProvider>
+          <AppThemeProvider>
             <RootNavigator />
-          </TRPCProvider>
-        </AppThemeProvider>
+          </AppThemeProvider>
+        </TRPCProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

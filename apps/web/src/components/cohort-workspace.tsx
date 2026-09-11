@@ -19,7 +19,6 @@ import {
   ExternalLinkIcon,
   LayoutDashboardIcon,
   LoaderCircleIcon,
-  MailPlusIcon,
   PencilIcon,
   PlusIcon,
   SearchIcon,
@@ -65,6 +64,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { DatePicker } from "~/components/ui/date-picker";
+import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -96,7 +96,6 @@ type CohortView =
   | "meetings"
   | "assessments"
   | "reviews"
-  | "invites"
   | "settings";
 
 const views = [
@@ -106,7 +105,6 @@ const views = [
   { value: "meetings", label: "Meetings", icon: VideoIcon },
   { value: "assessments", label: "Assessment events", icon: ClipboardListIcon },
   { value: "reviews", label: "Hasil & review", icon: ClipboardCheckIcon },
-  { value: "invites", label: "Invite", icon: MailPlusIcon },
   { value: "settings", label: "Pengaturan", icon: Settings2Icon },
 ] satisfies Array<{ value: CohortView; label: string; icon: LucideIcon }>;
 
@@ -242,14 +240,18 @@ export function CohortWorkspace({
   );
   const cohort = cohortQuery.data;
   const availableViews = views.filter(({ value }) => {
-    if (value === "learners") return cohort.access.manageLearners;
+    if (value === "learners")
+      return cohort.access.manageLearners || cohort.access.manageInvites;
     if (value === "assessments") return cohort.access.reviewAssessments;
     if (value === "reviews") return cohort.access.reviewAssessments;
-    if (value === "invites") return cohort.access.manageInvites;
     if (value === "settings") return cohort.access.update;
     return true;
   });
-  const requestedView = searchParams.get("view") as CohortView | null;
+  const rawRequestedView = searchParams.get("view");
+  // Legacy `?view=invites` now lives inside the Siswa tab.
+  const requestedView = (
+    rawRequestedView === "invites" ? "learners" : rawRequestedView
+  ) as CohortView | null;
   const view =
     requestedView &&
     validViews.has(requestedView) &&
@@ -391,17 +393,30 @@ export function CohortWorkspace({
           />
         </TabsContent>
         <TabsContent value="learners">
-          <Learners
-            cohortId={cohort.id}
-            data={learnerItems}
-            error={learners.error}
-            pending={learners.isPending}
-            search={learnerSearch}
-            onSearchChange={setLearnerSearch}
-            hasMore={learners.hasNextPage}
-            isLoadingMore={learners.isFetchingNextPage}
-            onLoadMore={() => void learners.fetchNextPage()}
-          />
+          <div className="space-y-10">
+            {cohort.access.manageLearners ? (
+              <Learners
+                cohortId={cohort.id}
+                data={learnerItems}
+                error={learners.error}
+                pending={learners.isPending}
+                search={learnerSearch}
+                onSearchChange={setLearnerSearch}
+                hasMore={learners.hasNextPage}
+                isLoadingMore={learners.isFetchingNextPage}
+                onLoadMore={() => void learners.fetchNextPage()}
+              />
+            ) : null}
+            {cohort.access.manageInvites ? (
+              <div className="border-t pt-8">
+                <CohortInvites
+                  courseId={cohort.courseId}
+                  cohortId={cohort.id}
+                  cohortName={cohort.name}
+                />
+              </div>
+            ) : null}
+          </div>
         </TabsContent>
         <TabsContent value="staff">
           <Staff canManage={cohort.access.manageStaff} cohort={cohort} />
@@ -429,13 +444,6 @@ export function CohortWorkspace({
         </TabsContent>
         <TabsContent value="assessments">
           <AssessmentEventManager
-            courseId={cohort.courseId}
-            cohortId={cohort.id}
-            cohortName={cohort.name}
-          />
-        </TabsContent>
-        <TabsContent value="invites">
-          <CohortInvites
             courseId={cohort.courseId}
             cohortId={cohort.id}
             cohortName={cohort.name}
@@ -1450,12 +1458,11 @@ function MeetingForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="meeting-start">Mulai</Label>
-                <Input
+                <DateTimePicker
                   id="meeting-start"
-                  type="datetime-local"
                   required
                   value={startsAt}
-                  onChange={(event) => setStartsAt(event.target.value)}
+                  onChange={setStartsAt}
                 />
               </div>
               <div className="space-y-2">

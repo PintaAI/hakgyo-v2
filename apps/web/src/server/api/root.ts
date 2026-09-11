@@ -8,6 +8,7 @@ import { enrollmentRouter } from "~/server/api/routers/enrollment";
 import { gamificationRouter } from "~/server/api/routers/gamification";
 import { learningRouter } from "~/server/api/routers/learning";
 import { inviteRouter } from "~/server/api/routers/invite";
+import { notificationRouter } from "~/server/api/routers/notification";
 import { organizationRouter } from "~/server/api/routers/organization";
 import { storageRouter } from "~/server/api/routers/storage";
 import { superadminRouter } from "~/server/api/routers/superadmin";
@@ -30,6 +31,7 @@ export const appRouter = createTRPCRouter({
   gamification: gamificationRouter,
   learning: learningRouter,
   invite: inviteRouter,
+  notification: notificationRouter,
   organization: organizationRouter,
   storage: storageRouter,
   superadmin: superadminRouter,

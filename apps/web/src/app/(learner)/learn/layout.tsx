@@ -3,6 +3,7 @@ import { Hanken_Grotesk, Inter } from "next/font/google";
 
 import { LearnerBreadcrumb } from "~/components/learner-breadcrumb";
 import { LearnerSidebar } from "~/components/learner-sidebar";
+import { NotificationBell } from "~/components/notifications/notification-bell";
 import { Separator } from "~/components/ui/separator";
 import {
   SidebarInset,
@@ -54,6 +55,9 @@ export default async function LearnerLayout({
               className="mr-2 data-vertical:h-4 data-vertical:self-center"
             />
             <LearnerBreadcrumb />
+          </div>
+          <div className="ml-auto flex items-center px-4">
+            <NotificationBell />
           </div>
         </header>
         <div className="flex-1 p-4 md:p-6 lg:p-8">{children}</div>

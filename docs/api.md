@@ -774,7 +774,7 @@ Completion material memakai `requirementPolicy`:
 - `ALL`: semua requirement harus terpenuhi.
 - `ANY`: minimal satu requirement harus terpenuhi.
 - Assessment harus memiliki attempt `GRADED` yang mencapai threshold.
-- Vocabulary set harus memiliki course item published dan progress completed yang dapat diakses user.
+- Vocabulary set wajib memiliki bukti recall server yang valid untuk setiap kata; flag progress completed saja tidak cukup. Lihat [Vocabulary recall API](vocabulary-recall-api.md).
 
 ### Vocabulary
 
@@ -1203,9 +1203,18 @@ mutation({
 
 - Hanya untuk `MATERIAL` dan `VOCABULARY_SET`.
 - Assessment completion ditentukan oleh grading.
-- Completion bersifat monotonic; completed tidak kembali menjadi in-progress.
+- Completion vocabulary memerlukan setiap kata berstatus remembered melalui tes recall server.
+- Kegagalan recall berulang dapat mengembalikan vocabulary dan material terkait ke in-progress.
 - Material completion memvalidasi seluruh requirement `ALL`/`ANY`.
 - Requirement belum terpenuhi menghasilkan `PRECONDITION_FAILED`.
+
+### Vocabulary recall
+
+- `learning.getVocabularyMemory`: status remembered, streak, dan jadwal review per kata.
+- `learning.startVocabularyRecall`: terbitkan tes mengetik term dari definition.
+- `learning.submitVocabularyRecall`: nilai jawaban di server dan perbarui mark remembered per kata.
+
+Kontrak lengkap, kebijakan tiga kali lulus, pencabutan setelah dua kegagalan, contoh mobile, dan integrasi server: [Vocabulary recall API](vocabulary-recall-api.md).
 
 ### `learning.setProgressionMode`
 

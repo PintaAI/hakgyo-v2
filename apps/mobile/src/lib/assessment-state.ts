@@ -3,6 +3,31 @@ export type LearnerAttemptStatus =
 
 export type LearnerAssessmentEventType = "QUICK_ASSESSMENT" | "TRYOUT";
 
+const ONE_DAY_MS = 24 * 3_600_000;
+
+export function isStaleClosedOnDemandAssessment(
+  event: {
+    type?: string | null;
+    status?: string | null;
+    closesAt?: Date | null;
+    closedAt?: Date | null;
+  },
+  now: number,
+) {
+  const closureTime = event.closedAt ?? event.closesAt;
+
+  return (
+    event.type === "QUICK_ASSESSMENT" &&
+    (event.status === "CLOSED" ||
+      (event.closesAt !== null &&
+        event.closesAt !== undefined &&
+        event.closesAt.getTime() <= now)) &&
+    closureTime !== null &&
+    closureTime !== undefined &&
+    now - closureTime.getTime() > ONE_DAY_MS
+  );
+}
+
 type AttemptResult = {
   status: LearnerAttemptStatus;
   score: number | null;
@@ -46,6 +71,33 @@ export function assessmentResultPolicy(
     showAnswerReview: eventType !== "TRYOUT",
     showLeaderboard: eventType !== undefined && eventType !== null,
   };
+}
+
+export function assessmentTerminalResult(attempt?: AttemptResult) {
+  if (!attempt || attempt.status === "IN_PROGRESS") return undefined;
+
+  return {
+    status:
+      attempt.status === "GRADED"
+        ? ("GRADED" as const)
+        : ("IN_REVIEW" as const),
+    score: attempt.score ?? 0,
+    maxScore: attempt.maxScore ?? 0,
+  };
+}
+
+export function canReattemptAssessment({
+  attemptNumber,
+  maxAttempts,
+  eventType,
+}: {
+  attemptNumber: number;
+  maxAttempts: number | null;
+  eventType?: LearnerAssessmentEventType | null;
+}) {
+  return (
+    eventType == null && (maxAttempts === null || attemptNumber < maxAttempts)
+  );
 }
 
 export function latestStandaloneAttemptForItem<T extends AttemptIdentity>(

@@ -167,11 +167,7 @@ html.dark:not(.bn-root) {
   --bn-colors-selected-background: var(--primary);
   --bn-colors-disabled-text: var(--muted-foreground);
   --bn-colors-disabled-background: var(--muted);
-  --bn-colors-shadow: color-mix(
-    in oklch,
-    var(--foreground) 20%,
-    transparent
-  );
+  --bn-colors-shadow: rgb(0 0 0 / 20%);
   --bn-colors-border: var(--border);
   --bn-colors-side-menu: var(--muted-foreground);
   --bn-border-radius: var(--radius);

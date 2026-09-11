@@ -4,6 +4,8 @@
  */
 import "./src/env.js";
 
+import { withSerwist } from "@serwist/turbopack";
+
 /** @type {import("next").NextConfig} */
 const config = {
   allowedDevOrigins: ["jennie-linux.tail2268a1.ts.net"],
@@ -15,6 +17,13 @@ const config = {
   },
   async headers() {
     return [
+      {
+        // Allow the Serwist worker (served at /serwist/sw.js) to control the
+        // whole origin so one worker covers pages + push. Registration pairs
+        // this with `scope: "/"`.
+        source: "/serwist/sw.js",
+        headers: [{ key: "Service-Worker-Allowed", value: "/" }],
+      },
       {
         source: "/(.*)",
         headers: [
@@ -39,4 +48,4 @@ const config = {
   },
 };
 
-export default config;
+export default withSerwist(config);
