@@ -271,9 +271,10 @@ export function CohortCard({
         : "Lesson";
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
-  // Full-bleed first card sits under the status bar: keep the image bleeding
-  // but push the titles down below it + extra breathing room.
-  const headerTopPadding = isFirst ? insets.top + 20 : 16;
+  // Full-bleed first card sits under the transparent native header: keep
+  // the image bleeding but push the titles below the toolbar + breathing
+  // room. ~56pt native bar; swap for useHeaderHeight() if this drifts.
+  const headerTopPadding = isFirst ? insets.top + 64 : 16;
 
   const openCourse = () =>
     router.push({
@@ -282,7 +283,7 @@ export function CohortCard({
     });
 
   return (
-    <View className="overflow-hidden rounded-2xl border border-border bg-card">
+    <View className="overflow-hidden rounded-2xl bg-background">
       <View className="relative justify-end bg-muted">
         {thumbnailUrl ? (
           <>
@@ -354,11 +355,7 @@ export function CohortCard({
       <View className="gap-3 p-4">
         {next && nextState ? (
           <SessionBlock meeting={next} state={nextState} />
-        ) : (
-          <Text className="text-sm text-muted-foreground">
-            No upcoming sessions — pick up your course below.
-          </Text>
-        )}
+        ) : null}
 
         <View className="flex-row gap-2">
           <Pressable

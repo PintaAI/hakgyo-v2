@@ -65,7 +65,7 @@ function ThemeOption({
         <View className="flex-row overflow-hidden rounded-full border border-border">
           <View
             className="size-6"
-            style={{ backgroundColor: theme.theme.background }}
+            style={{ backgroundColor: theme.theme.secondary }}
           />
           <View
             className="size-6"

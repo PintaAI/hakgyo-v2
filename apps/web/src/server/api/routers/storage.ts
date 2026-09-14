@@ -699,6 +699,13 @@ export const storageRouter = createTRPCRouter({
               },
             },
           },
+          vocabularyEntryImages: {
+            select: {
+              vocabularySet: {
+                select: { courseItems: { select: { id: true } } },
+              },
+            },
+          },
         },
       });
       if (!asset) {
@@ -717,6 +724,9 @@ export const storageRouter = createTRPCRouter({
             assessment.courseItems.map(({ id }) => id),
           ),
           ...asset.vocabularyEntries.flatMap(({ vocabularySet }) =>
+            vocabularySet.courseItems.map(({ id }) => id),
+          ),
+          ...asset.vocabularyEntryImages.flatMap(({ vocabularySet }) =>
             vocabularySet.courseItems.map(({ id }) => id),
           ),
         ]);

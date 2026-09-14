@@ -18,37 +18,10 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { shadowToCss } from "~/components/ui/shadow-editor";
 import { Switch } from "~/components/ui/switch";
-import { getReadableForeground } from "~/lib/colors";
+import { createOrganizationThemeTokens } from "@hakgyo/shared";
 import { parseOrganizationTheme } from "~/lib/organization-theme";
 import { api } from "~/trpc/react";
-
-const fontLabels = {
-  geist: "Geist",
-  inter: "Inter",
-  poppins: "Poppins",
-  merriweather: "Merriweather",
-  jetbrains: "JetBrains Mono",
-} as const;
-
-const densityLabels = {
-  compact: "Padat",
-  comfortable: "Nyaman",
-  spacious: "Luas",
-} as const;
-
-const radiusLabels = {
-  none: "Kotak",
-  small: "Halus",
-  large: "Bulat",
-} as const;
-
-const sizeLabels = {
-  small: "Kecil",
-  default: "Default",
-  large: "Besar",
-} as const;
 
 function errorMessage(error: unknown) {
   if (
@@ -156,9 +129,9 @@ export function OrganizationThemeSettings({
           <div className="grid gap-1">
             <CardTitle>Tema dari logo dengan AI</CardTitle>
             <CardDescription>
-              AI membaca logo lalu memilih warna, mode gelap, font, radius,
-              density, ukuran, shadow, dan sidebar. Tema berlaku untuk seluruh
-              workspace organisasi.
+              AI memilih empat warna dasar dari logo. Sistem membuat seluruh
+              warna antarmuka untuk mode terang dan gelap secara otomatis,
+              dengan palet yang sama di web dan mobile.
             </CardDescription>
           </div>
         </div>
@@ -189,83 +162,99 @@ export function OrganizationThemeSettings({
                 aria-label="Gunakan tema organisasi"
                 checked={themeActive}
                 disabled={busy}
-                onCheckedChange={(checked) =>
-                  void handleEnabledChange(checked)
-                }
+                onCheckedChange={(checked) => void handleEnabledChange(checked)}
               />
             </div>
-            <div className="grid grid-cols-3 gap-3 p-4 lg:grid-cols-1">
-              <ColorValue label="Aksi" value={theme.primary} />
-              <ColorValue label="Latar" value={theme.background} />
-              <ColorValue label="Teks" value={theme.foreground} />
+            <div className="col-span-full grid grid-cols-2 gap-4 p-4 sm:grid-cols-4">
+              <ColorValue label="Primer" value={theme.primary} />
+              <ColorValue label="Sekunder" value={theme.secondary} />
+              <ColorValue label="Aksen" value={theme.accent} />
+              <ColorValue label="Bahaya" value={theme.destructive} />
             </div>
-            <div className="grid grid-cols-2 gap-3 border-t p-4 text-xs lg:grid-cols-3 lg:border-t-0 lg:border-l">
-              <div>
-                <span className="text-muted-foreground block">Mode gelap</span>
-                <span className="font-medium">{theme.darkBrightness}%</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Font</span>
-                <span className="font-medium">{fontLabels[theme.font]}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Radius</span>
-                <span className="font-medium">
-                  {radiusLabels[theme.radius]}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Spasi</span>
-                <span className="font-medium">
-                  {densityLabels[theme.density]}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Ukuran</span>
-                <span className="font-medium">{sizeLabels[theme.size]}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Shadow</span>
-                <span className="font-medium">
-                  {theme.shadow.blur}px · {theme.shadow.opacity}%
-                </span>
-              </div>
-            </div>
-            <div
-              className="col-span-full flex min-h-36 items-center justify-center border-t p-5"
-              style={{
-                backgroundColor: theme.background,
-                color: theme.foreground,
-              }}
-            >
-              <div
-                className="w-full max-w-sm border border-current/15 bg-background/10 p-4"
-                style={{
-                  borderRadius:
-                    theme.radius === "none"
-                      ? "0"
-                      : theme.radius === "small"
-                        ? "0.375rem"
-                        : "1rem",
-                  boxShadow: shadowToCss(theme.shadow),
-                }}
-              >
-                <p className="text-sm font-semibold">Preview tema</p>
-                <p className="mt-1 text-xs opacity-70">
-                  Warna turunan dibuat otomatis dan tetap dapat disesuaikan per
-                  perangkat.
-                </p>
-                <span
-                  className="mt-4 inline-flex rounded-md px-3 py-1.5 text-xs font-medium"
+            {(["light", "dark"] as const).map((mode) => {
+              const colors = createOrganizationThemeTokens(theme, mode);
+              return (
+                <div
+                  key={mode}
+                  className="grid gap-3 border-t p-4"
                   style={{
-                    backgroundColor: theme.primary,
-                    color: getReadableForeground(theme.primary),
+                    backgroundColor: colors.background,
+                    color: colors.foreground,
                   }}
                 >
-                  Tombol utama
-                </span>
-              </div>
-            </div>
+                  <p className="text-sm font-semibold">
+                    {mode === "light" ? "Mode terang" : "Mode gelap"}
+                  </p>
+                  <div
+                    className="flex overflow-hidden rounded-xl border"
+                    style={{ borderColor: colors.border }}
+                  >
+                    <div
+                      className="grid content-start gap-3 p-3 text-xs"
+                      style={{
+                        backgroundColor: colors.sidebar,
+                        color: colors.sidebarForeground,
+                      }}
+                    >
+                      <span>Workspace</span>
+                      <span
+                        className="rounded-md p-2"
+                        style={{
+                          backgroundColor: colors.sidebarAccent,
+                          color: colors.sidebarAccentForeground,
+                        }}
+                      >
+                        Beranda
+                      </span>
+                    </div>
+                    <div
+                      className="grid flex-1 gap-3 p-4"
+                      style={{
+                        backgroundColor: colors.card,
+                        color: colors.cardForeground,
+                      }}
+                    >
+                      <p className="text-sm font-medium">Preview tema</p>
+                      <p
+                        className="text-xs"
+                        style={{ color: colors.mutedForeground }}
+                      >
+                        Seluruh warna turunan dibuat otomatis.
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span
+                          className="rounded-md px-3 py-2"
+                          style={{
+                            backgroundColor: colors.primary,
+                            color: colors.primaryForeground,
+                          }}
+                        >
+                          Utama
+                        </span>
+                        <span
+                          className="rounded-md px-3 py-2"
+                          style={{
+                            backgroundColor: colors.secondary,
+                            color: colors.secondaryForeground,
+                          }}
+                        >
+                          Sekunder
+                        </span>
+                        <span
+                          className="rounded-md px-3 py-2"
+                          style={{
+                            backgroundColor: colors.destructive,
+                            color: colors.destructiveForeground,
+                          }}
+                        >
+                          Hapus
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : null}
 

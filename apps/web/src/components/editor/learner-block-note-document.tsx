@@ -47,7 +47,7 @@ export function LearnerBlockNoteDocument({
   });
 
   const document = (
-    <div className="[&_.bn-container]:mx-auto [&_.bn-container]:max-w-none [&_.bn-editor]:bg-transparent [&_.bn-editor]:px-0">
+    <div className="[&_.bn-container]:mx-auto [&_.bn-container]:max-w-none [&_.bn-editor]:px-0">
       <AssetUploadProvider value={null}>
         <BlockNoteView editable={false} editor={editor} theme={theme} />
       </AssetUploadProvider>

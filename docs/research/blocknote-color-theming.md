@@ -1,7 +1,19 @@
 # BlockNote color and theming research
 
 Research date: 2026-09-03
+Documentation revalidated: 2026-09-14
 Repository version inspected: `@blocknote/core`, `@blocknote/react`, and `@blocknote/shadcn` 0.53.0
+
+## 2026-09-14 documentation recheck
+
+The current official documentation and the installed 0.53.0 source still support the integration described in this note:
+
+- The public BlockNote variables belong on `.bn-root[data-color-scheme]`. Separate light and dark values belong on `.bn-root[data-color-scheme="light"]` and `.bn-root[data-color-scheme="dark"]`. [Official themes documentation](https://www.blocknotejs.org/docs/react/styling-theming/themes)
+- Passing `theme="light"` or `theme="dark"` to `BlockNoteView` is the documented way to force the scheme. In 0.53.0, React writes the resulting `data-color-scheme` to both the visible root and the editor portal root, so floating UI receives the same mode. [Official forcing-light/dark documentation](https://www.blocknotejs.org/docs/react/styling-theming/themes#forcing-lightdark-mode) and [first-party `BlockNoteView` source at v0.53.0](https://github.com/TypeCellOS/BlockNote/blob/v0.53.0/packages/react/src/editor/BlockNoteView.tsx)
+- `@blocknote/shadcn` expects the host application to provide ShadCN/Tailwind semantic tokens. Its toolbars, suggestion menus, dropdowns, popovers, cards, inputs, buttons, and related controls use utilities backed by variables such as `--popover`, `--card`, `--accent`, `--primary`, `--destructive`, `--border`, `--input`, and `--ring`. They do **not** all use `--bn-colors-menu-*` or the other `--bn-colors-*` variables. [Official ShadCN setup](https://www.blocknotejs.org/docs/getting-started/shadcn) and [first-party ShadCN source at v0.53.0](https://github.com/TypeCellOS/BlockNote/tree/v0.53.0/packages/shadcn/src)
+- The `--bn-colors-*` family still controls the editor surface and text, side-menu details, BlockNote's generic menu/tooltip fallbacks, interaction states used by core/React CSS, and its named document highlight colors. Therefore a complete organization-theme integration needs both the host ShadCN token set and the scoped BlockNote bridge; treating either family as the only palette leaves part of the editor outside the shared system. [Official themes documentation](https://www.blocknotejs.org/docs/react/styling-theming/themes) and [first-party React theme CSS at v0.53.0](https://github.com/TypeCellOS/BlockNote/blob/v0.53.0/packages/react/src/editor/styles.css)
+
+Implementation status after this recheck: Hakgyo now maps every documented base `--bn-colors-*` variable plus all nine named text/background highlight pairs. The highlight pairs come from the shared deterministic theme generator for both light and dark modes. The custom callout block also consumes those pairs instead of fixed Tailwind hues.
 
 ## Executive summary
 
@@ -10,23 +22,24 @@ Hakgyo must bridge **two distinct styling systems** to make BlockNote fully foll
 1. `@blocknote/shadcn` UI chrome—toolbars, menus, popovers, buttons, inputs, focus rings, cards, and utility shadows—uses the host application's shadcn/Tailwind semantic tokens such as `--popover`, `--accent`, `--border`, `--ring`, and Tailwind `shadow-*` utilities. BlockNote's ShadCN setup explicitly expects the consuming application to provide those styles and tokens. [Official ShadCN setup](https://www.blocknotejs.org/docs/getting-started/shadcn) and [first-party ShadCN component source at v0.53.0](https://github.com/TypeCellOS/BlockNote/tree/v0.53.0/packages/shadcn/src)
 2. The editable document surface and BlockNote's built-in text/background color system use BlockNote-specific variables such as `--bn-colors-editor-background`, `--bn-colors-editor-text`, and the 18 named highlight variables. [Official themes documentation](https://www.blocknotejs.org/docs/react/styling-theming/themes) and [first-party React theme CSS at v0.53.0](https://github.com/TypeCellOS/BlockNote/blob/v0.53.0/packages/react/src/editor/styles.css)
 
-Hakgyo already exposes its shadcn tokens to Tailwind, scans `@blocknote/shadcn`, and now has a scoped `--bn-*` bridge in `apps/web/src/styles/globals.css`. A 0.53.0 source and generated-CSS audit confirms that the current selector matches the actual ShadCN BlockNote roots and has enough specificity to beat BlockNote's packaged light/dark defaults. The reported “still looks the same” behavior is therefore not explained by a wrong `.bn-root` selector or by the package stylesheet loading later. The main cause is visual: Hakgyo's generated dark card/text values are very close to BlockNote's dark defaults, and the material section wrapper and `.bn-editor` both use the same `--card` surface.
+Hakgyo exposes its shadcn tokens to Tailwind, scans `@blocknote/shadcn`, and has a scoped `--bn-*` bridge in `apps/web/src/styles/globals.css`. A 0.53.0 source and generated-CSS audit confirms that the selector matches the actual ShadCN BlockNote roots and has enough specificity to beat BlockNote's packaged light/dark defaults. The editor canvas is transparent so it exactly inherits the containing application surface. BlockNote menus, controls, selections, text, borders, and highlights continue to use the generated semantic tokens.
 
 ## Diagnostic conclusion for Hakgyo
 
-The current bridge is wired correctly, but it does not create a visibly distinct editor surface.
+The bridge is wired correctly and keeps the editor canvas on its parent surface.
 
 At the time of this audit, the active `hakgyo-system` organization theme resolves to:
 
-| Token | Hakgyo dark value | BlockNote 0.53.0 dark default |
-| --- | --- | --- |
-| page background | `#0F151A` | not applicable |
-| card / BlockNote editor background | `#141C22` | `#1F1F1F` |
-| card / BlockNote editor text | `#C8CFD6` | `#CFCFCF` |
+| Token                       | Hakgyo dark value | BlockNote 0.53.0 dark default |
+| --------------------------- | ----------------- | ----------------------------- |
+| page background             | `#14161A`         | not applicable                |
+| card                        | `#242D36`         | not applicable                |
+| BlockNote editor background | inherited `card`  | `#1F1F1F`                     |
+| BlockNote editor text       | `#FAFAFA`         | `#CFCFCF`                     |
 
-The background is technically different and carries a slight blue cast, but both are near-black. The foreground differences per RGB channel are only 7, 0, and 7, so the text is expected to look almost unchanged by eye. These values came from a read-only database query plus `createOrganizationThemePalette()`; no organization data was modified.
+These values use the active `hakgyo-system` seeds (`#4FA1D8`, `#111111`, `#BFC7CF`, and `#DC2626`) and `createOrganizationThemeTokens()`; no organization data was modified.
 
-There is a second hierarchy issue in `MaterialEditorForm`: the containing `<section>` already uses `bg-card`, while the bridge maps `--bn-colors-editor-background` to that same `--card` token. Consequently, the editor canvas and its surrounding material card intentionally merge into one surface. A stronger visual distinction requires a product-level token decision—such as a dedicated derived editor surface or a larger card/background delta—not a different BlockNote selector.
+The containing material section uses `bg-card`, and BlockNote leaves its canvas transparent. This prevents a second nested shade while preserving generated colors for BlockNote's interactive UI.
 
 The inspected material titled `ma` contains no non-default block or inline `textColor` / `backgroundColor` values. Its native paragraph and heading content therefore inherit `.bn-editor`'s themed color. The large lesson UI in the screenshot is a Hakgyo custom block; its React DOM applies app semantic utilities such as `text-foreground`, `text-muted-foreground`, `bg-muted`, and `bg-background` directly. Those declarations intentionally bypass inherited `--bn-colors-editor-text`, although they still follow the organization theme through Hakgyo's own tokens.
 
@@ -59,11 +72,11 @@ The contenteditable itself is generated by core with `bn-editor` and, while defa
 
 `@blocknote/shadcn/style.css` imports `@blocknote/react/style.css`, and that stylesheet contains the BlockNote theme defaults. In the emitted Next.js development CSS, the relevant specificity is:
 
-| Rule | Specificity |
-| --- | --- |
-| `.bn-root` package defaults | `0-1-0` |
-| `.bn-root[data-color-scheme="dark"]` package defaults | `0-2-0` |
-| `.bn-root.bn-shadcn[data-color-scheme]` Hakgyo bridge | `0-3-0` |
+| Rule                                                  | Specificity |
+| ----------------------------------------------------- | ----------- |
+| `.bn-root` package defaults                           | `0-1-0`     |
+| `.bn-root[data-color-scheme="dark"]` package defaults | `0-2-0`     |
+| `.bn-root.bn-shadcn[data-color-scheme]` Hakgyo bridge | `0-3-0`     |
 
 No relevant declaration uses `!important`. The Hakgyo bridge therefore wins even when the dynamically imported BlockNote CSS chunk is inserted after the global CSS chunk. Keeping package CSS in one stable global entry before application overrides is still easier to reason about, but changing import order alone will not change the current computed values.
 
@@ -85,7 +98,7 @@ Core's base `Block.css` includes hardcoded fallback rules for named colors, but 
 
 1. Keep the `theme="light" | "dark"` prop; in the ShadCN wrapper it selects the scheme but does not provide a custom theme object.
 2. Keep the CSS-variable bridge on the BlockNote root. For a more application-owned scope, pass a custom class to `BlockNoteView` and target `.bn-root.hakgyo-blocknote[data-color-scheme]`; unlike an arbitrary `data-*` prop, `className` is copied to both the visible root and BlockNote's portal root in 0.53.0.
-3. Do not try to solve the screenshot by increasing selector specificity again. Introduce a visibly distinct editor-surface token or increase the derived card/background separation if visual hierarchy is desired.
+3. Keep the editor canvas transparent when it should visually merge with its containing material surface; selector specificity was not the source of the visual problem.
 4. Add a browser-level computed-style test that verifies the resolved `--bn-colors-editor-*`, `background-color`, and `color`, rather than only searching CSS source text.
 5. Continue treating custom blocks separately: their direct Tailwind/app-token styles are not controlled by BlockNote's editor foreground variable.
 
@@ -115,16 +128,16 @@ Consequences for Hakgyo:
 
 BlockNote documents the following public CSS-variable surface. These variables belong on `.bn-root[data-color-scheme]`; mode-specific overrides can target `data-color-scheme="light"` and `data-color-scheme="dark"`. [Official themes documentation](https://www.blocknotejs.org/docs/react/styling-theming/themes)
 
-| Group | Variables | Purpose |
-| --- | --- | --- |
-| Editor | `--bn-colors-editor-text`, `--bn-colors-editor-background` | Default document foreground and main `.bn-editor` surface |
-| Menu | `--bn-colors-menu-text`, `--bn-colors-menu-background` | Generic menu text/surface fallbacks |
-| Tooltip | `--bn-colors-tooltip-text`, `--bn-colors-tooltip-background` | Tooltip foreground/surface |
-| Hover | `--bn-colors-hovered-text`, `--bn-colors-hovered-background` | Hovered controls/items |
-| Selection | `--bn-colors-selected-text`, `--bn-colors-selected-background` | Selected controls/items |
-| Disabled | `--bn-colors-disabled-text`, `--bn-colors-disabled-background` | Disabled states |
-| Structure | `--bn-colors-shadow`, `--bn-colors-border`, `--bn-colors-side-menu` | Shadow color, borders, side-menu handles/guides |
-| Shape/type | `--bn-border-radius`, `--bn-font-family` | BlockNote radius base and font stack |
+| Group          | Variables                                                                                        | Purpose                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| Editor         | `--bn-colors-editor-text`, `--bn-colors-editor-background`                                       | Default document foreground and main `.bn-editor` surface  |
+| Menu           | `--bn-colors-menu-text`, `--bn-colors-menu-background`                                           | Generic menu text/surface fallbacks                        |
+| Tooltip        | `--bn-colors-tooltip-text`, `--bn-colors-tooltip-background`                                     | Tooltip foreground/surface                                 |
+| Hover          | `--bn-colors-hovered-text`, `--bn-colors-hovered-background`                                     | Hovered controls/items                                     |
+| Selection      | `--bn-colors-selected-text`, `--bn-colors-selected-background`                                   | Selected controls/items                                    |
+| Disabled       | `--bn-colors-disabled-text`, `--bn-colors-disabled-background`                                   | Disabled states                                            |
+| Structure      | `--bn-colors-shadow`, `--bn-colors-border`, `--bn-colors-side-menu`                              | Shadow color, borders, side-menu handles/guides            |
+| Shape/type     | `--bn-border-radius`, `--bn-font-family`                                                         | BlockNote radius base and font stack                       |
 | Content colors | `--bn-colors-highlights-{gray,brown,red,orange,yellow,green,blue,purple,pink}-{text,background}` | Named text and highlight colors stored in document content |
 
 The first-party stylesheet derives additional internal values from these public inputs, including medium/light shadows, a border shorthand, and small/medium/large radius variants. The main editor applies the editor background, editor text, font family, and radius variables. [First-party React theme CSS at v0.53.0](https://github.com/TypeCellOS/BlockNote/blob/v0.53.0/packages/react/src/editor/styles.css)
@@ -137,7 +150,7 @@ Without an explicit `theme`, `BlockNoteView` follows an enclosing BlockNote cont
 
 For `@blocknote/shadcn` 0.53.0, the React-level `theme` prop is typed as only `"light" | "dark"`. The richer programmatic `Theme` and `{ light, dark }` objects shown on the themes page are explicitly additional Mantine functionality, not the ShadCN API. For ShadCN, use the string prop to synchronize mode and CSS variables to customize values. [Official themes documentation](https://www.blocknotejs.org/docs/react/styling-theming/themes) and [first-party prop type at v0.53.0](https://github.com/TypeCellOS/BlockNote/blob/v0.53.0/packages/react/src/editor/BlockNoteView.tsx)
 
-Hakgyo already passes an explicit `theme` to both the authoring `BlockNoteView` and the learner read-only `BlockNoteView`. That is the right mode-control mechanism. The base variable mapping is now present; the remaining design question is whether the editor should share `--card` with its wrapper or use a more visibly distinct derived surface.
+Hakgyo passes an explicit `theme` to both the authoring `BlockNoteView` and the learner read-only `BlockNoteView`. Both inherit their parent surface through the shared transparent editor-background variable.
 
 ## 4. Default text and background colors are document data
 
@@ -195,7 +208,7 @@ The following reflects the integration now present in Hakgyo. Scope it to `.bn-r
 ```css
 .bn-root[data-color-scheme] {
   --bn-colors-editor-text: var(--card-foreground);
-  --bn-colors-editor-background: var(--card);
+  --bn-colors-editor-background: transparent;
 
   --bn-colors-menu-text: var(--popover-foreground);
   --bn-colors-menu-background: var(--popover);
@@ -217,11 +230,11 @@ The following reflects the integration now present in Hakgyo. Scope it to `.bn-r
 }
 ```
 
-Why map editor background to `--card`:
+Why keep the editor background transparent:
 
-- the editor is an elevated content surface within a page, so `card` preserves hierarchy against `background`;
-- it fixes the gap where ShadCN BlockNote cards use `--card` but `.bn-editor` still uses BlockNote's static white/dark defaults;
-- learner rendering can deliberately keep `.bn-editor { background: transparent; }` when the surrounding course surface should remain visible. That existing learner override is a product-level exception, not evidence that the editor variable is unnecessary.
+- the canvas exactly matches whichever application surface contains it;
+- it avoids a nested rectangle with a slightly different brand tint;
+- authoring and learner BlockNote views use the same surface contract while their controls still consume generated tokens.
 
 ### Highlight palette recommendation
 

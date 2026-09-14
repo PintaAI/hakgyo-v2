@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useColorScheme } from "react-native";
+import { AppState, useColorScheme } from "react-native";
 
 import { authClient } from "../lib/auth-client";
 import { api } from "../lib/trpc";
@@ -130,10 +130,19 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     { cacheScope: userId ?? "signed-out" },
     {
       enabled: Boolean(userId),
-      staleTime: 15 * 60 * 1000,
+      staleTime: 60_000,
+      refetchInterval: 60_000,
       refetchOnReconnect: true,
     },
   );
+
+  const refetchThemes = themesQuery.refetch;
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active" && userId) void refetchThemes();
+    });
+    return () => subscription.remove();
+  }, [refetchThemes, userId]);
 
   useEffect(() => {
     let active = true;

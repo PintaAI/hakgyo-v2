@@ -26,6 +26,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -68,6 +69,7 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: #ffffff;
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -112,6 +114,7 @@ html.dark:not(.bn-root) {
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: #000000;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
@@ -156,7 +159,7 @@ html.dark:not(.bn-root) {
  */
 .bn-root.bn-shadcn[data-color-scheme] {
   --bn-colors-editor-text: var(--card-foreground);
-  --bn-colors-editor-background: var(--card);
+  --bn-colors-editor-background: transparent;
   --bn-colors-menu-text: var(--popover-foreground);
   --bn-colors-menu-background: var(--popover);
   --bn-colors-tooltip-text: var(--popover-foreground);
@@ -170,8 +173,149 @@ html.dark:not(.bn-root) {
   --bn-colors-shadow: rgb(0 0 0 / 20%);
   --bn-colors-border: var(--border);
   --bn-colors-side-menu: var(--muted-foreground);
+  --bn-colors-highlights-gray-text: var(
+    --app-highlight-gray-text-light,
+    #9b9a97
+  );
+  --bn-colors-highlights-gray-background: var(
+    --app-highlight-gray-background-light,
+    #ebeced
+  );
+  --bn-colors-highlights-brown-text: var(
+    --app-highlight-brown-text-light,
+    #64473a
+  );
+  --bn-colors-highlights-brown-background: var(
+    --app-highlight-brown-background-light,
+    #e9e5e3
+  );
+  --bn-colors-highlights-red-text: var(--app-highlight-red-text-light, #e03e3e);
+  --bn-colors-highlights-red-background: var(
+    --app-highlight-red-background-light,
+    #fbe4e4
+  );
+  --bn-colors-highlights-orange-text: var(
+    --app-highlight-orange-text-light,
+    #d9730d
+  );
+  --bn-colors-highlights-orange-background: var(
+    --app-highlight-orange-background-light,
+    #f6e9d9
+  );
+  --bn-colors-highlights-yellow-text: var(
+    --app-highlight-yellow-text-light,
+    #dfab01
+  );
+  --bn-colors-highlights-yellow-background: var(
+    --app-highlight-yellow-background-light,
+    #fbf3db
+  );
+  --bn-colors-highlights-green-text: var(
+    --app-highlight-green-text-light,
+    #4d6461
+  );
+  --bn-colors-highlights-green-background: var(
+    --app-highlight-green-background-light,
+    #ddedea
+  );
+  --bn-colors-highlights-blue-text: var(
+    --app-highlight-blue-text-light,
+    #0b6e99
+  );
+  --bn-colors-highlights-blue-background: var(
+    --app-highlight-blue-background-light,
+    #ddebf1
+  );
+  --bn-colors-highlights-purple-text: var(
+    --app-highlight-purple-text-light,
+    #6940a5
+  );
+  --bn-colors-highlights-purple-background: var(
+    --app-highlight-purple-background-light,
+    #eae4f2
+  );
+  --bn-colors-highlights-pink-text: var(
+    --app-highlight-pink-text-light,
+    #ad1a72
+  );
+  --bn-colors-highlights-pink-background: var(
+    --app-highlight-pink-background-light,
+    #f4dfeb
+  );
   --bn-border-radius: var(--radius);
   --bn-font-family: var(--app-font-family);
+}
+
+.bn-root.bn-shadcn[data-color-scheme="dark"] {
+  --bn-colors-highlights-gray-text: var(
+    --app-highlight-gray-text-dark,
+    #bebdb8
+  );
+  --bn-colors-highlights-gray-background: var(
+    --app-highlight-gray-background-dark,
+    #9b9a97
+  );
+  --bn-colors-highlights-brown-text: var(
+    --app-highlight-brown-text-dark,
+    #8e6552
+  );
+  --bn-colors-highlights-brown-background: var(
+    --app-highlight-brown-background-dark,
+    #64473a
+  );
+  --bn-colors-highlights-red-text: var(--app-highlight-red-text-dark, #ec4040);
+  --bn-colors-highlights-red-background: var(
+    --app-highlight-red-background-dark,
+    #be3434
+  );
+  --bn-colors-highlights-orange-text: var(
+    --app-highlight-orange-text-dark,
+    #e3790d
+  );
+  --bn-colors-highlights-orange-background: var(
+    --app-highlight-orange-background-dark,
+    #b7600a
+  );
+  --bn-colors-highlights-yellow-text: var(
+    --app-highlight-yellow-text-dark,
+    #dfab01
+  );
+  --bn-colors-highlights-yellow-background: var(
+    --app-highlight-yellow-background-dark,
+    #b58b00
+  );
+  --bn-colors-highlights-green-text: var(
+    --app-highlight-green-text-dark,
+    #6b8b87
+  );
+  --bn-colors-highlights-green-background: var(
+    --app-highlight-green-background-dark,
+    #4d6461
+  );
+  --bn-colors-highlights-blue-text: var(
+    --app-highlight-blue-text-dark,
+    #0e87bc
+  );
+  --bn-colors-highlights-blue-background: var(
+    --app-highlight-blue-background-dark,
+    #0b6e99
+  );
+  --bn-colors-highlights-purple-text: var(
+    --app-highlight-purple-text-dark,
+    #8552d7
+  );
+  --bn-colors-highlights-purple-background: var(
+    --app-highlight-purple-background-dark,
+    #6940a5
+  );
+  --bn-colors-highlights-pink-text: var(
+    --app-highlight-pink-text-dark,
+    #da208f
+  );
+  --bn-colors-highlights-pink-background: var(
+    --app-highlight-pink-background-dark,
+    #ad1a72
+  );
 }
 
 .bn-root.bn-shadcn[data-color-scheme] .bn-default-styles {

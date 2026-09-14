@@ -16,6 +16,8 @@ import {
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+import { useDrawer } from "../../../../src/providers/DrawerProvider";
+import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -31,6 +33,7 @@ export default function CourseItemScreen() {
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
   const { colors } = useAppTheme();
+  const { open } = useDrawer();
   const resolveAssetUrl = useApiAssetResolver();
   const utils = api.useUtils();
   const itemQuery = api.learning.getCourseItem.useQuery(
@@ -116,18 +119,28 @@ export default function CourseItemScreen() {
 
   return (
     <>
+      {/* Sidebar trigger replaces the back chevron: the drawer carries the
+          course contents, so learners navigate without leaving the screen. */}
+      <Stack.Toolbar placement="left">
+        <Stack.Toolbar.Button
+          icon={toolbarIcons.menu}
+          accessibilityLabel="Open course contents"
+          onPress={open}
+        />
+      </Stack.Toolbar>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon={toolbarIcons.home}
+          accessibilityLabel="Go to Today"
+          onPress={() => router.replace("/(home)/(tabs)/home")}
+        />
+      </Stack.Toolbar>
       <Stack.Screen
         options={{
           headerShown: true,
-          headerBackButtonDisplayMode:
-            Platform.OS === "ios" ? "minimal" : undefined,
+          headerTitle: "",
+          headerBackVisible: false,
           headerShadowVisible: false,
-          headerTitle:
-            material?.title ??
-            vocabulary?.title ??
-            item?.assessment?.title ??
-            "Learning activity",
-          headerLargeTitle: false,
           headerStyle: {
             backgroundColor:
               Platform.OS === "ios" ? "transparent" : colors.background,

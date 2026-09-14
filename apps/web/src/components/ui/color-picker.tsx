@@ -21,7 +21,6 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import { getReadableForeground, normalizeHexColor } from "~/lib/colors";
-import type { ThemeColorPair } from "~/lib/colors";
 import { cn } from "~/lib/utils";
 
 type ColorPreset = {
@@ -29,12 +28,15 @@ type ColorPreset = {
   value: string;
 };
 
+type ColorPair = { light: string; dark: string };
+
 type ColorPickerProps = {
   id: string;
   label: string;
   value: string | null;
   defaultValue: string;
-  previewColors?: ThemeColorPair;
+  fallbackLabel?: string;
+  previewColors?: ColorPair;
   presets?: readonly ColorPreset[];
   onValueChange: (value: string | null) => void;
   className?: string;
@@ -45,6 +47,7 @@ function ColorPicker({
   label,
   value,
   defaultValue,
+  fallbackLabel = "Default",
   previewColors,
   presets = [],
   onValueChange,
@@ -82,7 +85,7 @@ function ColorPicker({
       <PopoverTrigger
         render={<Button id={id} type="button" variant="outline" />}
         className={cn("h-11 w-full justify-between px-3", className)}
-        aria-label={`${label}: ${value ? currentColor : "default"}`}
+        aria-label={`${label}: ${value ? currentColor : fallbackLabel}`}
       >
         <span className="flex min-w-0 items-center gap-2.5">
           <span className="flex shrink-0 -space-x-1" aria-hidden="true">
@@ -96,7 +99,7 @@ function ColorPicker({
             />
           </span>
           <span className="truncate font-mono text-xs">
-            {value ? currentColor : `Default · ${currentColor}`}
+            {value ? currentColor : `${fallbackLabel} · ${currentColor}`}
           </span>
         </span>
         <ChevronDownIcon className="text-muted-foreground" />

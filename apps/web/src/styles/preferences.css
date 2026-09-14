@@ -1,86 +1,73 @@
-/* Hakgyo app preferences — runtime token overrides via data attributes */
-/* Injected by apps/web/src/components/app-settings.tsx via document.documentElement */
-
-:root[data-app-background="generated"] {
-  --background: var(--app-background-light);
-  --card: var(--app-card-light);
-  --popover: var(--app-card-light);
-  --sidebar: var(--app-sidebar-light);
-  --sidebar-accent: color-mix(
-    in oklch,
-    var(--app-sidebar-light) 92%,
-    var(--foreground)
-  );
-  --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: color-mix(
-    in oklch,
-    var(--app-sidebar-light) 84%,
-    var(--foreground)
-  );
-  --sidebar-ring: var(--primary);
-}
-
-:root.dark[data-app-background="generated"] {
-  --background: var(--app-background-dark);
-  --card: var(--app-card-dark);
-  --popover: var(--app-card-dark);
-  --sidebar: var(--app-sidebar-dark);
-  --sidebar-accent: color-mix(
-    in oklch,
-    var(--app-sidebar-dark) 90%,
-    var(--foreground)
-  );
-  --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: color-mix(
-    in oklch,
-    var(--app-sidebar-dark) 82%,
-    var(--foreground)
-  );
-  --sidebar-ring: var(--primary);
-}
-
-:root[data-app-foreground="generated"] {
-  --foreground: var(--app-foreground-light);
-  --card-foreground: var(--app-foreground-light);
-  --popover-foreground: var(--app-foreground-light);
-  --secondary-foreground: var(--app-foreground-light);
-  --accent-foreground: var(--app-foreground-light);
-  --sidebar-foreground: var(--app-foreground-light);
-  --muted-foreground: color-mix(
-    in oklch,
-    var(--app-foreground-light) 68%,
-    transparent
-  );
-}
-
-:root.dark[data-app-foreground="generated"] {
-  --foreground: var(--app-foreground-dark);
-  --card-foreground: var(--app-foreground-dark);
-  --popover-foreground: var(--app-foreground-dark);
-  --secondary-foreground: var(--app-foreground-dark);
-  --accent-foreground: var(--app-foreground-dark);
-  --sidebar-foreground: var(--app-foreground-dark);
-  --muted-foreground: color-mix(
-    in oklch,
-    var(--app-foreground-dark) 68%,
-    transparent
-  );
-}
+/* Organization colors are resolved by @hakgyo/shared; CSS only applies tokens. */
 
 :root[data-app-color="generated"] {
+  --background: var(--app-background-light);
+  --foreground: var(--app-foreground-light);
+  --card: var(--app-card-light);
+  --card-foreground: var(--app-card-foreground-light);
+  --popover: var(--app-popover-light);
+  --popover-foreground: var(--app-popover-foreground-light);
   --primary: var(--app-primary-light);
   --primary-foreground: var(--app-primary-foreground-light);
-  --ring: var(--app-primary-light);
-  --sidebar-primary: var(--app-primary-light);
-  --sidebar-primary-foreground: var(--app-primary-foreground-light);
+  --secondary: var(--app-secondary-light);
+  --secondary-foreground: var(--app-secondary-foreground-light);
+  --muted: var(--app-muted-light);
+  --muted-foreground: var(--app-muted-foreground-light);
+  --accent: var(--app-accent-light);
+  --accent-foreground: var(--app-accent-foreground-light);
+  --destructive: var(--app-destructive-light);
+  --destructive-foreground: var(--app-destructive-foreground-light);
+  --border: var(--app-border-light);
+  --input: var(--app-input-light);
+  --ring: var(--app-ring-light);
+  --chart-1: var(--app-chart-1-light);
+  --chart-2: var(--app-chart-2-light);
+  --chart-3: var(--app-chart-3-light);
+  --chart-4: var(--app-chart-4-light);
+  --chart-5: var(--app-chart-5-light);
+  --sidebar: var(--app-sidebar-light);
+  --sidebar-foreground: var(--app-sidebar-foreground-light);
+  --sidebar-primary: var(--app-sidebar-primary-light);
+  --sidebar-primary-foreground: var(--app-sidebar-primary-foreground-light);
+  --sidebar-accent: var(--app-sidebar-accent-light);
+  --sidebar-accent-foreground: var(--app-sidebar-accent-foreground-light);
+  --sidebar-border: var(--app-sidebar-border-light);
+  --sidebar-ring: var(--app-sidebar-ring-light);
 }
 
 :root.dark[data-app-color="generated"] {
+  --background: var(--app-background-dark);
+  --foreground: var(--app-foreground-dark);
+  --card: var(--app-card-dark);
+  --card-foreground: var(--app-card-foreground-dark);
+  --popover: var(--app-popover-dark);
+  --popover-foreground: var(--app-popover-foreground-dark);
   --primary: var(--app-primary-dark);
   --primary-foreground: var(--app-primary-foreground-dark);
-  --ring: var(--app-primary-dark);
-  --sidebar-primary: var(--app-primary-dark);
-  --sidebar-primary-foreground: var(--app-primary-foreground-dark);
+  --secondary: var(--app-secondary-dark);
+  --secondary-foreground: var(--app-secondary-foreground-dark);
+  --muted: var(--app-muted-dark);
+  --muted-foreground: var(--app-muted-foreground-dark);
+  --accent: var(--app-accent-dark);
+  --accent-foreground: var(--app-accent-foreground-dark);
+  --destructive: var(--app-destructive-dark);
+  --destructive-foreground: var(--app-destructive-foreground-dark);
+  --border: var(--app-border-dark);
+  --input: var(--app-input-dark);
+  --ring: var(--app-ring-dark);
+  --chart-1: var(--app-chart-1-dark);
+  --chart-2: var(--app-chart-2-dark);
+  --chart-3: var(--app-chart-3-dark);
+  --chart-4: var(--app-chart-4-dark);
+  --chart-5: var(--app-chart-5-dark);
+  --sidebar: var(--app-sidebar-dark);
+  --sidebar-foreground: var(--app-sidebar-foreground-dark);
+  --sidebar-primary: var(--app-sidebar-primary-dark);
+  --sidebar-primary-foreground: var(--app-sidebar-primary-foreground-dark);
+  --sidebar-accent: var(--app-sidebar-accent-dark);
+  --sidebar-accent-foreground: var(--app-sidebar-accent-foreground-dark);
+  --sidebar-border: var(--app-sidebar-border-dark);
+  --sidebar-ring: var(--app-sidebar-ring-dark);
 }
 
 :root[data-app-font="inter"] {

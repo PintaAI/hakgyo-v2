@@ -150,6 +150,9 @@
     },
     "packages/api": {
       "name": "@hakgyo/api",
+      "dependencies": {
+        "@trpc/server": "^11.0.0",
+      },
     },
     "packages/shared": {
       "name": "@hakgyo/shared",

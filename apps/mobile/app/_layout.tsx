@@ -117,7 +117,7 @@ function RootNavigator() {
               <Stack.Screen name="vocabulary/[vocabularySetId]" />
               <Stack.Screen
                 name="courses/[courseId]/items/[courseItemId]"
-                options={{ headerShown: true }}
+                options={{ headerShown: true, headerTitle: "" }}
               />
               <Stack.Screen
                 name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"

@@ -1,0 +1,263 @@
+import { SymbolView, type SymbolViewProps } from "expo-symbols";
+import { Pressable, Text, View } from "react-native";
+
+import {
+  assessmentAttemptPresentation,
+  latestStandaloneAttemptForItem,
+} from "../../lib/assessment-state";
+import { authClient } from "../../lib/auth-client";
+import { api } from "../../lib/trpc";
+import { useAppTheme } from "../../providers/AppThemeProvider";
+import { QueryState } from "../learning-ui";
+
+const itemLabels = {
+  MATERIAL: "Materi",
+  ASSESSMENT: "Assessment",
+  VOCABULARY_SET: "Kosakata",
+} as const;
+
+type CourseItemType = keyof typeof itemLabels;
+
+function itemIcon(type: CourseItemType): SymbolViewProps["name"] {
+  if (type === "VOCABULARY_SET") return "character.book.closed.fill";
+  if (type === "ASSESSMENT") return "checkmark.seal.fill";
+  return "doc.text.fill";
+}
+
+function itemFallback(type: CourseItemType) {
+  if (type === "VOCABULARY_SET") return "Aa";
+  if (type === "ASSESSMENT") return "✓";
+  return "•";
+}
+
+export function CourseOutlineList({
+  courseId,
+  currentItemId,
+  onOpenItem,
+  showHeader = true,
+}: {
+  courseId: string;
+  currentItemId?: string;
+  onOpenItem: (
+    item: { id: string },
+    attempt: { id: string } | undefined,
+  ) => void;
+  showHeader?: boolean;
+}) {
+  const { colors } = useAppTheme();
+  const { data: session } = authClient.useSession();
+  const outlineQuery = api.learning.getCourseOutline.useQuery(
+    { courseId },
+    { enabled: Boolean(session && courseId), retry: false },
+  );
+  const attemptsQuery = api.assessment.listMyAttempts.useQuery(undefined, {
+    enabled: Boolean(session && courseId),
+    retry: false,
+  });
+  const course = outlineQuery.data;
+  const courseAttempts = attemptsQuery.data?.filter(
+    (attempt) => attempt.courseItem.module.courseId === courseId,
+  );
+
+  if (outlineQuery.isPending || !course) {
+    return (
+      <QueryState
+        pending={outlineQuery.isPending}
+        error={outlineQuery.error}
+        retry={() => void outlineQuery.refetch()}
+      />
+    );
+  }
+
+  return (
+    <View className="gap-5">
+      {showHeader ? (
+        <View className="flex-row items-center justify-between gap-4">
+          <Text className="text-xl font-bold text-foreground">
+            Course materials
+          </Text>
+          <Text className="text-xs font-semibold text-muted-foreground">
+            {course.modules.length} modules
+          </Text>
+        </View>
+      ) : null}
+
+      {course.modules.length === 0 ? (
+        <View className="items-center border-y border-border px-6 py-10">
+          <Text className="text-base font-bold text-foreground">
+            No materials yet
+          </Text>
+          <Text className="mt-2 text-center text-sm leading-5 text-muted-foreground">
+            Published modules will appear here.
+          </Text>
+        </View>
+      ) : (
+        course.modules.map((module, moduleIndex) => {
+          const locked = module.access === "LOCKED";
+
+          return (
+            <View
+              className={`${moduleIndex > 0 ? "border-t border-border pt-6" : ""} ${locked ? "opacity-60" : ""}`}
+              key={module.id}
+            >
+              <View className="flex-row items-start gap-3">
+                <View
+                  className={`size-9 items-center justify-center rounded-full border ${module.isCompleted ? "border-primary bg-primary" : "border-border bg-background"}`}
+                >
+                  {module.isCompleted || locked ? (
+                    <SymbolView
+                      fallback={
+                        <Text
+                          className={`text-xs font-black ${module.isCompleted ? "text-primary-foreground" : "text-muted-foreground"}`}
+                        >
+                          {module.isCompleted ? "✓" : "—"}
+                        </Text>
+                      }
+                      name={module.isCompleted ? "checkmark" : "lock.fill"}
+                      size={14}
+                      tintColor={
+                        module.isCompleted
+                          ? colors.primaryForeground
+                          : colors.mutedForeground
+                      }
+                      weight="bold"
+                    />
+                  ) : (
+                    <Text className="text-xs font-bold tabular-nums text-muted-foreground">
+                      {String(moduleIndex + 1).padStart(2, "0")}
+                    </Text>
+                  )}
+                </View>
+                <View className="min-w-0 flex-1 gap-1">
+                  <Text className="text-base font-bold text-foreground">
+                    {module.title}
+                  </Text>
+                  {module.description ? (
+                    <Text
+                      className="text-sm leading-5 text-muted-foreground"
+                      numberOfLines={2}
+                    >
+                      {module.description}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text className="pt-1 text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground">
+                  {module.isCompleted
+                    ? "Completed"
+                    : locked
+                      ? "Locked"
+                      : `${module.items.length} activities`}
+                </Text>
+              </View>
+
+              {module.items.length === 0 ? (
+                <Text className="py-5 pl-12 text-sm text-muted-foreground">
+                  No activities in this module.
+                </Text>
+              ) : (
+                <View className="mt-5">
+                  {module.items.map((item, itemIndex) => {
+                    const attempt =
+                      item.type === "ASSESSMENT"
+                        ? latestStandaloneAttemptForItem(
+                            courseAttempts,
+                            item.id,
+                          )
+                        : undefined;
+                    const assessmentState =
+                      item.type === "ASSESSMENT"
+                        ? assessmentAttemptPresentation(attempt)
+                        : undefined;
+                    const isLast = itemIndex === module.items.length - 1;
+                    const isCurrent = item.id === currentItemId;
+                    const status = locked
+                      ? "Locked"
+                      : (assessmentState?.detail ??
+                        (item.isCompleted ? "Completed" : "Ready"));
+
+                    return (
+                      <View
+                        className={`flex-row ${isLast ? "pb-1" : "pb-6"}`}
+                        key={item.id}
+                      >
+                        <View className="w-10 items-center">
+                          {!isLast ? (
+                            <View className="absolute bottom-0 top-8 w-px bg-border" />
+                          ) : null}
+                          <View
+                            className={`size-8 items-center justify-center rounded-full border ${item.isCompleted ? "border-primary bg-primary" : "border-border bg-background"}`}
+                          >
+                            <SymbolView
+                              fallback={
+                                <Text
+                                  className={`text-xs font-black ${item.isCompleted ? "text-primary-foreground" : "text-primary"}`}
+                                >
+                                  {item.isCompleted
+                                    ? "✓"
+                                    : itemFallback(item.type)}
+                                </Text>
+                              }
+                              name={
+                                item.isCompleted
+                                  ? "checkmark"
+                                  : locked
+                                    ? "lock.fill"
+                                    : itemIcon(item.type)
+                              }
+                              size={14}
+                              tintColor={
+                                item.isCompleted
+                                  ? colors.primaryForeground
+                                  : locked
+                                    ? colors.mutedForeground
+                                    : colors.primary
+                              }
+                              weight="semibold"
+                            />
+                          </View>
+                        </View>
+                        <Pressable
+                          accessibilityHint={assessmentState?.action}
+                          accessibilityRole="button"
+                          accessibilityState={{ disabled: locked }}
+                          className={`min-w-0 flex-1 pl-3 active:opacity-60 ${isCurrent ? "-my-2 rounded-xl bg-primary/10 py-2" : ""}`}
+                          disabled={locked}
+                          onPress={() => onOpenItem(item, attempt)}
+                        >
+                          <View className="flex-row items-start gap-3">
+                            <View className="min-w-0 flex-1 gap-1">
+                              <Text
+                                className={`text-[15px] font-semibold leading-5 ${isCurrent ? "text-primary" : "text-foreground"}`}
+                                numberOfLines={2}
+                              >
+                                {item.title}
+                              </Text>
+                              <Text
+                                className="text-xs leading-4 text-muted-foreground"
+                                numberOfLines={2}
+                              >
+                                {itemLabels[item.type]} · {status}
+                                {attempt && assessmentState?.action
+                                  ? ` · ${assessmentState.action}`
+                                  : ""}
+                              </Text>
+                            </View>
+                            {!locked && !isCurrent ? (
+                              <Text className="pt-0.5 text-lg text-muted-foreground">
+                                ›
+                              </Text>
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          );
+        })
+      )}
+    </View>
+  );
+}

@@ -74,7 +74,8 @@ export function AssessmentResultReview({
           correct.every((option) => selected.has(option.id));
         const writtenScore =
           answer && "manualScore" in answer
-            ? (answer.manualScore ?? answer.autoScore)
+            ? (answer.manualScore ??
+              ("autoScore" in answer ? answer.autoScore : null))
             : null;
         const feedback =
           answer && "feedback" in answer ? answer.feedback : null;

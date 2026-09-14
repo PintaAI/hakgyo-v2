@@ -1,5 +1,6 @@
+import { Stack } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, View, type LayoutChangeEvent } from "react-native";
+import { Alert, FlatList, View, type LayoutChangeEvent } from "react-native";
 
 import {
   CohortCard,
@@ -16,6 +17,7 @@ import {
 } from "../../../../src/components/learning-ui";
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { api } from "../../../../src/lib/trpc";
+import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 
 function CohortCarousel({
   cohorts,
@@ -115,12 +117,27 @@ export default function LearnTab() {
     return map;
   }, [eventsQuery.data, now]);
   return (
-    <StudyScreen
-      title="Learn"
-      headerShown={false}
-      bleedTop
-      contentInsetAdjustmentBehavior="never"
-      refreshing={
+    <>
+      {/* Mock: two buttons in one placement render as a joined group. */}
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon={toolbarIcons.search}
+          accessibilityLabel="Search"
+          onPress={() => Alert.alert("Search", "Mock search (not wired yet).")}
+        />
+        <Stack.Toolbar.Button
+          icon={toolbarIcons.notifications}
+          accessibilityLabel="Notifications"
+          onPress={() =>
+            Alert.alert("Notifications", "Mock notifications (not wired yet).")
+          }
+        />
+      </Stack.Toolbar>
+      <StudyScreen
+        title=""
+        bleedTop
+        contentInsetAdjustmentBehavior="never"
+        refreshing={
         cohortsQuery.isRefetching ||
         eventsQuery.isRefetching ||
         milestonesQuery.isRefetching
@@ -164,6 +181,7 @@ export default function LearnTab() {
       ) ? (
         <EmptyMilestones />
       ) : null}
-    </StudyScreen>
+      </StudyScreen>
+    </>
   );
 }

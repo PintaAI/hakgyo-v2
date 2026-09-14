@@ -1,4 +1,4 @@
-import { router, usePathname } from "expo-router";
+import { router, useGlobalSearchParams, usePathname } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import Animated, {
@@ -12,6 +12,7 @@ import { authClient } from "../../lib/auth-client";
 import { api } from "../../lib/trpc";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { GlassBox } from "../GlassBox";
+import { CourseOutlineList } from "../learn/course-outline-list";
 import { CourseCard } from "../learn/course-card";
 import { buildSidebarSections } from "./config";
 import { getCurrentAppArea, isSidebarItemActive } from "./routing";
@@ -21,6 +22,10 @@ type SidebarProps = {
   onClose: () => void;
   onOpenProfile: () => void;
 };
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
 
 function hasActiveChild(
   pathname: string,
@@ -99,6 +104,13 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
   const { colorScheme, colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  const globalParams = useGlobalSearchParams<{
+    courseId?: string | string[];
+    courseItemId?: string | string[];
+  }>();
+  // When a course item is open, the sidebar doubles as the course contents.
+  const outlineCourseId = firstParam(globalParams.courseId);
+  const outlineItemId = firstParam(globalParams.courseItemId);
   const currentArea = getCurrentAppArea();
   const progress = useDrawerProgress();
   const coursesQuery = api.learning.listMyCourses.useQuery();
@@ -163,6 +175,66 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
         contentContainerStyle={{ paddingBottom: 12 }}
         showsVerticalScrollIndicator={false}
       >
+        {outlineCourseId ? (
+          <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
+            <View className="mb-1.5 flex-row items-center justify-between px-2">
+              <Text
+                className="text-xs font-semibold uppercase tracking-[1.6px]"
+                style={{ color: colors.mutedForeground }}
+              >
+                Course contents
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  onClose();
+                  router.push({
+                    pathname: "/courses/[courseId]",
+                    params: { courseId: outlineCourseId },
+                  });
+                }}
+              >
+                <Text
+                  className="text-xs font-bold"
+                  style={{ color: colors.primary }}
+                >
+                  View course ›
+                </Text>
+              </Pressable>
+            </View>
+            <CourseOutlineList
+              courseId={outlineCourseId}
+              currentItemId={outlineItemId || undefined}
+              showHeader={false}
+              onOpenItem={(item, attempt) => {
+                if (item.id === outlineItemId) {
+                  onClose();
+                  return;
+                }
+                onClose();
+                if (attempt) {
+                  router.push({
+                    pathname:
+                      "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                    params: {
+                      courseId: outlineCourseId,
+                      courseItemId: item.id,
+                      attemptId: attempt.id,
+                    },
+                  });
+                  return;
+                }
+                router.push({
+                  pathname: "/courses/[courseId]/items/[courseItemId]",
+                  params: {
+                    courseId: outlineCourseId,
+                    courseItemId: item.id,
+                  },
+                });
+              }}
+            />
+          </View>
+        ) : null}
         {sections.map((section) => (
           <View
             className="rounded-2xl px-1 py-2"

@@ -14,26 +14,22 @@ import { CustomBlockToolbar } from "./custom-block-toolbar";
 
 const toneStyles = {
   info: {
-    className:
-      "border-sky-300 bg-sky-50 text-sky-950 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-100",
+    color: "blue",
     icon: InfoIcon,
     label: "Catatan",
   },
   tip: {
-    className:
-      "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100",
+    color: "yellow",
     icon: LightbulbIcon,
     label: "Tip belajar",
   },
   warning: {
-    className:
-      "border-rose-300 bg-rose-50 text-rose-950 dark:border-rose-700 dark:bg-rose-950/60 dark:text-rose-100",
+    color: "red",
     icon: CircleAlertIcon,
     label: "Perhatian",
   },
   success: {
-    className:
-      "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-100",
+    color: "green",
     icon: CheckCircle2Icon,
     label: "Poin penting",
   },
@@ -72,11 +68,16 @@ export const calloutBlock = createReactBlockSpec(
             />
           </div>
           <div
-            className={`grid grid-cols-[auto_1fr] gap-x-3 rounded-xl border-l-4 px-4 py-3 ${tone.className}`}
+            className="grid grid-cols-[auto_1fr] gap-x-3 rounded-xl border-l-4 px-4 py-3"
+            style={{
+              backgroundColor: `var(--bn-colors-highlights-${tone.color}-background)`,
+              borderColor: `var(--bn-colors-highlights-${tone.color}-text)`,
+              color: `var(--bn-colors-highlights-${tone.color}-text)`,
+            }}
           >
             <button
               aria-label="Ubah nada callout"
-              className="mt-0.5 flex h-fit items-center gap-1.5 rounded-md px-1 py-0.5 text-xs font-bold tracking-wide uppercase transition hover:bg-foreground/5 dark:hover:bg-background/10"
+              className="hover:bg-foreground/5 dark:hover:bg-background/10 mt-0.5 flex h-fit items-center gap-1.5 rounded-md px-1 py-0.5 text-xs font-bold tracking-wide uppercase transition"
               contentEditable={false}
               disabled={!editor.isEditable}
               onClick={() =>

@@ -17,6 +17,7 @@ export function StudyScreen({
   refreshing = false,
   onRefresh,
   contentInsetAdjustmentBehavior = "automatic",
+  automaticallyAdjustKeyboardInsets = false,
   headerShown = true,
   bleedTop = false,
 }: {
@@ -26,6 +27,7 @@ export function StudyScreen({
   onRefresh?: () => void;
   contentInsetAdjustmentBehavior?:
     "automatic" | "never" | "always" | "scrollableAxes";
+  automaticallyAdjustKeyboardInsets?: boolean;
   headerShown?: boolean;
   bleedTop?: boolean;
 }) {
@@ -39,6 +41,7 @@ export function StudyScreen({
         className="flex-1 bg-background"
         contentInsetAdjustmentBehavior={behavior}
         automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
+        automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           onRefresh ? (

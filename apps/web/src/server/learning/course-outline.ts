@@ -22,6 +22,7 @@ const activeEnrollmentStatuses = [
 export async function getCourseOutlineForUser(
   courseId: string,
   userId: string,
+  options: { managementAccess?: boolean } = {},
 ) {
   const now = new Date();
   const course = await db.course.findUnique({
@@ -115,6 +116,7 @@ export async function getCourseOutlineForUser(
     isCohortStaff: course.cohorts.length > 0,
   };
   const canManage = canManageContent(scope) || scope.isCohortStaff;
+  const managementAccess = canManage && options.managementAccess !== false;
   const cohortEnrollment = await db.cohortEnrollment.findFirst({
     where: {
       userId,
@@ -152,7 +154,7 @@ export async function getCourseOutlineForUser(
   const moduleCompletion = course.modules.map((module) => ({
     ...module,
     items: module.items
-      .filter((item) => canManage || item.isPublished)
+      .filter((item) => managementAccess || item.isPublished)
       .map((item) => ({
         id: item.id,
         type: item.type,
@@ -189,7 +191,7 @@ export async function getCourseOutlineForUser(
     status: course.status,
     progressionMode: course.progressionMode,
     canManage,
-    modules: canManage
+    modules: managementAccess
       ? modules.map((module) => ({ ...module, access: "AVAILABLE" as const }))
       : modules,
   };

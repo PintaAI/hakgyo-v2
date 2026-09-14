@@ -29,7 +29,6 @@ import { Label } from "~/components/ui/label";
 import {
   ShadowEditor,
   isShadowValue,
-  shadowToCss,
   type ShadowValue,
 } from "~/components/ui/shadow-editor";
 import {
@@ -57,57 +56,57 @@ import {
   getReadableForeground,
   isHexColor,
   normalizeHexColor,
-  type ThemeColorPair,
 } from "~/lib/colors";
 import {
-  createOrganizationThemePalette,
+  createOrganizationThemeRuntime,
+  createOrganizationThemeTokens,
   DEFAULT_ORGANIZATION_THEME,
   type OrganizationTheme,
 } from "~/lib/organization-theme";
 import { cn } from "~/lib/utils";
 
-const STORAGE_KEY = "hakgyo-app-settings";
+const STORAGE_KEY = "hakgyo-app-settings-v2";
 
 type Preferences = {
-  background: string | null;
+  secondary: string | null;
   color: string | null;
   darkBrightness: number | null;
   density: OrganizationTheme["density"] | null;
   font: OrganizationTheme["font"] | null;
-  foreground: string | null;
+  accent: string | null;
   radius: OrganizationTheme["radius"] | null;
   shadow: ShadowValue | null;
   size: OrganizationTheme["size"] | null;
 };
 
 type ResolvedPreferences = {
-  background: string;
+  secondary: string;
   color: string;
   darkBrightness: number;
   density: OrganizationTheme["density"];
   font: OrganizationTheme["font"];
-  foreground: string;
+  accent: string;
   radius: OrganizationTheme["radius"];
   shadow: ShadowValue;
   size: OrganizationTheme["size"];
 };
 
 const defaultPreferences: Preferences = {
-  background: null,
+  secondary: null,
   color: null,
   darkBrightness: null,
   density: null,
   font: null,
-  foreground: null,
+  accent: null,
   radius: null,
   shadow: null,
   size: null,
 };
 
 const defaultColorSeeds = {
-  background: DEFAULT_ORGANIZATION_THEME.background,
+  secondary: DEFAULT_ORGANIZATION_THEME.secondary,
   color: DEFAULT_ORGANIZATION_THEME.primary,
-  foreground: DEFAULT_ORGANIZATION_THEME.foreground,
+  accent: DEFAULT_ORGANIZATION_THEME.accent,
 } as const;
 
 function resolvePreferences(
@@ -117,28 +116,41 @@ function resolvePreferences(
   const defaults = organizationTheme ?? DEFAULT_ORGANIZATION_THEME;
 
   return {
-    background: preferences.background ?? defaults.background,
-    color: preferences.color ?? defaults.primary,
-    darkBrightness: preferences.darkBrightness ?? defaults.darkBrightness,
+    secondary:
+      organizationTheme?.secondary ??
+      preferences.secondary ??
+      defaults.secondary,
+    color: organizationTheme?.primary ?? preferences.color ?? defaults.primary,
+    darkBrightness:
+      organizationTheme?.darkBrightness ??
+      preferences.darkBrightness ??
+      defaults.darkBrightness,
     density: preferences.density ?? defaults.density,
     font: preferences.font ?? defaults.font,
-    foreground: preferences.foreground ?? defaults.foreground,
+    accent: organizationTheme?.accent ?? preferences.accent ?? defaults.accent,
     radius: preferences.radius ?? defaults.radius,
     shadow: preferences.shadow ?? defaults.shadow,
     size: preferences.size ?? defaults.size,
   };
 }
 
-function createPreferencePalette(preferences: ResolvedPreferences) {
-  return createOrganizationThemePalette(
-    {
-      ...DEFAULT_ORGANIZATION_THEME,
-      primary: preferences.color,
-      background: preferences.background,
-      foreground: preferences.foreground,
-    },
-    preferences.darkBrightness,
-  );
+function createPreferenceTheme(
+  preferences: ResolvedPreferences,
+  organizationTheme: OrganizationTheme | null,
+): OrganizationTheme {
+  // Organization colors take precedence over device-local appearance preferences.
+  return {
+    ...(organizationTheme ?? DEFAULT_ORGANIZATION_THEME),
+    primary: preferences.color,
+    secondary: preferences.secondary,
+    accent: preferences.accent,
+    darkBrightness: preferences.darkBrightness,
+    density: preferences.density,
+    font: preferences.font,
+    radius: preferences.radius,
+    shadow: preferences.shadow,
+    size: preferences.size,
+  };
 }
 
 type AppSettingsProps = {
@@ -155,52 +167,9 @@ const accentPresets = [
   { value: "#DB2777", label: "Rose" },
 ] as const satisfies readonly ColorPreset[];
 
-const backgroundPresets = [
-  { value: "#FFFFFF", label: "Putih" },
-  { value: "#FFFBEB", label: "Hangat" },
-  { value: "#F0F9FF", label: "Sejuk" },
-  { value: "#FFF1F2", label: "Rose" },
-  { value: "#171717", label: "Arang" },
-  { value: "#0F172A", label: "Malam" },
-] as const satisfies readonly ColorPreset[];
-
-const foregroundPresets = [
-  { value: "#171717", label: "Arang" },
-  { value: "#475569", label: "Slate" },
-  { value: "#1E3A8A", label: "Biru" },
-  { value: "#581C87", label: "Plum" },
-  { value: "#E2E8F0", label: "Kabut" },
-  { value: "#FFFFFF", label: "Putih" },
-] as const satisfies readonly ColorPreset[];
-
-const legacyAccentColors: Record<string, string | null> = {
-  neutral: null,
-  blue: "#2563EB",
-  green: "#059669",
-  orange: "#EA580C",
-};
-
-const legacyBackgroundColors: Record<string, string | null> = {
-  neutral: null,
-  warm: "#FFFBEB",
-  cool: "#F0F9FF",
-  rose: "#FFF1F2",
-};
-
-const legacyForegroundColors: Record<string, string | null> = {
-  neutral: null,
-  soft: "#475569",
-  blue: "#1E3A8A",
-  plum: "#581C87",
-};
-
-function readColorPreference(
-  value: unknown,
-  legacyColors: Record<string, string | null>,
-) {
+function readColorPreference(value: unknown) {
   if (value === null || value === undefined) return null;
   if (typeof value !== "string") return null;
-  if (value in legacyColors) return legacyColors[value] ?? null;
   return normalizeHexColor(value);
 }
 
@@ -235,7 +204,7 @@ function isPreferences(value: unknown): value is Preferences {
   if (!value || typeof value !== "object") return false;
   const preferences = value as Record<string, unknown>;
   return (
-    isOptionalColor(preferences.background) &&
+    isOptionalColor(preferences.secondary) &&
     isOptionalColor(preferences.color) &&
     (preferences.darkBrightness === null ||
       (typeof preferences.darkBrightness === "number" &&
@@ -254,7 +223,7 @@ function isPreferences(value: unknown): value is Preferences {
       "merriweather",
       "jetbrains",
     ]) &&
-    isOptionalColor(preferences.foreground) &&
+    isOptionalColor(preferences.accent) &&
     isOptionalChoice(preferences.radius, ["none", "small", "large"]) &&
     (preferences.shadow === null || isShadowValue(preferences.shadow)) &&
     isOptionalChoice(preferences.size, ["small", "default", "large"])
@@ -269,46 +238,30 @@ function readPreferences(): Preferences {
       const parsed: unknown = JSON.parse(stored);
       if (parsed && typeof parsed === "object") {
         const raw = parsed as Record<string, unknown>;
-        const legacyFonts: Record<string, NonNullable<Preferences["font"]>> = {
-          mono: "jetbrains",
-          sans: "geist",
-          serif: "merriweather",
-        };
         const normalized = {
           ...defaultPreferences,
           ...raw,
-          background: readColorPreference(
-            raw.background,
-            legacyBackgroundColors,
-          ),
-          color: readColorPreference(raw.color, legacyAccentColors),
+          secondary: readColorPreference(raw.secondary),
+          color: readColorPreference(raw.color),
           darkBrightness: readDarkBrightness(raw.darkBrightness),
           density: readOptionalChoice(raw.density, [
             "compact",
             "comfortable",
             "spacious",
           ] as const),
-          font:
-            legacyFonts[String(raw.font)] ??
-            readOptionalChoice(raw.font, [
-              "geist",
-              "inter",
-              "poppins",
-              "merriweather",
-              "jetbrains",
-            ] as const),
-          foreground: readColorPreference(
-            raw.foreground,
-            legacyForegroundColors,
-          ),
-          radius:
-            String(raw.radius) === "default"
-              ? "large"
-              : readOptionalChoice(raw.radius, [
-                  "none",
-                  "small",
-                  "large",
-                ] as const),
+          font: readOptionalChoice(raw.font, [
+            "geist",
+            "inter",
+            "poppins",
+            "merriweather",
+            "jetbrains",
+          ] as const),
+          accent: readColorPreference(raw.accent),
+          radius: readOptionalChoice(raw.radius, [
+            "none",
+            "small",
+            "large",
+          ] as const),
           shadow: isShadowValue(raw.shadow) ? raw.shadow : null,
           size: readOptionalChoice(raw.size, [
             "small",
@@ -323,17 +276,6 @@ function readPreferences(): Preferences {
     localStorage.removeItem(STORAGE_KEY);
   }
   return defaultPreferences;
-}
-
-function applyColorPreference(
-  root: HTMLElement,
-  dataKey: string,
-  property: string,
-  pair: ThemeColorPair,
-) {
-  root.dataset[dataKey] = "generated";
-  root.style.setProperty(`${property}-light`, pair.light);
-  root.style.setProperty(`${property}-dark`, pair.dark);
 }
 
 function ChoiceButton({
@@ -374,75 +316,38 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
     () => resolvePreferences(preferences, organizationTheme),
     [organizationTheme, preferences],
   );
-  const palette = useMemo(
-    () => createPreferencePalette(effectivePreferences),
-    [effectivePreferences],
+  const preferenceTheme = useMemo(
+    () => createPreferenceTheme(effectivePreferences, organizationTheme),
+    [effectivePreferences, organizationTheme],
   );
+  const palette = useMemo(() => {
+    const light = createOrganizationThemeTokens(preferenceTheme, "light");
+    const dark = createOrganizationThemeTokens(preferenceTheme, "dark");
+    const pair = (key: keyof typeof light) => ({
+      light: light[key],
+      dark: dark[key],
+    });
+    return {
+      background: pair("background"),
+      foreground: pair("foreground"),
+      sidebar: pair("sidebar"),
+      primary: pair("primary"),
+      secondary: pair("secondary"),
+      accent: pair("accent"),
+    };
+  }, [preferenceTheme]);
 
   useEffect(() => {
     const root = document.documentElement;
-    applyColorPreference(
-      root,
-      "appBackground",
-      "--app-background",
-      palette.background,
-    );
-    root.style.setProperty("--app-sidebar-light", palette.sidebar.light);
-    root.style.setProperty("--app-sidebar-dark", palette.sidebar.dark);
-    root.style.setProperty("--app-card-light", palette.card.light);
-    root.style.setProperty("--app-card-dark", palette.card.dark);
-    applyColorPreference(root, "appColor", "--app-primary", palette.primary);
-    applyColorPreference(
-      root,
-      "appForeground",
-      "--app-foreground",
-      palette.foreground,
-    );
-
-    root.style.setProperty(
-      "--app-primary-foreground-light",
-      getReadableForeground(palette.primary.light),
-    );
-    root.style.setProperty(
-      "--app-primary-foreground-dark",
-      getReadableForeground(palette.primary.dark),
-    );
-
-    root.dataset.appDensity = effectivePreferences.density;
-    root.dataset.appFont = effectivePreferences.font;
-    root.dataset.appRadius = effectivePreferences.radius;
-    root.dataset.appShadow = "custom";
-    root.dataset.appSize = effectivePreferences.size;
-    root.style.setProperty(
-      "--app-shadow-2xs",
-      shadowToCss(effectivePreferences.shadow, 0.2),
-    );
-    root.style.setProperty(
-      "--app-shadow-xs",
-      shadowToCss(effectivePreferences.shadow, 0.35),
-    );
-    root.style.setProperty(
-      "--app-shadow-sm",
-      shadowToCss(effectivePreferences.shadow, 0.5),
-    );
-    root.style.setProperty(
-      "--app-shadow-md",
-      shadowToCss(effectivePreferences.shadow, 0.75),
-    );
-    root.style.setProperty(
-      "--app-shadow-lg",
-      shadowToCss(effectivePreferences.shadow),
-    );
-    root.style.setProperty(
-      "--app-shadow-xl",
-      shadowToCss(effectivePreferences.shadow, 1.35),
-    );
-    root.style.setProperty(
-      "--app-shadow-2xl",
-      shadowToCss(effectivePreferences.shadow, 1.8),
-    );
+    // Same runtime the server bootstrap uses, so per-device overrides and
+    // generated org surfaces stay in sync instead of clobbering each other.
+    const runtime = createOrganizationThemeRuntime(preferenceTheme);
+    Object.assign(root.dataset, runtime.dataset);
+    for (const [property, value] of Object.entries(runtime.properties)) {
+      root.style.setProperty(property, value);
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
-  }, [effectivePreferences, palette, preferences]);
+  }, [preferenceTheme, preferences]);
 
   function updatePreference<Key extends keyof Preferences>(
     key: Key,
@@ -534,7 +439,7 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
             </SidebarFooter>
           </Sidebar>
 
-          <main className="min-w-0 flex-1 overflow-y-auto">
+          <main className="bg-background min-w-0 flex-1 overflow-y-auto">
             <div className="px-5 pt-6 sm:px-7 sm:pt-7">
               <h2 className="font-heading text-lg font-semibold">Tampilan</h2>
               <p className="text-muted-foreground mt-1 text-sm">
@@ -593,6 +498,7 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
                     aria-valuetext={`${effectivePreferences.darkBrightness}%`}
                     className="accent-primary h-5 w-full cursor-pointer"
                     id="dark-mode-brightness"
+                    disabled={Boolean(organizationTheme)}
                     max={100}
                     min={0}
                     onChange={(event) =>
@@ -648,12 +554,15 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
                   </p>
                   {organizationTheme ? (
                     <p className="text-primary mt-1 text-xs">
-                      Tema organisasi aktif sebagai default workspace.
+                      Warna mengikuti organisasi dan sama di web serta mobile.
                     </p>
                   ) : null}
                 </div>
 
-                <div className="grid gap-4 rounded-xl border p-4">
+                <fieldset
+                  disabled={Boolean(organizationTheme)}
+                  className="grid gap-4 rounded-xl border p-4 disabled:opacity-60"
+                >
                   <div className="grid gap-2 sm:grid-cols-[1fr_15rem] sm:items-center">
                     <div>
                       <Label htmlFor="app-accent-color">Warna aksi</Label>
@@ -665,6 +574,9 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
                       defaultValue={
                         organizationTheme?.primary ?? defaultColorSeeds.color
                       }
+                      fallbackLabel={
+                        organizationTheme ? "Organisasi" : "Default"
+                      }
                       id="app-accent-color"
                       label="Warna aksi"
                       onValueChange={(value) =>
@@ -672,54 +584,61 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
                       }
                       previewColors={palette.primary}
                       presets={accentPresets}
-                      value={preferences.color}
+                      value={organizationTheme ? null : preferences.color}
                     />
                   </div>
 
                   <div className="border-border grid gap-2 border-t pt-4 sm:grid-cols-[1fr_15rem] sm:items-center">
                     <div>
-                      <Label htmlFor="app-background-color">Warna latar</Label>
+                      <Label htmlFor="app-background-color">
+                        Warna sekunder
+                      </Label>
                       <p className="text-muted-foreground text-xs">
-                        Halaman, card, dan popover. Sidebar dibuat sedikit lebih
-                        kontras secara otomatis.
+                        Warna dasar untuk tombol sekunder dan permukaan
+                        pendukung.
                       </p>
                     </div>
                     <ColorPicker
                       defaultValue={
-                        organizationTheme?.background ??
-                        defaultColorSeeds.background
+                        organizationTheme?.secondary ??
+                        defaultColorSeeds.secondary
+                      }
+                      fallbackLabel={
+                        organizationTheme ? "Organisasi" : "Default"
                       }
                       id="app-background-color"
-                      label="Warna latar"
+                      label="Warna sekunder"
                       onValueChange={(value) =>
-                        updatePreference("background", value)
+                        updatePreference("secondary", value)
                       }
-                      previewColors={palette.background}
-                      presets={backgroundPresets}
-                      value={preferences.background}
+                      previewColors={palette.secondary}
+                      presets={accentPresets}
+                      value={organizationTheme ? null : preferences.secondary}
                     />
                   </div>
 
                   <div className="border-border grid gap-2 border-t pt-4 sm:grid-cols-[1fr_15rem] sm:items-center">
                     <div>
-                      <Label htmlFor="app-foreground-color">Warna teks</Label>
+                      <Label htmlFor="app-foreground-color">Warna aksen</Label>
                       <p className="text-muted-foreground text-xs">
-                        Teks utama pada seluruh permukaan.
+                        Warna dasar untuk hover, pilihan, dan sorotan.
                       </p>
                     </div>
                     <ColorPicker
                       defaultValue={
-                        organizationTheme?.foreground ??
-                        defaultColorSeeds.foreground
+                        organizationTheme?.accent ?? defaultColorSeeds.accent
+                      }
+                      fallbackLabel={
+                        organizationTheme ? "Organisasi" : "Default"
                       }
                       id="app-foreground-color"
-                      label="Warna teks"
+                      label="Warna aksen"
                       onValueChange={(value) =>
-                        updatePreference("foreground", value)
+                        updatePreference("accent", value)
                       }
-                      previewColors={palette.foreground}
-                      presets={foregroundPresets}
-                      value={preferences.foreground}
+                      previewColors={palette.accent}
+                      presets={accentPresets}
+                      value={organizationTheme ? null : preferences.accent}
                     />
                   </div>
 
@@ -744,7 +663,7 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
                         : "rendah; pilih warna latar atau teks yang lebih berbeda."}
                     </span>
                   </div>
-                </div>
+                </fieldset>
               </section>
 
               <section className="grid gap-3">
