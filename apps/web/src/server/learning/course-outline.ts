@@ -1,7 +1,3 @@
-import {
-  isVocabularySetRemembered,
-  meetsMaterialRequirements,
-} from "~/server/vocabulary/evidence";
 import { TRPCError } from "@trpc/server";
 
 import { EnrollmentStatus } from "../../../generated/prisma/enums";
@@ -45,6 +41,9 @@ export async function getCourseOutlineForUser(
           id: true,
           name: true,
           slug: true,
+          logoUrl: true,
+          theme: true,
+          themeEnabled: true,
           permissionMode: true,
           members: {
             where: { userId },
@@ -136,21 +135,6 @@ export async function getCourseOutlineForUser(
     throw new TRPCError({ code: "FORBIDDEN" });
   }
 
-  // Completion flags from older clients and edited vocabulary cannot bypass recall evidence.
-  await Promise.all(
-    course.modules.flatMap((module) =>
-      module.items.map(async (item) => {
-        if (item.progress.length === 0) return;
-        const valid = item.vocabularySet
-          ? await isVocabularySetRemembered(db, userId, item.vocabularySet.id)
-          : item.material
-            ? await meetsMaterialRequirements(db, userId, item.material.id)
-            : true;
-        if (!valid) item.progress = [];
-      }),
-    ),
-  );
-
   const moduleCompletion = course.modules.map((module) => ({
     ...module,
     items: module.items
@@ -187,6 +171,9 @@ export async function getCourseOutlineForUser(
       id: course.organization.id,
       name: course.organization.name,
       slug: course.organization.slug,
+      logoUrl: course.organization.logoUrl,
+      theme: course.organization.theme,
+      themeEnabled: course.organization.themeEnabled,
     },
     status: course.status,
     progressionMode: course.progressionMode,

@@ -42,6 +42,20 @@ export function dateLabel(date: Date) {
   });
 }
 
+export function dayLabel(date: Date) {
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function timeLabel(date: Date) {
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function achievementLabel(code: string) {
   if (code === "FIRST_ACTIVITY") return "First step";
   const [kind, count] = code.split("_");

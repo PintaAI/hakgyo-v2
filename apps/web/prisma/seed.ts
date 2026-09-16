@@ -97,13 +97,13 @@ async function main() {
     where: { id: HAKGYO_SYSTEM_ORGANIZATION_ID },
     update: {
       defaultEnrollmentMode: "OPEN",
-      name: "Hakgyo System",
+      name: "Hakgyo",
       slug: "hakgyo-system",
     },
     create: {
       id: HAKGYO_SYSTEM_ORGANIZATION_ID,
       defaultEnrollmentMode: "OPEN",
-      name: "Hakgyo System",
+      name: "Hakgyo",
       slug: "hakgyo-system",
     },
   });

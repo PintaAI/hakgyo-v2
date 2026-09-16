@@ -1,6 +1,8 @@
+import { organizationLandingRouter } from "~/server/api/routers/organization-landing";
 import { accountRouter } from "~/server/api/routers/account";
 import { assessmentRouter } from "~/server/api/routers/assessment";
 import { assessmentEventRouter } from "~/server/api/routers/assessment-event";
+import { brandRouter } from "~/server/api/routers/brand";
 import { cohortRouter } from "~/server/api/routers/cohort";
 import { contentRouter } from "~/server/api/routers/content";
 import { courseRouter } from "~/server/api/routers/course";
@@ -25,6 +27,7 @@ export const appRouter = createTRPCRouter({
   account: accountRouter,
   assessment: assessmentRouter,
   assessmentEvent: assessmentEventRouter,
+  brand: brandRouter,
   cohort: cohortRouter,
   content: contentRouter,
   course: courseRouter,
@@ -34,6 +37,7 @@ export const appRouter = createTRPCRouter({
   invite: inviteRouter,
   notification: notificationRouter,
   organization: organizationRouter,
+  organizationLanding: organizationLandingRouter,
   practice: practiceRouter,
   storage: storageRouter,
   superadmin: superadminRouter,

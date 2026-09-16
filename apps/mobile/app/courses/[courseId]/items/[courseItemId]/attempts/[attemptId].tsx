@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 
+import { CourseLearningFooter } from "../../../../../../src/components/learn/course-learning-footer";
+import type { LearningPathCourse } from "../../../../../../src/lib/course-learning-path";
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
 import {
   NativeContentRenderer,
@@ -41,6 +43,15 @@ export default function AssessmentAttemptScreen() {
   const attemptId = firstParam(params.attemptId);
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
+  const outline = api.learning.getCourseOutline.useQuery(
+    { courseId },
+    { enabled: Boolean(session && courseId) },
+  );
+  const initialOutline = useRef<LearningPathCourse>(undefined);
+  useEffect(() => {
+    if (!initialOutline.current && outline.data)
+      initialOutline.current = outline.data;
+  }, [outline.data]);
   const resolveAssetUrl = useApiAssetResolver();
   const assessment = api.assessment.getForCourseItem.useQuery(
     { courseItemId, attemptId },
@@ -326,6 +337,16 @@ export default function AssessmentAttemptScreen() {
             attempt={attempt.data}
             resolveAssetUrl={resolveAssetUrl}
           />
+
+          {!assessment.data.event ? (
+            <CourseLearningFooter
+              key={courseItemId}
+              courseId={courseId}
+              courseItemId={courseItemId}
+              completionMode="assessment"
+              initialOutline={initialOutline.current}
+            />
+          ) : null}
 
           {canReattempt ? (
             <Pressable

@@ -1,3 +1,4 @@
+import { organizationPublicSlugSchema } from "~/lib/organization-landing";
 import { TRPCError } from "@trpc/server";
 import { parseOrganizationTheme } from "@hakgyo/shared";
 import { z } from "zod";
@@ -29,12 +30,7 @@ import {
 } from "~/server/organization/invites";
 
 const id = z.string().min(1);
-const slug = z
-  .string()
-  .trim()
-  .min(2)
-  .max(80)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+const slug = organizationPublicSlugSchema;
 
 function slugify(value: string) {
   return value

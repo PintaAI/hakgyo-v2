@@ -1,274 +1,543 @@
-import { useMemo, useRef, useState } from "react";
-import { Text, View } from "react-native";
-import Storage from "expo-sqlite/kv-store";
-import { Action, Empty, Section } from "./learning-ui";
+import type { RouterOutputs } from "@hakgyo/api";
+import { Stack } from "expo-router";
+import { SymbolView } from "expo-symbols";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  buildSession,
-  choiceOptions,
-  memoryFor,
-  parseMemory,
-  recordRecall,
+  ActivityIndicator,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import type { NativeGesture } from "react-native-gesture-handler";
+
+import {
+  isVocabularyAnswerCorrect,
   type Word,
 } from "../lib/vocabulary-practice";
+import { api } from "../lib/trpc";
+import { useAppTheme } from "../providers/AppThemeProvider";
+import { toolbarIcons } from "../theme/toolbar-icons";
+import { Action, Empty, QueryState } from "./learning-ui";
+import {
+  VocabularyPracticeDeck,
+  type VocabularyPracticeDeckHandle,
+} from "./vocabulary-practice-deck";
+
+type Challenge = RouterOutputs["learning"]["startVocabularyRecall"];
+type RecallEvidence = Pick<
+  RouterOutputs["learning"]["submitVocabularyRecall"],
+  "items" | "practiced" | "remembered"
+>;
+
+function errorCode(error: unknown) {
+  if (!error || typeof error !== "object" || !("data" in error)) return;
+  return (error.data as { code?: string } | undefined)?.code;
+}
 
 export function VocabularySession({
   words,
-  userId,
-  setId,
+  vocabularySetId,
+  sourceCourseItemId,
+  scrollGesture,
+  onRoundActiveChange,
   onComplete,
   saving,
   saveError,
 }: {
   words: Word[];
-  userId: string;
-  setId: string;
-  onComplete: () => void;
+  vocabularySetId: string;
+  sourceCourseItemId: string;
+  scrollGesture: NativeGesture;
+  onRoundActiveChange?: (active: boolean) => void;
+  onComplete: () => Promise<void>;
   saving: boolean;
   saveError?: string;
 }) {
-  const storageKey = `hakgyo:recall:v1:${userId}:${setId}`;
-  const [loaded] = useState(() => {
-    try {
-      return {
-        memory: parseMemory(Storage.getItemSync(storageKey)),
-        failed: false,
-      };
-    } catch {
-      return { memory: {}, failed: true };
-    }
+  const { colors } = useAppTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const scope = { vocabularySetId, sourceCourseItemId };
+  const memoryQuery = api.learning.getVocabularyMemory.useQuery(scope, {
+    retry: false,
   });
-  const [readFailed, setReadFailed] = useState(loaded.failed);
-  const [storageError, setStorageError] = useState<string>();
-  const [memory, setMemory] = useState(loaded.memory);
+  const startRecall = api.learning.startVocabularyRecall.useMutation();
+  const submitRecall = api.learning.submitVocabularyRecall.useMutation();
+  const [latestEvidence, setLatestEvidence] = useState<RecallEvidence>();
   const [queue, setQueue] = useState<Word[]>([]);
   const [index, setIndex] = useState(0);
-  const [active, setActive] = useState(false);
+  const [challenge, setChallenge] = useState<Challenge>();
+  const [answer, setAnswer] = useState("");
   const [revealed, setRevealed] = useState(false);
-  const [feedback, setFeedback] = useState<boolean>();
-  const [score, setScore] = useState(0);
-  const [mode, setMode] = useState<"recall" | "choices">("recall");
-  const answered = useRef(false);
-  const word = queue[index];
-  const reverse = index % 2 === 1;
-  const choices = useMemo(
-    () => (word ? choiceOptions(word, words, reverse) : []),
-    [word, words, reverse],
+  const answerClaim = useRef<"unanswered" | "revealed" | "answered">(
+    "unanswered",
   );
-  const usableWords = words.filter(
-    (item) => item.term.trim() && item.definition.trim(),
+  const [roundKey, setRoundKey] = useState(0);
+  const [feedback, setFeedback] = useState<{
+    correct: boolean;
+    saved: boolean;
+  }>();
+  const [roundActive, setRoundActive] = useState(false);
+  const [sessionError, setSessionError] = useState<string>();
+  const [moving, setMoving] = useState(false);
+  const deckRef = useRef<VocabularyPracticeDeckHandle>(null);
+  const usableWords = useMemo(
+    () => words.filter((word) => word.term.trim() && word.definition.trim()),
+    [words],
   );
-  const reviewed = usableWords.filter(
-    (item) => (memoryFor(item, memory)?.reviews ?? 0) > 0,
-  ).length;
+  const evidence = latestEvidence ?? memoryQuery.data;
+  const memoryByEntry = useMemo(
+    () => new Map(evidence?.items.map((item) => [item.entryId, item]) ?? []),
+    [evidence?.items],
+  );
+  const now = Date.now();
+  const unpracticedWords = usableWords.filter(
+    (word) => !memoryByEntry.get(word.id)?.practiced,
+  );
+  const reviewDueWords = usableWords.filter((word) => {
+    const memory = memoryByEntry.get(word.id);
+    return (
+      !memory?.remembered &&
+      (!memory?.nextReviewAt || memory.nextReviewAt.getTime() <= now)
+    );
+  });
+  const readyWords = evidence?.practiced ? reviewDueWords : unpracticedWords;
+  const practicedCount =
+    evidence?.items.filter((item) => item.practiced).length ?? 0;
+  const masteredCount =
+    evidence?.items.filter((item) => item.remembered).length ?? 0;
+  const progress = usableWords.length
+    ? Math.min(100, Math.round((practicedCount / usableWords.length) * 100))
+    : 0;
+  const currentWord = queue[index];
+  const deckCards = useMemo(
+    () =>
+      queue.map((word, ordinal) => ({
+        id: word.id,
+        prompt:
+          ordinal === index && challenge?.entryId === word.id
+            ? challenge.prompt
+            : word.definition,
+        answer: word.term,
+        imageAssetId: word.imageAssetId,
+        imageAccessibilityLabel: `${word.term} illustration`,
+      })),
+    [challenge, index, queue],
+  );
+  const requestBusy = startRecall.isPending || submitRecall.isPending;
+  const busy = requestBusy || moving;
+  const toolbarInputWidth = Math.max(140, Math.min(screenWidth - 104, 520));
 
-  function startSession(extra = false) {
-    const next = extra
-      ? usableWords
-          .slice()
-          .sort(
-            (a, b) =>
-              (memoryFor(a, memory)?.dueAt ?? 0) -
-              (memoryFor(b, memory)?.dueAt ?? 0),
-          )
-          .slice(0, 10)
-      : buildSession(words, memory, Date.now());
-    setQueue(next);
-    setIndex(0);
-    setScore(0);
-    setRevealed(false);
-    setFeedback(undefined);
-    setActive(true);
-    answered.current = false;
+  useEffect(() => {
+    onRoundActiveChange?.(roundActive && !evidence?.remembered);
+  }, [evidence?.remembered, onRoundActiveChange, roundActive]);
+
+  useEffect(
+    () => () => {
+      onRoundActiveChange?.(false);
+    },
+    [onRoundActiveChange],
+  );
+
+  async function refreshStatus() {
+    const refreshed = await memoryQuery.refetch();
+    if (refreshed.data) {
+      setLatestEvidence({
+        items: refreshed.data.items,
+        practiced: refreshed.data.practiced,
+        remembered: refreshed.data.remembered,
+      });
+    }
   }
-  function answer(recalled: boolean) {
-    if (!word || answered.current) return;
-    answered.current = true;
-    const updated = recordRecall(memory, word, recalled, Date.now());
-    setMemory(updated);
-    setFeedback(recalled);
-    setRevealed(true);
-    setScore((value) => value + Number(recalled));
+
+  async function openChallenge(word: Word) {
+    startRecall.reset();
+    submitRecall.reset();
+    setSessionError(undefined);
+    setChallenge(undefined);
+    setAnswer("");
+    setFeedback(undefined);
+    setRevealed(false);
+    answerClaim.current = "unanswered";
     try {
-      Storage.setItemSync(storageKey, JSON.stringify(updated));
-      setStorageError(undefined);
-    } catch {
-      setStorageError(
-        "This review could not be saved on your device. Keep the session open and retry saving.",
+      const started = await startRecall.mutateAsync({
+        ...scope,
+        entryId: word.id,
+      });
+      setChallenge(started);
+    } catch (error) {
+      if (errorCode(error) === "PRECONDITION_FAILED") {
+        await refreshStatus();
+        setRoundActive(false);
+        setSessionError(
+          "Your review schedule changed, so we refreshed this practice round.",
+        );
+      } else {
+        setSessionError(
+          "We couldn’t start this word. Check your connection and try again.",
+        );
+      }
+    }
+  }
+
+  function beginRound() {
+    if (!readyWords.length || busy) return;
+    const nextQueue = [...readyWords];
+    setQueue(nextQueue);
+    setIndex(0);
+    setRoundKey((value) => value + 1);
+    setRoundActive(true);
+    setMoving(false);
+    void openChallenge(nextQueue[0]!);
+  }
+
+  async function checkAnswer() {
+    if (
+      !challenge ||
+      !currentWord ||
+      !answer.trim() ||
+      feedback ||
+      busy ||
+      answerClaim.current !== "unanswered"
+    )
+      return;
+    answerClaim.current = "answered";
+    const submittedAnswer = answer.trim();
+    setFeedback({
+      correct: isVocabularyAnswerCorrect(submittedAnswer, currentWord.term),
+      saved: false,
+    });
+    submitRecall.reset();
+    setSessionError(undefined);
+    try {
+      const result = await submitRecall.mutateAsync({
+        challengeId: challenge.challengeId,
+        answer: submittedAnswer,
+      });
+      setLatestEvidence({
+        items: result.items,
+        practiced: result.practiced,
+        remembered: result.remembered,
+      });
+      setFeedback({ correct: result.correct, saved: true });
+    } catch (error) {
+      answerClaim.current = "unanswered";
+      setFeedback(undefined);
+      setSessionError(
+        errorCode(error) === "PRECONDITION_FAILED"
+          ? "This word expired or changed. Restart it to keep your progress accurate."
+          : "Your answer wasn’t saved. Check your connection and try again.",
       );
     }
   }
-  const due = buildSession(words, memory, Date.now()).length;
-  if (readFailed)
+
+  async function nextWord() {
+    const nextIndex = index + 1;
+    if (nextIndex < queue.length) {
+      setIndex(nextIndex);
+      await openChallenge(queue[nextIndex]!);
+      return;
+    }
+    setRoundActive(false);
+    setChallenge(undefined);
+    setFeedback(undefined);
+    await refreshStatus();
+  }
+
+  function advanceCard() {
+    if ((!feedback?.saved && !revealed) || busy) return;
+    deckRef.current?.advance();
+  }
+
+  function revealAnswer() {
+    if (
+      !challenge ||
+      !currentWord ||
+      busy ||
+      answerClaim.current !== "unanswered"
+    )
+      return;
+    answerClaim.current = "revealed";
+    setRevealed(true);
+    setAnswer("");
+    // This is local study only. Do not submit a recall or update evidence.
+  }
+
+  function finishAdvance() {
+    setMoving(false);
+    void nextWord();
+  }
+
+  function restartWord() {
+    if (currentWord) void openChallenge(currentWord);
+  }
+
+  if (memoryQuery.isPending) {
     return (
-      <View className="gap-3">
-        <Text accessibilityRole="alert" className="text-sm text-destructive">
-          Your device review history could not be loaded.
+      <View className="min-h-64 items-center justify-center gap-3">
+        <ActivityIndicator color={colors.primary} />
+        <Text className="text-sm text-muted-foreground">
+          Loading your saved practice…
         </Text>
-        <Action
-          secondary
-          onPress={() => {
-            try {
-              setMemory(parseMemory(Storage.getItemSync(storageKey)));
-              setReadFailed(false);
-            } catch {
-              /* Keep the retry visible without overwriting existing history. */
-            }
-          }}
-        >
-          Retry loading reviews
-        </Action>
       </View>
     );
-  return (
-    <View className="gap-5">
-      {storageError ? (
-        <>
-          <Text accessibilityRole="alert" className="text-sm text-destructive">
-            {storageError}
-          </Text>
-          <Action
-            secondary
-            onPress={() => {
-              try {
-                Storage.setItemSync(storageKey, JSON.stringify(memory));
-                setStorageError(undefined);
-              } catch {
-                /* Keep the visible retry. */
-              }
-            }}
-          >
-            Retry saving review
-          </Action>
-        </>
-      ) : null}
-      {!active ? (
-        <>
-          <Text className="text-base leading-6 text-muted-foreground">
-            {due} words ready for review · {reviewed} of {usableWords.length}{" "}
-            reviewed on this device
-          </Text>
-          <Text className="text-sm leading-5 text-muted-foreground">
-            Short rounds of up to 10 words. Missed words return sooner;
-            remembered words return after a longer interval.
-          </Text>
-          <Action
-            secondary
-            onPress={() =>
-              setMode((value) => (value === "recall" ? "choices" : "recall"))
+  }
+
+  if (memoryQuery.isError) {
+    return (
+      <QueryState
+        pending={false}
+        error={memoryQuery.error}
+        retry={() => void memoryQuery.refetch()}
+      />
+    );
+  }
+
+  if (!usableWords.length) {
+    return <Empty>This set has no words ready for practice.</Empty>;
+  }
+
+  if (evidence?.practiced && !roundActive) {
+    return (
+      <View className="items-center gap-5 rounded-3xl border border-primary/30 bg-primary/10 px-5 py-8">
+        <View className="size-16 items-center justify-center rounded-full bg-primary">
+          <SymbolView
+            fallback={
+              <Text className="text-2xl font-black text-primary-foreground">
+                ✓
+              </Text>
             }
-          >
-            {mode === "recall"
-              ? "Mode: recall · tap for multiple choice"
-              : "Mode: multiple choice · tap for recall"}
-          </Action>
-          <Action
-            disabled={usableWords.length === 0}
-            onPress={() => startSession(due === 0)}
-          >
-            {due ? "Start daily review" : "Extra practice"}
-          </Action>
-          {usableWords.length === 0 ? (
-            <Empty>This set has no words ready for practice.</Empty>
-          ) : null}
-        </>
-      ) : word ? (
-        <>
-          <Text className="text-sm font-semibold text-muted-foreground">
-            {index + 1} / {queue.length} ·{" "}
-            {reverse ? "Recall the word" : "Recall the meaning"}
+            name="checkmark"
+            size={28}
+            tintColor={colors.primaryForeground}
+            weight="bold"
+          />
+        </View>
+        <View className="items-center gap-2">
+          <Text className="text-center text-2xl font-black text-foreground">
+            {evidence.remembered ? "Vocabulary mastered" : "Practice complete"}
           </Text>
-          <View className="min-h-48 justify-center gap-5 rounded-3xl bg-muted p-6">
-            <Text
-              selectable
-              className="text-center text-3xl font-bold text-foreground"
-            >
-              {reverse ? word.definition : word.term}
+          <Text className="text-center text-sm leading-6 text-muted-foreground">
+            {evidence.remembered
+              ? "Every word has been recalled successfully. Your answers are saved to your account."
+              : `You practiced every word once. ${masteredCount} of ${usableWords.length} are mastered, and you can review them again later.`}
+          </Text>
+        </View>
+        <Action
+          disabled={saving}
+          onPress={() => void onComplete().catch(() => undefined)}
+        >
+          {saving ? "Saving course progress…" : "Continue learning →"}
+        </Action>
+        {reviewDueWords.length ? (
+          <Action secondary onPress={beginRound}>
+            {`Review again · ${reviewDueWords.length} words`}
+          </Action>
+        ) : null}
+        {saveError ? (
+          <Text accessibilityRole="alert" className="text-sm text-destructive">
+            Course progress wasn’t saved. Tap continue to try again.
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  if (!roundActive) {
+    return (
+      <View className="gap-5">
+        <View className="gap-3 rounded-3xl bg-muted p-5">
+          <View className="flex-row items-end justify-between gap-4">
+            <View className="min-w-0 flex-1 gap-1">
+              <Text className="text-xs font-bold uppercase tracking-[1.4px] text-primary">
+                Your progress
+              </Text>
+              <Text className="text-2xl font-black text-foreground">
+                {practicedCount} of {usableWords.length} practiced
+              </Text>
+            </View>
+            <Text className="text-sm font-bold text-muted-foreground">
+              {progress}%
             </Text>
-            {revealed ? (
-              <Text selectable className="text-center text-xl text-primary">
-                {reverse ? word.term : word.definition}
-              </Text>
-            ) : null}
           </View>
-          {feedback !== undefined ? (
-            <>
-              <Text
-                accessibilityLiveRegion="polite"
-                className="text-base text-foreground"
-              >
-                {feedback
-                  ? "Remembered. We’ll space the next review out."
-                  : "Keep going. This word will return in 10 minutes."}
-              </Text>
-              <Action
-                onPress={() => {
-                  setIndex((value) => value + 1);
-                  setFeedback(undefined);
-                  setRevealed(false);
-                  answered.current = false;
-                }}
-              >
-                Continue
-              </Action>
-            </>
-          ) : mode === "choices" && choices.length > 1 ? (
-            choices.map((choice) => (
-              <Action
-                secondary
-                key={choice}
-                onPress={() =>
-                  answer(choice === (reverse ? word.term : word.definition))
-                }
-              >
-                {choice}
-              </Action>
-            ))
-          ) : !revealed ? (
-            <Action onPress={() => setRevealed(true)}>Reveal answer</Action>
-          ) : (
-            <>
-              <Action onPress={() => answer(true)}>I remembered</Action>
-              <Action secondary onPress={() => answer(false)}>
-                Review again
-              </Action>
-            </>
-          )}
-        </>
-      ) : (
-        <Section title="Round complete">
-          <Text className="text-2xl font-bold text-foreground">
-            {score} / {queue.length} recalled
-          </Text>
-          <Text className="text-base text-muted-foreground">
-            {reviewed} of {usableWords.length} words reviewed. Daily recall
-            history is stored on this device.
-          </Text>
-          <Action onPress={() => setActive(false)}>
-            Back to practice options
-          </Action>
-        </Section>
-      )}
-      {!word && usableWords.length > 0 && reviewed === usableWords.length ? (
-        <>
-          <Action
-            secondary
-            disabled={saving || !!storageError}
-            onPress={onComplete}
+          <View
+            accessibilityRole="progressbar"
+            accessibilityValue={{ min: 0, max: 100, now: progress }}
+            className="h-2 overflow-hidden rounded-full bg-background"
           >
-            {saving
-              ? "Saving course progress…"
-              : "Complete vocabulary activity"}
-          </Action>
-          <Text className="text-xs leading-5 text-muted-foreground">
-            Course completion and its XP reward are recorded once. Extra
-            practice does not award additional course XP.
+            <View
+              className="h-full rounded-full bg-primary"
+              style={{ width: `${progress}%` }}
+            />
+          </View>
+          <Text className="text-sm leading-5 text-muted-foreground">
+            Finish one pass through the set to continue. Mastery reviews stay
+            available without blocking your course.
           </Text>
-        </>
-      ) : null}
-      {saveError ? (
-        <Text accessibilityRole="alert" className="text-sm text-destructive">
-          {saveError}
+        </View>
+
+        {readyWords.length ? (
+          <View className="gap-3">
+            <Text className="text-base leading-6 text-muted-foreground">
+              {readyWords.length}{" "}
+              {readyWords.length === 1 ? "word is" : "words are"} left in this
+              round.
+            </Text>
+            <Action onPress={beginRound}>
+              {`Start practice · ${readyWords.length} words`}
+            </Action>
+          </View>
+        ) : (
+          <View className="items-center gap-4 rounded-3xl border border-border bg-card p-6">
+            <Text className="text-3xl">🌱</Text>
+            <View className="items-center gap-2">
+              <Text className="text-xl font-black text-foreground">
+                Great work for now
+              </Text>
+              <Text className="text-center text-sm leading-6 text-muted-foreground">
+                Your answers are saved. Refresh to load the remaining words.
+              </Text>
+            </View>
+            <Action secondary onPress={() => void refreshStatus()}>
+              Check again
+            </Action>
+          </View>
+        )}
+        {sessionError ? (
+          <Text accessibilityRole="alert" className="text-sm text-primary">
+            {sessionError}
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  return (
+    <View className="min-h-0 flex-1">
+      <Stack.Toolbar
+        placement="bottom"
+        backgroundColor={colors.background}
+        tintColor={colors.primary}
+      >
+        <Stack.Toolbar.View>
+          <TextInput
+            accessibilityLabel={`Korean word for ${challenge?.prompt ?? currentWord?.definition ?? "current word"}`}
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={(value) => {
+              if (answerClaim.current === "unanswered" && !busy)
+                setAnswer(value);
+            }}
+            onSubmitEditing={() => {
+              if (feedback?.saved || revealed) advanceCard();
+              else if (!feedback) void checkAnswer();
+            }}
+            placeholder={
+              revealed
+                ? "Ready for the next word?"
+                : challenge
+                  ? "Type the Korean word"
+                  : "Preparing next word…"
+            }
+            placeholderTextColor={colors.mutedForeground}
+            returnKeyType={feedback?.saved || revealed ? "next" : "done"}
+            selectionColor={colors.primary}
+            submitBehavior="submit"
+            style={{
+              color: colors.foreground,
+              fontSize: 16,
+              height: 44,
+              paddingHorizontal: 16,
+              textAlign: "center",
+              width: toolbarInputWidth,
+            }}
+            value={answer}
+          />
+        </Stack.Toolbar.View>
+        <Stack.Toolbar.Button
+          accessibilityLabel={
+            feedback || revealed
+              ? index + 1 < queue.length
+                ? "Next word"
+                : "Finish round"
+              : "Check answer"
+          }
+          disabled={
+            feedback || revealed
+              ? (!feedback?.saved && !revealed) || busy
+              : !challenge || !answer.trim() || busy
+          }
+          icon={feedback || revealed ? toolbarIcons.next : toolbarIcons.submit}
+          onPress={
+            feedback || revealed ? advanceCard : () => void checkAnswer()
+          }
+          variant="prominent"
+        />
+      </Stack.Toolbar>
+
+      <View className="absolute inset-x-0 top-0 z-10 flex-row items-center justify-between gap-4">
+        <Text className="text-xs font-bold uppercase tracking-[1.4px] text-muted-foreground">
+          Word {index + 1} of {queue.length}
         </Text>
+        <Text className="text-xs font-semibold text-muted-foreground">
+          {masteredCount}/{usableWords.length} mastered
+        </Text>
+      </View>
+
+      <View className="min-h-0 flex-1 justify-center gap-2">
+        <Text className="text-center text-xs leading-5 text-muted-foreground">
+          {!challenge || startRecall.isPending
+            ? "Preparing this word…"
+            : moving
+              ? "Bringing up the next card…"
+              : revealed
+                ? "Just studying · no XP or streak change. Swipe up or tap Next."
+                : feedback
+                  ? !feedback.saved
+                    ? feedback.correct
+                      ? "Correct — saving…"
+                      : "We’ll review this again — saving…"
+                    : feedback.correct
+                      ? "Correct and saved. Swipe up or tap Next."
+                      : "Saved for an earlier review. Swipe up or tap Next."
+                  : "Type the Korean word, peel the bottom-right corner to reveal, or swipe up to skip."}
+        </Text>
+        <VocabularyPracticeDeck
+          key={roundKey}
+          ref={deckRef}
+          cards={deckCards}
+          index={index}
+          correct={feedback?.correct}
+          revealed={revealed}
+          onReveal={revealAnswer}
+          scrollGesture={scrollGesture}
+          disabled={requestBusy || !challenge}
+          onInteractionChange={setMoving}
+          onAdvanceComplete={finishAdvance}
+        />
+      </View>
+
+      {sessionError ? (
+        <View className="gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4">
+          <Text
+            accessibilityRole="alert"
+            className="text-sm leading-5 text-destructive"
+          >
+            {sessionError}
+          </Text>
+          {errorCode(submitRecall.error) === "PRECONDITION_FAILED" ? (
+            <Action secondary onPress={restartWord}>
+              Restart this word
+            </Action>
+          ) : submitRecall.isError ? (
+            <Action secondary onPress={() => void checkAnswer()}>
+              Retry saving answer
+            </Action>
+          ) : startRecall.isError && currentWord ? (
+            <Action secondary onPress={restartWord}>
+              Try again
+            </Action>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );

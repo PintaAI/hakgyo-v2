@@ -27,12 +27,11 @@ export async function getVocabularyEvidence(
   });
   const items = entries.map((entry) => {
     const saved = entry.memory[0];
-    const state =
-      saved?.contentHash === vocabularyContentHash(entry)
-        ? saved
-        : emptyMemory();
+    const practiced = saved?.contentHash === vocabularyContentHash(entry);
+    const state = practiced ? saved : emptyMemory();
     return {
       entryId: entry.id,
+      practiced,
       passStreak: state.passStreak,
       failStreak: state.failStreak,
       rememberedAt: state.rememberedAt,
@@ -42,16 +41,17 @@ export async function getVocabularyEvidence(
   });
   return {
     items,
+    practiced: items.length > 0 && items.every((item) => item.practiced),
     remembered: items.length > 0 && items.every((item) => item.remembered),
   };
 }
 
-export async function isVocabularySetRemembered(
+export async function isVocabularySetPracticed(
   db: EvidenceDb,
   userId: string,
   vocabularySetId: string,
 ) {
-  return (await getVocabularyEvidence(db, userId, vocabularySetId)).remembered;
+  return (await getVocabularyEvidence(db, userId, vocabularySetId)).practiced;
 }
 
 export async function meetsMaterialRequirements(
@@ -74,7 +74,7 @@ export async function meetsMaterialRequirements(
       if (requirement.type === "VOCABULARY_SET") {
         return (
           requirement.vocabularySetId !== null &&
-          isVocabularySetRemembered(db, userId, requirement.vocabularySetId)
+          isVocabularySetPracticed(db, userId, requirement.vocabularySetId)
         );
       }
       if (!requirement.assessmentId) return false;

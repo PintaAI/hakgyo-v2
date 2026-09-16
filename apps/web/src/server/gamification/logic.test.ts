@@ -3,8 +3,10 @@ import { describe, expect, test } from "bun:test";
 import {
   calculateStreak,
   findNewAchievements,
+  getLocalCalendarWindow,
   getLocalDateKey,
   getRewardForAction,
+  isValidTimeZone,
 } from "./logic";
 
 describe("gamification logic", () => {
@@ -20,6 +22,19 @@ describe("gamification logic", () => {
 
     expect(getLocalDateKey(activityAt, "UTC")).toBe("2026-08-29");
     expect(getLocalDateKey(activityAt, "Asia/Seoul")).toBe("2026-08-30");
+    expect(isValidTimeZone("Asia/Seoul")).toBe(true);
+    expect(isValidTimeZone("not/a-timezone")).toBe(false);
+  });
+
+  test("builds the current week from the learner's local day", () => {
+    const now = new Date("2026-09-15T23:43:58.350Z");
+
+    expect(getLocalCalendarWindow(now, "Asia/Jakarta")).toEqual({
+      end: new Date("2026-09-21T00:00:00.000Z"),
+      start: new Date("2026-09-14T00:00:00.000Z"),
+      startsOn: "2026-09-14",
+      today: "2026-09-16",
+    });
   });
 
   test("deduplicates same-day activity and calculates current and longest streaks", () => {

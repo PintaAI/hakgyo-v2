@@ -15,6 +15,7 @@ type RecordActivityInput = {
   metadata?: Prisma.InputJsonValue;
   organizationId: string;
   occurredAt?: Date;
+  timeZone?: string;
   userId: string;
 };
 
@@ -27,7 +28,7 @@ export async function recordGamificationActivity(
     where: { userId: input.userId },
     select: { timeZone: true },
   });
-  const timeZone = existingSummary?.timeZone ?? "UTC";
+  const timeZone = input.timeZone ?? existingSummary?.timeZone ?? "UTC";
   const reward = getRewardForAction(input.action);
   const activityDateKey = getLocalDateKey(occurredAt, timeZone);
   const activityDate = new Date(`${activityDateKey}T00:00:00.000Z`);
@@ -60,7 +61,10 @@ export async function recordGamificationActivity(
   });
   const streak = calculateStreak(
     streakActivities.map((activity) => activity.activityDate),
-    { now: occurredAt, timeZone: "UTC" },
+    {
+      now: new Date(`${activityDateKey}T12:00:00.000Z`),
+      timeZone: "UTC",
+    },
   );
 
   const summary = await tx.userGamification.upsert({
@@ -79,6 +83,7 @@ export async function recordGamificationActivity(
       currentStreak: streak.currentStreak,
       lastActivityDate: activityDate,
       longestStreak: streak.longestStreak,
+      timeZone,
       totalXp: { increment: reward.xp },
     },
     select: {

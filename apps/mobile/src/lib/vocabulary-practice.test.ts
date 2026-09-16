@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildSession,
   choiceOptions,
+  isVocabularyAnswerCorrect,
   memoryFor,
   parseMemory,
   recordRecall,
@@ -9,6 +10,13 @@ import {
 const word = { id: "one", term: "학교", definition: "School" };
 
 describe("daily vocabulary recall", () => {
+  test("optimistic grading matches the server normalization rule", () => {
+    expect(isVocabularyAnswerCorrect("  학교  ", "학교")).toBe(true);
+    expect(isVocabularyAnswerCorrect("ＳＣＨＯＯＬ", "school")).toBe(true);
+    expect(isVocabularyAnswerCorrect("학 교", "학교")).toBe(false);
+    expect(isVocabularyAnswerCorrect("   ", "")).toBe(false);
+  });
+
   test("missed words become due before successful recalls", () => {
     const other = { id: "two", term: "책", definition: "Book" };
     let memory = recordRecall({}, word, true, 1000);

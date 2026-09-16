@@ -1,4 +1,9 @@
-export type Word = { id: string; term: string; definition: string };
+export type Word = {
+  id: string;
+  term: string;
+  definition: string;
+  imageAssetId?: string | null;
+};
 export type Memory = {
   correct: number;
   reviews: number;
@@ -6,6 +11,17 @@ export type Memory = {
   fingerprint: string;
 };
 export type PracticeMemory = Record<string, Memory>;
+
+export function normalizeVocabularyAnswer(answer: string) {
+  return answer.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
+}
+
+export function isVocabularyAnswerCorrect(answer: string, expected: string) {
+  const normalized = normalizeVocabularyAnswer(answer);
+  return (
+    normalized.length > 0 && normalized === normalizeVocabularyAnswer(expected)
+  );
+}
 
 export function fingerprint(word: Word) {
   return JSON.stringify([word.term, word.definition]);

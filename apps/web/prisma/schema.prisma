@@ -510,6 +510,7 @@ model Organization {
   teacherCanCreateCourse Boolean                    @default(true)
   createdAt              DateTime                   @default(now())
   updatedAt              DateTime                   @updatedAt
+  landingPage            OrganizationLandingPage?
   members                OrganizationMember[]
   invites                OrganizationInvite[]
   courses                Course[]
@@ -1222,4 +1223,15 @@ model VocabularyRecallChallenge {
   sourceCourseItem    CourseItem @relation(fields: [sourceCourseItemId], references: [id], onDelete: Cascade)
 
   @@index([userId, entryId, createdAt])
+}
+
+// Organization primary key guarantees exactly one customizable page per organization.
+model OrganizationLandingPage {
+  organizationId String @id
+  draft Json
+  published Json?
+  publishedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }

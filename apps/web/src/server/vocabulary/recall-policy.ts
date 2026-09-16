@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 export const vocabularyRecallPolicy = {
   version: 1,
-  passesRequired: 3,
+  passesRequired: 1,
   failuresToForget: 2,
   retryDelayMs: 10 * 60 * 1000,
   reviewDelayMs: 24 * 60 * 60 * 1000,

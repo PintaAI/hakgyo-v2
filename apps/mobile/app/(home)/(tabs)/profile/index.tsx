@@ -24,72 +24,15 @@ import {
 } from "../../../../src/components/learning-ui";
 import { WeeklyStreak } from "../../../../src/components/weekly-streak";
 import { achievementLabel, dateLabel } from "../../../../src/lib/study";
-import {
-  type AvailableOrganizationTheme,
-  useAppTheme,
-} from "../../../../src/providers/AppThemeProvider";
-
-function ThemeOption({
-  theme,
-  selected,
-  onSelect,
-}: {
-  theme: AvailableOrganizationTheme | null;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      onPress={onSelect}
-      className={`flex-row items-center gap-3 rounded-xl px-3 py-3 active:opacity-70 ${
-        selected ? "bg-primary/10" : ""
-      }`}
-    >
-      <View
-        className="size-5 rounded-full border-2 border-primary p-1"
-        accessibilityElementsHidden
-      >
-        {selected ? <View className="flex-1 rounded-full bg-primary" /> : null}
-      </View>
-      <View className="flex-1 gap-1">
-        <Text className="text-base font-semibold text-foreground">
-          {theme?.name ?? "Hakgyo Default"}
-        </Text>
-        <Text className="text-sm text-muted-foreground">
-          {theme ? "Organization theme" : "Standard application theme"}
-        </Text>
-      </View>
-      {theme ? (
-        <View className="flex-row overflow-hidden rounded-full border border-border">
-          <View
-            className="size-6"
-            style={{ backgroundColor: theme.theme.secondary }}
-          />
-          <View
-            className="size-6"
-            style={{ backgroundColor: theme.theme.primary }}
-          />
-        </View>
-      ) : null}
-    </Pressable>
-  );
-}
+import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 
 export default function ProfileTab() {
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const {
-    activeTheme,
-    availableThemes,
-    colors,
-    isRefreshingThemes,
-    refreshThemes,
-    selectTheme,
-  } = useAppTheme();
+  const { colors, isRefreshingOrganizations, refreshOrganizations } =
+    useAppTheme();
   const progress = api.gamification.getMySummary.useQuery();
   const connections = api.account.listMcpAuthorizations.useQuery();
   const connector = api.account.getMcpConnectionInfo.useQuery();
@@ -132,10 +75,12 @@ export default function ProfileTab() {
       onRefresh={() => {
         void progress.refetch();
         void connections.refetch();
-        void refreshThemes();
+        void refreshOrganizations();
       }}
       refreshing={
-        progress.isRefetching || connections.isRefetching || isRefreshingThemes
+        progress.isRefetching ||
+        connections.isRefetching ||
+        isRefreshingOrganizations
       }
     >
       <View className="flex-row items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4">
@@ -171,31 +116,6 @@ export default function ProfileTab() {
         </View>
       </View>
       <WeeklyStreak />
-      <Card>
-        <Eyebrow>Appearance</Eyebrow>
-        <Text className="text-sm leading-5 text-muted-foreground">
-          Choose a theme from an organization where you have an active course.
-          Your choice is stored on this device.
-        </Text>
-        <View accessibilityRole="radiogroup" className="gap-1">
-          <ThemeOption
-            theme={null}
-            selected={!activeTheme}
-            onSelect={() => void selectTheme(null)}
-          />
-          {availableThemes.map((theme) => (
-            <ThemeOption
-              key={theme.organizationId}
-              theme={theme}
-              selected={activeTheme?.organizationId === theme.organizationId}
-              onSelect={() => void selectTheme(theme.organizationId)}
-            />
-          ))}
-        </View>
-        {availableThemes.length === 0 ? (
-          <Empty>No organization themes are available yet.</Empty>
-        ) : null}
-      </Card>
       <Card>
         <Eyebrow>Milestones</Eyebrow>
         {progress.data?.achievements.length === 0 ? (

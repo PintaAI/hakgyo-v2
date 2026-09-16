@@ -5,6 +5,7 @@ import {
   assessmentAttemptPresentation,
   latestStandaloneAttemptForItem,
 } from "../../lib/assessment-state";
+import { getCourseResumeItem } from "../../lib/course-learning-path";
 import { authClient } from "../../lib/auth-client";
 import { api } from "../../lib/trpc";
 import { useAppTheme } from "../../providers/AppThemeProvider";
@@ -35,6 +36,7 @@ export function CourseOutlineList({
   currentItemId,
   onOpenItem,
   showHeader = true,
+  showActiveState = true,
 }: {
   courseId: string;
   currentItemId?: string;
@@ -43,6 +45,7 @@ export function CourseOutlineList({
     attempt: { id: string } | undefined,
   ) => void;
   showHeader?: boolean;
+  showActiveState?: boolean;
 }) {
   const { colors } = useAppTheme();
   const { data: session } = authClient.useSession();
@@ -55,6 +58,7 @@ export function CourseOutlineList({
     retry: false,
   });
   const course = outlineQuery.data;
+  const resumeItem = course && getCourseResumeItem(course);
   const courseAttempts = attemptsQuery.data?.filter(
     (attempt) => attempt.courseItem.module.courseId === courseId,
   );
@@ -102,7 +106,7 @@ export function CourseOutlineList({
             >
               <View className="flex-row items-start gap-3">
                 <View
-                  className={`size-9 items-center justify-center rounded-full border ${module.isCompleted ? "border-primary bg-primary" : "border-border bg-background"}`}
+                  className={`size-9 items-center justify-center rounded-md border ${module.isCompleted ? "border-primary bg-primary" : "border-border bg-background"}`}
                 >
                   {module.isCompleted || locked ? (
                     <SymbolView
@@ -132,6 +136,11 @@ export function CourseOutlineList({
                   <Text className="text-base font-bold text-foreground">
                     {module.title}
                   </Text>
+                  {locked ? (
+                    <Text className="text-xs leading-5 text-muted-foreground">
+                      Complete the previous modules to unlock.
+                    </Text>
+                  ) : null}
                   {module.description ? (
                     <Text
                       className="text-sm leading-5 text-muted-foreground"
@@ -146,7 +155,7 @@ export function CourseOutlineList({
                     ? "Completed"
                     : locked
                       ? "Locked"
-                      : `${module.items.length} activities`}
+                      : `${module.items.filter((item) => item.isCompleted).length}/${module.items.length} done`}
                 </Text>
               </View>
 
@@ -170,85 +179,91 @@ export function CourseOutlineList({
                         : undefined;
                     const isLast = itemIndex === module.items.length - 1;
                     const isCurrent = item.id === currentItemId;
+                    const isNext = !currentItemId && item.id === resumeItem?.id;
                     const status = locked
                       ? "Locked"
                       : (assessmentState?.detail ??
-                        (item.isCompleted ? "Completed" : "Ready"));
+                        (item.isCompleted
+                          ? "Completed"
+                          : isNext
+                            ? "Up next"
+                            : "Ready"));
 
                     return (
-                      <View
-                        className={`flex-row ${isLast ? "pb-1" : "pb-6"}`}
-                        key={item.id}
-                      >
-                        <View className="w-10 items-center">
-                          {!isLast ? (
-                            <View className="absolute bottom-0 top-8 w-px bg-border" />
-                          ) : null}
-                          <View
-                            className={`size-8 items-center justify-center rounded-full border ${item.isCompleted ? "border-primary bg-primary" : "border-border bg-background"}`}
-                          >
-                            <SymbolView
-                              fallback={
-                                <Text
-                                  className={`text-xs font-black ${item.isCompleted ? "text-primary-foreground" : "text-primary"}`}
-                                >
-                                  {item.isCompleted
-                                    ? "✓"
-                                    : itemFallback(item.type)}
-                                </Text>
-                              }
-                              name={
-                                item.isCompleted
-                                  ? "checkmark"
-                                  : locked
-                                    ? "lock.fill"
-                                    : itemIcon(item.type)
-                              }
-                              size={14}
-                              tintColor={
-                                item.isCompleted
-                                  ? colors.primaryForeground
-                                  : locked
-                                    ? colors.mutedForeground
-                                    : colors.primary
-                              }
-                              weight="semibold"
-                            />
-                          </View>
-                        </View>
-                        <Pressable
-                          accessibilityHint={assessmentState?.action}
-                          accessibilityRole="button"
-                          accessibilityState={{ disabled: locked }}
-                          className={`min-w-0 flex-1 pl-3 active:opacity-60 ${isCurrent ? "-my-2 rounded-xl bg-primary/10 py-2" : ""}`}
-                          disabled={locked}
-                          onPress={() => onOpenItem(item, attempt)}
+                      <View className={isLast ? "pb-1" : "pb-6"} key={item.id}>
+                        {!isLast ? (
+                          <View className="absolute bottom-0 left-5 top-8 w-px bg-border" />
+                        ) : null}
+                        <View
+                          className={`flex-row ${showActiveState && (isCurrent || isNext) ? "-mx-1 -my-2 rounded-xl bg-primary/10 px-1 py-2" : ""}`}
                         >
-                          <View className="flex-row items-start gap-3">
-                            <View className="min-w-0 flex-1 gap-1">
-                              <Text
-                                className={`text-[15px] font-semibold leading-5 ${isCurrent ? "text-primary" : "text-foreground"}`}
-                                numberOfLines={2}
-                              >
-                                {item.title}
-                              </Text>
-                              <Text
-                                className="text-xs leading-4 text-muted-foreground"
-                                numberOfLines={2}
-                              >
-                                {itemLabels[item.type]} · {status}
-                                {attempt && assessmentState?.action
-                                  ? ` · ${assessmentState.action}`
-                                  : ""}
-                              </Text>
+                          <View className="w-10 items-center">
+                            <View
+                              className={`size-8 items-center justify-center rounded-full border ${item.isCompleted ? "border-primary bg-primary" : "border-border bg-background"}`}
+                            >
+                              <SymbolView
+                                fallback={
+                                  <Text
+                                    className={`text-xs font-black ${item.isCompleted ? "text-primary-foreground" : "text-primary"}`}
+                                  >
+                                    {item.isCompleted
+                                      ? "✓"
+                                      : itemFallback(item.type)}
+                                  </Text>
+                                }
+                                name={
+                                  item.isCompleted
+                                    ? "checkmark"
+                                    : locked
+                                      ? "lock.fill"
+                                      : itemIcon(item.type)
+                                }
+                                size={14}
+                                tintColor={
+                                  item.isCompleted
+                                    ? colors.primaryForeground
+                                    : locked
+                                      ? colors.mutedForeground
+                                      : colors.primary
+                                }
+                                weight="semibold"
+                              />
                             </View>
-                            {!locked && !isCurrent ? (
-                              <Text className="pt-0.5 text-lg text-muted-foreground">
-                                ›
-                              </Text>
-                            ) : null}
                           </View>
-                        </Pressable>
+                          <Pressable
+                            accessibilityHint={assessmentState?.action}
+                            accessibilityRole="button"
+                            accessibilityState={{ disabled: locked }}
+                            className="min-w-0 flex-1 pl-3 active:opacity-60"
+                            disabled={locked}
+                            onPress={() => onOpenItem(item, attempt)}
+                          >
+                            <View className="flex-row items-start gap-3">
+                              <View className="min-w-0 flex-1 gap-1">
+                                <Text
+                                  className={`text-[15px] font-semibold leading-5 ${showActiveState && (isCurrent || isNext) ? "text-primary" : "text-foreground"}`}
+                                  numberOfLines={2}
+                                >
+                                  {item.title}
+                                </Text>
+                                <Text
+                                  className="text-xs leading-4 text-muted-foreground"
+                                  numberOfLines={2}
+                                >
+                                  {itemLabels[item.type]} · {status}
+                                  {attempt && assessmentState?.action
+                                    ? ` · ${assessmentState.action}`
+                                    : ""}
+                                </Text>
+                              </View>
+                              {!locked && !isCurrent ? (
+                                <Text className="pt-0.5 text-lg text-muted-foreground">
+                                  ›
+                                </Text>
+                              ) : null}
+                            </View>
+                          </Pressable>
+                        </View>
                       </View>
                     );
                   })}

@@ -9,6 +9,7 @@ import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 
 import { api } from "../lib/trpc";
 import {
+  getStreakLabel,
   getStreakStage,
   getWeeklyProgressDays,
 } from "../lib/streak";
@@ -38,9 +39,7 @@ export function WeeklyStreak() {
   const newestActiveDate = [...days]
     .reverse()
     .find((day) => day.active)?.dateKey;
-  const streakLabel = currentStreak
-    ? `Streak week ${stage.week}`
-    : "0 day streak";
+  const streakLabel = getStreakLabel(currentStreak ?? 0);
 
   useEffect(() => {
     if (currentStreak === undefined) return;
@@ -118,9 +117,7 @@ export function WeeklyStreak() {
                     fallback={<Text className="text-base">🔥</Text>}
                     name="flame.fill"
                     size={18}
-                    tintColor={
-                      liquidGlassAvailable ? colors.background : tierColor
-                    }
+                    tintColor={tierColor}
                     weight="semibold"
                   />
                 ) : (
@@ -161,9 +158,12 @@ export function WeeklyStreak() {
                         <GlassView
                           accessibilityLabel={accessibilityLabel}
                           colorScheme={colorScheme}
-                          glassEffectStyle="regular"
+                          glassEffectStyle="clear"
                           style={dayStyle}
-                          tintColor={day.active ? tierColor : undefined}
+                          tintColor={withOpacity(
+                            colors.primary,
+                            colorScheme === "dark" ? 0.35 : 0.18,
+                          )}
                         >
                           {dayContent}
                         </GlassView>
@@ -201,7 +201,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 36,
     justifyContent: "center",
-    overflow: "hidden",
     width: 36,
   },
 });

@@ -159,20 +159,24 @@ async function createFixture() {
 }
 
 integration(
-  "completion gates, concurrent retries, revocation and reward deduplication",
+  "one full practice round completes durably and rewards are deduplicated",
   () =>
     fixture(async (f) => {
-      await db.contentProgress.create({
-        data: {
-          userId: f.userId,
-          courseItemId: f.item.id,
-          status: "COMPLETED",
-        },
-      });
+      expect(
+        (await f.caller.getVocabularyPractice(f.scope)).entries[0],
+      ).toHaveProperty("imageAssetId", null);
       expect(
         (await getCourseOutlineForUser(f.course.id, f.userId)).modules[0]
           ?.items[0]?.isCompleted,
       ).toBe(false);
+      expect(
+        (
+          await f.caller.markContentProgress({
+            courseItemId: f.item.id,
+            status: "IN_PROGRESS",
+          })
+        ).status,
+      ).toBe("IN_PROGRESS");
       for (const courseItemId of [f.item.id, f.materialItem.id]) {
         await expectCode(
           f.caller.markContentProgress({ courseItemId, status: "COMPLETED" }),
@@ -182,14 +186,6 @@ integration(
       expect(
         (await f.caller.getCourseItem({ courseItemId: f.item.id }))?.progress[0]
           ?.status,
-      ).toBe("IN_PROGRESS");
-      expect(
-        (
-          await f.caller.markContentProgress({
-            courseItemId: f.item.id,
-            status: "IN_PROGRESS",
-          })
-        ).status,
       ).toBe("IN_PROGRESS");
       const [a, b] = await Promise.all([f.start(), f.start()]);
       expect(a.challengeId).toBe(b.challengeId);
@@ -204,9 +200,8 @@ integration(
       );
       expect(results.filter((r) => r.applied)).toHaveLength(1);
       expect(results[0]?.items[0]?.passStreak).toBe(1);
-      await expectCode(f.start(), "PRECONDITION_FAILED");
-      expect((await f.answer("학교")).remembered).toBe(false);
-      expect((await f.answer("학교")).remembered).toBe(true);
+      expect(results[0]?.practiced).toBe(true);
+      expect(results[0]?.remembered).toBe(true);
       await f.caller.markContentProgress({
         courseItemId: f.item.id,
         status: "COMPLETED",
@@ -215,25 +210,18 @@ integration(
         courseItemId: f.materialItem.id,
         status: "COMPLETED",
       });
+      await expectCode(f.start(), "PRECONDITION_FAILED");
+      expect((await f.answer("학교")).remembered).toBe(true);
+      expect((await f.answer("학교")).remembered).toBe(true);
       expect((await f.answer("wrong")).remembered).toBe(true);
-      const [failed] = await Promise.all([
-        f.answer("wrong"),
-        f.caller
-          .markContentProgress({
-            courseItemId: f.materialItem.id,
-            status: "COMPLETED",
-          })
-          .catch((error: unknown) => {
-            expect(error).toMatchObject({ code: "PRECONDITION_FAILED" });
-          }),
-      ]);
+      const failed = await f.answer("wrong");
       expect(failed.remembered).toBe(false);
+      expect(failed.practiced).toBe(true);
       expect(
         await db.contentProgress.count({
           where: { userId: f.userId, status: "COMPLETED" },
         }),
-      ).toBe(0);
-      for (let i = 0; i < 3; i++) await f.answer("학교");
+      ).toBe(2);
       await f.caller.markContentProgress({
         courseItemId: f.item.id,
         status: "COMPLETED",
@@ -323,7 +311,7 @@ integration(
 );
 
 integration(
-  "all words are required and embedded entry points share evidence",
+  "all words must be practiced once and embedded entry points share evidence",
   () =>
     fixture(async (f) => {
       await expectCode(
@@ -338,11 +326,12 @@ integration(
           definition: "student",
         },
       });
-      for (let i = 0; i < 3; i++) await f.answer("학교");
+      await f.answer("학교");
       const partial = await f.service.getStatus(f.userId, f.scope);
       expect(
-        partial.items.find((item) => item.entryId === f.entry.id)?.remembered,
+        partial.items.find((item) => item.entryId === f.entry.id)?.practiced,
       ).toBe(true);
+      expect(partial.practiced).toBe(false);
       expect(partial.remembered).toBe(false);
       await expectCode(
         f.caller.markContentProgress({
@@ -352,18 +341,6 @@ integration(
         "PRECONDITION_FAILED",
       );
       const embedded = { ...f.scope, sourceCourseItemId: f.materialItem.id };
-      await expectCode(f.service.getStatus(f.userId, embedded), "NOT_FOUND");
-      await db.material.update({
-        where: { id: f.material.id },
-        data: {
-          content: [
-            {
-              type: "vocabularyReference",
-              props: { vocabularySetId: f.scope.vocabularySetId },
-            },
-          ],
-        },
-      });
       expect((await f.service.getStatus(f.userId, embedded)).items).toEqual(
         partial.items,
       );
@@ -386,23 +363,9 @@ integration(
         challengeId: current.challengeId,
         answer: "학생",
       });
-      for (let i = 0; i < 2; i++) {
-        await db.vocabularyMemory.updateMany({
-          where: { userId: f.userId, entryId: second.id },
-          data: { nextReviewAt: new Date(0) },
-        });
-        const challenge = await f.service.start(f.userId, {
-          ...embedded,
-          entryId: second.id,
-        });
-        await f.service.submit(f.userId, {
-          challengeId: challenge.challengeId,
-          answer: "학생",
-        });
-      }
-      expect((await f.service.getStatus(f.userId, f.scope)).remembered).toBe(
-        true,
-      );
+      const practiced = await f.service.getStatus(f.userId, f.scope);
+      expect(practiced.practiced).toBe(true);
+      expect(practiced.remembered).toBe(true);
       await f.caller.markContentProgress({
         courseItemId: f.item.id,
         status: "COMPLETED",
@@ -410,19 +373,20 @@ integration(
       await db.vocabularyEntry.deleteMany({
         where: { vocabularySetId: f.scope.vocabularySetId },
       });
-      expect((await f.service.getStatus(f.userId, f.scope)).remembered).toBe(
-        false,
-      );
+      const empty = await f.service.getStatus(f.userId, f.scope);
+      expect(empty.practiced).toBe(false);
+      expect(empty.remembered).toBe(false);
       expect(
         await db.vocabularyMemory.count({ where: { userId: f.userId } }),
       ).toBe(0);
-      await expectCode(
-        f.caller.markContentProgress({
-          courseItemId: f.item.id,
-          status: "COMPLETED",
-        }),
-        "PRECONDITION_FAILED",
-      );
+      expect(
+        (
+          await f.caller.markContentProgress({
+            courseItemId: f.item.id,
+            status: "COMPLETED",
+          })
+        ).status,
+      ).toBe("COMPLETED");
     }),
   30_000,
 );

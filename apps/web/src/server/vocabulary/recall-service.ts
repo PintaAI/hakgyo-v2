@@ -1,11 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { PrismaClient } from "../../../generated/prisma/client";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
-import {
-  getVocabularyEvidence,
-  lockLearnerProgress,
-  meetsMaterialRequirements,
-} from "./evidence";
+import { getVocabularyEvidence, lockLearnerProgress } from "./evidence";
 import {
   advanceMemory,
   emptyMemory,
@@ -36,12 +32,24 @@ export function createVocabularyRecallService(
         organizationId: true,
         moduleId: true,
         vocabularySetId: true,
-        material: { select: { content: true } },
+        material: {
+          select: {
+            content: true,
+            completionRequirements: {
+              where: { type: "VOCABULARY_SET" },
+              select: { vocabularySetId: true },
+            },
+          },
+        },
       },
     });
     if (
       !source ||
       (source.vocabularySetId !== scope.vocabularySetId &&
+        !source.material?.completionRequirements.some(
+          (requirement) =>
+            requirement.vocabularySetId === scope.vocabularySetId,
+        ) &&
         (!source.material ||
           !collectMaterialReferenceIds(
             source.material.content,
@@ -228,45 +236,6 @@ export function createVocabularyRecallService(
           userId,
           challenge.entry.vocabularySetId,
         );
-        if (!evidence.remembered) {
-          await tx.contentProgress.updateMany({
-            where: {
-              userId,
-              status: "COMPLETED",
-              courseItem: { vocabularySetId: challenge.entry.vocabularySetId },
-            },
-            data: { status: "IN_PROGRESS", completedAt: null },
-          });
-          const dependent = await tx.contentProgress.findMany({
-            where: {
-              userId,
-              status: "COMPLETED",
-              courseItem: {
-                material: {
-                  completionRequirements: {
-                    some: { vocabularySetId: challenge.entry.vocabularySetId },
-                  },
-                },
-              },
-            },
-            select: { id: true, courseItem: { select: { materialId: true } } },
-          });
-          for (const progress of dependent) {
-            if (
-              progress.courseItem.materialId &&
-              !(await meetsMaterialRequirements(
-                tx,
-                userId,
-                progress.courseItem.materialId,
-              ))
-            ) {
-              await tx.contentProgress.update({
-                where: { id: progress.id },
-                data: { status: "IN_PROGRESS", completedAt: null },
-              });
-            }
-          }
-        }
         return { correct, applied: true, ...evidence };
       });
     },

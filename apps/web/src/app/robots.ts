@@ -9,12 +9,11 @@ export default function robots(): MetadataRoute.Robots {
       allow: ["/", "/catalog"],
       disallow: [
         "/api/",
-        "/auth",
-        "/docs",
-        "/invite",
-        "/learn",
-        "/oauth",
-        "/workspace",
+        // Match app routes exactly so organization slugs such as learn-korean
+        // remain crawlable at the root.
+        ...["auth", "docs", "invite", "learn", "oauth", "workspace"].flatMap(
+          (route) => [`/${route}$`, `/${route}/`],
+        ),
       ],
     },
     sitemap: `${env.APP_URL}/sitemap.xml`,

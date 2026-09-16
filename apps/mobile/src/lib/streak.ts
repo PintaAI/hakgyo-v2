@@ -29,6 +29,11 @@ export function getStreakStage(currentStreak: number) {
   return { progress, tone, week };
 }
 
+export function getStreakLabel(currentStreak: number) {
+  const streak = Math.max(0, Math.floor(currentStreak));
+  return `${streak} day streak`;
+}
+
 export function getWeeklyProgressDays(input: {
   activeDates: readonly string[];
   startsOn: string;

@@ -2,9 +2,8 @@ import { router } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { Pressable, Text, View } from "react-native";
 
-import { dateLabel } from "../../lib/study";
+import { dayLabel } from "../../lib/study";
 import { useAppTheme } from "../../providers/AppThemeProvider";
-import { Empty, QueryState } from "../learning-ui";
 
 export type CohortMilestone = {
   courseItemId: string;
@@ -57,133 +56,79 @@ function milestoneDetail(milestone: CohortMilestone) {
     parts.push(`Score ${milestone.score}/${milestone.maxScore}`);
   }
   if (milestone.completedAt) {
-    parts.push(dateLabel(new Date(milestone.completedAt)));
+    parts.push(dayLabel(new Date(milestone.completedAt)));
   }
   return parts.join(" · ");
 }
 
-export function CohortMilestonesSection({
-  groups,
-  pending,
-  error,
-  retry,
+export function CohortMilestoneTimeline({
+  milestones,
+  courseId,
 }: {
-  groups: CohortMilestoneGroup[] | undefined;
-  pending: boolean;
-  error?: { message: string } | null;
-  retry: () => void;
+  milestones: CohortMilestone[];
+  courseId: string;
 }) {
   const { colors } = useAppTheme();
 
-  if (pending || error) {
-    return <QueryState pending={pending} error={error} retry={retry} />;
-  }
-
-  const visible = (groups ?? []).filter((group) => group.milestones.length > 0);
-  if (visible.length === 0) return null;
-  const showCohortContext = visible.length > 1;
-
   return (
-    <View className="gap-3">
-      {visible.map((group) => (
-        <View className="gap-3 py-2" key={group.cohortId}>
-          {showCohortContext ? (
-            <View className="flex-row items-center justify-between gap-4">
-              <View className="min-w-0 flex-1 gap-0.5">
-                <Text
-                  className="text-base font-bold text-foreground"
-                  numberOfLines={1}
-                >
-                  {group.cohortName}
-                </Text>
-                <Text
-                  className="text-xs text-muted-foreground"
-                  numberOfLines={1}
-                >
-                  {group.courseTitle}
-                </Text>
+    <View>
+      {milestones.map((milestone, index) => {
+        const isLast = index === milestones.length - 1;
+        return (
+          <View className="flex-row" key={milestone.courseItemId}>
+            <View className="w-10 items-center">
+              {!isLast ? (
+                <View className="absolute bottom-0 top-8 w-px bg-border" />
+              ) : null}
+              <View className="size-8 items-center justify-center rounded-full border border-border bg-background">
+                <SymbolView
+                  fallback={
+                    <Text className="text-xs font-black text-primary">
+                      {milestoneFallback(milestone.type)}
+                    </Text>
+                  }
+                  name={milestoneIcon(milestone.type)}
+                  size={14}
+                  tintColor={colors.primary}
+                  weight="semibold"
+                />
               </View>
-              <Text className="text-xs font-semibold text-muted-foreground">
-                {group.completedCount} completed
-              </Text>
             </View>
-          ) : (
-            <View className="items-center">
-              <Text className="text-xs font-semibold text-muted-foreground">
-                {group.completedCount} completed
-              </Text>
-            </View>
-          )}
-
-          <View className="mt-2">
-            {group.milestones.map((milestone, index) => {
-              const isLast = index === group.milestones.length - 1;
-              return (
-                <View className="flex-row" key={milestone.courseItemId}>
-                  <View className="w-10 items-center">
-                    {!isLast ? (
-                      <View className="absolute bottom-0 top-8 w-px bg-border" />
-                    ) : null}
-                    <View className="size-8 items-center justify-center rounded-full border border-border bg-background">
-                      <SymbolView
-                        fallback={
-                          <Text className="text-xs font-black text-primary">
-                            {milestoneFallback(milestone.type)}
-                          </Text>
-                        }
-                        name={milestoneIcon(milestone.type)}
-                        size={14}
-                        tintColor={colors.primary}
-                        weight="semibold"
-                      />
-                    </View>
-                  </View>
-                  <Pressable
-                    accessibilityHint={`Open completed ${milestoneTypeLabel(milestone.type).toLowerCase()}`}
-                    accessibilityRole="button"
-                    className={`min-w-0 flex-1 pl-3 active:opacity-60 ${isLast ? "pb-1" : "pb-6"}`}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/courses/[courseId]/items/[courseItemId]",
-                        params: {
-                          courseId: group.courseId,
-                          courseItemId: milestone.courseItemId,
-                        },
-                      })
-                    }
+            <Pressable
+              accessibilityHint={`Open completed ${milestoneTypeLabel(milestone.type).toLowerCase()}`}
+              accessibilityRole="button"
+              className={`min-w-0 flex-1 pl-3 active:opacity-60 ${isLast ? "pb-1" : "pb-6"}`}
+              onPress={() =>
+                router.push({
+                  pathname: "/courses/[courseId]/items/[courseItemId]",
+                  params: {
+                    courseId,
+                    courseItemId: milestone.courseItemId,
+                  },
+                })
+              }
+            >
+              <View className="flex-row items-start gap-3">
+                <View className="min-w-0 flex-1 gap-1">
+                  <Text
+                    className="text-[15px] font-semibold leading-5 text-foreground"
+                    numberOfLines={2}
                   >
-                    <View className="flex-row items-start gap-3">
-                      <View className="min-w-0 flex-1 gap-1">
-                        <Text
-                          className="text-[15px] font-semibold leading-5 text-foreground"
-                          numberOfLines={2}
-                        >
-                          {milestone.title}
-                        </Text>
-                        <Text
-                          className="text-xs leading-4 text-muted-foreground"
-                          numberOfLines={2}
-                        >
-                          {milestoneDetail(milestone)}
-                        </Text>
-                      </View>
-                      <Text className="pt-0.5 text-lg text-muted-foreground">
-                        ›
-                      </Text>
-                    </View>
-                  </Pressable>
+                    {milestone.title}
+                  </Text>
+                  <Text
+                    className="text-xs leading-4 text-muted-foreground"
+                    numberOfLines={2}
+                  >
+                    {milestoneDetail(milestone)}
+                  </Text>
                 </View>
-              );
-            })}
+                <Text className="pt-0.5 text-lg text-muted-foreground">›</Text>
+              </View>
+            </Pressable>
           </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
-  );
-}
-
-export function EmptyMilestones() {
-  return (
-    <Empty>No milestones yet — complete your first lesson to earn one.</Empty>
   );
 }

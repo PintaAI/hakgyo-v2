@@ -1,6 +1,16 @@
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
-import { Alert, Image, Linking, Pressable, Text, View } from "react-native";
+import { SymbolView, type SymbolViewProps } from "expo-symbols";
+import type { ReactNode } from "react";
+import {
+  Alert,
+  Image,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -10,13 +20,26 @@ import {
 import {
   canOpenModule,
   dateLabel,
+  dayLabel,
   meetingState,
   safeExternalUrl,
+  timeLabel,
 } from "../../lib/study";
 import { api } from "../../lib/trpc";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
-import { QueryState, Row } from "../learning-ui";
+import { GlassBox } from "../GlassBox";
+import { Eyebrow, QueryState } from "../learning-ui";
+import {
+  CohortMilestoneTimeline,
+  type CohortMilestoneGroup,
+} from "./milestone-section";
+
+// Official brand assets (see apps/mobile/assets/brands/README.md for sources).
+// Used unmodified; Zoom opens the cohort's meeting URL, WhatsApp opens the
+// cohort's discussion room invite.
+const zoomBrandIcon = require("../../../assets/brands/zoom.png");
+const whatsappBrandIcon = require("../../../assets/brands/whatsapp.png");
 
 export type CohortMeeting = {
   id: string;
@@ -92,80 +115,6 @@ export async function openExternalLink(
   }
 }
 
-function weekdayLabel(date: Date) {
-  return date
-    .toLocaleDateString(undefined, { weekday: "short" })
-    .replace(".", "")
-    .toUpperCase();
-}
-
-export function SessionBlock({
-  meeting,
-  state,
-}: {
-  meeting: CohortMeeting;
-  state: "live" | "joining" | "upcoming";
-}) {
-  const joinable =
-    !!meeting.joinUrl && (state === "live" || state === "joining");
-  const live = state === "live";
-  return (
-    <View
-      className={`flex-row items-center gap-3 rounded-xl px-3 py-3 ${live ? "bg-primary" : "bg-muted"}`}
-    >
-      <View
-        className={`w-12 items-center rounded-lg border py-1.5 ${live ? "border-primary-foreground/30 bg-primary-foreground/15" : "border-border bg-background"}`}
-      >
-        <Text
-          className={`text-[10px] font-black tracking-[1px] ${live ? "text-primary-foreground/80" : "text-primary"}`}
-        >
-          {weekdayLabel(meeting.startsAt)}
-        </Text>
-        <Text
-          className={`text-lg font-black leading-5 ${live ? "text-primary-foreground" : "text-foreground"}`}
-        >
-          {meeting.startsAt.getDate()}
-        </Text>
-      </View>
-      <View className="min-w-0 flex-1 gap-0.5">
-        <Text
-          className={`font-bold ${live ? "text-primary-foreground" : "text-foreground"}`}
-          numberOfLines={1}
-        >
-          {meeting.title}
-        </Text>
-        <Text
-          className={`text-xs font-semibold ${live ? "text-primary-foreground/75" : "text-muted-foreground"}`}
-          numberOfLines={1}
-        >
-          {live
-            ? "Happening now"
-            : state === "joining"
-              ? "Starting soon"
-              : dateLabel(meeting.startsAt)}{" "}
-          · {meeting.durationMinutes} min
-        </Text>
-      </View>
-      {joinable && meeting.joinUrl ? (
-        <Pressable
-          accessibilityHint="Opens the meeting link"
-          accessibilityRole="button"
-          className={`rounded-full px-4 py-2.5 ${live ? "bg-primary-foreground" : "bg-primary"}`}
-          onPress={() =>
-            meeting.joinUrl && void openExternalLink(meeting.joinUrl, "zoom")
-          }
-        >
-          <Text
-            className={`text-sm font-bold ${live ? "text-primary" : "text-primary-foreground"}`}
-          >
-            Join
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
-
 function eventSummary(events: CohortEvent[]) {
   const open = events.filter((event) => {
     const attempt = event.attempts[0];
@@ -184,7 +133,211 @@ export function closesLabel(closesAt: Date, now: number) {
   return `closes ${dateLabel(closesAt)}`;
 }
 
-const SOURCE_BADGE = "text-[11px] font-bold uppercase tracking-[1.5px]";
+function dueLabel(closesAt: Date, now: number) {
+  const diff = closesAt.getTime() - now;
+  if (diff <= 0) return null;
+  const hours = Math.floor(diff / 3_600_000);
+  if (hours < 24) return `Due in ${Math.max(hours, 1)}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Due in ${days}d`;
+  return `Due ${dayLabel(closesAt)}`;
+}
+
+// One corner family for the whole card: card-level surfaces share
+// SURFACE_RADIUS so sibling tiles read as a set. Chips and pills stay
+// fully round.
+const SURFACE_RADIUS = 20;
+
+// The card answers "what should I do now?" with exactly one hero, chosen by
+// urgency: a live/starting class beats an expiring assessment, which beats
+// the next lesson. Everything else is demoted to quiet plate rows.
+type CohortHero = {
+  kind: "class" | "assessment" | "learning" | "caught-up";
+  eyebrow: string;
+  live?: boolean;
+  title: string;
+  meta: string;
+  pill?: string;
+  pillIcon?: ImageSourcePropType;
+  onPress?: () => void;
+};
+
+type PlateRow = {
+  key: string;
+  icon: SymbolViewProps["name"];
+  fallback: string;
+  title: string;
+  detail: string;
+  onPress?: () => void;
+};
+
+function HeroCopy({
+  hero,
+  compact = false,
+}: {
+  hero: CohortHero;
+  compact?: boolean;
+}) {
+  return (
+    <>
+      <View className="flex-row items-center gap-1.5">
+        {hero.live ? (
+          <View className="size-2 rounded-full bg-destructive" />
+        ) : null}
+        <Text
+          className={`text-[11px] font-bold uppercase tracking-[1.5px] ${hero.live ? "text-destructive" : "text-primary"}`}
+        >
+          {hero.eyebrow}
+        </Text>
+      </View>
+      <Text
+        className={
+          compact
+            ? "text-lg font-black leading-6 text-foreground"
+            : "text-xl font-black leading-7 text-foreground"
+        }
+        numberOfLines={2}
+      >
+        {hero.title}
+      </Text>
+      <Text
+        className="text-xs font-semibold text-muted-foreground"
+        numberOfLines={1}
+      >
+        {hero.meta}
+      </Text>
+    </>
+  );
+}
+
+function HeroPill({ hero }: { hero: CohortHero }) {
+  if (!hero.pill || !hero.onPress) return null;
+  return (
+    <View className="flex-row items-center gap-1.5 rounded-full bg-primary px-4 py-2">
+      {hero.pillIcon ? (
+        <Image
+          accessibilityIgnoresInvertColors
+          source={hero.pillIcon}
+          style={{ width: 14, height: 14, borderRadius: 7 }}
+        />
+      ) : null}
+      <Text className="text-sm font-bold text-primary-foreground">
+        {hero.pill}
+      </Text>
+    </View>
+  );
+}
+
+function HeroBlock({ hero, tint }: { hero: CohortHero; tint: string }) {
+  // The assessment hero is a denser alert-style row: copy left, action right.
+  const compact = hero.kind === "assessment";
+  return (
+    <Pressable
+      accessibilityHint={hero.onPress ? hero.title : undefined}
+      accessibilityRole={hero.onPress ? "button" : undefined}
+      className={hero.onPress ? "active:opacity-80" : ""}
+      disabled={!hero.onPress}
+      onPress={hero.onPress}
+    >
+      <GlassBox
+        isInteractive={!!hero.onPress}
+        tintColor={tint}
+        glassEffectStyle="clear"
+        style={styles.heroGlass}
+      >
+        {compact ? (
+          <View className="flex-row items-center gap-3 px-5 py-4">
+            <View className="min-w-0 flex-1 gap-1">
+              <HeroCopy compact hero={hero} />
+            </View>
+            <HeroPill hero={hero} />
+          </View>
+        ) : (
+          <View className="gap-1.5 px-5 py-5">
+            <HeroCopy hero={hero} />
+            {hero.pill && hero.onPress ? (
+              <View className="mt-2 self-start">
+                <HeroPill hero={hero} />
+              </View>
+            ) : null}
+          </View>
+        )}
+      </GlassBox>
+    </Pressable>
+  );
+}
+
+function PlateRowView({ row, isLast }: { row: PlateRow; isLast: boolean }) {
+  const { colors } = useAppTheme();
+  return (
+    <Pressable
+      accessibilityRole={row.onPress ? "button" : undefined}
+      className={`flex-row items-center gap-3 py-3 ${isLast ? "" : "border-b border-border/60"} ${row.onPress ? "active:opacity-60" : ""}`}
+      disabled={!row.onPress}
+      onPress={row.onPress}
+    >
+      <View className="size-9 items-center justify-center rounded-full bg-muted">
+        <SymbolView
+          fallback={
+            <Text className="text-xs font-black text-primary">
+              {row.fallback}
+            </Text>
+          }
+          name={row.icon}
+          size={15}
+          tintColor={colors.primary}
+          weight="semibold"
+        />
+      </View>
+      <View className="min-w-0 flex-1 gap-0.5">
+        <Text
+          className="text-sm font-semibold text-foreground"
+          numberOfLines={1}
+        >
+          {row.title}
+        </Text>
+        <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+          {row.detail}
+        </Text>
+      </View>
+      {row.onPress ? (
+        <Text className="text-lg text-muted-foreground">›</Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function GlassChip({
+  icon,
+  label,
+  onPress,
+  tint,
+}: {
+  icon: ReactNode;
+  label: string;
+  onPress: () => void;
+  tint: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="active:opacity-70"
+      onPress={onPress}
+    >
+      <GlassBox
+        isInteractive
+        tintColor={tint}
+        glassEffectStyle="clear"
+        style={styles.chipGlass}
+      >
+        <View className="h-9 flex-row items-center gap-1.5 px-3.5">
+          {icon}
+          <Text className="text-xs font-semibold text-foreground">{label}</Text>
+        </View>
+      </GlassBox>
+    </Pressable>
+  );
+}
 
 export function CohortCard({
   cohort,
@@ -194,6 +347,7 @@ export function CohortCard({
   eventsError,
   onRetryEvents,
   now,
+  milestoneGroup,
   isFirst = false,
 }: {
   cohort: LearnCohort;
@@ -203,6 +357,7 @@ export function CohortCard({
   eventsError?: { message: string } | null;
   onRetryEvents: () => void;
   now: number;
+  milestoneGroup?: CohortMilestoneGroup;
   isFirst?: boolean;
 }) {
   const upcoming = cohort.meetings
@@ -226,15 +381,6 @@ export function CohortCard({
     !!featured?.closesAt &&
     featured.closesAt.getTime() - now < 48 * 3_600_000 &&
     featuredActionable;
-  const featuredStatusLabel = !featured
-    ? null
-    : featuredUrgent
-      ? "Due soon"
-      : !featuredAttempt
-        ? "Open"
-        : featuredAttempt.status === "IN_PROGRESS"
-          ? "In progress"
-          : null;
 
   const openFeaturedAssessment = () => {
     if (!featured) return;
@@ -269,7 +415,11 @@ export function CohortCard({
       : nextOutlineItem.type === "ASSESSMENT"
         ? "Assessment"
         : "Lesson";
-  const { colors } = useAppTheme();
+  const { colors, colorScheme } = useAppTheme();
+  const glassTint = withOpacity(
+    colors.primary,
+    colorScheme === "dark" ? 0.35 : 0.18,
+  );
   const insets = useSafeAreaInsets();
   // Full-bleed first card sits under the transparent native header: keep
   // the image bleeding but push the titles below the toolbar + breathing
@@ -281,9 +431,119 @@ export function CohortCard({
       pathname: "/courses/[courseId]",
       params: { courseId: cohort.course.id },
     });
+  const openNextItem =
+    nextOutlineItem && nextTypeLabel
+      ? () =>
+          router.push({
+            pathname: "/courses/[courseId]/items/[courseItemId]",
+            params: {
+              courseId: cohort.course.id,
+              courseItemId: nextOutlineItem.id,
+            },
+          })
+      : undefined;
+
+  // Pick the single hero by urgency.
+  let hero: CohortHero | null = null;
+  if (next && nextState && nextState !== "upcoming") {
+    const joinUrl = next.joinUrl;
+    const endsAt = new Date(
+      next.startsAt.getTime() + next.durationMinutes * 60_000,
+    );
+    hero = {
+      kind: "class",
+      eyebrow: nextState === "live" ? "Live now" : "Starting soon",
+      live: nextState === "live",
+      title: next.title,
+      meta:
+        nextState === "live"
+          ? `Ends ${timeLabel(endsAt)} · ${next.durationMinutes} min`
+          : `Starts ${timeLabel(next.startsAt)} · ${next.durationMinutes} min`,
+      pill: "Join",
+      pillIcon: zoomBrandIcon,
+      onPress: joinUrl
+        ? () => void openExternalLink(joinUrl, "zoom")
+        : undefined,
+    };
+  } else if (featured && featuredActionable && featuredUrgent) {
+    hero = {
+      kind: "assessment",
+      eyebrow:
+        (featured.closesAt ? dueLabel(featured.closesAt, now) : null) ??
+        assessmentSourceBadge(featured),
+      title: featured.title,
+      meta: `${assessmentSourceBadge(featured)} · ${assessmentAttemptPresentation(featuredAttempt).detail}`,
+      pill: featuredAttempt ? "Resume" : "Start",
+      onPress: openFeaturedAssessment,
+    };
+  } else if (nextOutlineItem && nextTypeLabel && openNextItem) {
+    hero = {
+      kind: "learning",
+      eyebrow: completedCount > 0 ? "Continue learning" : "Start learning",
+      title: nextOutlineItem.title,
+      meta: `${nextTypeLabel} · ${nextOutlineItem.moduleTitle}`,
+      pill: completedCount > 0 ? "Continue" : "Start",
+      onPress: openNextItem,
+    };
+  } else if (
+    !featuredActionable &&
+    !eventsPending &&
+    !eventsError &&
+    outlineQuery.isSuccess &&
+    !nextOutlineItem
+  ) {
+    hero = {
+      kind: "caught-up",
+      eyebrow: "All caught up",
+      title: "Nothing due right now",
+      meta: "New classes and activities will appear here",
+    };
+  }
+
+  // Everything pending that isn't the hero becomes a quiet row.
+  const plateRows: PlateRow[] = [];
+  if (next && nextState === "upcoming") {
+    plateRows.push({
+      key: "next-class",
+      icon: "calendar",
+      fallback: "◷",
+      title: next.title,
+      detail: `${dateLabel(next.startsAt)} · ${next.durationMinutes} min`,
+    });
+  }
+  if (featured && hero?.kind !== "assessment") {
+    plateRows.push({
+      key: "featured-assessment",
+      icon: "doc.text",
+      fallback: "✎",
+      title: featured.title,
+      detail: `${assessmentSourceBadge(featured)} · ${assessmentAttemptPresentation(featuredAttempt).detail}${featured.closesAt ? ` · ${closesLabel(featured.closesAt, now)}` : ""}`,
+      onPress: openFeaturedAssessment,
+    });
+  }
+  if (nextOutlineItem && nextTypeLabel && hero?.kind !== "learning") {
+    plateRows.push({
+      key: "next-lesson",
+      icon: "book.closed",
+      fallback: "Aa",
+      title: nextOutlineItem.title,
+      detail: `${nextTypeLabel} · ${nextOutlineItem.moduleTitle}`,
+      onPress: openNextItem,
+    });
+  }
+  if (remaining > 0) {
+    plateRows.push({
+      key: "more-assessments",
+      icon: "tray.full",
+      fallback: "+",
+      title: `${remaining} more in Practice`,
+      detail: `${open.length} open overall`,
+      onPress: () => router.navigate("/(home)/(tabs)/assessments"),
+    });
+  }
 
   return (
-    <View className="overflow-hidden rounded-2xl bg-background">
+    <View className="bg-background" style={styles.card}>
       <View className="relative justify-end bg-muted">
         {thumbnailUrl ? (
           <>
@@ -303,44 +563,70 @@ export function CohortCard({
           </>
         ) : null}
         <View
-          className="relative z-20 gap-1.5 p-4"
+          className="relative z-20 flex-row items-end gap-2 p-4"
           style={{ paddingTop: headerTopPadding }}
         >
-          <View className="flex-row items-center gap-2">
-            {nextState === "live" ? (
-              <View className="rounded-full bg-primary px-2 py-0.5">
-                <Text className="text-[10px] font-bold uppercase tracking-[1px] text-primary-foreground">
-                  Live
+          <View className="min-w-0 flex-1 gap-1.5">
+            <View className="flex-row items-center gap-2">
+              <Text
+                className="flex-1 text-xs font-semibold uppercase tracking-[1px] text-muted-foreground"
+                numberOfLines={1}
+              >
+                {cohort.course.title}
+              </Text>
+              {progress !== null ? (
+                <Text className="text-xs font-semibold text-muted-foreground">
+                  {completedCount}/{outlineItems.length}
                 </Text>
-              </View>
-            ) : nextState === "joining" ? (
-              <View className="rounded-full bg-primary/15 px-2 py-0.5">
-                <Text className="text-[10px] font-bold uppercase tracking-[1px] text-primary">
-                  Soon
-                </Text>
-              </View>
+              ) : null}
+            </View>
+            <Text
+              className="text-2xl font-black leading-7 tracking-tight text-foreground"
+              numberOfLines={2}
+            >
+              {cohort.name}
+            </Text>
+            {cohort.facilitators.length > 0 ? (
+              <Text
+                className="text-xs font-semibold text-muted-foreground"
+                numberOfLines={1}
+              >
+                Mentored by {cohort.facilitators.map((f) => f.name).join(", ")}
+              </Text>
             ) : null}
-            <Text
-              className="flex-1 text-xs font-semibold uppercase tracking-[1px] text-muted-foreground"
-              numberOfLines={1}
-            >
-              {cohort.course.title}
-            </Text>
           </View>
-          <Text
-            className="text-2xl font-black leading-7 tracking-tight text-foreground"
-            numberOfLines={2}
-          >
-            {cohort.name}
-          </Text>
-          {cohort.facilitators.length > 0 ? (
-            <Text
-              className="text-xs font-semibold text-muted-foreground"
-              numberOfLines={1}
-            >
-              Mentored by {cohort.facilitators.map((f) => f.name).join(", ")}
-            </Text>
-          ) : null}
+          <View className="flex-row items-center gap-2">
+            {cohort.whatsappGroupUrl ? (
+              <GlassChip
+                icon={
+                  <Image
+                    accessibilityIgnoresInvertColors
+                    source={whatsappBrandIcon}
+                    style={{ width: 14, height: 14 }}
+                  />
+                }
+                label="Group"
+                onPress={() =>
+                  cohort.whatsappGroupUrl &&
+                  void openExternalLink(cohort.whatsappGroupUrl, "whatsapp")
+                }
+                tint={glassTint}
+              />
+            ) : null}
+            <GlassChip
+              icon={
+                <SymbolView
+                  fallback={<View />}
+                  name="book.closed"
+                  size={13}
+                  tintColor={colors.foreground}
+                />
+              }
+              label="Buka bab"
+              onPress={openCourse}
+              tint={glassTint}
+            />
+          </View>
         </View>
         {progress !== null ? (
           <View className="absolute bottom-0 left-0 right-0 z-30 h-1 bg-muted">
@@ -352,174 +638,72 @@ export function CohortCard({
         ) : null}
       </View>
 
-      <View className="gap-3 p-4">
-        {next && nextState ? (
-          <SessionBlock meeting={next} state={nextState} />
-        ) : null}
-
-        <View className="flex-row gap-2">
-          <Pressable
-            accessibilityHint="Opens the course materials"
-            accessibilityRole="button"
-            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl border border-border px-3 py-3 active:opacity-70"
-            onPress={openCourse}
-          >
-            <SymbolView
-              fallback={<View />}
-              name="book.closed.fill"
-              size={15}
-              tintColor={colors.foreground}
-            />
-            <Text className="text-sm font-bold text-foreground">
-              View course
-            </Text>
-          </Pressable>
-          {cohort.whatsappGroupUrl ? (
-            <Pressable
-              accessibilityRole="button"
-              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl border border-border px-3 py-3 active:opacity-70"
-              onPress={() =>
-                cohort.whatsappGroupUrl &&
-                void openExternalLink(cohort.whatsappGroupUrl, "whatsapp")
-              }
-            >
-              <SymbolView
-                fallback={<View />}
-                name="message.fill"
-                size={15}
-                tintColor={colors.foreground}
-              />
-              <Text className="text-sm font-bold text-foreground">
-                WhatsApp
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-
-        {progress !== null ? (
-          progress === 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              className="items-center rounded-2xl bg-primary px-5 py-4 active:opacity-80"
-              onPress={openCourse}
-            >
-              <Text className="text-base font-bold text-primary-foreground">
-                Start learning
-              </Text>
-            </Pressable>
-          ) : (
-            <View className="gap-3">
-              {outlineQuery.isError ? (
-                <Pressable
-                  accessibilityRole="button"
-                  className="items-center rounded-2xl border border-border px-5 py-4 active:opacity-70"
-                  onPress={() => void outlineQuery.refetch()}
-                >
-                  <Text className="text-sm font-bold text-muted-foreground">
-                    Couldn’t load what’s next — tap to retry
-                  </Text>
-                </Pressable>
-              ) : nextOutlineItem && nextTypeLabel ? (
-                <Pressable
-                  accessibilityHint={`Continue with ${nextOutlineItem.title}`}
-                  accessibilityRole="button"
-                  className="flex-row items-center gap-3 rounded-2xl bg-primary px-5 py-4 active:opacity-80"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/courses/[courseId]/items/[courseItemId]",
-                      params: {
-                        courseId: cohort.course.id,
-                        courseItemId: nextOutlineItem.id,
-                      },
-                    })
-                  }
-                >
-                  <View className="min-w-0 flex-1 gap-1">
-                    <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary-foreground/70">
-                      Continue learning
-                    </Text>
-                    <Text
-                      className="text-lg font-black leading-6 text-primary-foreground"
-                      numberOfLines={2}
-                    >
-                      {nextOutlineItem.title}
-                    </Text>
-                    <Text
-                      className="text-xs font-semibold text-primary-foreground/70"
-                      numberOfLines={1}
-                    >
-                      {nextTypeLabel} · {nextOutlineItem.moduleTitle}
-                    </Text>
-                  </View>
-                  <Text className="text-2xl text-primary-foreground">›</Text>
-                </Pressable>
-              ) : (
-                <Text className="text-sm text-muted-foreground">
-                  No unlocked activities to continue.
-                </Text>
-              )}
-            </View>
-          )
-        ) : null}
+      <View className="gap-4 p-4">
+        {hero ? <HeroBlock hero={hero} tint={glassTint} /> : null}
 
         <QueryState
           pending={eventsPending}
           error={eventsError}
           retry={onRetryEvents}
         />
-        {!eventsPending && !eventsError && featured ? (
+        {outlineQuery.isError ? (
+          <Pressable
+            accessibilityRole="button"
+            className="items-center border border-border px-5 py-4 active:opacity-70"
+            onPress={() => void outlineQuery.refetch()}
+            style={styles.surface}
+          >
+            <Text className="text-sm font-bold text-muted-foreground">
+              Couldn’t load what’s next — tap to retry
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {plateRows.length > 0 ? (
           <View className="gap-2">
-            {featuredActionable ? (
-              <Pressable
-                accessibilityHint={`Open ${assessmentSourceBadge(featured)} ${featured.title}`}
-                accessibilityRole="button"
-                className={`flex-row items-center gap-3 rounded-2xl px-5 py-4 active:opacity-80 ${
-                  featuredUrgent
-                    ? "border border-primary/40 bg-primary/10"
-                    : "border border-border bg-card"
-                }`}
-                onPress={openFeaturedAssessment}
-              >
-                <View className="min-w-0 flex-1 gap-1">
-                  <Text className={`${SOURCE_BADGE} text-primary`}>
-                    {featuredStatusLabel ? `${featuredStatusLabel} • ` : ""}
-                    {assessmentSourceBadge(featured)}
-                  </Text>
-                  <Text
-                    className="text-lg font-black leading-6 text-foreground"
-                    numberOfLines={2}
-                  >
-                    {featured.title}
-                  </Text>
-                  <Text
-                    className="text-xs font-semibold text-muted-foreground"
-                    numberOfLines={1}
-                  >
-                    {assessmentAttemptPresentation(featured.attempts[0]).detail}
-                    {featured.closesAt
-                      ? ` · ${closesLabel(featured.closesAt, now)}`
-                      : ""}
-                  </Text>
-                </View>
-                <Text className="text-2xl text-primary">›</Text>
-              </Pressable>
-            ) : (
-              <Row
-                title={featured.title}
-                detail={`${assessmentSourceBadge(featured)} · ${assessmentAttemptPresentation(featured.attempts[0]).detail}${featured.closesAt ? ` · ${closesLabel(featured.closesAt, now)}` : ""}`}
-                onPress={openFeaturedAssessment}
-              />
-            )}
-            {remaining > 0 ? (
-              <Row
-                title={`${remaining} more in Practice`}
-                detail={`${open.length} open overall`}
-                onPress={() => router.navigate("/(home)/(tabs)/assessments")}
-              />
-            ) : null}
+            <Eyebrow>On your plate</Eyebrow>
+            <View>
+              {plateRows.map((row, index) => (
+                <PlateRowView
+                  isLast={index === plateRows.length - 1}
+                  key={row.key}
+                  row={row}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {milestoneGroup && milestoneGroup.milestones.length > 0 ? (
+          <View className="gap-2">
+            <Eyebrow>{`Completed (${milestoneGroup.completedCount})`}</Eyebrow>
+            <CohortMilestoneTimeline
+              courseId={cohort.course.id}
+              milestones={milestoneGroup.milestones}
+            />
           </View>
         ) : null}
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: SURFACE_RADIUS,
+    overflow: "hidden",
+  },
+  surface: {
+    borderRadius: SURFACE_RADIUS,
+  },
+  // No overflow here: the docs only put borderRadius on the glass view
+  // (the native side rounds the effect itself), and our padded content
+  // never bleeds to the edge. Clipping the glass view can cut its edge
+  // highlight and make the shape sit off against native glass.
+  heroGlass: {
+    borderRadius: SURFACE_RADIUS,
+  },
+  chipGlass: {
+    borderRadius: 999,
+  },
+});

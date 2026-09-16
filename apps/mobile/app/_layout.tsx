@@ -113,6 +113,20 @@ function RootNavigator() {
 
             <Stack.Protected guard={Boolean(session)}>
               <Stack.Screen name="(home)" />
+              <Stack.Screen
+                name="organization-switcher"
+                options={{
+                  headerShown: false,
+                  presentation: "formSheet",
+                  sheetAllowedDetents: [0.55, 0.9],
+                  sheetInitialDetentIndex: 0,
+                  sheetCornerRadius: 28,
+                  sheetElevation: 24,
+                  sheetGrabberVisible: true,
+                  sheetExpandsWhenScrolledToEdge: true,
+                  sheetLargestUndimmedDetentIndex: "none",
+                }}
+              />
               <Stack.Screen name="events/[eventId]" />
               <Stack.Screen name="vocabulary/[vocabularySetId]" />
               <Stack.Screen

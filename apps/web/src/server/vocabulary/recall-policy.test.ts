@@ -7,23 +7,16 @@ import {
 } from "./recall-policy";
 const now = new Date("2026-09-06T00:00:00Z");
 
-test("three passes require ten minutes then a day; failures reset acquisition and revoke memory", () => {
+test("one pass masters immediately; failures reset acquisition and revoke memory", () => {
   const first = advanceMemory(emptyMemory(), true, now);
-  expect(first.rememberedAt).toBeNull();
-  expect(first.nextReviewAt!.getTime() - now.getTime()).toBe(600_000);
-  const second = advanceMemory(first, true, first.nextReviewAt!);
-  expect(second.rememberedAt).toBeNull();
-  expect(second.nextReviewAt!.getTime() - first.nextReviewAt!.getTime()).toBe(
-    86_400_000,
-  );
-  const third = advanceMemory(second, true, second.nextReviewAt!);
-  expect(third.rememberedAt).toEqual(second.nextReviewAt);
-  const failed = advanceMemory(third, false, now);
+  expect(first.rememberedAt).toEqual(now);
+  expect(first.nextReviewAt!.getTime() - now.getTime()).toBe(86_400_000);
+  const failed = advanceMemory(first, false, now);
   expect(failed.passStreak).toBe(0);
   expect(failed.rememberedAt).not.toBeNull();
   const forgotten = advanceMemory(failed, false, now);
   expect(forgotten.rememberedAt).toBeNull();
-  expect(advanceMemory(forgotten, true, now).rememberedAt).toBeNull();
+  expect(advanceMemory(forgotten, true, now).rememberedAt).not.toBeNull();
   expect(advanceMemory(failed, true, now).failStreak).toBe(0);
 });
 

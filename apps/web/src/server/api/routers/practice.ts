@@ -4,6 +4,8 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { activeEnrollmentStatuses } from "~/server/authorization";
 import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { recordGamificationActivity } from "~/server/gamification/record-activity";
+import { isValidTimeZone } from "~/server/gamification/logic";
 import { getCourseOutlineForUser } from "~/server/learning/course-outline";
 import type { db as database } from "~/server/db";
 import {
@@ -15,8 +17,12 @@ import {
 
 const seed = z.string().trim().min(1).max(100);
 
-async function getAvailablePracticeItems(db: typeof database, userId: string) {
-  const courses = await getPracticeCourses(db, userId);
+async function getAvailablePracticeItems(
+  db: typeof database,
+  userId: string,
+  organizationId?: string,
+) {
+  const courses = await getPracticeCourses(db, userId, organizationId);
   const outlines = await Promise.all(
     courses.map((course) =>
       getCourseOutlineForUser(course.id, userId, { managementAccess: false }),
@@ -37,10 +43,15 @@ async function getAvailablePracticeItems(db: typeof database, userId: string) {
   );
 }
 
-function getPracticeCourses(db: typeof database, userId: string) {
+function getPracticeCourses(
+  db: typeof database,
+  userId: string,
+  organizationId?: string,
+) {
   const now = new Date();
   return db.course.findMany({
     where: {
+      organizationId,
       status: "PUBLISHED",
       OR: [
         {
@@ -79,12 +90,17 @@ export const practiceRouter = createTRPCRouter({
     .input(
       z.object({
         limit: z.number().int().min(1).max(30).default(24),
+        organizationId: z.string().min(1).optional(),
         seed,
       }),
     )
     .query(async ({ ctx, input }) => {
       const available = (
-        await getAvailablePracticeItems(ctx.db, ctx.actorUserId)
+        await getAvailablePracticeItems(
+          ctx.db,
+          ctx.actorUserId,
+          input.organizationId,
+        )
       ).filter((item) => item.type === "VOCABULARY_SET");
       const placementById = new Map(
         available.map((item) => [item.courseItemId, item]),
@@ -207,16 +223,84 @@ export const practiceRouter = createTRPCRouter({
       };
     }),
 
+  recordVocabularyCardReview: protectedProcedure
+    .input(
+      z.object({
+        completionId: z.string().trim().min(1).max(250),
+        entryId: z.string().min(1),
+        sourceCourseItemId: z.string().min(1),
+        timeZone: z
+          .string()
+          .trim()
+          .min(1)
+          .max(100)
+          .refine(isValidTimeZone, "Invalid IANA timezone"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const source = await ctx.db.courseItem.findFirst({
+        where: {
+          id: input.sourceCourseItemId,
+          isPublished: true,
+          type: "VOCABULARY_SET",
+          vocabularySet: { entries: { some: { id: input.entryId } } },
+        },
+        select: {
+          organizationId: true,
+          module: { select: { courseId: true } },
+        },
+      });
+      if (!source) throw new TRPCError({ code: "FORBIDDEN" });
+      const courses = await getPracticeCourses(
+        ctx.db,
+        ctx.actorUserId,
+        source.organizationId,
+      );
+      if (!courses.some((course) => course.id === source.module.courseId)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const outline = await getCourseOutlineForUser(
+        source.module.courseId,
+        ctx.actorUserId,
+        { managementAccess: false },
+      );
+      const available = outline.modules.some(
+        (module) =>
+          module.access !== "LOCKED" &&
+          module.items.some((item) => item.id === input.sourceCourseItemId),
+      );
+      if (!available) throw new TRPCError({ code: "FORBIDDEN" });
+
+      return ctx.db.$transaction((tx) =>
+        recordGamificationActivity(tx, {
+          action: "VOCABULARY_REVIEWED",
+          idempotencyKey: `practice-vocabulary-card:${ctx.actorUserId}:${input.completionId}`,
+          metadata: {
+            entryId: input.entryId,
+            sourceCourseItemId: input.sourceCourseItemId,
+          },
+          organizationId: source.organizationId,
+          timeZone: input.timeZone,
+          userId: ctx.actorUserId,
+        }),
+      );
+    }),
+
   getAssessmentSample: protectedProcedure
     .input(
       z.object({
         limit: z.number().int().min(1).max(10).default(5),
+        organizationId: z.string().min(1).optional(),
         seed,
       }),
     )
     .query(async ({ ctx, input }) => {
       const available = (
-        await getAvailablePracticeItems(ctx.db, ctx.actorUserId)
+        await getAvailablePracticeItems(
+          ctx.db,
+          ctx.actorUserId,
+          input.organizationId,
+        )
       ).filter((item) => item.type === "ASSESSMENT");
       const placementById = new Map(
         available.map((item) => [item.courseItemId, item]),

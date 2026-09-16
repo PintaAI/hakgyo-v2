@@ -1,4 +1,6 @@
-import { parseOrganizationTheme, type OrganizationTheme } from "@hakgyo/shared";
+import type { RouterOutputs } from "@hakgyo/api";
+import { parseOrganizationTheme } from "@hakgyo/shared";
+import { useGlobalSearchParams } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { VariableContextProvider } from "nativewind";
 import {
@@ -15,119 +17,144 @@ import { api } from "../lib/trpc";
 import { type ColorScheme, type ThemeColors } from "../theme/colors";
 import { createMobileTheme } from "../theme/organization-theme";
 
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 
-export type AvailableOrganizationTheme = {
-  organizationId: string;
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-  theme: OrganizationTheme;
-  updatedAt: string;
-};
+export type ActiveBrandContext = RouterOutputs["brand"]["getContext"];
+export type AvailableOrganizationBrand =
+  RouterOutputs["brand"]["listAvailableContexts"][number];
 
-type StoredThemeLibrary = {
+type StoredBrandLibrary = {
   version: typeof STORAGE_VERSION;
   selectedOrganizationId: string | null;
-  themes: AvailableOrganizationTheme[];
+  organizations: AvailableOrganizationBrand[];
 };
 
 type AppThemeContextValue = {
   colorScheme: ColorScheme;
   colors: ThemeColors;
-  activeTheme: AvailableOrganizationTheme | null;
-  availableThemes: AvailableOrganizationTheme[];
+  activeBrand: ActiveBrandContext;
+  activeOrganizationId: string | null;
+  availableOrganizations: AvailableOrganizationBrand[];
   isHydrated: boolean;
-  isRefreshingThemes: boolean;
-  selectTheme: (organizationId: string | null) => Promise<void>;
-  refreshThemes: () => Promise<void>;
+  isRefreshingOrganizations: boolean;
+  selectOrganization: (organizationId: string) => Promise<void>;
+  refreshOrganizations: () => Promise<void>;
+};
+
+const defaultBrand: ActiveBrandContext = {
+  organizationId: null,
+  name: "Hakgyo",
+  slug: null,
+  logoUrl: null,
+  theme: null,
+  themeEnabled: false,
+  isThemed: false,
+  source: "default",
 };
 
 const AppThemeContext = createContext<AppThemeContextValue | null>(null);
 
 function storageKey(userId: string) {
-  return `hakgyo:organization-themes:v${STORAGE_VERSION}:${userId}`;
+  return `hakgyo:brand-workspaces:v${STORAGE_VERSION}:${userId}`;
 }
 
-function parseStoredThemeLibrary(
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function parseStoredOrganization(
+  value: unknown,
+): AvailableOrganizationBrand | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  if (
+    typeof item.organizationId !== "string" ||
+    typeof item.name !== "string" ||
+    typeof item.slug !== "string" ||
+    (item.logoUrl !== null && typeof item.logoUrl !== "string") ||
+    typeof item.themeEnabled !== "boolean"
+  ) {
+    return null;
+  }
+  const theme = item.themeEnabled ? parseOrganizationTheme(item.theme) : null;
+  return {
+    organizationId: item.organizationId,
+    name: item.name,
+    slug: item.slug,
+    logoUrl: item.logoUrl,
+    theme,
+    themeEnabled: item.themeEnabled,
+    isThemed: theme !== null,
+    source: "organization",
+  };
+}
+
+function parseStoredBrandLibrary(
   value: string | null,
-): StoredThemeLibrary | null {
+): StoredBrandLibrary | null {
   if (!value) return null;
   try {
     const parsed: unknown = JSON.parse(value);
     if (!parsed || typeof parsed !== "object") return null;
     const record = parsed as Record<string, unknown>;
-    if (record.version !== STORAGE_VERSION || !Array.isArray(record.themes)) {
+    if (
+      record.version !== STORAGE_VERSION ||
+      !Array.isArray(record.organizations)
+    ) {
       return null;
     }
-    const themes = record.themes.flatMap((entry) => {
-      if (!entry || typeof entry !== "object") return [];
-      const item = entry as Record<string, unknown>;
-      const theme = parseOrganizationTheme(item.theme);
-      if (
-        !theme ||
-        typeof item.organizationId !== "string" ||
-        typeof item.name !== "string" ||
-        typeof item.slug !== "string" ||
-        (item.logoUrl !== null && typeof item.logoUrl !== "string") ||
-        typeof item.updatedAt !== "string"
-      ) {
-        return [];
-      }
-      return [
-        {
-          organizationId: item.organizationId,
-          name: item.name,
-          slug: item.slug,
-          logoUrl: item.logoUrl,
-          theme,
-          updatedAt: item.updatedAt,
-        } satisfies AvailableOrganizationTheme,
-      ];
+    const organizations = record.organizations.flatMap((organization) => {
+      const parsedOrganization = parseStoredOrganization(organization);
+      return parsedOrganization ? [parsedOrganization] : [];
     });
-    const selectedOrganizationId =
-      typeof record.selectedOrganizationId === "string"
-        ? record.selectedOrganizationId
-        : null;
     return {
       version: STORAGE_VERSION,
-      selectedOrganizationId,
-      themes,
+      selectedOrganizationId:
+        typeof record.selectedOrganizationId === "string"
+          ? record.selectedOrganizationId
+          : null,
+      organizations,
     };
   } catch {
     return null;
   }
 }
 
-async function persistThemeLibrary(
+async function persistBrandLibrary(
   userId: string,
   selectedOrganizationId: string | null,
-  themes: AvailableOrganizationTheme[],
+  organizations: AvailableOrganizationBrand[],
 ) {
   await Storage.setItem(
     storageKey(userId),
     JSON.stringify({
       version: STORAGE_VERSION,
       selectedOrganizationId,
-      themes,
-    } satisfies StoredThemeLibrary),
+      organizations,
+    } satisfies StoredBrandLibrary),
   );
 }
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
+  const routeParams = useGlobalSearchParams<{
+    cohortId?: string | string[];
+    courseId?: string | string[];
+  }>();
   const userId = session?.user.id ?? null;
+  const routeCohortId = firstParam(routeParams.cohortId);
+  const routeCourseId = firstParam(routeParams.courseId);
   const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
   const [hydratedUserId, setHydratedUserId] = useState<string | null>();
-  const [availableThemes, setAvailableThemes] = useState<
-    AvailableOrganizationTheme[]
+  const [availableOrganizations, setAvailableOrganizations] = useState<
+    AvailableOrganizationBrand[]
   >([]);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<
     string | null
   >(null);
-  const themesQuery = api.organization.listAvailableThemes.useQuery(
-    { cacheScope: userId ?? "signed-out" },
+  const organizationsQuery = api.brand.listAvailableContexts.useQuery(
+    undefined,
     {
       enabled: Boolean(userId),
       staleTime: 60_000,
@@ -135,19 +162,27 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
       refetchOnReconnect: true,
     },
   );
+  const routeBrandQuery = api.brand.getContext.useQuery(
+    { cohortId: routeCohortId, courseId: routeCourseId },
+    {
+      enabled: Boolean(routeCohortId || routeCourseId),
+      retry: false,
+      staleTime: 60_000,
+    },
+  );
 
-  const refetchThemes = themesQuery.refetch;
+  const refetchOrganizations = organizationsQuery.refetch;
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active" && userId) void refetchThemes();
+      if (state === "active" && userId) void refetchOrganizations();
     });
     return () => subscription.remove();
-  }, [refetchThemes, userId]);
+  }, [refetchOrganizations, userId]);
 
   useEffect(() => {
     let active = true;
     setHydratedUserId(undefined);
-    setAvailableThemes([]);
+    setAvailableOrganizations([]);
     setSelectedOrganizationId(null);
     if (!userId) {
       setHydratedUserId(null);
@@ -159,15 +194,15 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     void Storage.getItem(storageKey(userId))
       .then((storedValue) => {
         if (!active) return;
-        const stored = parseStoredThemeLibrary(storedValue);
-        const themes = stored?.themes ?? [];
-        const selected = themes.some(
+        const stored = parseStoredBrandLibrary(storedValue);
+        const organizations = stored?.organizations ?? [];
+        const selected = organizations.some(
           ({ organizationId }) =>
             organizationId === stored?.selectedOrganizationId,
         )
           ? (stored?.selectedOrganizationId ?? null)
-          : null;
-        setAvailableThemes(themes);
+          : (organizations[0]?.organizationId ?? null);
+        setAvailableOrganizations(organizations);
         setSelectedOrganizationId(selected);
       })
       .catch(() => undefined)
@@ -181,49 +216,73 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   }, [userId]);
 
   useEffect(() => {
-    if (!userId || hydratedUserId !== userId || !themesQuery.data) return;
-    const themes = themesQuery.data.map((organization) => ({
-      organizationId: organization.id,
-      name: organization.name,
-      slug: organization.slug,
-      logoUrl: organization.logoUrl,
-      theme: organization.theme,
-      updatedAt: organization.updatedAt.toISOString(),
-    }));
-    const selected = themes.some(
+    if (!userId || hydratedUserId !== userId || !organizationsQuery.data) {
+      return;
+    }
+    const organizations = organizationsQuery.data.flatMap((organization) => {
+      const parsed = parseStoredOrganization(organization);
+      return parsed ? [parsed] : [];
+    });
+    const selected = organizations.some(
       ({ organizationId }) => organizationId === selectedOrganizationId,
     )
       ? selectedOrganizationId
-      : null;
-    setAvailableThemes(themes);
+      : (organizations[0]?.organizationId ?? null);
+    setAvailableOrganizations(organizations);
     setSelectedOrganizationId(selected);
-    void persistThemeLibrary(userId, selected, themes);
-  }, [hydratedUserId, selectedOrganizationId, themesQuery.data, userId]);
+    void persistBrandLibrary(userId, selected, organizations);
+  }, [hydratedUserId, organizationsQuery.data, selectedOrganizationId, userId]);
 
-  const activeTheme =
-    availableThemes.find(
+  useEffect(() => {
+    const routeOrganizationId = routeBrandQuery.data?.organizationId;
+    if (
+      !userId ||
+      !routeOrganizationId ||
+      routeOrganizationId === selectedOrganizationId ||
+      !availableOrganizations.some(
+        ({ organizationId }) => organizationId === routeOrganizationId,
+      )
+    ) {
+      return;
+    }
+    setSelectedOrganizationId(routeOrganizationId);
+    void persistBrandLibrary(
+      userId,
+      routeOrganizationId,
+      availableOrganizations,
+    );
+  }, [
+    availableOrganizations,
+    routeBrandQuery.data?.organizationId,
+    selectedOrganizationId,
+    userId,
+  ]);
+
+  const selectedBrand =
+    availableOrganizations.find(
       ({ organizationId }) => organizationId === selectedOrganizationId,
-    ) ?? null;
-  const mobileTheme = createMobileTheme(
-    colorScheme,
-    activeTheme?.theme ?? null,
-  );
+    ) ?? defaultBrand;
+  const routeBrand = routeBrandQuery.data;
+  const activeBrand = routeBrand?.organizationId ? routeBrand : selectedBrand;
+  const mobileTheme = createMobileTheme(colorScheme, activeBrand.theme);
   const isHydrated = !isSessionPending && hydratedUserId === (userId ?? null);
 
-  async function selectTheme(organizationId: string | null) {
-    const selected =
-      organizationId !== null &&
-      availableThemes.some((theme) => theme.organizationId === organizationId)
-        ? organizationId
-        : null;
-    setSelectedOrganizationId(selected);
+  async function selectOrganization(organizationId: string) {
+    if (
+      !availableOrganizations.some(
+        (organization) => organization.organizationId === organizationId,
+      )
+    ) {
+      return;
+    }
+    setSelectedOrganizationId(organizationId);
     if (userId) {
-      await persistThemeLibrary(userId, selected, availableThemes);
+      await persistBrandLibrary(userId, organizationId, availableOrganizations);
     }
   }
 
-  async function refreshThemes() {
-    if (userId) await themesQuery.refetch();
+  async function refreshOrganizations() {
+    if (userId) await organizationsQuery.refetch();
   }
 
   return (
@@ -231,12 +290,13 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
       value={{
         colorScheme,
         colors: mobileTheme.colors,
-        activeTheme,
-        availableThemes,
+        activeBrand,
+        activeOrganizationId: activeBrand.organizationId,
+        availableOrganizations,
         isHydrated,
-        isRefreshingThemes: themesQuery.isRefetching,
-        selectTheme,
-        refreshThemes,
+        isRefreshingOrganizations: organizationsQuery.isRefetching,
+        selectOrganization,
+        refreshOrganizations,
       }}
     >
       <VariableContextProvider value={mobileTheme.variables}>

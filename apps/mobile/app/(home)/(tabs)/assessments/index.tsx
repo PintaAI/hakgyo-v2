@@ -21,11 +21,26 @@ import {
   assessmentSourceBadge,
   closesLabel,
 } from "../../../../src/components/learn/cohort-card";
+import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 
 export default function PracticeTab() {
-  const courses = api.learning.listMyCourses.useQuery();
-  const events = api.assessmentEvent.listForLearner.useQuery();
-  const attempts = api.assessment.listMyAttempts.useQuery();
+  const { activeOrganizationId } = useAppTheme();
+  const organizationScope = {
+    organizationId: activeOrganizationId ?? undefined,
+  };
+  const queryOptions = { enabled: Boolean(activeOrganizationId) };
+  const courses = api.learning.listMyCourses.useQuery(
+    organizationScope,
+    queryOptions,
+  );
+  const events = api.assessmentEvent.listForLearner.useQuery(
+    organizationScope,
+    queryOptions,
+  );
+  const attempts = api.assessment.listMyAttempts.useQuery(
+    organizationScope,
+    queryOptions,
+  );
   const utils = api.useUtils();
   const [now, setNow] = useState(Date.now);
 

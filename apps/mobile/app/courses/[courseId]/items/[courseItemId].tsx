@@ -1,5 +1,5 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -13,6 +13,15 @@ import {
   NativeContentRenderer,
   useApiAssetResolver,
 } from "../../../../src/components/content-renderer";
+import {
+  CourseLearningFooter,
+  type LearningRequirementAction,
+} from "../../../../src/components/learn/course-learning-footer";
+import { VocabularySetDetail } from "../../../../src/components/learn/vocabulary-set-detail";
+import {
+  assessmentAttemptPresentation,
+  latestStandaloneAttemptForItem,
+} from "../../../../src/lib/assessment-state";
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
@@ -30,12 +39,31 @@ export default function CourseItemScreen() {
   }>();
   const courseId = firstParam(params.courseId);
   const courseItemId = firstParam(params.courseItemId);
+  return (
+    <CourseItemContent
+      key={courseItemId}
+      courseId={courseId}
+      courseItemId={courseItemId}
+    />
+  );
+}
+
+function CourseItemContent({
+  courseId,
+  courseItemId,
+}: {
+  courseId: string;
+  courseItemId: string;
+}) {
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollTop = useRef(0);
+  const readAgain = () =>
+    scrollRef.current?.scrollTo({ y: scrollTop.current, animated: true });
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
   const { colors } = useAppTheme();
   const { open } = useDrawer();
   const resolveAssetUrl = useApiAssetResolver();
-  const utils = api.useUtils();
   const itemQuery = api.learning.getCourseItem.useQuery(
     { courseItemId },
     { enabled: Boolean(session && courseItemId), retry: false },
@@ -48,13 +76,43 @@ export default function CourseItemScreen() {
       retry: false,
     },
   );
+  const attemptsQuery = api.assessment.listMyAttempts.useQuery(undefined, {
+    enabled: Boolean(session && itemQuery.data?.assessment),
+    retry: false,
+  });
+  const latestAttempt = latestStandaloneAttemptForItem(
+    attemptsQuery.data,
+    courseItemId,
+  );
   const startAssessment = api.assessment.startAttempt.useMutation();
   const [selectedCohortId, setSelectedCohortId] = useState<string>();
   const item = itemQuery.data;
   const material = item?.material;
   const vocabulary = item?.vocabularySet;
   const assessment = assessmentQuery.data;
-  const completed = item?.progress[0]?.status === "COMPLETED";
+  const materialRequirementActions: LearningRequirementAction[] =
+    material?.requiredActivities.map((activity) => ({
+      id: activity.id,
+      type: activity.type,
+      title: activity.title,
+      onPress: () => {
+        if (activity.type === "VOCABULARY_SET") {
+          router.push({
+            pathname: "/vocabulary/[vocabularySetId]",
+            params: {
+              vocabularySetId: activity.resourceId,
+              sourceCourseItemId: courseItemId,
+              courseId,
+            },
+          });
+          return;
+        }
+        router.push({
+          pathname: "/courses/[courseId]/items/[courseItemId]",
+          params: { courseId, courseItemId: activity.courseItemId },
+        });
+      },
+    })) ?? [];
 
   useEffect(() => {
     if (!isSessionPending && !session && courseId && courseItemId) {
@@ -75,25 +133,16 @@ export default function CourseItemScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseItemId, item?.id, item?.progress.length, material, vocabulary]);
 
-  async function completeMaterial() {
-    try {
-      await markProgress.mutateAsync({
-        courseItemId,
-        status: "COMPLETED",
-      });
-      await Promise.all([
-        utils.learning.getCourseItem.invalidate({ courseItemId }),
-        utils.learning.getCourseOutline.invalidate({ courseId }),
-        utils.learning.listMyCourses.invalidate(),
-        utils.gamification.invalidate(),
-      ]);
-    } catch {
-      // The mutation state renders a retryable error below the action.
-    }
-  }
-
   async function beginAssessment() {
     if (!assessment) return;
+    if (latestAttempt) {
+      router.push({
+        pathname:
+          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+        params: { courseId, courseItemId, attemptId: latestAttempt.id },
+      });
+      return;
+    }
     const cohorts = assessment.eligibleCohorts;
     const cohortId = cohorts.length === 1 ? cohorts[0]?.id : selectedCohortId;
     try {
@@ -198,7 +247,7 @@ export default function CourseItemScreen() {
                   </Text>
                 ) : null}
               </View>
-              {assessment.eligibleCohorts.length > 1 ? (
+              {!latestAttempt && assessment.eligibleCohorts.length > 1 ? (
                 <View className="gap-2 border-t border-border pt-4">
                   <Text className="text-sm font-bold text-foreground">
                     Choose study group
@@ -221,15 +270,36 @@ export default function CourseItemScreen() {
                 className="items-center rounded-full bg-primary px-5 py-4 disabled:opacity-50"
                 disabled={
                   startAssessment.isPending ||
-                  assessment.questions.length === 0 ||
-                  (assessment.eligibleCohorts.length > 1 && !selectedCohortId)
+                  attemptsQuery.isPending ||
+                  attemptsQuery.isError ||
+                  (!latestAttempt &&
+                    (assessment.questions.length === 0 ||
+                      (assessment.eligibleCohorts.length > 1 &&
+                        !selectedCohortId)))
                 }
                 onPress={() => void beginAssessment()}
               >
                 <Text className="font-black text-primary-foreground">
-                  {startAssessment.isPending ? "Starting…" : "Start assessment"}
+                  {startAssessment.isPending
+                    ? "Starting…"
+                    : attemptsQuery.isPending
+                      ? "Loading progress…"
+                      : latestAttempt
+                        ? assessmentAttemptPresentation(latestAttempt).action
+                        : "Start assessment"}
                 </Text>
               </Pressable>
+              {attemptsQuery.isError ? (
+                <Pressable
+                  accessibilityRole="button"
+                  className="min-h-12 items-center justify-center"
+                  onPress={() => void attemptsQuery.refetch()}
+                >
+                  <Text className="text-sm text-destructive">
+                    Could not load your attempts. Tap to retry.
+                  </Text>
+                </Pressable>
+              ) : null}
               {startAssessment.isError ? (
                 <Text className="text-center text-sm text-destructive">
                   {startAssessment.error.message}
@@ -245,67 +315,12 @@ export default function CourseItemScreen() {
           </View>
         )
       ) : vocabulary ? (
-        <ScrollView
-          className="flex-1 bg-background"
-          contentContainerClassName="gap-5 px-5 pb-14 pt-4"
-          contentInsetAdjustmentBehavior="automatic"
-        >
-          <View className="gap-2 border-b border-border pb-6">
-            <Text className="text-xs font-black uppercase tracking-[2px] text-primary">
-              Vocabulary · {vocabulary.entries.length} words
-            </Text>
-            <Text className="text-3xl font-black leading-10 tracking-tight text-foreground">
-              {vocabulary.title}
-            </Text>
-            {vocabulary.description ? (
-              <Text className="text-sm leading-6 text-muted-foreground">
-                {vocabulary.description}
-              </Text>
-            ) : null}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            className="items-center rounded-2xl bg-primary px-5 py-4"
-            onPress={() =>
-              router.push({
-                pathname: "/vocabulary/[vocabularySetId]",
-                params: {
-                  vocabularySetId: vocabulary.id,
-                  sourceCourseItemId: courseItemId,
-                },
-              })
-            }
-          >
-            <Text className="text-base font-bold text-primary-foreground">
-              Practice these words
-            </Text>
-          </Pressable>
-          {vocabulary.entries.map((entry) => (
-            <View
-              className="gap-1 rounded-xl border border-border bg-card p-5"
-              key={entry.id}
-            >
-              <Text className="text-lg font-black text-foreground">
-                {entry.term}
-              </Text>
-              <Text className="text-sm leading-6 text-muted-foreground">
-                {entry.definition}
-              </Text>
-            </View>
-          ))}
-          <Pressable
-            accessibilityRole="button"
-            className={`items-center rounded-full px-5 py-4 ${completed ? "bg-muted" : "bg-primary"}`}
-            disabled={completed || markProgress.isPending}
-            onPress={() => void completeMaterial()}
-          >
-            <Text
-              className={`font-black ${completed ? "text-muted-foreground" : "text-primary-foreground"}`}
-            >
-              {completed ? "Vocabulary completed" : "Mark as completed"}
-            </Text>
-          </Pressable>
-        </ScrollView>
+        <VocabularySetDetail
+          courseId={courseId}
+          courseItemId={courseItemId}
+          moduleId={item.moduleId}
+          vocabulary={vocabulary}
+        />
       ) : !material ? (
         <View className="flex-1 items-center justify-center bg-background px-6">
           <Text className="text-center text-sm text-muted-foreground">
@@ -314,24 +329,15 @@ export default function CourseItemScreen() {
         </View>
       ) : (
         <ScrollView
+          ref={scrollRef}
+          onScroll={(event) => {
+            scrollTop.current = -event.nativeEvent.contentInset.top;
+          }}
+          scrollEventThrottle={100}
           className="flex-1 bg-background"
           contentContainerClassName="gap-7 px-5 pb-14 pt-4"
           contentInsetAdjustmentBehavior="automatic"
         >
-          <View className="gap-2 border-b border-border pb-6">
-            <Text className="text-xs font-black uppercase tracking-[2px] text-muted-foreground">
-              Learning material
-            </Text>
-            <Text className="text-3xl font-black leading-10 tracking-tight text-foreground">
-              {material.title}
-            </Text>
-            {material.description ? (
-              <Text className="text-sm leading-6 text-muted-foreground">
-                {material.description}
-              </Text>
-            ) : null}
-          </View>
-
           <NativeContentRenderer
             content={material.content}
             resourceReferences={item.embeddedResources}
@@ -357,27 +363,12 @@ export default function CourseItemScreen() {
             }}
           />
 
-          <Pressable
-            accessibilityRole="button"
-            className={`items-center rounded-full px-5 py-4 ${completed ? "bg-muted" : "bg-primary"}`}
-            disabled={completed || markProgress.isPending}
-            onPress={() => void completeMaterial()}
-          >
-            <Text
-              className={`font-black ${completed ? "text-muted-foreground" : "text-primary-foreground"}`}
-            >
-              {markProgress.isPending
-                ? "Saving…"
-                : completed
-                  ? "Material completed"
-                  : "Mark as completed"}
-            </Text>
-          </Pressable>
-          {markProgress.isError ? (
-            <Text className="text-center text-sm text-destructive">
-              Progress could not be saved. Please try again.
-            </Text>
-          ) : null}
+          <CourseLearningFooter
+            courseId={courseId}
+            courseItemId={courseItemId}
+            onReadAgain={readAgain}
+            requirementActions={materialRequirementActions}
+          />
         </ScrollView>
       )}
     </>

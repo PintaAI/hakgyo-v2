@@ -73,6 +73,30 @@ export function getLocalDateKey(date: Date, timeZone: string): string {
   return `${year}-${month}-${day}`;
 }
 
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function getLocalCalendarWindow(now: Date, timeZone: string) {
+  const today = getLocalDateKey(now, timeZone);
+  const todayAsUtc = new Date(`${today}T00:00:00.000Z`);
+  const daysSinceMonday = (todayAsUtc.getUTCDay() + 6) % 7;
+  const startsOn = shiftDateKey(today, -daysSinceMonday);
+  const endsOn = shiftDateKey(startsOn, 7);
+
+  return {
+    end: new Date(`${endsOn}T00:00:00.000Z`),
+    start: new Date(`${startsOn}T00:00:00.000Z`),
+    startsOn,
+    today,
+  };
+}
+
 export function calculateStreak(
   activityDates: readonly Date[],
   options: { now?: Date; timeZone: string },

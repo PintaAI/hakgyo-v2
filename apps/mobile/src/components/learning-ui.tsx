@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -9,6 +11,10 @@ import {
 } from "react-native";
 import { Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  GestureDetector,
+  type NativeGesture,
+} from "react-native-gesture-handler";
 import { useAppTheme } from "../providers/AppThemeProvider";
 
 export function StudyScreen({
@@ -20,6 +26,10 @@ export function StudyScreen({
   automaticallyAdjustKeyboardInsets = false,
   headerShown = true,
   bleedTop = false,
+  fillViewport = false,
+  keyboardAvoiding = false,
+  scrollable = true,
+  scrollGesture,
 }: {
   title: string;
   children: ReactNode;
@@ -30,42 +40,82 @@ export function StudyScreen({
   automaticallyAdjustKeyboardInsets?: boolean;
   headerShown?: boolean;
   bleedTop?: boolean;
+  fillViewport?: boolean;
+  keyboardAvoiding?: boolean;
+  scrollable?: boolean;
+  scrollGesture?: NativeGesture;
 }) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const viewportRef = useRef<View>(null);
+  const [keyboardVerticalOffset, setKeyboardVerticalOffset] = useState(0);
   const behavior = bleedTop ? "never" : contentInsetAdjustmentBehavior;
+  const measureViewportOffset = useCallback(() => {
+    viewportRef.current?.measureInWindow((_x, y) => {
+      setKeyboardVerticalOffset((current) =>
+        Math.abs(current - y) < 1 ? current : y,
+      );
+    });
+  }, []);
+  const content = (
+    <View
+      className={`${fillViewport ? "flex-1" : ""} ${bleedTop ? "gap-6 px-5 pb-12 pt-0" : "gap-6 px-5 pb-12 pt-4"}`}
+      style={
+        bleedTop ? { paddingBottom: Math.max(insets.bottom, 48) } : undefined
+      }
+    >
+      {children}
+    </View>
+  );
+  const viewport = (
+    <ScrollView
+      className="flex-1 bg-background"
+      contentInsetAdjustmentBehavior={behavior}
+      automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
+      automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
+      keyboardShouldPersistTaps="handled"
+      scrollEnabled={scrollable}
+      removeClippedSubviews={scrollGesture ? false : undefined}
+      contentContainerStyle={fillViewport ? { flexGrow: 1 } : undefined}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        ) : undefined
+      }
+    >
+      {content}
+    </ScrollView>
+  );
+  const gestureViewport = scrollGesture ? (
+    <GestureDetector gesture={scrollGesture}>{viewport}</GestureDetector>
+  ) : (
+    viewport
+  );
   return (
     <>
       <Stack.Screen options={{ title, headerShown }} />
-      <ScrollView
-        className="flex-1 bg-background"
-        contentInsetAdjustmentBehavior={behavior}
-        automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
-        automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          onRefresh ? (
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-            />
-          ) : undefined
-        }
-      >
+      {keyboardAvoiding ? (
         <View
-          className={
-            bleedTop ? "gap-6 px-5 pb-12 pt-0" : "gap-6 px-5 pb-12 pt-4"
-          }
-          style={
-            bleedTop
-              ? { paddingBottom: Math.max(insets.bottom, 48) }
-              : undefined
-          }
+          ref={viewportRef}
+          collapsable={false}
+          className="flex-1 bg-background"
+          onLayout={measureViewportOffset}
         >
-          {children}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={keyboardVerticalOffset}
+            style={{ flex: 1 }}
+          >
+            {gestureViewport}
+          </KeyboardAvoidingView>
         </View>
-      </ScrollView>
+      ) : (
+        gestureViewport
+      )}
     </>
   );
 }

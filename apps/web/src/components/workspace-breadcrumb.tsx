@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from "~/components/ui/breadcrumb";
 const sectionLabels: Record<string, string> = {
+  "landing-page": "Landing page",
   courses: "Courses",
   dashboard: "Dashboard",
   library: "Bahan ajar",

@@ -349,7 +349,7 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
       >
         <GlassBox
           colorScheme={colorScheme}
-          glassEffectStyle="regular"
+          glassEffectStyle="clear"
           isInteractive
           style={{
             backgroundColor: colors.card,

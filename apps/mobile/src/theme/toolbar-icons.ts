@@ -17,4 +17,12 @@ export const toolbarIcons = {
     ios: "house.fill",
     android: import("@expo/material-symbols/home.xml"),
   }),
+  submit: Icon.select({
+    ios: "paperplane.fill",
+    android: import("@expo/material-symbols/send.xml"),
+  }),
+  next: Icon.select({
+    ios: "arrow.right",
+    android: import("@expo/material-symbols/arrow_forward.xml"),
+  }),
 } as const;

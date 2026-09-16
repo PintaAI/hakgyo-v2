@@ -1,8 +1,18 @@
 import { describe, expect, test } from "bun:test";
 
-import { getStreakStage, getWeeklyProgressDays } from "./streak";
+import {
+  getStreakLabel,
+  getStreakStage,
+  getWeeklyProgressDays,
+} from "./streak";
 
 describe("streak stage", () => {
+  test("labels the actual consecutive day count", () => {
+    expect(getStreakLabel(0)).toBe("0 day streak");
+    expect(getStreakLabel(1)).toBe("1 day streak");
+    expect(getStreakLabel(2)).toBe("2 day streak");
+  });
+
   test("replaces the stage after every seven streak days", () => {
     expect(getStreakStage(0)).toEqual({ progress: 0, tone: "green", week: 1 });
     expect(getStreakStage(7)).toEqual({ progress: 7, tone: "green", week: 1 });

@@ -11,6 +11,7 @@ import {
   ClipboardCheckIcon,
   FileTextIcon,
   GraduationCapIcon,
+  GlobeIcon,
   LanguagesIcon,
   LayoutDashboardIcon,
   LibraryIcon,
@@ -244,6 +245,15 @@ export function AppSidebar({
     },
   ];
   const organizationNavigation: NavigationItem[] = [
+    ...(role === "OWNER"
+      ? [
+          {
+            title: "Landing page",
+            href: `${workspaceRoot}/landing-page`,
+            icon: GlobeIcon,
+          },
+        ]
+      : []),
     {
       title: "Anggota",
       href: `${workspaceRoot}/members`,

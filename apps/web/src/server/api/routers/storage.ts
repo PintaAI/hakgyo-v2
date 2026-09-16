@@ -25,6 +25,15 @@ import {
 } from "~/lib/organization-logo";
 import { hasImageSignature } from "~/lib/image-signature";
 import {
+  createOrganizationLandingImageKey,
+  getOrganizationLandingImagePath,
+  MAX_ORGANIZATION_LANDING_IMAGE_SIZE,
+  organizationLandingImageContentTypes,
+  organizationLandingImagePurposes,
+  parseOrganizationLandingImageKey,
+} from "~/lib/organization-landing-image";
+import { organizationLandingConfigSchema } from "~/lib/organization-landing";
+import {
   createProfileImageKey,
   getManagedProfileImageKey,
   getProfileImagePath,
@@ -39,6 +48,7 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
+import { requireLandingOwner } from "~/server/organization-landing/service";
 import { r2, r2Bucket } from "~/server/r2";
 
 const MAX_DOCUMENT_SIZE = 100 * 1024 * 1024;
@@ -75,10 +85,11 @@ async function removeObject(key: string) {
   }
 }
 
-async function validateOrganizationLogoObject(
+async function validateImageObject(
   key: string,
   expectedSize: number,
   expectedContentType: string,
+  label: string,
 ) {
   let object;
   try {
@@ -90,7 +101,7 @@ async function validateOrganizationLogoObject(
       .$metadata?.httpStatusCode;
     throw new TRPCError({
       code: status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
-      message: status === 404 ? "Uploaded logo was not found" : undefined,
+      message: status === 404 ? `Uploaded ${label} was not found` : undefined,
       cause,
     });
   }
@@ -102,7 +113,7 @@ async function validateOrganizationLogoObject(
     await removeObject(key);
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Uploaded logo does not match the signed request",
+      message: `Uploaded ${label} does not match the signed request`,
     });
   }
 
@@ -115,13 +126,13 @@ async function validateOrganizationLogoObject(
         Range: "bytes=0-15",
       }),
     );
-    if (!headerObject.Body) throw new Error("Uploaded logo has no body");
+    if (!headerObject.Body) throw new Error(`Uploaded ${label} has no body`);
     headerBytes = await headerObject.Body.transformToByteArray();
   } catch (cause) {
     await removeObject(key);
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "Uploaded logo could not be validated",
+      message: `Uploaded ${label} could not be validated`,
       cause,
     });
   }
@@ -130,9 +141,17 @@ async function validateOrganizationLogoObject(
     await removeObject(key);
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Uploaded file is not a valid organization logo",
+      message: `Uploaded file is not a valid ${label}`,
     });
   }
+}
+
+function landingConfigReferencesImage(value: unknown, imageUrl: string) {
+  const parsed = organizationLandingConfigSchema.safeParse(value);
+  return (
+    parsed.success &&
+    [parsed.data.heroImageUrl, parsed.data.socialImageUrl].includes(imageUrl)
+  );
 }
 
 export const storageRouter = createTRPCRouter({
@@ -431,10 +450,11 @@ export const storageRouter = createTRPCRouter({
         });
       }
 
-      await validateOrganizationLogoObject(
+      await validateImageObject(
         input.key,
         parsed.size,
         parsed.contentType,
+        "organization logo",
       );
 
       const organization = await db.organization.findUniqueOrThrow({
@@ -533,6 +553,132 @@ export const storageRouter = createTRPCRouter({
           console.error("Failed to remove organization logo", error);
         }
       }
+      return { deleted: true };
+    }),
+
+  createOrganizationLandingImageUploadUrl: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+        purpose: z.enum(organizationLandingImagePurposes),
+        contentType: z.enum(organizationLandingImageContentTypes),
+        fileSize: z
+          .number()
+          .int()
+          .positive()
+          .max(MAX_ORGANIZATION_LANDING_IMAGE_SIZE),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireLandingOwner({
+        db: ctx.db,
+        organizationId: input.organizationId,
+        actorUserId: ctx.actorUserId,
+      });
+      const key = createOrganizationLandingImageKey(
+        input.organizationId,
+        input.purpose,
+        input.fileSize,
+        input.contentType,
+      );
+      const uploadUrl = await getSignedUrl(
+        r2,
+        new PutObjectCommand({
+          Bucket: r2Bucket,
+          Key: key,
+          ContentType: input.contentType,
+          CacheControl: "public, max-age=31536000, immutable",
+        }),
+        { expiresIn: SIGNED_URL_TTL_SECONDS },
+      );
+      return {
+        key,
+        uploadUrl,
+        expiresIn: SIGNED_URL_TTL_SECONDS,
+        headers: { "Content-Type": input.contentType },
+      };
+    }),
+
+  confirmOrganizationLandingImageUpload: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+        purpose: z.enum(organizationLandingImagePurposes),
+        key: documentKeySchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireLandingOwner({
+        db: ctx.db,
+        organizationId: input.organizationId,
+        actorUserId: ctx.actorUserId,
+      });
+      const parsed = parseOrganizationLandingImageKey(
+        input.key,
+        input.organizationId,
+        input.purpose,
+      );
+      if (!parsed) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid landing image key",
+        });
+      }
+      await validateImageObject(
+        input.key,
+        parsed.size,
+        parsed.contentType,
+        "landing page image",
+      );
+      return {
+        key: input.key,
+        imageUrl: getOrganizationLandingImagePath(
+          input.organizationId,
+          parsed.purpose,
+          parsed.fileName,
+        ),
+      };
+    }),
+
+  discardOrganizationLandingImageUpload: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+        key: documentKeySchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireLandingOwner({
+        db: ctx.db,
+        organizationId: input.organizationId,
+        actorUserId: ctx.actorUserId,
+      });
+      const parsed = parseOrganizationLandingImageKey(
+        input.key,
+        input.organizationId,
+      );
+      if (!parsed) throw new TRPCError({ code: "FORBIDDEN" });
+      const imageUrl = getOrganizationLandingImagePath(
+        input.organizationId,
+        parsed.purpose,
+        parsed.fileName,
+      );
+      const landing = await ctx.db.organizationLandingPage.findUnique({
+        where: { organizationId: input.organizationId },
+        select: { draft: true, published: true },
+      });
+      if (
+        landingConfigReferencesImage(landing?.draft, imageUrl) ||
+        landingConfigReferencesImage(landing?.published, imageUrl)
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "The landing image is currently in use",
+        });
+      }
+      await r2.send(
+        new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
+      );
       return { deleted: true };
     }),
 

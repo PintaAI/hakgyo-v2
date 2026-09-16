@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { CourseOutlineList } from "../../src/components/learn/course-outline-list";
+import { getCourseResumeItem } from "../../src/lib/course-learning-path";
 import { authClient } from "../../src/lib/auth-client";
 import { api } from "../../src/lib/trpc";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
@@ -38,6 +39,7 @@ export default function CourseDetailScreen() {
   }, [courseId, isSessionPending, session]);
 
   const course = courseQuery.data;
+  const resumeItem = course && getCourseResumeItem(course);
   const allItems = course?.modules.flatMap((module) => module.items) ?? [];
   const completedCount = allItems.filter((item) => item.isCompleted).length;
   const progress = allItems.length
@@ -149,8 +151,46 @@ export default function CourseDetailScreen() {
             </View>
           </View>
 
+          {resumeItem ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint={`Open ${resumeItem.title}`}
+              className="flex-row items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 active:opacity-80"
+              onPress={() =>
+                router.replace({
+                  pathname: "/courses/[courseId]/items/[courseItemId]",
+                  params: { courseId, courseItemId: resumeItem.id },
+                })
+              }
+            >
+              <View className="min-w-0 flex-1 gap-0.5">
+                <Text className="text-[10px] font-bold uppercase tracking-[1.5px] text-primary">
+                  {completedCount ? "Continue learning" : "Start learning"}
+                </Text>
+                <Text
+                  className="text-base font-black text-foreground"
+                  numberOfLines={1}
+                >
+                  {resumeItem.title}
+                </Text>
+              </View>
+              <Text className="text-xl font-bold text-primary">→</Text>
+            </Pressable>
+          ) : allItems.length > 0 && completedCount === allItems.length ? (
+            <View className="gap-2 rounded-2xl border border-primary/30 bg-primary/10 p-5">
+              <Text className="text-xl font-black text-foreground">
+                🏆 Course complete!
+              </Text>
+              <Text className="text-sm leading-6 text-muted-foreground">
+                You did it. Every activity is complete — revisit any material
+                below whenever you want a refresher.
+              </Text>
+            </View>
+          ) : null}
+
           <CourseOutlineList
             courseId={courseId}
+            showActiveState={false}
             onOpenItem={(item, attempt) => {
               if (attempt) {
                 router.push({

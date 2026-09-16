@@ -1,12 +1,20 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SymbolView } from "expo-symbols";
 
 import { api } from "../lib/trpc";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { withOpacity } from "../theme/colors";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
 import { Action, Empty, QueryState } from "./learning-ui";
+import { GlassBox } from "./GlassBox";
 
 type PracticeQuestion =
   RouterOutputs["practice"]["getAssessmentSample"]["questions"][number];
@@ -16,10 +24,18 @@ function randomSeed() {
   return `${Date.now()}:${Math.random()}`;
 }
 
-export function TodayAssessmentPractice() {
-  const { colors } = useAppTheme();
+export function TodayAssessmentPractice({
+  organizationId,
+}: {
+  organizationId: string;
+}) {
+  const { colors, colorScheme } = useAppTheme();
   const [seed, setSeed] = useState(randomSeed);
-  const query = api.practice.getAssessmentSample.useQuery({ limit: 5, seed });
+  const query = api.practice.getAssessmentSample.useQuery({
+    limit: 5,
+    organizationId,
+    seed,
+  });
   const grade = api.practice.gradeAssessmentAnswer.useMutation();
   const resolveAssetUrl = useApiAssetResolver();
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
@@ -51,6 +67,10 @@ export function TodayAssessmentPractice() {
   }, [query.data, seed]);
 
   const question = questions[index];
+  // Same glass tint as the vocabulary input: primary at 0.35 (dark) / 0.18 (light).
+  const tintRatio = colorScheme === "dark" ? 0.35 : 0.18;
+  const inputTint = withOpacity(colors.primary, tintRatio);
+  const wrongTint = withOpacity(colors.destructive, tintRatio);
 
   function chooseOption(optionId: string) {
     if (!question || result || grade.isPending) return;
@@ -112,32 +132,17 @@ export function TodayAssessmentPractice() {
         </Empty>
       ) : question ? (
         <>
-          <View className="gap-3">
-            <View className="flex-row items-end justify-between gap-4">
-              <View className="min-w-0 flex-1 gap-1">
-                <Text className="text-[11px] font-black uppercase tracking-[2px] text-primary">
-                  Quick check
-                </Text>
-                <Text className="text-3xl font-black tracking-tight text-foreground">
-                  Assessment
-                </Text>
-              </View>
-              <View className="flex-row items-baseline">
-                <Text className="text-3xl font-black text-foreground">
-                  {String(index + 1).padStart(2, "0")}
-                </Text>
-                <Text className="text-sm font-bold text-muted-foreground">
-                  /{String(questions.length).padStart(2, "0")}
-                </Text>
-              </View>
-            </View>
-            <View className="flex-row gap-1.5">
-              {questions.map((item, itemIndex) => (
-                <View
-                  className={`h-1 flex-1 rounded-full ${itemIndex <= index ? "bg-primary" : "bg-muted"}`}
-                  key={item.questionId}
-                />
-              ))}
+          <View className="flex-row items-center justify-between gap-4">
+            <Text className="text-lg font-bold tracking-tight text-foreground">
+              Today’s assessment
+            </Text>
+            <View className="flex-row items-baseline">
+              <Text className="text-base font-bold text-foreground">
+                {String(index + 1).padStart(2, "0")}
+              </Text>
+              <Text className="text-sm text-muted-foreground">
+                /{String(questions.length).padStart(2, "0")}
+              </Text>
             </View>
           </View>
 
@@ -148,15 +153,21 @@ export function TodayAssessmentPractice() {
             {question.assessmentTitle} · {question.courseTitle}
           </Text>
 
-          <View className="gap-3 rounded-3xl border border-border bg-card px-5 py-6">
-            <Text className="text-[10px] font-black uppercase tracking-[2px] text-muted-foreground">
-              Question
-            </Text>
-            <NativeContentRenderer
-              content={question.prompt}
-              resolveAssetUrl={resolveAssetUrl}
-            />
-          </View>
+          <GlassBox
+            tintColor={inputTint}
+            glassEffectStyle="clear"
+            style={[styles.questionGlass, { borderColor: colors.border }]}
+          >
+            <View className="gap-3 px-5 py-6">
+              <Text className="text-[10px] font-black uppercase tracking-[2px] text-muted-foreground">
+                Question
+              </Text>
+              <NativeContentRenderer
+                content={question.prompt}
+                resolveAssetUrl={resolveAssetUrl}
+              />
+            </View>
+          </GlassBox>
 
           <View className="mt-1 flex-row items-center justify-between gap-3">
             <Text className="text-sm font-black text-foreground">
@@ -173,15 +184,7 @@ export function TodayAssessmentPractice() {
               const isSelected = selected.includes(option.id);
               const isCorrect = result?.correctOptionIds.includes(option.id);
               const isWrongSelection = !!result && isSelected && !isCorrect;
-              const stateClass = result
-                ? isCorrect
-                  ? "border-primary bg-primary/10"
-                  : isWrongSelection
-                    ? "border-destructive bg-destructive/10"
-                    : "border-border opacity-50"
-                : isSelected
-                  ? "border-primary bg-primary/10"
-                  : "border-border bg-card";
+              const dimmed = !!result && !isCorrect && !isWrongSelection;
               const markerClass = isCorrect
                 ? "border-primary bg-primary"
                 : isWrongSelection
@@ -207,44 +210,64 @@ export function TodayAssessmentPractice() {
                     checked: isSelected,
                     disabled: !!result || grade.isPending,
                   }}
-                  className={`min-h-16 flex-row items-center gap-4 rounded-2xl border px-4 py-3.5 active:opacity-75 ${stateClass}`}
+                  className="rounded-2xl active:opacity-75"
                   disabled={!!result || grade.isPending}
                   key={option.id}
                   onPress={() => chooseOption(option.id)}
+                  style={dimmed ? { opacity: 0.5 } : undefined}
                 >
-                  <View
-                    className={`size-8 items-center justify-center rounded-xl border ${markerClass}`}
+                  <GlassBox
+                    isInteractive
+                    tintColor={isWrongSelection ? wrongTint : inputTint}
+                    glassEffectStyle="clear"
+                    style={[
+                      styles.optionGlass,
+                      {
+                        borderColor:
+                          isCorrect || (!result && isSelected)
+                            ? colors.primary
+                            : isWrongSelection
+                              ? colors.destructive
+                              : colors.border,
+                      },
+                    ]}
                   >
-                    {isCorrect || isWrongSelection ? (
-                      <SymbolView
-                        fallback={
-                          <Text className="text-sm font-black text-primary-foreground">
-                            {isCorrect ? "✓" : "×"}
-                          </Text>
-                        }
-                        name={isCorrect ? "checkmark" : "xmark"}
-                        size={15}
-                        tintColor={
-                          isCorrect
-                            ? colors.primaryForeground
-                            : colors.destructiveForeground
-                        }
-                        weight="bold"
-                      />
-                    ) : (
-                      <Text
-                        className={`text-xs font-black ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}
+                    <View className="min-h-16 flex-row items-center gap-4 px-4 py-3.5">
+                      <View
+                        className={`size-8 items-center justify-center rounded-xl border ${markerClass}`}
                       >
-                        {String.fromCharCode(65 + optionIndex)}
-                      </Text>
-                    )}
-                  </View>
-                  <View className="min-w-0 flex-1">
-                    <NativeContentRenderer
-                      content={option.content}
-                      resolveAssetUrl={resolveAssetUrl}
-                    />
-                  </View>
+                        {isCorrect || isWrongSelection ? (
+                          <SymbolView
+                            fallback={
+                              <Text className="text-sm font-black text-primary-foreground">
+                                {isCorrect ? "✓" : "×"}
+                              </Text>
+                            }
+                            name={isCorrect ? "checkmark" : "xmark"}
+                            size={15}
+                            tintColor={
+                              isCorrect
+                                ? colors.primaryForeground
+                                : colors.destructiveForeground
+                            }
+                            weight="bold"
+                          />
+                        ) : (
+                          <Text
+                            className={`text-xs font-black ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}
+                          >
+                            {String.fromCharCode(65 + optionIndex)}
+                          </Text>
+                        )}
+                      </View>
+                      <View className="min-w-0 flex-1">
+                        <NativeContentRenderer
+                          content={option.content}
+                          resolveAssetUrl={resolveAssetUrl}
+                        />
+                      </View>
+                    </View>
+                  </GlassBox>
                 </Pressable>
               );
             })}
@@ -267,22 +290,31 @@ export function TodayAssessmentPractice() {
                   accessibilityLabel="Next question"
                   accessibilityRole="button"
                   onPress={nextQuestion}
-                  className="size-12 items-center justify-center rounded-full bg-primary active:opacity-75"
+                  className="rounded-full active:opacity-75"
                 >
-                  <SymbolView
-                    fallback={
-                      <Text
-                        className="text-xl font-black"
-                        style={{ color: colors.primaryForeground }}
-                      >
-                        →
-                      </Text>
-                    }
-                    name="arrow.right"
-                    size={22}
-                    tintColor={colors.primaryForeground}
-                    weight="bold"
-                  />
+                  <GlassBox
+                    isInteractive
+                    tintColor={inputTint}
+                    glassEffectStyle="clear"
+                    style={styles.nextGlass}
+                  >
+                    <View className="size-12 items-center justify-center">
+                      <SymbolView
+                        fallback={
+                          <Text
+                            className="text-xl font-black"
+                            style={{ color: colors.primary }}
+                          >
+                            →
+                          </Text>
+                        }
+                        name="arrow.right"
+                        size={22}
+                        tintColor={colors.primary}
+                        weight="bold"
+                      />
+                    </View>
+                  </GlassBox>
                 </Pressable>
               </View>
               <View className="rounded-2xl bg-muted p-4">
@@ -323,27 +355,39 @@ export function TodayAssessmentPractice() {
               accessibilityState={{ disabled: selected.length === 0 }}
               disabled={selected.length === 0}
               onPress={() => void checkAnswer(selected)}
-              className="min-h-12 flex-row items-center justify-between rounded-2xl bg-primary px-5 active:opacity-75"
+              className="rounded-2xl active:opacity-75"
               style={{ opacity: selected.length === 0 ? 0.4 : 1 }}
             >
-              <Text className="font-black text-primary-foreground">
-                Submit {selected.length || "your"} selection
-                {selected.length === 1 ? "" : "s"}
-              </Text>
-              <SymbolView
-                fallback={
+              <GlassBox
+                isInteractive
+                tintColor={inputTint}
+                glassEffectStyle="clear"
+                style={styles.submitGlass}
+              >
+                <View className="min-h-12 flex-row items-center justify-between px-5">
                   <Text
-                    className="text-lg font-black"
-                    style={{ color: colors.primaryForeground }}
+                    className="text-center text-base"
+                    style={{ color: colors.foreground }}
                   >
-                    →
+                    Submit {selected.length || "your"} selection
+                    {selected.length === 1 ? "" : "s"}
                   </Text>
-                }
-                name="arrow.right"
-                size={18}
-                tintColor={colors.primaryForeground}
-                weight="bold"
-              />
+                  <SymbolView
+                    fallback={
+                      <Text
+                        className="text-base"
+                        style={{ color: colors.foreground }}
+                      >
+                        →
+                      </Text>
+                    }
+                    name="arrow.right"
+                    size={18}
+                    tintColor={colors.foreground}
+                    weight="regular"
+                  />
+                </View>
+              </GlassBox>
             </Pressable>
           ) : null}
         </>
@@ -362,3 +406,20 @@ export function TodayAssessmentPractice() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  questionGlass: {
+    borderRadius: 24,
+    borderWidth: 1,
+  },
+  optionGlass: {
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  submitGlass: {
+    borderRadius: 16,
+  },
+  nextGlass: {
+    borderRadius: 9999,
+  },
+});

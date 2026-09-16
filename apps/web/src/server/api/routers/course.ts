@@ -12,6 +12,7 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { getCourseWorkspaceOverview } from "~/server/course/workspace-overview";
+import { organizationBrandSelect } from "~/server/brand/context";
 import { db } from "~/server/db";
 
 const id = z.string().min(1);
@@ -106,9 +107,7 @@ export const courseRouter = createTRPCRouter({
           enrollmentMode: true,
           organization: {
             select: {
-              id: true,
-              name: true,
-              slug: true,
+              ...organizationBrandSelect,
               defaultEnrollmentMode: true,
             },
           },
@@ -132,9 +131,7 @@ export const courseRouter = createTRPCRouter({
           enrollmentMode: true,
           organization: {
             select: {
-              id: true,
-              name: true,
-              slug: true,
+              ...organizationBrandSelect,
               defaultEnrollmentMode: true,
             },
           },

@@ -1,22 +1,9 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import Storage from "expo-sqlite/kv-store";
-import { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  StyleSheet,
-  Text,
-  TextInput,
-  Pressable,
-  View,
-} from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Keyboard, Text, TextInput, Pressable, View } from "react-native";
 import { SymbolView } from "expo-symbols";
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import type { NativeGesture } from "react-native-gesture-handler";
 
 import { api } from "../lib/trpc";
 import { useAppTheme } from "../providers/AppThemeProvider";
@@ -31,7 +18,10 @@ import {
 } from "../lib/today-vocabulary-practice";
 import { Action, Empty, QueryState } from "./learning-ui";
 import { GlassBox } from "./GlassBox";
-import { useApiAssetResolver } from "./content-renderer";
+import {
+  VocabularyPracticeDeck,
+  type VocabularyPracticeDeckHandle,
+} from "./vocabulary-practice-deck";
 
 type VocabularyCard =
   RouterOutputs["practice"]["getVocabularyPool"]["items"][number];
@@ -40,142 +30,31 @@ function randomSeed() {
   return `${Date.now()}:${Math.random()}`;
 }
 
-function TodayFlipCard({
-  card,
-  counter,
-  correct,
-  flipped,
-}: {
-  card: VocabularyCard;
-  counter: string;
-  correct: boolean | undefined;
-  flipped: boolean;
-}) {
-  const progress = useSharedValue(0);
-  const resolveAssetUrl = useApiAssetResolver();
-  const [resolvedImage, setResolvedImage] = useState<{
-    assetId: string;
-    url: string | null;
-  }>();
-
-  useEffect(() => {
-    progress.value = withTiming(flipped ? 1 : 0, { duration: 450 });
-  }, [flipped, progress]);
-
-  useEffect(() => {
-    if (!card.imageAssetId) return;
-    let active = true;
-    const assetId = card.imageAssetId;
-    void resolveAssetUrl(assetId)
-      .then((url) => {
-        if (active) setResolvedImage({ assetId, url });
-      })
-      .catch(() => {
-        if (active) setResolvedImage({ assetId, url: null });
-      });
-    return () => {
-      active = false;
-    };
-  }, [card.imageAssetId, resolveAssetUrl]);
-
-  const imageState = card.imageAssetId
-    ? resolvedImage?.assetId === card.imageAssetId
-      ? resolvedImage.url
-        ? "ready"
-        : "error"
-      : "loading"
-    : "empty";
-
-  const frontStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.5, 0.51, 1], [1, 1, 0, 0]),
-    transform: [
-      { perspective: 1200 },
-      { rotateY: `${interpolate(progress.value, [0, 1], [0, 180])}deg` },
-    ],
-  }));
-  const backStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.49, 0.5, 1], [0, 0, 1, 1]),
-    transform: [
-      { perspective: 1200 },
-      { rotateY: `${interpolate(progress.value, [0, 1], [180, 360])}deg` },
-    ],
-  }));
-
-  return (
-    <View className="h-56">
-      <Animated.View
-        className="items-center justify-center gap-2 rounded-2xl bg-muted px-5"
-        style={[styles.face, frontStyle]}
-      >
-        {imageState === "ready" && resolvedImage?.url ? (
-          <Image
-            accessibilityIgnoresInvertColors
-            accessibilityLabel={`${card.term} illustration`}
-            className="h-28 w-full rounded-xl"
-            resizeMode="contain"
-            source={{ uri: resolvedImage.url }}
-          />
-        ) : imageState === "loading" ? (
-          <View className="h-28 items-center justify-center">
-            <ActivityIndicator />
-          </View>
-        ) : null}
-        <Text selectable className="text-3xl font-black text-foreground">
-          {card.term}
-        </Text>
-        <Text className="text-xs text-muted-foreground">{counter}</Text>
-      </Animated.View>
-      <Animated.View
-        className={`items-center justify-center gap-2 rounded-2xl border px-5 ${
-          correct === undefined
-            ? "border-border bg-muted"
-            : correct
-              ? "border-primary/40 bg-primary/10"
-              : "border-destructive/40 bg-destructive/10"
-        }`}
-        style={[styles.face, backStyle]}
-      >
-        <Text
-          accessibilityLiveRegion="polite"
-          className={`text-xs font-bold uppercase tracking-[1.2px] ${
-            correct === undefined
-              ? "text-muted-foreground"
-              : correct
-                ? "text-primary"
-                : "text-destructive"
-          }`}
-        >
-          {correct === undefined
-            ? card.term
-            : correct
-              ? "Correct"
-              : "Not quite"}
-        </Text>
-        <Text selectable className="text-2xl font-black text-foreground">
-          {card.definition}
-        </Text>
-        <Text className="text-xs text-muted-foreground">{counter}</Text>
-      </Animated.View>
-    </View>
-  );
+function deviceTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
-const styles = StyleSheet.create({
-  face: {
-    backfaceVisibility: "hidden",
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-});
-
-export function TodayVocabularyPractice({ userId }: { userId: string }) {
+export function TodayVocabularyPractice({
+  organizationId,
+  userId,
+  scrollGesture,
+}: {
+  organizationId: string;
+  userId: string;
+  scrollGesture: NativeGesture;
+}) {
   const { colors, colorScheme } = useAppTheme();
-  const storageKey = `hakgyo:today-practice:v1:${userId}`;
+  const storageKey = `hakgyo:today-practice:v2:${userId}:${organizationId}`;
   const [seed, setSeed] = useState(randomSeed);
-  const query = api.practice.getVocabularyPool.useQuery({ limit: 24, seed });
+  const query = api.practice.getVocabularyPool.useQuery({
+    limit: 24,
+    organizationId,
+    seed,
+  });
+  const utils = api.useUtils();
+  const recordReview = api.practice.recordVocabularyCardReview.useMutation({
+    retry: 3,
+  });
   const [loaded] = useState(() => {
     try {
       return {
@@ -188,21 +67,21 @@ export function TodayVocabularyPractice({ userId }: { userId: string }) {
   });
   const [memory, setMemory] = useState<TodayVocabularyMemory>(loaded.memory);
   const [round, setRound] = useState<VocabularyCard[]>([]);
+  const [roundKey, setRoundKey] = useState("");
+  const [moving, setMoving] = useState(false);
+  const submitted = useRef(false);
+  const deckRef = useRef<VocabularyPracticeDeckHandle>(null);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<{ correct: boolean }>();
+  const [revealed, setRevealed] = useState(false);
   const [readFailed, setReadFailed] = useState(loaded.failed);
   const initializedPool = useRef<string | undefined>(undefined);
   const [storageError, setStorageError] = useState<string>();
   const memoryRef = useRef(memory);
   memoryRef.current = memory;
-  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
-    };
-  }, []);
+  const inputRef = useRef<TextInput>(null);
+  const restoreInputFocus = useRef(false);
 
   function poolSignature(items: readonly VocabularyCard[]) {
     return items.map((item) => `${item.entryId}:${item.setVersion}`).join(",");
@@ -215,24 +94,36 @@ export function TodayVocabularyPractice({ userId }: { userId: string }) {
       return;
     }
     initializedPool.current = signature;
-    if (autoAdvanceRef.current) {
-      clearTimeout(autoAdvanceRef.current);
-      autoAdvanceRef.current = null;
-    }
     const next = buildTodayVocabularyQueue(
       query.data.items,
       memoryRef.current,
       Date.now(),
     );
     setRound(next.cards);
+    setRoundKey(signature);
+    setMoving(false);
+    submitted.current = false;
+    restoreInputFocus.current = false;
     setIndex(0);
     setAnswer("");
     setFeedback(undefined);
+    setRevealed(false);
     // A new API pool starts a new round. Memory updates are handled in-place.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query.data, readFailed, seed]);
 
   const card = round[index];
+  const deckCards = useMemo(
+    () =>
+      round.map((item) => ({
+        id: `${item.entryId}:${item.setVersion}`,
+        prompt: item.term,
+        answer: item.definition,
+        imageAssetId: item.imageAssetId,
+        imageAccessibilityLabel: `${item.term} illustration`,
+      })),
+    [round],
+  );
 
   function saveMemory(next: TodayVocabularyMemory) {
     setMemory(next);
@@ -245,37 +136,72 @@ export function TodayVocabularyPractice({ userId }: { userId: string }) {
   }
 
   function checkAnswer() {
-    if (!card || feedback || !answer.trim()) return;
+    if (!card || submitted.current || moving || !answer.trim()) return;
+    submitted.current = true;
     const correct = isDefinitionCorrect(card, answer);
-    saveMemory(recordTodayVocabularyRecall(memory, card, correct, Date.now()));
+    recordReview.reset();
+    saveMemory(
+      recordTodayVocabularyRecall(memoryRef.current, card, correct, Date.now()),
+    );
     setFeedback({ correct });
+    inputRef.current?.focus();
+
+    void recordReview
+      .mutateAsync({
+        completionId: `${seed}:${index}:${card.entryId}:${card.setVersion}`,
+        entryId: card.entryId,
+        sourceCourseItemId: card.sourceCourseItemId,
+        timeZone: deviceTimeZone(),
+      })
+      .then(() => utils.gamification.invalidate())
+      .catch(() => undefined);
   }
 
   function nextCard() {
-    if (autoAdvanceRef.current) {
-      clearTimeout(autoAdvanceRef.current);
-      autoAdvanceRef.current = null;
-    }
+    deckRef.current?.advance();
+    inputRef.current?.focus();
+  }
+
+  function revealAnswer() {
+    if (!card || submitted.current || moving) return;
+    // Claim the card synchronously: a queued keyboard submit must not award
+    // credit after the learner has seen the answer.
+    submitted.current = true;
+    setRevealed(true);
+    setAnswer("");
+  }
+
+  function handleInteractionChange(busy: boolean) {
+    if (busy)
+      restoreInputFocus.current = inputRef.current?.isFocused() ?? false;
+    setMoving(busy);
+  }
+
+  function finishAdvance() {
     setIndex((value) => value + 1);
     setAnswer("");
     setFeedback(undefined);
+    setRevealed(false);
+    recordReview.reset();
+    setMoving(false);
+    submitted.current = false;
+    if (index + 1 >= round.length) Keyboard.dismiss();
   }
 
-  function handleAnswerChange(value: string) {
-    setAnswer(value);
-    if (!card || feedback || !value.trim()) return;
-    if (isDefinitionCorrect(card, value)) {
-      saveMemory(recordTodayVocabularyRecall(memory, card, true, Date.now()));
-      setFeedback({ correct: true });
-      if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
-      autoAdvanceRef.current = setTimeout(() => {
-        autoAdvanceRef.current = null;
-        nextCard();
-      }, 700);
+  useEffect(() => {
+    if (restoreInputFocus.current && index > 0 && index < round.length) {
+      inputRef.current?.focus();
     }
+  }, [index, round.length]);
+
+  function handleAnswerChange(value: string) {
+    // Keep the keyboard mounted, but preserve the submitted answer during review.
+    if (submitted.current || moving) return;
+    setAnswer(value);
   }
 
   function newMix() {
+    recordReview.reset();
     setSeed(randomSeed());
   }
 
@@ -291,7 +217,7 @@ export function TodayVocabularyPractice({ userId }: { userId: string }) {
   }
 
   return (
-    <View className="gap-3">
+    <View className="gap-3" style={{ overflow: "visible", zIndex: 1 }}>
       <QueryState
         pending={query.isPending}
         error={query.error}
@@ -313,123 +239,179 @@ export function TodayVocabularyPractice({ userId }: { userId: string }) {
       ) : null}
       {!readFailed && query.data && !query.data.hasAvailableContent ? (
         <Empty>No words to practice yet.</Empty>
-      ) : !readFailed && card ? (
+      ) : !readFailed && round.length > 0 ? (
         <>
-          <Text className="text-center text-3xl font-black tracking-tight text-foreground">
-            kosa-kata
-          </Text>
           <Text className="text-center text-xs font-bold uppercase tracking-[1.2px] text-muted-foreground">
-            {card.vocabularySetTitle} · {card.courseTitle}
+            {card
+              ? `${card.vocabularySetTitle} · ${card.courseTitle}`
+              : "Ready for another mix?"}
           </Text>
-          <TodayFlipCard
-            card={card}
-            counter={`${index + 1} of ${round.length}`}
+          <VocabularyPracticeDeck
+            key={roundKey}
+            ref={deckRef}
+            scrollGesture={scrollGesture}
+            cards={deckCards}
+            index={index}
             correct={feedback?.correct}
-            flipped={!!feedback}
+            revealed={revealed}
+            onReveal={revealAnswer}
+            onInteractionChange={handleInteractionChange}
+            onAdvanceComplete={finishAdvance}
           />
-          <View className="flex-row items-center gap-2">
-            <View className="min-w-0 flex-1">
-              <GlassBox
-                isInteractive
-                tintColor={withOpacity(
-                  colors.primary,
-                  colorScheme === "dark" ? 0.35 : 0.18,
-                )}
-            glassEffectStyle="clear"
-            style={{ borderRadius: 9999, height: 44 }}
-              >
-            {answer.length === 0 ? (
-              <View
-                pointerEvents="none"
-                className="absolute inset-0 items-center justify-center px-5"
-              >
+          {card ? (
+            <View className="gap-3">
+              <Text className="text-center text-xs text-muted-foreground">
+                {moving
+                  ? "Bringing up the next card…"
+                  : revealed
+                    ? "Just studying · no XP or streak change. Swipe up or tap Next."
+                    : feedback
+                      ? "Swipe up or tap Next when you’re ready."
+                      : "Type the definition, peel the bottom-right corner to reveal, or swipe up to skip."}
+              </Text>
+              {recordReview.error ? (
                 <Text
-                  className="text-center text-base"
-                  style={{ color: colors.mutedForeground }}
+                  accessibilityRole="alert"
+                  className="text-center text-sm text-destructive"
                 >
-                  Type the definition
+                  Your answer is saved, but XP could not sync for this card.
+                  Check your connection before continuing.
                 </Text>
+              ) : null}
+              <View className="flex-row items-center gap-2">
+                <GlassBox
+                  isInteractive
+                  tintColor={withOpacity(
+                    colors.primary,
+                    colorScheme === "dark" ? 0.35 : 0.18,
+                  )}
+                  glassEffectStyle="clear"
+                  style={{ borderRadius: 9999, flex: 1, height: 44 }}
+                >
+                  {answer.length === 0 ? (
+                    <View
+                      pointerEvents="none"
+                      className="absolute inset-0 items-center justify-center px-14"
+                    >
+                      <Text
+                        className="text-center text-base"
+                        style={{ color: colors.mutedForeground }}
+                      >
+                        {revealed
+                          ? "Ready for the next word?"
+                          : "Type the definition"}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <TextInput
+                    ref={inputRef}
+                    accessibilityLabel={`Definition for ${card.term}`}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    blurOnSubmit={false}
+                    onChangeText={handleAnswerChange}
+                    onSubmitEditing={
+                      feedback || revealed ? nextCard : checkAnswer
+                    }
+                    returnKeyType={feedback || revealed ? "next" : "done"}
+                    selectionColor={colors.primary}
+                    value={answer}
+                    style={{
+                      color: colors.foreground,
+                      fontSize: 16,
+                      height: 44,
+                      includeFontPadding: false,
+                      paddingHorizontal: 62,
+                      paddingVertical: 0,
+                      textAlign: "center",
+                      textAlignVertical: "center",
+                      width: "100%",
+                    }}
+                  />
+                  {feedback || revealed ? (
+                    <Pressable
+                      accessibilityLabel="Next word"
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: moving, busy: moving }}
+                      disabled={moving}
+                      style={{
+                        opacity: moving ? 0.5 : 1,
+                        position: "absolute",
+                        right: 2,
+                        top: 2,
+                      }}
+                      onPress={nextCard}
+                      className="rounded-full active:opacity-75"
+                    >
+                      <View
+                        className="size-10 items-center justify-center"
+                        style={{ transform: [{ translateY: 2 }] }}
+                      >
+                        <SymbolView
+                          fallback={
+                            <Text
+                              className="text-xl font-black"
+                              style={{ color: colors.primary }}
+                            >
+                              →
+                            </Text>
+                          }
+                          name="arrow.right"
+                          size={22}
+                          tintColor={colors.primary}
+                          weight="bold"
+                        />
+                      </View>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      accessibilityLabel="Check definition"
+                      accessibilityRole="button"
+                      accessibilityState={{
+                        busy: recordReview.isPending,
+                        disabled: moving || !answer.trim(),
+                      }}
+                      disabled={moving || !answer.trim()}
+                      onPress={checkAnswer}
+                      className="rounded-full active:opacity-75"
+                      style={{
+                        opacity: answer.trim() ? 1 : 0.4,
+                        position: "absolute",
+                        right: 2,
+                        top: 2,
+                      }}
+                    >
+                      <View
+                        className="size-10 items-center justify-center"
+                        style={{
+                          transform: [{ translateX: -2 }, { translateY: 2 }],
+                        }}
+                      >
+                        <SymbolView
+                          fallback={
+                            <Text
+                              className="text-xl font-black"
+                              style={{ color: colors.primary }}
+                            >
+                              ➤
+                            </Text>
+                          }
+                          name="paperplane.fill"
+                          size={22}
+                          style={{ height: 22, width: 22 }}
+                          tintColor={colors.primary}
+                          weight="bold"
+                        />
+                      </View>
+                    </Pressable>
+                  )}
+                </GlassBox>
               </View>
-            ) : null}
-            <TextInput
-              accessibilityLabel={`Definition for ${card.term}`}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!feedback}
-              onChangeText={handleAnswerChange}
-              onSubmitEditing={checkAnswer}
-              returnKeyType="done"
-              selectionColor={colors.primary}
-              value={answer}
-              style={{
-                color: colors.foreground,
-                fontSize: 16,
-                height: 44,
-                includeFontPadding: false,
-                paddingHorizontal: 20,
-                paddingVertical: 0,
-                textAlign: "center",
-              }}
-            />
-              </GlassBox>
             </View>
-            {feedback ? (
-              <Pressable
-                accessibilityLabel="Next word"
-                accessibilityRole="button"
-                onPress={nextCard}
-                className="size-11 items-center justify-center rounded-full bg-primary"
-              >
-                <SymbolView
-                  fallback={
-                    <Text
-                      className="text-xl font-black"
-                      style={{ color: colors.primaryForeground }}
-                    >
-                      →
-                    </Text>
-                  }
-                  name="arrow.right"
-                  size={22}
-                  tintColor={colors.primaryForeground}
-                  weight="bold"
-                />
-              </Pressable>
-            ) : (
-              <Pressable
-                accessibilityLabel="Check definition"
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !answer.trim() }}
-                disabled={!answer.trim()}
-                onPress={checkAnswer}
-                className="size-11 items-center justify-center rounded-full bg-primary"
-                style={{ opacity: answer.trim() ? 1 : 0.4 }}
-              >
-                <SymbolView
-                  fallback={
-                    <Text
-                      className="text-xl font-black"
-                      style={{ color: colors.primaryForeground }}
-                    >
-                      ✓
-                    </Text>
-                  }
-                  name="checkmark"
-                  size={22}
-                  tintColor={colors.primaryForeground}
-                  weight="bold"
-                />
-              </Pressable>
-            )}
-          </View>
+          ) : (
+            <Action onPress={newMix}>Next mix</Action>
+          )}
         </>
-      ) : !readFailed && query.data ? (
-        <View className="gap-3 rounded-2xl bg-muted p-5">
-          <Text className="text-xl font-black text-foreground">
-            Round complete
-          </Text>
-          <Action onPress={newMix}>Next mix</Action>
-        </View>
       ) : null}
     </View>
   );
