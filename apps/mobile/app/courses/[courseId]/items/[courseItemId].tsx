@@ -1,4 +1,5 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { resolveAssessmentEntry } from "@hakgyo/shared";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,20 +14,19 @@ import {
   NativeContentRenderer,
   useApiAssetResolver,
 } from "../../../../src/components/content-renderer";
-import {
-  CourseLearningFooter,
-  type LearningRequirementAction,
-} from "../../../../src/components/learn/course-learning-footer";
 import { VocabularySetDetail } from "../../../../src/components/learn/vocabulary-set-detail";
-import {
-  assessmentAttemptPresentation,
-  latestStandaloneAttemptForItem,
-} from "../../../../src/lib/assessment-state";
+import { CourseLearningFooter } from "../../../../src/components/learn/course-learning-footer";
+import { assessmentAttemptPresentation } from "../../../../src/lib/assessment-state";
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
+import type { LearningPathCourse } from "../../../../src/lib/course-learning-path";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
+import {
+  StudyAction,
+  StudyGlass,
+} from "../../../../src/components/study-glass";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -55,12 +55,37 @@ function CourseItemContent({
   courseId: string;
   courseItemId: string;
 }) {
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollTop = useRef(0);
-  const readAgain = () =>
-    scrollRef.current?.scrollTo({ y: scrollTop.current, animated: true });
+  const wasAtBottom = useRef(false);
+  const materialContentHeight = useRef(0);
+  const materialViewportHeight = useRef(0);
+  const openLearningSheet = () => {
+    router.push({
+      pathname: "/courses/[courseId]/items/[courseItemId]/learning-progress",
+      params: { courseId, courseItemId },
+    });
+  };
+  const openLearningSheetAtBottom = () => {
+    if (wasAtBottom.current) return;
+    wasAtBottom.current = true;
+    openLearningSheet();
+  };
+  const openLearningSheetForShortContent = () => {
+    if (
+      materialContentHeight.current > 0 &&
+      materialViewportHeight.current > 0 &&
+      materialContentHeight.current <= materialViewportHeight.current + 32
+    ) {
+      openLearningSheetAtBottom();
+    }
+  };
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
+  // Keep the progress sheet's outline warm while the learner reads.
+  const outline = api.learning.getCourseOutline.useQuery(
+    { courseId },
+    { enabled: Boolean(session && courseId), retry: false },
+  );
+  const initialOutline = useRef<LearningPathCourse>(undefined);
   const { colors } = useAppTheme();
   const { open } = useDrawer();
   const resolveAssetUrl = useApiAssetResolver();
@@ -76,44 +101,19 @@ function CourseItemContent({
       retry: false,
     },
   );
-  const attemptsQuery = api.assessment.listMyAttempts.useQuery(undefined, {
-    enabled: Boolean(session && itemQuery.data?.assessment),
-    retry: false,
-  });
-  const latestAttempt = latestStandaloneAttemptForItem(
-    attemptsQuery.data,
-    courseItemId,
-  );
   const startAssessment = api.assessment.startAttempt.useMutation();
   const [selectedCohortId, setSelectedCohortId] = useState<string>();
   const item = itemQuery.data;
   const material = item?.material;
   const vocabulary = item?.vocabularySet;
   const assessment = assessmentQuery.data;
-  const materialRequirementActions: LearningRequirementAction[] =
-    material?.requiredActivities.map((activity) => ({
-      id: activity.id,
-      type: activity.type,
-      title: activity.title,
-      onPress: () => {
-        if (activity.type === "VOCABULARY_SET") {
-          router.push({
-            pathname: "/vocabulary/[vocabularySetId]",
-            params: {
-              vocabularySetId: activity.resourceId,
-              sourceCourseItemId: courseItemId,
-              courseId,
-            },
-          });
-          return;
-        }
-        router.push({
-          pathname: "/courses/[courseId]/items/[courseItemId]",
-          params: { courseId, courseItemId: activity.courseItemId },
-        });
-      },
-    })) ?? [];
-
+  const latestAttempt = assessment?.latestStandaloneAttempt;
+  const assessmentEntry = resolveAssessmentEntry({
+    attemptStatus: latestAttempt?.status,
+    attemptsUsed: assessment?.standaloneAttemptCount ?? 0,
+    maxAttempts: assessment?.maxAttempts ?? null,
+    available: true,
+  });
   useEffect(() => {
     if (!isSessionPending && !session && courseId && courseItemId) {
       router.replace({
@@ -126,6 +126,11 @@ function CourseItemContent({
   }, [courseId, courseItemId, isSessionPending, session]);
 
   useEffect(() => {
+    if (!initialOutline.current && outline.data)
+      initialOutline.current = outline.data;
+  }, [outline.data]);
+
+  useEffect(() => {
     if ((material || vocabulary) && item && item.progress.length === 0) {
       markProgress.mutate({ courseItemId, status: "IN_PROGRESS" });
     }
@@ -135,7 +140,7 @@ function CourseItemContent({
 
   async function beginAssessment() {
     if (!assessment) return;
-    if (latestAttempt) {
+    if (latestAttempt?.status === "IN_PROGRESS") {
       router.push({
         pathname:
           "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
@@ -230,10 +235,7 @@ function CourseItemContent({
             contentContainerClassName="gap-6 px-5 pb-14 pt-4"
             contentInsetAdjustmentBehavior="automatic"
           >
-            <View className="gap-4 rounded-xl border border-border bg-card p-6">
-              <View className="size-12 items-center justify-center rounded-xl bg-primary/10">
-                <Text className="text-xl font-black text-primary">A</Text>
-              </View>
+            <StudyGlass>
               <View className="gap-2">
                 <Text className="text-xs font-black uppercase tracking-[2px] text-muted-foreground">
                   Assessment · {assessment.questions.length} questions
@@ -247,7 +249,8 @@ function CourseItemContent({
                   </Text>
                 ) : null}
               </View>
-              {!latestAttempt && assessment.eligibleCohorts.length > 1 ? (
+              {(assessmentEntry.canStart || assessmentEntry.canReattempt) &&
+              assessment.eligibleCohorts.length > 1 ? (
                 <View className="gap-2 border-t border-border pt-4">
                   <Text className="text-sm font-bold text-foreground">
                     Choose study group
@@ -265,47 +268,77 @@ function CourseItemContent({
                   ))}
                 </View>
               ) : null}
-              <Pressable
-                accessibilityRole="button"
-                className="items-center rounded-full bg-primary px-5 py-4 disabled:opacity-50"
-                disabled={
-                  startAssessment.isPending ||
-                  attemptsQuery.isPending ||
-                  attemptsQuery.isError ||
-                  (!latestAttempt &&
-                    (assessment.questions.length === 0 ||
-                      (assessment.eligibleCohorts.length > 1 &&
-                        !selectedCohortId)))
-                }
-                onPress={() => void beginAssessment()}
-              >
-                <Text className="font-black text-primary-foreground">
+              <Text className="text-sm leading-6 text-muted-foreground">
+                {assessment.timeLimitMinutes != null
+                  ? `${assessment.timeLimitMinutes} minutes`
+                  : "No time limit"}{" "}
+                ·{" "}
+                {assessment.maxAttempts == null
+                  ? "Unlimited attempts"
+                  : `${assessment.maxAttempts} attempts allowed`}
+                {latestAttempt
+                  ? `\n${assessmentAttemptPresentation(latestAttempt).detail}${latestAttempt.status === "GRADED" && latestAttempt.score !== null && latestAttempt.maxScore !== null ? ` · ${latestAttempt.score}/${latestAttempt.maxScore}` : ""}`
+                  : ""}
+                {"\n"}Move freely between questions. Submit when you’re ready.
+              </Text>
+              {assessmentEntry.canStart ||
+              assessmentEntry.canReattempt ||
+              assessmentEntry.destination === "ATTEMPT" ? (
+                <StudyAction
+                  disabled={
+                    startAssessment.isPending ||
+                    assessment.questions.length === 0 ||
+                    ((assessmentEntry.canStart ||
+                      assessmentEntry.canReattempt) &&
+                      assessment.eligibleCohorts.length > 1 &&
+                      !selectedCohortId)
+                  }
+                  onPress={() => void beginAssessment()}
+                >
                   {startAssessment.isPending
                     ? "Starting…"
-                    : attemptsQuery.isPending
-                      ? "Loading progress…"
-                      : latestAttempt
-                        ? assessmentAttemptPresentation(latestAttempt).action
+                    : assessmentEntry.destination === "ATTEMPT"
+                      ? "Resume assessment"
+                      : assessmentEntry.canReattempt
+                        ? "Re-attempt assessment"
                         : "Start assessment"}
-                </Text>
-              </Pressable>
-              {attemptsQuery.isError ? (
-                <Pressable
-                  accessibilityRole="button"
-                  className="min-h-12 items-center justify-center"
-                  onPress={() => void attemptsQuery.refetch()}
+                </StudyAction>
+              ) : null}
+              {latestAttempt && latestAttempt.status !== "IN_PROGRESS" ? (
+                <StudyAction
+                  secondary={assessmentEntry.canReattempt}
+                  onPress={() =>
+                    router.push({
+                      pathname:
+                        "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                      params: {
+                        courseId,
+                        courseItemId,
+                        attemptId: latestAttempt.id,
+                      },
+                    })
+                  }
                 >
-                  <Text className="text-sm text-destructive">
-                    Could not load your attempts. Tap to retry.
-                  </Text>
-                </Pressable>
+                  {latestAttempt.status === "GRADED"
+                    ? "Review result"
+                    : "View submission"}
+                </StudyAction>
               ) : null}
               {startAssessment.isError ? (
                 <Text className="text-center text-sm text-destructive">
                   {startAssessment.error.message}
                 </Text>
               ) : null}
-            </View>
+            </StudyGlass>
+            {!assessment.event ? (
+              <CourseLearningFooter
+                key={courseItemId}
+                courseId={courseId}
+                courseItemId={courseItemId}
+                completionMode="assessment"
+                initialOutline={initialOutline.current}
+              />
+            ) : null}
           </ScrollView>
         ) : (
           <View className="flex-1 items-center justify-center bg-background px-6">
@@ -329,13 +362,32 @@ function CourseItemContent({
         </View>
       ) : (
         <ScrollView
-          ref={scrollRef}
-          onScroll={(event) => {
-            scrollTop.current = -event.nativeEvent.contentInset.top;
+          onContentSizeChange={(_width, height) => {
+            materialContentHeight.current = height;
+            openLearningSheetForShortContent();
           }}
-          scrollEventThrottle={100}
+          onLayout={(event) => {
+            materialViewportHeight.current = event.nativeEvent.layout.height;
+            openLearningSheetForShortContent();
+          }}
+          onScroll={(event) => {
+            const {
+              contentInset,
+              contentOffset,
+              contentSize,
+              layoutMeasurement,
+            } = event.nativeEvent;
+            const distanceFromBottom =
+              contentSize.height +
+              contentInset.bottom -
+              (contentOffset.y + layoutMeasurement.height);
+            const atBottom = distanceFromBottom <= 32;
+            if (atBottom) openLearningSheetAtBottom();
+            else if (distanceFromBottom > 120) wasAtBottom.current = false;
+          }}
+          scrollEventThrottle={32}
           className="flex-1 bg-background"
-          contentContainerClassName="gap-7 px-5 pb-14 pt-4"
+          contentContainerClassName="px-5 pb-14 pt-4"
           contentInsetAdjustmentBehavior="automatic"
         >
           <NativeContentRenderer
@@ -362,13 +414,9 @@ function CourseItemContent({
               }
             }}
           />
-
-          <CourseLearningFooter
-            courseId={courseId}
-            courseItemId={courseItemId}
-            onReadAgain={readAgain}
-            requirementActions={materialRequirementActions}
-          />
+          <View className="mt-8">
+            <StudyAction onPress={openLearningSheet}>Continue</StudyAction>
+          </View>
         </ScrollView>
       )}
     </>

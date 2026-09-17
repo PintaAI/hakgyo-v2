@@ -19,10 +19,7 @@ import { withOpacity } from "../../theme/colors";
 import { useApiAssetResolver } from "../content-renderer";
 import { GlassBox } from "../GlassBox";
 import { Eyebrow, QueryState } from "../learning-ui";
-import {
-  CourseLearningFooter,
-  type LearningRequirementAction,
-} from "./course-learning-footer";
+import { StudyAction } from "../study-glass";
 
 // Same corner family as the cohort card: card-level surfaces share
 // SURFACE_RADIUS, pills stay fully round. Clear glass, no overflow on the
@@ -281,10 +278,11 @@ export function VocabularySetDetail({
     colors.primary,
     colorScheme === "dark" ? 0.35 : 0.18,
   );
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollTop = useRef(0);
-  const readAgain = () =>
-    scrollRef.current?.scrollTo({ y: scrollTop.current, animated: true });
+  const openLearningSheet = () =>
+    router.push({
+      pathname: "/courses/[courseId]/items/[courseItemId]/learning-progress",
+      params: { courseId, courseItemId },
+    });
   const [viewMode, setViewModeState] = useState<"list" | "grid">(() => {
     try {
       return Storage.getItemSync(VIEW_MODE_KEY) === "grid" ? "grid" : "list";
@@ -346,15 +344,6 @@ export function VocabularySetDetail({
         courseId,
       },
     });
-  const requirementActions: LearningRequirementAction[] = [
-    {
-      id: vocabulary.id,
-      type: "VOCABULARY_SET",
-      title: vocabulary.title,
-      onPress: openPractice,
-    },
-  ];
-
   // The one thing to do: fresh sets invite a start, partial sets continue,
   // fully remembered sets offer a review.
   let hero: {
@@ -393,11 +382,6 @@ export function VocabularySetDetail({
 
   return (
     <ScrollView
-      ref={scrollRef}
-      onScroll={(event) => {
-        scrollTop.current = -event.nativeEvent.contentInset.top;
-      }}
-      scrollEventThrottle={100}
       className="flex-1 bg-background"
       contentContainerClassName="gap-5 px-5 pb-14 pt-4"
       contentInsetAdjustmentBehavior="automatic"
@@ -661,12 +645,9 @@ export function VocabularySetDetail({
         </Text>
       )}
 
-      <CourseLearningFooter
-        courseId={courseId}
-        courseItemId={courseItemId}
-        onReadAgain={readAgain}
-        requirementActions={requirementActions}
-      />
+      <View className="mt-3">
+        <StudyAction onPress={openLearningSheet}>Continue</StudyAction>
+      </View>
     </ScrollView>
   );
 }

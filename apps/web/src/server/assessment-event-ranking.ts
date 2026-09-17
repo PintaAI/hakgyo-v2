@@ -25,7 +25,7 @@ export type AssessmentEventLeaderboardEntry = {
 export function rankAssessmentEventAttempts(
   attempts: RankableAssessmentEventAttempt[],
 ): AssessmentEventLeaderboardEntry[] {
-  return attempts
+  const rankedAttempts = attempts
     .filter(
       (
         attempt,
@@ -34,7 +34,8 @@ export function rankAssessmentEventAttempts(
         maxScore: number;
         submittedAt: Date;
       } =>
-        attempt.status === "GRADED" && attempt.invalidatedAt === null &&
+        attempt.status === "GRADED" &&
+        attempt.invalidatedAt === null &&
         attempt.score !== null &&
         attempt.maxScore !== null &&
         attempt.submittedAt !== null,
@@ -55,6 +56,22 @@ export function rankAssessmentEventAttempts(
       ),
       submittedAt: attempt.submittedAt,
     }))
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        left.completionTimeMs - right.completionTimeMs ||
+        left.submittedAt.getTime() - right.submittedAt.getTime() ||
+        left.userId.localeCompare(right.userId),
+    );
+
+  const bestByUser = new Map<string, (typeof rankedAttempts)[number]>();
+  for (const attempt of rankedAttempts) {
+    if (!bestByUser.has(attempt.userId)) {
+      bestByUser.set(attempt.userId, attempt);
+    }
+  }
+
+  return [...bestByUser.values()]
     .sort(
       (left, right) =>
         right.score - left.score ||

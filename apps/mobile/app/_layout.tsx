@@ -13,6 +13,7 @@ import {
   useAppTheme,
 } from "../src/providers/AppThemeProvider";
 import { DrawerProvider } from "../src/providers/DrawerProvider";
+import { QuestionNavigatorProvider } from "../src/providers/QuestionNavigatorProvider";
 import "../global.css";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -112,6 +113,19 @@ function RootNavigator() {
             </Stack.Protected>
 
             <Stack.Protected guard={Boolean(session)}>
+              <Stack.Screen
+                name="assessment-questions"
+                options={{
+                  presentation: "formSheet",
+                  headerShown: false,
+                  sheetAllowedDetents: [0.55, 0.9],
+                  sheetInitialDetentIndex: 0,
+                  sheetCornerRadius: 28,
+                  sheetGrabberVisible: true,
+                  sheetExpandsWhenScrolledToEdge: true,
+                  sheetLargestUndimmedDetentIndex: "none",
+                }}
+              />
               <Stack.Screen name="(home)" />
               <Stack.Screen
                 name="organization-switcher"
@@ -134,6 +148,32 @@ function RootNavigator() {
                 options={{ headerShown: true, headerTitle: "" }}
               />
               <Stack.Screen
+                name="courses/[courseId]/items/[courseItemId]/learning-progress"
+                options={Platform.select({
+                  ios: {
+                    presentation: "formSheet",
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "transparent" },
+                    sheetAllowedDetents: "fitToContents",
+                    sheetExpandsWhenScrolledToEdge: false,
+                    sheetGrabberVisible: false,
+                  },
+                  default: {
+                    presentation: "formSheet",
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "transparent" },
+                    sheetAllowedDetents: "fitToContents",
+                    sheetInitialDetentIndex: 0,
+                    sheetCornerRadius: 28,
+                    sheetElevation: 24,
+                    sheetGrabberVisible: false,
+                    sheetShouldOverflowTopInset: false,
+                    sheetLargestUndimmedDetentIndex: "none",
+                    sheetResizeAnimationEnabled: true,
+                  },
+                })}
+              />
+              <Stack.Screen
                 name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"
                 options={{ headerShown: true }}
               />
@@ -151,7 +191,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <TRPCProvider>
           <AppThemeProvider>
-            <RootNavigator />
+            <QuestionNavigatorProvider>
+              <RootNavigator />
+            </QuestionNavigatorProvider>
           </AppThemeProvider>
         </TRPCProvider>
       </SafeAreaProvider>

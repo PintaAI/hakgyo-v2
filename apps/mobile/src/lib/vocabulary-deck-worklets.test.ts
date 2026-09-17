@@ -95,7 +95,7 @@ test("the deck wires reveal to a finger-driven bottom-right peel", () => {
     import.meta.url,
   ).pathname;
   const source = readFileSync(filename, "utf8");
-  expect(source).toContain("Gesture.Race(peelGesture, swipe)");
+  expect(source).toContain("Gesture.Exclusive(peelGesture, swipe)");
   expect(source).toContain("vocabularyStickerPeelAtTip(");
   expect(source).toContain("vocabularyStickerPeelGesture(");
   expect(source).toContain("right: 0, bottom: 0, width: 104, height: 104");

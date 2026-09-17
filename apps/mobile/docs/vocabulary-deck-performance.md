@@ -36,6 +36,11 @@ used that unsupported combination and hid the folded corner while leaving the
 separate crease visible. The regression test now models Fabric's rejection,
 in addition to checking the geometry; the original ideal-math test missed it.
 
+The oversized transform-only sticker mask is visual-only (`pointerEvents="none"`).
+Without that setting its native hit box extends below the card and intercepts
+the Today practice `TextInput`, preventing the keyboard from opening. The
+card-sized accessibility/reveal surface remains interactive.
+
 ## Repeatable checks
 
 From the repository root:

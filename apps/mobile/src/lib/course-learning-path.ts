@@ -2,6 +2,11 @@ export type LearningPathItem = {
   id: string;
   title: string;
   isCompleted: boolean;
+  type?: "MATERIAL" | "VOCABULARY_SET" | "ASSESSMENT";
+  attempt?: {
+    id: string;
+    status: "IN_PROGRESS" | "SUBMITTED" | "IN_REVIEW" | "GRADED";
+  } | null;
 };
 
 export type LearningPathModule = {
@@ -28,13 +33,16 @@ export function getLearningPath(course: LearningPathCourse, itemId: string) {
   const module = course.modules[moduleIndex];
   if (!module || module.access === "LOCKED") return undefined;
   const itemIndex = module.items.findIndex((item) => item.id === itemId);
+  const item = module.items[itemIndex]!;
   const allItems = course.modules.flatMap((entry) => entry.items);
   const available = course.modules
     .filter((entry) => entry.access !== "LOCKED")
     .flatMap((entry) => entry.items);
   const currentIndex = available.findIndex((item) => item.id === itemId);
-  // Finish gaps in this module before moving on, even when opened out of order.
+  // Revisiting completed content stays in its local sequence. Otherwise, finish
+  // gaps in this module before moving on, even when opened out of order.
   const nextItem =
+    (item.isCompleted ? module.items[itemIndex + 1] : undefined) ??
     module.items.slice(itemIndex + 1).find((item) => !item.isCompleted) ??
     module.items.find((item) => item.id !== itemId && !item.isCompleted) ??
     available.slice(currentIndex + 1).find((item) => !item.isCompleted) ??
@@ -44,7 +52,7 @@ export function getLearningPath(course: LearningPathCourse, itemId: string) {
     module,
     moduleIndex,
     itemIndex,
-    item: module.items[itemIndex]!,
+    item,
     completedCount: module.items.filter((item) => item.isCompleted).length,
     courseCompleted:
       allItems.length > 0 && allItems.every((item) => item.isCompleted),

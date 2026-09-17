@@ -89,7 +89,15 @@ export async function getCourseOutlineForUser(
                   passingScore: true,
                   attempts: {
                     where: { userId, assessmentEventId: null },
-                    select: { status: true, score: true, maxScore: true },
+                    orderBy: { attemptNumber: "desc" },
+                    select: {
+                      id: true,
+                      attemptNumber: true,
+                      status: true,
+                      score: true,
+                      maxScore: true,
+                      startedAt: true,
+                    },
                   },
                 },
               },
@@ -148,6 +156,7 @@ export async function getCourseOutlineForUser(
           item.vocabularySet?.title ??
           item.assessment?.title ??
           "Untitled",
+        attempt: item.assessment?.attempts[0] ?? null,
         isCompleted:
           item.type === "ASSESSMENT"
             ? hasPassedAssessment(

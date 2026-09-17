@@ -26,6 +26,7 @@ import {
   timeLabel,
 } from "../../lib/study";
 import { api } from "../../lib/trpc";
+import { apiUrl } from "../../config";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { GlassBox } from "../GlassBox";
@@ -77,7 +78,11 @@ export type CohortEvent = {
   cohort?: { id: string; name: string } | null;
   closesAt: Date | null;
   closedAt?: Date | null;
+  course: { id: string; title: string };
+  courseItem: { id: string };
+  entry: { destination: "DETAIL" | "ATTEMPT" };
   attempts: {
+    id: string;
     status: "IN_PROGRESS" | "SUBMITTED" | "IN_REVIEW" | "GRADED";
     score: number | null;
     maxScore: number | null;
@@ -113,6 +118,29 @@ export async function openExternalLink(
       "Check that the app or a browser is available, then try again.",
     );
   }
+}
+
+export async function openMeetingOnWeb(courseId: string) {
+  const url = `${apiUrl}/learn/${encodeURIComponent(courseId)}`;
+  try {
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert(
+      "Couldn’t open the link",
+      "Check that a browser is available, then try again.",
+    );
+  }
+}
+
+export function openMeeting(
+  meeting: Pick<CohortMeeting, "joinUrl">,
+  courseId: string,
+) {
+  if (meeting.joinUrl) {
+    void openExternalLink(meeting.joinUrl, "zoom");
+    return;
+  }
+  void openMeetingOnWeb(courseId);
 }
 
 function eventSummary(events: CohortEvent[]) {
@@ -165,6 +193,7 @@ type CohortHero = {
 type PlateRow = {
   key: string;
   icon: SymbolViewProps["name"];
+  brandIcon?: ImageSourcePropType;
   fallback: string;
   title: string;
   detail: string;
@@ -174,9 +203,11 @@ type PlateRow = {
 function HeroCopy({
   hero,
   compact = false,
+  truncateTitle = false,
 }: {
   hero: CohortHero;
   compact?: boolean;
+  truncateTitle?: boolean;
 }) {
   return (
     <>
@@ -196,7 +227,8 @@ function HeroCopy({
             ? "text-lg font-black leading-6 text-foreground"
             : "text-xl font-black leading-7 text-foreground"
         }
-        numberOfLines={2}
+        ellipsizeMode="tail"
+        numberOfLines={truncateTitle ? 1 : 2}
       >
         {hero.title}
       </Text>
@@ -218,7 +250,7 @@ function HeroPill({ hero }: { hero: CohortHero }) {
         <Image
           accessibilityIgnoresInvertColors
           source={hero.pillIcon}
-          style={{ width: 14, height: 14, borderRadius: 7 }}
+          style={{ width: 14, height: 14 }}
         />
       ) : null}
       <Text className="text-sm font-bold text-primary-foreground">
@@ -229,8 +261,10 @@ function HeroPill({ hero }: { hero: CohortHero }) {
 }
 
 function HeroBlock({ hero, tint }: { hero: CohortHero; tint: string }) {
-  // The assessment hero is a denser alert-style row: copy left, action right.
+  // Heroes with an action stay on one row: copy left (flex-1, truncates),
+  // pill pinned right so a long title never pushes the button down.
   const compact = hero.kind === "assessment";
+  const hasAction = !!hero.pill && !!hero.onPress;
   return (
     <Pressable
       accessibilityHint={hero.onPress ? hero.title : undefined}
@@ -245,21 +279,20 @@ function HeroBlock({ hero, tint }: { hero: CohortHero; tint: string }) {
         glassEffectStyle="clear"
         style={styles.heroGlass}
       >
-        {compact ? (
-          <View className="flex-row items-center gap-3 px-5 py-4">
+        {hasAction ? (
+          <View
+            className={`flex-row items-center gap-3 px-5 ${compact ? "py-4" : "py-5"}`}
+          >
             <View className="min-w-0 flex-1 gap-1">
-              <HeroCopy compact hero={hero} />
+              <HeroCopy compact={compact} truncateTitle={!compact} hero={hero} />
             </View>
-            <HeroPill hero={hero} />
+            <View className="shrink-0">
+              <HeroPill hero={hero} />
+            </View>
           </View>
         ) : (
           <View className="gap-1.5 px-5 py-5">
             <HeroCopy hero={hero} />
-            {hero.pill && hero.onPress ? (
-              <View className="mt-2 self-start">
-                <HeroPill hero={hero} />
-              </View>
-            ) : null}
           </View>
         )}
       </GlassBox>
@@ -267,7 +300,15 @@ function HeroBlock({ hero, tint }: { hero: CohortHero; tint: string }) {
   );
 }
 
-function PlateRowView({ row, isLast }: { row: PlateRow; isLast: boolean }) {
+function PlateRowView({
+  row,
+  isLast,
+  tint,
+}: {
+  row: PlateRow;
+  isLast: boolean;
+  tint?: string;
+}) {
   const { colors } = useAppTheme();
   return (
     <Pressable
@@ -300,7 +341,32 @@ function PlateRowView({ row, isLast }: { row: PlateRow; isLast: boolean }) {
           {row.detail}
         </Text>
       </View>
-      {row.onPress ? (
+      {row.brandIcon ? (
+        <GlassBox
+          isInteractive={!!row.onPress}
+          tintColor={tint}
+          glassEffectStyle="clear"
+          style={styles.chipGlass}
+        >
+          <View className="h-9 flex-row items-center gap-1.5 px-3.5">
+            <Image
+              accessibilityIgnoresInvertColors
+              source={row.brandIcon}
+              style={{ width: 14, height: 14 }}
+            />
+            <Text className="text-xs font-semibold text-foreground">Zoom</Text>
+            <SymbolView
+              fallback={
+                <Text className="text-xs text-muted-foreground">↗</Text>
+              }
+              name="arrow.up.right"
+              size={13}
+              tintColor={colors.mutedForeground}
+              weight="semibold"
+            />
+          </View>
+        </GlassBox>
+      ) : row.onPress ? (
         <Text className="text-lg text-muted-foreground">›</Text>
       ) : null}
     </Pressable>
@@ -384,6 +450,19 @@ export function CohortCard({
 
   const openFeaturedAssessment = () => {
     if (!featured) return;
+    const attempt = featured.attempts[0];
+    if (featured.entry.destination === "ATTEMPT" && attempt) {
+      router.push({
+        pathname:
+          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+        params: {
+          courseId: featured.course.id,
+          courseItemId: featured.courseItem.id,
+          attemptId: attempt.id,
+        },
+      });
+      return;
+    }
     router.push({
       pathname: "/events/[eventId]",
       params: { eventId: featured.id },
@@ -434,13 +513,24 @@ export function CohortCard({
   const openNextItem =
     nextOutlineItem && nextTypeLabel
       ? () =>
-          router.push({
-            pathname: "/courses/[courseId]/items/[courseItemId]",
-            params: {
-              courseId: cohort.course.id,
-              courseItemId: nextOutlineItem.id,
-            },
-          })
+          nextOutlineItem.type === "ASSESSMENT" &&
+          nextOutlineItem.attempt?.status === "IN_PROGRESS"
+            ? router.push({
+                pathname:
+                  "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                params: {
+                  courseId: cohort.course.id,
+                  courseItemId: nextOutlineItem.id,
+                  attemptId: nextOutlineItem.attempt.id,
+                },
+              })
+            : router.push({
+                pathname: "/courses/[courseId]/items/[courseItemId]",
+                params: {
+                  courseId: cohort.course.id,
+                  courseItemId: nextOutlineItem.id,
+                },
+              })
       : undefined;
 
   // Pick the single hero by urgency.
@@ -459,11 +549,9 @@ export function CohortCard({
         nextState === "live"
           ? `Ends ${timeLabel(endsAt)} · ${next.durationMinutes} min`
           : `Starts ${timeLabel(next.startsAt)} · ${next.durationMinutes} min`,
-      pill: "Join",
-      pillIcon: zoomBrandIcon,
-      onPress: joinUrl
-        ? () => void openExternalLink(joinUrl, "zoom")
-        : undefined,
+      pill: joinUrl ? "Join" : "Details",
+      pillIcon: joinUrl ? zoomBrandIcon : undefined,
+      onPress: () => openMeeting(next, cohort.course.id),
     };
   } else if (featured && featuredActionable && featuredUrgent) {
     hero = {
@@ -503,12 +591,17 @@ export function CohortCard({
   // Everything pending that isn't the hero becomes a quiet row.
   const plateRows: PlateRow[] = [];
   if (next && nextState === "upcoming") {
+    const joinUrl = next.joinUrl;
     plateRows.push({
       key: "next-class",
       icon: "calendar",
+      brandIcon: zoomBrandIcon,
       fallback: "◷",
       title: next.title,
-      detail: `${dateLabel(next.startsAt)} · ${next.durationMinutes} min`,
+      detail: joinUrl
+        ? `${dateLabel(next.startsAt)} · ${next.durationMinutes} min · Tap to join`
+        : `${dateLabel(next.startsAt)} · ${next.durationMinutes} min · Details on web`,
+      onPress: () => openMeeting(next, cohort.course.id),
     });
   }
   if (featured && hero?.kind !== "assessment") {
@@ -668,6 +761,7 @@ export function CohortCard({
                   isLast={index === plateRows.length - 1}
                   key={row.key}
                   row={row}
+                  tint={glassTint}
                 />
               ))}
             </View>

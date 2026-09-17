@@ -11,7 +11,7 @@ const compilerRequire = createRequire(
 );
 const { transformSync } = compilerRequire("@babel/core");
 type RenderNode = {
-  props: { children?: unknown; style?: unknown };
+  props: { children?: unknown; pointerEvents?: string; style?: unknown };
 };
 const filename = new URL("./vocabulary-practice-deck.tsx", import.meta.url)
   .pathname;
@@ -122,6 +122,7 @@ test("the revealed surface uses the opaque exposed-corner color in every answer 
       collectStyles(result);
 
       const effectClips: RenderNode[] = [];
+      const stickerMasks: RenderNode[] = [];
       function collectEffectClips(node: unknown) {
         if (Array.isArray(node)) {
           for (const child of node) collectEffectClips(child);
@@ -134,6 +135,8 @@ test("the revealed surface uses the opaque exposed-corner color in every answer 
           : [element.props.style];
         if (nodeStyles.includes(exports.styles.peelEffectsClip))
           effectClips.push(element);
+        if (nodeStyles.includes(exports.styles.stickerMask))
+          stickerMasks.push(element);
         collectEffectClips(element.props.children);
       }
       function subtreeUsesStyle(node: unknown, target: unknown): boolean {
@@ -152,6 +155,10 @@ test("the revealed surface uses the opaque exposed-corner color in every answer 
       }
       collectEffectClips(result);
       expect(effectClips).toHaveLength(2);
+      // The transform-only peel plane has a deliberately oversized native
+      // layout. It must stay visual-only or its hit box covers the input below.
+      expect(stickerMasks).toHaveLength(1);
+      expect(stickerMasks[0]?.props.pointerEvents).toBe("none");
       expect(
         effectClips.some((clip) =>
           subtreeUsesStyle(clip, exports.styles.peelShadow),

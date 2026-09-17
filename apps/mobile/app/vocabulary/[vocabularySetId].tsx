@@ -1,11 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Gesture } from "react-native-gesture-handler";
-import {
-  CourseLearningFooter,
-  type LearningRequirementAction,
-} from "../../src/components/learn/course-learning-footer";
-import type { LearningPathCourse } from "../../src/lib/course-learning-path";
 import { Text } from "react-native";
 import { api } from "../../src/lib/trpc";
 import { authClient } from "../../src/lib/auth-client";
@@ -14,6 +9,7 @@ import {
   QueryState,
   StudyScreen,
 } from "../../src/components/learning-ui";
+import { StudyAction } from "../../src/components/study-glass";
 import { VocabularySession } from "../../src/components/vocabulary-session";
 
 export default function VocabularyPracticeScreen() {
@@ -30,20 +26,14 @@ export default function VocabularyPracticeScreen() {
     { vocabularySetId, sourceCourseItemId },
     { enabled: !!(vocabularySetId && sourceCourseItemId && session) },
   );
-  const sourceItem = api.learning.getCourseItem.useQuery(
-    { courseItemId: sourceCourseItemId },
-    { enabled: Boolean(session && sourceCourseItemId) },
-  );
   const utils = api.useUtils();
-  const outline = api.learning.getCourseOutline.useQuery(
-    { courseId: courseId ?? "" },
-    { enabled: Boolean(session && courseId) },
-  );
-  const initialOutline = useRef<LearningPathCourse>(undefined);
-  useEffect(() => {
-    if (!initialOutline.current && outline.data)
-      initialOutline.current = outline.data;
-  }, [outline.data]);
+  const openLearningSheet = () => {
+    if (!courseId) return;
+    router.push({
+      pathname: "/courses/[courseId]/items/[courseItemId]/learning-progress",
+      params: { courseId, courseItemId: sourceCourseItemId },
+    });
+  };
   const complete = api.learning.markContentProgress.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -52,31 +42,6 @@ export default function VocabularyPracticeScreen() {
       ]);
     },
   });
-  const requirementActions: LearningRequirementAction[] =
-    sourceItem.data?.material?.requiredActivities.map((activity) => ({
-      id: activity.id,
-      type: activity.type,
-      title: activity.title,
-      onPress: () => {
-        if (activity.type === "VOCABULARY_SET") {
-          router.push({
-            pathname: "/vocabulary/[vocabularySetId]",
-            params: {
-              vocabularySetId: activity.resourceId,
-              sourceCourseItemId,
-              ...(courseId ? { courseId } : {}),
-            },
-          });
-          return;
-        }
-        if (courseId) {
-          router.push({
-            pathname: "/courses/[courseId]/items/[courseItemId]",
-            params: { courseId, courseItemId: activity.courseItemId },
-          });
-        }
-      },
-    })) ?? [];
   return (
     <StudyScreen
       title={query.data?.title ?? "Vocabulary"}
@@ -114,13 +79,7 @@ export default function VocabularyPracticeScreen() {
         />
       ) : null}
       {complete.isSuccess && courseId ? (
-        <CourseLearningFooter
-          key={sourceCourseItemId}
-          courseId={courseId}
-          courseItemId={sourceCourseItemId}
-          initialOutline={initialOutline.current}
-          requirementActions={requirementActions}
-        />
+        <StudyAction onPress={openLearningSheet}>Continue</StudyAction>
       ) : null}
       {complete.isSuccess && !courseId ? (
         <Text

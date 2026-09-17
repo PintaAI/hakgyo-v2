@@ -104,6 +104,10 @@ export function LearnerAssessmentEvents({
       <div className="grid gap-4 md:grid-cols-2">
         {events.map((event) => {
           const attempt = event.attempts[0];
+          const href =
+            event.entry.destination === "ATTEMPT" && attempt
+              ? `/learn/${event.course.id}/items/${event.courseItem.id}/attempts/${attempt.id}`
+              : `/learn/assessments/${event.id}`;
           const score =
             attempt?.score !== null && attempt?.maxScore
               ? `${attempt.score}/${attempt.maxScore}`
@@ -157,11 +161,11 @@ export function LearnerAssessmentEvents({
                           : "")}
                     </p>
                   </div>
-                  <Link
-                    href={`/learn/assessments/${event.id}`}
-                    className={buttonVariants({ size: "sm" })}
-                  >
-                    Buka <ArrowRightIcon />
+                  <Link href={href} className={buttonVariants({ size: "sm" })}>
+                    {event.entry.destination === "ATTEMPT"
+                      ? "Lanjutkan"
+                      : "Buka"}{" "}
+                    <ArrowRightIcon />
                   </Link>
                 </div>
               </CardContent>
@@ -183,14 +187,16 @@ export function LearnerAssessmentEvent({
   const attempt = event.attempts[0];
   const participant = event.participants[0];
   const expired = event.closesAt ? event.closesAt <= new Date() : false;
+  const attemptHref = attempt
+    ? `/learn/${event.course.id}/items/${event.courseItem.id}/attempts/${attempt.id}`
+    : null;
+  const showLeaderboard =
+    event.entry.state === "SUBMITTED" ||
+    event.entry.state === "IN_REVIEW" ||
+    event.entry.state === "GRADED" ||
+    event.status === "CLOSED";
 
-  async function startOrResume() {
-    if (attempt) {
-      router.push(
-        `/learn/${event.course.id}/items/${event.courseItem.id}/attempts/${attempt.id}`,
-      );
-      return;
-    }
+  async function startAttempt() {
     try {
       const created = await start.mutateAsync({ eventId: event.id });
       router.push(
@@ -233,6 +239,12 @@ export function LearnerAssessmentEvent({
           <p className="mt-3 text-sm text-white/65">
             {event.courseItem.assessment?.title} · {event.durationMinutes} menit
           </p>
+          <p className="mt-1 text-sm text-white/65">
+            {event.courseItem.assessment?._count.questions ?? 0} soal · Nilai
+            lulus {event.courseItem.assessment?.passingScore ?? 0}% · Attempt{" "}
+            {event.attemptCount}/
+            {event.courseItem.assessment?.maxAttempts ?? "∞"}
+          </p>
           {event.closesAt ? (
             <p className="mt-1 text-sm text-white/65">
               Ditutup {dateTimeFormatter.format(event.closesAt)}
@@ -244,30 +256,43 @@ export function LearnerAssessmentEvent({
               {participant.invalidationReason}
             </div>
           ) : event.status === "OPEN" && !expired ? (
-            <Button
-              className="mt-7 bg-[#f5f3e9] text-[#171915] hover:bg-white"
-              size="lg"
-              disabled={start.isPending}
-              onClick={startOrResume}
-            >
-              {start.isPending ? (
-                <LoaderCircleIcon className="animate-spin" />
+            <div className="mt-7 flex flex-wrap gap-3">
+              {event.entry.canStart || event.entry.canReattempt ? (
+                <Button
+                  className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
+                  size="lg"
+                  disabled={start.isPending}
+                  onClick={startAttempt}
+                >
+                  {start.isPending ? (
+                    <LoaderCircleIcon className="animate-spin" />
+                  ) : null}
+                  {event.entry.canReattempt ? "Coba lagi" : "Mulai sekarang"}
+                  <ArrowRightIcon />
+                </Button>
               ) : null}
-              {attempt?.status === "IN_PROGRESS"
-                ? "Lanjutkan attempt"
-                : attempt
-                  ? "Lihat hasil"
-                  : "Mulai sekarang"}
-              <ArrowRightIcon />
-            </Button>
-          ) : attempt ? (
-            <Button
-              className="mt-7 bg-[#f5f3e9] text-[#171915] hover:bg-white"
-              size="lg"
-              onClick={startOrResume}
+              {attemptHref ? (
+                <Link
+                  href={attemptHref}
+                  className={buttonVariants({
+                    variant: "secondary",
+                    size: "lg",
+                  })}
+                >
+                  Lihat hasil <ArrowRightIcon />
+                </Link>
+              ) : null}
+            </div>
+          ) : attemptHref ? (
+            <Link
+              href={attemptHref}
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "lg" }),
+                "mt-7",
+              )}
             >
               Lihat hasil <ArrowRightIcon />
-            </Button>
+            </Link>
           ) : (
             <p className="mt-7 text-sm text-white/70">
               Event telah ditutup. Tidak ada attempt yang tercatat.
@@ -276,14 +301,15 @@ export function LearnerAssessmentEvent({
         </div>
       </section>
 
-      {event.status === "CLOSED" ? (
+      {showLeaderboard ? (
         <Card className="rounded-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrophyIcon className="size-5" /> Leaderboard
             </CardTitle>
             <CardDescription>
-              Diurutkan berdasarkan nilai, waktu pengerjaan, lalu waktu submit.
+              Attempt terbaik setiap peserta, diurutkan berdasarkan nilai, waktu
+              pengerjaan, lalu waktu submit.
             </CardDescription>
           </CardHeader>
           <CardContent>

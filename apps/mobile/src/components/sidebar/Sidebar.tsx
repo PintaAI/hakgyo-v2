@@ -212,7 +212,7 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
                   return;
                 }
                 onClose();
-                if (attempt) {
+                if (attempt?.status === "IN_PROGRESS") {
                   router.push({
                     pathname:
                       "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",

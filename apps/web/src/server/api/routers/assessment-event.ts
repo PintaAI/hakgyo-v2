@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { resolveAssessmentEntry } from "@hakgyo/shared";
 import { z } from "zod";
 
 import type { Prisma } from "../../../../generated/prisma/client";
@@ -30,7 +31,16 @@ const eventSummarySelect = {
   courseItem: {
     select: {
       id: true,
-      assessment: { select: { id: true, title: true } },
+      assessment: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          passingScore: true,
+          maxAttempts: true,
+          _count: { select: { questions: true } },
+        },
+      },
     },
   },
   _count: { select: { participants: true, attempts: true } },
@@ -475,7 +485,13 @@ export const assessmentEventRouter = createTRPCRouter({
               courseItem: {
                 select: {
                   isPublished: true,
-                  assessment: { select: { id: true, status: true } },
+                  assessment: {
+                    select: {
+                      id: true,
+                      status: true,
+                      maxAttempts: true,
+                    },
+                  },
                 },
               },
             },
@@ -500,15 +516,30 @@ export const assessmentEventRouter = createTRPCRouter({
               message: "The assessment is no longer available",
             });
           }
-          const current = await tx.assessmentAttempt.findUnique({
+          const current = await tx.assessmentAttempt.findFirst({
             where: {
-              assessmentEventId_userId: {
-                assessmentEventId: event.id,
-                userId: ctx.actorUserId,
-              },
+              assessmentEventId: event.id,
+              userId: ctx.actorUserId,
+              status: "IN_PROGRESS",
             },
+            orderBy: { attemptNumber: "desc" },
           });
           if (current) return { ...current, courseId: event.courseId };
+          const eventAttemptCount = await tx.assessmentAttempt.count({
+            where: {
+              assessmentEventId: event.id,
+              userId: ctx.actorUserId,
+            },
+          });
+          if (
+            event.courseItem.assessment.maxAttempts !== null &&
+            eventAttemptCount >= event.courseItem.assessment.maxAttempts
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Maximum attempts reached",
+            });
+          }
           const attemptNumber =
             (await tx.assessmentAttempt.count({
               where: {
@@ -557,35 +588,53 @@ export const assessmentEventRouter = createTRPCRouter({
             },
             attempts: {
               where: { userId: ctx.actorUserId },
+              orderBy: { attemptNumber: "desc" },
               select: {
                 id: true,
+                attemptNumber: true,
                 status: true,
                 score: true,
                 maxScore: true,
                 startedAt: true,
                 submittedAt: true,
               },
-              take: 1,
             },
           },
         })
         .then((events) =>
-          events.map((event) => ({
-            ...event,
-            attempts: event.attempts.map((attempt) => ({
-              ...attempt,
-              score:
-                attempt.status === "GRADED" &&
-                !event.participants[0]?.invalidatedAt
-                  ? attempt.score
-                  : null,
-              maxScore:
-                attempt.status === "GRADED" &&
-                !event.participants[0]?.invalidatedAt
-                  ? attempt.maxScore
-                  : null,
-            })),
-          })),
+          events.map((event) => {
+            const latestAttempt = event.attempts[0];
+            const invalidated = Boolean(event.participants[0]?.invalidatedAt);
+            const available =
+              event.status === "OPEN" &&
+              Boolean(event.closesAt && event.closesAt > new Date());
+            return {
+              ...event,
+              attemptCount: event.attempts.length,
+              entry: resolveAssessmentEntry({
+                attemptStatus: latestAttempt?.status,
+                attemptsUsed: event.attempts.length,
+                maxAttempts: event.courseItem.assessment?.maxAttempts ?? null,
+                available,
+                invalidated,
+              }),
+              attempts: latestAttempt
+                ? [
+                    {
+                      ...latestAttempt,
+                      score:
+                        latestAttempt.status === "GRADED" && !invalidated
+                          ? latestAttempt.score
+                          : null,
+                      maxScore:
+                        latestAttempt.status === "GRADED" && !invalidated
+                          ? latestAttempt.maxScore
+                          : null,
+                    },
+                  ]
+                : [],
+            };
+          }),
         ),
     ),
 
@@ -605,38 +654,62 @@ export const assessmentEventRouter = createTRPCRouter({
           },
           attempts: {
             where: { userId: ctx.actorUserId },
+            orderBy: { attemptNumber: "desc" },
             select: {
               id: true,
+              attemptNumber: true,
               status: true,
               score: true,
               maxScore: true,
               startedAt: true,
               submittedAt: true,
             },
-            take: 1,
           },
         },
       });
       if (!event) throw new TRPCError({ code: "NOT_FOUND" });
+      const latestAttempt = event.attempts[0];
+      const participantInvalidated = Boolean(
+        event.participants[0]?.invalidatedAt,
+      );
+      const available =
+        event.status === "OPEN" &&
+        Boolean(event.closesAt && event.closesAt > new Date());
+      const entry = resolveAssessmentEntry({
+        attemptStatus: latestAttempt?.status,
+        attemptsUsed: event.attempts.length,
+        maxAttempts: event.courseItem.assessment?.maxAttempts ?? null,
+        available,
+        invalidated: participantInvalidated || event.status === "CANCELLED",
+      });
       const learnerEvent = {
         ...event,
-        attempts: event.attempts.map((attempt) => ({
-          ...attempt,
-          score:
-            attempt.status === "GRADED" &&
-            !event.participants[0]?.invalidatedAt &&
-            event.status !== "CANCELLED"
-              ? attempt.score
-              : null,
-          maxScore:
-            attempt.status === "GRADED" &&
-            !event.participants[0]?.invalidatedAt &&
-            event.status !== "CANCELLED"
-              ? attempt.maxScore
-              : null,
-        })),
+        attemptCount: event.attempts.length,
+        entry,
+        attempts: latestAttempt
+          ? [
+              {
+                ...latestAttempt,
+                score:
+                  latestAttempt.status === "GRADED" &&
+                  !participantInvalidated &&
+                  event.status !== "CANCELLED"
+                    ? latestAttempt.score
+                    : null,
+                maxScore:
+                  latestAttempt.status === "GRADED" &&
+                  !participantInvalidated &&
+                  event.status !== "CANCELLED"
+                    ? latestAttempt.maxScore
+                    : null,
+              },
+            ]
+          : [],
       };
-      if (event.status !== "CLOSED")
+      if (
+        event.status !== "CLOSED" &&
+        (entry.state === "NOT_STARTED" || entry.state === "IN_PROGRESS")
+      )
         return { ...learnerEvent, leaderboard: null };
       const attempts = await ctx.db.assessmentAttempt.findMany({
         where: { assessmentEventId: event.id },
@@ -658,7 +731,7 @@ export const assessmentEventRouter = createTRPCRouter({
           },
         },
       });
-      const invalidated = new Map(
+      const invalidatedByUser = new Map(
         attempts[0]?.assessmentEvent?.participants.map((participant) => [
           participant.userId,
           participant.invalidatedAt,
@@ -670,7 +743,7 @@ export const assessmentEventRouter = createTRPCRouter({
           attempts.map((attempt) => ({
             ...attempt,
             name: attempt.user.name,
-            invalidatedAt: invalidated.get(attempt.userId) ?? null,
+            invalidatedAt: invalidatedByUser.get(attempt.userId) ?? null,
           })),
         ),
       };
@@ -735,9 +808,11 @@ export const assessmentEventRouter = createTRPCRouter({
             },
           },
           attempts: {
+            orderBy: { attemptNumber: "asc" },
             select: {
               id: true,
               userId: true,
+              attemptNumber: true,
               status: true,
               score: true,
               maxScore: true,
@@ -783,6 +858,7 @@ export const assessmentEventRouter = createTRPCRouter({
       const attemptsByUserId = new Map(
         event.attempts.map((attempt) => [attempt.userId, attempt]),
       );
+      const latestAttempts = [...attemptsByUserId.values()];
       return {
         ...event,
         attempts: undefined,
@@ -790,12 +866,12 @@ export const assessmentEventRouter = createTRPCRouter({
         participantTotal,
         pageCount: Math.ceil(participantTotal / 20),
         counts: {
-          notStarted: event._count.participants - event.attempts.length,
-          inProgress: event.attempts.filter((a) => a.status === "IN_PROGRESS")
+          notStarted: event._count.participants - latestAttempts.length,
+          inProgress: latestAttempts.filter((a) => a.status === "IN_PROGRESS")
             .length,
-          inReview: event.attempts.filter((a) => a.status === "IN_REVIEW")
+          inReview: latestAttempts.filter((a) => a.status === "IN_REVIEW")
             .length,
-          graded: event.attempts.filter((a) => a.status === "GRADED").length,
+          graded: latestAttempts.filter((a) => a.status === "GRADED").length,
         },
         participantResults: event.participants.map((participant) => ({
           ...participant,

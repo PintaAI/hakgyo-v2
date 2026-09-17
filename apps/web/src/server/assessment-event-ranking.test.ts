@@ -27,7 +27,10 @@ describe("assessment event ranking", () => {
   test("never ranks provisional scores that still need teacher review", () => {
     const ranked = rankAssessmentEventAttempts([
       attempt("complete", 5, "2026-09-04T10:05:00.000Z"),
-      { ...attempt("pending", 9, "2026-09-04T10:04:00.000Z"), status: "IN_REVIEW" },
+      {
+        ...attempt("pending", 9, "2026-09-04T10:04:00.000Z"),
+        status: "IN_REVIEW",
+      },
     ]);
     expect(ranked.map(({ attemptId }) => attemptId)).toEqual(["complete"]);
   });
@@ -59,5 +62,20 @@ describe("assessment event ranking", () => {
     ]);
 
     expect(ranked.map(({ attemptId }) => attemptId)).toEqual(["complete"]);
+  });
+
+  test("uses each learner's best valid attempt when re-attempts exist", () => {
+    const first = attempt("first", 6, "2026-09-04T10:04:00.000Z");
+    const best = {
+      ...attempt("best", 9, "2026-09-04T10:06:00.000Z"),
+      userId: first.userId,
+      name: first.name,
+    };
+    const other = attempt("other", 8, "2026-09-04T10:05:00.000Z");
+
+    const ranked = rankAssessmentEventAttempts([first, best, other]);
+
+    expect(ranked.map(({ attemptId }) => attemptId)).toEqual(["best", "other"]);
+    expect(ranked.map(({ rank }) => rank)).toEqual([1, 2]);
   });
 });

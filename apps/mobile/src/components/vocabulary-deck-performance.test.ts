@@ -141,18 +141,20 @@ function harness() {
     "react-native-gesture-handler": {
       GestureDetector: "GestureDetector",
       Gesture: {
-        Race: (...items: any[]) => items,
+        Race: (...items: any[]) => ({ composition: "race", items }),
+        Exclusive: (...items: any[]) => ({ composition: "exclusive", items }),
         Pan() {
           const callbacks: Record<string, Function> = {};
-          const proxy: any = new Proxy(
-            {},
-            {
-              get: (_, key: string) => (value: any) => {
+          const target = { __id: gestures.length };
+          const proxy: any = new Proxy(target, {
+            get: (object, key: string) => {
+              if (key === "__id") return object.__id;
+              return (value: any) => {
                 if (key.startsWith("on")) callbacks[key] = onUI(value);
                 return proxy;
-              },
+              };
             },
-          );
+          });
           gestures.push(callbacks);
           return proxy;
         },
@@ -219,6 +221,19 @@ function cardNodes(tree: any): any[] {
   return cardNodes(tree.props.children);
 }
 
+function gestureDetector(tree: any): any {
+  if (Array.isArray(tree)) {
+    for (const child of tree) {
+      const detector = gestureDetector(child);
+      if (detector) return detector;
+    }
+    return undefined;
+  }
+  if (!tree?.props) return undefined;
+  if (tree.type === "GestureDetector") return tree;
+  return gestureDetector(tree.props.children);
+}
+
 test("mounted animated cards stay bounded as a vocabulary round grows", () => {
   for (const count of [24, 240, 2400]) {
     const h = harness();
@@ -274,6 +289,25 @@ test("keyboard parent updates reuse the scene while callbacks stay fresh", () =>
   cardNodes(second)[0].props.onReveal(0);
   expect(firstCalls).toBe(0);
   expect(latestCalls).toBe(1);
+});
+
+test("a peel starting in the corner has priority over the upward card swipe", () => {
+  const h = harness();
+  const tree = h.render("VocabularyPracticeDeck", {
+    cards: [{ id: "one", prompt: "학교", answer: "school" }],
+    index: 0,
+    correct: undefined,
+    revealed: false,
+    scrollGesture: {},
+    onReveal() {},
+    onInteractionChange() {},
+    onAdvanceComplete() {},
+  });
+  const gesture = gestureDetector(tree)?.props.gesture;
+  // Exclusive recognizers make the first item win. Since the peel's hitSlop
+  // confines it to the corner, a swipe outside that area still activates.
+  expect(gesture?.composition).toBe("exclusive");
+  expect(gesture?.items.map((item: any) => item.__id)).toEqual([1, 0]);
 });
 
 test("an outgoing card stays mounted through handoff and is released only after landing", () => {

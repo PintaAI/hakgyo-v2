@@ -11,9 +11,21 @@ import {
   View,
 } from "react-native";
 
-import { CourseLearningFooter } from "../../../../../../src/components/learn/course-learning-footer";
-import type { LearningPathCourse } from "../../../../../../src/lib/course-learning-path";
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
+import {
+  AssessmentOption,
+  AssessmentQuestion,
+} from "../../../../../../src/components/assessment-ui";
+import {
+  StudyAction,
+  StudyGlass,
+} from "../../../../../../src/components/study-glass";
+import {
+  isQuestionAnswered,
+  nextUnansweredQuestion,
+  type QuestionStatus,
+} from "../../../../../../src/lib/question-progress";
+import { useQuestionNavigator } from "../../../../../../src/providers/QuestionNavigatorProvider";
 import {
   NativeContentRenderer,
   useApiAssetResolver,
@@ -21,10 +33,7 @@ import {
 import { api } from "../../../../../../src/lib/trpc";
 import { authClient } from "../../../../../../src/lib/auth-client";
 import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-draft";
-import {
-  assessmentTerminalResult,
-  canReattemptAssessment,
-} from "../../../../../../src/lib/assessment-state";
+import { assessmentTerminalResult } from "../../../../../../src/lib/assessment-state";
 
 type Answer = { content?: string; optionIds: string[] };
 
@@ -41,17 +50,30 @@ export default function AssessmentAttemptScreen() {
   const courseId = firstParam(params.courseId);
   const courseItemId = firstParam(params.courseItemId);
   const attemptId = firstParam(params.attemptId);
+  return (
+    <AssessmentAttemptContent
+      key={attemptId}
+      courseId={courseId}
+      courseItemId={courseItemId}
+      attemptId={attemptId}
+    />
+  );
+}
+
+function AssessmentAttemptContent({
+  courseId,
+  courseItemId,
+  attemptId,
+}: {
+  courseId: string;
+  courseItemId: string;
+  attemptId: string;
+}) {
+  const scrollRef = useRef<ScrollView>(null);
+  const resultScrollRef = useRef<ScrollView>(null);
+  const operationPending = useRef(false);
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
-  const outline = api.learning.getCourseOutline.useQuery(
-    { courseId },
-    { enabled: Boolean(session && courseId) },
-  );
-  const initialOutline = useRef<LearningPathCourse>(undefined);
-  useEffect(() => {
-    if (!initialOutline.current && outline.data)
-      initialOutline.current = outline.data;
-  }, [outline.data]);
   const resolveAssetUrl = useApiAssetResolver();
   const assessment = api.assessment.getForCourseItem.useQuery(
     { courseItemId, attemptId },
@@ -72,9 +94,9 @@ export default function AssessmentAttemptScreen() {
   );
   const saveAnswers = api.assessment.saveAnswers.useMutation();
   const submitAttempt = api.assessment.submitAttempt.useMutation();
-  const startAssessment = api.assessment.startAttempt.useMutation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
+  const [lastSavedSignature, setLastSavedSignature] = useState("");
   const initialized = useRef<string | null>(null);
   const [now, setNow] = useState(Date.now);
   const [draftError, setDraftError] = useState<string>();
@@ -94,14 +116,19 @@ export default function AssessmentAttemptScreen() {
     score: number;
     maxScore: number;
   }>();
-  const result = submittedResult ?? assessmentTerminalResult(attempt.data);
+  const result = assessmentTerminalResult(attempt.data) ?? submittedResult;
   const hasResult = result !== undefined;
 
   useEffect(() => {
-    if (!attempt.data || !storageKey || initialized.current === attemptId)
+    if (
+      !attempt.data ||
+      !assessment.data ||
+      !storageKey ||
+      initialized.current === attemptId
+    )
       return;
     initialized.current = attemptId;
-    let saved: Record<string, Answer> = Object.fromEntries(
+    const serverSaved: Record<string, Answer> = Object.fromEntries(
       attempt.data.answers.map((answer) => [
         answer.questionId,
         {
@@ -113,6 +140,7 @@ export default function AssessmentAttemptScreen() {
         },
       ]),
     );
+    let saved = serverSaved;
     if (storageKey && attempt.data.status === "IN_PROGRESS") {
       try {
         saved = restoreAssessmentDraft(saved, Storage.getItemSync(storageKey));
@@ -122,8 +150,9 @@ export default function AssessmentAttemptScreen() {
         );
       }
     }
+    setLastSavedSignature(JSON.stringify(answerPayload(serverSaved)));
     setAnswers(saved);
-  }, [attempt.data, attemptId, storageKey]);
+  }, [assessment.data, attempt.data, attemptId, storageKey]);
 
   useEffect(() => {
     if (attempt.data?.status !== "IN_PROGRESS" || deadline === null) return;
@@ -152,6 +181,31 @@ export default function AssessmentAttemptScreen() {
   }, [answers, attemptId, storageKey, hasResult, attempt.data?.status]);
 
   const question = assessment.data?.questions[currentIndex];
+  const statuses: QuestionStatus[] = (assessment.data?.questions ?? []).map(
+    (item) =>
+      isQuestionAnswered(answers[item.id]) ? "answered" : "unanswered",
+  );
+  const answeredCount = statuses.filter(
+    (status) => status === "answered",
+  ).length;
+  const nextUnanswered = nextUnansweredQuestion(statuses, currentIndex);
+  const openQuestions = useQuestionNavigator({
+    title: assessment.data?.title ?? "Assessment",
+    current: currentIndex,
+    statuses,
+    onSelect: async (index) => {
+      if (result || operationPending.current) return false;
+      if (expired) {
+        setCurrentIndex(index);
+        return true;
+      }
+      return save(index);
+    },
+  });
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [currentIndex]);
 
   function chooseOption(optionId: string) {
     if (!question || busy || expired || result) return;
@@ -167,10 +221,10 @@ export default function AssessmentAttemptScreen() {
     });
   }
 
-  function answerPayload() {
+  function answerPayload(source = answers) {
     return (
       assessment.data?.questions.flatMap((item) => {
-        const answer = answers[item.id];
+        const answer = source[item.id];
         if (!answer) return [];
         return [
           {
@@ -185,20 +239,33 @@ export default function AssessmentAttemptScreen() {
     );
   }
 
+  const currentAnswerSignature = JSON.stringify(answerPayload());
+  const hasUnsavedAnswers =
+    initialized.current === attemptId &&
+    currentAnswerSignature !== lastSavedSignature;
+
   async function save(nextIndex?: number) {
-    if (busy || expired || result) return;
+    if (busy || expired || result || operationPending.current) return false;
+    operationPending.current = true;
     try {
       const payload = answerPayload();
-      if (payload.length)
+      if (hasUnsavedAnswers && payload.length) {
         await saveAnswers.mutateAsync({ attemptId, answers: payload });
+        setLastSavedSignature(JSON.stringify(payload));
+      }
       if (nextIndex !== undefined) setCurrentIndex(nextIndex);
+      return true;
     } catch {
       /* Keep answers on screen and expose the retry below. */
+      return false;
+    } finally {
+      operationPending.current = false;
     }
   }
 
   async function submit() {
-    if (!assessment.data) return;
+    if (!assessment.data || result || operationPending.current) return;
+    operationPending.current = true;
     const payload = answerPayload();
     try {
       if (payload.length && !expired) {
@@ -219,17 +286,27 @@ export default function AssessmentAttemptScreen() {
         utils.assessmentEvent.invalidate(),
         utils.assessment.invalidate(),
       ]);
+      if (assessment.data.event) {
+        router.replace({
+          pathname: "/events/[eventId]",
+          params: { eventId: assessment.data.event.id },
+        });
+      } else {
+        router.replace({
+          pathname: "/courses/[courseId]/items/[courseItemId]",
+          params: { courseId, courseItemId },
+        });
+      }
     } catch {
       // Mutation errors are rendered below.
+    } finally {
+      operationPending.current = false;
     }
   }
 
   const loading = assessment.isPending || attempt.isPending;
   const error = assessment.error ?? attempt.error;
   function confirmSubmit() {
-    const answeredCount = Object.values(answers).filter(
-      (answer) => answer.optionIds.length > 0 || answer.content?.trim(),
-    ).length;
     Alert.alert(
       "Submit assessment?",
       expired
@@ -256,37 +333,12 @@ export default function AssessmentAttemptScreen() {
     });
   }
 
-  async function reattempt() {
-    if (!assessment.data || !attempt.data || assessment.data.event) return;
-    try {
-      const nextAttempt = await startAssessment.mutateAsync({
-        courseItemId,
-        cohortId: attempt.data.cohort?.id,
-      });
-      router.push({
-        pathname:
-          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-        params: { courseId, courseItemId, attemptId: nextAttempt.id },
-      });
-    } catch {
-      // The mutation error is rendered below the action.
-    }
-  }
-
-  const canReattempt =
-    !!assessment.data &&
-    !!attempt.data &&
-    canReattemptAssessment({
-      attemptNumber: attempt.data.attemptNumber,
-      maxAttempts: assessment.data.maxAttempts,
-      eventType: assessment.data.event?.type,
-    });
-
   return (
     <>
       <Stack.Screen
         options={{
           title: assessment.data?.title ?? "Assessment",
+          headerBackButtonDisplayMode: "minimal",
         }}
       />
       {loading ? (
@@ -307,12 +359,13 @@ export default function AssessmentAttemptScreen() {
         </View>
       ) : result ? (
         <ScrollView
+          ref={resultScrollRef}
           className="flex-1 bg-background"
           contentContainerClassName="gap-6 px-5 pb-14 pt-6"
           contentInsetAdjustmentBehavior="automatic"
         >
-          <View className="items-center gap-3 py-4">
-            <View className="size-16 items-center justify-center rounded-full bg-primary/10">
+          <StudyGlass>
+            <View className="size-16 self-center items-center justify-center rounded-full bg-primary/10">
               <Text className="text-2xl font-black text-primary">✓</Text>
             </View>
             <Text className="text-center text-2xl font-black text-foreground">
@@ -330,101 +383,70 @@ export default function AssessmentAttemptScreen() {
                 reviewing it.
               </Text>
             )}
-          </View>
+          </StudyGlass>
 
           <AssessmentResultReview
             assessment={assessment.data}
             attempt={attempt.data}
             resolveAssetUrl={resolveAssetUrl}
+            onQuestionChange={() =>
+              resultScrollRef.current?.scrollTo({ y: 0, animated: false })
+            }
           />
 
-          {!assessment.data.event ? (
-            <CourseLearningFooter
-              key={courseItemId}
-              courseId={courseId}
-              courseItemId={courseItemId}
-              completionMode="assessment"
-              initialOutline={initialOutline.current}
-            />
+          {assessment.data.event ? (
+            <StudyAction onPress={leaveResult}>
+              View score & leaderboard
+            </StudyAction>
           ) : null}
-
-          {canReattempt ? (
-            <Pressable
-              className="items-center rounded-full bg-primary px-6 py-4 disabled:opacity-50"
-              disabled={startAssessment.isPending}
-              onPress={() => void reattempt()}
-            >
-              <Text className="font-black text-primary-foreground">
-                {startAssessment.isPending
-                  ? "Starting…"
-                  : "Re-attempt assessment"}
-              </Text>
-            </Pressable>
-          ) : null}
-          {startAssessment.isError ? (
-            <Text
-              accessibilityRole="alert"
-              className="text-center text-sm text-destructive"
-            >
-              {startAssessment.error.message}
-            </Text>
-          ) : null}
-          <Pressable
-            className={`items-center rounded-full px-6 py-4 ${canReattempt ? "border border-border" : "bg-primary"}`}
-            onPress={leaveResult}
-          >
-            <Text
-              className={`font-black ${canReattempt ? "text-foreground" : "text-primary-foreground"}`}
-            >
-              {assessment.data.event
-                ? "View score & leaderboard"
-                : "Return to course"}
-            </Text>
-          </Pressable>
         </ScrollView>
       ) : question ? (
         <ScrollView
+          ref={scrollRef}
           className="flex-1 bg-background"
-          contentContainerClassName="gap-5 px-5 pb-14 pt-4"
+          contentContainerClassName="gap-4 px-5 pb-14 pt-4"
           contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
         >
           {deadline !== null ? (
-            <Text className="text-base font-semibold text-primary">
+            <Text
+              accessibilityLiveRegion={expired ? "polite" : "none"}
+              className={
+                expired
+                  ? "text-sm font-bold text-destructive"
+                  : "text-sm font-bold text-primary"
+              }
+            >
               {expired
-                ? "Time is up · submit saved answers"
+                ? "Time is up · submit your saved answers"
                 : `${Math.floor(Math.max(0, deadline - now) / 60_000)}:${String(Math.floor(Math.max(0, deadline - now) / 1000) % 60).padStart(2, "0")} remaining`}
             </Text>
           ) : null}
-          {draftError ? (
-            <Text
-              accessibilityRole="alert"
-              className="text-sm text-destructive"
-            >
-              {draftError}
-            </Text>
-          ) : null}
-          <Text className="text-xs text-muted-foreground">
-            Answers save to the server when you move between questions or tap
-            Save answers. The timer continues if you leave.
-          </Text>
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs font-black uppercase tracking-[1.5px] text-muted-foreground">
-              Question {currentIndex + 1} of {assessment.data.questions.length}
-            </Text>
-            <Text className="text-xs font-bold text-muted-foreground">
-              {question.points} pt
-            </Text>
-          </View>
-          <View className="gap-5 rounded-xl border border-border bg-card p-5">
+          <AssessmentQuestion
+            current={currentIndex}
+            total={assessment.data.questions.length}
+            answered={answeredCount}
+            onOpen={openQuestions}
+            disabled={busy}
+          >
             <NativeContentRenderer
               content={question.prompt}
               resolveAssetUrl={resolveAssetUrl}
             />
-            {question.type === "WRITTEN" ? (
+          </AssessmentQuestion>
+          <Text className="text-sm font-bold text-foreground">
+            {question.type === "WRITTEN"
+              ? "Write your answer"
+              : question.type === "MULTIPLE_CHOICE"
+                ? "Select every correct answer"
+                : "Choose one answer"}
+          </Text>
+          {question.type === "WRITTEN" ? (
+            <StudyGlass>
               <TextInput
-                className="min-h-32 rounded-xl border border-border bg-background p-4 text-foreground"
+                accessibilityLabel={`Answer to question ${currentIndex + 1}`}
+                className="min-h-32 text-base text-foreground"
                 multiline
                 editable={!busy && !expired}
                 onChangeText={(content) =>
@@ -437,100 +459,113 @@ export default function AssessmentAttemptScreen() {
                 textAlignVertical="top"
                 value={answers[question.id]?.content ?? ""}
               />
-            ) : (
-              <View className="gap-3">
-                {question.options.map((option) => {
-                  const selected = answers[question.id]?.optionIds.includes(
-                    option.id,
-                  );
-                  return (
-                    <Pressable
-                      accessibilityRole="checkbox"
-                      accessibilityState={{
-                        checked: !!selected,
-                        disabled: busy || expired,
-                      }}
-                      disabled={busy || expired}
-                      className={`flex-row items-center gap-3 rounded-xl border p-4 ${selected ? "border-primary bg-primary/10" : "border-border"}`}
-                      key={option.id}
-                      onPress={() => chooseOption(option.id)}
-                    >
-                      <View
-                        className={`size-5 rounded-full border ${selected ? "border-primary bg-primary" : "border-border"}`}
-                      />
-                      <View className="min-w-0 flex-1">
-                        <NativeContentRenderer
-                          content={option.content}
-                          resolveAssetUrl={resolveAssetUrl}
-                        />
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-          <View className="flex-row gap-3">
-            <Pressable
-              className="flex-1 items-center rounded-full border border-border px-5 py-4 disabled:opacity-40"
-              disabled={currentIndex === 0 || busy}
-              onPress={() =>
-                expired
-                  ? setCurrentIndex((index) => index - 1)
-                  : void save(currentIndex - 1)
-              }
-            >
-              <Text className="font-black text-foreground">Previous</Text>
-            </Pressable>
-            {currentIndex < assessment.data.questions.length - 1 ? (
-              <Pressable
-                className="flex-1 items-center rounded-full bg-primary px-5 py-4"
-                disabled={busy}
-                onPress={() =>
-                  expired
-                    ? setCurrentIndex((index) => index + 1)
-                    : void save(currentIndex + 1)
-                }
-              >
-                <Text className="font-black text-primary-foreground">Next</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                className="flex-1 items-center rounded-full bg-primary px-5 py-4 disabled:opacity-50"
-                disabled={saveAnswers.isPending || submitAttempt.isPending}
-                onPress={confirmSubmit}
-              >
-                <Text className="font-black text-primary-foreground">
-                  {saveAnswers.isPending || submitAttempt.isPending
-                    ? "Submitting…"
-                    : "Submit"}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy || expired}
-            onPress={() => void save()}
-            className="min-h-12 items-center justify-center rounded-full border border-border px-5 py-3"
-          >
-            <Text className="font-bold text-foreground">
-              {saveAnswers.isPending ? "Saving…" : "Save answers"}
-            </Text>
-          </Pressable>
-          {saveAnswers.isSuccess ? (
+            </StudyGlass>
+          ) : (
+            <View className="gap-3">
+              {question.options.map((option, optionIndex) => (
+                <AssessmentOption
+                  key={option.id}
+                  index={optionIndex}
+                  selected={
+                    answers[question.id]?.optionIds.includes(option.id) ?? false
+                  }
+                  multiple={question.type === "MULTIPLE_CHOICE"}
+                  disabled={busy || expired}
+                  onPress={() => chooseOption(option.id)}
+                >
+                  <NativeContentRenderer
+                    content={option.content}
+                    resolveAssetUrl={resolveAssetUrl}
+                  />
+                </AssessmentOption>
+              ))}
+            </View>
+          )}
+          <Text className="text-xs leading-5 text-muted-foreground">
+            You can change answers until you submit. Answers save when you move
+            between questions.
+            {deadline !== null ? " The timer continues if you leave." : ""}
+          </Text>
+          {draftError ? (
             <Text
-              accessibilityLiveRegion="polite"
-              className="text-sm text-primary"
+              accessibilityRole="alert"
+              className="text-sm text-destructive"
             >
-              Last save succeeded. Save again after editing.
+              {draftError}
             </Text>
           ) : null}
           {saveAnswers.isError || submitAttempt.isError ? (
-            <Text className="text-center text-sm text-destructive">
+            <Text
+              accessibilityRole="alert"
+              className="text-sm text-destructive"
+            >
               {saveAnswers.error?.message ?? submitAttempt.error?.message}
             </Text>
           ) : null}
+          <View className="gap-3 border-t border-border pt-4">
+            <View className="flex-row gap-3">
+              {currentIndex > 0 ? (
+                <View className="flex-1">
+                  <StudyAction
+                    secondary
+                    disabled={busy}
+                    onPress={() =>
+                      expired
+                        ? setCurrentIndex((index) => index - 1)
+                        : void save(currentIndex - 1)
+                    }
+                  >
+                    Previous
+                  </StudyAction>
+                </View>
+              ) : null}
+              {currentIndex < assessment.data.questions.length - 1 ||
+              (nextUnanswered >= 0 && nextUnanswered !== currentIndex) ? (
+                <View className="flex-1">
+                  <StudyAction
+                    disabled={busy}
+                    onPress={() => {
+                      const next =
+                        currentIndex < assessment.data.questions.length - 1
+                          ? currentIndex + 1
+                          : nextUnanswered;
+                      if (expired) setCurrentIndex(next);
+                      else void save(next);
+                    }}
+                  >
+                    {currentIndex < assessment.data.questions.length - 1
+                      ? "Next →"
+                      : "Next unanswered →"}
+                  </StudyAction>
+                </View>
+              ) : null}
+            </View>
+            {hasUnsavedAnswers && !expired ? (
+              <StudyAction
+                secondary
+                disabled={busy}
+                loading={saveAnswers.isPending}
+                onPress={() => void save()}
+              >
+                {saveAnswers.isPending ? "Saving answers…" : "Save answers"}
+              </StudyAction>
+            ) : null}
+            {expired ||
+            currentIndex === assessment.data.questions.length - 1 ||
+            answeredCount === assessment.data.questions.length ? (
+              <StudyAction
+                loading={submitAttempt.isPending}
+                disabled={busy}
+                onPress={confirmSubmit}
+              >
+                {busy
+                  ? "Saving…"
+                  : answeredCount === assessment.data.questions.length
+                    ? "Submit assessment"
+                    : `Submit · ${answeredCount}/${assessment.data.questions.length} answered`}
+              </StudyAction>
+            ) : null}
+          </View>
         </ScrollView>
       ) : (
         <View className="flex-1 items-center justify-center bg-background px-6">

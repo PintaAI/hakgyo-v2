@@ -1,13 +1,6 @@
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import {
   getLearningMilestone,
@@ -15,10 +8,9 @@ import {
   type LearningPathCourse,
   type LearningPathItem,
 } from "../../lib/course-learning-path";
+import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { api } from "../../lib/trpc";
-import { useAppTheme } from "../../providers/AppThemeProvider";
-
-import { MilestoneTrophy } from "./milestone-trophy";
+import { StudyAction } from "../study-glass";
 
 type Milestone = NonNullable<ReturnType<typeof getLearningMilestone>>;
 type FooterIssue =
@@ -46,7 +38,6 @@ export function CourseLearningFooter({
   initialOutline?: LearningPathCourse;
   requirementActions?: LearningRequirementAction[];
 }) {
-  const { colors } = useAppTheme();
   const utils = api.useUtils();
   const outline = api.learning.getCourseOutline.useQuery({ courseId });
   const complete = api.learning.markContentProgress.useMutation();
@@ -78,6 +69,21 @@ export function CourseLearningFooter({
   function navigate(nextItem?: LearningPathItem) {
     setMilestone(undefined);
     if (nextItem) {
+      if (
+        nextItem.type === "ASSESSMENT" &&
+        nextItem.attempt?.status === "IN_PROGRESS"
+      ) {
+        router.replace({
+          pathname:
+            "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+          params: {
+            courseId,
+            courseItemId: nextItem.id,
+            attemptId: nextItem.attempt.id,
+          },
+        });
+        return;
+      }
       router.replace({
         pathname: "/courses/[courseId]/items/[courseItemId]",
         params: { courseId, courseItemId: nextItem.id },
@@ -88,6 +94,18 @@ export function CourseLearningFooter({
   }
 
   async function continueLearning() {
+    if (path?.item.isCompleted) {
+      setIssue(undefined);
+      if (path.nextItem) navigate(path.nextItem);
+      else if (path.courseCompleted) navigate();
+      else
+        setIssue({
+          kind: "error",
+          message:
+            "Open the course contents to see what is still required before continuing.",
+        });
+      return;
+    }
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -167,23 +185,24 @@ export function CourseLearningFooter({
     }
   }
 
-  return (
-    <View className="gap-5 rounded-3xl border border-border bg-card p-5">
-      <View className="gap-2">
-        <Text className="text-xs font-bold uppercase tracking-[1.5px] text-primary">
-          {path
-            ? `Module ${path.moduleIndex + 1} · Activity ${path.itemIndex + 1} of ${path.module.items.length}`
-            : "Your learning path"}
-        </Text>
-        <Text className="text-2xl font-black text-foreground">
-          {path?.item.isCompleted ? "Nicely done!" : "Ready for the next step?"}
-        </Text>
-        <Text className="text-sm leading-6 text-muted-foreground">
-          {path?.module.title}
-          {path
-            ? ` · ${path.completedCount} of ${path.module.items.length} completed`
-            : "Keep your momentum, one activity at a time."}
-        </Text>
+  const content = (
+    <View className="gap-6">
+      <View className="gap-3">
+        <View className="gap-1.5">
+          <Text className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
+            {path
+              ? `Module ${path.moduleIndex + 1} · Activity ${path.itemIndex + 1} of ${path.module.items.length}`
+              : "Your learning path"}
+          </Text>
+          <Text className="text-[28px] font-black leading-8 tracking-tight text-foreground">
+            {path?.item.isCompleted ? "Nice work" : "Ready to move on?"}
+          </Text>
+          <Text className="text-sm leading-5 text-muted-foreground">
+            {path
+              ? `${path.completedCount} of ${path.module.items.length} activities complete in ${path.module.title}`
+              : "Keep your momentum, one activity at a time."}
+          </Text>
+        </View>
         {path ? (
           <View
             accessibilityRole="progressbar"
@@ -192,7 +211,7 @@ export function CourseLearningFooter({
               max: path.module.items.length,
               now: path.completedCount,
             }}
-            className="mt-1 h-2 overflow-hidden rounded-full bg-muted"
+            className="h-1 overflow-hidden rounded-full bg-muted"
           >
             <View
               className="h-full rounded-full bg-primary"
@@ -204,45 +223,63 @@ export function CourseLearningFooter({
         ) : null}
       </View>
       {path?.nextItem ? (
-        <View className="gap-1 border-t border-border pt-4">
-          <Text className="text-xs font-semibold text-muted-foreground">
-            UP NEXT
-            {path.nextModule?.id !== path.module.id
-              ? ` · ${path.nextModule?.title}`
-              : ""}
-          </Text>
-          <Text className="text-base font-bold text-foreground">
-            {path.nextItem.title}
-          </Text>
+        <View className="flex-row items-center gap-4 border-t border-border pt-5">
+          <View className="min-w-0 flex-1 gap-1">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
+                Up next
+              </Text>
+              <View className="flex-row items-center gap-1.5">
+                <View
+                  className={`size-1.5 rounded-full ${getLearningItemTypeMeta(path.nextItem.type).dotClass}`}
+                />
+                <Text
+                  className={`text-xs font-semibold ${getLearningItemTypeMeta(path.nextItem.type).textClass}`}
+                >
+                  {getLearningItemTypeMeta(path.nextItem.type).label}
+                </Text>
+              </View>
+            </View>
+            <Text
+              className="text-base font-bold leading-6 text-foreground"
+              numberOfLines={2}
+            >
+              {path.nextItem.title}
+            </Text>
+            {path.nextModule?.id !== path.module.id ? (
+              <Text className="text-xs font-semibold text-muted-foreground">
+                {path.nextModule?.title}
+              </Text>
+            ) : null}
+          </View>
+          <Text className="text-2xl font-light text-primary">→</Text>
         </View>
       ) : path && !path.courseCompleted ? (
-        <Text className="text-sm leading-5 text-muted-foreground">
-          Finish this step to see what’s next on your learning path.
+        <Text className="border-t border-border pt-5 text-sm leading-5 text-muted-foreground">
+          Finish this step to reveal the next activity.
         </Text>
       ) : null}
       {issue?.kind === "requirements" || assessmentIncomplete ? (
         <View
           accessibilityRole="alert"
-          className="gap-4 rounded-2xl border border-primary/30 bg-primary/10 p-4"
+          className="gap-4 border-t border-border pt-5"
         >
-          <View className="flex-row items-start gap-3">
-            <View className="size-9 items-center justify-center rounded-full bg-primary">
-              <Text className="font-black text-primary-foreground">1</Text>
-            </View>
-            <View className="min-w-0 flex-1 gap-1">
-              <Text className="text-base font-black text-foreground">
-                {assessmentIncomplete
-                  ? "Complete this assessment first"
-                  : "One quick step left"}
-              </Text>
-              <Text className="text-sm leading-5 text-muted-foreground">
-                {assessmentIncomplete
-                  ? "Pass the assessment, or wait for your teacher’s review if it is still being graded."
-                  : requirementActions.length
-                    ? "Complete the practice below to lock in what you learned. Your lesson progress is safe."
-                    : "Complete the required practice in this lesson, then come back and continue."}
-              </Text>
-            </View>
+          <View className="gap-1.5">
+            <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
+              Before you continue
+            </Text>
+            <Text className="text-base font-black text-foreground">
+              {assessmentIncomplete
+                ? "Complete this assessment first"
+                : "One quick step left"}
+            </Text>
+            <Text className="text-sm leading-5 text-muted-foreground">
+              {assessmentIncomplete
+                ? "Pass the assessment, or wait for your teacher’s review if it is still being graded."
+                : requirementActions.length
+                  ? "Complete the practice below to lock in what you learned. Your lesson progress is safe."
+                  : "Complete the required practice in this lesson, then come back and continue."}
+            </Text>
           </View>
           {requirementActions.map((action) => (
             <Pressable
@@ -265,28 +302,21 @@ export function CourseLearningFooter({
       ) : null}
       <View className="gap-2">
         {issue?.kind !== "requirements" && !assessmentIncomplete ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: busy, busy }}
-            className="min-h-14 flex-row items-center justify-center gap-2 rounded-full bg-primary px-5 py-4 disabled:opacity-50"
+          <StudyAction
             disabled={busy}
+            loading={busy}
             onPress={() => void continueLearning()}
           >
-            {busy ? (
-              <ActivityIndicator color={colors.primaryForeground} />
-            ) : null}
-            <Text className="text-base font-bold text-primary-foreground">
-              {busy
-                ? "Saving your progress…"
-                : path?.courseCompleted && !path.nextItem
-                  ? "Finish course"
-                  : path?.item.isCompleted || completionMode === "assessment"
-                    ? "Continue learning →"
-                    : finishingModule
-                      ? "Complete module →"
-                      : "Complete & continue →"}
-            </Text>
-          </Pressable>
+            {busy
+              ? "Saving your progress…"
+              : path?.courseCompleted && !path.nextItem
+                ? "Finish course"
+                : path?.item.isCompleted || completionMode === "assessment"
+                  ? "Continue learning →"
+                  : finishingModule
+                    ? "Complete module →"
+                    : "Complete & continue →"}
+          </StudyAction>
         ) : null}
         {onReadAgain ? (
           <Pressable
@@ -311,76 +341,55 @@ export function CourseLearningFooter({
             : "We couldn’t load your learning path. Tap continue to try again."}
         </Text>
       ) : null}
-      <Modal
-        visible={!!milestone}
-        transparent
-        animationType="none"
-        onRequestClose={() => setMilestone(undefined)}
-      >
-        <View className="flex-1 justify-center bg-black/60 px-6 py-12">
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
-          >
-            <View
-              accessibilityViewIsModal
-              className="items-center gap-6 rounded-[32px] bg-card px-6 py-8"
-            >
-              {milestone ? <MilestoneTrophy /> : null}
-              <View className="items-center gap-3">
-                <Text className="text-xs font-bold uppercase tracking-[2px] text-primary">
-                  {milestone?.courseCompleted
-                    ? "Every step counts. You did them all."
-                    : "One more milestone"}
-                </Text>
-                <Text
-                  accessibilityRole="header"
-                  className="text-center text-3xl font-black text-foreground"
-                >
-                  {milestone?.courseCompleted
-                    ? "Course complete!"
-                    : "Module complete!"}
-                </Text>
-                <Text className="text-center text-base leading-6 text-muted-foreground">
-                  You finished {milestone?.moduleTitle}. Take a moment — you
-                  earned it.
-                </Text>
-              </View>
-              {milestone?.unlockedModuleTitle || milestone?.nextItem ? (
-                <View className="w-full gap-2 rounded-2xl bg-primary/10 p-5">
-                  <Text className="text-xs font-bold uppercase tracking-[1px] text-primary">
-                    {milestone.unlockedModuleTitle
-                      ? "🔓 Next module unlocked"
-                      : "Keep your momentum"}
-                  </Text>
-                  <Text className="text-lg font-bold text-foreground">
-                    {milestone.unlockedModuleTitle ?? milestone.nextItem?.title}
-                  </Text>
-                </View>
-              ) : null}
-              <Pressable
-                accessibilityRole="button"
-                className="min-h-14 w-full items-center justify-center rounded-full bg-primary px-5 py-4"
-                onPress={() => navigate(milestone?.nextItem)}
-              >
-                <Text className="text-base font-bold text-primary-foreground">
-                  {milestone?.nextItem
-                    ? "Let’s keep going →"
-                    : "View my progress"}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                className="min-h-12 items-center justify-center px-5"
-                onPress={() => navigate()}
-              >
-                <Text className="font-semibold text-muted-foreground">
-                  {milestone?.nextItem ? "Take a break" : "Back to course"}
-                </Text>
-              </Pressable>
-            </View>
-          </ScrollView>
+    </View>
+  );
+
+  if (!milestone) return content;
+
+  return (
+    <View className="gap-6">
+      <View className="items-center gap-2">
+        <Text className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
+          {milestone.courseCompleted ? "Course complete" : "Module complete"}
+        </Text>
+        <Text
+          accessibilityRole="header"
+          className="text-center text-[28px] font-black leading-8 tracking-tight text-foreground"
+        >
+          {milestone.courseCompleted ? "You did it" : "Keep the momentum"}
+        </Text>
+        <Text className="text-center text-sm leading-5 text-muted-foreground">
+          You completed {milestone.moduleTitle}.
+        </Text>
+      </View>
+
+      {milestone.unlockedModuleTitle || milestone.nextItem ? (
+        <View className="gap-1 border-t border-border pt-5">
+          <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
+            {milestone.unlockedModuleTitle ? "Unlocked" : "Up next"}
+          </Text>
+          <Text className="text-base font-bold leading-6 text-foreground">
+            {milestone.unlockedModuleTitle ?? milestone.nextItem?.title}
+          </Text>
         </View>
-      </Modal>
+      ) : null}
+
+      <View className="gap-2">
+        <StudyAction onPress={() => navigate(milestone.nextItem)}>
+          {milestone.nextItem ? "Continue learning →" : "View course progress"}
+        </StudyAction>
+        {milestone.nextItem ? (
+          <Pressable
+            accessibilityRole="button"
+            className="min-h-12 items-center justify-center px-5"
+            onPress={() => navigate()}
+          >
+            <Text className="font-semibold text-muted-foreground">
+              Back to course
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }

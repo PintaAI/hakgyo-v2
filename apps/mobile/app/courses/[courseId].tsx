@@ -156,12 +156,27 @@ export default function CourseDetailScreen() {
               accessibilityRole="button"
               accessibilityHint={`Open ${resumeItem.title}`}
               className="flex-row items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 active:opacity-80"
-              onPress={() =>
+              onPress={() => {
+                if (
+                  resumeItem.type === "ASSESSMENT" &&
+                  resumeItem.attempt?.status === "IN_PROGRESS"
+                ) {
+                  router.replace({
+                    pathname:
+                      "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                    params: {
+                      courseId,
+                      courseItemId: resumeItem.id,
+                      attemptId: resumeItem.attempt.id,
+                    },
+                  });
+                  return;
+                }
                 router.replace({
                   pathname: "/courses/[courseId]/items/[courseItemId]",
                   params: { courseId, courseItemId: resumeItem.id },
-                })
-              }
+                });
+              }}
             >
               <View className="min-w-0 flex-1 gap-0.5">
                 <Text className="text-[10px] font-bold uppercase tracking-[1.5px] text-primary">
@@ -192,7 +207,7 @@ export default function CourseDetailScreen() {
             courseId={courseId}
             showActiveState={false}
             onOpenItem={(item, attempt) => {
-              if (attempt) {
+              if (attempt?.status === "IN_PROGRESS") {
                 router.push({
                   pathname:
                     "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",

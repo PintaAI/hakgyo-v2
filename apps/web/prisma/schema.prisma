@@ -143,9 +143,9 @@ model PushTarget {
 /// Per-user inbox row: the source of truth shared by web and mobile.
 /// Push delivery is best-effort per device; the inbox always persists.
 model Notification {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   type           String
@@ -155,7 +155,7 @@ model Notification {
   mobilePath     String? // expo-router route for the native tap handler
   data           Json?
   readAt         DateTime?
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime      @default(now())
 
   @@index([userId, readAt, createdAt])
   @@map("notification")
@@ -724,7 +724,7 @@ model CourseModule {
 }
 
 model CourseItem {
-  id               String              @id @default(cuid())
+  id               String                      @id @default(cuid())
   moduleId         String
   organizationId   String
   type             CourseItemType
@@ -732,13 +732,13 @@ model CourseItem {
   materialId       String?
   assessmentId     String?
   vocabularySetId  String?
-  isPublished      Boolean             @default(false)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  module           CourseModule        @relation(fields: [moduleId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  material         Material?           @relation(fields: [materialId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  assessment       Assessment?         @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  vocabularySet    VocabularySet?      @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  isPublished      Boolean                     @default(false)
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  module           CourseModule                @relation(fields: [moduleId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  material         Material?                   @relation(fields: [materialId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  assessment       Assessment?                 @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  vocabularySet    VocabularySet?              @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Restrict)
   recallChallenges VocabularyRecallChallenge[]
   progress         ContentProgress[]
   attempts         AssessmentAttempt[]
@@ -874,22 +874,22 @@ model VocabularySet {
 }
 
 model VocabularyEntry {
-  id              String        @id @default(cuid())
-  vocabularySetId String
-  organizationId  String
-  term            String
-  definition      String
-  examples        Json          @default("[]")
-  audioAssetId    String?
-  imageAssetId    String?
-  metadata        Json?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  memory          VocabularyMemory[]
+  id               String                      @id @default(cuid())
+  vocabularySetId  String
+  organizationId   String
+  term             String
+  definition       String
+  examples         Json                        @default("[]")
+  audioAssetId     String?
+  imageAssetId     String?
+  metadata         Json?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  memory           VocabularyMemory[]
   recallChallenges VocabularyRecallChallenge[]
-  vocabularySet   VocabularySet @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  audioAsset      Asset?        @relation("VocabularyEntryAudio", fields: [audioAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  imageAsset      Asset?        @relation("VocabularyEntryImage", fields: [imageAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  vocabularySet    VocabularySet               @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  audioAsset       Asset?                      @relation("VocabularyEntryAudio", fields: [audioAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  imageAsset       Asset?                      @relation("VocabularyEntryImage", fields: [imageAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
   @@index([audioAssetId])
   @@index([imageAssetId])
@@ -1032,7 +1032,7 @@ model AssessmentAttempt {
 
   @@unique([courseItemId, userId, attemptNumber])
   @@unique([id, organizationId])
-  @@unique([assessmentEventId, userId])
+  @@index([assessmentEventId, userId, attemptNumber])
   @@index([assessmentId])
   @@index([cohortId, status])
   @@index([userId, status])
@@ -1191,47 +1191,47 @@ model MaterialAsset {
 
 // Evidence is scoped to a learner and library entry, shared across placements.
 model VocabularyMemory {
-  entryId       String
-  userId        String
-  contentHash   String
-  passStreak    Int       @default(0)
-  failStreak    Int       @default(0)
+  entryId      String
+  userId       String
+  contentHash  String
+  passStreak   Int             @default(0)
+  failStreak   Int             @default(0)
   rememberedAt DateTime?
-  nextReviewAt  DateTime?
-  updatedAt     DateTime  @updatedAt
-  entry         VocabularyEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nextReviewAt DateTime?
+  updatedAt    DateTime        @updatedAt
+  entry        VocabularyEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([entryId, userId])
   @@index([userId, rememberedAt])
 }
 
 model VocabularyRecallChallenge {
-  id                 String   @id @default(cuid())
+  id                 String          @id @default(cuid())
   entryId            String
   userId             String
   sourceCourseItemId String
   contentHash        String
   prompt             String
   expectedAnswer     String
-  createdAt          DateTime @default(now())
+  createdAt          DateTime        @default(now())
   expiresAt          DateTime
   submittedAt        DateTime?
   correct            Boolean?
   entry              VocabularyEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  user               User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceCourseItem    CourseItem @relation(fields: [sourceCourseItemId], references: [id], onDelete: Cascade)
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceCourseItem   CourseItem      @relation(fields: [sourceCourseItemId], references: [id], onDelete: Cascade)
 
   @@index([userId, entryId, createdAt])
 }
 
 // Organization primary key guarantees exactly one customizable page per organization.
 model OrganizationLandingPage {
-  organizationId String @id
-  draft Json
-  published Json?
-  publishedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String       @id
+  draft          Json
+  published      Json?
+  publishedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }

@@ -47,12 +47,27 @@ export function CourseActivities({
           title={item.title}
           disabled={!item.available}
           detail={`${item.isCompleted ? "Completed · " : ""}${item.type === "VOCABULARY_SET" ? "Vocabulary" : item.type === "ASSESSMENT" ? "Assessment" : "Lesson"} · ${item.module}`}
-          onPress={() =>
+          onPress={() => {
+            if (
+              item.type === "ASSESSMENT" &&
+              item.attempt?.status === "IN_PROGRESS"
+            ) {
+              router.push({
+                pathname:
+                  "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                params: {
+                  courseId,
+                  courseItemId: item.id,
+                  attemptId: item.attempt.id,
+                },
+              });
+              return;
+            }
             router.push({
               pathname: "/courses/[courseId]/items/[courseItemId]",
               params: { courseId, courseItemId: item.id },
-            })
-          }
+            });
+          }}
         />
       ))}
     </>

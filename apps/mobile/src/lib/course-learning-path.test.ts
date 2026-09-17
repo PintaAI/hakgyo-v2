@@ -39,6 +39,12 @@ describe("mobile learning path", () => {
     };
     expect(getLearningPath(course, "a1")?.nextItem?.id).toBe("a0");
   });
+  test("keeps revisited completed items in their local module sequence", () => {
+    const course = {
+      modules: [module("a", [true, true]), module("b", [false])],
+    };
+    expect(getLearningPath(course, "a0")?.nextItem?.id).toBe("a1");
+  });
   test("never sends the learner into a locked module", () => {
     const course = {
       modules: [module("a", [true]), module("b", [false], "LOCKED")],

@@ -635,6 +635,33 @@ export const assessmentRouter = createTRPCRouter({
       if (item?.assessment?.status !== "PUBLISHED") {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
+      const [latestStandaloneAttempt, standaloneAttemptCount] = input.attemptId
+        ? [null, 0]
+        : await Promise.all([
+            ctx.db.assessmentAttempt.findFirst({
+              where: {
+                courseItemId: input.courseItemId,
+                userId: ctx.actorUserId,
+                assessmentEventId: null,
+              },
+              orderBy: [{ attemptNumber: "desc" }, { startedAt: "desc" }],
+              select: {
+                id: true,
+                attemptNumber: true,
+                status: true,
+                score: true,
+                maxScore: true,
+                startedAt: true,
+              },
+            }),
+            ctx.db.assessmentAttempt.count({
+              where: {
+                courseItemId: input.courseItemId,
+                userId: ctx.actorUserId,
+                assessmentEventId: null,
+              },
+            }),
+          ]);
       const now = new Date();
       const eligibleCohorts = await ctx.db.cohortEnrollment.findMany({
         where: {
@@ -703,6 +730,8 @@ export const assessmentRouter = createTRPCRouter({
               status: attempt.assessmentEvent.status,
             }
           : null,
+        latestStandaloneAttempt,
+        standaloneAttemptCount,
         answersRevealed,
         eligibleCohorts: eligibleCohorts.map(({ cohort }) => cohort),
         questions,

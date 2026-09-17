@@ -649,7 +649,10 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
   );
 
   const gesture = useMemo(
-    () => Gesture.Race(peelGesture, swipe),
+    // A peel begins in the same corner and can initially travel upward, so
+    // `Race` allowed the full-card swipe to win on timing. Give the corner
+    // gesture first refusal; its hitSlop makes it fail immediately elsewhere.
+    () => Gesture.Exclusive(peelGesture, swipe),
     [peelGesture, swipe],
   );
 
@@ -1138,6 +1141,7 @@ function CardContent({
           </Animated.View>
         </View>
         <Animated.View
+          pointerEvents="none"
           style={[
             styles.peelPlane,
             styles.stickerMask,

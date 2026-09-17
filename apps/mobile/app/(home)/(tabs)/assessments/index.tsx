@@ -94,12 +94,25 @@ export default function PracticeTab() {
             title={event.title}
             detail={`${event.course.title} · ${attemptState.detail}${event.closesAt ? ` · ${closesLabel(event.closesAt, now)}` : ""}`}
             accessibilityHint={`Opens ${event.title}`}
-            onPress={() =>
+            onPress={() => {
+              const attempt = event.attempts[0];
+              if (event.entry.destination === "ATTEMPT" && attempt) {
+                router.push({
+                  pathname:
+                    "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                  params: {
+                    courseId: event.course.id,
+                    courseItemId: event.courseItem.id,
+                    attemptId: attempt.id,
+                  },
+                });
+                return;
+              }
               router.push({
                 pathname: "/events/[eventId]",
                 params: { eventId: event.id },
-              })
-            }
+              });
+            }}
           />
         );
       })}
