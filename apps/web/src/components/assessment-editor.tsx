@@ -1,6 +1,14 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangleIcon,
@@ -49,6 +57,17 @@ import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
 import {
+  createAutosaveRegistry,
+  type AutosaveRegistry,
+  type AutosaveStatus,
+} from "~/lib/autosave-registry";
+import {
+  createDraftKey,
+  getContentLocalStore,
+  type AssessmentDraftPayload,
+  type ContentDbScope,
+} from "~/lib/content-db";
+import {
   getBlockNotePlainText,
   hasBlockNoteContent,
   toBlockNoteDocument,
@@ -59,6 +78,7 @@ import {
   MIN_ASSESSMENT_OPTIONS,
 } from "~/lib/assessment-options";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { authClient } from "~/server/better-auth/client";
 import {
   completeResourcePicker,
   resourcePickerQuery,
@@ -88,6 +108,53 @@ const questionTypeLabels: Record<QuestionType, string> = {
   MULTIPLE_CHOICE: "Pilihan ganda",
   WRITTEN: "Jawaban tertulis",
 };
+
+const autosaveStatusLabels: Record<AutosaveStatus, string> = {
+  idle: "Semua perubahan tersimpan",
+  pending: "Menunggu untuk disimpan…",
+  saving: "Menyimpan…",
+  saved: "Semua perubahan tersimpan",
+  error: "Perubahan belum tersimpan",
+};
+
+function toAssessmentDraftPayload(
+  assessment: Assessment,
+): AssessmentDraftPayload {
+  return {
+    title: assessment.title,
+    description: assessment.description,
+    status: assessment.status,
+    editorSchemaVersion: assessment.editorSchemaVersion,
+    instructions: assessment.instructions ?? undefined,
+    passingScore: assessment.passingScore,
+    maxAttempts: assessment.maxAttempts,
+    timeLimitMinutes: assessment.timeLimitMinutes,
+    shuffleQuestions: assessment.shuffleQuestions,
+    shuffleOptions: assessment.shuffleOptions,
+    questions: assessment.questions.map((question) => ({
+      clientId: question.id,
+      serverId: question.id,
+      type: question.type,
+      prompt: question.prompt,
+      explanation: question.explanation ?? undefined,
+      points: question.points,
+      options: question.options.map((option) => ({
+        clientId: option.id,
+        serverId: option.id,
+        content: option.content,
+        isCorrect: option.isCorrect,
+      })),
+    })),
+  };
+}
+
+function contentLocalStoreOrNull() {
+  try {
+    return getContentLocalStore();
+  } catch {
+    return null;
+  }
+}
 
 function updateCorrectOption(
   assessment: Assessment | undefined,
@@ -274,6 +341,7 @@ export function AssessmentEditor({
 }) {
   const router = useRouter();
   const utils = api.useUtils();
+  const { data: session } = authClient.useSession();
   const assessment = api.assessment.get.useQuery(
     { assessmentId: assessmentId ?? "" },
     { enabled: Boolean(assessmentId) },
@@ -293,6 +361,12 @@ export function AssessmentEditor({
   const detachAsset = api.assessment.detachAsset.useMutation();
   const createdAssessmentIdRef = useRef<string | null>(null);
   const canDelete = Boolean(organization.data) && !attachTo;
+  const sessionUserId = session?.user.id;
+  const draftScope = useMemo(
+    () =>
+      sessionUserId ? { organizationId, userId: sessionUserId } : undefined,
+    [organizationId, sessionUserId],
+  );
 
   async function refreshQuestions() {
     await Promise.all([
@@ -341,6 +415,7 @@ export function AssessmentEditor({
     <AssessmentEditorForm
       key={assessment.data?.id ?? "new-assessment"}
       assessment={assessment.data}
+      draftScope={draftScope}
       contextLabel={
         attachTo ? `Assessment untuk ${attachTo.moduleTitle}` : undefined
       }
@@ -394,7 +469,7 @@ export function AssessmentEditor({
           await createQuestion.mutateAsync({
             assessmentId,
             type: "SINGLE_CHOICE",
-            prompt: [{ type: "paragraph", content: "Pertanyaan baru" }],
+            prompt: [{ type: "paragraph", content: "" }],
             explanation: null,
             points: 1,
           });
@@ -586,6 +661,7 @@ type AssessmentDraft = Omit<
 
 function AssessmentEditorForm({
   assessment,
+  draftScope,
   canDelete,
   contextLabel,
   isDeleting,
@@ -603,6 +679,7 @@ function AssessmentEditorForm({
   onToggleCorrect,
 }: {
   assessment?: Assessment;
+  draftScope?: ContentDbScope;
   canDelete: boolean;
   contextLabel?: string;
   isDeleting: boolean;
@@ -652,21 +729,148 @@ function AssessmentEditorForm({
   const [shuffleOptions, setShuffleOptions] = useState(
     assessment?.shuffleOptions ?? false,
   );
+  const assessmentDraftId = assessment?.id;
+  const draftOrganizationId = draftScope?.organizationId;
+  const draftUserId = draftScope?.userId;
+  const [recoveredDraft, setRecoveredDraft] = useState<{
+    payload: AssessmentDraftPayload;
+    updatedAt: number;
+  } | null>(null);
+  const latestDraftRef = useRef<AssessmentDraftPayload | null>(
+    assessment ? toAssessmentDraftPayload(assessment) : null,
+  );
+  const draftWriteRef = useRef<Promise<unknown>>(Promise.resolve());
+  const hasLocalChangesRef = useRef(false);
+  const sawUnsavedAutosaveRef = useRef(false);
+  const [autosaveRegistry] = useState(createAutosaveRegistry);
+  const autosaveStatus = useSyncExternalStore<AutosaveStatus>(
+    autosaveRegistry.subscribe,
+    autosaveRegistry.getStatus,
+    () => "idle",
+  );
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const scrollAnimationFrameRef = useRef<number | null>(null);
+  const displayQuestions = useMemo(() => {
+    if (!assessment) return [];
+    if (!recoveredDraft) return assessment.questions;
+
+    return assessment.questions.map((question) => {
+      const recoveredQuestion = recoveredDraft.payload.questions.find(
+        (candidate) => candidate.serverId === question.id,
+      );
+      if (!recoveredQuestion) return question;
+      return {
+        ...question,
+        type: recoveredQuestion.type,
+        prompt: recoveredQuestion.prompt as Question["prompt"],
+        explanation: recoveredQuestion.explanation ?? null,
+        points: recoveredQuestion.points,
+        options: question.options.map((option) => {
+          const recoveredOption = recoveredQuestion.options.find(
+            (candidate) => candidate.serverId === option.id,
+          );
+          return recoveredOption
+            ? {
+                ...option,
+                content:
+                  recoveredOption.content as Question["options"][number]["content"],
+                isCorrect: recoveredOption.isCorrect,
+              }
+            : option;
+        }),
+      };
+    });
+  }, [assessment, recoveredDraft]);
   const questionMapItems = useMemo(
     () =>
-      assessment?.questions.map((question, index) => ({
+      displayQuestions.map((question, index) => ({
         id: question.id,
         index,
         label: getBlockNotePlainText(question.prompt) || `Soal ${index + 1}`,
         points: question.points,
-      })) ?? [],
-    [assessment?.questions],
+      })),
+    [displayQuestions],
   );
   const questionIdKey = useMemo(
     () => questionMapItems.map((item) => item.id).join("\u0000"),
     [questionMapItems],
+  );
+
+  const queueDraftUpdate = useCallback(
+    (update: (current: AssessmentDraftPayload) => AssessmentDraftPayload) => {
+      if (!assessmentDraftId || !draftOrganizationId || !draftUserId) return;
+      const current = latestDraftRef.current;
+      if (!current) return;
+      const next = update(current);
+      latestDraftRef.current = next;
+      hasLocalChangesRef.current = true;
+      const store = contentLocalStoreOrNull();
+      if (!store) {
+        toast.error(
+          "Cadangan lokal tidak tersedia. Jangan tutup halaman sebelum perubahan tersimpan.",
+        );
+        return;
+      }
+      draftWriteRef.current = draftWriteRef.current
+        .catch(() => undefined)
+        .then(() =>
+          store.saveDraft({
+            organizationId: draftOrganizationId,
+            userId: draftUserId,
+            entityType: "assessment",
+            entityId: assessmentDraftId,
+            editorSchemaVersion: 1,
+            payload: next,
+          }),
+        )
+        .catch(() => {
+          toast.error(
+            "Cadangan lokal tidak dapat disimpan. Jangan tutup halaman ini.",
+          );
+        });
+    },
+    [assessmentDraftId, draftOrganizationId, draftUserId],
+  );
+
+  const saveQuestionDraft = useCallback(
+    (questionId: string, value: QuestionFields) => {
+      queueDraftUpdate((current) => ({
+        ...current,
+        questions: current.questions.map((question) =>
+          question.serverId === questionId
+            ? {
+                ...question,
+                type: value.type,
+                prompt: value.prompt,
+                explanation: value.explanation ?? undefined,
+                points: value.points,
+              }
+            : question,
+        ),
+      }));
+    },
+    [queueDraftUpdate],
+  );
+
+  const saveOptionDraft = useCallback(
+    (questionId: string, optionId: string, content: BlockNoteDocument) => {
+      queueDraftUpdate((current) => ({
+        ...current,
+        questions: current.questions.map((question) =>
+          question.serverId === questionId
+            ? {
+                ...question,
+                options: question.options.map((option) =>
+                  option.serverId === optionId
+                    ? { ...option, content }
+                    : option,
+                ),
+              }
+            : question,
+        ),
+      }));
+    },
+    [queueDraftUpdate],
   );
 
   useEffect(
@@ -677,6 +881,12 @@ function AssessmentEditorForm({
     },
     [],
   );
+
+  useEffect(() => {
+    if (assessment && !hasLocalChangesRef.current && !recoveredDraft) {
+      latestDraftRef.current = toAssessmentDraftPayload(assessment);
+    }
+  }, [assessment, recoveredDraft]);
 
   useEffect(() => {
     if (!questionIdKey) return;
@@ -758,11 +968,12 @@ function AssessmentEditorForm({
     cancel: cancelSettingsSave,
     flush: flushSettingsSave,
     schedule: scheduleSettingsSave,
+    status: settingsSaveStatus,
   } = useDebouncedAutosave<AssessmentDraft>(async (draft) => {
     const normalizedTitle = draft.title.trim();
     if (!normalizedTitle) {
       toast.error("Judul assessment wajib diisi.");
-      return;
+      throw new Error("Assessment title is required");
     }
     const parsedPassingScore = optionalInteger(draft.passingScore, 0, 100);
     const parsedMaxAttempts = optionalInteger(draft.maxAttempts, 1);
@@ -773,19 +984,19 @@ function AssessmentEditorForm({
       parsedTimeLimit === undefined
     ) {
       toast.error("Nilai pengaturan angka belum valid.");
-      return;
+      throw new Error("Assessment numeric settings are invalid");
     }
     if (draft.status === "PUBLISHED") {
       if (!assessment) {
         toast.error(
           "Buat assessment sebagai draft terlebih dahulu, lalu tambahkan soal sebelum publish.",
         );
-        return;
+        throw new Error("Assessment must be created before publishing");
       }
-      const validationError = getPublishValidationError(assessment.questions);
+      const validationError = getPublishValidationError(displayQuestions);
       if (validationError) {
         toast.error(validationError);
-        return;
+        throw new Error(validationError);
       }
     }
     await onSave({
@@ -803,7 +1014,116 @@ function AssessmentEditorForm({
     });
   });
 
+  useEffect(
+    () => autosaveRegistry.register("settings", flushSettingsSave),
+    [autosaveRegistry, flushSettingsSave],
+  );
+
+  useEffect(() => {
+    autosaveRegistry.setStatus("settings", settingsSaveStatus);
+  }, [autosaveRegistry, settingsSaveStatus]);
+
+  useEffect(() => {
+    if (
+      autosaveStatus === "pending" ||
+      autosaveStatus === "saving" ||
+      autosaveStatus === "error"
+    ) {
+      sawUnsavedAutosaveRef.current = true;
+    }
+    if (
+      autosaveStatus !== "pending" &&
+      autosaveStatus !== "saving" &&
+      autosaveStatus !== "error"
+    ) {
+      return;
+    }
+
+    const warnAboutUnsavedChanges = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnAboutUnsavedChanges);
+    return () =>
+      window.removeEventListener("beforeunload", warnAboutUnsavedChanges);
+  }, [autosaveStatus]);
+
+  useEffect(() => {
+    if (
+      autosaveStatus !== "saved" ||
+      !assessment ||
+      !draftScope ||
+      !hasLocalChangesRef.current ||
+      !sawUnsavedAutosaveRef.current
+    ) {
+      return;
+    }
+
+    const draftKey = createDraftKey(draftScope, "assessment", assessment.id);
+    const store = contentLocalStoreOrNull();
+    if (!store) return;
+    hasLocalChangesRef.current = false;
+    sawUnsavedAutosaveRef.current = false;
+    draftWriteRef.current = draftWriteRef.current
+      .catch(() => undefined)
+      .then(() => store.deleteDraft(draftKey))
+      .then(() => setRecoveredDraft(null))
+      .catch(() => {
+        hasLocalChangesRef.current = true;
+      });
+  }, [assessment, autosaveStatus, draftScope]);
+
   const skipInitialSettingsSave = useRef(true);
+  const loadedDraftKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!assessment || !draftScope) return;
+    const draftKey = createDraftKey(draftScope, "assessment", assessment.id);
+    if (loadedDraftKeyRef.current === draftKey) return;
+    loadedDraftKeyRef.current = draftKey;
+
+    let cancelled = false;
+    const store = contentLocalStoreOrNull();
+    if (!store) return;
+    void store
+      .getDraft(draftScope, "assessment", assessment.id)
+      .then((draft) => {
+        if (cancelled) return;
+        if (!draft || draft.syncStatus === "clean") {
+          latestDraftRef.current = toAssessmentDraftPayload(assessment);
+          return;
+        }
+
+        latestDraftRef.current = draft.payload;
+        hasLocalChangesRef.current = true;
+        skipInitialSettingsSave.current = false;
+        setTitle(draft.payload.title);
+        setDescription(draft.payload.description ?? "");
+        setStatus(draft.payload.status);
+        setInstructions(
+          toBlockNoteDocument(draft.payload.instructions) as BlockNoteDocument,
+        );
+        setPassingScore(draft.payload.passingScore?.toString() ?? "");
+        setMaxAttempts(draft.payload.maxAttempts?.toString() ?? "");
+        setTimeLimitMinutes(draft.payload.timeLimitMinutes?.toString() ?? "");
+        setShuffleQuestions(draft.payload.shuffleQuestions);
+        setShuffleOptions(draft.payload.shuffleOptions);
+        setRecoveredDraft({
+          payload: draft.payload,
+          updatedAt: draft.updatedAt,
+        });
+        toast.success("Perubahan yang belum tersimpan berhasil dipulihkan.");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast.error("Cadangan lokal assessment tidak dapat dibuka.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [assessment, draftScope]);
 
   useEffect(() => {
     if (skipInitialSettingsSave.current) {
@@ -811,6 +1131,22 @@ function AssessmentEditorForm({
       return;
     }
 
+    queueDraftUpdate((current) => ({
+      ...current,
+      title,
+      description: description.trim() || null,
+      status,
+      instructions: hasBlockNoteContent(instructions)
+        ? instructions
+        : undefined,
+      passingScore:
+        optionalInteger(passingScore, 0, 100) ?? current.passingScore,
+      maxAttempts: optionalInteger(maxAttempts, 1) ?? current.maxAttempts,
+      timeLimitMinutes:
+        optionalInteger(timeLimitMinutes, 1) ?? current.timeLimitMinutes,
+      shuffleQuestions,
+      shuffleOptions,
+    }));
     scheduleSettingsSave({
       description,
       instructions,
@@ -827,6 +1163,7 @@ function AssessmentEditorForm({
     instructions,
     maxAttempts,
     passingScore,
+    queueDraftUpdate,
     shuffleOptions,
     shuffleQuestions,
     status,
@@ -843,9 +1180,14 @@ function AssessmentEditorForm({
             <Button
               aria-label="Kembali ke assessment"
               onClick={() => {
-                void flushSettingsSave()
+                void autosaveRegistry
+                  .flushAll()
                   .then(onBack)
-                  .catch(() => undefined);
+                  .catch(() =>
+                    toast.error(
+                      "Perubahan belum berhasil disimpan. Coba lagi sebelum meninggalkan halaman.",
+                    ),
+                  );
               }}
               size="icon"
               type="button"
@@ -862,6 +1204,34 @@ function AssessmentEditorForm({
               <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
                 {title.trim() || "Assessment tanpa judul"}
               </h1>
+              <div
+                className={
+                  autosaveStatus === "error"
+                    ? "text-destructive mt-1 flex items-center gap-1.5 text-xs"
+                    : "text-muted-foreground mt-1 flex items-center gap-1.5 text-xs"
+                }
+                role="status"
+              >
+                {autosaveStatus === "pending" || autosaveStatus === "saving" ? (
+                  <LoaderCircleIcon className="size-3 animate-spin" />
+                ) : autosaveStatus === "error" ? (
+                  <AlertTriangleIcon className="size-3" />
+                ) : (
+                  <CheckCircle2Icon className="size-3" />
+                )}
+                <span>{autosaveStatusLabels[autosaveStatus]}</span>
+                {autosaveStatus === "error" ? (
+                  <button
+                    className="underline underline-offset-2"
+                    onClick={() => {
+                      void autosaveRegistry.flushAll().catch(() => undefined);
+                    }}
+                    type="button"
+                  >
+                    Coba lagi
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -880,7 +1250,8 @@ function AssessmentEditorForm({
                     <AlertDialogTitle>Hapus assessment ini?</AlertDialogTitle>
                     <AlertDialogDescription>
                       Tindakan ini permanen. Semua soal, penempatan di course,
-                      event, jawaban, hasil, dan progres siswa akan ikut dihapus.
+                      event, jawaban, hasil, dan progres siswa akan ikut
+                      dihapus.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -910,21 +1281,21 @@ function AssessmentEditorForm({
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
           <section className="grid min-w-0 gap-6">
             <Card className="gap-0 py-0 shadow-sm">
-              <CardHeader className="relative overflow-hidden rounded-none bg-foreground px-5 py-6 text-background sm:px-6">
+              <CardHeader className="bg-foreground text-background relative overflow-hidden rounded-none px-5 py-6 sm:px-6">
                 <div className="pointer-events-none absolute top-0 right-0 size-44 translate-x-14 -translate-y-20 rounded-full border border-current opacity-10" />
                 <div className="pointer-events-none absolute top-0 right-0 size-28 translate-x-8 -translate-y-12 rounded-full border border-current opacity-10" />
                 <div className="relative flex items-start gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background/10">
+                  <span className="bg-background/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
                     <Settings2Icon className="size-5" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                    <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
                       Setup assessment
                     </p>
-                    <CardTitle className="mt-1 text-xl font-semibold text-background">
+                    <CardTitle className="text-background mt-1 text-xl font-semibold">
                       Pengaturan assessment
                     </CardTitle>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
                       Atur identitas dan petunjuk sebelum menyusun soal.
                     </p>
                   </div>
@@ -957,9 +1328,8 @@ function AssessmentEditorForm({
                   <Label>Petunjuk pengerjaan</Label>
                   <div className="overflow-hidden rounded-lg border">
                     <DynamicBlockNoteEditor
-                      initialContent={toBlockNoteDocument(
-                        assessment?.instructions,
-                      )}
+                      initialContent={instructions}
+                      key={`assessment-instructions:${recoveredDraft?.updatedAt ?? "server"}`}
                       onChange={setInstructions}
                       placeholder="Tulis petunjuk pengerjaan..."
                       trailingBlock={false}
@@ -986,11 +1356,20 @@ function AssessmentEditorForm({
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">
-                      {assessment.questions.length} soal
+                      {displayQuestions.length} soal
                     </Badge>
                     <Button
                       disabled={questionBusy}
-                      onClick={onAddQuestion}
+                      onClick={() => {
+                        void autosaveRegistry
+                          .flushAll()
+                          .then(onAddQuestion)
+                          .catch(() =>
+                            toast.error(
+                              "Simpan perubahan yang gagal sebelum menambahkan soal baru.",
+                            ),
+                          );
+                      }}
                       size="sm"
                       type="button"
                       variant="outline"
@@ -1001,21 +1380,25 @@ function AssessmentEditorForm({
                   </div>
                 </div>
 
-                {assessment.questions.length ? (
+                {displayQuestions.length ? (
                   <div className="grid gap-4">
-                    {assessment.questions.map((question, index) => (
+                    {displayQuestions.map((question, index) => (
                       <QuestionCard
+                        autosaveRegistry={autosaveRegistry}
                         busy={questionBusy}
                         highlighted={activeQuestionId === question.id}
                         index={index}
-                        key={question.id}
+                        key={`${question.id}:${recoveredDraft?.updatedAt ?? "server"}`}
                         onAddOption={onAddOption}
                         onDeleteOption={onDeleteOption}
                         onDeleteQuestion={onDeleteQuestion}
                         onSave={onSaveQuestion}
+                        onDraftChange={saveQuestionDraft}
+                        onDraftOptionChange={saveOptionDraft}
                         onSaveOption={onSaveOption}
                         onToggleCorrect={onToggleCorrect}
                         question={question}
+                        recoverOnMount={Boolean(recoveredDraft)}
                         theme={editorTheme}
                         assetStorage={assetStorage}
                       />
@@ -1066,7 +1449,7 @@ function AssessmentEditorForm({
                     Assessment baru disimpan sebagai draft. Tambahkan soal lalu
                     publish dari halaman edit.
                   </p>
-                ) : status === "PUBLISHED" && !assessment.questions.length ? (
+                ) : status === "PUBLISHED" && !displayQuestions.length ? (
                   <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
                     <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
                     Tambahkan soal sebelum memasang assessment ke course.
@@ -1229,12 +1612,19 @@ type QuestionDraft = {
 };
 
 type QuestionCardProps = {
+  autosaveRegistry: AutosaveRegistry;
   busy: boolean;
   highlighted: boolean;
   index: number;
   onAddOption: (questionId: string) => Promise<void>;
   onDeleteOption: (optionId: string) => Promise<void>;
   onDeleteQuestion: (questionId: string) => Promise<void>;
+  onDraftChange: (questionId: string, value: QuestionFields) => void;
+  onDraftOptionChange: (
+    questionId: string,
+    optionId: string,
+    content: BlockNoteDocument,
+  ) => void;
   onSave: (questionId: string, value: QuestionFields) => Promise<boolean>;
   onSaveOption: (
     optionId: string,
@@ -1246,21 +1636,26 @@ type QuestionCardProps = {
     checked: boolean,
   ) => Promise<void>;
   question: Question;
+  recoverOnMount: boolean;
   theme: "light" | "dark";
   assetStorage?: EditorAssetStorageOptions;
 };
 
 const QuestionCard = memo(function QuestionCard({
+  autosaveRegistry,
   busy,
   highlighted,
   index,
   onAddOption,
   onDeleteOption,
   onDeleteQuestion,
+  onDraftChange,
+  onDraftOptionChange,
   onSave,
   onSaveOption,
   onToggleCorrect,
   question,
+  recoverOnMount,
   theme,
   assetStorage,
 }: QuestionCardProps) {
@@ -1274,29 +1669,43 @@ const QuestionCard = memo(function QuestionCard({
   const [points, setPoints] = useState(String(question.points));
   const [correctAnswerBusy, setCorrectAnswerBusy] = useState(false);
 
-  const { cancel: cancelQuestionSave, schedule: scheduleQuestionSave } =
-    useDebouncedAutosave<QuestionDraft>(async (draft) => {
-      const parsedPoints = Number(draft.points);
-      if (!hasBlockNoteContent(draft.prompt)) {
-        toast.error("Pertanyaan wajib diisi.");
-        return;
-      }
-      if (!Number.isInteger(parsedPoints) || parsedPoints < 1) {
-        toast.error("Poin soal harus berupa bilangan bulat positif.");
-        return;
-      }
+  const {
+    cancel: cancelQuestionSave,
+    flush: flushQuestionSave,
+    schedule: scheduleQuestionSave,
+    status: questionSaveStatus,
+  } = useDebouncedAutosave<QuestionDraft>(async (draft) => {
+    const parsedPoints = Number(draft.points);
+    if (!hasBlockNoteContent(draft.prompt)) {
+      toast.error("Pertanyaan wajib diisi.");
+      throw new Error("Question prompt is required");
+    }
+    if (!Number.isInteger(parsedPoints) || parsedPoints < 1) {
+      toast.error("Poin soal harus berupa bilangan bulat positif.");
+      throw new Error("Question points are invalid");
+    }
 
-      const saved = await onSave(question.id, {
-        type: draft.type,
-        prompt: draft.prompt,
-        explanation: hasBlockNoteContent(draft.explanation)
-          ? draft.explanation
-          : null,
-        points: parsedPoints,
-      });
-      if (!saved) throw new Error("Question autosave failed");
+    const saved = await onSave(question.id, {
+      type: draft.type,
+      prompt: draft.prompt,
+      explanation: hasBlockNoteContent(draft.explanation)
+        ? draft.explanation
+        : null,
+      points: parsedPoints,
     });
-  const skipInitialQuestionSave = useRef(true);
+    if (!saved) throw new Error("Question autosave failed");
+  });
+  const skipInitialQuestionSave = useRef(!recoverOnMount);
+
+  useEffect(
+    () =>
+      autosaveRegistry.register(`question:${question.id}`, flushQuestionSave),
+    [autosaveRegistry, flushQuestionSave, question.id],
+  );
+
+  useEffect(() => {
+    autosaveRegistry.setStatus(`question:${question.id}`, questionSaveStatus);
+  }, [autosaveRegistry, question.id, questionSaveStatus]);
 
   useEffect(() => {
     if (skipInitialQuestionSave.current) {
@@ -1304,8 +1713,27 @@ const QuestionCard = memo(function QuestionCard({
       return;
     }
 
+    const parsedPoints = Number(points);
+    onDraftChange(question.id, {
+      explanation: hasBlockNoteContent(explanation) ? explanation : null,
+      points:
+        Number.isInteger(parsedPoints) && parsedPoints > 0
+          ? parsedPoints
+          : question.points,
+      prompt,
+      type,
+    });
     scheduleQuestionSave({ explanation, points, prompt, type });
-  }, [explanation, points, prompt, scheduleQuestionSave, type]);
+  }, [
+    explanation,
+    onDraftChange,
+    points,
+    prompt,
+    question.id,
+    question.points,
+    scheduleQuestionSave,
+    type,
+  ]);
 
   return (
     <Card
@@ -1477,6 +1905,7 @@ const QuestionCard = memo(function QuestionCard({
               <div className="grid gap-2">
                 {question.options.map((option, optionIndex) => (
                   <OptionRow
+                    autosaveRegistry={autosaveRegistry}
                     busy={busy}
                     canDelete={
                       type === "WRITTEN" ||
@@ -1486,6 +1915,7 @@ const QuestionCard = memo(function QuestionCard({
                     index={optionIndex}
                     key={option.id}
                     onDelete={() => onDeleteOption(option.id)}
+                    onDraftChange={onDraftOptionChange}
                     onToggleCorrect={async (checked) => {
                       setCorrectAnswerBusy(true);
                       try {
@@ -1496,6 +1926,8 @@ const QuestionCard = memo(function QuestionCard({
                     }}
                     onSave={(content) => onSaveOption(option.id, content)}
                     option={option}
+                    questionId={question.id}
+                    recoverOnMount={recoverOnMount}
                     theme={theme}
                     assetStorage={assetStorage}
                   />
@@ -1524,36 +1956,52 @@ function areQuestionCardPropsEqual(
   next: QuestionCardProps,
 ) {
   return (
+    previous.autosaveRegistry === next.autosaveRegistry &&
     previous.busy === next.busy &&
     previous.highlighted === next.highlighted &&
     previous.index === next.index &&
+    previous.onDraftChange === next.onDraftChange &&
+    previous.onDraftOptionChange === next.onDraftOptionChange &&
     previous.question === next.question &&
+    previous.recoverOnMount === next.recoverOnMount &&
     previous.theme === next.theme
   );
 }
 
 type OptionRowProps = {
+  autosaveRegistry: AutosaveRegistry;
   busy: boolean;
   canDelete: boolean;
   correctAnswerBusy: boolean;
   index: number;
   onDelete: () => Promise<void>;
+  onDraftChange: (
+    questionId: string,
+    optionId: string,
+    content: BlockNoteDocument,
+  ) => void;
   onSave: (content: BlockNoteDocument) => Promise<boolean>;
   onToggleCorrect: (checked: boolean) => Promise<void>;
   option: Question["options"][number];
+  questionId: string;
+  recoverOnMount: boolean;
   theme: "light" | "dark";
   assetStorage?: EditorAssetStorageOptions;
 };
 
 const OptionRow = memo(function OptionRow({
+  autosaveRegistry,
   busy,
   canDelete,
   correctAnswerBusy,
   index,
   onDelete,
+  onDraftChange,
   onSave,
   onToggleCorrect,
   option,
+  questionId,
+  recoverOnMount,
   theme,
   assetStorage,
 }: OptionRowProps) {
@@ -1567,26 +2015,45 @@ const OptionRow = memo(function OptionRow({
     cancel: cancelOptionSave,
     flush: flushOptionSave,
     schedule: scheduleOptionSave,
+    status: optionSaveStatus,
   } = useDebouncedAutosave<BlockNoteDocument>(async (nextContent) => {
     if (!hasBlockNoteContent(nextContent)) {
       toast.error("Isi opsi wajib diisi.");
-      return;
+      throw new Error("Option content is required");
     }
 
     const saved = await onSave(nextContent);
     if (!saved) throw new Error("Option autosave failed");
   });
-  const skipInitialOptionSave = useRef(true);
+  const skipInitialOptionSave = useRef(!recoverOnMount);
+
+  useEffect(
+    () => autosaveRegistry.register(`option:${option.id}`, flushOptionSave),
+    [autosaveRegistry, flushOptionSave, option.id],
+  );
 
   useEffect(() => {
-    if (!editing) return;
+    autosaveRegistry.setStatus(`option:${option.id}`, optionSaveStatus);
+  }, [autosaveRegistry, option.id, optionSaveStatus]);
+
+  useEffect(() => {
+    if (!editing && !recoverOnMount) return;
     if (skipInitialOptionSave.current) {
       skipInitialOptionSave.current = false;
       return;
     }
 
+    onDraftChange(questionId, option.id, content);
     scheduleOptionSave(content);
-  }, [content, editing, scheduleOptionSave]);
+  }, [
+    content,
+    editing,
+    onDraftChange,
+    option.id,
+    questionId,
+    recoverOnMount,
+    scheduleOptionSave,
+  ]);
 
   useEffect(() => {
     if (!editing) return;
@@ -1723,11 +2190,15 @@ function areOptionRowPropsEqual(
   next: OptionRowProps,
 ) {
   return (
+    previous.autosaveRegistry === next.autosaveRegistry &&
     previous.busy === next.busy &&
     previous.canDelete === next.canDelete &&
     previous.correctAnswerBusy === next.correctAnswerBusy &&
     previous.index === next.index &&
+    previous.onDraftChange === next.onDraftChange &&
     previous.option === next.option &&
+    previous.questionId === next.questionId &&
+    previous.recoverOnMount === next.recoverOnMount &&
     previous.theme === next.theme
   );
 }

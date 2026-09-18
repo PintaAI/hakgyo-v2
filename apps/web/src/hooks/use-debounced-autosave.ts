@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import type { AutosaveStatus } from "~/lib/autosave-registry";
 
 type PendingValue<T> = { value: T } | null;
 
@@ -12,6 +14,7 @@ export function useDebouncedAutosave<T>(
   const pendingRef = useRef<PendingValue<T>>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef<Promise<void> | null>(null);
+  const [status, setStatus] = useState<AutosaveStatus>("idle");
 
   useEffect(() => {
     saveRef.current = save;
@@ -31,17 +34,24 @@ export function useDebouncedAutosave<T>(
     if (!pendingRef.current) return Promise.resolve();
 
     const run = async () => {
-      while (pendingRef.current) {
-        const pending = pendingRef.current;
-        pendingRef.current = null;
+      setStatus("saving");
+      try {
+        while (pendingRef.current) {
+          const pending = pendingRef.current;
+          pendingRef.current = null;
 
-        try {
-          await saveRef.current(pending.value);
-        } catch (error) {
-          // Preserve a failed value unless a newer edit is already waiting.
-          pendingRef.current ??= pending;
-          throw error;
+          try {
+            await saveRef.current(pending.value);
+          } catch (error) {
+            // Preserve a failed value unless a newer edit is already waiting.
+            pendingRef.current ??= pending;
+            throw error;
+          }
         }
+        setStatus("saved");
+      } catch (error) {
+        setStatus("error");
+        throw error;
       }
     };
 
@@ -55,6 +65,7 @@ export function useDebouncedAutosave<T>(
   const schedule = useCallback(
     (value: T) => {
       pendingRef.current = { value };
+      setStatus("pending");
       clearTimer();
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
@@ -67,6 +78,7 @@ export function useDebouncedAutosave<T>(
   const cancel = useCallback(() => {
     clearTimer();
     pendingRef.current = null;
+    setStatus("idle");
   }, [clearTimer]);
 
   useEffect(
@@ -79,5 +91,5 @@ export function useDebouncedAutosave<T>(
     [clearTimer, flush],
   );
 
-  return { cancel, flush, schedule };
+  return { cancel, flush, schedule, status };
 }
