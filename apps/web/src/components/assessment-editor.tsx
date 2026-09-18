@@ -16,6 +16,7 @@ import {
   CheckCircle2Icon,
   ClipboardCheckIcon,
   FileQuestionIcon,
+  ListIcon,
   LoaderCircleIcon,
   PlusIcon,
   Settings2Icon,
@@ -53,6 +54,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
@@ -466,7 +475,7 @@ export function AssessmentEditor({
       onAddQuestion={async () => {
         if (!assessmentId) return;
         try {
-          await createQuestion.mutateAsync({
+          const created = await createQuestion.mutateAsync({
             assessmentId,
             type: "SINGLE_CHOICE",
             prompt: [{ type: "paragraph", content: "" }],
@@ -475,6 +484,7 @@ export function AssessmentEditor({
           });
           await refreshQuestions();
           toast.success("Soal ditambahkan.");
+          return created.id;
         } catch (error) {
           toast.error(errorMessage(error));
         }
@@ -687,7 +697,7 @@ function AssessmentEditorForm({
   assetStorage?: EditorAssetStorageOptions;
   questionBusy: boolean;
   onAddOption: (questionId: string) => Promise<void>;
-  onAddQuestion: () => Promise<void>;
+  onAddQuestion: () => Promise<string | undefined>;
   onDelete: () => Promise<void>;
   onDeleteOption: (optionId: string) => Promise<void>;
   onDeleteQuestion: (questionId: string) => Promise<void>;
@@ -749,6 +759,13 @@ function AssessmentEditorForm({
     () => "idle",
   );
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
+  const [newQuestionId, setNewQuestionId] = useState<string | null>(null);
+  const [pendingQuestionNavigationId, setPendingQuestionNavigationId] =
+    useState<string | null>(null);
+  const [questionNavigatorOpen, setQuestionNavigatorOpen] = useState(false);
+  const [questionNavigatorTargetId, setQuestionNavigatorTargetId] = useState<
+    string | null
+  >(null);
   const scrollAnimationFrameRef = useRef<number | null>(null);
   const displayQuestions = useMemo(() => {
     if (!assessment) return [];
@@ -929,7 +946,7 @@ function AssessmentEditorForm({
     return () => observer.disconnect();
   }, [questionIdKey]);
 
-  const navigateToQuestion = (questionId: string) => {
+  const navigateToQuestion = useCallback((questionId: string) => {
     const questionElement = document.getElementById(
       `assessment-question-${questionId}`,
     );
@@ -962,6 +979,48 @@ function AssessmentEditorForm({
     };
     scrollAnimationFrameRef.current = requestAnimationFrame(animateScroll);
     setActiveQuestionId(questionId);
+  }, []);
+
+  useEffect(() => {
+    if (
+      !pendingQuestionNavigationId ||
+      !questionMapItems.some(({ id }) => id === pendingQuestionNavigationId)
+    ) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      navigateToQuestion(pendingQuestionNavigationId);
+      setPendingQuestionNavigationId(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [navigateToQuestion, pendingQuestionNavigationId, questionMapItems]);
+
+  useEffect(() => {
+    if (questionNavigatorOpen || !questionNavigatorTargetId) return;
+
+    const timeout = window.setTimeout(() => {
+      navigateToQuestion(questionNavigatorTargetId);
+      setQuestionNavigatorTargetId(null);
+    }, 200);
+    return () => window.clearTimeout(timeout);
+  }, [navigateToQuestion, questionNavigatorOpen, questionNavigatorTargetId]);
+
+  const addQuestion = () => {
+    void autosaveRegistry
+      .flushAll()
+      .then(async () => {
+        const createdQuestionId = await onAddQuestion();
+        if (createdQuestionId) {
+          setNewQuestionId(createdQuestionId);
+          setPendingQuestionNavigationId(createdQuestionId);
+        }
+      })
+      .catch(() =>
+        toast.error(
+          "Simpan perubahan yang gagal sebelum menambahkan soal baru.",
+        ),
+      );
   };
 
   const {
@@ -1354,25 +1413,70 @@ function AssessmentEditorForm({
                       ini belum menyediakan pengurutan manual.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="hidden items-center gap-2 lg:flex">
                     <Badge variant="secondary">
                       {displayQuestions.length} soal
                     </Badge>
                     <Button
                       disabled={questionBusy}
-                      onClick={() => {
-                        void autosaveRegistry
-                          .flushAll()
-                          .then(onAddQuestion)
-                          .catch(() =>
-                            toast.error(
-                              "Simpan perubahan yang gagal sebelum menambahkan soal baru.",
-                            ),
-                          );
-                      }}
+                      onClick={addQuestion}
                       size="sm"
                       type="button"
                       variant="outline"
+                    >
+                      <PlusIcon data-icon="inline-start" />
+                      Tambah soal
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-background/95 sticky top-2 z-20 flex items-center justify-between gap-2 rounded-lg border p-2 shadow-sm backdrop-blur lg:hidden">
+                  <Badge className="shrink-0" variant="secondary">
+                    {displayQuestions.length} soal
+                  </Badge>
+                  <div className="flex min-w-0 items-center gap-2">
+                    {questionMapItems.length ? (
+                      <Sheet
+                        onOpenChange={setQuestionNavigatorOpen}
+                        open={questionNavigatorOpen}
+                      >
+                        <SheetTrigger
+                          render={
+                            <Button size="sm" type="button" variant="outline" />
+                          }
+                        >
+                          <ListIcon data-icon="inline-start" />
+                          Navigasi
+                        </SheetTrigger>
+                        <SheetContent
+                          className="max-h-[80svh] rounded-t-2xl"
+                          side="bottom"
+                        >
+                          <SheetHeader className="border-b pr-12">
+                            <SheetTitle>Daftar soal</SheetTitle>
+                            <SheetDescription>
+                              Pilih soal untuk langsung menuju bagian yang ingin
+                              diedit.
+                            </SheetDescription>
+                          </SheetHeader>
+                          <div className="min-h-0 overflow-y-auto px-4 pb-5">
+                            <QuestionNavigator
+                              activeQuestionId={activeQuestionId}
+                              items={questionMapItems}
+                              onSelect={(questionId) => {
+                                setQuestionNavigatorTargetId(questionId);
+                                setQuestionNavigatorOpen(false);
+                              }}
+                            />
+                          </div>
+                        </SheetContent>
+                      </Sheet>
+                    ) : null}
+                    <Button
+                      disabled={questionBusy}
+                      onClick={addQuestion}
+                      size="sm"
+                      type="button"
                     >
                       <PlusIcon data-icon="inline-start" />
                       Tambah soal
@@ -1385,6 +1489,7 @@ function AssessmentEditorForm({
                     {displayQuestions.map((question, index) => (
                       <QuestionCard
                         autosaveRegistry={autosaveRegistry}
+                        autoFocusPrompt={newQuestionId === question.id}
                         busy={questionBusy}
                         highlighted={activeQuestionId === question.id}
                         index={index}
@@ -1501,7 +1606,7 @@ function AssessmentEditorForm({
               </div>
             </div>
 
-            <div className="bg-card grid gap-3 rounded-xl border p-4 shadow-xs">
+            <div className="bg-card hidden gap-3 rounded-xl border p-4 shadow-xs lg:grid">
               <div>
                 <h2 className="font-heading text-sm font-semibold">
                   Peta soal
@@ -1511,30 +1616,11 @@ function AssessmentEditorForm({
                 </p>
               </div>
               {assessment?.questions.length ? (
-                <nav aria-label="Navigasi soal" className="grid min-w-0 gap-1">
-                  {questionMapItems.map((item) => (
-                    <Button
-                      aria-current={
-                        activeQuestionId === item.id ? "location" : undefined
-                      }
-                      className="h-auto w-full min-w-0 justify-start gap-2 px-2 py-2"
-                      key={item.id}
-                      onClick={() => navigateToQuestion(item.id)}
-                      type="button"
-                      variant={
-                        activeQuestionId === item.id ? "secondary" : "ghost"
-                      }
-                    >
-                      <span className="bg-muted text-muted-foreground flex size-6 shrink-0 items-center justify-center rounded text-xs font-medium">
-                        {item.index + 1}
-                      </span>
-                      <span className="min-w-0 truncate">{item.label}</span>
-                      <span className="text-muted-foreground ml-auto text-xs">
-                        {item.points} poin
-                      </span>
-                    </Button>
-                  ))}
-                </nav>
+                <QuestionNavigator
+                  activeQuestionId={activeQuestionId}
+                  items={questionMapItems}
+                  onSelect={navigateToQuestion}
+                />
               ) : (
                 <p className="text-muted-foreground rounded-md border border-dashed px-3 py-4 text-center text-xs">
                   Belum ada soal.
@@ -1545,6 +1631,46 @@ function AssessmentEditorForm({
         </div>
       </div>
     </div>
+  );
+}
+
+type QuestionNavigatorItem = {
+  id: string;
+  index: number;
+  label: string;
+  points: number;
+};
+
+function QuestionNavigator({
+  activeQuestionId,
+  items,
+  onSelect,
+}: {
+  activeQuestionId: string | null;
+  items: QuestionNavigatorItem[];
+  onSelect: (questionId: string) => void;
+}) {
+  return (
+    <nav aria-label="Navigasi soal" className="grid min-w-0 gap-1">
+      {items.map((item) => (
+        <Button
+          aria-current={activeQuestionId === item.id ? "location" : undefined}
+          className="h-auto min-h-10 w-full min-w-0 justify-start gap-2 px-2 py-2"
+          key={item.id}
+          onClick={() => onSelect(item.id)}
+          type="button"
+          variant={activeQuestionId === item.id ? "secondary" : "ghost"}
+        >
+          <span className="bg-muted text-muted-foreground flex size-6 shrink-0 items-center justify-center rounded text-xs font-medium">
+            {item.index + 1}
+          </span>
+          <span className="min-w-0 truncate">{item.label}</span>
+          <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+            {item.points} poin
+          </span>
+        </Button>
+      ))}
+    </nav>
   );
 }
 
@@ -1613,6 +1739,7 @@ type QuestionDraft = {
 
 type QuestionCardProps = {
   autosaveRegistry: AutosaveRegistry;
+  autoFocusPrompt: boolean;
   busy: boolean;
   highlighted: boolean;
   index: number;
@@ -1643,6 +1770,7 @@ type QuestionCardProps = {
 
 const QuestionCard = memo(function QuestionCard({
   autosaveRegistry,
+  autoFocusPrompt,
   busy,
   highlighted,
   index,
@@ -1797,6 +1925,7 @@ const QuestionCard = memo(function QuestionCard({
             <Label>Pertanyaan</Label>
             <div className="overflow-hidden rounded-lg border">
               <DynamicBlockNoteEditor
+                autoFocus={autoFocusPrompt}
                 initialContent={toBlockNoteDocument(question.prompt)}
                 onChange={setPrompt}
                 placeholder="Tulis pertanyaan..."
@@ -1957,6 +2086,7 @@ function areQuestionCardPropsEqual(
 ) {
   return (
     previous.autosaveRegistry === next.autosaveRegistry &&
+    previous.autoFocusPrompt === next.autoFocusPrompt &&
     previous.busy === next.busy &&
     previous.highlighted === next.highlighted &&
     previous.index === next.index &&

@@ -37,9 +37,10 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { toPrismaJsonValue } from "~/server/prisma-json";
 
 const id = z.string().min(1);
-const json = z.unknown().transform((value) => value as Prisma.InputJsonValue);
+const json = z.unknown().transform(toPrismaJsonValue);
 const answerInput = z.object({
   questionId: id,
   content: json.optional(),
