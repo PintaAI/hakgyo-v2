@@ -23,7 +23,6 @@ import Animated, {
 
 import { canOpenModule } from "../lib/study";
 import { isGameKey, type GameKey } from "../games/catalog";
-import { api } from "../lib/trpc";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { GlassBox } from "./GlassBox";
@@ -52,6 +51,7 @@ type HubProps = {
   now: number;
   onRetryCourses: () => void;
   onRetryEvents: () => void;
+  outlines: RouterOutputs["mobileSync"]["getDashboard"]["outlines"];
   onResourceFocus?: (offsetY: number) => void;
   preselectedSource?: PreselectedVocabularySource;
 };
@@ -403,59 +403,6 @@ function openLibraryItem(item: LibraryItem, gameKey?: GameKey) {
   });
 }
 
-// Invisible per-course query: outlines can't be fetched in a loop (hooks),
-// so one harvester per course reports its items up to the global library.
-function OutlineHarvest({
-  course,
-  filter,
-  generation,
-  onSettled,
-}: {
-  course: Course;
-  filter: PracticeFilter;
-  generation: number;
-  onSettled: (courseId: string, items: LibraryItem[] | null) => void;
-}) {
-  const outline = api.learning.getCourseOutline.useQuery({
-    courseId: course.id,
-  });
-  const { data, error, isPending, refetch } = outline;
-  useEffect(() => {
-    if (generation > 0) void refetch();
-  }, [generation, refetch]);
-  useEffect(() => {
-    if (isPending) return;
-    if (error || !data) {
-      onSettled(course.id, null);
-      return;
-    }
-    onSettled(
-      course.id,
-      data.modules.flatMap((module) =>
-        canOpenModule(module.access)
-          ? module.items
-              .filter((item) => item.type === filter)
-              .map((item) => ({
-                key: `${course.id}:${item.id}`,
-                courseId: course.id,
-                courseTitle: course.title,
-                id: item.id,
-                type: filter,
-                title: item.title,
-                moduleTitle: module.title,
-                isCompleted: item.isCompleted,
-                attempt:
-                  item.type === "ASSESSMENT" && item.attempt
-                    ? { id: item.attempt.id, status: item.attempt.status }
-                    : null,
-              }))
-          : [],
-      ),
-    );
-  }, [data, error, isPending, course.id, course.title, filter, onSettled]);
-  return null;
-}
-
 // Thin wrapper over the shared learning-item row: the practice library
 // always shows the rail + type highlight, single-line detail, chevron.
 function LibraryRow({
@@ -496,70 +443,57 @@ export function ResourceLibrary({
   filter,
   sourceLabel,
   gameKey,
+  onRetry,
+  outlines,
 }: {
   courses: Course[];
   filter: PracticeFilter;
   sourceLabel: string;
   gameKey?: GameKey;
+  onRetry: () => void;
+  outlines: RouterOutputs["mobileSync"]["getDashboard"]["outlines"];
 }) {
   const { colors, colorScheme } = useAppTheme();
-  const [settled, setSettled] = useState<Record<string, LibraryItem[] | null>>(
-    {},
-  );
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [courseFilter, setCourseFilter] = useState<string | null>(null);
-  const [generation, setGeneration] = useState(0);
 
-  // Search + status reset when the game tab changes. Settled outlines are
-  // namespaced per resource type, so switching tabs never wipes results
-  // that harvesters reported from a warm cache (child effects flush before
-  // this parent effect, which used to erase them into infinite loading).
+  // Search + status reset when the game tab changes. Dashboard outlines stay
+  // namespaced per course, so switching tabs never wipes warm cached results.
   useEffect(() => {
     setQuery("");
     setStatus("all");
   }, [filter]);
 
-  const handleSettled = useCallback(
-    (courseId: string, items: LibraryItem[] | null) => {
-      const key = `${filter}:${courseId}`;
-      setSettled((prev) => {
-        const prevItems = prev[key];
-        if (prevItems === items) return prev;
-        if (
-          prevItems &&
-          items &&
-          prevItems.length === items.length &&
-          prevItems.every(
-            (item, index) =>
-              item.key === items[index]!.key &&
-              item.isCompleted === items[index]!.isCompleted,
-          )
-        ) {
-          return prev;
-        }
-        return { ...prev, [key]: items };
-      });
-    },
-    [filter],
-  );
-
   const allItems = useMemo(
-    () => courses.flatMap((course) => settled[`${filter}:${course.id}`] ?? []),
-    [courses, settled, filter],
-  );
-  const settledCount = useMemo(
     () =>
-      courses.filter((course) => `${filter}:${course.id}` in settled).length,
-    [courses, settled, filter],
+      courses.flatMap((course) =>
+        (outlines[course.id]?.modules ?? []).flatMap((module) =>
+          canOpenModule(module.access)
+            ? module.items
+                .filter((item) => item.type === filter)
+                .map((item) => ({
+                  key: `${course.id}:${item.id}`,
+                  courseId: course.id,
+                  courseTitle: course.title,
+                  id: item.id,
+                  type: filter,
+                  title: item.title,
+                  moduleTitle: module.title,
+                  isCompleted: item.isCompleted,
+                  attempt:
+                    item.type === "ASSESSMENT" && item.attempt
+                      ? { id: item.attempt.id, status: item.attempt.status }
+                      : null,
+                }))
+            : [],
+        ),
+      ),
+    [courses, filter, outlines],
   );
-  const failedCount = useMemo(
-    () =>
-      courses.filter((course) => settled[`${filter}:${course.id}`] === null)
-        .length,
-    [courses, settled, filter],
-  );
-  const loading = settledCount < courses.length;
+  const missingOutlineCount = courses.filter(
+    (course) => !outlines[course.id],
+  ).length;
 
   const normalized = query.trim().toLowerCase();
   const visible = allItems.filter((item) => {
@@ -586,15 +520,6 @@ export function ResourceLibrary({
 
   return (
     <View className="gap-4">
-      {courses.map((course) => (
-        <OutlineHarvest
-          key={`${course.id}:${filter}`}
-          course={course}
-          filter={filter}
-          generation={generation}
-          onSettled={handleSettled}
-        />
-      ))}
       <View className="gap-1.5 pt-1">
         <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
           {sourceLabel}
@@ -771,23 +696,12 @@ export function ResourceLibrary({
           })}
         </ScrollView>
       ) : null}
-      {loading && allItems.length === 0 ? (
-        <ActivityIndicator
-          accessibilityLabel="Loading practice"
-          className="py-8"
-        />
-      ) : failedCount === courses.length ? (
+      {missingOutlineCount === courses.length ? (
         <View className="gap-3 py-4">
           <Text accessibilityRole="alert" className="text-sm text-destructive">
             We couldn’t load your practice materials.
           </Text>
-          <Action
-            secondary
-            onPress={() => {
-              setSettled({});
-              setGeneration((value) => value + 1);
-            }}
-          >
+          <Action secondary onPress={onRetry}>
             Try again
           </Action>
         </View>
@@ -832,6 +746,8 @@ function ModeResources({ props, tool }: { props: HubProps; tool: Tool }) {
         courses={props.courses}
         filter={tool.resource}
         gameKey={isGameKey(tool.key) ? tool.key : undefined}
+        onRetry={props.onRetryCourses}
+        outlines={props.outlines}
         sourceLabel={tool.sourceLabel}
       />
     </View>
@@ -949,8 +865,7 @@ export function PracticeHub(props: HubProps) {
                   className="min-w-0 flex-1 active:opacity-70"
                   onPress={() =>
                     router.push({
-                      pathname:
-                        "/courses/[courseId]/items/[courseItemId]",
+                      pathname: "/courses/[courseId]/items/[courseItemId]",
                       params: {
                         courseId: activeSource.courseId,
                         courseItemId: activeSource.sourceCourseItemId,
@@ -1010,8 +925,8 @@ export function PracticeHub(props: HubProps) {
             />
             {activeSource ? (
               <Text className="text-xs leading-4 text-muted-foreground">
-                Quiz runs on class assessments, not vocabulary sets. Tap ×
-                above to browse all sets and quizzes.
+                Quiz runs on class assessments, not vocabulary sets. Tap × above
+                to browse all sets and quizzes.
               </Text>
             ) : null}
           </View>

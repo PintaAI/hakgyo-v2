@@ -8,9 +8,10 @@ import {
   type ReactNode,
 } from "react";
 import {
-  BackHandler,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,7 +25,6 @@ import Animated, {
   Easing,
   interpolate,
   runOnJS,
-  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -40,7 +40,9 @@ import type {
 } from "../../lib/use-vocabulary-progress";
 import { withOpacity, type ThemeColors } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
+import { GameBackToolbar } from "../game-screens";
 import { GameModal, GameStartModal, GameJourneyFooter } from "../game-modals";
+import { useGameExitGuard } from "../game-navigation";
 import {
   addWordFallReviewItem,
   analyzeTyping,
@@ -91,7 +93,7 @@ type ProjectileModel = {
 type BurstModel = { id: number; at: Point; color: string };
 
 const START_Y = -72;
-const PLAYER_BOTTOM = 10;
+const PLAYER_BOTTOM = 120;
 const MISTAKE_PLAYER_LIFT = 34;
 const PLAYER_SIZE = 26;
 const PLAYER_HEIGHT = PLAYER_SIZE;
@@ -125,32 +127,24 @@ function powerUpColor(powerUp: WordFallPowerUp, colors: ThemeColors) {
   return colors.highlightYellowText;
 }
 
-function playerCenterY(
-  field: FieldSize,
-  keyboardInset: number,
-  playerLift = 0,
-) {
+function playerCenterY(field: FieldSize, playerLift = 0) {
+  "worklet";
   return Math.max(
     PLAYER_HEIGHT / 2,
-    field.height -
-      PLAYER_BOTTOM -
-      keyboardInset -
-      playerLift -
-      PLAYER_HEIGHT / 2,
+    field.height - PLAYER_BOTTOM - playerLift - PLAYER_HEIGHT / 2,
   );
 }
 
 function entityPosition(
   entity: FallingWord,
   field: FieldSize,
-  keyboardInset: number,
   playerLift = 0,
 ): Point {
   const elapsed = Date.now() - (entity.impactAt - entity.duration);
   const progress = Math.max(0, Math.min(1, elapsed / entity.duration));
   const player = {
     x: field.width / 2,
-    y: playerCenterY(field, keyboardInset, playerLift),
+    y: playerCenterY(field, playerLift),
   };
   return {
     x: entity.spawnX + (player.x - entity.spawnX) * progress,
@@ -161,8 +155,6 @@ function entityPosition(
 function FallingWordView({
   entity,
   field,
-  keyboardHeight,
-  keyboardResizeOffset,
   playerLift,
   mistyped,
   paused,
@@ -170,8 +162,6 @@ function FallingWordView({
 }: {
   entity: FallingWord;
   field: FieldSize;
-  keyboardHeight: SharedValue<number>;
-  keyboardResizeOffset: number;
   playerLift: SharedValue<number>;
   mistyped: string;
   paused: boolean;
@@ -228,14 +218,7 @@ function FallingWordView({
     appliedKnockback.current = entity.knockbackTotal;
     if (pushDistance <= 0) return;
 
-    const playerY = Math.max(
-      PLAYER_HEIGHT / 2,
-      field.height -
-        PLAYER_BOTTOM -
-        Math.max(0, keyboardHeight.value - keyboardResizeOffset) -
-        playerLift.value -
-        PLAYER_HEIGHT / 2,
-    );
+    const playerY = playerCenterY(field, playerLift.value);
     const pathDistance = Math.max(
       1,
       Math.hypot(playerX - entity.spawnX, playerY - START_Y),
@@ -269,8 +252,6 @@ function FallingWordView({
     entity.knockbackTotal,
     entity.spawnX,
     field.height,
-    keyboardHeight,
-    keyboardResizeOffset,
     onImpact,
     paused,
     playerLift,
@@ -289,16 +270,7 @@ function FallingWordView({
       {
         translateY:
           START_Y +
-          (Math.max(
-            PLAYER_HEIGHT / 2,
-            field.height -
-              PLAYER_BOTTOM -
-              Math.max(0, keyboardHeight.value - keyboardResizeOffset) -
-              playerLift.value -
-              PLAYER_HEIGHT / 2,
-          ) -
-            START_Y) *
-            progress.value,
+          (playerCenterY(field, playerLift.value) - START_Y) * progress.value,
       },
       {
         translateX: interpolate(
@@ -624,6 +596,7 @@ function LearningRecap({ items }: { items: readonly WordFallReviewItem[] }) {
 export function WordFallScreen({
   words,
   onExit,
+  onComplete,
   onAttempt,
   onSessionStart,
   courseId,
@@ -631,6 +604,7 @@ export function WordFallScreen({
 }: {
   words: readonly WordFallWord[];
   onExit: () => void;
+  onComplete: () => unknown;
   onAttempt: (
     attempt: VocabularyAttempt,
     delivery: VocabularyAttemptDelivery,
@@ -640,7 +614,6 @@ export function WordFallScreen({
   sourceCourseItemId?: string;
 }) {
   const { colors } = useAppTheme();
-  const keyboard = useAnimatedKeyboard();
   const inputRef = useRef<TextInput>(null);
   const entitiesRef = useRef<FallingWord[]>([]);
   const lockedTargetRef = useRef<string | null>(null);
@@ -653,13 +626,13 @@ export function WordFallScreen({
   const reportedWordIdsRef = useRef(new Set<string>());
   const pendingReportIdsRef = useRef(new Set<string>());
   const progressSessionIdRef = useRef("");
+  const completedSessionIdRef = useRef("");
   const mountedRef = useRef(true);
   const idRef = useRef(0);
   const effectIdRef = useRef(0);
   const timersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
   const [phase, setPhase] = useState<WordFallPhase>("ready");
   const [field, setField] = useState<FieldSize>({ width: 0, height: 0 });
-  const [maximumFieldHeight, setMaximumFieldHeight] = useState(0);
   const [entities, setEntities] = useState<FallingWord[]>([]);
   const [health, setHealth] = useState(STARTING_HEALTH);
   const [shield, setShield] = useState(0);
@@ -679,27 +652,12 @@ export function WordFallScreen({
   const playerLift = useSharedValue(0);
   const playerRecoil = useSharedValue(0);
   const level = levelForDestroyed(destroyed);
-  const keyboardResizeOffset = Math.max(0, maximumFieldHeight - field.height);
   const playerPositionStyle = useAnimatedStyle(() => ({
-    bottom:
-      PLAYER_BOTTOM +
-      playerLift.value +
-      Math.max(0, keyboard.height.value - keyboardResizeOffset) -
-      playerRecoil.value,
+    bottom: PLAYER_BOTTOM + playerLift.value - playerRecoil.value,
   }));
   const playerShieldPositionStyle = useAnimatedStyle(() => ({
-    bottom:
-      PLAYER_BOTTOM -
-      6 +
-      playerLift.value +
-      Math.max(0, keyboard.height.value - keyboardResizeOffset) -
-      playerRecoil.value,
+    bottom: PLAYER_BOTTOM - 6 + playerLift.value - playerRecoil.value,
   }));
-
-  const currentKeyboardInset = useCallback(
-    () => Math.max(0, keyboard.height.value - keyboardResizeOffset),
-    [keyboard.height, keyboardResizeOffset],
-  );
 
   const usableWords = useMemo(
     () =>
@@ -759,18 +717,34 @@ export function WordFallScreen({
     [clearTimers],
   );
 
+  const exit = useGameExitGuard({
+    active: phase === "running",
+    locked: pendingReportCount > 0,
+    onExit,
+  });
+
   useEffect(() => {
-    if (pendingReportCount === 0) return;
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => true,
-    );
-    return () => subscription.remove();
-  }, [pendingReportCount]);
+    const sessionId = progressSessionIdRef.current;
+    if (
+      phase !== "gameover" ||
+      pendingReportCount !== 0 ||
+      !sessionId ||
+      completedSessionIdRef.current === sessionId
+    )
+      return;
+    completedSessionIdRef.current = sessionId;
+    void onComplete();
+  }, [onComplete, pendingReportCount, phase]);
 
   const focusInput = useCallback(() => {
     schedule(() => inputRef.current?.focus(), 120);
   }, [schedule]);
+  const focusInputOnAndroid = useCallback(() => {
+    if (Platform.OS !== "ios") focusInput();
+  }, [focusInput]);
+  const focusInputAfterModalDismiss = useCallback(() => {
+    if (Platform.OS === "ios" && phase === "running") focusInput();
+  }, [focusInput, phase]);
 
   const setLockedTarget = useCallback((id: string | null) => {
     lockedTargetRef.current = id;
@@ -814,18 +788,7 @@ export function WordFallScreen({
   }));
   const targetSpawnX = lockedTarget?.spawnX ?? field.width / 2;
   const playerRotationStyle = useAnimatedStyle(() => {
-    const keyboardInset = Math.max(
-      0,
-      keyboard.height.value - keyboardResizeOffset,
-    );
-    const playerY = Math.max(
-      PLAYER_HEIGHT / 2,
-      field.height -
-        PLAYER_BOTTOM -
-        keyboardInset -
-        playerLift.value -
-        PLAYER_HEIGHT / 2,
-    );
+    const playerY = playerCenterY(field, playerLift.value);
     const horizontalDistance = targetSpawnX - field.width / 2;
     const verticalDistance = playerY - START_Y;
     const angle = Math.atan2(horizontalDistance, verticalDistance);
@@ -857,8 +820,7 @@ export function WordFallScreen({
         !entitiesRef.current.some((entity) => entity.id === projectile.targetId)
       )
         return;
-      const keyboardInset = currentKeyboardInset();
-      const playerY = playerCenterY(field, keyboardInset, playerLift.value);
+      const playerY = playerCenterY(field, playerLift.value);
       commitEntities(
         entitiesRef.current.map((entity) => {
           if (entity.id !== projectile.targetId) return entity;
@@ -888,7 +850,7 @@ export function WordFallScreen({
         }),
       );
     },
-    [commitEntities, currentKeyboardInset, field, playerLift],
+    [commitEntities, field, playerLift],
   );
 
   const removeBurst = useCallback((id: number) => {
@@ -994,27 +956,14 @@ export function WordFallScreen({
       const cleared = entitiesRef.current.filter((entity) => !entity.completed);
       for (const entity of cleared)
         addBurst(
-          entityPosition(
-            entity,
-            field,
-            currentKeyboardInset(),
-            playerLift.value,
-          ),
+          entityPosition(entity, field, playerLift.value),
           powerUpColor("blast", colors),
         );
       commitEntities([]);
       setScore((current) => current + cleared.length * 15);
       setDestroyed((current) => current + cleared.length);
     },
-    [
-      addBurst,
-      colors,
-      commitEntities,
-      currentKeyboardInset,
-      field,
-      playerLift,
-      schedule,
-    ],
+    [addBurst, colors, commitEntities, field, playerLift, schedule],
   );
 
   const finishWord = useCallback(
@@ -1022,7 +971,7 @@ export function WordFallScreen({
       const entity = entitiesRef.current.find((item) => item.id === id);
       if (!entity) return;
       addBurst(
-        entityPosition(entity, field, currentKeyboardInset(), playerLift.value),
+        entityPosition(entity, field, playerLift.value),
         entity.powerUp ? powerUpColor(entity.powerUp, colors) : colors.primary,
       );
       commitEntities(entitiesRef.current.filter((item) => item.id !== id));
@@ -1042,7 +991,6 @@ export function WordFallScreen({
       applyPowerUp,
       colors,
       commitEntities,
-      currentKeyboardInset,
       field,
       level,
       playerLift,
@@ -1121,8 +1069,8 @@ export function WordFallScreen({
     setFrozen(false);
     progressSessionIdRef.current = onSessionStart();
     setPhase("running");
-    focusInput();
-  }, [clearTimers, focusInput, onSessionStart, playerRecoil]);
+    focusInputOnAndroid();
+  }, [clearTimers, focusInputOnAndroid, onSessionStart, playerRecoil]);
 
   const pauseGame = useCallback(() => {
     if (phase !== "running") return;
@@ -1132,8 +1080,8 @@ export function WordFallScreen({
 
   const resumeGame = useCallback(() => {
     setPhase("running");
-    focusInput();
-  }, [focusInput]);
+    focusInputOnAndroid();
+  }, [focusInputOnAndroid]);
 
   const handleInput = useCallback(
     (value: string) => {
@@ -1188,16 +1136,10 @@ export function WordFallScreen({
           target.matched,
           analysis.correctCharacters,
         );
-        const keyboardInset = currentKeyboardInset();
-        const to = entityPosition(
-          target,
-          field,
-          keyboardInset,
-          playerLift.value,
-        );
+        const to = entityPosition(target, field, playerLift.value);
         const from = {
           x: field.width / 2,
-          y: playerCenterY(field, keyboardInset, playerLift.value),
+          y: playerCenterY(field, playerLift.value),
         };
         const boostedShots = Math.min(
           forceChargesRef.current,
@@ -1261,7 +1203,6 @@ export function WordFallScreen({
     [
       commitEntities,
       colors,
-      currentKeyboardInset,
       field,
       finishWord,
       level,
@@ -1276,7 +1217,6 @@ export function WordFallScreen({
 
   const onFieldLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
-    setMaximumFieldHeight((current) => Math.max(current, height));
     setField((current) =>
       Math.abs(current.width - width) < 1 &&
       Math.abs(current.height - height) < 1
@@ -1286,12 +1226,16 @@ export function WordFallScreen({
   }, []);
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={[styles.screen, { backgroundColor: colors.background }]}
+    >
+      <GameBackToolbar disabled={pendingReportCount > 0} onPress={exit} />
       <Stack.Screen
         options={{
           gestureEnabled: false,
           headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: pendingReportCount === 0,
+          headerBackVisible: false,
           headerShadowVisible: false,
           headerShown: true,
           title: "",
@@ -1423,8 +1367,6 @@ export function WordFallScreen({
             key={entity.id}
             entity={entity}
             field={field}
-            keyboardHeight={keyboard.height}
-            keyboardResizeOffset={keyboardResizeOffset}
             mistyped={entity.id === lockedTargetId ? mistyped : ""}
             onImpact={handleImpact}
             paused={phase !== "running" || frozen || entity.completed}
@@ -1488,15 +1430,20 @@ export function WordFallScreen({
 
       <GameStartModal
         detail="Type each word's definition before it reaches your ship. Correct letters reveal as you type."
+        gameKey="word-fall"
+        onDismiss={focusInputAfterModalDismiss}
         onPrimary={resetGame}
-        onSecondary={onExit}
+        onSecondary={exit}
         title="Word Fall"
         visible={phase === "ready"}
       />
       <GameModal
         detail={`Score ${score} · Level ${level}`}
+        eyebrow="Word fall"
+        gameKey="word-fall"
+        onDismiss={focusInputAfterModalDismiss}
         onPrimary={resumeGame}
-        onSecondary={onExit}
+        onSecondary={exit}
         primaryLabel="Resume"
         secondaryLabel="Exit"
         secondaryDisabled={pendingReportCount > 0}
@@ -1511,6 +1458,7 @@ export function WordFallScreen({
               <GameJourneyFooter
                 courseId={courseId}
                 courseItemId={sourceCourseItemId}
+                scrollable={false}
               />
             ) : null}
           </View>
@@ -1520,8 +1468,11 @@ export function WordFallScreen({
             ? `Final score ${score} · Syncing ${pendingReportCount} result${pendingReportCount === 1 ? "" : "s"}…`
             : `Final score ${score} · Level ${level}`
         }
+        eyebrow="Word fall"
+        gameKey="word-fall"
+        onDismiss={focusInputAfterModalDismiss}
         onPrimary={resetGame}
-        onSecondary={onExit}
+        onSecondary={exit}
         primaryLabel="Play again"
         primaryDisabled={pendingReportCount > 0}
         secondaryLabel="Exit"
@@ -1529,7 +1480,7 @@ export function WordFallScreen({
         title="Game over"
         visible={phase === "gameover"}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

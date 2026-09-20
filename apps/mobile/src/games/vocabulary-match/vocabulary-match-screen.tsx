@@ -26,7 +26,9 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
+import { GameBackToolbar } from "../game-screens";
 import { GameModal, GameStartModal, GameJourneyFooter } from "../game-modals";
+import { useGameExitGuard } from "../game-navigation";
 import { withOpacity } from "../../theme/colors";
 import type { VocabularyAttempt } from "../../lib/use-vocabulary-progress";
 import {
@@ -205,6 +207,7 @@ function StaticChain({
 export function VocabularyMatchScreen({
   words,
   onExit,
+  onComplete,
   onAttempt,
   onSessionStart,
   courseId,
@@ -212,6 +215,7 @@ export function VocabularyMatchScreen({
 }: {
   words: readonly VocabularyMatchWord[];
   onExit: () => void;
+  onComplete: () => unknown;
   onAttempt: (attempt: VocabularyAttempt) => Promise<void>;
   onSessionStart: () => void;
   courseId?: string;
@@ -274,6 +278,12 @@ export function VocabularyMatchScreen({
     },
     [],
   );
+
+  const exit = useGameExitGuard({
+    active: phase === "running",
+    locked: saving,
+    onExit,
+  });
 
   useFrameCallback(
     useCallback(
@@ -362,9 +372,12 @@ export function VocabularyMatchScreen({
       setWrongId(null);
       setMatches({});
       if (roundIndex + 1 < session.rounds.length) setRoundIndex(roundIndex + 1);
-      else setPhase("complete");
+      else {
+        setPhase("complete");
+        void onComplete();
+      }
     }, 520);
-  }, [clearLiveRope, roundIndex, session.rounds.length]);
+  }, [clearLiveRope, onComplete, roundIndex, session.rounds.length]);
 
   const handleAttempt = useCallback(
     (termId: string, definitionId: string) => {
@@ -555,10 +568,12 @@ export function VocabularyMatchScreen({
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      <GameBackToolbar disabled={saving} onPress={exit} />
       <Stack.Screen
         options={{
           gestureEnabled: false,
           headerBackButtonDisplayMode: "minimal",
+          headerBackVisible: false,
           headerShadowVisible: false,
           headerShown: true,
           title: "",
@@ -738,8 +753,9 @@ export function VocabularyMatchScreen({
 
       <GameStartModal
         detail="Connect each word to its meaning. Drag from the left, or tap one card on each side."
+        gameKey="match"
         onPrimary={resetGame}
-        onSecondary={onExit}
+        onSecondary={exit}
         title="Vocabulary Match"
         visible={phase === "ready"}
       />
@@ -769,14 +785,19 @@ export function VocabularyMatchScreen({
             <GameJourneyFooter
               courseId={courseId}
               courseItemId={sourceCourseItemId}
+              scrollable={false}
             />
           </View>
         }
         detail={`Final score ${score} · ${session.wordCount} words matched`}
+        eyebrow="Vocabulary match"
+        gameKey="match"
         onPrimary={resetGame}
-        onSecondary={onExit}
+        onSecondary={exit}
         primaryLabel="Play again"
+        primaryDisabled={saving}
         secondaryLabel="Exit"
+        secondaryDisabled={saving}
         title="Round complete"
         visible={phase === "complete"}
       />

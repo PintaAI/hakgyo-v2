@@ -136,13 +136,31 @@ function screenHarness(kind: "today" | "course") {
     "../lib/use-vocabulary-progress": {
       useVocabularyProgressReporter: () => ({
         error: undefined,
+        finishSession: async () => undefined,
         isPending: false,
         report: record,
         reset() {},
         startSession() {},
       }),
     },
+    "../providers/MobileSyncProvider": {
+      useMobileSyncActions: () => ({
+        finishVocabularySession: async () => ({
+          state: "synced",
+          result: {
+            acknowledgedOperationIds: [],
+            failures: [],
+            results: [],
+          },
+        }),
+        recordVocabularyAttempt: record,
+      }),
+    },
     "../lib/today-vocabulary-practice": todayPractice,
+    "../lib/local-sample": {
+      localSample: (values: unknown[], _seed: string, limit: number) =>
+        values.slice(0, limit),
+    },
     "../lib/vocabulary-practice": vocabularyPractice,
     "../lib/vocabulary-speech": vocabularySpeech,
     "../lib/use-vocabulary-speech": {
@@ -175,6 +193,10 @@ function screenHarness(kind: "today" | "course") {
       GameJourneyFooter: "GameJourneyFooter",
       GameModal: "GameModal",
       GameStartModal: "GameStartModal",
+    },
+    "../games/game-screens": { GameBackToolbar: "GameBackToolbar" },
+    "../games/game-navigation": {
+      useGameExitGuard: () => () => undefined,
     },
     "./vocabulary-practice-deck": { VocabularyPracticeDeck: "Deck" },
   };
@@ -212,6 +234,7 @@ function screenHarness(kind: "today" | "course") {
     ]!;
   const props = {
     organizationId: "org",
+    pool,
     scrollGesture: {},
     words,
     vocabularySetId: "set",
@@ -260,10 +283,15 @@ function screenHarness(kind: "today" | "course") {
   render();
   function recordedResult(index: number) {
     const input = record.mock.calls[index]?.[0] as
-      { result: string } | { attempts: { result: string }[] } | undefined;
+      | { result: string }
+      | { attempt: { result: string } }
+      | { attempts: { result: string }[] }
+      | undefined;
     return input && "attempts" in input
       ? input.attempts[0]?.result
-      : input?.result;
+      : input && "attempt" in input
+        ? input.attempt.result
+        : input?.result;
   }
   return {
     kind,

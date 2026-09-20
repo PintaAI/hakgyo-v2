@@ -10,6 +10,8 @@ import {
 } from "../../lib/course-learning-path";
 import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { api } from "../../lib/trpc";
+import { useAppTheme } from "../../providers/AppThemeProvider";
+import { useMobileSyncActions } from "../../providers/MobileSyncProvider";
 import { StudyAction } from "../study-glass";
 
 type Milestone = NonNullable<ReturnType<typeof getLearningMilestone>>;
@@ -40,7 +42,8 @@ export function CourseLearningFooter({
 }) {
   const utils = api.useUtils();
   const outline = api.learning.getCourseOutline.useQuery({ courseId });
-  const complete = api.learning.markContentProgress.useMutation();
+  const { activeOrganizationId } = useAppTheme();
+  const { completeContent } = useMobileSyncActions();
   const baseline = useRef(initialOutline);
   const inFlight = useRef(false);
   const mounted = useRef(true);
@@ -111,11 +114,10 @@ export function CourseLearningFooter({
     setBusy(true);
     setIssue(undefined);
     try {
-      // Refresh before and after saving: only server-confirmed progress unlocks a module.
-      const before = await utils.learning.getCourseOutline.fetch(
-        { courseId },
-        { staleTime: 0 },
-      );
+      const before =
+        utils.learning.getCourseOutline.getData({ courseId }) ?? outline.data;
+      if (!before)
+        throw new Error("Course data is not available on this device.");
       baseline.current ??= before;
       const current = getLearningPath(before, courseItemId);
       if (!current)
@@ -127,40 +129,62 @@ export function CourseLearningFooter({
           setIssue({ kind: "requirements" });
           return;
         }
-        await complete.mutateAsync({ courseItemId, status: "COMPLETED" });
-        saved.current = true;
-      }
-      const after = await utils.learning.getCourseOutline.fetch(
-        { courseId },
-        { staleTime: 0 },
-      );
-      // Refresh other surfaces without making navigation wait for unrelated queries.
-      void Promise.allSettled([
-        utils.learning.getCourseItem.invalidate({ courseItemId }),
-        utils.learning.listMyCourses.invalidate(),
-        utils.gamification.invalidate(),
-      ]);
-      if (!mounted.current) return;
-      const next = getLearningPath(after, courseItemId);
-      if (!next?.item.isCompleted)
-        throw new Error(
-          "Complete the required activities in this material, then try again.",
-        );
-      const celebration = getLearningMilestone(
-        baseline.current,
-        after,
-        courseItemId,
-      );
-      baseline.current = after;
-      if (celebration) setMilestone(celebration);
-      else if (next.nextItem) navigate(next.nextItem);
-      else if (next.courseCompleted) navigate();
-      else
-        setIssue({
-          kind: "error",
-          message:
-            "Your progress is saved. Open the course contents to see what is still required.",
+        const sync = await completeContent({
+          courseItemId,
+          organizationId: activeOrganizationId ?? undefined,
         });
+        saved.current = true;
+        if (sync.state === "queued") {
+          setIssue({
+            kind: "error",
+            message:
+              "Completion is saved on this device and will sync when you are online.",
+          });
+          return;
+        }
+        const after = sync.result.dashboard.outlines[courseId];
+        if (!after) {
+          throw new Error(
+            "Completion synced, but the updated course did not load.",
+          );
+        }
+        utils.learning.getCourseOutline.setData({ courseId }, after);
+        // Refresh other cached surfaces without starting more server calls.
+        void Promise.allSettled([
+          utils.learning.getCourseItem.invalidate(
+            { courseItemId },
+            { refetchType: "none" },
+          ),
+          utils.learning.listMyCourses.invalidate(undefined, {
+            refetchType: "none",
+          }),
+          utils.gamification.invalidate(undefined, { refetchType: "none" }),
+        ]);
+        if (!mounted.current) return;
+        const next = getLearningPath(after, courseItemId);
+        if (!next?.item.isCompleted)
+          throw new Error(
+            "Complete the required activities in this material, then try again.",
+          );
+        const celebration = getLearningMilestone(
+          baseline.current,
+          after,
+          courseItemId,
+        );
+        baseline.current = after;
+        if (celebration) setMilestone(celebration);
+        else if (next.nextItem) navigate(next.nextItem);
+        else if (next.courseCompleted) navigate();
+        else
+          setIssue({
+            kind: "error",
+            message:
+              "Your progress is saved. Open the course contents to see what is still required.",
+          });
+        return;
+      }
+      if (current.nextItem) navigate(current.nextItem);
+      else if (current.courseCompleted) navigate();
     } catch (cause) {
       if (!mounted.current) return;
       const code =

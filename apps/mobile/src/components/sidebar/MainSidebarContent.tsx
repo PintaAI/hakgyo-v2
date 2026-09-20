@@ -114,23 +114,29 @@ function SidebarActionRow({
   );
 }
 
-export function MainSidebarContent({ onClose }: { onClose: () => void }) {
+export function MainSidebarContent({
+  onNavigate,
+}: {
+  onNavigate: (action: () => void) => void;
+}) {
   const { colors } = useAppTheme();
   const { activeOrganizationId } = useAppTheme();
-  const scope = { organizationId: activeOrganizationId ?? undefined };
+  const scope = activeOrganizationId
+    ? { organizationId: activeOrganizationId }
+    : undefined;
   const [now] = useState(() => Date.now());
 
-  const coursesQuery = api.learning.listMyCourses.useQuery(scope);
-  const cohortsQuery = api.learning.listMyCohorts.useQuery(scope);
-  const eventsQuery = api.assessmentEvent.listForLearner.useQuery(scope);
-  const attemptsQuery = api.assessment.listMyAttempts.useQuery(scope);
+  const dashboard = api.mobileSync.getDashboard.useQuery(scope, {
+    enabled: Boolean(activeOrganizationId),
+  });
 
-  const upcomingEvents = (eventsQuery.data ?? [])
+  const upcomingEvents = (dashboard.data?.events ?? [])
     .filter((event) => !isStaleClosedOnDemandAssessment(event, now))
     .filter((event) => {
       const attempt = event.attempts[0];
       return (
-        event.status === "OPEN" && (!attempt || attempt.status === "IN_PROGRESS")
+        event.status === "OPEN" &&
+        (!attempt || attempt.status === "IN_PROGRESS")
       );
     })
     .sort((a, b) => {
@@ -140,27 +146,22 @@ export function MainSidebarContent({ onClose }: { onClose: () => void }) {
     })
     .slice(0, 3);
 
-  const upcomingMeetings = (cohortsQuery.data ?? [])
+  const upcomingMeetings = (dashboard.data?.cohorts ?? [])
     .flatMap((cohort) =>
       cohort.meetings.map((meeting) => ({ cohort, meeting })),
     )
     .filter(({ meeting }) => meetingState(meeting, now) !== "ended")
-    .sort(
-      (a, b) => a.meeting.startsAt.getTime() - b.meeting.startsAt.getTime(),
-    )
+    .sort((a, b) => a.meeting.startsAt.getTime() - b.meeting.startsAt.getTime())
     .slice(0, 3);
 
-  const gradedAttempts = (attemptsQuery.data ?? [])
+  const gradedAttempts = (dashboard.data?.attempts ?? [])
     .filter((attempt) => attempt.status === "GRADED")
     .slice(0, 3);
 
   return (
     <>
       {upcomingEvents.length > 0 ? (
-        <View
-          className="rounded-2xl px-1 py-2"
-          style={{ marginBottom: 10 }}
-        >
+        <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
           <SectionHeader label="Up next" count={upcomingEvents.length} />
           <View style={{ gap: 1 }}>
             {upcomingEvents.map((event) => {
@@ -176,26 +177,26 @@ export function MainSidebarContent({ onClose }: { onClose: () => void }) {
                   detail={`${assessmentSourceBadge(event)} · ${event.course.title}${event.closesAt ? ` · ${closesLabel(event.closesAt, now)}` : ""}`}
                   badge={urgent ? "Due" : undefined}
                   onPress={() => {
-                    onClose();
-                    if (
-                      event.entry.destination === "ATTEMPT" &&
-                      attempt
-                    ) {
-                      router.push({
-                        pathname:
-                          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                        params: {
-                          courseId: event.course.id,
-                          courseItemId: event.courseItem.id,
-                          attemptId: attempt.id,
-                        },
-                      });
+                    if (event.entry.destination === "ATTEMPT" && attempt) {
+                      onNavigate(() =>
+                        router.push({
+                          pathname:
+                            "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                          params: {
+                            courseId: event.course.id,
+                            courseItemId: event.courseItem.id,
+                            attemptId: attempt.id,
+                          },
+                        }),
+                      );
                       return;
                     }
-                    router.push({
-                      pathname: "/events/[eventId]",
-                      params: { eventId: event.id },
-                    });
+                    onNavigate(() =>
+                      router.push({
+                        pathname: "/events/[eventId]",
+                        params: { eventId: event.id },
+                      }),
+                    );
                   }}
                 />
               );
@@ -205,10 +206,7 @@ export function MainSidebarContent({ onClose }: { onClose: () => void }) {
       ) : null}
 
       {upcomingMeetings.length > 0 ? (
-        <View
-          className="rounded-2xl px-1 py-2"
-          style={{ marginBottom: 10 }}
-        >
+        <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
           <SectionHeader label="Live classes" count={upcomingMeetings.length} />
           <View style={{ gap: 1 }}>
             {upcomingMeetings.map(({ cohort, meeting }) => {
@@ -220,9 +218,7 @@ export function MainSidebarContent({ onClose }: { onClose: () => void }) {
                   title={meeting.title}
                   detail={`${cohort.name} · ${dateLabel(meeting.startsAt)}`}
                   badge={state === "live" ? "Live" : undefined}
-                  onPress={() =>
-                    openMeeting(meeting, cohort.course.id)
-                  }
+                  onPress={() => openMeeting(meeting, cohort.course.id)}
                 />
               );
             })}
@@ -231,10 +227,7 @@ export function MainSidebarContent({ onClose }: { onClose: () => void }) {
       ) : null}
 
       {gradedAttempts.length > 0 ? (
-        <View
-          className="rounded-2xl px-1 py-2"
-          style={{ marginBottom: 10 }}
-        >
+        <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
           <SectionHeader label="Results" count={gradedAttempts.length} />
           <View style={{ gap: 1 }}>
             {gradedAttempts.map((attempt) => {
@@ -250,16 +243,17 @@ export function MainSidebarContent({ onClose }: { onClose: () => void }) {
                   title={attempt.assessment.title}
                   detail={`${score} · ${dateLabel(attempt.startedAt)}`}
                   onPress={() => {
-                    onClose();
-                    router.push({
-                      pathname:
-                        "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                      params: {
-                        courseId: attempt.courseItem.module.courseId,
-                        courseItemId: attempt.courseItemId,
-                        attemptId: attempt.id,
-                      },
-                    });
+                    onNavigate(() =>
+                      router.push({
+                        pathname:
+                          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                        params: {
+                          courseId: attempt.courseItem.module.courseId,
+                          courseItemId: attempt.courseItemId,
+                          attemptId: attempt.id,
+                        },
+                      }),
+                    );
                   }}
                 />
               );
@@ -268,15 +262,26 @@ export function MainSidebarContent({ onClose }: { onClose: () => void }) {
         </View>
       ) : null}
 
-      {coursesQuery.data?.length ? (
-        <View
-          className="rounded-2xl px-1 py-2"
-          style={{ marginBottom: 10 }}
-        >
-          <SectionHeader label="Courses" count={coursesQuery.data.length} />
+      {dashboard.data?.courses.length ? (
+        <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
+          <SectionHeader
+            label="Courses"
+            count={dashboard.data.courses.length}
+          />
           <View style={{ gap: 10 }}>
-            {coursesQuery.data.map((course) => (
-              <CourseCard course={course} key={course.id} />
+            {dashboard.data.courses.map((course) => (
+              <CourseCard
+                course={course}
+                key={course.id}
+                onPress={() =>
+                  onNavigate(() =>
+                    router.push({
+                      pathname: "/courses/[courseId]",
+                      params: { courseId: course.id },
+                    }),
+                  )
+                }
+              />
             ))}
           </View>
         </View>
@@ -285,13 +290,10 @@ export function MainSidebarContent({ onClose }: { onClose: () => void }) {
       {!upcomingEvents.length &&
       !upcomingMeetings.length &&
       !gradedAttempts.length &&
-      !coursesQuery.data?.length &&
-      !coursesQuery.isPending ? (
+      !dashboard.data?.courses.length &&
+      !dashboard.isPending ? (
         <View className="rounded-2xl px-3 py-4" style={{ marginBottom: 10 }}>
-          <Text
-            className="text-sm"
-            style={{ color: colors.mutedForeground }}
-          >
+          <Text className="text-sm" style={{ color: colors.mutedForeground }}>
             Upcoming assessments, live classes, and results will appear here.
           </Text>
         </View>

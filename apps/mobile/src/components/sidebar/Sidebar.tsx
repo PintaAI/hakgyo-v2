@@ -1,8 +1,9 @@
 import { useGlobalSearchParams, usePathname } from "expo-router";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { authClient } from "../../lib/auth-client";
 import { api } from "../../lib/trpc";
+import { useAppTheme } from "../../providers/AppThemeProvider";
 import { CourseSidebarContent } from "./CourseSidebarContent";
 import { MainSidebarContent } from "./MainSidebarContent";
 import { SidebarShell } from "./SidebarShell";
@@ -10,6 +11,7 @@ import { getCurrentAppArea } from "./routing";
 
 type SidebarProps = {
   onClose: () => void;
+  onNavigate: (action: () => void) => void;
   onOpenProfile: () => void;
 };
 
@@ -17,7 +19,11 @@ function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
-export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({
+  onClose,
+  onNavigate,
+  onOpenProfile,
+}: SidebarProps) {
   const pathname = usePathname();
   const globalParams = useGlobalSearchParams<{
     courseId?: string | string[];
@@ -36,13 +42,25 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
     detectedArea === "course" && forceMain ? "main" : detectedArea;
   const isCourseMode = currentArea === "course" && Boolean(outlineCourseId);
   const { data: session } = authClient.useSession();
-  const outlineQuery = api.learning.getCourseOutline.useQuery(
-    { courseId: outlineCourseId },
+  const { activeOrganizationId } = useAppTheme();
+  const dashboard = api.mobileSync.getDashboard.useQuery(
+    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
     { enabled: Boolean(session && isCourseMode), retry: false },
   );
-  const courseTitle = outlineQuery.data?.title ?? "Course";
-  const courseThumbnail = outlineQuery.data?.thumbnailUrl ?? null;
-  const courseOrgName = outlineQuery.data?.organization.name;
+  const dashboardOutline = dashboard.data?.outlines[outlineCourseId];
+  const outlineQuery = api.learning.getCourseOutline.useQuery(
+    { courseId: outlineCourseId },
+    {
+      enabled: Boolean(
+        session && isCourseMode && !dashboard.isPending && !dashboardOutline,
+      ),
+      retry: false,
+    },
+  );
+  const course = dashboardOutline ?? outlineQuery.data;
+  const courseTitle = course?.title ?? "Course";
+  const courseThumbnail = course?.thumbnailUrl ?? null;
+  const courseOrgName = course?.organization.name;
   const courseInitial = courseTitle.trim().charAt(0).toUpperCase() || "C";
 
   if (isCourseMode && outlineCourseId) {
@@ -59,6 +77,7 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
           currentItemId={outlineItemId || undefined}
           onClose={onClose}
           onExitToMenu={() => setForceMain(true)}
+          onNavigate={onNavigate}
         />
       </SidebarShell>
     );
@@ -66,7 +85,7 @@ export function Sidebar({ onClose, onOpenProfile }: SidebarProps) {
 
   return (
     <SidebarShell onOpenProfile={onOpenProfile} subtitle="Hakgyo" title="Menu">
-      <MainSidebarContent onClose={onClose} />
+      <MainSidebarContent onNavigate={onNavigate} />
     </SidebarShell>
   );
-}
+});

@@ -2,12 +2,12 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { router } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Image,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
@@ -15,7 +15,7 @@ import {
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useApiAssetResolver } from "../content-renderer";
 import { Eyebrow } from "../learning-ui";
-import { StudyAction } from "../study-glass";
+import { StudyAction, StudyGlass } from "../study-glass";
 
 const VIEW_MODE_KEY = "hakgyo:vocab-view-mode:v1";
 
@@ -251,187 +251,187 @@ export function VocabularySetDetail({
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const total = vocabulary.entries.length;
 
-  const setViewMode = (mode: "list" | "grid") => {
+  const setViewMode = useCallback((mode: "list" | "grid") => {
     setViewModeState(mode);
     try {
       Storage.setItemSync(VIEW_MODE_KEY, mode);
     } catch {
       // The display preference is optional.
     }
-  };
+  }, []);
 
-  return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerClassName="gap-5 px-5 pb-14 pt-4"
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      <View className="gap-3 border-b border-border pb-5">
-        <View className="flex-row items-center justify-between gap-3">
-          <Eyebrow>Vocabulary set</Eyebrow>
-          <Text className="text-xs font-semibold text-muted-foreground">
-            {total} {total === 1 ? "word" : "words"}
-          </Text>
-        </View>
-        <Text className="text-3xl font-black leading-10 tracking-tight text-foreground">
-          {vocabulary.title}
-        </Text>
-        {vocabulary.description ? (
-          <Text className="text-sm leading-6 text-muted-foreground">
-            {vocabulary.description}
-          </Text>
-        ) : null}
-      </View>
-
-      <StudyAction
-        onPress={() => {
-          if (courseId && courseItemId) {
-            router.push({
-              pathname: "/(home)/(tabs)/assessments",
-              params: {
-                courseId,
-                sourceCourseItemId: courseItemId,
-                vocabularySetId: vocabulary.id,
-                vocabularyTitle: vocabulary.title,
-              },
-            });
-            return;
-          }
-          router.push("/(home)/(tabs)/assessments");
-        }}
-      >
-        Start practice
-      </StudyAction>
-
-      {total > 0 ? (
-        <View className="gap-3">
-          <View className="flex-row items-center justify-between gap-3">
-            <Eyebrow>{`Words (${total})`}</Eyebrow>
-            <View className="flex-row items-center rounded-full bg-muted p-1">
-              <Pressable
-                accessibilityLabel="List view"
-                accessibilityRole="button"
-                className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "list" ? "bg-background" : ""}`}
-                onPress={() => setViewMode("list")}
-              >
-                <SymbolView
-                  fallback={<Text className="text-xs font-black">≡</Text>}
-                  name="list.bullet"
-                  size={14}
-                  tintColor={
-                    viewMode === "list"
-                      ? colors.primary
-                      : colors.mutedForeground
-                  }
-                  weight="semibold"
-                />
-              </Pressable>
-              <Pressable
-                accessibilityLabel="Grid view"
-                accessibilityRole="button"
-                className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "grid" ? "bg-background" : ""}`}
-                onPress={() => setViewMode("grid")}
-              >
-                <SymbolView
-                  fallback={<Text className="text-xs font-black">⊞</Text>}
-                  name="square.grid.2x2"
-                  size={14}
-                  tintColor={
-                    viewMode === "grid"
-                      ? colors.primary
-                      : colors.mutedForeground
-                  }
-                  weight="semibold"
-                />
-              </Pressable>
-            </View>
-          </View>
-
-          {viewMode === "list" ? (
-            <View>
-              {vocabulary.entries.map((entry, index) => (
-                <View
-                  key={entry.id}
-                  className={`flex-row gap-3 py-3 ${index === total - 1 ? "" : "border-b border-border/60"}`}
-                >
-                  <Text className="w-6 pt-0.5 text-xs font-bold tabular-nums text-muted-foreground">
-                    {index + 1}
-                  </Text>
-                  <View className="min-w-0 flex-1 gap-0.5">
-                    <Text className="text-[15px] font-semibold text-foreground">
-                      {entry.term}
-                    </Text>
-                    <Text className="text-xs leading-4 text-muted-foreground">
-                      {entry.definition}
-                    </Text>
-                  </View>
-                  {entry.audioAsset ? (
-                    <WordSpeakerButton
-                      assetId={entry.audioAsset.id}
-                      entryId={entry.id}
-                      onSpeak={setSpeakingId}
-                      speakingId={speakingId}
-                    />
-                  ) : null}
-                  {entry.imageAsset ? (
-                    <EntryImage
-                      assetId={entry.imageAsset.id}
-                      className="size-14 rounded-xl"
-                    />
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View className="flex-row gap-3">
-              <View className="min-w-0 flex-1 gap-3">
-                {vocabulary.entries
-                  .filter((_, index) => index % 2 === 0)
-                  .map((entry) => (
-                    <WordGridCard
-                      entry={entry}
-                      key={entry.id}
-                      onSpeak={setSpeakingId}
-                      speakingId={speakingId}
-                    />
-                  ))}
-              </View>
-              <View className="min-w-0 flex-1 gap-3">
-                {vocabulary.entries
-                  .filter((_, index) => index % 2 === 1)
-                  .map((entry) => (
-                    <WordGridCard
-                      entry={entry}
-                      key={entry.id}
-                      onSpeak={setSpeakingId}
-                      speakingId={speakingId}
-                    />
-                  ))}
-              </View>
-            </View>
-          )}
+  const renderEntry = useCallback(
+    ({ item: entry, index }: { item: VocabularySetEntry; index: number }) =>
+      viewMode === "grid" ? (
+        <View className="min-w-0 flex-1 pb-3">
+          <WordGridCard
+            entry={entry}
+            onSpeak={setSpeakingId}
+            speakingId={speakingId}
+          />
         </View>
       ) : (
+        <View
+          className={`flex-row gap-3 py-3 ${index === total - 1 ? "" : "border-b border-border/60"}`}
+        >
+          <Text className="w-6 pt-0.5 text-xs font-bold tabular-nums text-muted-foreground">
+            {index + 1}
+          </Text>
+          <View className="min-w-0 flex-1 gap-0.5">
+            <Text className="text-[15px] font-semibold text-foreground">
+              {entry.term}
+            </Text>
+            <Text className="text-xs leading-4 text-muted-foreground">
+              {entry.definition}
+            </Text>
+          </View>
+          {entry.audioAsset ? (
+            <WordSpeakerButton
+              assetId={entry.audioAsset.id}
+              entryId={entry.id}
+              onSpeak={setSpeakingId}
+              speakingId={speakingId}
+            />
+          ) : null}
+          {entry.imageAsset ? (
+            <EntryImage
+              assetId={entry.imageAsset.id}
+              className="size-14 rounded-xl"
+            />
+          ) : null}
+        </View>
+      ),
+    [speakingId, total, viewMode],
+  );
+
+  return (
+    <FlatList<VocabularySetEntry>
+      key={viewMode}
+      className="flex-1 bg-background"
+      contentContainerStyle={{
+        paddingBottom: 56,
+        paddingHorizontal: 20,
+        paddingTop: 16,
+      }}
+      contentInsetAdjustmentBehavior="automatic"
+      data={vocabulary.entries}
+      initialNumToRender={12}
+      keyExtractor={(entry) => entry.id}
+      ListEmptyComponent={
         <Text className="text-sm text-muted-foreground">
           No words in this set yet.
         </Text>
-      )}
+      }
+      ListFooterComponent={
+        courseId && courseItemId ? (
+          <View className="mt-5">
+            <StudyAction
+              onPress={() =>
+                router.push({
+                  pathname:
+                    "/courses/[courseId]/items/[courseItemId]/learning-progress",
+                  params: { courseId, courseItemId },
+                })
+              }
+            >
+              Continue
+            </StudyAction>
+          </View>
+        ) : null
+      }
+      ListHeaderComponent={
+        <View className="mb-2 gap-5">
+          <StudyGlass>
+            <View className="gap-2">
+              <Text className="text-xs font-black uppercase tracking-[2px] text-muted-foreground">
+                Vocabulary · {total} {total === 1 ? "word" : "words"}
+              </Text>
+              <Text
+                adjustsFontSizeToFit
+                className="text-3xl font-black leading-10 tracking-tight text-foreground"
+                minimumFontScale={0.7}
+                numberOfLines={1}
+              >
+                {vocabulary.title}
+              </Text>
+              {vocabulary.description ? (
+                <Text className="text-sm leading-6 text-muted-foreground">
+                  {vocabulary.description}
+                </Text>
+              ) : null}
+            </View>
 
-      {courseId && courseItemId ? (
-        <View className="mt-3">
-          <StudyAction
-            onPress={() =>
-              router.push({
-                pathname:
-                  "/courses/[courseId]/items/[courseItemId]/learning-progress",
-                params: { courseId, courseItemId },
-              })
-            }
-          >
-            Continue
-          </StudyAction>
+            <StudyAction
+              onPress={() => {
+                if (courseId && courseItemId) {
+                  router.push({
+                    pathname: "/(home)/(tabs)/assessments",
+                    params: {
+                      courseId,
+                      sourceCourseItemId: courseItemId,
+                      vocabularySetId: vocabulary.id,
+                      vocabularyTitle: vocabulary.title,
+                    },
+                  });
+                  return;
+                }
+                router.push("/(home)/(tabs)/assessments");
+              }}
+            >
+              Start practice
+            </StudyAction>
+          </StudyGlass>
+
+          {total > 0 ? (
+            <View className="flex-row items-center justify-between gap-3">
+              <Eyebrow>{`Words (${total})`}</Eyebrow>
+              <View className="flex-row items-center rounded-full bg-muted p-1">
+                <Pressable
+                  accessibilityLabel="List view"
+                  accessibilityRole="button"
+                  className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "list" ? "bg-background" : ""}`}
+                  onPress={() => setViewMode("list")}
+                >
+                  <SymbolView
+                    fallback={<Text className="text-xs font-black">≡</Text>}
+                    name="list.bullet"
+                    size={14}
+                    tintColor={
+                      viewMode === "list"
+                        ? colors.primary
+                        : colors.mutedForeground
+                    }
+                    weight="semibold"
+                  />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Grid view"
+                  accessibilityRole="button"
+                  className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "grid" ? "bg-background" : ""}`}
+                  onPress={() => setViewMode("grid")}
+                >
+                  <SymbolView
+                    fallback={<Text className="text-xs font-black">⊞</Text>}
+                    name="square.grid.2x2"
+                    size={14}
+                    tintColor={
+                      viewMode === "grid"
+                        ? colors.primary
+                        : colors.mutedForeground
+                    }
+                    weight="semibold"
+                  />
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
         </View>
-      ) : null}
-    </ScrollView>
+      }
+      numColumns={viewMode === "grid" ? 2 : 1}
+      columnWrapperStyle={viewMode === "grid" ? { gap: 12 } : undefined}
+      renderItem={renderEntry}
+      removeClippedSubviews
+      windowSize={7}
+    />
   );
 }

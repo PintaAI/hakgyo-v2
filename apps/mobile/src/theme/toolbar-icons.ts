@@ -1,6 +1,10 @@
 import { Icon } from "@expo/ui";
 
 export const toolbarIcons = {
+  back: Icon.select({
+    ios: "chevron.left",
+    android: import("@expo/material-symbols/arrow_back.xml"),
+  }),
   menu: Icon.select({
     ios: "sidebar.left",
     android: import("@expo/material-symbols/menu.xml"),
@@ -28,6 +32,14 @@ export const toolbarIcons = {
   pause: Icon.select({
     ios: "pause.fill",
     android: import("@expo/material-symbols/pause.xml"),
+  }),
+  keyboard: Icon.select({
+    ios: "keyboard",
+    android: import("@expo/material-symbols/keyboard.xml"),
+  }),
+  keyboardHide: Icon.select({
+    ios: "keyboard.chevron.compact.down",
+    android: import("@expo/material-symbols/keyboard_hide.xml"),
   }),
   mic: Icon.select({
     ios: "mic.fill",

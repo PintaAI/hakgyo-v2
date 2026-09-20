@@ -1,6 +1,8 @@
-import { useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import type { RouterOutputs } from "@hakgyo/api";
 
-import { api } from "./trpc";
+import { useAppTheme } from "../providers/AppThemeProvider";
+import { useMobileSyncActions } from "../providers/MobileSyncProvider";
 
 export type VocabularyAttemptEvidence =
   "RECOGNITION" | "RECALL" | "APPLICATION";
@@ -17,76 +19,130 @@ export type VocabularyAttemptDelivery = {
   sessionId: string;
 };
 
+type VocabularySyncResult =
+  RouterOutputs["learning"]["recordVocabularyAttempts"] | undefined;
+
 function createSessionId(gameKey: string) {
   return `${gameKey}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
 }
 
 export function useVocabularyProgressReporter({
   gameKey,
+  reactive = true,
   sourceCourseItemId,
   vocabularySetId,
 }: {
   gameKey: string;
+  reactive?: boolean;
   sourceCourseItemId: string;
   vocabularySetId: string;
 }) {
   const sessionId = useRef(createSessionId(gameKey));
   const attemptNumber = useRef(0);
-  const mutation = api.learning.recordVocabularyAttempts.useMutation({
-    retry: 3,
-  });
-  const utils = api.useUtils();
+  const completedSessionId = useRef("");
+  const activeFinish = useRef<{
+    sessionId: string;
+    promise: Promise<VocabularySyncResult>;
+  } | null>(null);
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const { activeOrganizationId } = useAppTheme();
+  const { finishVocabularySession, recordVocabularyAttempt } =
+    useMobileSyncActions();
 
-  async function report(
-    attempt: VocabularyAttempt,
-    delivery?: VocabularyAttemptDelivery,
-  ) {
-    if (!delivery) attemptNumber.current += 1;
-    const reportSessionId = delivery?.sessionId ?? sessionId.current;
-    const result = await mutation.mutateAsync({
+  const report = useCallback(
+    async (
+      attempt: VocabularyAttempt,
+      delivery?: VocabularyAttemptDelivery,
+    ) => {
+      if (!delivery) attemptNumber.current += 1;
+      const reportSessionId = delivery?.sessionId ?? sessionId.current;
+      if (reactive) {
+        setIsPending(true);
+        setError(null);
+      }
+      try {
+        await recordVocabularyAttempt({
+          gameKey,
+          sessionId: reportSessionId,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+          attempt: {
+            attemptId:
+              delivery?.attemptId ??
+              `${reportSessionId}:${attempt.entryId}:${attemptNumber.current}`,
+            sourceCourseItemId,
+            vocabularySetId,
+            ...attempt,
+          },
+        });
+      } catch (cause) {
+        const nextError =
+          cause instanceof Error ? cause : new Error("Could not save locally");
+        if (reactive) setError(nextError);
+        throw nextError;
+      } finally {
+        if (reactive) setIsPending(false);
+      }
+    },
+    [
       gameKey,
-      sessionId: reportSessionId,
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-      attempts: [
-        {
-          attemptId:
-            delivery?.attemptId ??
-            `${reportSessionId}:${attempt.entryId}:${attemptNumber.current}`,
-          sourceCourseItemId,
-          vocabularySetId,
-          ...attempt,
-        },
-      ],
-    });
-    void Promise.allSettled([
-      utils.learning.getVocabularyProgress.invalidate({
-        sourceCourseItemId,
-        vocabularySetId,
-      }),
-      utils.learning.getCourseItem.invalidate({
-        courseItemId: sourceCourseItemId,
-      }),
-      utils.learning.getCourseOutline.invalidate(),
-      utils.learning.listMyCourses.invalidate(),
-      utils.gamification.invalidate(),
-      utils.practice.invalidate(),
-    ]);
-    return result;
-  }
+      reactive,
+      recordVocabularyAttempt,
+      sourceCourseItemId,
+      vocabularySetId,
+    ],
+  );
 
-  function startSession() {
+  const startSession = useCallback(() => {
     const nextSessionId = createSessionId(gameKey);
     sessionId.current = nextSessionId;
     attemptNumber.current = 0;
-    mutation.reset();
+    if (reactive) setError(null);
     return nextSessionId;
-  }
+  }, [gameKey, reactive]);
 
-  return {
-    error: mutation.error,
-    isPending: mutation.isPending,
-    report,
-    reset: mutation.reset,
-    startSession,
-  };
+  const finishSession = useCallback((): Promise<VocabularySyncResult> => {
+    const currentSessionId = sessionId.current;
+    if (completedSessionId.current === currentSessionId)
+      return Promise.resolve(undefined);
+    if (activeFinish.current?.sessionId === currentSessionId)
+      return activeFinish.current.promise;
+
+    const promise = finishVocabularySession(activeOrganizationId ?? undefined)
+      .then((sync) => {
+        if (sync.state !== "synced") return undefined;
+        const result = sync.result.results.find(
+          (item) => item.id === `vocabulary:${currentSessionId}`,
+        )?.vocabulary;
+        if (
+          sync.result.acknowledgedOperationIds.includes(
+            `vocabulary:${currentSessionId}`,
+          )
+        )
+          completedSessionId.current = currentSessionId;
+        return result;
+      })
+      .finally(() => {
+        if (activeFinish.current?.sessionId === currentSessionId)
+          activeFinish.current = null;
+      });
+    activeFinish.current = { sessionId: currentSessionId, promise };
+    return promise;
+  }, [activeOrganizationId, finishVocabularySession]);
+
+  const reset = useCallback(() => {
+    if (reactive) setError(null);
+  }, [reactive]);
+
+  return useMemo(
+    () => ({
+      error,
+      isPending,
+      report,
+      reset,
+      finishSession,
+      startSession,
+    }),
+    [error, finishSession, isPending, report, reset, startSession],
+  );
 }

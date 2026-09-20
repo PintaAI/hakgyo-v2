@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { Linking } from "react-native";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
@@ -26,6 +26,11 @@ type ContentRendererContextValue = {
 const ContentRendererContext =
   createContext<ContentRendererContextValue | null>(null);
 
+function openExternalUrl(url: string) {
+  if (!/^(https?:|mailto:|tel:)/i.test(url)) return;
+  void Linking.openURL(url).catch(() => undefined);
+}
+
 export function ContentRendererProvider({
   children,
   onOpenUrl,
@@ -46,23 +51,27 @@ export function ContentRendererProvider({
   resolveAssetUrl?: AssetUrlResolver;
 }) {
   const { colors } = useAppTheme();
+  const value = useMemo<ContentRendererContextValue>(
+    () => ({
+      colors,
+      onOpenUrl: onOpenUrl ?? openExternalUrl,
+      onOpenResource,
+      renderers,
+      resourceReferences,
+      resolveAssetUrl,
+    }),
+    [
+      colors,
+      onOpenResource,
+      onOpenUrl,
+      renderers,
+      resourceReferences,
+      resolveAssetUrl,
+    ],
+  );
 
   return (
-    <ContentRendererContext.Provider
-      value={{
-        colors,
-        onOpenUrl:
-          onOpenUrl ??
-          ((url) => {
-            if (!/^(https?:|mailto:|tel:)/i.test(url)) return;
-            void Linking.openURL(url).catch(() => undefined);
-          }),
-        onOpenResource,
-        renderers,
-        resourceReferences,
-        resolveAssetUrl,
-      }}
-    >
+    <ContentRendererContext.Provider value={value}>
       {children}
     </ContentRendererContext.Provider>
   );

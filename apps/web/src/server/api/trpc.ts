@@ -51,7 +51,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   };
 };
 
-type TRPCContext =
+export type TRPCContext =
   | Awaited<ReturnType<typeof createTRPCContext>>
   | {
       actorKind: "mcp";

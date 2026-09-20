@@ -1,26 +1,43 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { authClient } from "../src/lib/auth-client";
-import { TRPCProvider } from "../src/lib/trpc";
+import { api, TRPCProvider } from "../src/lib/trpc";
 import {
   AppThemeProvider,
   useAppTheme,
 } from "../src/providers/AppThemeProvider";
 import { DrawerProvider } from "../src/providers/DrawerProvider";
 import { QuestionNavigatorProvider } from "../src/providers/QuestionNavigatorProvider";
+import {
+  TransitionOverrideProvider,
+  useTransitionOverride,
+} from "../src/navigation/screen-transition";
+import {
+  MobileSyncProvider,
+  useMobileSyncActions,
+} from "../src/providers/MobileSyncProvider";
 import "../global.css";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function RootNavigator() {
   const { data: session, isPending } = authClient.useSession();
-  const { colorScheme, colors, isHydrated } = useAppTheme();
+  const { activeOrganizationId, colorScheme, colors, isHydrated } =
+    useAppTheme();
+  // "fade" for exactly one push after a drawer item tap (see
+  // DrawerProvider.navigate); every other navigation uses the default slide.
+  const { transition } = useTransitionOverride();
+  const { cacheDashboard } = useMobileSyncActions();
+  const dashboard = api.mobileSync.getDashboard.useQuery(
+    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
+    { enabled: Boolean(session && isHydrated), retry: false },
+  );
 
   useEffect(() => {
     if (!isPending && isHydrated) {
@@ -28,21 +45,28 @@ function RootNavigator() {
     }
   }, [isHydrated, isPending]);
 
-  if (isPending || !isHydrated) return null;
+  useEffect(() => {
+    if (dashboard.data) cacheDashboard(dashboard.data);
+  }, [cacheDashboard, dashboard.data]);
 
-  const baseNavigationTheme = colorScheme === "dark" ? DarkTheme : DefaultTheme;
-  const navigationTheme = {
-    ...baseNavigationTheme,
-    colors: {
-      ...baseNavigationTheme.colors,
-      primary: colors.primary,
-      background: colors.background,
-      card: colors.card,
-      text: colors.foreground,
-      border: colors.border,
-      notification: colors.primary,
-    },
-  };
+  const navigationTheme = useMemo(() => {
+    const baseNavigationTheme =
+      colorScheme === "dark" ? DarkTheme : DefaultTheme;
+    return {
+      ...baseNavigationTheme,
+      colors: {
+        ...baseNavigationTheme.colors,
+        primary: colors.primary,
+        background: colors.background,
+        card: colors.card,
+        text: colors.foreground,
+        border: colors.border,
+        notification: colors.primary,
+      },
+    };
+  }, [colorScheme, colors]);
+
+  if (isPending || !isHydrated) return null;
 
   return (
     <>
@@ -141,7 +165,7 @@ function RootNavigator() {
                   sheetLargestUndimmedDetentIndex: "none",
                 }}
               />
-              <Stack.Screen name="events/[eventId]" />
+              <Stack.Screen name="events/[eventId]" options={{ animation: transition }} />
               <Stack.Screen name="vocabulary/[vocabularySetId]" />
               <Stack.Screen
                 name="games/[gameKey]"
@@ -149,7 +173,7 @@ function RootNavigator() {
               />
               <Stack.Screen
                 name="courses/[courseId]/items/[courseItemId]"
-                options={{ headerShown: true, headerTitle: "" }}
+                options={{ headerShown: true, headerTitle: "", animation: transition }}
               />
               <Stack.Screen
                 name="courses/[courseId]/items/[courseItemId]/learning-progress"
@@ -179,7 +203,7 @@ function RootNavigator() {
               />
               <Stack.Screen
                 name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"
-                options={{ headerShown: true }}
+                options={{ headerShown: true, animation: transition }}
               />
             </Stack.Protected>
           </Stack>
@@ -194,11 +218,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <TRPCProvider>
-          <AppThemeProvider>
-            <QuestionNavigatorProvider>
-              <RootNavigator />
-            </QuestionNavigatorProvider>
-          </AppThemeProvider>
+          <MobileSyncProvider>
+            <AppThemeProvider>
+              <QuestionNavigatorProvider>
+                <TransitionOverrideProvider>
+                  <RootNavigator />
+                </TransitionOverrideProvider>
+              </QuestionNavigatorProvider>
+            </AppThemeProvider>
+          </MobileSyncProvider>
         </TRPCProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

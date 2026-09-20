@@ -6,7 +6,7 @@ import { Gesture } from "react-native-gesture-handler";
 import { Action, Empty, StudyScreen } from "../../src/components/learning-ui";
 import { VocabularySession } from "../../src/components/vocabulary-session";
 import { gameCatalog, isGameKey } from "../../src/games/catalog";
-import { GamePage } from "../../src/games/game-screens";
+import { GameBackToolbar, GamePage } from "../../src/games/game-screens";
 import { VocabularyMatchScreen } from "../../src/games/vocabulary-match/vocabulary-match-screen";
 import { WordFallScreen } from "../../src/games/word-fall/word-fall-screen";
 import { authClient } from "../../src/lib/auth-client";
@@ -19,8 +19,7 @@ function first(value: string | string[] | undefined) {
 }
 
 function leave() {
-  if (router.canGoBack()) router.back();
-  else router.replace("/(home)/(tabs)/assessments");
+  router.dismissTo("/(home)/(tabs)/assessments");
 }
 
 export default function GameRoute() {
@@ -67,9 +66,11 @@ export default function GameRoute() {
 
   return (
     <View className="flex-1 bg-background">
+      <GameBackToolbar onPress={leave} />
       <Stack.Screen
         options={{
           headerBackButtonDisplayMode: "minimal",
+          headerBackVisible: false,
           headerShown: true,
           title: game?.title ?? "Games",
         }}
@@ -172,9 +173,11 @@ function GameLoading({ title }: { title: string }) {
   const { colors } = useAppTheme();
   return (
     <View className="flex-1 items-center justify-center bg-background">
+      <GameBackToolbar onPress={leave} />
       <Stack.Screen
         options={{
           headerBackButtonDisplayMode: "minimal",
+          headerBackVisible: false,
           headerShown: true,
           title,
         }}
@@ -193,9 +196,11 @@ function GameUnavailable({
 }) {
   return (
     <View className="flex-1 bg-background">
+      <GameBackToolbar onPress={leave} />
       <Stack.Screen
         options={{
           headerBackButtonDisplayMode: "minimal",
+          headerBackVisible: false,
           headerShown: true,
           title,
         }}
@@ -226,6 +231,7 @@ function VocabularyMatchRoute({
   const words = vocabulary?.entries ?? [];
   const reporter = useVocabularyProgressReporter({
     gameKey: "match",
+    reactive: false,
     sourceCourseItemId,
     vocabularySetId: vocabulary?.id ?? "",
   });
@@ -253,6 +259,7 @@ function VocabularyMatchRoute({
       onAttempt={async (attempt) => {
         await reporter.report(attempt);
       }}
+      onComplete={reporter.finishSession}
       onExit={leave}
       onSessionStart={reporter.startSession}
       words={words}
@@ -278,6 +285,7 @@ function WordFallRoute({
   const words = vocabulary?.entries ?? [];
   const reporter = useVocabularyProgressReporter({
     gameKey: "word-fall",
+    reactive: false,
     sourceCourseItemId,
     vocabularySetId: vocabulary?.id ?? "",
   });
@@ -305,6 +313,7 @@ function WordFallRoute({
       onAttempt={async (attempt, delivery) => {
         await reporter.report(attempt, delivery);
       }}
+      onComplete={reporter.finishSession}
       onExit={leave}
       onSessionStart={reporter.startSession}
       words={words}

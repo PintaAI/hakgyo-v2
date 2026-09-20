@@ -19,6 +19,7 @@ import { WeeklyStreak } from "../../../../src/components/weekly-streak";
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 
@@ -28,8 +29,13 @@ export default function ProfileTab() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [segment, setSegment] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const { activeBrand, isRefreshingOrganizations, refreshOrganizations } =
-    useAppTheme();
+  const {
+    activeBrand,
+    activeOrganizationId,
+    isRefreshingOrganizations,
+    refreshOrganizations,
+  } = useAppTheme();
+  const { isSyncing, pendingCount, syncNow } = useMobileSync();
   const progress = api.gamification.getMySummary.useQuery();
   const displayName = session?.user.name || "Hakgyo learner";
   const initials = displayName
@@ -65,10 +71,10 @@ export default function ProfileTab() {
     <StudyScreen
       title="Profile"
       onRefresh={() => {
-        void progress.refetch();
+        void syncNow(activeOrganizationId ?? undefined);
         void refreshOrganizations();
       }}
-      refreshing={progress.isRefetching || isRefreshingOrganizations}
+      refreshing={isSyncing || isRefreshingOrganizations}
     >
       <AppSegmentedControl
         values={["Profile", "Settings"]}
@@ -139,6 +145,19 @@ export default function ProfileTab() {
 
           <SettingsSection title="Updates">
             <SettingsRow
+              label="Sync learning progress"
+              detail={
+                isSyncing
+                  ? "Syncing…"
+                  : pendingCount
+                    ? `${pendingCount} checkpoint${pendingCount === 1 ? "" : "s"} waiting`
+                    : "Up to date on this device"
+              }
+              symbol="arrow.triangle.2.circlepath"
+              fallback="↻"
+              onPress={() => void syncNow(activeOrganizationId ?? undefined)}
+            />
+            <SettingsRow
               label="Check for updates"
               detail={`v${APP_VERSION}`}
               symbol="checkmark"
@@ -177,7 +196,7 @@ export default function ProfileTab() {
             />
           </SettingsSection>
 
-          {error ?? isSigningOut ? (
+          {(error ?? isSigningOut) ? (
             <Text
               accessibilityLiveRegion="polite"
               className="text-center text-sm font-semibold text-muted-foreground"

@@ -80,33 +80,59 @@ function CourseItemContent({
   };
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
+  const { activeOrganizationId, colors } = useAppTheme();
+  const dashboard = api.mobileSync.getDashboard.useQuery(
+    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
+    { enabled: Boolean(session && courseId), retry: false },
+  );
+  const dashboardOutline = dashboard.data?.outlines[courseId];
+  const dashboardItem = dashboard.data?.itemDetails[courseItemId];
+  const dashboardAssessment = dashboard.data?.assessmentDetails[courseItemId];
+  const utils = api.useUtils();
   // Keep the progress sheet's outline warm while the learner reads.
   const outline = api.learning.getCourseOutline.useQuery(
     { courseId },
-    { enabled: Boolean(session && courseId), retry: false },
+    {
+      enabled: Boolean(
+        session && courseId && !dashboard.isPending && !dashboardOutline,
+      ),
+      retry: false,
+      initialData: dashboardOutline,
+    },
   );
   const initialOutline = useRef<LearningPathCourse>(undefined);
-  const { colors } = useAppTheme();
   const { open } = useDrawer();
   const resolveAssetUrl = useApiAssetResolver();
   const itemQuery = api.learning.getCourseItem.useQuery(
     { courseItemId },
-    { enabled: Boolean(session && courseItemId), retry: false },
+    {
+      enabled: Boolean(
+        session && courseItemId && !dashboard.isPending && !dashboardItem,
+      ),
+      retry: false,
+      initialData: dashboardItem,
+    },
   );
-  const markProgress = api.learning.markContentProgress.useMutation();
   const assessmentQuery = api.assessment.getForCourseItem.useQuery(
     { courseItemId },
     {
-      enabled: Boolean(session && courseItemId && itemQuery.data?.assessment),
+      enabled: Boolean(
+        session &&
+        courseItemId &&
+        (dashboardItem ?? itemQuery.data)?.assessment &&
+        !dashboard.isPending &&
+        !dashboardAssessment,
+      ),
       retry: false,
+      initialData: dashboardAssessment,
     },
   );
-  const startAssessment = api.assessment.startAttempt.useMutation();
+  const startAssessment = api.mobileSync.startAssessment.useMutation();
   const [selectedCohortId, setSelectedCohortId] = useState<string>();
-  const item = itemQuery.data;
+  const item = itemQuery.data ?? dashboardItem;
   const material = item?.material;
   const vocabulary = item?.vocabularySet;
-  const assessment = assessmentQuery.data;
+  const assessment = assessmentQuery.data ?? dashboardAssessment;
   const latestAttempt = assessment?.latestStandaloneAttempt;
   const assessmentEntry = resolveAssessmentEntry({
     attemptStatus: latestAttempt?.status,
@@ -130,14 +156,6 @@ function CourseItemContent({
       initialOutline.current = outline.data;
   }, [outline.data]);
 
-  useEffect(() => {
-    if ((material || vocabulary) && item && item.progress.length === 0) {
-      markProgress.mutate({ courseItemId, status: "IN_PROGRESS" });
-    }
-    // Progress creation is idempotent and should run only when the item loads.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseItemId, item?.id, item?.progress.length, material, vocabulary]);
-
   async function beginAssessment() {
     if (!assessment) return;
     if (latestAttempt?.status === "IN_PROGRESS") {
@@ -151,14 +169,26 @@ function CourseItemContent({
     const cohorts = assessment.eligibleCohorts;
     const cohortId = cohorts.length === 1 ? cohorts[0]?.id : selectedCohortId;
     try {
-      const attempt = await startAssessment.mutateAsync({
+      const result = await startAssessment.mutateAsync({
         courseItemId,
         cohortId,
       });
+      utils.assessment.getMyAttempt.setData(
+        { attemptId: result.attempt.id },
+        result.attempt,
+      );
+      utils.assessment.getForCourseItem.setData(
+        { courseItemId, attemptId: result.attempt.id },
+        result.assessmentDetail,
+      );
+      utils.assessment.getForCourseItem.setData(
+        { courseItemId },
+        result.assessmentDetail,
+      );
       router.push({
         pathname:
           "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-        params: { courseId, courseItemId, attemptId: attempt.id },
+        params: { courseId, courseItemId, attemptId: result.attempt.id },
       });
     } catch {
       // The mutation error is shown next to the action.
@@ -168,8 +198,10 @@ function CourseItemContent({
   const loading =
     isSessionPending ||
     (!session && Boolean(courseItemId)) ||
-    itemQuery.isPending ||
-    (Boolean(item?.assessment) && assessmentQuery.isPending);
+    ((dashboard.isPending || itemQuery.isPending) && !item) ||
+    (Boolean(item?.assessment) &&
+      (dashboard.isPending || assessmentQuery.isPending) &&
+      !assessment);
 
   return (
     <>
@@ -240,7 +272,12 @@ function CourseItemContent({
                 <Text className="text-xs font-black uppercase tracking-[2px] text-muted-foreground">
                   Assessment · {assessment.questions.length} questions
                 </Text>
-                <Text className="text-3xl font-black leading-10 tracking-tight text-foreground">
+                <Text
+                  adjustsFontSizeToFit
+                  className="text-3xl font-black leading-10 tracking-tight text-foreground"
+                  minimumFontScale={0.7}
+                  numberOfLines={1}
+                >
                   {assessment.title}
                 </Text>
                 {assessment.description ? (

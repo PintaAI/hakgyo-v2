@@ -5,6 +5,8 @@ import { Empty, QueryState } from "../../src/components/learning-ui";
 import { VocabularySetDetail } from "../../src/components/learn/vocabulary-set-detail";
 import { authClient } from "../../src/lib/auth-client";
 import { api } from "../../src/lib/trpc";
+import { useAppTheme } from "../../src/providers/AppThemeProvider";
+import { dashboardVocabularyPractice } from "../../src/sync/dashboard-cache";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -18,10 +20,32 @@ export default function VocabularySetScreen() {
   const vocabularySetId = first(params.vocabularySetId);
   const sourceCourseItemId = first(params.sourceCourseItemId);
   const { data: session } = authClient.useSession();
+  const { activeOrganizationId } = useAppTheme();
+  const dashboard = api.mobileSync.getDashboard.useQuery(
+    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
+    { enabled: Boolean(session && vocabularySetId), retry: false },
+  );
+  const dashboardPractice = dashboard.data
+    ? dashboardVocabularyPractice(dashboard.data, {
+        vocabularySetId,
+        sourceCourseItemId,
+      })
+    : undefined;
   const query = api.learning.getVocabularyPractice.useQuery(
     { vocabularySetId, sourceCourseItemId },
-    { enabled: Boolean(vocabularySetId && sourceCourseItemId && session) },
+    {
+      enabled: Boolean(
+        vocabularySetId &&
+        sourceCourseItemId &&
+        session &&
+        !dashboard.isPending &&
+        !dashboardPractice,
+      ),
+      initialData: dashboardPractice,
+      retry: false,
+    },
   );
+  const vocabulary = dashboardPractice ?? query.data;
 
   return (
     <>
@@ -29,18 +53,18 @@ export default function VocabularySetScreen() {
         options={{
           headerBackButtonDisplayMode: "minimal",
           headerShown: true,
-          title: query.data?.title ?? "Vocabulary",
+          title: vocabulary?.title ?? "Vocabulary",
         }}
       />
-      {query.data ? (
+      {vocabulary ? (
         <VocabularySetDetail
-          courseId={query.data.courseId}
-          courseItemId={query.data.practiceCourseItemId}
+          courseId={vocabulary.courseId}
+          courseItemId={vocabulary.practiceCourseItemId}
           vocabulary={{
-            id: query.data.id,
-            title: query.data.title,
-            description: query.data.description,
-            entries: query.data.entries.map((entry) => ({
+            id: vocabulary.id,
+            title: vocabulary.title,
+            description: vocabulary.description,
+            entries: vocabulary.entries.map((entry) => ({
               id: entry.id,
               term: entry.term,
               definition: entry.definition,
@@ -53,11 +77,12 @@ export default function VocabularySetScreen() {
       ) : (
         <View className="flex-1 gap-4 bg-background px-5 pt-4">
           <QueryState
-            error={query.error}
+            error={dashboard.error ?? query.error}
             pending={
-              query.isPending && Boolean(vocabularySetId && sourceCourseItemId)
+              (dashboard.isPending || query.isPending) &&
+              Boolean(vocabularySetId && sourceCourseItemId)
             }
-            retry={() => void query.refetch()}
+            retry={() => void dashboard.refetch()}
           />
           {!vocabularySetId || !sourceCourseItemId ? (
             <Empty>Open a vocabulary set from a course or lesson.</Empty>

@@ -17,24 +17,28 @@ export type StandaloneCourse = {
 export function CourseCard({
   course,
   isFirst = false,
+  onPress,
 }: {
   course: StandaloneCourse;
   isFirst?: boolean;
+  onPress?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const contentTopPadding = isFirst ? insets.top + 20 : 20;
+  const handlePress =
+    onPress ??
+    (() =>
+      router.push({
+        pathname: "/courses/[courseId]",
+        params: { courseId: course.id },
+      }));
   return (
     <Pressable
       accessibilityHint="Opens the course details"
       accessibilityRole="button"
       className="relative min-h-48 overflow-hidden rounded-xl border border-border bg-card"
-      onPress={() =>
-        router.push({
-          pathname: "/courses/[courseId]",
-          params: { courseId: course.id },
-        })
-      }
+      onPress={handlePress}
     >
       {course.thumbnailUrl ? (
         <>

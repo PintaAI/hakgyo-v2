@@ -1,3 +1,4 @@
+import type { RouterOutputs } from "@hakgyo/api";
 import { router } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import type { ReactNode } from "react";
@@ -25,7 +26,6 @@ import {
   safeExternalUrl,
   timeLabel,
 } from "../../lib/study";
-import { api } from "../../lib/trpc";
 import { apiUrl } from "../../config";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
@@ -284,7 +284,11 @@ function HeroBlock({ hero, tint }: { hero: CohortHero; tint: string }) {
             className={`flex-row items-center gap-3 px-5 ${compact ? "py-4" : "py-5"}`}
           >
             <View className="min-w-0 flex-1 gap-1">
-              <HeroCopy compact={compact} truncateTitle={!compact} hero={hero} />
+              <HeroCopy
+                compact={compact}
+                truncateTitle={!compact}
+                hero={hero}
+              />
             </View>
             <View className="shrink-0">
               <HeroPill hero={hero} />
@@ -414,6 +418,7 @@ export function CohortCard({
   onRetryEvents,
   now,
   milestoneGroup,
+  outline,
   isFirst = false,
 }: {
   cohort: LearnCohort;
@@ -424,6 +429,7 @@ export function CohortCard({
   onRetryEvents: () => void;
   now: number;
   milestoneGroup?: CohortMilestoneGroup;
+  outline?: RouterOutputs["learning"]["getCourseOutline"];
   isFirst?: boolean;
 }) {
   const upcoming = cohort.meetings
@@ -468,17 +474,12 @@ export function CohortCard({
       params: { eventId: featured.id },
     });
   };
-  // Outline is fetched once here and drives progress, next item, and type.
-  const outlineQuery = api.learning.getCourseOutline.useQuery({
-    courseId: cohort.course.id,
-  });
-  const outlineItems =
-    outlineQuery.data?.modules.flatMap((module) => module.items) ?? [];
+  const outlineItems = outline?.modules.flatMap((module) => module.items) ?? [];
   const completedCount = outlineItems.filter((item) => item.isCompleted).length;
   const progress = outlineItems.length
     ? Math.round((completedCount / outlineItems.length) * 100)
     : null;
-  const nextOutlineItem = outlineQuery.data?.modules
+  const nextOutlineItem = outline?.modules
     .flatMap((module) =>
       module.items.map((item) => ({
         ...item,
@@ -577,7 +578,7 @@ export function CohortCard({
     !featuredActionable &&
     !eventsPending &&
     !eventsError &&
-    outlineQuery.isSuccess &&
+    outline &&
     !nextOutlineItem
   ) {
     hero = {
@@ -739,18 +740,6 @@ export function CohortCard({
           error={eventsError}
           retry={onRetryEvents}
         />
-        {outlineQuery.isError ? (
-          <Pressable
-            accessibilityRole="button"
-            className="items-center border border-border px-5 py-4 active:opacity-70"
-            onPress={() => void outlineQuery.refetch()}
-            style={styles.surface}
-          >
-            <Text className="text-sm font-bold text-muted-foreground">
-              Couldn’t load what’s next — tap to retry
-            </Text>
-          </Pressable>
-        ) : null}
 
         {plateRows.length > 0 ? (
           <View className="gap-2">

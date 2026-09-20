@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -112,8 +113,20 @@ export function OrganizationSwitcherContent({
 }: {
   onClose: () => void;
 }) {
-  const { activeBrand, availableOrganizations, colors, selectOrganization } =
-    useAppTheme();
+  const {
+    activeBrand,
+    availableOrganizations,
+    colors,
+    isRefreshingOrganizations,
+    refreshOrganizations,
+    selectOrganization,
+  } = useAppTheme();
+  // The sheet mounts each time it opens, so refresh here: an organization
+  // joined since the last fetch (new cohort enrollment, invite accepted on
+  // web) shows up instead of the stale cached list.
+  useEffect(() => {
+    void refreshOrganizations();
+  }, [refreshOrganizations]);
   const switcherOptions = getOrganizationSwitcherOptions(
     activeBrand,
     availableOrganizations,
@@ -142,6 +155,11 @@ export function OrganizationSwitcherContent({
         <Text className="mb-2 text-sm text-muted-foreground">
           Learning content and branding will switch together.
         </Text>
+        {isRefreshingOrganizations ? (
+          <Text className="mb-2 text-xs text-muted-foreground">
+            Updating organizations…
+          </Text>
+        ) : null}
         <ScrollView
           contentContainerClassName="gap-2 pb-4"
           contentInsetAdjustmentBehavior="automatic"

@@ -5,8 +5,11 @@ import Storage from "expo-sqlite/kv-store";
 import { VariableContextProvider } from "nativewind";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -153,12 +156,17 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<
     string | null
   >(null);
+  // The brand list changes when the user joins or leaves an organization
+  // (e.g. a new cohort enrollment on another device). The global query
+  // defaults disable all automatic refetching, so this query opts back in:
+  // a short stale time plus refetch on mount/reconnect keeps newly joined
+  // organizations appearing without a manual pull-to-refresh.
   const organizationsQuery = api.brand.listAvailableContexts.useQuery(
     undefined,
     {
       enabled: Boolean(userId),
-      staleTime: 60_000,
-      refetchInterval: 60_000,
+      staleTime: 5 * 60 * 1000,
+      refetchOnMount: true,
       refetchOnReconnect: true,
     },
   );
@@ -167,17 +175,27 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     {
       enabled: Boolean(routeCohortId || routeCourseId),
       retry: false,
-      staleTime: 60_000,
+      staleTime: Infinity,
     },
   );
+  const refreshAvailableOrganizations = organizationsQuery.refetch;
+  const refetchOrgsRef = useRef(refreshAvailableOrganizations);
+  refetchOrgsRef.current = refreshAvailableOrganizations;
 
-  const refetchOrganizations = organizationsQuery.refetch;
+  // Provider remounts don't happen when the app returns from the background,
+  // so refresh explicitly: an enrollment accepted on web while the app was
+  // backgrounded would otherwise stay invisible until the next cold start.
+  // React Query dedupes in-flight fetches, so rapid foreground toggles share
+  // a single request.
   useEffect(() => {
+    if (!userId) return;
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active" && userId) void refetchOrganizations();
+      if (state === "active") {
+        void refetchOrgsRef.current();
+      }
     });
     return () => subscription.remove();
-  }, [refetchOrganizations, userId]);
+  }, [userId]);
 
   useEffect(() => {
     let active = true;
@@ -264,41 +282,63 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     ) ?? defaultBrand;
   const routeBrand = routeBrandQuery.data;
   const activeBrand = routeBrand?.organizationId ? routeBrand : selectedBrand;
-  const mobileTheme = createMobileTheme(colorScheme, activeBrand.theme);
+  const mobileTheme = useMemo(
+    () => createMobileTheme(colorScheme, activeBrand.theme),
+    [activeBrand.theme, colorScheme],
+  );
   const isHydrated = !isSessionPending && hydratedUserId === (userId ?? null);
 
-  async function selectOrganization(organizationId: string) {
-    if (
-      !availableOrganizations.some(
-        (organization) => organization.organizationId === organizationId,
-      )
-    ) {
-      return;
-    }
-    setSelectedOrganizationId(organizationId);
-    if (userId) {
-      await persistBrandLibrary(userId, organizationId, availableOrganizations);
-    }
-  }
+  const selectOrganization = useCallback(
+    async (organizationId: string) => {
+      if (
+        !availableOrganizations.some(
+          (organization) => organization.organizationId === organizationId,
+        )
+      ) {
+        return;
+      }
+      setSelectedOrganizationId(organizationId);
+      if (userId) {
+        await persistBrandLibrary(
+          userId,
+          organizationId,
+          availableOrganizations,
+        );
+      }
+    },
+    [availableOrganizations, userId],
+  );
 
-  async function refreshOrganizations() {
-    if (userId) await organizationsQuery.refetch();
-  }
+  const refreshOrganizations = useCallback(async () => {
+    if (userId) await refreshAvailableOrganizations();
+  }, [refreshAvailableOrganizations, userId]);
+
+  const value = useMemo<AppThemeContextValue>(
+    () => ({
+      colorScheme,
+      colors: mobileTheme.colors,
+      activeBrand,
+      activeOrganizationId: activeBrand.organizationId,
+      availableOrganizations,
+      isHydrated,
+      isRefreshingOrganizations: organizationsQuery.isRefetching,
+      selectOrganization,
+      refreshOrganizations,
+    }),
+    [
+      activeBrand,
+      availableOrganizations,
+      colorScheme,
+      isHydrated,
+      mobileTheme.colors,
+      organizationsQuery.isRefetching,
+      refreshOrganizations,
+      selectOrganization,
+    ],
+  );
 
   return (
-    <AppThemeContext.Provider
-      value={{
-        colorScheme,
-        colors: mobileTheme.colors,
-        activeBrand,
-        activeOrganizationId: activeBrand.organizationId,
-        availableOrganizations,
-        isHydrated,
-        isRefreshingOrganizations: organizationsQuery.isRefetching,
-        selectOrganization,
-        refreshOrganizations,
-      }}
-    >
+    <AppThemeContext.Provider value={value}>
       <VariableContextProvider value={mobileTheme.variables}>
         {children}
       </VariableContextProvider>

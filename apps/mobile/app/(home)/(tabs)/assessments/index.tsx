@@ -1,5 +1,11 @@
-import { type Href, Stack, router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type Href,
+  Stack,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import { Platform, ScrollView } from "react-native";
 import { api } from "../../../../src/lib/trpc";
 import { StudyScreen } from "../../../../src/components/learning-ui";
@@ -7,6 +13,7 @@ import { PracticeHub } from "../../../../src/components/practice-hub";
 import { OrganizationSwitcherTrigger } from "../../../../src/components/organization-switcher";
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 
@@ -22,9 +29,7 @@ export default function PracticeTab() {
   const firstParam = (value: string | string[] | undefined) =>
     Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
   const preselectedCourseId = firstParam(incoming.courseId);
-  const preselectedSourceCourseItemId = firstParam(
-    incoming.sourceCourseItemId,
-  );
+  const preselectedSourceCourseItemId = firstParam(incoming.sourceCourseItemId);
   const preselectedSource =
     preselectedCourseId && preselectedSourceCourseItemId
       ? {
@@ -34,19 +39,15 @@ export default function PracticeTab() {
           title: firstParam(incoming.vocabularyTitle) || undefined,
         }
       : undefined;
-  const organizationScope = {
-    organizationId: activeOrganizationId ?? undefined,
-  };
+  const organizationScope = activeOrganizationId
+    ? { organizationId: activeOrganizationId }
+    : undefined;
   const queryOptions = { enabled: Boolean(activeOrganizationId) };
-  const courses = api.learning.listMyCourses.useQuery(
+  const dashboard = api.mobileSync.getDashboard.useQuery(
     organizationScope,
     queryOptions,
   );
-  const events = api.assessmentEvent.listForLearner.useQuery(
-    organizationScope,
-    queryOptions,
-  );
-  const utils = api.useUtils();
+  const { isSyncing, syncNow } = useMobileSync();
   const [now, setNow] = useState(Date.now);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -57,12 +58,18 @@ export default function PracticeTab() {
     });
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(timer);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const frame = requestAnimationFrame(() => setNow(Date.now()));
+      const timer = setInterval(() => setNow(Date.now()), 30_000);
+      return () => {
+        cancelAnimationFrame(frame);
+        clearInterval(timer);
+      };
+    }, []),
+  );
 
-  const visibleEvents = (events.data ?? []).filter(
+  const visibleEvents = (dashboard.data?.events ?? []).filter(
     (event) => !isStaleClosedOnDemandAssessment(event, now),
   );
   const actionableEvents = visibleEvents.filter((event) => {
@@ -93,10 +100,9 @@ export default function PracticeTab() {
         keyboardAvoiding
         automaticallyAdjustKeyboardInsets
         scrollViewRef={scrollViewRef}
-        refreshing={courses.isRefetching || events.isRefetching}
+        refreshing={dashboard.isRefetching || isSyncing}
         onRefresh={() => {
-          void utils.learning.invalidate();
-          void utils.assessmentEvent.invalidate();
+          void syncNow(activeOrganizationId ?? undefined);
         }}
       >
         {Platform.OS !== "ios" ? (
@@ -105,16 +111,17 @@ export default function PracticeTab() {
           />
         ) : null}
         <PracticeHub
-          courses={courses.data ?? []}
-          coursesError={courses.error}
-          coursesPending={courses.isPending}
+          courses={dashboard.data?.courses ?? []}
+          coursesError={dashboard.error}
+          coursesPending={dashboard.isPending}
           events={actionableEvents}
-          eventsError={events.error}
-          eventsPending={events.isPending}
+          eventsError={dashboard.error}
+          eventsPending={dashboard.isPending}
           now={now}
+          outlines={dashboard.data?.outlines ?? {}}
           onResourceFocus={focusResources}
-          onRetryCourses={() => void courses.refetch()}
-          onRetryEvents={() => void events.refetch()}
+          onRetryCourses={() => void dashboard.refetch()}
+          onRetryEvents={() => void dashboard.refetch()}
           preselectedSource={preselectedSource}
         />
       </StudyScreen>

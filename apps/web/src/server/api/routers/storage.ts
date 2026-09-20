@@ -816,6 +816,9 @@ export const storageRouter = createTRPCRouter({
         },
         select: {
           objectKey: true,
+          fileName: true,
+          contentType: true,
+          size: true,
           uploadedByUserId: true,
           organization: {
             select: {
@@ -906,7 +909,13 @@ export const storageRouter = createTRPCRouter({
         { expiresIn: SIGNED_URL_TTL_SECONDS },
       );
 
-      return { downloadUrl, expiresIn: SIGNED_URL_TTL_SECONDS };
+      return {
+        downloadUrl,
+        expiresIn: SIGNED_URL_TTL_SECONDS,
+        fileName: asset.fileName,
+        contentType: asset.contentType,
+        size: asset.size,
+      };
     }),
 
   deleteDocument: protectedProcedure

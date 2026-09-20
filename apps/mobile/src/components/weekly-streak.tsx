@@ -1,4 +1,5 @@
 import { SymbolView } from "expo-symbols";
+import type { RouterOutputs } from "@hakgyo/api";
 import {
   GlassView,
   isGlassEffectAPIAvailable,
@@ -22,15 +23,21 @@ const TIER_COLORS = {
   light: { green: "#15803d", red: "#b91c1c", yellow: "#a16207" },
 } as const;
 
-export function WeeklyStreak() {
-  const query = api.gamification.getMySummary.useQuery();
+export function WeeklyStreak({
+  summary,
+}: {
+  summary?: RouterOutputs["gamification"]["getMySummary"];
+} = {}) {
+  const query = api.gamification.getMySummary.useQuery(undefined, {
+    enabled: !summary,
+  });
   const { colorScheme, colors } = useAppTheme();
   const liquidGlassAvailable =
     isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
   const streakScale = useRef(new Animated.Value(1)).current;
   const streakShake = useRef(new Animated.Value(0)).current;
   const previousStreak = useRef<number | null>(null);
-  const data = query.data;
+  const data = summary ?? query.data;
 
   const currentStreak = data?.summary.currentStreak;
   const stage = getStreakStage(currentStreak ?? 0);
@@ -85,8 +92,8 @@ export function WeeklyStreak() {
   return (
     <>
       <QueryState
-        pending={query.isPending}
-        error={query.error}
+        pending={!summary && query.isPending}
+        error={summary ? null : query.error}
         retry={() => void query.refetch()}
       />
       {data ? (

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 
 import {
   addWordFallReviewItem,
@@ -44,6 +45,45 @@ describe("word fall engine", () => {
     expect(isWordFallInputEditable("ready")).toBe(false);
     expect(isWordFallInputEditable("paused")).toBe(false);
     expect(isWordFallInputEditable("gameover")).toBe(false);
+  });
+
+  test("lays out the whole play field above the keyboard", () => {
+    const screenSource = readFileSync(
+      new URL("./word-fall-screen.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(screenSource).toContain("<KeyboardAvoidingView");
+    expect(screenSource).toContain(
+      'behavior={Platform.OS === "ios" ? "padding" : undefined}',
+    );
+    expect(screenSource).not.toContain("useAnimatedKeyboard");
+    expect(screenSource).not.toContain("nativeKeyboardHeight");
+    expect(screenSource).not.toContain("keyboardResizeOffset");
+    expect(screenSource).not.toContain("wordFallKeyboardInset");
+  });
+
+  test("waits for the native sheet to dismiss before focusing on iOS", () => {
+    const screenSource = readFileSync(
+      new URL("./word-fall-screen.tsx", import.meta.url),
+      "utf8",
+    );
+    const resetGame = screenSource.slice(
+      screenSource.indexOf("const resetGame"),
+      screenSource.indexOf("const pauseGame"),
+    );
+
+    expect(resetGame).not.toContain("focusInput();");
+    expect(screenSource).toContain("onDismiss={focusInputAfterModalDismiss}");
+  });
+
+  test("keeps the player and typing feedback clear of the keyboard edge", () => {
+    const screenSource = readFileSync(
+      new URL("./word-fall-screen.tsx", import.meta.url),
+      "utf8",
+    );
+    const bottomInset = screenSource.match(/const PLAYER_BOTTOM = (\d+);/)?.[1];
+
+    expect(Number(bottomInset)).toBeGreaterThanOrEqual(120);
   });
 
   test("uses the definition as the typed answer", () => {

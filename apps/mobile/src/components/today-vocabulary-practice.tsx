@@ -4,8 +4,9 @@ import { Keyboard, Text, TextInput, Pressable, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 import type { NativeGesture } from "react-native-gesture-handler";
 
-import { api } from "../lib/trpc";
+import { localSample } from "../lib/local-sample";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { useMobileSyncActions } from "../providers/MobileSyncProvider";
 import { withOpacity } from "../theme/colors";
 import { isDefinitionCorrect } from "../lib/today-vocabulary-practice";
 import { isVocabularyAnswerCorrect } from "../lib/vocabulary-practice";
@@ -15,7 +16,7 @@ import {
 } from "../lib/vocabulary-speech";
 import { useVocabularySpeech } from "../lib/use-vocabulary-speech";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
-import { Action, Empty, QueryState } from "./learning-ui";
+import { Action, Empty } from "./learning-ui";
 import { GlassBox } from "./GlassBox";
 import {
   VocabularyPracticeDeck,
@@ -24,6 +25,7 @@ import {
 
 type VocabularyCard =
   RouterOutputs["practice"]["getVocabularyPool"]["items"][number];
+type VocabularyPool = RouterOutputs["practice"]["getVocabularyPool"];
 
 function randomSeed() {
   return `${Date.now()}:${Math.random()}`;
@@ -36,21 +38,18 @@ function deviceTimeZone() {
 export function TodayVocabularyPractice({
   organizationId,
   scrollGesture,
+  pool,
 }: {
   organizationId: string;
   scrollGesture: NativeGesture;
+  pool: VocabularyPool;
 }) {
   const { colors, colorScheme } = useAppTheme();
   const [seed, setSeed] = useState(randomSeed);
-  const query = api.practice.getVocabularyPool.useQuery({
-    limit: 24,
-    organizationId,
-    seed,
-  });
-  const utils = api.useUtils();
-  const recordAttempts = api.learning.recordVocabularyAttempts.useMutation({
-    retry: 3,
-  });
+  const { finishVocabularySession, recordVocabularyAttempt } =
+    useMobileSyncActions();
+  const [recordPending, setRecordPending] = useState(false);
+  const [recordError, setRecordError] = useState<Error | null>(null);
   const [round, setRound] = useState<VocabularyCard[]>([]);
   const [roundKey, setRoundKey] = useState("");
   const roundSessionId = useRef(randomSeed());
@@ -82,14 +81,14 @@ export function TodayVocabularyPractice({
   }
 
   useEffect(() => {
-    if (!query.data) return;
-    const signature = `${seed}:${poolSignature(query.data.items)}`;
+    const items = localSample(pool.items, seed, 24);
+    const signature = `${seed}:${poolSignature(items)}`;
     if (initializedPool.current === signature) {
       return;
     }
     initializedPool.current = signature;
     roundSessionId.current = randomSeed();
-    setRound(query.data.items);
+    setRound(items);
     setRoundKey(signature);
     setMoving(false);
     submitted.current = false;
@@ -99,9 +98,10 @@ export function TodayVocabularyPractice({
     setFeedback(undefined);
     setRevealed(false);
     setRevealSaved(false);
-    // A new API pool starts a new round; attempt updates are server-owned.
+    // A new API pool starts a new round; attempt updates stay on-device until
+    // the round checkpoint.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query.data, seed]);
+  }, [pool.items, seed]);
 
   const card = round[index];
   const deckCards = useMemo(
@@ -152,32 +152,32 @@ export function TodayVocabularyPractice({
   async function saveAnswer(correct: boolean) {
     if (!card) return;
     const sessionId = roundSessionId.current;
-    recordAttempts.reset();
+    setRecordError(null);
+    setRecordPending(true);
     try {
-      await recordAttempts.mutateAsync({
+      await recordVocabularyAttempt({
         gameKey: "today-cards",
         sessionId,
         timeZone: deviceTimeZone(),
-        attempts: [
-          {
-            attemptId: `${sessionId}:${index}:${card.entryId}`,
-            entryId: card.entryId,
-            evidence: "RECALL",
-            result: correct ? "CORRECT" : "INCORRECT",
-            sourceCourseItemId: card.sourceCourseItemId,
-            vocabularySetId: card.vocabularySetId,
-          },
-        ],
+        attempt: {
+          attemptId: `${sessionId}:${index}:${card.entryId}`,
+          entryId: card.entryId,
+          evidence: "RECALL",
+          result: correct ? "CORRECT" : "INCORRECT",
+          sourceCourseItemId: card.sourceCourseItemId,
+          vocabularySetId: card.vocabularySetId,
+        },
       });
       if (roundSessionId.current !== sessionId) return;
       setFeedback({ correct, saved: true });
-      void Promise.allSettled([
-        utils.learning.invalidate(),
-        utils.gamification.invalidate(),
-      ]);
-    } catch {
+    } catch (cause) {
       if (roundSessionId.current !== sessionId) return;
+      setRecordError(
+        cause instanceof Error ? cause : new Error("Could not save locally"),
+      );
       setFeedback({ correct, saved: false });
+    } finally {
+      setRecordPending(false);
     }
   }
 
@@ -219,26 +219,30 @@ export function TodayVocabularyPractice({
   async function saveReveal() {
     if (!card) return;
     const sessionId = roundSessionId.current;
-    recordAttempts.reset();
+    setRecordError(null);
+    setRecordPending(true);
     try {
-      await recordAttempts.mutateAsync({
+      await recordVocabularyAttempt({
         gameKey: "today-cards",
         sessionId,
         timeZone: deviceTimeZone(),
-        attempts: [
-          {
-            attemptId: `${sessionId}:${index}:${card.entryId}:revealed`,
-            entryId: card.entryId,
-            evidence: "RECALL",
-            result: "REVEALED",
-            sourceCourseItemId: card.sourceCourseItemId,
-            vocabularySetId: card.vocabularySetId,
-          },
-        ],
+        attempt: {
+          attemptId: `${sessionId}:${index}:${card.entryId}:revealed`,
+          entryId: card.entryId,
+          evidence: "RECALL",
+          result: "REVEALED",
+          sourceCourseItemId: card.sourceCourseItemId,
+          vocabularySetId: card.vocabularySetId,
+        },
       });
       if (roundSessionId.current === sessionId) setRevealSaved(true);
-    } catch {
+    } catch (cause) {
+      setRecordError(
+        cause instanceof Error ? cause : new Error("Could not save locally"),
+      );
       // Keep the card blocked so the learner can retry this exact outcome.
+    } finally {
+      setRecordPending(false);
     }
   }
 
@@ -264,12 +268,13 @@ export function TodayVocabularyPractice({
     setFeedback(undefined);
     setRevealed(false);
     setTyping(false);
-    recordAttempts.reset();
+    setRecordError(null);
     setMoving(false);
     submitted.current = false;
     if (index + 1 >= round.length) {
       Keyboard.dismiss();
       stopSession();
+      void finishVocabularySession(organizationId);
     }
   }
 
@@ -388,20 +393,16 @@ export function TodayVocabularyPractice({
     setAnswer("");
   }
 
-  function newMix() {
+  async function newMix() {
     stopSession();
-    recordAttempts.reset();
+    setRecordError(null);
+    await finishVocabularySession(organizationId);
     setSeed(randomSeed());
   }
 
   return (
     <View className="gap-3" style={{ overflow: "visible", zIndex: 1 }}>
-      <QueryState
-        pending={query.isPending}
-        error={query.error}
-        retry={() => void query.refetch()}
-      />
-      {query.data && !query.data.hasAvailableContent ? (
+      {!pool.hasAvailableContent ? (
         <Empty>No words to practice yet.</Empty>
       ) : round.length > 0 ? (
         <>
@@ -418,7 +419,7 @@ export function TodayVocabularyPractice({
             index={index}
             correct={feedback?.correct}
             disabled={
-              recordAttempts.isPending ||
+              recordPending ||
               (feedback ? !feedback.saved : false) ||
               (revealed && !revealSaved)
             }
@@ -461,13 +462,12 @@ export function TodayVocabularyPractice({
                   {speech.errorMessage}
                 </Text>
               ) : null}
-              {recordAttempts.error ? (
+              {recordError ? (
                 <Text
                   accessibilityRole="alert"
                   className="text-center text-sm text-destructive"
                 >
-                  Your answer could not be saved. Check your connection and try
-                  again.
+                  Your answer could not be saved on this device. Try again.
                 </Text>
               ) : null}
               <View className="flex-row items-center gap-2">
@@ -596,10 +596,10 @@ export function TodayVocabularyPractice({
                       }
                       accessibilityRole="button"
                       accessibilityState={{
-                        disabled: moving || recordAttempts.isPending,
-                        busy: moving || recordAttempts.isPending,
+                        disabled: moving || recordPending,
+                        busy: moving || recordPending,
                       }}
-                      disabled={moving || recordAttempts.isPending}
+                      disabled={moving || recordPending}
                       style={{
                         opacity: moving ? 0.5 : 1,
                         position: "absolute",
@@ -644,7 +644,7 @@ export function TodayVocabularyPractice({
                       }
                       accessibilityRole="button"
                       accessibilityState={{
-                        busy: recordAttempts.isPending,
+                        busy: recordPending,
                         disabled: moving || !answer.trim(),
                       }}
                       disabled={moving || !answer.trim()}

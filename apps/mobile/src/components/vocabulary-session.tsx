@@ -28,6 +28,8 @@ import {
   GameStartModal,
   GameJourneyFooter,
 } from "../games/game-modals";
+import { GameBackToolbar } from "../games/game-screens";
+import { useGameExitGuard } from "../games/game-navigation";
 import { useVocabularyProgressReporter } from "../lib/use-vocabulary-progress";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { toolbarIcons } from "../theme/toolbar-icons";
@@ -87,7 +89,9 @@ export function VocabularySession({
   const [mode, setMode] = useState<VocabularySpeechMode>("KR");
   const [handsFree, setHandsFree] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const deckRef = useRef<VocabularyPracticeDeckHandle>(null);
+  const answerInputRef = useRef<TextInput>(null);
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -139,8 +143,30 @@ export function VocabularySession({
   );
   const requestBusy = reporter.isPending;
   const busy = requestBusy || moving;
+  // Match / Word Fall pattern: the game board stays mounted behind the
+  // start / finish sheets. Before the round starts the deck shows a
+  // non-interactive preview of the upcoming words.
+  const previewCards = useMemo(
+    () =>
+      readyWords.map((word) => ({
+        id: word.id,
+        prompt: mode === "KR" ? word.definition : word.term,
+        answer: mode === "KR" ? word.term : word.definition,
+        imageAssetId: word.imageAssetId,
+        imageAccessibilityLabel: `${word.term} illustration`,
+      })),
+    [mode, readyWords],
+  );
   // Reserve room for mic + submit/next and the native toolbar's item spacing.
   const toolbarInputWidth = Math.max(120, Math.min(screenWidth - 160, 520));
+
+  // Hoisted alongside the other hooks: exitGame is a hoisted function
+  // declaration, so referencing it here (above the early returns) is safe.
+  const exit = useGameExitGuard({
+    active: roundActive,
+    locked: requestBusy,
+    onExit: exitGame,
+  });
 
   useEffect(() => {
     onRoundActiveChange?.(roundActive);
@@ -153,11 +179,9 @@ export function VocabularySession({
     [onRoundActiveChange],
   );
 
-  async function refreshStatus() {
-    const refreshed = await progressQuery.refetch();
-    if (refreshed.data) {
-      setLatestEvidence(refreshed.data);
-    }
+  function dismissKeyboard() {
+    setKeyboardVisible(false);
+    Keyboard.dismiss();
   }
 
   function prepareWord() {
@@ -222,20 +246,16 @@ export function VocabularySession({
     reporter.reset();
     setSessionError(undefined);
     try {
-      const result = await reporter.report({
+      await reporter.report({
         entryId: currentWord.id,
         evidence: "RECALL",
         result: correct ? "CORRECT" : "INCORRECT",
       });
-      const set = result.sets.find(
-        (item) => item.vocabularySetId === vocabularySetId,
-      );
-      if (set) setLatestEvidence(set);
       setFeedback({ correct, saved: true });
     } catch {
       setFeedback({ correct, saved: false });
       setSessionError(
-        "Your answer wasn’t saved. Check your connection and try again.",
+        "Your answer couldn’t be saved on this device. Try again.",
       );
     }
   }
@@ -263,11 +283,15 @@ export function VocabularySession({
     setRoundActive(false);
     setFeedback(undefined);
     stopSession();
-    await refreshStatus();
+    const synced = await reporter.finishSession();
+    const set = synced?.sets.find(
+      (item) => item.vocabularySetId === vocabularySetId,
+    );
+    if (set) setLatestEvidence(set);
   }
 
   function advanceCard() {
-    // A graded answer must reach the server before either mode can advance.
+    // A graded answer must be durable on-device before either mode can advance.
     const canAdvance = (revealed && revealSaved) || feedback?.saved;
     if (!canAdvance || busy) return;
     deckRef.current?.advance();
@@ -285,7 +309,6 @@ export function VocabularySession({
     clearAutoTimer();
     speech.abort();
     setTyping(false);
-    Keyboard.dismiss();
     setRevealed(true);
     setRevealSaved(false);
     setAnswer("");
@@ -305,7 +328,7 @@ export function VocabularySession({
       setRevealSaved(true);
     } catch {
       setSessionError(
-        "This reveal wasn’t saved. Check your connection before continuing.",
+        "This reveal couldn’t be saved on this device. Try again before continuing.",
       );
     }
   }
@@ -324,7 +347,7 @@ export function VocabularySession({
   function handleInteractionChange(interacting: boolean) {
     if (interacting && handsFree) {
       setTyping(false);
-      Keyboard.dismiss();
+      dismissKeyboard();
       speech.abort();
     }
     setMoving(interacting);
@@ -400,7 +423,7 @@ export function VocabularySession({
     }
     speech.clearError();
     setTyping(false);
-    Keyboard.dismiss();
+    dismissKeyboard();
     setHandsFree(true);
   }
 
@@ -408,14 +431,14 @@ export function VocabularySession({
     const canAdvance = (revealed && revealSaved) || feedback?.saved;
     if (canAdvance) {
       setTyping(false);
-      Keyboard.dismiss();
+      dismissKeyboard();
       advanceCard();
       return;
     }
     if (feedback) return;
     setTyping(false);
     if (handsFree) {
-      Keyboard.dismiss();
+      dismissKeyboard();
       if (!matchSpeechAlternative(expectedAnswer, [answer])) {
         setAnswer("");
         return;
@@ -428,9 +451,18 @@ export function VocabularySession({
     if (next === mode || busy) return;
     stopSession();
     setTyping(false);
-    Keyboard.dismiss();
+    dismissKeyboard();
     setMode(next);
     if (currentWord) prepareWord();
+  }
+
+  function toggleKeyboard() {
+    if (keyboardVisible) {
+      dismissKeyboard();
+      return;
+    }
+    if (!roundActive || !currentWord || feedback || revealed || busy) return;
+    answerInputRef.current?.focus();
   }
 
   if (progressQuery.isPending) {
@@ -465,118 +497,63 @@ export function VocabularySession({
     ? "Vocabulary mastered"
     : "Practice complete";
   const finishDetail = evidence?.mastered
-    ? "Every word has been recalled successfully. Your answers are saved to your account."
+    ? "Every word has been recalled successfully. Your answers are saved on this device and synced at the round checkpoint."
     : `You practiced every word once. ${masteredCount} of ${usableWords.length} are mastered, and you can review them again later.`;
 
   function exitGame() {
     void onComplete().catch(() => undefined);
   }
 
-  if (!roundActive) {
-    if (showFinish) {
-      return (
-        <GameModal
-          content={
-            <View className="gap-4">
-              {courseId ? (
-                <GameJourneyFooter
-                  courseId={courseId}
-                  courseItemId={sourceCourseItemId}
-                  scrollable={false}
-                />
-              ) : (
-                <Action onPress={exitGame}>Continue learning →</Action>
-              )}
-            </View>
-          }
-          detail={finishDetail}
-          onPrimary={reviewDueWords.length ? beginRound : () => void exitGame()}
-          onSecondary={reviewDueWords.length ? exitGame : undefined}
-          primaryLabel={
-            reviewDueWords.length
-              ? `Review again · ${reviewDueWords.length} words`
-              : "Back to practice"
-          }
-          secondaryLabel={reviewDueWords.length ? "Exit" : undefined}
-          title={finishTitle}
-          visible
-        />
-      );
-    }
-
-    if (showStart) {
-      return (
-        <GameStartModal
-          content={
-            <View className="gap-3 rounded-3xl bg-muted p-5">
-              <View className="flex-row items-end justify-between gap-4">
-                <View className="min-w-0 flex-1 gap-1">
-                  <Text className="text-xs font-bold uppercase tracking-[1.4px] text-primary">
-                    Your progress
-                  </Text>
-                  <Text className="text-2xl font-black text-foreground">
-                    {practicedCount} of {usableWords.length} practiced
-                  </Text>
-                </View>
-                <Text className="text-sm font-bold text-muted-foreground">
-                  {progress}%
-                </Text>
-              </View>
-              <View
-                accessibilityRole="progressbar"
-                accessibilityValue={{ min: 0, max: 100, now: progress }}
-                className="h-2 overflow-hidden rounded-full bg-background"
-              >
-                <View
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${progress}%` }}
-                />
-              </View>
-              <Text className="text-sm leading-5 text-muted-foreground">
-                {readyWords.length}{" "}
-                {readyWords.length === 1 ? "word is" : "words are"} left in this
-                round. Finish one pass to continue.
-              </Text>
-            </View>
-          }
-          detail="Mastery reviews stay available without blocking your course."
-          onPrimary={beginRound}
-          onSecondary={exitGame}
-          primaryLabel={`Start practice · ${readyWords.length} words`}
-          secondaryLabel="Back"
-          title="Cards"
-          visible
-        />
-      );
-    }
-
-    return (
-      <View className="gap-5">
-        <View className="items-center gap-4 rounded-3xl border border-border bg-card p-6">
-          <Text className="text-3xl">🌱</Text>
-          <View className="items-center gap-2">
-            <Text className="text-xl font-black text-foreground">
-              Great work for now
-            </Text>
-            <Text className="text-center text-sm leading-6 text-muted-foreground">
-              Your answers are saved. Refresh to load the remaining words.
-            </Text>
-          </View>
-          <Action secondary onPress={() => void refreshStatus()}>
-            Check again
-          </Action>
-        </View>
-        {sessionError ? (
-          <Text accessibilityRole="alert" className="text-sm text-primary">
-            {sessionError}
-          </Text>
-        ) : null}
-      </View>
-    );
-  }
+  const visibleCards = roundActive ? deckCards : previewCards;
+  const visibleCount = roundActive ? queue.length : readyWords.length;
+  const visibleIndex = roundActive ? index : 0;
+  const idleHint = showFinish
+    ? "Your answers are saved. Refresh to load the remaining words."
+    : isStudyMode
+      ? "Say or type the definition, peel the corner to reveal, or swipe up to skip."
+      : "Say or type the Korean word, peel the corner to reveal, or swipe up to skip.";
 
   return (
     <View className="min-h-0 flex-1">
+      <GameBackToolbar disabled={requestBusy} onPress={exit} />
+      <Stack.Screen
+        options={{
+          gestureEnabled: false,
+          headerBackButtonDisplayMode: "minimal",
+          headerBackVisible: false,
+          headerShadowVisible: false,
+          headerShown: true,
+          title: "",
+        }}
+      />
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.View hidesSharedBackground>
+          <View
+            accessibilityLabel={`Word ${visibleCount === 0 ? 0 : visibleIndex + 1} of ${visibleCount}, ${practicedCount} of ${usableWords.length} practiced`}
+            className="flex-row items-center gap-3"
+          >
+            <Text className="text-[13px] font-bold tabular-nums text-foreground">
+              Word {visibleCount === 0 ? 0 : visibleIndex + 1}/{visibleCount}
+            </Text>
+            <Text className="text-[13px] font-semibold tabular-nums text-muted-foreground">
+              {practicedCount}/{usableWords.length} practiced
+            </Text>
+          </View>
+        </Stack.Toolbar.View>
+        <Stack.Toolbar.Button
+          accessibilityLabel={
+            keyboardVisible ? "Hide keyboard" : "Show keyboard"
+          }
+          disabled={
+            !keyboardVisible &&
+            (!roundActive || !currentWord || !!feedback || revealed || busy)
+          }
+          icon={
+            keyboardVisible ? toolbarIcons.keyboardHide : toolbarIcons.keyboard
+          }
+          onPress={toggleKeyboard}
+        />
+      </Stack.Toolbar>
       <Stack.Toolbar
         placement="bottom"
         backgroundColor={colors.background}
@@ -594,6 +571,7 @@ export function VocabularySession({
         />
         <Stack.Toolbar.View>
           <TextInput
+            ref={answerInputRef}
             accessibilityLabel={
               isStudyMode
                 ? `Definition for ${currentWord?.term ?? "current word"}`
@@ -601,7 +579,10 @@ export function VocabularySession({
             }
             autoCapitalize="none"
             autoCorrect={false}
-            onBlur={() => setTyping(false)}
+            onBlur={() => {
+              setKeyboardVisible(false);
+              setTyping(false);
+            }}
             onChangeText={(value) => {
               if (answerClaim.current === "unanswered" && !busy) {
                 if (handsFree) {
@@ -612,6 +593,7 @@ export function VocabularySession({
               }
             }}
             onFocus={() => {
+              setKeyboardVisible(true);
               if (!handsFree) return;
               clearAutoTimer();
               setTyping(true);
@@ -663,44 +645,37 @@ export function VocabularySession({
         />
       </Stack.Toolbar>
 
-      <View className="absolute inset-x-0 top-0 z-10 flex-row items-center justify-between gap-4">
-        <Text className="text-xs font-bold uppercase tracking-[1.4px] text-muted-foreground">
-          Word {index + 1} of {queue.length}
-        </Text>
-        <Text className="text-xs font-semibold text-muted-foreground">
-          {masteredCount}/{usableWords.length} mastered
-        </Text>
-      </View>
-
       <View className="min-h-0 flex-1 justify-center gap-2">
         <Text className="text-center text-xs leading-5 text-muted-foreground">
-          {isStudyMode
-            ? moving
-              ? "Bringing up the next card…"
-              : listening
-                ? "Listening for Indonesian… tap mic to stop."
-                : revealed
-                  ? "Answer revealed. Swipe up or tap Next."
-                  : feedback
-                    ? feedback.correct
-                      ? "Correct and saved. Swipe up or tap Next."
-                      : "Saved for review. Swipe up or tap Next."
-                    : "Say or type the definition, peel the corner to reveal, or swipe up to skip."
-            : moving
-              ? "Bringing up the next card…"
-              : listening
-                ? "Listening for Korean… tap mic to stop."
-                : revealed
-                  ? "Answer revealed. Swipe up or tap Next."
-                  : feedback
-                    ? !feedback.saved
+          {!roundActive
+            ? idleHint
+            : isStudyMode
+              ? moving
+                ? "Bringing up the next card…"
+                : listening
+                  ? "Listening for Indonesian… tap mic to stop."
+                  : revealed
+                    ? "Answer revealed. Swipe up or tap Next."
+                    : feedback
                       ? feedback.correct
-                        ? "Correct — saving…"
-                        : "We’ll review this again — saving…"
-                      : feedback.correct
                         ? "Correct and saved. Swipe up or tap Next."
-                        : "Saved for an earlier review. Swipe up or tap Next."
-                    : "Say or type the Korean word, peel the corner to reveal, or swipe up to skip."}
+                        : "Saved for review. Swipe up or tap Next."
+                      : "Say or type the definition, peel the corner to reveal, or swipe up to skip."
+              : moving
+                ? "Bringing up the next card…"
+                : listening
+                  ? "Listening for Korean… tap mic to stop."
+                  : revealed
+                    ? "Answer revealed. Swipe up or tap Next."
+                    : feedback
+                      ? !feedback.saved
+                        ? feedback.correct
+                          ? "Correct — saving…"
+                          : "We’ll review this again — saving…"
+                        : feedback.correct
+                          ? "Correct and saved. Swipe up or tap Next."
+                          : "Saved for an earlier review. Swipe up or tap Next."
+                      : "Say or type the Korean word, peel the corner to reveal, or swipe up to skip."}
         </Text>
         {speech.errorMessage && !feedback && !revealed ? (
           <Text
@@ -710,24 +685,41 @@ export function VocabularySession({
             {speech.errorMessage}
           </Text>
         ) : null}
-        <VocabularyPracticeDeck
-          key={roundKey}
-          ref={deckRef}
-          cards={deckCards}
-          index={index}
-          correct={feedback?.correct}
-          revealed={revealed}
-          onReveal={revealAnswer}
-          scrollGesture={scrollGesture}
-          disabled={requestBusy || (revealed && !revealSaved)}
-          onInteractionChange={handleInteractionChange}
-          onAdvanceComplete={finishAdvance}
-        />
+        {visibleCards.length === 0 ? (
+          <View className="items-center gap-4 rounded-3xl border border-border bg-card p-6">
+            <Text className="text-3xl">🌱</Text>
+            <View className="items-center gap-2">
+              <Text className="text-xl font-black text-foreground">
+                Great work for now
+              </Text>
+              <Text className="text-center text-sm leading-6 text-muted-foreground">
+                Your answers are saved. Refresh to load the remaining words.
+              </Text>
+            </View>
+            <Action secondary onPress={() => void progressQuery.refetch()}>
+              Check again
+            </Action>
+          </View>
+        ) : (
+          <VocabularyPracticeDeck
+            key={roundActive ? roundKey : "preview"}
+            ref={deckRef}
+            cards={visibleCards}
+            index={visibleIndex}
+            correct={feedback?.correct}
+            revealed={roundActive && revealed}
+            onReveal={revealAnswer}
+            scrollGesture={scrollGesture}
+            disabled={!roundActive || requestBusy || (revealed && !revealSaved)}
+            onInteractionChange={handleInteractionChange}
+            onAdvanceComplete={finishAdvance}
+          />
+        )}
         <View className="items-center">
           <VocabularyModeSwitch
             mode={mode}
             onChange={handleModeChange}
-            disabled={busy}
+            disabled={!roundActive || busy}
           />
         </View>
       </View>
@@ -757,6 +749,76 @@ export function VocabularySession({
           ) : null}
         </View>
       ) : null}
+
+      <GameStartModal
+        content={
+          <View className="gap-4">
+            <View className="flex-row items-start justify-between gap-5">
+              <View className="min-w-0 flex-1 gap-0.5">
+                <Text className="text-[11px] font-bold uppercase tracking-[1.4px] text-primary">
+                  Set progress
+                </Text>
+                <Text className="text-xl font-black tracking-tight text-foreground">
+                  {practicedCount} practiced
+                </Text>
+              </View>
+              <Text className="text-2xl font-black tabular-nums text-foreground">
+                {progress}%
+              </Text>
+            </View>
+            <View
+              accessibilityRole="progressbar"
+              accessibilityValue={{ min: 0, max: 100, now: progress }}
+              className="h-1.5 overflow-hidden rounded-full bg-muted"
+            >
+              <View
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${progress}%` }}
+              />
+            </View>
+            <View className="flex-row items-center justify-between gap-4">
+              <Text className="text-sm text-muted-foreground">
+                {usableWords.length} total words
+              </Text>
+              <Text className="text-sm font-semibold text-primary">
+                {readyWords.length} ready now
+              </Text>
+            </View>
+          </View>
+        }
+        detail="Mastery reviews stay available without blocking your course."
+        gameKey="cards"
+        onPrimary={beginRound}
+        onSecondary={exit}
+        primaryLabel={`Start practice · ${readyWords.length} words`}
+        secondaryLabel="Back"
+        title="Cards"
+        visible={showStart}
+      />
+      <GameModal
+        content={
+          courseId ? (
+            <GameJourneyFooter
+              courseId={courseId}
+              courseItemId={sourceCourseItemId}
+              scrollable={false}
+            />
+          ) : undefined
+        }
+        detail={finishDetail}
+        eyebrow="Cards"
+        gameKey="cards"
+        onPrimary={reviewDueWords.length ? beginRound : () => void exitGame()}
+        onSecondary={reviewDueWords.length ? exit : undefined}
+        primaryLabel={
+          reviewDueWords.length
+            ? `Review again · ${reviewDueWords.length} words`
+            : "Back to practice"
+        }
+        secondaryLabel={reviewDueWords.length ? "Exit" : undefined}
+        title={finishTitle}
+        visible={showFinish}
+      />
     </View>
   );
 }

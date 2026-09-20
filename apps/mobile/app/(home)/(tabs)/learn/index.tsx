@@ -1,6 +1,7 @@
-import { Stack } from "expo-router";
+import type { RouterOutputs } from "@hakgyo/api";
+import { Stack, useFocusEffect } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -26,6 +27,7 @@ import { api } from "../../../../src/lib/trpc";
 import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 
 function CohortCarousel({
   cohorts,
@@ -36,6 +38,7 @@ function CohortCarousel({
   now,
   onRetryEvents,
   organizationId,
+  outlines,
   userId,
 }: {
   cohorts: LearnCohort[];
@@ -46,6 +49,7 @@ function CohortCarousel({
   now: number;
   onRetryEvents: () => void;
   organizationId: string;
+  outlines: RouterOutputs["mobileSync"]["getDashboard"]["outlines"];
   userId: string;
 }) {
   const [pageWidth, setPageWidth] = useState(0);
@@ -126,6 +130,7 @@ function CohortCarousel({
                 now={now}
                 isFirst
                 onRetryEvents={onRetryEvents}
+                outline={outlines[cohort.course.id]}
               />
             </View>
           )}
@@ -143,33 +148,31 @@ export default function LearnTab() {
   const { open } = useDrawer();
   const { data: session } = authClient.useSession();
   const { activeOrganizationId } = useAppTheme();
-  const organizationScope = {
-    organizationId: activeOrganizationId ?? undefined,
-  };
+  const organizationScope = activeOrganizationId
+    ? { organizationId: activeOrganizationId }
+    : undefined;
   const queryOptions = { enabled: Boolean(activeOrganizationId) };
-  const cohortsQuery = api.learning.listMyCohorts.useQuery(
+  const dashboard = api.mobileSync.getDashboard.useQuery(
     organizationScope,
     queryOptions,
   );
-  const eventsQuery = api.assessmentEvent.listForLearner.useQuery(
-    organizationScope,
-    queryOptions,
-  );
-  const milestonesQuery = api.learning.listMyCohortMilestones.useQuery(
-    organizationScope,
-    queryOptions,
-  );
-  const utils = api.useUtils();
+  const { isSyncing, syncNow } = useMobileSync();
   const [now, setNow] = useState(Date.now);
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(timer);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const frame = requestAnimationFrame(() => setNow(Date.now()));
+      const timer = setInterval(() => setNow(Date.now()), 30_000);
+      return () => {
+        cancelAnimationFrame(frame);
+        clearInterval(timer);
+      };
+    }, []),
+  );
 
   const cohorts: LearnCohort[] = useMemo(
     () =>
-      (cohortsQuery.data ?? []).map((cohort) => ({
+      (dashboard.data?.cohorts ?? []).map((cohort) => ({
         ...cohort,
         learnerCount: cohort._count.enrollments,
         facilitators: cohort.staff.map((member) => ({
@@ -177,11 +180,11 @@ export default function LearnTab() {
           image: member.organizationMember.user.image,
         })),
       })),
-    [cohortsQuery.data],
+    [dashboard.data?.cohorts],
   );
   const eventsByCohort = useMemo(() => {
     const map = new Map<string, CohortEvent[]>();
-    for (const event of eventsQuery.data ?? []) {
+    for (const event of dashboard.data?.events ?? []) {
       if (isStaleClosedOnDemandAssessment(event, now)) continue;
       const cohortId = event.cohort?.id;
       if (!cohortId) continue;
@@ -190,13 +193,16 @@ export default function LearnTab() {
       else map.set(cohortId, [event]);
     }
     return map;
-  }, [eventsQuery.data, now]);
+  }, [dashboard.data?.events, now]);
   const milestonesByCohort = useMemo(
     () =>
       new Map(
-        (milestonesQuery.data ?? []).map((group) => [group.cohortId, group]),
+        (dashboard.data?.milestones ?? []).map((group) => [
+          group.cohortId,
+          group,
+        ]),
       ),
-    [milestonesQuery.data],
+    [dashboard.data?.milestones],
   );
   return (
     <>
@@ -226,20 +232,15 @@ export default function LearnTab() {
         title=""
         bleedTop
         contentInsetAdjustmentBehavior="never"
-        refreshing={
-          cohortsQuery.isRefetching ||
-          eventsQuery.isRefetching ||
-          milestonesQuery.isRefetching
-        }
+        refreshing={dashboard.isRefetching || isSyncing}
         onRefresh={() => {
-          void utils.learning.invalidate();
-          void utils.assessmentEvent.invalidate();
+          void syncNow(activeOrganizationId ?? undefined);
         }}
       >
         <QueryState
-          pending={cohortsQuery.isPending}
-          error={cohortsQuery.error}
-          retry={() => void cohortsQuery.refetch()}
+          pending={dashboard.isPending}
+          error={dashboard.error}
+          retry={() => void dashboard.refetch()}
         />
         {cohorts.length > 0 ? (
           <View className="-mx-5">
@@ -247,12 +248,13 @@ export default function LearnTab() {
               key={activeOrganizationId}
               cohorts={cohorts}
               eventsByCohort={eventsByCohort}
-              eventsError={eventsQuery.error}
-              eventsPending={eventsQuery.isPending}
+              eventsError={dashboard.error}
+              eventsPending={dashboard.isPending}
               milestonesByCohort={milestonesByCohort}
               now={now}
-              onRetryEvents={() => void eventsQuery.refetch()}
+              onRetryEvents={() => void dashboard.refetch()}
               organizationId={activeOrganizationId!}
+              outlines={dashboard.data?.outlines ?? {}}
               userId={session!.user.id}
             />
           </View>

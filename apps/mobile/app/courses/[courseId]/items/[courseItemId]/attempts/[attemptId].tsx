@@ -1,5 +1,5 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
 import {
   ActivityIndicator,
@@ -34,8 +34,78 @@ import { api } from "../../../../../../src/lib/trpc";
 import { authClient } from "../../../../../../src/lib/auth-client";
 import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-draft";
 import { assessmentTerminalResult } from "../../../../../../src/lib/assessment-state";
+import { useAppTheme } from "../../../../../../src/providers/AppThemeProvider";
+import { useMobileSyncActions } from "../../../../../../src/providers/MobileSyncProvider";
 
 type Answer = { content?: string; optionIds: string[] };
+
+function buildAnswerPayload(
+  questions: readonly { id: string; type: string }[] | undefined,
+  answers: Record<string, Answer>,
+) {
+  return (
+    questions?.flatMap((question) => {
+      const answer = answers[question.id];
+      if (!answer) return [];
+      return [
+        {
+          questionId: question.id,
+          optionIds: answer.optionIds,
+          ...(question.type === "WRITTEN"
+            ? { content: answer.content ?? "" }
+            : {}),
+        },
+      ];
+    }) ?? []
+  );
+}
+
+function persistAssessmentDraft(
+  storageKey: string,
+  answers: Record<string, Answer>,
+) {
+  Storage.setItemSync(storageKey, JSON.stringify(answers));
+}
+
+const AssessmentDeadline = memo(function AssessmentDeadline({
+  deadline,
+  onExpire,
+}: {
+  deadline: number;
+  onExpire: () => void;
+}) {
+  const [now, setNow] = useState(Date.now);
+  const reportedExpiration = useRef(false);
+
+  useEffect(() => {
+    reportedExpiration.current = false;
+    if (Date.now() >= deadline) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [deadline]);
+
+  const expired = now >= deadline;
+  useEffect(() => {
+    if (!expired || reportedExpiration.current) return;
+    reportedExpiration.current = true;
+    onExpire();
+  }, [expired, onExpire]);
+
+  return (
+    <Text
+      accessibilityLiveRegion={expired ? "polite" : "none"}
+      className={
+        expired
+          ? "text-sm font-bold text-destructive"
+          : "text-sm font-bold text-primary"
+      }
+    >
+      {expired
+        ? "Time is up · submit your saved answers"
+        : `${Math.floor(Math.max(0, deadline - now) / 60_000)}:${String(Math.floor(Math.max(0, deadline - now) / 1000) % 60).padStart(2, "0")} remaining`}
+    </Text>
+  );
+});
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -74,6 +144,8 @@ function AssessmentAttemptContent({
   const operationPending = useRef(false);
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
+  const { activeOrganizationId } = useAppTheme();
+  const { completeAssessment } = useMobileSyncActions();
   const resolveAssetUrl = useApiAssetResolver();
   const assessment = api.assessment.getForCourseItem.useQuery(
     { courseItemId, attemptId },
@@ -84,21 +156,19 @@ function AssessmentAttemptContent({
     {
       enabled: Boolean(attemptId),
       retry: false,
-      refetchInterval: (query) => {
-        const status = query.state.data?.status;
-        return status === "IN_REVIEW" || status === "SUBMITTED"
-          ? 15_000
-          : false;
-      },
     },
   );
-  const saveAnswers = api.assessment.saveAnswers.useMutation();
-  const submitAttempt = api.assessment.submitAttempt.useMutation();
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
-  const [lastSavedSignature, setLastSavedSignature] = useState("");
+  const [hasUnsavedAnswers, setHasUnsavedAnswers] = useState(false);
   const initialized = useRef<string | null>(null);
-  const [now, setNow] = useState(Date.now);
+  const latestDraft = useRef<Record<string, Answer>>({});
+  const latestDraftKey = useRef<string | null>(null);
+  const shouldPersistLatestDraft = useRef(false);
+  const draftCompleted = useRef(false);
+  const [expiredDeadline, setExpiredDeadline] = useState<number | null>(null);
   const [draftError, setDraftError] = useState<string>();
   const storageKey = session
     ? `hakgyo:attempt:v1:${session.user.id}:${attemptId}`
@@ -109,8 +179,10 @@ function AssessmentAttemptContent({
       ? attempt.data.startedAt.getTime() +
         assessment.data.timeLimitMinutes * 60_000
       : null);
-  const expired = deadline !== null && now >= deadline;
-  const busy = saveAnswers.isPending || submitAttempt.isPending;
+  const expired =
+    deadline !== null &&
+    (Date.now() >= deadline || expiredDeadline === deadline);
+  const busy = submitting;
   const [submittedResult, setSubmittedResult] = useState<{
     status: "GRADED" | "IN_REVIEW";
     score: number;
@@ -128,6 +200,7 @@ function AssessmentAttemptContent({
     )
       return;
     initialized.current = attemptId;
+    draftCompleted.current = false;
     const serverSaved: Record<string, Answer> = Object.fromEntries(
       attempt.data.answers.map((answer) => [
         answer.questionId,
@@ -150,15 +223,9 @@ function AssessmentAttemptContent({
         );
       }
     }
-    setLastSavedSignature(JSON.stringify(answerPayload(serverSaved)));
     setAnswers(saved);
+    setHasUnsavedAnswers(false);
   }, [assessment.data, attempt.data, attemptId, storageKey]);
-
-  useEffect(() => {
-    if (attempt.data?.status !== "IN_PROGRESS" || deadline === null) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [attempt.data?.status, deadline]);
 
   useEffect(() => {
     if (
@@ -170,24 +237,56 @@ function AssessmentAttemptContent({
       return;
     // The hydration render still contains the initial empty state.
     if (!Object.keys(answers).length) return;
-    try {
-      Storage.setItemSync(storageKey, JSON.stringify(answers));
-      setDraftError(undefined);
-    } catch {
-      setDraftError(
-        "Device draft unavailable. Use Save answers before leaving this screen.",
-      );
-    }
+    const timer = setTimeout(() => {
+      try {
+        persistAssessmentDraft(storageKey, answers);
+        setDraftError(undefined);
+      } catch {
+        setDraftError(
+          "Device draft unavailable. Use Save answers before leaving this screen.",
+        );
+      }
+    }, 250);
+    return () => clearTimeout(timer);
   }, [answers, attemptId, storageKey, hasResult, attempt.data?.status]);
 
-  const question = assessment.data?.questions[currentIndex];
-  const statuses: QuestionStatus[] = (assessment.data?.questions ?? []).map(
-    (item) =>
-      isQuestionAnswered(answers[item.id]) ? "answered" : "unanswered",
+  latestDraft.current = answers;
+  latestDraftKey.current = storageKey;
+  shouldPersistLatestDraft.current =
+    Boolean(Object.keys(answers).length) &&
+    initialized.current === attemptId &&
+    !hasResult &&
+    attempt.data?.status === "IN_PROGRESS";
+
+  useEffect(
+    () => () => {
+      if (
+        draftCompleted.current ||
+        !shouldPersistLatestDraft.current ||
+        !latestDraftKey.current
+      )
+        return;
+      try {
+        persistAssessmentDraft(latestDraftKey.current, latestDraft.current);
+      } catch {
+        // The screen is unmounting; the next visit still has server answers.
+      }
+    },
+    [],
   );
-  const answeredCount = statuses.filter(
-    (status) => status === "answered",
-  ).length;
+
+  const question = assessment.data?.questions[currentIndex];
+  const statuses: QuestionStatus[] = useMemo(
+    () =>
+      (assessment.data?.questions ?? []).map((item) =>
+        isQuestionAnswered(answers[item.id]) ? "answered" : "unanswered",
+      ),
+    [answers, assessment.data?.questions],
+  );
+  const answeredCount = useMemo(
+    () => statuses.filter((status) => status === "answered").length,
+    [statuses],
+  );
   const nextUnanswered = nextUnansweredQuestion(statuses, currentIndex);
   const openQuestions = useQuestionNavigator({
     title: assessment.data?.title ?? "Assessment",
@@ -219,60 +318,74 @@ function AssessmentAttemptContent({
             : [...existing.optionIds, optionId];
       return { ...current, [question.id]: { optionIds } };
     });
+    setHasUnsavedAnswers(true);
   }
-
-  function answerPayload(source = answers) {
-    return (
-      assessment.data?.questions.flatMap((item) => {
-        const answer = source[item.id];
-        if (!answer) return [];
-        return [
-          {
-            questionId: item.id,
-            optionIds: answer.optionIds,
-            ...(item.type === "WRITTEN"
-              ? { content: answer.content ?? "" }
-              : {}),
-          },
-        ];
-      }) ?? []
-    );
-  }
-
-  const currentAnswerSignature = JSON.stringify(answerPayload());
-  const hasUnsavedAnswers =
-    initialized.current === attemptId &&
-    currentAnswerSignature !== lastSavedSignature;
 
   async function save(nextIndex?: number) {
     if (busy || expired || result || operationPending.current) return false;
-    operationPending.current = true;
-    try {
-      const payload = answerPayload();
-      if (hasUnsavedAnswers && payload.length) {
-        await saveAnswers.mutateAsync({ attemptId, answers: payload });
-        setLastSavedSignature(JSON.stringify(payload));
+    if (storageKey) {
+      try {
+        persistAssessmentDraft(storageKey, answers);
+        setDraftError(undefined);
+      } catch {
+        setDraftError(
+          "Device draft unavailable. Use Save answers before leaving this screen.",
+        );
+        return false;
       }
-      if (nextIndex !== undefined) setCurrentIndex(nextIndex);
-      return true;
-    } catch {
-      /* Keep answers on screen and expose the retry below. */
-      return false;
-    } finally {
-      operationPending.current = false;
     }
+    setHasUnsavedAnswers(false);
+    if (nextIndex !== undefined) setCurrentIndex(nextIndex);
+    return true;
   }
 
   async function submit() {
     if (!assessment.data || result || operationPending.current) return;
     operationPending.current = true;
-    const payload = answerPayload();
+    setSubmitting(true);
+    setSubmitError(undefined);
+    const payload = buildAnswerPayload(assessment.data.questions, answers);
     try {
-      if (payload.length && !expired) {
-        await saveAnswers.mutateAsync({ attemptId, answers: payload });
+      const sync = await completeAssessment({
+        attemptId,
+        answers: payload,
+        organizationId: activeOrganizationId ?? undefined,
+      });
+      if (sync.state === "synced") {
+        const operationId = `assessment:${attemptId}`;
+        const failure = sync.result.failures.find(
+          (entry) => entry.id === operationId,
+        );
+        if (
+          failure ||
+          !sync.result.acknowledgedOperationIds.includes(operationId)
+        ) {
+          setSubmitError(
+            failure?.message ??
+              "The assessment is saved on this device but was not accepted by the server.",
+          );
+          return;
+        }
+        const submitted = sync.result.results.find(
+          (entry) => entry.id === operationId,
+        )?.assessment;
+        if (
+          submitted &&
+          (submitted.status === "GRADED" || submitted.status === "IN_REVIEW")
+        ) {
+          setSubmittedResult({
+            status: submitted.status,
+            score: submitted.score ?? 0,
+            maxScore: submitted.maxScore ?? 0,
+          });
+        }
+      } else {
+        Alert.alert(
+          "Saved on this device",
+          "Your completed assessment is queued and will submit at the next online sync checkpoint.",
+        );
       }
-      const submitted = await submitAttempt.mutateAsync({ attemptId });
-      setSubmittedResult(submitted);
+      draftCompleted.current = true;
       if (storageKey) {
         try {
           Storage.removeItemSync(storageKey);
@@ -280,12 +393,14 @@ function AssessmentAttemptContent({
           /* Terminal server status prevents draft reuse. */
         }
       }
-      await Promise.all([
-        utils.learning.invalidate(),
-        utils.gamification.invalidate(),
-        utils.assessmentEvent.invalidate(),
-        utils.assessment.invalidate(),
-      ]);
+      if (sync.state === "synced") {
+        await Promise.all([
+          utils.learning.invalidate(undefined, { refetchType: "none" }),
+          utils.gamification.invalidate(undefined, { refetchType: "none" }),
+          utils.assessmentEvent.invalidate(undefined, { refetchType: "none" }),
+          utils.assessment.invalidate(undefined, { refetchType: "none" }),
+        ]);
+      }
       if (assessment.data.event) {
         router.replace({
           pathname: "/events/[eventId]",
@@ -297,10 +412,15 @@ function AssessmentAttemptContent({
           params: { courseId, courseItemId },
         });
       }
-    } catch {
-      // Mutation errors are rendered below.
+    } catch (cause) {
+      setSubmitError(
+        cause instanceof Error
+          ? cause.message
+          : "The assessment could not be saved on this device.",
+      );
     } finally {
       operationPending.current = false;
+      setSubmitting(false);
     }
   }
 
@@ -332,6 +452,10 @@ function AssessmentAttemptContent({
       params: { courseId },
     });
   }
+
+  const expireAttempt = useCallback(() => {
+    if (deadline !== null) setExpiredDeadline(deadline);
+  }, [deadline]);
 
   return (
     <>
@@ -410,18 +534,7 @@ function AssessmentAttemptContent({
           automaticallyAdjustKeyboardInsets
         >
           {deadline !== null ? (
-            <Text
-              accessibilityLiveRegion={expired ? "polite" : "none"}
-              className={
-                expired
-                  ? "text-sm font-bold text-destructive"
-                  : "text-sm font-bold text-primary"
-              }
-            >
-              {expired
-                ? "Time is up · submit your saved answers"
-                : `${Math.floor(Math.max(0, deadline - now) / 60_000)}:${String(Math.floor(Math.max(0, deadline - now) / 1000) % 60).padStart(2, "0")} remaining`}
-            </Text>
+            <AssessmentDeadline deadline={deadline} onExpire={expireAttempt} />
           ) : null}
           <AssessmentQuestion
             current={currentIndex}
@@ -449,12 +562,13 @@ function AssessmentAttemptContent({
                 className="min-h-32 text-base text-foreground"
                 multiline
                 editable={!busy && !expired}
-                onChangeText={(content) =>
+                onChangeText={(content) => {
                   setAnswers((current) => ({
                     ...current,
                     [question.id]: { content, optionIds: [] },
-                  }))
-                }
+                  }));
+                  setHasUnsavedAnswers(true);
+                }}
                 placeholder="Write your answer…"
                 textAlignVertical="top"
                 value={answers[question.id]?.content ?? ""}
@@ -482,8 +596,8 @@ function AssessmentAttemptContent({
             </View>
           )}
           <Text className="text-xs leading-5 text-muted-foreground">
-            You can change answers until you submit. Answers save when you move
-            between questions.
+            You can change answers until you submit. Drafts save on this device
+            as you work.
             {deadline !== null ? " The timer continues if you leave." : ""}
           </Text>
           {draftError ? (
@@ -494,12 +608,12 @@ function AssessmentAttemptContent({
               {draftError}
             </Text>
           ) : null}
-          {saveAnswers.isError || submitAttempt.isError ? (
+          {submitError ? (
             <Text
               accessibilityRole="alert"
               className="text-sm text-destructive"
             >
-              {saveAnswers.error?.message ?? submitAttempt.error?.message}
+              {submitError}
             </Text>
           ) : null}
           <View className="gap-3 border-t border-border pt-4">
@@ -544,17 +658,16 @@ function AssessmentAttemptContent({
               <StudyAction
                 secondary
                 disabled={busy}
-                loading={saveAnswers.isPending}
                 onPress={() => void save()}
               >
-                {saveAnswers.isPending ? "Saving answers…" : "Save answers"}
+                Save draft on device
               </StudyAction>
             ) : null}
             {expired ||
             currentIndex === assessment.data.questions.length - 1 ||
             answeredCount === assessment.data.questions.length ? (
               <StudyAction
-                loading={submitAttempt.isPending}
+                loading={submitting}
                 disabled={busy}
                 onPress={confirmSubmit}
               >

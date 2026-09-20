@@ -2,13 +2,14 @@ import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { api } from "../lib/trpc";
+import { localSample } from "../lib/local-sample";
 import {
   nextUnansweredQuestion,
   type QuestionStatus,
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
-import { Empty, QueryState } from "./learning-ui";
+import { Empty } from "./learning-ui";
 import {
   AssessmentFeedback,
   AssessmentOption,
@@ -19,21 +20,19 @@ import { StudyAction, StudyGlass } from "./study-glass";
 type PracticeQuestion =
   RouterOutputs["practice"]["getAssessmentSample"]["questions"][number];
 type GradeResult = RouterOutputs["practice"]["gradeAssessmentAnswer"];
+type AssessmentPool = RouterOutputs["practice"]["getAssessmentSample"];
 function randomSeed() {
   return Date.now() + ":" + Math.random();
 }
 
 export function TodayAssessmentPractice({
   organizationId,
+  pool,
 }: {
   organizationId: string;
+  pool: AssessmentPool;
 }) {
   const [seed, setSeed] = useState(randomSeed);
-  const query = api.practice.getAssessmentSample.useQuery({
-    limit: 5,
-    organizationId,
-    seed,
-  });
   const grade = api.practice.gradeAssessmentAnswer.useMutation();
   const resolveAssetUrl = useApiAssetResolver();
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
@@ -46,22 +45,18 @@ export function TodayAssessmentPractice({
   const inFlight = useRef(false);
 
   useEffect(() => {
-    if (!query.data) return;
-    const signature = JSON.stringify([
-      organizationId,
-      seed,
-      query.data.questions,
-    ]);
+    const questions = localSample(pool.questions, seed, 5);
+    const signature = JSON.stringify([organizationId, seed, questions]);
     if (initializedPool.current === signature) return;
     initializedPool.current = signature;
     gradingRequest.current += 1;
     inFlight.current = false;
-    setQuestions(query.data.questions);
+    setQuestions(questions);
     setIndex(0);
     setSelections({});
     setResults({});
     setFinished(false);
-  }, [query.data, seed, organizationId]);
+  }, [pool.questions, seed, organizationId]);
 
   useEffect(
     () => () => {
@@ -142,12 +137,7 @@ export function TodayAssessmentPractice({
 
   return (
     <View className="gap-4">
-      <QueryState
-        pending={query.isPending}
-        error={query.error}
-        retry={() => void query.refetch()}
-      />
-      {query.data && !query.data.hasAvailableContent ? (
+      {!pool.hasAvailableContent ? (
         <Empty>
           Assessment practice appears when an unlocked course has published
           choice questions.

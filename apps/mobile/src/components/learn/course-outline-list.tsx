@@ -7,6 +7,7 @@ import {
 import { getCourseResumeItem } from "../../lib/course-learning-path";
 import { authClient } from "../../lib/auth-client";
 import { api } from "../../lib/trpc";
+import { useAppTheme } from "../../providers/AppThemeProvider";
 import { QueryState } from "../learning-ui";
 import { LearningItemRow } from "./learning-item-row";
 
@@ -38,26 +39,33 @@ export function CourseOutlineList({
   showActiveState?: boolean;
 }) {
   const { data: session } = authClient.useSession();
-  const outlineQuery = api.learning.getCourseOutline.useQuery(
-    { courseId },
+  const { activeOrganizationId } = useAppTheme();
+  const dashboard = api.mobileSync.getDashboard.useQuery(
+    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
     { enabled: Boolean(session && courseId), retry: false },
   );
-  const attemptsQuery = api.assessment.listMyAttempts.useQuery(undefined, {
-    enabled: Boolean(session && courseId),
-    retry: false,
-  });
-  const course = outlineQuery.data;
+  const dashboardCourse = dashboard.data?.outlines[courseId];
+  const outlineQuery = api.learning.getCourseOutline.useQuery(
+    { courseId },
+    {
+      enabled: Boolean(
+        session && courseId && !dashboard.isPending && !dashboardCourse,
+      ),
+      retry: false,
+    },
+  );
+  const course = dashboardCourse ?? outlineQuery.data;
   const resumeItem = course && getCourseResumeItem(course);
-  const courseAttempts = attemptsQuery.data?.filter(
+  const courseAttempts = dashboard.data?.attempts.filter(
     (attempt) => attempt.courseItem.module.courseId === courseId,
   );
 
-  if (outlineQuery.isPending || !course) {
+  if (!course) {
     return (
       <QueryState
-        pending={outlineQuery.isPending}
-        error={outlineQuery.error}
-        retry={() => void outlineQuery.refetch()}
+        pending={dashboard.isPending || outlineQuery.isPending}
+        error={dashboard.error ?? outlineQuery.error}
+        retry={() => void dashboard.refetch()}
       />
     );
   }
