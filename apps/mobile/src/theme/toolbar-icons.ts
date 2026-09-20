@@ -25,4 +25,16 @@ export const toolbarIcons = {
     ios: "arrow.right",
     android: import("@expo/material-symbols/arrow_forward.xml"),
   }),
+  pause: Icon.select({
+    ios: "pause.fill",
+    android: import("@expo/material-symbols/pause.xml"),
+  }),
+  mic: Icon.select({
+    ios: "mic.fill",
+    android: import("@expo/material-symbols/mic.xml"),
+  }),
+  stop: Icon.select({
+    ios: "stop.fill",
+    android: import("@expo/material-symbols/stop.xml"),
+  }),
 } as const;

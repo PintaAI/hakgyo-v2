@@ -351,7 +351,6 @@ function CourseItemContent({
         <VocabularySetDetail
           courseId={courseId}
           courseItemId={courseItemId}
-          moduleId={item.moduleId}
           vocabulary={vocabulary}
         />
       ) : !material ? (

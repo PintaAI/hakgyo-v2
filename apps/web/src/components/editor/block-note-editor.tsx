@@ -39,6 +39,7 @@ import {
   vocabularyReferenceBlockType,
 } from "~/lib/blocknote/block-catalog";
 import { getCultureAssetIds } from "~/lib/blocknote/culture-content";
+import { handleBlockNotePaste } from "~/lib/blocknote/paste";
 
 import {
   AssetUploadProvider,
@@ -233,6 +234,7 @@ export function BlockNoteEditor({
       },
     },
     initialContent,
+    pasteHandler: handleBlockNotePaste,
     schema: hakgyoBlockNoteSchema,
     trailingBlock,
     uploadFile: uploadAsset

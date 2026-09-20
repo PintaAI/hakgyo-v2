@@ -3,7 +3,11 @@ import {
   passesAssessmentRequirement,
   passesRequirementPolicy,
 } from "~/server/learning/material-completion";
-import { emptyMemory, vocabularyContentHash } from "./recall-policy";
+import {
+  emptyVocabularyProgress,
+  vocabularyContentHash,
+  vocabularyProgressStatus,
+} from "./progress-policy";
 
 export type EvidenceDb = Pick<
   Prisma.TransactionClient,
@@ -22,27 +26,39 @@ export async function getVocabularyEvidence(
       id: true,
       term: true,
       definition: true,
-      memory: { where: { userId } },
+      progress: { where: { userId } },
     },
   });
   const items = entries.map((entry) => {
-    const saved = entry.memory[0];
-    const practiced = saved?.contentHash === vocabularyContentHash(entry);
-    const state = practiced ? saved : emptyMemory();
+    const saved = entry.progress[0];
+    const current = saved?.contentHash === vocabularyContentHash(entry);
+    const state = current ? saved : emptyVocabularyProgress();
+    const status = vocabularyProgressStatus(state);
     return {
       entryId: entry.id,
-      practiced,
-      passStreak: state.passStreak,
-      failStreak: state.failStreak,
-      rememberedAt: state.rememberedAt,
+      status,
+      practicedAt: state.practicedAt,
+      masteredAt: state.masteredAt,
       nextReviewAt: state.nextReviewAt,
-      remembered: state.rememberedAt !== null,
+      correctRecallCount: state.correctRecallCount,
+      practiced: state.practicedAt !== null,
+      mastered: state.masteredAt !== null,
+      due:
+        state.practicedAt !== null &&
+        (state.nextReviewAt === null || state.nextReviewAt <= new Date()),
     };
   });
   return {
     items,
     practiced: items.length > 0 && items.every((item) => item.practiced),
-    remembered: items.length > 0 && items.every((item) => item.remembered),
+    mastered: items.length > 0 && items.every((item) => item.mastered),
+    counts: {
+      total: items.length,
+      new: items.filter((item) => item.status === "NEW").length,
+      learning: items.filter((item) => item.status === "LEARNING").length,
+      mastered: items.filter((item) => item.status === "MASTERED").length,
+      due: items.filter((item) => item.due).length,
+    },
   };
 }
 
@@ -96,7 +112,7 @@ export async function meetsMaterialRequirements(
   return passesRequirementPolicy(material.requirementPolicy, results);
 }
 
-// Vocabulary recall and manual content completion writers share this lock.
+// Vocabulary attempts and manual content completion writers share this lock.
 // Locking per learner also serializes different words completing the same set.
 export async function lockLearnerProgress(
   tx: Prisma.TransactionClient,

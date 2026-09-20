@@ -70,7 +70,6 @@ export default function HomeTab() {
           <TodayVocabularyPractice
             key={`${session.user.id}:${activeOrganizationId}`}
             organizationId={activeOrganizationId}
-            userId={session.user.id}
             scrollGesture={scrollGesture}
           />
         ) : null}

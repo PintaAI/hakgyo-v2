@@ -4,10 +4,9 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { activeEnrollmentStatuses } from "~/server/authorization";
 import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
-import { recordGamificationActivity } from "~/server/gamification/record-activity";
-import { isValidTimeZone } from "~/server/gamification/logic";
 import { getCourseOutlineForUser } from "~/server/learning/course-outline";
 import type { db as database } from "~/server/db";
+import { vocabularyContentHash } from "~/server/vocabulary/progress-policy";
 import {
   gradePracticeChoice,
   preparePracticeOptions,
@@ -165,6 +164,13 @@ export const practiceRouter = createTRPCRouter({
                     term: true,
                     definition: true,
                     imageAssetId: true,
+                    progress: {
+                      where: { userId: ctx.actorUserId },
+                      select: {
+                        contentHash: true,
+                        nextReviewAt: true,
+                      },
+                    },
                   },
                 },
               },
@@ -180,20 +186,28 @@ export const practiceRouter = createTRPCRouter({
           );
           const setVersion = vocabularySetVersion(entries);
 
-          return entries.map((entry) => ({
-            id: entry.id,
-            entryId: entry.id,
-            term: entry.term,
-            definition: entry.definition,
-            imageAssetId: entry.imageAssetId,
-            vocabularySetId: set.id,
-            vocabularySetTitle: set.title,
-            setEntryCount: entries.length,
-            setVersion,
-            courseId: selected.source.courseId,
-            courseTitle: selected.source.courseTitle,
-            sourceCourseItemId: selected.source.courseItemId,
-          }));
+          return entries.map((entry) => {
+            const saved = entry.progress[0];
+            const current =
+              saved?.contentHash === vocabularyContentHash(entry)
+                ? saved
+                : null;
+            return {
+              id: entry.id,
+              entryId: entry.id,
+              term: entry.term,
+              definition: entry.definition,
+              imageAssetId: entry.imageAssetId,
+              vocabularySetId: set.id,
+              vocabularySetTitle: set.title,
+              setEntryCount: entries.length,
+              setVersion,
+              courseId: selected.source.courseId,
+              courseTitle: selected.source.courseTitle,
+              sourceCourseItemId: selected.source.courseItemId,
+              due: !current?.nextReviewAt || current.nextReviewAt <= new Date(),
+            };
+          });
         });
       }
       const candidates: Awaited<ReturnType<typeof loadVocabularyCandidates>> =
@@ -210,80 +224,18 @@ export const practiceRouter = createTRPCRouter({
           )),
         );
       }
+      const due = candidates.filter((item) => item.due);
       const items = sampleForPractice(
-        candidates,
+        due.length ? due : candidates,
         `${ctx.actorUserId}:${input.seed}:vocabulary`,
         input.limit,
-      ).map(({ id: _id, ...item }) => item);
+      ).map(({ id: _id, due: _due, ...item }) => item);
 
       return {
         items,
         hasAvailableContent: candidates.length > 0,
         serverTime: new Date(),
       };
-    }),
-
-  recordVocabularyCardReview: protectedProcedure
-    .input(
-      z.object({
-        completionId: z.string().trim().min(1).max(250),
-        entryId: z.string().min(1),
-        sourceCourseItemId: z.string().min(1),
-        timeZone: z
-          .string()
-          .trim()
-          .min(1)
-          .max(100)
-          .refine(isValidTimeZone, "Invalid IANA timezone"),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const source = await ctx.db.courseItem.findFirst({
-        where: {
-          id: input.sourceCourseItemId,
-          isPublished: true,
-          type: "VOCABULARY_SET",
-          vocabularySet: { entries: { some: { id: input.entryId } } },
-        },
-        select: {
-          organizationId: true,
-          module: { select: { courseId: true } },
-        },
-      });
-      if (!source) throw new TRPCError({ code: "FORBIDDEN" });
-      const courses = await getPracticeCourses(
-        ctx.db,
-        ctx.actorUserId,
-        source.organizationId,
-      );
-      if (!courses.some((course) => course.id === source.module.courseId)) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const outline = await getCourseOutlineForUser(
-        source.module.courseId,
-        ctx.actorUserId,
-        { managementAccess: false },
-      );
-      const available = outline.modules.some(
-        (module) =>
-          module.access !== "LOCKED" &&
-          module.items.some((item) => item.id === input.sourceCourseItemId),
-      );
-      if (!available) throw new TRPCError({ code: "FORBIDDEN" });
-
-      return ctx.db.$transaction((tx) =>
-        recordGamificationActivity(tx, {
-          action: "VOCABULARY_REVIEWED",
-          idempotencyKey: `practice-vocabulary-card:${ctx.actorUserId}:${input.completionId}`,
-          metadata: {
-            entryId: input.entryId,
-            sourceCourseItemId: input.sourceCourseItemId,
-          },
-          organizationId: source.organizationId,
-          timeZone: input.timeZone,
-          userId: ctx.actorUserId,
-        }),
-      );
     }),
 
   getAssessmentSample: protectedProcedure

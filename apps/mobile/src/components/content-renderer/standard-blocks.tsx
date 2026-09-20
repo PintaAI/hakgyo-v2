@@ -3,6 +3,11 @@ import { ScrollView, Text, View } from "react-native";
 import { InlineContent } from "./inline-content";
 import { isRecord, stringProp } from "./normalize";
 import { ContentAudio, ContentFile, ContentImage } from "./media";
+import {
+  tableCellColspan,
+  tableCellLayout,
+  tableColumnCount,
+} from "./table-layout";
 import type { BlockRendererProps, ContentBlockRenderer } from "./types";
 
 function Paragraph({ block }: BlockRendererProps) {
@@ -108,9 +113,10 @@ function Table({ block }: BlockRendererProps) {
   const table = isRecord(block.content) ? block.content : {};
   const rows = Array.isArray(table.rows) ? table.rows : [];
   const headerRows =
-    typeof table.headerRows === "number" ? table.headerRows : 1;
+    typeof table.headerRows === "number" ? table.headerRows : 0;
   const headerCols =
     typeof table.headerCols === "number" ? table.headerCols : 0;
+  const columnCount = tableColumnCount(rows);
 
   if (!rows.length) return null;
 
@@ -120,29 +126,32 @@ function Table({ block }: BlockRendererProps) {
         {rows.map((rawRow, rowIndex) => {
           const row = isRecord(rawRow) ? rawRow : {};
           const cells = Array.isArray(row.cells) ? row.cells : [];
+          let columnIndex = 0;
 
           return (
             <View
-              className={`flex-row ${rowIndex > 0 ? "border-t border-border" : "bg-muted/60"}`}
+              className={`flex-row ${rowIndex > 0 ? "border-t border-border" : ""}`}
               key={rowIndex}
             >
               {cells.map((cell, cellIndex) => {
                 const tableCell =
                   isRecord(cell) && cell.type === "tableCell" ? cell : null;
-                const colspan =
-                  tableCell &&
-                  isRecord(tableCell.props) &&
-                  typeof tableCell.props.colspan === "number"
-                    ? Math.max(1, tableCell.props.colspan)
-                    : 1;
+                const colspan = tableCellColspan(tableCell);
+                const cellColumnIndex = columnIndex;
+                columnIndex += colspan;
                 const isHeader =
-                  rowIndex < headerRows || cellIndex < headerCols;
+                  rowIndex < headerRows || cellColumnIndex < headerCols;
 
                 return (
                   <View
                     className={`px-3 py-2.5 ${cellIndex > 0 ? "border-l border-border" : ""} ${isHeader ? "bg-muted/60" : ""}`}
                     key={cellIndex}
-                    style={{ width: 160 * colspan }}
+                    style={tableCellLayout({
+                      columnCount,
+                      columnWidths: table.columnWidths,
+                      columnIndex: cellColumnIndex,
+                      colspan,
+                    })}
                   >
                     <InlineContent
                       className={`text-sm leading-5 text-foreground ${isHeader ? "font-bold" : ""}`}

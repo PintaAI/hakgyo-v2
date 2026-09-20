@@ -18,12 +18,13 @@ import {
   lockLearnerProgress,
   meetsMaterialRequirements,
 } from "~/server/vocabulary/evidence";
-import { createVocabularyRecallService } from "~/server/vocabulary/recall-service";
+import { createVocabularyProgressService } from "~/server/vocabulary/progress-service";
+import { isValidTimeZone } from "~/server/gamification/logic";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import { getLearnerMaterialReferences } from "~/server/material-reference-service";
 import { organizationBrandSelect } from "~/server/brand/context";
 
-const recallScope = z.object({
+const vocabularyProgressScope = z.object({
   sourceCourseItemId: z.string().min(1),
   vocabularySetId: z.string().min(1),
 });
@@ -434,30 +435,53 @@ export const learningRouter = createTRPCRouter({
         practiceCourseItemId,
       };
     }),
-  getVocabularyMemory: protectedProcedure
-    .input(recallScope)
+  getVocabularyProgress: protectedProcedure
+    .input(vocabularyProgressScope)
     .query(({ ctx, input }) =>
-      createVocabularyRecallService(ctx.db, requireCourseItemAccess).getStatus(
-        ctx.actorUserId,
-        input,
-      ),
+      createVocabularyProgressService(
+        ctx.db,
+        requireCourseItemAccess,
+      ).getProgress(ctx.actorUserId, input),
     ),
-  startVocabularyRecall: protectedProcedure
-    .input(recallScope.extend({ entryId: z.string().min(1) }))
-    .mutation(({ ctx, input }) =>
-      createVocabularyRecallService(ctx.db, requireCourseItemAccess).start(
-        ctx.actorUserId,
-        input,
-      ),
-    ),
-  submitVocabularyRecall: protectedProcedure
+  recordVocabularyAttempts: protectedProcedure
     .input(
-      z.object({ challengeId: z.string().min(1), answer: z.string().max(500) }),
+      z.object({
+        sessionId: z.string().trim().min(1).max(200),
+        gameKey: z.string().trim().min(1).max(100),
+        timeZone: z
+          .string()
+          .trim()
+          .min(1)
+          .max(100)
+          .refine(isValidTimeZone, "Invalid IANA timezone")
+          .optional(),
+        attempts: z
+          .array(
+            z.object({
+              attemptId: z.string().trim().min(1).max(200),
+              sourceCourseItemId: z.string().min(1),
+              vocabularySetId: z.string().min(1),
+              entryId: z.string().min(1),
+              evidence: z.enum(["RECOGNITION", "RECALL", "APPLICATION"]),
+              result: z.enum(["CORRECT", "INCORRECT", "REVEALED"]),
+            }),
+          )
+          .min(1)
+          .max(50),
+      }),
     )
     .mutation(({ ctx, input }) =>
-      createVocabularyRecallService(ctx.db, requireCourseItemAccess).submit(
+      createVocabularyProgressService(
+        ctx.db,
+        requireCourseItemAccess,
+      ).recordAttempts(
         ctx.actorUserId,
-        input,
+        input.attempts.map((attempt) => ({
+          ...attempt,
+          sessionId: input.sessionId,
+          gameKey: input.gameKey,
+        })),
+        input.timeZone,
       ),
     ),
   markContentProgress: protectedProcedure

@@ -1,5 +1,4 @@
 import type { RouterOutputs } from "@hakgyo/api";
-import Storage from "expo-sqlite/kv-store";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Text, TextInput, Pressable, View } from "react-native";
 import { SymbolView } from "expo-symbols";
@@ -8,14 +7,14 @@ import type { NativeGesture } from "react-native-gesture-handler";
 import { api } from "../lib/trpc";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
+import { isDefinitionCorrect } from "../lib/today-vocabulary-practice";
+import { isVocabularyAnswerCorrect } from "../lib/vocabulary-practice";
 import {
-  buildTodayVocabularyQueue,
-  emptyTodayVocabularyMemory,
-  isDefinitionCorrect,
-  parseTodayVocabularyMemory,
-  recordTodayVocabularyRecall,
-  type TodayVocabularyMemory,
-} from "../lib/today-vocabulary-practice";
+  matchSpeechAlternative,
+  type VocabularySpeechMode,
+} from "../lib/vocabulary-speech";
+import { useVocabularySpeech } from "../lib/use-vocabulary-speech";
+import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
 import { Action, Empty, QueryState } from "./learning-ui";
 import { GlassBox } from "./GlassBox";
 import {
@@ -36,15 +35,12 @@ function deviceTimeZone() {
 
 export function TodayVocabularyPractice({
   organizationId,
-  userId,
   scrollGesture,
 }: {
   organizationId: string;
-  userId: string;
   scrollGesture: NativeGesture;
 }) {
   const { colors, colorScheme } = useAppTheme();
-  const storageKey = `hakgyo:today-practice:v2:${userId}:${organizationId}`;
   const [seed, setSeed] = useState(randomSeed);
   const query = api.practice.getVocabularyPool.useQuery({
     limit: 24,
@@ -52,54 +48,48 @@ export function TodayVocabularyPractice({
     seed,
   });
   const utils = api.useUtils();
-  const recordReview = api.practice.recordVocabularyCardReview.useMutation({
+  const recordAttempts = api.learning.recordVocabularyAttempts.useMutation({
     retry: 3,
   });
-  const [loaded] = useState(() => {
-    try {
-      return {
-        memory: parseTodayVocabularyMemory(Storage.getItemSync(storageKey)),
-        failed: false,
-      };
-    } catch {
-      return { memory: emptyTodayVocabularyMemory(), failed: true };
-    }
-  });
-  const [memory, setMemory] = useState<TodayVocabularyMemory>(loaded.memory);
   const [round, setRound] = useState<VocabularyCard[]>([]);
   const [roundKey, setRoundKey] = useState("");
+  const roundSessionId = useRef(randomSeed());
   const [moving, setMoving] = useState(false);
   const submitted = useRef(false);
   const deckRef = useRef<VocabularyPracticeDeckHandle>(null);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
-  const [feedback, setFeedback] = useState<{ correct: boolean }>();
+  const [feedback, setFeedback] = useState<{
+    correct: boolean;
+    saved: boolean;
+  }>();
   const [revealed, setRevealed] = useState(false);
-  const [readFailed, setReadFailed] = useState(loaded.failed);
+  const [revealSaved, setRevealSaved] = useState(false);
+  const [mode, setMode] = useState<VocabularySpeechMode>("ID");
+  // Hands-free mic session: on = auto-listen every card, auto-advance when
+  // correct, auto-clear + retry when wrong, until the user stops it.
+  const [handsFree, setHandsFree] = useState(false);
+  const [typing, setTyping] = useState(false);
   const initializedPool = useRef<string | undefined>(undefined);
-  const [storageError, setStorageError] = useState<string>();
-  const memoryRef = useRef(memory);
-  memoryRef.current = memory;
   const inputRef = useRef<TextInput>(null);
   const restoreInputFocus = useRef(false);
+  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   function poolSignature(items: readonly VocabularyCard[]) {
     return items.map((item) => `${item.entryId}:${item.setVersion}`).join(",");
   }
 
   useEffect(() => {
-    if (!query.data || readFailed) return;
+    if (!query.data) return;
     const signature = `${seed}:${poolSignature(query.data.items)}`;
     if (initializedPool.current === signature) {
       return;
     }
     initializedPool.current = signature;
-    const next = buildTodayVocabularyQueue(
-      query.data.items,
-      memoryRef.current,
-      Date.now(),
-    );
-    setRound(next.cards);
+    roundSessionId.current = randomSeed();
+    setRound(query.data.items);
     setRoundKey(signature);
     setMoving(false);
     submitted.current = false;
@@ -108,58 +98,107 @@ export function TodayVocabularyPractice({
     setAnswer("");
     setFeedback(undefined);
     setRevealed(false);
-    // A new API pool starts a new round. Memory updates are handled in-place.
+    setRevealSaved(false);
+    // A new API pool starts a new round; attempt updates are server-owned.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query.data, readFailed, seed]);
+  }, [query.data, seed]);
 
   const card = round[index];
   const deckCards = useMemo(
     () =>
       round.map((item) => ({
         id: `${item.entryId}:${item.setVersion}`,
-        prompt: item.term,
-        answer: item.definition,
+        // KR mode answers in Korean (productive); ID mode answers in Indonesian (receptive).
+        prompt: mode === "KR" ? item.definition : item.term,
+        answer: mode === "KR" ? item.term : item.definition,
         imageAssetId: item.imageAssetId,
         imageAccessibilityLabel: `${item.term} illustration`,
       })),
-    [round],
+    [mode, round],
   );
+  const expectedAnswer = card
+    ? mode === "KR"
+      ? card.term
+      : card.definition
+    : "";
 
-  function saveMemory(next: TodayVocabularyMemory) {
-    setMemory(next);
+  function isAnswerCorrect(value: string) {
+    if (!card) return false;
+    return mode === "KR"
+      ? isVocabularyAnswerCorrect(value, card.term)
+      : isDefinitionCorrect(card, value);
+  }
+
+  async function checkAnswer(spokenTranscripts?: readonly string[]) {
+    if (!card || submitted.current || moving) return;
+    const spokenDisplay = spokenTranscripts?.find((text) => text.trim());
+    const value = spokenDisplay ?? answer;
+    if (!value.trim()) return;
+    submitted.current = true;
+    // Exact match against any STT alternative; fall back to the first
+    // transcript so wrong answers are still recorded.
+    const matched = spokenTranscripts?.length
+      ? (matchSpeechAlternative(expectedAnswer, spokenTranscripts) ??
+        spokenDisplay!)
+      : value;
+    if (spokenDisplay) setAnswer(matched);
+    const correct = isAnswerCorrect(matched);
+    setFeedback({ correct, saved: false });
+    if (!handsFree) inputRef.current?.focus();
+
+    await saveAnswer(correct);
+  }
+
+  async function saveAnswer(correct: boolean) {
+    if (!card) return;
+    const sessionId = roundSessionId.current;
+    recordAttempts.reset();
     try {
-      Storage.setItemSync(storageKey, JSON.stringify(next));
-      setStorageError(undefined);
+      await recordAttempts.mutateAsync({
+        gameKey: "today-cards",
+        sessionId,
+        timeZone: deviceTimeZone(),
+        attempts: [
+          {
+            attemptId: `${sessionId}:${index}:${card.entryId}`,
+            entryId: card.entryId,
+            evidence: "RECALL",
+            result: correct ? "CORRECT" : "INCORRECT",
+            sourceCourseItemId: card.sourceCourseItemId,
+            vocabularySetId: card.vocabularySetId,
+          },
+        ],
+      });
+      if (roundSessionId.current !== sessionId) return;
+      setFeedback({ correct, saved: true });
+      void Promise.allSettled([
+        utils.learning.invalidate(),
+        utils.gamification.invalidate(),
+      ]);
     } catch {
-      setStorageError("Could not save on this device.");
+      if (roundSessionId.current !== sessionId) return;
+      setFeedback({ correct, saved: false });
     }
   }
 
-  function checkAnswer() {
-    if (!card || submitted.current || moving || !answer.trim()) return;
-    submitted.current = true;
-    const correct = isDefinitionCorrect(card, answer);
-    recordReview.reset();
-    saveMemory(
-      recordTodayVocabularyRecall(memoryRef.current, card, correct, Date.now()),
-    );
-    setFeedback({ correct });
-    inputRef.current?.focus();
+  function clearAutoTimer() {
+    if (autoAdvanceTimer.current !== undefined) {
+      clearTimeout(autoAdvanceTimer.current);
+      autoAdvanceTimer.current = undefined;
+    }
+  }
 
-    void recordReview
-      .mutateAsync({
-        completionId: `${seed}:${index}:${card.entryId}:${card.setVersion}`,
-        entryId: card.entryId,
-        sourceCourseItemId: card.sourceCourseItemId,
-        timeZone: deviceTimeZone(),
-      })
-      .then(() => utils.gamification.invalidate())
-      .catch(() => undefined);
+  function stopSession() {
+    clearAutoTimer();
+    setHandsFree(false);
+    speech.abort();
   }
 
   function nextCard() {
+    clearAutoTimer();
+    speech.abort();
     deckRef.current?.advance();
-    inputRef.current?.focus();
+    if (!handsFree) inputRef.current?.focus();
   }
 
   function revealAnswer() {
@@ -167,25 +206,71 @@ export function TodayVocabularyPractice({
     // Claim the card synchronously: a queued keyboard submit must not award
     // credit after the learner has seen the answer.
     submitted.current = true;
+    clearAutoTimer();
+    speech.abort();
+    setTyping(false);
+    Keyboard.dismiss();
     setRevealed(true);
+    setRevealSaved(false);
     setAnswer("");
+    void saveReveal();
+  }
+
+  async function saveReveal() {
+    if (!card) return;
+    const sessionId = roundSessionId.current;
+    recordAttempts.reset();
+    try {
+      await recordAttempts.mutateAsync({
+        gameKey: "today-cards",
+        sessionId,
+        timeZone: deviceTimeZone(),
+        attempts: [
+          {
+            attemptId: `${sessionId}:${index}:${card.entryId}:revealed`,
+            entryId: card.entryId,
+            evidence: "RECALL",
+            result: "REVEALED",
+            sourceCourseItemId: card.sourceCourseItemId,
+            vocabularySetId: card.vocabularySetId,
+          },
+        ],
+      });
+      if (roundSessionId.current === sessionId) setRevealSaved(true);
+    } catch {
+      // Keep the card blocked so the learner can retry this exact outcome.
+    }
   }
 
   function handleInteractionChange(busy: boolean) {
-    if (busy)
-      restoreInputFocus.current = inputRef.current?.isFocused() ?? false;
+    if (busy) {
+      if (handsFree) {
+        restoreInputFocus.current = false;
+        setTyping(false);
+        Keyboard.dismiss();
+        speech.abort();
+      } else {
+        restoreInputFocus.current = inputRef.current?.isFocused() ?? false;
+      }
+    }
     setMoving(busy);
   }
 
   function finishAdvance() {
+    clearAutoTimer();
+    speech.abort();
     setIndex((value) => value + 1);
     setAnswer("");
     setFeedback(undefined);
     setRevealed(false);
-    recordReview.reset();
+    setTyping(false);
+    recordAttempts.reset();
     setMoving(false);
     submitted.current = false;
-    if (index + 1 >= round.length) Keyboard.dismiss();
+    if (index + 1 >= round.length) {
+      Keyboard.dismiss();
+      stopSession();
+    }
   }
 
   useEffect(() => {
@@ -197,23 +282,116 @@ export function TodayVocabularyPractice({
   function handleAnswerChange(value: string) {
     // Keep the keyboard mounted, but preserve the submitted answer during review.
     if (submitted.current || moving) return;
+    if (handsFree) {
+      setTyping(true);
+      speech.abort();
+    }
     setAnswer(value);
   }
 
-  function newMix() {
-    recordReview.reset();
-    setSeed(randomSeed());
+  function handleInputSubmit() {
+    setTyping(false);
+    if (feedback?.saved || (revealed && revealSaved)) {
+      if (handsFree) Keyboard.dismiss();
+      nextCard();
+      return;
+    }
+    if (revealed) {
+      void saveReveal();
+      return;
+    }
+    if (feedback) {
+      void saveAnswer(feedback.correct);
+      return;
+    }
+    if (handsFree) {
+      Keyboard.dismiss();
+      if (!matchSpeechAlternative(expectedAnswer, [answer])) {
+        setAnswer("");
+        return;
+      }
+    }
+    void checkAnswer();
   }
 
-  function retryHistory() {
-    try {
-      const next = parseTodayVocabularyMemory(Storage.getItemSync(storageKey));
-      initializedPool.current = undefined;
-      setMemory(next);
-      setReadFailed(false);
-    } catch {
-      // Keep practice blocked so an unread history is never overwritten.
+  const speech = useVocabularySpeech({
+    mode,
+    contextualStrings: useMemo(
+      () => round.map((item) => (mode === "KR" ? item.term : item.definition)),
+      [mode, round],
+    ),
+    disabled: !card || moving || typing,
+    onInterim: (text) => {
+      if (!submitted.current && !moving) setAnswer(text);
+    },
+    onFinal: (transcripts) => {
+      if (handsFree && !matchSpeechAlternative(expectedAnswer, transcripts)) {
+        setAnswer("");
+        return;
+      }
+      void checkAnswer(transcripts);
+    },
+  });
+  const listening = speech.status === "listening";
+  const speechBusy = speech.status !== "idle";
+
+  useEffect(() => {
+    if (
+      !handsFree ||
+      !card ||
+      moving ||
+      typing ||
+      feedback ||
+      revealed ||
+      submitted.current ||
+      (speech.errorMessage && !speech.recoverableError) ||
+      speech.status !== "idle"
+    )
+      return;
+    void speech.start();
+  }, [card, feedback, handsFree, moving, revealed, speech, typing]);
+
+  useEffect(() => {
+    if (handsFree && speech.errorMessage && !speech.recoverableError)
+      setHandsFree(false);
+  }, [handsFree, speech.errorMessage, speech.recoverableError]);
+
+  useEffect(() => {
+    if (!handsFree || !feedback?.correct || !feedback.saved || moving) return;
+    clearAutoTimer();
+    autoAdvanceTimer.current = setTimeout(() => {
+      autoAdvanceTimer.current = undefined;
+      nextCard();
+    }, 650);
+    return clearAutoTimer;
+  }, [feedback, handsFree, moving]);
+
+  useEffect(() => clearAutoTimer, []);
+
+  function toggleSpeechSession() {
+    if (handsFree) {
+      stopSession();
+      return;
     }
+    speech.clearError();
+    setTyping(false);
+    Keyboard.dismiss();
+    setHandsFree(true);
+  }
+
+  function handleModeChange(next: VocabularySpeechMode) {
+    if (next === mode || moving) return;
+    stopSession();
+    setTyping(false);
+    Keyboard.dismiss();
+    setMode(next);
+    setAnswer("");
+  }
+
+  function newMix() {
+    stopSession();
+    recordAttempts.reset();
+    setSeed(randomSeed());
   }
 
   return (
@@ -223,23 +401,9 @@ export function TodayVocabularyPractice({
         error={query.error}
         retry={() => void query.refetch()}
       />
-      {readFailed ? (
-        <View className="gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
-          <Text accessibilityRole="alert" className="text-sm text-destructive">
-            History could not be loaded. Practice is paused.
-          </Text>
-          <Action secondary onPress={retryHistory}>
-            Retry
-          </Action>
-        </View>
-      ) : storageError ? (
-        <Text accessibilityRole="alert" className="text-sm text-destructive">
-          {storageError}
-        </Text>
-      ) : null}
-      {!readFailed && query.data && !query.data.hasAvailableContent ? (
+      {query.data && !query.data.hasAvailableContent ? (
         <Empty>No words to practice yet.</Empty>
-      ) : !readFailed && round.length > 0 ? (
+      ) : round.length > 0 ? (
         <>
           <Text className="text-center text-xs font-bold uppercase tracking-[1.2px] text-muted-foreground">
             {card
@@ -253,29 +417,57 @@ export function TodayVocabularyPractice({
             cards={deckCards}
             index={index}
             correct={feedback?.correct}
+            disabled={
+              recordAttempts.isPending ||
+              (feedback ? !feedback.saved : false) ||
+              (revealed && !revealSaved)
+            }
             revealed={revealed}
             onReveal={revealAnswer}
             onInteractionChange={handleInteractionChange}
             onAdvanceComplete={finishAdvance}
           />
+          <View className="items-center">
+            <VocabularyModeSwitch
+              mode={mode}
+              onChange={handleModeChange}
+              disabled={moving || speechBusy}
+            />
+          </View>
           {card ? (
             <View className="gap-3">
               <Text className="text-center text-xs text-muted-foreground">
                 {moving
                   ? "Bringing up the next card…"
-                  : revealed
-                    ? "Just studying · no XP or streak change. Swipe up or tap Next."
-                    : feedback
-                      ? "Swipe up or tap Next when you’re ready."
-                      : "Type the definition, peel the bottom-right corner to reveal, or swipe up to skip."}
+                  : listening
+                    ? mode === "KR"
+                      ? "Listening for Korean… tap mic to stop."
+                      : "Listening for Indonesian… tap mic to stop."
+                    : revealed
+                      ? "Just studying · no XP or streak change. Swipe up or tap Next."
+                      : feedback
+                        ? feedback.saved
+                          ? "Swipe up or tap Next when you’re ready."
+                          : "Saving your answer…"
+                        : mode === "KR"
+                          ? "Say or type the Korean word, peel the corner to reveal, or swipe up to skip."
+                          : "Say or type the definition, peel the corner to reveal, or swipe up to skip."}
               </Text>
-              {recordReview.error ? (
+              {speech.errorMessage && !feedback && !revealed ? (
                 <Text
                   accessibilityRole="alert"
                   className="text-center text-sm text-destructive"
                 >
-                  Your answer is saved, but XP could not sync for this card.
-                  Check your connection before continuing.
+                  {speech.errorMessage}
+                </Text>
+              ) : null}
+              {recordAttempts.error ? (
+                <Text
+                  accessibilityRole="alert"
+                  className="text-center text-sm text-destructive"
+                >
+                  Your answer could not be saved. Check your connection and try
+                  again.
                 </Text>
               ) : null}
               <View className="flex-row items-center gap-2">
@@ -299,20 +491,33 @@ export function TodayVocabularyPractice({
                       >
                         {revealed
                           ? "Ready for the next word?"
-                          : "Type the definition"}
+                          : listening
+                            ? "Listening…"
+                            : mode === "KR"
+                              ? "Type the Korean word"
+                              : "Type the definition"}
                       </Text>
                     </View>
                   ) : null}
                   <TextInput
                     ref={inputRef}
-                    accessibilityLabel={`Definition for ${card.term}`}
+                    accessibilityLabel={
+                      mode === "KR"
+                        ? `Korean word for ${card.definition}`
+                        : `Definition for ${card.term}`
+                    }
                     autoCapitalize="none"
                     autoCorrect={false}
                     blurOnSubmit={false}
+                    onBlur={() => setTyping(false)}
                     onChangeText={handleAnswerChange}
-                    onSubmitEditing={
-                      feedback || revealed ? nextCard : checkAnswer
-                    }
+                    onFocus={() => {
+                      if (!handsFree) return;
+                      clearAutoTimer();
+                      setTyping(true);
+                      speech.abort();
+                    }}
+                    onSubmitEditing={handleInputSubmit}
                     returnKeyType={feedback || revealed ? "next" : "done"}
                     selectionColor={colors.primary}
                     value={answer}
@@ -328,19 +533,88 @@ export function TodayVocabularyPractice({
                       width: "100%",
                     }}
                   />
+                  {handsFree || (!feedback && !revealed) ? (
+                    <Pressable
+                      accessibilityLabel={
+                        handsFree
+                          ? "Stop hands-free practice"
+                          : "Start hands-free practice"
+                      }
+                      accessibilityRole="button"
+                      accessibilityState={{
+                        busy: speechBusy,
+                        disabled: moving && !handsFree,
+                      }}
+                      disabled={moving && !handsFree}
+                      onPress={toggleSpeechSession}
+                      className="rounded-full active:opacity-75"
+                      style={{
+                        opacity: moving ? 0.5 : 1,
+                        position: "absolute",
+                        left: 2,
+                        top: 2,
+                      }}
+                    >
+                      <View
+                        className="size-10 items-center justify-center"
+                        style={{
+                          transform: [{ translateX: 2 }, { translateY: 2 }],
+                        }}
+                      >
+                        <SymbolView
+                          fallback={
+                            <Text
+                              className="text-xl font-black"
+                              style={{
+                                color: handsFree
+                                  ? colors.destructive
+                                  : colors.primary,
+                              }}
+                            >
+                              {handsFree ? "■" : "🎙"}
+                            </Text>
+                          }
+                          name={handsFree ? "stop.fill" : "mic.fill"}
+                          size={22}
+                          style={{ height: 22, width: 22 }}
+                          tintColor={
+                            handsFree ? colors.destructive : colors.primary
+                          }
+                          weight="bold"
+                        />
+                      </View>
+                    </Pressable>
+                  ) : null}
                   {feedback || revealed ? (
                     <Pressable
-                      accessibilityLabel="Next word"
+                      accessibilityLabel={
+                        feedback && !feedback.saved
+                          ? "Retry saving answer"
+                          : revealed && !revealSaved
+                            ? "Retry saving reveal"
+                            : "Next word"
+                      }
                       accessibilityRole="button"
-                      accessibilityState={{ disabled: moving, busy: moving }}
-                      disabled={moving}
+                      accessibilityState={{
+                        disabled: moving || recordAttempts.isPending,
+                        busy: moving || recordAttempts.isPending,
+                      }}
+                      disabled={moving || recordAttempts.isPending}
                       style={{
                         opacity: moving ? 0.5 : 1,
                         position: "absolute",
                         right: 2,
                         top: 2,
                       }}
-                      onPress={nextCard}
+                      onPress={() => {
+                        if (feedback && !feedback.saved) {
+                          void saveAnswer(feedback.correct);
+                        } else if (revealed && !revealSaved) {
+                          void saveReveal();
+                        } else {
+                          nextCard();
+                        }
+                      }}
                       className="rounded-full active:opacity-75"
                     >
                       <View
@@ -365,14 +639,16 @@ export function TodayVocabularyPractice({
                     </Pressable>
                   ) : (
                     <Pressable
-                      accessibilityLabel="Check definition"
+                      accessibilityLabel={
+                        mode === "KR" ? "Check Korean word" : "Check definition"
+                      }
                       accessibilityRole="button"
                       accessibilityState={{
-                        busy: recordReview.isPending,
+                        busy: recordAttempts.isPending,
                         disabled: moving || !answer.trim(),
                       }}
                       disabled={moving || !answer.trim()}
-                      onPress={checkAnswer}
+                      onPress={() => void checkAnswer()}
                       className="rounded-full active:opacity-75"
                       style={{
                         opacity: answer.trim() ? 1 : 0.4,

@@ -31,8 +31,8 @@ model User {
   courseEnrollments           CourseEnrollment[]
   cohortEnrollments           CohortEnrollment[]
   assessmentEventParticipants AssessmentEventParticipant[]
-  vocabularyMemory            VocabularyMemory[]
-  vocabularyRecallChallenges  VocabularyRecallChallenge[]
+  vocabularyProgress          VocabularyProgress[]
+  vocabularyPracticeAttempts  VocabularyPracticeAttempt[]
   contentProgress             ContentProgress[]
   assessmentAttempts          AssessmentAttempt[]
   activityEvents              UserActivityEvent[]
@@ -416,6 +416,18 @@ enum CourseItemType {
   VOCABULARY_SET
 }
 
+enum VocabularyPracticeEvidence {
+  RECOGNITION
+  RECALL
+  APPLICATION
+}
+
+enum VocabularyPracticeResult {
+  CORRECT
+  INCORRECT
+  REVEALED
+}
+
 enum RequirementPolicy {
   ALL
   ANY
@@ -739,7 +751,7 @@ model CourseItem {
   material         Material?                   @relation(fields: [materialId, organizationId], references: [id, organizationId], onDelete: Restrict)
   assessment       Assessment?                 @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
   vocabularySet    VocabularySet?              @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  recallChallenges VocabularyRecallChallenge[]
+  practiceAttempts VocabularyPracticeAttempt[]
   progress         ContentProgress[]
   attempts         AssessmentAttempt[]
   assessmentEvents AssessmentEvent[]
@@ -885,8 +897,8 @@ model VocabularyEntry {
   metadata         Json?
   createdAt        DateTime                    @default(now())
   updatedAt        DateTime                    @updatedAt
-  memory           VocabularyMemory[]
-  recallChallenges VocabularyRecallChallenge[]
+  progress         VocabularyProgress[]
+  practiceAttempts VocabularyPracticeAttempt[]
   vocabularySet    VocabularySet               @relation(fields: [vocabularySetId, organizationId], references: [id, organizationId], onDelete: Cascade)
   audioAsset       Asset?                      @relation("VocabularyEntryAudio", fields: [audioAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
   imageAsset       Asset?                      @relation("VocabularyEntryImage", fields: [imageAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
@@ -1189,40 +1201,41 @@ model MaterialAsset {
   @@index([assetId])
 }
 
-// Evidence is scoped to a learner and library entry, shared across placements.
-model VocabularyMemory {
-  entryId      String
-  userId       String
-  contentHash  String
-  passStreak   Int             @default(0)
-  failStreak   Int             @default(0)
-  rememberedAt DateTime?
-  nextReviewAt DateTime?
-  updatedAt    DateTime        @updatedAt
-  entry        VocabularyEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+// Learner state is shared across every placement and practice tool.
+model VocabularyProgress {
+  entryId            String
+  userId             String
+  contentHash        String
+  practicedAt        DateTime?
+  masteredAt         DateTime?
+  nextReviewAt       DateTime?
+  correctRecallCount Int             @default(0)
+  updatedAt          DateTime        @updatedAt
+  entry              VocabularyEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([entryId, userId])
-  @@index([userId, rememberedAt])
+  @@index([userId, masteredAt])
+  @@index([userId, nextReviewAt])
 }
 
-model VocabularyRecallChallenge {
-  id                 String          @id @default(cuid())
+model VocabularyPracticeAttempt {
+  id                 String                     @id
+  sessionId          String
   entryId            String
   userId             String
   sourceCourseItemId String
-  contentHash        String
-  prompt             String
-  expectedAnswer     String
-  createdAt          DateTime        @default(now())
-  expiresAt          DateTime
-  submittedAt        DateTime?
-  correct            Boolean?
-  entry              VocabularyEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceCourseItem   CourseItem      @relation(fields: [sourceCourseItemId], references: [id], onDelete: Cascade)
+  gameKey            String
+  evidence           VocabularyPracticeEvidence
+  result             VocabularyPracticeResult
+  createdAt          DateTime                   @default(now())
+  entry              VocabularyEntry            @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceCourseItem   CourseItem                 @relation(fields: [sourceCourseItemId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, sessionId, entryId])
   @@index([userId, entryId, createdAt])
+  @@index([sourceCourseItemId])
 }
 
 // Organization primary key guarantees exactly one customizable page per organization.

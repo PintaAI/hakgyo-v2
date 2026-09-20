@@ -15,3 +15,11 @@ One learner's answer session for an assessment. The latest attempt determines wh
 ## Assessment details
 
 The context screen shown before a learner's first attempt and after a terminal attempt. It owns assessment metadata, results, leaderboard state, and the action to start or re-attempt. It is skipped while an attempt is in progress.
+
+## Learning recap
+
+A learner-facing summary shown after a practice game. It highlights vocabulary that needs another review rather than collecting developer analytics.
+
+## Review item
+
+A vocabulary entry included in a learning recap because it reached the player or the learner mistyped its answer while targeting it. The same vocabulary appears only once even when both events occur.

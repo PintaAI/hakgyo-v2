@@ -144,6 +144,10 @@ function RootNavigator() {
               <Stack.Screen name="events/[eventId]" />
               <Stack.Screen name="vocabulary/[vocabularySetId]" />
               <Stack.Screen
+                name="games/[gameKey]"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
                 name="courses/[courseId]/items/[courseItemId]"
                 options={{ headerShown: true, headerTitle: "" }}
               />

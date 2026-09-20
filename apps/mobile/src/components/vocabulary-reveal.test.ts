@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 import * as jsx from "react/jsx-runtime";
 import * as todayPractice from "../lib/today-vocabulary-practice";
 import * as vocabularyPractice from "../lib/vocabulary-practice";
+import * as vocabularySpeech from "../lib/vocabulary-speech";
 
 const require = createRequire(import.meta.url);
 const compilerRequire = createRequire(
@@ -66,29 +67,27 @@ function screenHarness(kind: "today" | "course") {
       courseTitle: "Korean",
     })),
   };
-  const evidence = { items: [], practiced: false, remembered: false };
-  const review = mock(async () => undefined);
-  const submit = mock(async () => ({ ...evidence, correct: true }));
-  const start = mock(async ({ entryId }: { entryId: string }) => ({
-    entryId,
-    challengeId: `challenge-${entryId}`,
-    prompt: words.find((word) => word.id === entryId)?.definition,
+  const evidence = {
+    items: [],
+    practiced: false,
+    mastered: false,
+    counts: { total: 2, new: 2, learning: 0, mastered: 0, due: 0 },
+  };
+  const record = mock(async (_input: unknown) => ({
+    sets: [{ vocabularySetId: "set", ...evidence }],
   }));
-  const storageWrite = mock(() => undefined);
   const complete = mock(async () => undefined);
   const advance = mock(() => undefined);
   const mutation = (mutateAsync: unknown) => ({
     mutateAsync,
     reset() {},
     isPending: false,
+    error: undefined,
   });
+  const invalidate = () => undefined;
   const dependencies: Record<string, unknown> = {
     react: hooks,
     "react/jsx-runtime": jsx,
-    "expo-sqlite/kv-store": {
-      getItemSync: () => null,
-      setItemSync: storageWrite,
-    },
     "expo-router": {
       Stack: {
         Toolbar: Object.assign("Toolbar", {
@@ -109,25 +108,55 @@ function screenHarness(kind: "today" | "course") {
     },
     "../lib/trpc": {
       api: {
-        useUtils: () => ({ gamification: { invalidate() {} } }),
+        useUtils: () => ({
+          gamification: { invalidate },
+          practice: { invalidate },
+          learning: {
+            invalidate,
+            getVocabularyProgress: { invalidate },
+            getCourseItem: { invalidate },
+            getCourseOutline: { invalidate },
+            listMyCourses: { invalidate },
+          },
+        }),
         practice: {
           getVocabularyPool: { useQuery: () => ({ data: pool }) },
-          recordVocabularyCardReview: { useMutation: () => mutation(review) },
         },
         learning: {
-          getVocabularyMemory: {
+          getVocabularyProgress: {
             useQuery: () => ({
               data: evidence,
               refetch: async () => ({ data: evidence }),
             }),
           },
-          startVocabularyRecall: { useMutation: () => mutation(start) },
-          submitVocabularyRecall: { useMutation: () => mutation(submit) },
+          recordVocabularyAttempts: { useMutation: () => mutation(record) },
         },
       },
     },
+    "../lib/use-vocabulary-progress": {
+      useVocabularyProgressReporter: () => ({
+        error: undefined,
+        isPending: false,
+        report: record,
+        reset() {},
+        startSession() {},
+      }),
+    },
     "../lib/today-vocabulary-practice": todayPractice,
     "../lib/vocabulary-practice": vocabularyPractice,
+    "../lib/vocabulary-speech": vocabularySpeech,
+    "../lib/use-vocabulary-speech": {
+      useVocabularySpeech: () => ({
+        status: "idle",
+        errorMessage: undefined,
+        volume: 0,
+        start: async () => undefined,
+        stop: () => undefined,
+        abort: () => undefined,
+        toggle: () => undefined,
+      }),
+    },
+    "./vocabulary-mode-switch": { VocabularyModeSwitch: "ModeSwitch" },
     "../providers/AppThemeProvider": {
       useAppTheme: () => ({
         colors: { primary: "#ffffff" },
@@ -142,6 +171,11 @@ function screenHarness(kind: "today" | "course") {
       QueryState: "QueryState",
     },
     "./GlassBox": { GlassBox: "GlassBox" },
+    "../games/game-modals": {
+      GameJourneyFooter: "GameJourneyFooter",
+      GameModal: "GameModal",
+      GameStartModal: "GameStartModal",
+    },
     "./vocabulary-practice-deck": { VocabularyPracticeDeck: "Deck" },
   };
   const filename = new URL(
@@ -178,13 +212,11 @@ function screenHarness(kind: "today" | "course") {
     ]!;
   const props = {
     organizationId: "org",
-    userId: "user",
     scrollGesture: {},
     words,
     vocabularySetId: "set",
     sourceCourseItemId: "item",
     onComplete: complete,
-    saving: false,
   };
   let tree: Element;
   function render() {
@@ -226,15 +258,20 @@ function screenHarness(kind: "today" | "course") {
     }
   }
   render();
+  function recordedResult(index: number) {
+    const input = record.mock.calls[index]?.[0] as
+      { result: string } | { attempts: { result: string }[] } | undefined;
+    return input && "attempts" in input
+      ? input.attempts[0]?.result
+      : input?.result;
+  }
   return {
     kind,
     render,
     find,
     flush,
-    review,
-    submit,
-    start,
-    storageWrite,
+    record,
+    recordedResult,
     complete,
     advance,
   };
@@ -244,7 +281,7 @@ for (const kind of ["today", "course"] as const) {
   describe(`${kind} study reveal`, () => {
     async function setup() {
       const screen = screenHarness(kind);
-      if (kind === "course") screen.find("Action").props.onPress();
+      if (kind === "course") screen.find("GameStartModal").props.onPrimary();
       await screen.flush();
       screen
         .find("TextInput")
@@ -263,9 +300,8 @@ for (const kind of ["today", "course"] as const) {
       await screen.flush();
       expect(screen.find("Deck").props.revealed).toBeTrue();
       expect(screen.find("Deck").props.correct).toBeUndefined();
-      expect(screen.review).not.toHaveBeenCalled();
-      expect(screen.submit).not.toHaveBeenCalled();
-      expect(screen.storageWrite).not.toHaveBeenCalled();
+      expect(screen.record).toHaveBeenCalledTimes(1);
+      expect(screen.recordedResult(0)).toBe("REVEALED");
       expect(screen.complete).not.toHaveBeenCalled();
       screen.find("TextInput").props.onSubmitEditing();
       expect(screen.advance).toHaveBeenCalledTimes(1);
@@ -280,9 +316,8 @@ for (const kind of ["today", "course"] as const) {
       screen.render();
       screen.find("TextInput").props.onSubmitEditing();
       await screen.flush();
-      expect(
-        kind === "today" ? screen.review : screen.submit,
-      ).toHaveBeenCalledTimes(1);
+      expect(screen.record).toHaveBeenCalledTimes(2);
+      expect(screen.recordedResult(1)).toBe("CORRECT");
       expect(screen.find("Deck").props.correct).toBeTrue();
     });
 
@@ -294,9 +329,7 @@ for (const kind of ["today", "course"] as const) {
       await screen.flush();
       expect(screen.find("Deck").props.revealed).toBeFalse();
       expect(screen.find("Deck").props.correct).toBeTrue();
-      expect(
-        kind === "today" ? screen.review : screen.submit,
-      ).toHaveBeenCalledTimes(1);
+      expect(screen.record).toHaveBeenCalledTimes(1);
     });
 
     test("a whole round of reveals earns no credit and a new round starts covered", async () => {
@@ -307,12 +340,13 @@ for (const kind of ["today", "course"] as const) {
         screen.find("Deck").props.onAdvanceComplete();
         await screen.flush();
       }
-      expect(screen.review).not.toHaveBeenCalled();
-      expect(screen.submit).not.toHaveBeenCalled();
-      expect(screen.storageWrite).not.toHaveBeenCalled();
+      expect(screen.record).toHaveBeenCalledTimes(2);
+      expect(screen.recordedResult(0)).toBe("REVEALED");
+      expect(screen.recordedResult(1)).toBe("REVEALED");
       expect(screen.complete).not.toHaveBeenCalled();
 
-      screen.find("Action").props.onPress();
+      if (kind === "course") screen.find("GameStartModal").props.onPrimary();
+      else screen.find("Action").props.onPress();
       await screen.flush();
       expect(screen.find("Deck").props.index).toBe(0);
       expect(screen.find("Deck").props.revealed).toBeFalse();

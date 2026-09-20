@@ -3,6 +3,7 @@ import {
   calculateStreak,
   getLocalCalendarWindow,
 } from "~/server/gamification/logic";
+import { hasPassedAssessment } from "~/server/learning/sequential-access";
 
 export const gamificationRouter = createTRPCRouter({
   getMySummary: protectedProcedure.query(async ({ ctx }) => {
@@ -21,8 +22,15 @@ export const gamificationRouter = createTRPCRouter({
     });
     const timeZone = summary?.timeZone ?? "UTC";
     const calendar = getLocalCalendarWindow(now, timeZone);
-    const [achievements, recentActivity, streakActivities, weeklyActivities] =
-      await Promise.all([
+    const [
+      achievements,
+      recentActivity,
+      streakActivities,
+      weeklyActivities,
+      vocabularyMastered,
+      assessmentAttempts,
+      progressedModules,
+    ] = await Promise.all([
         ctx.db.userAchievement.findMany({
           where: { userId: ctx.actorUserId },
           orderBy: { earnedAt: "desc" },
@@ -54,6 +62,69 @@ export const gamificationRouter = createTRPCRouter({
             xpAwarded: true,
           },
         }),
+        ctx.db.vocabularyProgress.count({
+          where: { userId: ctx.actorUserId, masteredAt: { not: null } },
+        }),
+        ctx.db.assessmentAttempt.count({
+          where: { userId: ctx.actorUserId },
+        }),
+        ctx.db.courseModule.findMany({
+          where: {
+            items: {
+              some: {
+                isPublished: true,
+                OR: [
+                  {
+                    progress: {
+                      some: {
+                        userId: ctx.actorUserId,
+                        status: "COMPLETED",
+                      },
+                    },
+                  },
+                  {
+                    assessment: {
+                      attempts: {
+                        some: {
+                          userId: ctx.actorUserId,
+                          status: "GRADED",
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          select: {
+            items: {
+              where: { isPublished: true },
+              select: {
+                type: true,
+                progress: {
+                  where: {
+                    userId: ctx.actorUserId,
+                    status: "COMPLETED",
+                  },
+                  select: { id: true },
+                  take: 1,
+                },
+                assessment: {
+                  select: {
+                    passingScore: true,
+                    attempts: {
+                      where: {
+                        userId: ctx.actorUserId,
+                        status: "GRADED",
+                      },
+                      select: { status: true, score: true, maxScore: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
       ]);
 
     const currentStreak = calculateStreak(
@@ -73,10 +144,30 @@ export const gamificationRouter = createTRPCRouter({
       (total, activity) => total + activity.xpAwarded,
       0,
     );
+    const modulesMastered = progressedModules.filter(
+      (module) =>
+        module.items.length > 0 &&
+        module.items.every((item) =>
+          item.type === "ASSESSMENT"
+            ? Boolean(
+                item.assessment &&
+                  hasPassedAssessment(
+                    item.assessment.attempts,
+                    item.assessment.passingScore,
+                  ),
+              )
+            : item.progress.length > 0,
+        ),
+    ).length;
 
     return {
       achievements,
       recentActivity,
+      profileStats: {
+        assessmentAttempts,
+        modulesMastered,
+        vocabularyMastered,
+      },
       summary: summary
         ? { ...summary, currentStreak }
         : {

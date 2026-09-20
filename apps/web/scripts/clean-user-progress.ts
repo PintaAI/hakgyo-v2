@@ -22,7 +22,7 @@ if (values.help || !email) {
       "Without --execute this is a dry run: it only prints what WOULD be deleted.\n" +
       "With --execute it deletes learning progress for the user with this email.\n\n" +
       "Deleted: content progress, assessment attempts (+ answers), vocabulary\n" +
-      "memory + recall challenges, gamification activity/achievements/summary.\n" +
+      "progress + practice attempts, gamification activity/achievements/summary.\n" +
       "Kept: user account, sessions, enrollments, event participations.",
   );
   process.exit(values.help ? 0 : 1);
@@ -56,23 +56,31 @@ async function collectCounts() {
       ).map((answer) => answer.id)
     : [];
 
-  const [selections, answers, content, challenges, memory, activity, achievements, gamification] =
-    await Promise.all([
-      answerIds.length
-        ? db.assessmentAnswerSelection.count({
-            where: { answerId: { in: answerIds } },
-          })
-        : 0,
-      db.assessmentAnswer.count({
-        where: { attemptId: { in: attemptIds } },
-      }),
-      db.contentProgress.count({ where: { userId } }),
-      db.vocabularyRecallChallenge.count({ where: { userId } }),
-      db.vocabularyMemory.count({ where: { userId } }),
-      db.userActivityEvent.count({ where: { userId } }),
-      db.userAchievement.count({ where: { userId } }),
-      db.userGamification.count({ where: { userId } }),
-    ]);
+  const [
+    selections,
+    answers,
+    content,
+    vocabularyAttempts,
+    vocabularyProgress,
+    activity,
+    achievements,
+    gamification,
+  ] = await Promise.all([
+    answerIds.length
+      ? db.assessmentAnswerSelection.count({
+          where: { answerId: { in: answerIds } },
+        })
+      : 0,
+    db.assessmentAnswer.count({
+      where: { attemptId: { in: attemptIds } },
+    }),
+    db.contentProgress.count({ where: { userId } }),
+    db.vocabularyPracticeAttempt.count({ where: { userId } }),
+    db.vocabularyProgress.count({ where: { userId } }),
+    db.userActivityEvent.count({ where: { userId } }),
+    db.userAchievement.count({ where: { userId } }),
+    db.userGamification.count({ where: { userId } }),
+  ]);
 
   return {
     attemptIds,
@@ -82,8 +90,8 @@ async function collectCounts() {
       answers,
       answerSelections: selections,
       contentProgress: content,
-      recallChallenges: challenges,
-      vocabularyMemory: memory,
+      vocabularyAttempts,
+      vocabularyProgress,
       activityEvents: activity,
       achievements,
       gamificationRows: gamification,
@@ -126,8 +134,8 @@ await db.$transaction([
       ]
     : []),
   db.contentProgress.deleteMany({ where: { userId } }),
-  db.vocabularyRecallChallenge.deleteMany({ where: { userId } }),
-  db.vocabularyMemory.deleteMany({ where: { userId } }),
+  db.vocabularyPracticeAttempt.deleteMany({ where: { userId } }),
+  db.vocabularyProgress.deleteMany({ where: { userId } }),
   db.userActivityEvent.deleteMany({ where: { userId } }),
   db.userAchievement.deleteMany({ where: { userId } }),
   db.userGamification.deleteMany({ where: { userId } }),

@@ -1,44 +1,36 @@
 import { useQueryClient } from "@tanstack/react-query";
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  Share,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Linking, Text } from "react-native";
 
+import { AppSegmentedControl } from "../../../../src/components/app-segmented-control";
+import { StudyScreen } from "../../../../src/components/learning-ui";
+import {
+  MilestoneTrail,
+  ProfileHero,
+  RecentActivity,
+} from "../../../../src/components/profile-learner";
+import {
+  SettingsRow,
+  SettingsSection,
+} from "../../../../src/components/settings-ui";
+import { WeeklyStreak } from "../../../../src/components/weekly-streak";
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
-import {
-  Action,
-  Card,
-  Empty,
-  Eyebrow,
-  QueryState,
-  Row,
-  StudyScreen,
-} from "../../../../src/components/learning-ui";
-import { WeeklyStreak } from "../../../../src/components/weekly-streak";
-import { achievementLabel, dateLabel } from "../../../../src/lib/study";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+
+const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 
 export default function ProfileTab() {
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [segment, setSegment] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const { colors, isRefreshingOrganizations, refreshOrganizations } =
+  const { activeBrand, isRefreshingOrganizations, refreshOrganizations } =
     useAppTheme();
   const progress = api.gamification.getMySummary.useQuery();
-  const connections = api.account.listMcpAuthorizations.useQuery();
-  const connector = api.account.getMcpConnectionInfo.useQuery();
-  const revoke = api.account.revokeMcpAuthorization.useMutation({
-    onSuccess: () => connections.refetch(),
-  });
   const displayName = session?.user.name || "Hakgyo learner";
   const initials = displayName
     .trim()
@@ -74,169 +66,127 @@ export default function ProfileTab() {
       title="Profile"
       onRefresh={() => {
         void progress.refetch();
-        void connections.refetch();
         void refreshOrganizations();
       }}
-      refreshing={
-        progress.isRefetching ||
-        connections.isRefetching ||
-        isRefreshingOrganizations
-      }
+      refreshing={progress.isRefetching || isRefreshingOrganizations}
     >
-      <View className="flex-row items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4">
-        <View
-          className="size-14 items-center justify-center overflow-hidden rounded-full"
-          style={{ backgroundColor: colors.primary }}
-        >
-          {session?.user.image ? (
-            <Image
-              className="size-full"
-              resizeMode="cover"
-              source={{ uri: session.user.image }}
-            />
-          ) : (
-            <Text
-              className="text-lg font-extrabold"
-              style={{ color: colors.primaryForeground }}
-            >
-              {initials || "H"}
-            </Text>
-          )}
-        </View>
-        <View className="min-w-0 flex-1 gap-0.5">
-          <Text
-            className="text-xl font-black tracking-tight text-foreground"
-            numberOfLines={1}
-          >
-            {displayName}
-          </Text>
-          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-            {session?.user.email ?? "Not signed in"}
-          </Text>
-        </View>
-      </View>
-      <WeeklyStreak />
-      <Card>
-        <Eyebrow>Milestones</Eyebrow>
-        {progress.data?.achievements.length === 0 ? (
-          <Empty>
-            Complete your first learning activity to earn a milestone.
-          </Empty>
-        ) : null}
-        {progress.data?.achievements.map((achievement) => (
-          <Row
-            key={achievement.code}
-            title={achievementLabel(achievement.code)}
-            detail={dateLabel(achievement.earnedAt)}
+      <AppSegmentedControl
+        values={["Profile", "Settings"]}
+        selectedIndex={segment}
+        onIndexChange={setSegment}
+      />
+
+      {segment === 0 ? (
+        <>
+          <ProfileHero
+            displayName={displayName}
+            initials={initials}
+            image={session?.user.image}
+            email={session?.user.email ?? "Not signed in"}
+            stats={progress.data?.profileStats}
+            isPending={progress.isPending}
           />
-        ))}
-      </Card>
-      <Card>
-        <Eyebrow>Learning activity</Eyebrow>
-        {progress.data?.recentActivity.map((activity, index) => (
-          <Row
-            key={index}
-            title={activity.action.replaceAll("_", " ").toLowerCase()}
-            detail={`+${activity.xpAwarded} XP · ${dateLabel(activity.occurredAt)}`}
+          <WeeklyStreak />
+          <MilestoneTrail
+            achievements={progress.data?.achievements}
+            isPending={progress.isPending}
+            error={progress.error}
+            onRetry={() => void progress.refetch()}
           />
-        ))}
-        <Text className="text-xs text-muted-foreground">
-          Course streaks currently use UTC days.
-        </Text>
-      </Card>
-      <Card>
-        <Eyebrow>Connected AI apps</Eyebrow>
-        <Text className="text-sm leading-5 text-muted-foreground">
-          Use Hakgyo’s connector with a compatible AI app. Authorization happens
-          in that app’s browser sign-in flow.
-        </Text>
-        <QueryState
-          pending={connector.isPending}
-          error={connector.error}
-          retry={() => void connector.refetch()}
-        />
-        {connector.data ? (
-          <Text selectable className="text-sm text-primary">
-            {connector.data.resource}
-          </Text>
-        ) : null}
-        <Action
-          secondary
-          disabled={!connector.data}
-          onPress={() => {
-            if (connector.data)
-              void Share.share({ message: connector.data.resource }).catch(() =>
-                setError("Couldn’t share the connector address."),
-              );
-          }}
-        >
-          Share connector address
-        </Action>
-        <QueryState
-          pending={connections.isPending}
-          error={connections.error}
-          retry={() => void connections.refetch()}
-        />
-        {connections.data?.length === 0 ? (
-          <Empty>No AI apps have been authorized.</Empty>
-        ) : null}
-        {connections.data?.map((connection) => (
-          <View key={connection.id} className="gap-3">
-            <Row
-              title={connection.name}
-              detail={`Authorized ${dateLabel(connection.createdAt)}`}
+          <RecentActivity
+            activities={progress.data?.recentActivity ?? []}
+            weekXp={progress.data?.weeklyActivity.xp ?? 0}
+          />
+        </>
+      ) : (
+        <>
+          <SettingsSection title="Account">
+            <SettingsRow
+              label="Account details"
+              detail={session?.user.email ?? "Not signed in"}
+              symbol="person.crop.circle"
+              fallback="?"
+              onPress={() => router.push("/(home)/(tabs)/profile/account")}
             />
-            <Action
-              secondary
-              disabled={revoke.isPending}
+            <SettingsRow
+              label="Sign out"
+              symbol="arrow.right"
+              fallback="→"
+              destructive
+              onPress={() => void handleSignOut()}
+            />
+          </SettingsSection>
+
+          <SettingsSection title="Appearance">
+            <SettingsRow
+              label="Organization"
+              detail={activeBrand.name}
+              symbol="square.grid.2x2"
+              fallback="#"
+              onPress={() => router.push("/organization-switcher")}
+            />
+          </SettingsSection>
+
+          <SettingsSection title="Notifications">
+            <SettingsRow
+              label="Reminders and alerts"
+              detail="System settings"
+              symbol="speaker.fill"
+              fallback="♪"
+              onPress={() => void Linking.openSettings()}
+            />
+          </SettingsSection>
+
+          <SettingsSection title="Updates">
+            <SettingsRow
+              label="Check for updates"
+              detail={`v${APP_VERSION}`}
+              symbol="checkmark"
+              fallback="✓"
               onPress={() =>
                 Alert.alert(
-                  "Disconnect AI app?",
-                  `${connection.name} will lose its authorization to access Hakgyo.`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Disconnect",
-                      style: "destructive",
-                      onPress: () =>
-                        revoke.mutate({ clientId: connection.clientId }),
-                    },
-                  ],
+                  "Updates",
+                  "Over-the-air updates are not configured yet. You are on the installed build.",
                 )
               }
+            />
+            <SettingsRow
+              label={`App version ${APP_VERSION}`}
+              symbol="list.bullet"
+              fallback="i"
+              onPress={() =>
+                Alert.alert(
+                  "Updates",
+                  "Over-the-air updates are not configured yet. You are on the installed build.",
+                )
+              }
+            />
+          </SettingsSection>
+
+          <SettingsSection title="Support">
+            <SettingsRow
+              label="Send feedback"
+              symbol="paperplane.fill"
+              fallback="✈"
+              onPress={() =>
+                Alert.alert(
+                  "Support",
+                  "A support contact is not configured yet. Please reach out to your organization administrator.",
+                )
+              }
+            />
+          </SettingsSection>
+
+          {error ?? isSigningOut ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              className="text-center text-sm font-semibold text-muted-foreground"
             >
-              Disconnect
-            </Action>
-          </View>
-        ))}
-        {revoke.error ? (
-          <Text accessibilityRole="alert" className="text-sm text-destructive">
-            {revoke.error.message}
-          </Text>
-        ) : null}
-      </Card>
-
-      {error ? (
-        <Text
-          accessibilityLiveRegion="polite"
-          className="text-center text-sm font-semibold text-destructive"
-        >
-          {error}
-        </Text>
-      ) : null}
-
-      <Pressable
-        className="items-center rounded-2xl border border-border bg-card px-5 py-4 active:opacity-70"
-        disabled={isSigningOut}
-        onPress={() => void handleSignOut()}
-        style={{ opacity: isSigningOut ? 0.6 : 1 }}
-      >
-        {isSigningOut ? (
-          <ActivityIndicator />
-        ) : (
-          <Text className="text-base font-bold text-foreground">Sign out</Text>
-        )}
-      </Pressable>
+              {error ?? "Signing out…"}
+            </Text>
+          ) : null}
+        </>
+      )}
     </StudyScreen>
   );
 }

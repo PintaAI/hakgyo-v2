@@ -1,36 +1,20 @@
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import {
   assessmentAttemptPresentation,
   latestStandaloneAttemptForItem,
 } from "../../lib/assessment-state";
 import { getCourseResumeItem } from "../../lib/course-learning-path";
-import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { authClient } from "../../lib/auth-client";
 import { api } from "../../lib/trpc";
-import { useAppTheme } from "../../providers/AppThemeProvider";
 import { QueryState } from "../learning-ui";
+import { LearningItemRow } from "./learning-item-row";
 
 const itemLabels = {
   MATERIAL: "Materi",
-  ASSESSMENT: "Assessment",
-  VOCABULARY_SET: "Kosakata",
+  ASSESSMENT: "Tugas",
+  VOCABULARY_SET: "Kosa-kata",
 } as const;
-
-type CourseItemType = keyof typeof itemLabels;
-
-function itemIcon(type: CourseItemType): SymbolViewProps["name"] {
-  if (type === "VOCABULARY_SET") return "character.book.closed.fill";
-  if (type === "ASSESSMENT") return "checkmark.seal.fill";
-  return "doc.text.fill";
-}
-
-function itemFallback(type: CourseItemType) {
-  if (type === "VOCABULARY_SET") return "Aa";
-  if (type === "ASSESSMENT") return "✓";
-  return "•";
-}
 
 export function CourseOutlineList({
   courseId,
@@ -53,7 +37,6 @@ export function CourseOutlineList({
   showHeader?: boolean;
   showActiveState?: boolean;
 }) {
-  const { colors } = useAppTheme();
   const { data: session } = authClient.useSession();
   const outlineQuery = api.learning.getCourseOutline.useQuery(
     { courseId },
@@ -169,7 +152,6 @@ export function CourseOutlineList({
                       item.type === "ASSESSMENT"
                         ? assessmentAttemptPresentation(attempt)
                         : undefined;
-                    const itemTypeMeta = getLearningItemTypeMeta(item.type);
                     const isLast = itemIndex === module.items.length - 1;
                     const isCurrent = item.id === currentItemId;
                     const isNext = !currentItemId && item.id === resumeItem?.id;
@@ -183,87 +165,23 @@ export function CourseOutlineList({
                             : "Ready"));
 
                     return (
-                      <View className={isLast ? "pb-1" : "pb-6"} key={item.id}>
-                        {!isLast ? (
-                          <View className="absolute bottom-0 left-5 top-8 w-px bg-border" />
-                        ) : null}
-                        <View
-                          className={`flex-row ${showActiveState && (isCurrent || isNext) ? "-mx-1 -my-2 rounded-xl bg-primary/10 px-1 py-2" : ""}`}
-                        >
-                          <View className="w-10 items-center">
-                            <View
-                              className={`size-8 items-center justify-center rounded-full border ${item.isCompleted ? "border-primary bg-primary" : locked ? "border-border bg-background" : `${itemTypeMeta.borderClass} ${itemTypeMeta.softClass}`}`}
-                            >
-                              <SymbolView
-                                fallback={
-                                  <Text
-                                    className={`text-xs font-black ${item.isCompleted ? "text-primary-foreground" : "text-primary"}`}
-                                  >
-                                    {item.isCompleted
-                                      ? "✓"
-                                      : itemFallback(item.type)}
-                                  </Text>
-                                }
-                                name={
-                                  item.isCompleted
-                                    ? "checkmark"
-                                    : locked
-                                      ? "lock.fill"
-                                      : itemIcon(item.type)
-                                }
-                                size={14}
-                                tintColor={
-                                  item.isCompleted
-                                    ? colors.primaryForeground
-                                    : locked
-                                      ? colors.mutedForeground
-                                      : colors.primary
-                                }
-                                weight="semibold"
-                              />
-                            </View>
-                          </View>
-                          <Pressable
-                            accessibilityHint={assessmentState?.action}
-                            accessibilityRole="button"
-                            accessibilityState={{ disabled: locked }}
-                            className="min-w-0 flex-1 pl-3 active:opacity-60"
-                            disabled={locked}
-                            onPress={() => onOpenItem(item, attempt)}
-                          >
-                            <View className="flex-row items-start gap-3">
-                              <View className="min-w-0 flex-1 gap-1">
-                                <Text
-                                  className={`text-[15px] font-semibold leading-5 ${showActiveState && (isCurrent || isNext) ? "text-primary" : "text-foreground"}`}
-                                  numberOfLines={1}
-                                >
-                                  {item.title}
-                                </Text>
-                                <Text
-                                  className="text-xs leading-4 text-muted-foreground"
-                                  numberOfLines={2}
-                                >
-                                  <Text
-                                    className={`font-semibold ${getLearningItemTypeMeta(item.type).textClass}`}
-                                  >
-                                    {itemLabels[item.type]}
-                                  </Text>
-                                  {" · "}
-                                  {status}
-                                  {attempt && assessmentState?.action
-                                    ? ` · ${assessmentState.action}`
-                                    : ""}
-                                </Text>
-                              </View>
-                              {!locked && !isCurrent ? (
-                                <Text className="pt-0.5 text-lg text-muted-foreground">
-                                  ›
-                                </Text>
-                              ) : null}
-                            </View>
-                          </Pressable>
-                        </View>
-                      </View>
+                      <LearningItemRow
+                        key={item.id}
+                        title={item.title}
+                        type={item.type}
+                        typeLabel={itemLabels[item.type]}
+                        statusText={`${status}${attempt && assessmentState?.action ? ` · ${assessmentState.action}` : ""}`}
+                        completed={item.isCompleted}
+                        locked={locked}
+                        highlighted={Boolean(
+                          showActiveState && (isCurrent || isNext),
+                        )}
+                        isLast={isLast}
+                        showChevron={!locked && !isCurrent}
+                        onPress={() => onOpenItem(item, attempt)}
+                        disabled={locked}
+                        accessibilityHint={assessmentState?.action}
+                      />
                     );
                   })}
                 </View>

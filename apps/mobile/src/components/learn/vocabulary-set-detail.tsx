@@ -1,31 +1,22 @@
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import Storage from "expo-sqlite/kv-store";
-import { useEffect, useRef, useState } from "react";
+import { SymbolView } from "expo-symbols";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 
-import { api } from "../../lib/trpc";
 import { useAppTheme } from "../../providers/AppThemeProvider";
-import { withOpacity } from "../../theme/colors";
 import { useApiAssetResolver } from "../content-renderer";
-import { GlassBox } from "../GlassBox";
-import { Eyebrow, QueryState } from "../learning-ui";
+import { Eyebrow } from "../learning-ui";
 import { StudyAction } from "../study-glass";
 
-// Same corner family as the cohort card: card-level surfaces share
-// SURFACE_RADIUS, pills stay fully round. Clear glass, no overflow on the
-// glass view itself (the native side rounds the effect from borderRadius).
-const SURFACE_RADIUS = 20;
-const SECONDS_PER_WORD = 15;
 const VIEW_MODE_KEY = "hakgyo:vocab-view-mode:v1";
 
 export type VocabularySetEntry = {
@@ -46,6 +37,7 @@ function EntryImage({
   const resolveAssetUrl = useApiAssetResolver();
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     void resolveAssetUrl(assetId).then(
@@ -60,14 +52,15 @@ function EntryImage({
       cancelled = true;
     };
   }, [assetId, resolveAssetUrl]);
+
   if (failed) return null;
   if (!url) return <View className={`bg-muted ${className ?? ""}`} />;
   return (
     <Image
       accessibilityIgnoresInvertColors
-      source={{ uri: url }}
       className={className}
       resizeMode="cover"
+      source={{ uri: url }}
     />
   );
 }
@@ -86,18 +79,18 @@ function SpeakerToggle({
   const { colors } = useAppTheme();
   const player = useAudioPlayer(url);
   const status = useAudioPlayerStatus(player);
-  // Only one pronunciation plays at a time: starting another entry pauses
-  // this one.
+
   useEffect(() => {
     if (speakingId !== entryId && status.playing) player.pause();
   }, [speakingId, entryId, status.playing, player]);
-  // The toggle only mounts after a tap resolved the URL, so autoplay
-  // fulfills that tap.
+
   useEffect(() => {
     player.play();
     onSpeak(entryId);
+    // Autoplay is intentionally tied to the tap that mounted this control.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   return (
     <Pressable
       accessibilityLabel={
@@ -147,19 +140,19 @@ function WordSpeakerButton({
   const [url, setUrl] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
   const [failed, setFailed] = useState(false);
-  // Resolve lazily on first tap so opening the screen doesn't fire a
-  // signed-URL request per word.
+
   if (failed) return null;
   if (url) {
     return (
       <SpeakerToggle
-        url={url}
         entryId={entryId}
-        speakingId={speakingId}
         onSpeak={onSpeak}
+        speakingId={speakingId}
+        url={url}
       />
     );
   }
+
   return (
     <Pressable
       accessibilityLabel="Play pronunciation"
@@ -198,16 +191,13 @@ function WordSpeakerButton({
 
 function WordGridCard({
   entry,
-  mastered,
   speakingId,
   onSpeak,
 }: {
   entry: VocabularySetEntry;
-  mastered: boolean;
   speakingId: string | null;
   onSpeak: (entryId: string | null) => void;
 }) {
-  const { colors } = useAppTheme();
   return (
     <View className="gap-2 rounded-[20px] border border-border bg-card p-4">
       {entry.imageAsset ? (
@@ -216,31 +206,10 @@ function WordGridCard({
           className="h-28 w-full rounded-xl"
         />
       ) : null}
-      <View className="flex-row items-start gap-2">
-        <Text
-          className="min-w-0 flex-1 text-[15px] font-bold leading-5 text-foreground"
-          numberOfLines={3}
-        >
-          {entry.term}
-        </Text>
-        <SymbolView
-          fallback={
-            <Text
-              className={`text-xs font-black ${mastered ? "text-primary" : "text-muted-foreground"}`}
-            >
-              {mastered ? "✓" : "○"}
-            </Text>
-          }
-          name={mastered ? "checkmark.circle.fill" : "circle"}
-          size={14}
-          tintColor={mastered ? colors.primary : colors.mutedForeground}
-          weight="semibold"
-        />
-      </View>
-      <Text
-        className="text-xs leading-4 text-muted-foreground"
-        numberOfLines={5}
-      >
+      <Text className="text-[15px] font-bold leading-5 text-foreground">
+        {entry.term}
+      </Text>
+      <Text className="text-xs leading-4 text-muted-foreground">
         {entry.definition}
       </Text>
       {entry.audioAsset ? (
@@ -248,8 +217,8 @@ function WordGridCard({
           <WordSpeakerButton
             assetId={entry.audioAsset.id}
             entryId={entry.id}
-            speakingId={speakingId}
             onSpeak={onSpeak}
+            speakingId={speakingId}
           />
         </View>
       ) : null}
@@ -260,12 +229,10 @@ function WordGridCard({
 export function VocabularySetDetail({
   courseId,
   courseItemId,
-  moduleId,
   vocabulary,
 }: {
-  courseId: string;
-  courseItemId: string;
-  moduleId: string;
+  courseId?: string;
+  courseItemId?: string;
   vocabulary: {
     id: string;
     title: string;
@@ -273,16 +240,7 @@ export function VocabularySetDetail({
     entries: VocabularySetEntry[];
   };
 }) {
-  const { colors, colorScheme } = useAppTheme();
-  const glassTint = withOpacity(
-    colors.primary,
-    colorScheme === "dark" ? 0.35 : 0.18,
-  );
-  const openLearningSheet = () =>
-    router.push({
-      pathname: "/courses/[courseId]/items/[courseItemId]/learning-progress",
-      params: { courseId, courseItemId },
-    });
+  const { colors } = useAppTheme();
   const [viewMode, setViewModeState] = useState<"list" | "grid">(() => {
     try {
       return Storage.getItemSync(VIEW_MODE_KEY) === "grid" ? "grid" : "list";
@@ -290,95 +248,17 @@ export function VocabularySetDetail({
       return "list";
     }
   });
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const total = vocabulary.entries.length;
+
   const setViewMode = (mode: "list" | "grid") => {
     setViewModeState(mode);
     try {
       Storage.setItemSync(VIEW_MODE_KEY, mode);
     } catch {
-      // A view preference is optional and can be re-chosen next visit.
+      // The display preference is optional.
     }
   };
-  const [speakingId, setSpeakingId] = useState<string | null>(null);
-
-  const memoryQuery = api.learning.getVocabularyMemory.useQuery({
-    vocabularySetId: vocabulary.id,
-    sourceCourseItemId: courseItemId,
-  });
-  const outlineQuery = api.learning.getCourseOutline.useQuery({ courseId });
-
-  const total = vocabulary.entries.length;
-  const memoryReady = memoryQuery.isSuccess;
-  const memoryByEntry = new Map(
-    (memoryQuery.data?.items ?? []).map((item) => [item.entryId, item]),
-  );
-  const remembered = memoryReady
-    ? vocabulary.entries.filter(
-        (entry) => memoryByEntry.get(entry.id)?.remembered,
-      ).length
-    : 0;
-  const due = memoryReady
-    ? vocabulary.entries.filter((entry) => {
-        const state = memoryByEntry.get(entry.id);
-        return (
-          !!state &&
-          !state.remembered &&
-          !!state.nextReviewAt &&
-          new Date(state.nextReviewAt).getTime() <= Date.now()
-        );
-      }).length
-    : 0;
-  const remaining = total - remembered;
-  const minutesFor = (count: number) =>
-    Math.max(1, Math.round((count * SECONDS_PER_WORD) / 60));
-  const moduleTitle =
-    outlineQuery.data?.modules.find((module) => module.id === moduleId)
-      ?.title ?? null;
-  const thumbnailUrl = outlineQuery.data?.thumbnailUrl ?? null;
-
-  const openPractice = () =>
-    router.push({
-      pathname: "/vocabulary/[vocabularySetId]",
-      params: {
-        vocabularySetId: vocabulary.id,
-        sourceCourseItemId: courseItemId,
-        courseId,
-      },
-    });
-  // The one thing to do: fresh sets invite a start, partial sets continue,
-  // fully remembered sets offer a review.
-  let hero: {
-    eyebrow: string;
-    title: string;
-    meta: string;
-    pill: string;
-  } | null = null;
-  if (memoryReady && total > 0) {
-    if (remembered >= total) {
-      hero = {
-        eyebrow: "Review",
-        title: `All ${total} mastered`,
-        meta:
-          due > 0
-            ? `${due} due for review · Mixed recall`
-            : "Mixed recall · Keep them fresh",
-        pill: "Review",
-      };
-    } else if (remembered > 0) {
-      hero = {
-        eyebrow: "Practice",
-        title: `${remaining} ${remaining === 1 ? "word" : "words"} to go`,
-        meta: `Mixed recall · ~${minutesFor(remaining)} min`,
-        pill: "Continue",
-      };
-    } else {
-      hero = {
-        eyebrow: "Practice",
-        title: `${total} words ready`,
-        meta: `Mixed recall · ~${minutesFor(total)} min`,
-        pill: "Start",
-      };
-    }
-  }
 
   return (
     <ScrollView
@@ -386,111 +266,42 @@ export function VocabularySetDetail({
       contentContainerClassName="gap-5 px-5 pb-14 pt-4"
       contentInsetAdjustmentBehavior="automatic"
     >
-      <View className="relative justify-end bg-muted" style={styles.header}>
-        {thumbnailUrl ? (
-          <>
-            <Image
-              accessibilityIgnoresInvertColors
-              blurRadius={3}
-              className="absolute inset-0 z-0 size-full"
-              resizeMode="cover"
-              source={{ uri: thumbnailUrl }}
-            />
-            <View
-              className="absolute inset-0 z-10"
-              style={{
-                backgroundColor: withOpacity(colors.background, 0.72),
-              }}
-            />
-          </>
-        ) : null}
-        <View className="relative z-20 gap-1.5 p-4">
-          <View className="flex-row items-center gap-2">
-            <Text
-              className="flex-1 text-xs font-semibold uppercase tracking-[1px] text-muted-foreground"
-              numberOfLines={1}
-            >
-              {moduleTitle ? `Vocabulary · ${moduleTitle}` : "Vocabulary"}
-            </Text>
-            {memoryReady ? (
-              <Text className="text-xs font-semibold text-muted-foreground">
-                {remembered}/{total}
-              </Text>
-            ) : null}
-          </View>
-          <Text
-            className="text-2xl font-black leading-7 tracking-tight text-foreground"
-            numberOfLines={2}
-          >
-            {vocabulary.title}
+      <View className="gap-3 border-b border-border pb-5">
+        <View className="flex-row items-center justify-between gap-3">
+          <Eyebrow>Vocabulary set</Eyebrow>
+          <Text className="text-xs font-semibold text-muted-foreground">
+            {total} {total === 1 ? "word" : "words"}
           </Text>
-          {vocabulary.description ? (
-            <Text
-              className="text-sm leading-6 text-muted-foreground"
-              numberOfLines={3}
-            >
-              {vocabulary.description}
-            </Text>
-          ) : null}
         </View>
-        {memoryReady && total > 0 ? (
-          <View className="absolute bottom-0 left-0 right-0 z-30 h-1 bg-muted">
-            <View
-              className="h-full bg-primary"
-              style={{
-                width: `${Math.round((remembered / total) * 100)}%`,
-              }}
-            />
-          </View>
+        <Text className="text-3xl font-black leading-10 tracking-tight text-foreground">
+          {vocabulary.title}
+        </Text>
+        {vocabulary.description ? (
+          <Text className="text-sm leading-6 text-muted-foreground">
+            {vocabulary.description}
+          </Text>
         ) : null}
       </View>
 
-      {hero ? (
-        <Pressable
-          accessibilityHint={hero.title}
-          accessibilityRole="button"
-          className="active:opacity-80"
-          onPress={openPractice}
-        >
-          <GlassBox
-            isInteractive
-            tintColor={glassTint}
-            glassEffectStyle="clear"
-            style={styles.heroGlass}
-          >
-            <View className="flex-row items-center gap-3 px-5 py-4">
-              <View className="min-w-0 flex-1 gap-1">
-                <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-                  {hero.eyebrow}
-                </Text>
-                <Text
-                  className="text-lg font-black leading-6 text-foreground"
-                  numberOfLines={2}
-                >
-                  {hero.title}
-                </Text>
-                <Text
-                  className="text-xs font-semibold text-muted-foreground"
-                  numberOfLines={1}
-                >
-                  {hero.meta}
-                </Text>
-              </View>
-              <View className="rounded-full bg-primary px-4 py-2">
-                <Text className="text-sm font-bold text-primary-foreground">
-                  {hero.pill}
-                </Text>
-              </View>
-            </View>
-          </GlassBox>
-        </Pressable>
-      ) : null}
-
-      <QueryState
-        pending={false}
-        error={memoryQuery.error}
-        retry={() => void memoryQuery.refetch()}
-      />
+      <StudyAction
+        onPress={() => {
+          if (courseId && courseItemId) {
+            router.push({
+              pathname: "/(home)/(tabs)/assessments",
+              params: {
+                courseId,
+                sourceCourseItemId: courseItemId,
+                vocabularySetId: vocabulary.id,
+                vocabularyTitle: vocabulary.title,
+              },
+            });
+            return;
+          }
+          router.push("/(home)/(tabs)/assessments");
+        }}
+      >
+        Start practice
+      </StudyAction>
 
       {total > 0 ? (
         <View className="gap-3">
@@ -504,13 +315,7 @@ export function VocabularySetDetail({
                 onPress={() => setViewMode("list")}
               >
                 <SymbolView
-                  fallback={
-                    <Text
-                      className={`text-xs font-black ${viewMode === "list" ? "text-primary" : "text-muted-foreground"}`}
-                    >
-                      ≡
-                    </Text>
-                  }
+                  fallback={<Text className="text-xs font-black">≡</Text>}
                   name="list.bullet"
                   size={14}
                   tintColor={
@@ -528,13 +333,7 @@ export function VocabularySetDetail({
                 onPress={() => setViewMode("grid")}
               >
                 <SymbolView
-                  fallback={
-                    <Text
-                      className={`text-xs font-black ${viewMode === "grid" ? "text-primary" : "text-muted-foreground"}`}
-                    >
-                      ⊞
-                    </Text>
-                  }
+                  fallback={<Text className="text-xs font-black">⊞</Text>}
                   name="square.grid.2x2"
                   size={14}
                   tintColor={
@@ -547,62 +346,41 @@ export function VocabularySetDetail({
               </Pressable>
             </View>
           </View>
+
           {viewMode === "list" ? (
             <View>
-              {vocabulary.entries.map((entry, index) => {
-                const isLast = index === vocabulary.entries.length - 1;
-                const mastered =
-                  memoryByEntry.get(entry.id)?.remembered ?? false;
-                return (
-                  <View
-                    key={entry.id}
-                    className={`flex-row gap-3 py-3 ${isLast ? "" : "border-b border-border/60"}`}
-                  >
-                    <View className="size-8 items-center justify-center">
-                      <SymbolView
-                        fallback={
-                          <Text
-                            className={`text-sm font-black ${mastered ? "text-primary" : "text-muted-foreground"}`}
-                          >
-                            {mastered ? "✓" : "○"}
-                          </Text>
-                        }
-                        name={mastered ? "checkmark.circle.fill" : "circle"}
-                        size={18}
-                        tintColor={
-                          mastered ? colors.primary : colors.mutedForeground
-                        }
-                        weight="semibold"
-                      />
-                    </View>
-                    <View className="min-w-0 flex-1 gap-0.5">
-                      <Text className="text-[15px] font-semibold text-foreground">
-                        {entry.term}
-                      </Text>
-                      <Text
-                        className="text-xs leading-4 text-muted-foreground"
-                        numberOfLines={3}
-                      >
-                        {entry.definition}
-                      </Text>
-                    </View>
-                    {entry.audioAsset ? (
-                      <WordSpeakerButton
-                        assetId={entry.audioAsset.id}
-                        entryId={entry.id}
-                        speakingId={speakingId}
-                        onSpeak={setSpeakingId}
-                      />
-                    ) : null}
-                    {entry.imageAsset ? (
-                      <EntryImage
-                        assetId={entry.imageAsset.id}
-                        className="size-14 rounded-xl"
-                      />
-                    ) : null}
+              {vocabulary.entries.map((entry, index) => (
+                <View
+                  key={entry.id}
+                  className={`flex-row gap-3 py-3 ${index === total - 1 ? "" : "border-b border-border/60"}`}
+                >
+                  <Text className="w-6 pt-0.5 text-xs font-bold tabular-nums text-muted-foreground">
+                    {index + 1}
+                  </Text>
+                  <View className="min-w-0 flex-1 gap-0.5">
+                    <Text className="text-[15px] font-semibold text-foreground">
+                      {entry.term}
+                    </Text>
+                    <Text className="text-xs leading-4 text-muted-foreground">
+                      {entry.definition}
+                    </Text>
                   </View>
-                );
-              })}
+                  {entry.audioAsset ? (
+                    <WordSpeakerButton
+                      assetId={entry.audioAsset.id}
+                      entryId={entry.id}
+                      onSpeak={setSpeakingId}
+                      speakingId={speakingId}
+                    />
+                  ) : null}
+                  {entry.imageAsset ? (
+                    <EntryImage
+                      assetId={entry.imageAsset.id}
+                      className="size-14 rounded-xl"
+                    />
+                  ) : null}
+                </View>
+              ))}
             </View>
           ) : (
             <View className="flex-row gap-3">
@@ -611,13 +389,10 @@ export function VocabularySetDetail({
                   .filter((_, index) => index % 2 === 0)
                   .map((entry) => (
                     <WordGridCard
-                      key={entry.id}
                       entry={entry}
-                      mastered={
-                        memoryByEntry.get(entry.id)?.remembered ?? false
-                      }
-                      speakingId={speakingId}
+                      key={entry.id}
                       onSpeak={setSpeakingId}
+                      speakingId={speakingId}
                     />
                   ))}
               </View>
@@ -626,13 +401,10 @@ export function VocabularySetDetail({
                   .filter((_, index) => index % 2 === 1)
                   .map((entry) => (
                     <WordGridCard
-                      key={entry.id}
                       entry={entry}
-                      mastered={
-                        memoryByEntry.get(entry.id)?.remembered ?? false
-                      }
-                      speakingId={speakingId}
+                      key={entry.id}
                       onSpeak={setSpeakingId}
+                      speakingId={speakingId}
                     />
                   ))}
               </View>
@@ -645,19 +417,21 @@ export function VocabularySetDetail({
         </Text>
       )}
 
-      <View className="mt-3">
-        <StudyAction onPress={openLearningSheet}>Continue</StudyAction>
-      </View>
+      {courseId && courseItemId ? (
+        <View className="mt-3">
+          <StudyAction
+            onPress={() =>
+              router.push({
+                pathname:
+                  "/courses/[courseId]/items/[courseItemId]/learning-progress",
+                params: { courseId, courseItemId },
+              })
+            }
+          >
+            Continue
+          </StudyAction>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    borderRadius: SURFACE_RADIUS,
-    overflow: "hidden",
-  },
-  heroGlass: {
-    borderRadius: SURFACE_RADIUS,
-  },
-});

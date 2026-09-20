@@ -1,4 +1,10 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -30,6 +36,8 @@ export function StudyScreen({
   keyboardAvoiding = false,
   scrollable = true,
   scrollGesture,
+  scrollViewRef,
+  gameHeader = false,
 }: {
   title: string;
   children: ReactNode;
@@ -44,6 +52,8 @@ export function StudyScreen({
   keyboardAvoiding?: boolean;
   scrollable?: boolean;
   scrollGesture?: NativeGesture;
+  scrollViewRef?: RefObject<ScrollView | null>;
+  gameHeader?: boolean;
 }) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -69,6 +79,7 @@ export function StudyScreen({
   );
   const viewport = (
     <ScrollView
+      ref={scrollViewRef}
       className="flex-1 bg-background"
       contentInsetAdjustmentBehavior={behavior}
       automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
@@ -97,7 +108,19 @@ export function StudyScreen({
   );
   return (
     <>
-      <Stack.Screen options={{ title, headerShown }} />
+      <Stack.Screen
+        options={
+          gameHeader
+            ? {
+                gestureEnabled: false,
+                headerBackButtonDisplayMode: "minimal",
+                headerShadowVisible: false,
+                headerShown: true,
+                title: "",
+              }
+            : { title, headerShown }
+        }
+      />
       {keyboardAvoiding ? (
         <View
           ref={viewportRef}
