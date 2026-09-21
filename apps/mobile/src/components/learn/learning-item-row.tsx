@@ -58,7 +58,7 @@ export function LearningItemRow({
   return (
     <View className={isLast ? "pb-1" : "pb-6"}>
       {!isLast ? (
-        <View className="absolute bottom-0 left-5 top-8 w-px bg-border" />
+        <View className="absolute bottom-0 left-5 top-8 w-0.5 bg-border" />
       ) : null}
       <View
         className={`flex-row ${highlighted ? "-mx-1 -my-2 rounded-xl bg-primary/10 px-1 py-2" : ""}`}

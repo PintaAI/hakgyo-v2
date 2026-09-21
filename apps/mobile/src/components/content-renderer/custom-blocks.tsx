@@ -511,7 +511,7 @@ type MobileCultureSection =
   | {
       id: string;
       type: "media";
-      columns: 1 | 2;
+      columns: 1 | 2 | 3;
       images: MobileCultureMedia[];
     }
   | {
@@ -548,15 +548,19 @@ function parseCultureMedia(
       aspect === "3:2" ||
       aspect === "4:3"
         ? aspect
-        : "4:3",
+        : "3:2",
     fit: fit === "contain" ? "contain" : "cover",
   };
 }
 
-function parseCultureImages(value: unknown, sectionId: string) {
+function parseCultureImages(
+  value: unknown,
+  sectionId: string,
+  maximumImages: number,
+) {
   if (!Array.isArray(value)) return [];
   return value
-    .slice(0, 2)
+    .slice(0, maximumImages)
     .map((image, index) =>
       parseCultureMedia(image, `${sectionId}-image-${index + 1}`),
     )
@@ -581,22 +585,31 @@ function parseCultureSections(value: unknown): MobileCultureSection[] {
 
         if (section.type === "text") return { id, type: "text", ko, en };
         if (section.type === "media") {
+          const columns =
+            section.columns === 1 || section.columns === 3
+              ? section.columns
+              : 2;
           return {
             id,
             type: "media",
-            columns: section.columns === 1 ? 1 : 2,
-            images: parseCultureImages(section.images, id),
+            columns,
+            images: parseCultureImages(section.images, id, columns),
           };
         }
         if (section.type === "split") {
+          const mediaStack = section.mediaStack === "column" ? "column" : "row";
           return {
             id,
             type: "split",
             mediaSide: section.mediaSide === "right" ? "right" : "left",
-            mediaStack: section.mediaStack === "column" ? "column" : "row",
+            mediaStack,
             ko,
             en,
-            images: parseCultureImages(section.images, id),
+            images: parseCultureImages(
+              section.images,
+              id,
+              mediaStack === "column" ? 2 : 1,
+            ),
           };
         }
         return null;
@@ -663,7 +676,7 @@ function CultureSection({ section }: { section: MobileCultureSection }) {
   }
   if (section.type === "media") {
     return (
-      <CultureMediaGroup images={section.images} row={section.columns === 2} />
+      <CultureMediaGroup images={section.images} row={section.columns > 1} />
     );
   }
 

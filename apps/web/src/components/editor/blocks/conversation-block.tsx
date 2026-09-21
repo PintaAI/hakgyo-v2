@@ -79,8 +79,10 @@ const conversationProps = {
     default: conversationBlockDefaults.sectionVariant,
     values: [...conversationBlockSectionVariants],
   },
-  showTip: { default: true },
-  showUsefulExpressionNote: { default: true },
+  showTip: { default: conversationBlockDefaults.showTip },
+  showUsefulExpressionNote: {
+    default: conversationBlockDefaults.showUsefulExpressionNote,
+  },
   assetId: { default: conversationBlockDefaults.assetId },
   fileName: { default: conversationBlockDefaults.fileName },
   contentType: { default: conversationBlockDefaults.contentType },
@@ -887,7 +889,7 @@ export const conversationBlock = createReactBlockSpec(
 
               <div className="bg-muted/55 ring-foreground/10 h-full min-w-0 rounded-xl p-3 ring-1">
                 <p className="text-muted-foreground mb-2 text-[0.65rem] font-semibold tracking-wide uppercase">
-                   Ekspresi yang digunakan
+                  Ekspresi yang digunakan
                 </p>
                 <div className="divide-border divide-y">
                   {practiceExpressions.map((expression, index) => (

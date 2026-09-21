@@ -241,10 +241,9 @@ function AssessmentAttemptContent({
       try {
         persistAssessmentDraft(storageKey, answers);
         setDraftError(undefined);
+        setHasUnsavedAnswers(false);
       } catch {
-        setDraftError(
-          "Device draft unavailable. Use Save answers before leaving this screen.",
-        );
+        setDraftError("Device draft unavailable. It will retry as you work.");
       }
     }, 250);
     return () => clearTimeout(timer);
@@ -328,9 +327,7 @@ function AssessmentAttemptContent({
         persistAssessmentDraft(storageKey, answers);
         setDraftError(undefined);
       } catch {
-        setDraftError(
-          "Device draft unavailable. Use Save answers before leaving this screen.",
-        );
+        setDraftError("Device draft unavailable. It will retry as you work.");
         return false;
       }
     }
@@ -654,14 +651,12 @@ function AssessmentAttemptContent({
                 </View>
               ) : null}
             </View>
-            {hasUnsavedAnswers && !expired ? (
-              <StudyAction
-                secondary
-                disabled={busy}
-                onPress={() => void save()}
-              >
-                Save draft on device
-              </StudyAction>
+            {!expired ? (
+              <Text className="text-center text-xs text-muted-foreground">
+                {hasUnsavedAnswers
+                  ? "Saving draft on this device…"
+                  : "Draft saved on this device"}
+              </Text>
             ) : null}
             {expired ||
             currentIndex === assessment.data.questions.length - 1 ||

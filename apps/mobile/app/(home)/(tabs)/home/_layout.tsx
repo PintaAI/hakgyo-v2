@@ -18,7 +18,9 @@ export default function HomeTabLayout() {
             Platform.OS === "ios" ? "transparent" : colors.background,
         },
         headerTintColor: colors.foreground,
-        headerLargeTitle: true,
+        // No native large title: the greeting is rendered as a custom
+        // in-content title instead (the native size can't scale down).
+        headerLargeTitle: false,
         headerTransparent: Platform.OS === "ios",
         scrollEdgeEffects: Platform.OS === "ios" ? { top: "soft" } : undefined,
       }}

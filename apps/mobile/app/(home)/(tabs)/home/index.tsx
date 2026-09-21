@@ -1,6 +1,6 @@
 import { router, Stack, type Href } from "expo-router";
 import { useState } from "react";
-import { Platform } from "react-native";
+import { Image, Platform, Pressable, Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
@@ -29,6 +29,8 @@ export default function HomeTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [scrollGesture] = useState(() => Gesture.Native());
 
+  const displayName = session?.user.name || "Hakgyo learner";
+  const nameInitial = displayName.trim()[0]?.toUpperCase() ?? "H";
   const openOrganizationSwitcher = () =>
     router.push("/organization-switcher" as Href);
 
@@ -61,12 +63,47 @@ export default function HomeTab() {
         </Stack.Toolbar>
       ) : null}
       <StudyScreen
-        title="Today"
+        title=""
         scrollGesture={scrollGesture}
         refreshing={refreshing}
         onRefresh={() => void refresh()}
         automaticallyAdjustKeyboardInsets
       >
+        <View className="-mb-3 flex-row items-center gap-2">
+          <Text
+            accessibilityRole="header"
+            className="shrink-0 text-[26px] font-black leading-8 tracking-tight text-foreground"
+          >
+            안녕하세요 ·
+          </Text>
+          <View className="size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary">
+            {session?.user.image ? (
+              <Image
+                className="size-full"
+                resizeMode="cover"
+                source={{ uri: session.user.image }}
+              />
+            ) : (
+              <Text className="text-xs font-bold text-primary-foreground">
+                {nameInitial}
+              </Text>
+            )}
+          </View>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Open profile"
+            accessibilityHint="Opens your profile tab"
+            className="min-w-0 flex-1 active:opacity-60"
+            onPress={() => router.navigate("/(home)/(tabs)/profile")}
+          >
+            <Text
+              className="text-muted-foreground text-xl leading-7 tracking-tight underline"
+              numberOfLines={1}
+            >
+              {displayName}
+            </Text>
+          </Pressable>
+        </View>
         {Platform.OS !== "ios" ? (
           <OrganizationSwitcherTrigger onPress={openOrganizationSwitcher} />
         ) : null}

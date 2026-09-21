@@ -8,6 +8,18 @@ import {
 } from "./culture-content";
 
 describe("culture content", () => {
+  test("creates a three-image row", () => {
+    const section = createCultureSection("media-three", "gallery");
+
+    expect(section).toMatchObject({
+      id: "gallery",
+      type: "media",
+      columns: 3,
+    });
+    expect(section.type === "media" ? section.images : []).toHaveLength(3);
+    expect(parseCultureSections(JSON.stringify([section]))).toEqual([section]);
+  });
+
   test("creates the supported split layouts with stable media slots", () => {
     const section = createCultureSection("split-stack-left", "section-1");
 
@@ -45,7 +57,7 @@ describe("culture content", () => {
             contentType: "",
             alt: "",
             caption: "",
-            aspect: "4:3",
+            aspect: "3:2",
             fit: "cover",
           },
         ],

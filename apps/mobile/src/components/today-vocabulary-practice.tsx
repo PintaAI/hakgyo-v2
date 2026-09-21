@@ -209,10 +209,12 @@ export function TodayVocabularyPractice({
     clearAutoTimer();
     speech.abort();
     setTyping(false);
-    Keyboard.dismiss();
     setRevealed(true);
     setRevealSaved(false);
     setAnswer("");
+    // Keep the keyboard open: the input becomes "Ready for the next word?"
+    // with a Next return key, so the learner can advance without re-tapping.
+    if (!handsFree) inputRef.current?.focus();
     void saveReveal();
   }
 

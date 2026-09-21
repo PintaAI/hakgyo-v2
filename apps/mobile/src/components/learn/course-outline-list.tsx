@@ -95,13 +95,16 @@ export function CourseOutlineList({
       ) : (
         course.modules.map((module, moduleIndex) => {
           const locked = module.access === "LOCKED";
+          const hasSubtitle = locked || !!module.description;
 
           return (
             <View
               className={`${moduleIndex > 0 ? "border-t border-border pt-6" : ""} ${locked ? "opacity-60" : ""}`}
               key={module.id}
             >
-              <View className="flex-row items-start gap-3">
+              <View
+                className={`flex-row gap-3 ${hasSubtitle ? "items-start" : "items-center"}`}
+              >
                 <View
                   className={`size-9 items-center justify-center rounded-md border ${module.isCompleted ? "border-primary bg-primary" : "border-border bg-background"}`}
                 >
@@ -111,7 +114,7 @@ export function CourseOutlineList({
                     {String(moduleIndex + 1).padStart(2, "0")}
                   </Text>
                 </View>
-                <View className="min-w-0 flex-1 gap-1">
+                <View className={`min-w-0 flex-1 ${hasSubtitle ? "gap-1" : ""}`}>
                   <Text
                     className="text-base font-bold text-foreground"
                     numberOfLines={1}
@@ -132,7 +135,9 @@ export function CourseOutlineList({
                     </Text>
                   ) : null}
                 </View>
-                <Text className="pt-1 text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground">
+                <Text
+                  className={`${hasSubtitle ? "pt-1" : ""} text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground`}
+                >
                   {module.isCompleted
                     ? "Completed"
                     : locked
@@ -147,7 +152,7 @@ export function CourseOutlineList({
                 </Text>
               ) : (
                 <View className="relative ml-3 mt-6">
-                  <View className="absolute -left-1 -top-6 h-10 w-2 rounded-bl-lg border-l border-b border-border" />
+                  <View className="absolute -left-1 -top-6 h-10 w-2 rounded-bl-lg border-b-2 border-l-2 border-border" />
                   {module.items.map((item, itemIndex) => {
                     const attempt =
                       item.type === "ASSESSMENT"

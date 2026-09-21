@@ -127,8 +127,9 @@ const tools: Tool[] = [
 // tabs read as a set. Chips and icon circles stay fully round.
 const SURFACE_RADIUS = 20;
 
-function selectedTool(key: string) {
-  return tools.find((tool) => tool.key === key) ?? tools[0]!;
+function selectedTool(key: string | null | undefined) {
+  if (!key) return undefined;
+  return tools.find((tool) => tool.key === key);
 }
 
 function GameIcon({
@@ -264,7 +265,7 @@ function GamePicker({
   onSelect,
 }: {
   tools: Tool[];
-  selectedKey: string;
+  selectedKey: string | null;
   onSelect: (key: string) => void;
 }) {
   // With an odd tile count the orphan stretches full-width as a compact
@@ -756,7 +757,7 @@ function ModeResources({ props, tool }: { props: HubProps; tool: Tool }) {
 
 export function PracticeHub(props: HubProps) {
   const { colors, colorScheme } = useAppTheme();
-  const [toolKey, setToolKey] = useState("cards");
+  const [toolKey, setToolKey] = useState<string | null>(null);
   const tool = selectedTool(toolKey);
   const resourceOffset = useRef(0);
   const resourceHighlight = useSharedValue(0);
@@ -769,9 +770,9 @@ export function PracticeHub(props: HubProps) {
     : null;
   useEffect(() => {
     setSourceDismissed(false);
-    // A fresh preselected set always starts on a vocab game: Quiz runs on
-    // teacher-authored assessments and cannot practice a vocabulary set.
-    setToolKey("cards");
+    // No default game: the learner picks one, which then reveals resources.
+    // (Quiz still cannot practice a preselected vocabulary set.)
+    setToolKey(null);
   }, [preselectedKey]);
   const activeSource =
     !sourceDismissed && preselectedKey ? props.preselectedSource : undefined;
@@ -803,7 +804,7 @@ export function PracticeHub(props: HubProps) {
       const nextTool =
         displayTools.find((candidate) => candidate.key === key) ??
         selectedTool(key);
-      if (nextTool.disabledHint || !nextTool.available) return;
+      if (!nextTool || nextTool.disabledHint || !nextTool.available) return;
       // Deep link: a vocab set arrived with context, so choosing a vocab
       // game launches it immediately instead of asking for a source again.
       if (
@@ -930,27 +931,28 @@ export function PracticeHub(props: HubProps) {
               </Text>
             ) : null}
           </View>
-          <View
-            className="gap-3"
-            onLayout={handleResourceLayout}
-            style={styles.resourceSection}
-          >
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.resourceHighlight,
-                {
-                  backgroundColor: withOpacity(
-                    colors.primary,
-                    colorScheme === "dark" ? 0.12 : 0.06,
-                  ),
-                  borderColor: colors.primary,
-                },
-                resourceHighlightStyle,
-              ]}
-            />
-            <ModeResources props={props} tool={tool} />
-          </View>
+          {tool ? (
+            <View
+              className="gap-3"
+              onLayout={handleResourceLayout}
+              style={styles.resourceSection}
+            >
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.resourceHighlight,
+                  {
+                    backgroundColor: withOpacity(
+                      colors.primary,
+                      colorScheme === "dark" ? 0.12 : 0.06,
+                    ),
+                  },
+                  resourceHighlightStyle,
+                ]}
+              />
+              <ModeResources props={props} tool={tool} />
+            </View>
+          ) : null}
         </>
       ) : null}
     </>
@@ -974,7 +976,6 @@ const styles = StyleSheet.create({
   resourceHighlight: {
     bottom: 0,
     borderRadius: SURFACE_RADIUS,
-    borderWidth: 2,
     left: 0,
     position: "absolute",
     right: 0,

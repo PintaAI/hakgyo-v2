@@ -32,39 +32,40 @@ export const conversationBlockLines = [
   {
     speaker: "다라",
     korean: "아지자 씨, 오늘 친구를 만날 거예요?",
-    translation: "Aziza, are you going to meet your friend today?",
+    translation: "Aziza, apakah kamu akan bertemu temanmu hari ini?",
   },
   {
     speaker: "아지자",
     korean: "아니요, 친구가 너무 바빠서 못 만나요.",
-    translation: "No, my friend is too busy so we can’t meet.",
+    translation:
+      "Tidak, teman saya sangat sibuk sehingga kami tidak bisa bertemu.",
   },
   {
     speaker: "다라",
     korean: "그럼 뭐 할 거예요?",
-    translation: "Then what are you going to do?",
+    translation: "Kalau begitu, apa yang akan kamu lakukan?",
   },
   {
     speaker: "아지자",
     korean: "기숙사에서 책을 읽을 거예요.",
-    translation: "I’m going to read a book in the dormitory.",
+    translation: "Saya akan membaca buku di asrama.",
   },
 ] as const;
 
 export const conversationBlockQuestions = [
   {
     korean: "아지자 씨는 오늘 친구를 만날 거예요?",
-    translation: "Is Aziza going to meet a friend today?",
+    translation: "Apakah Aziza akan bertemu temannya hari ini?",
   },
   {
     korean: "다라 씨는 오늘 뭐 할 거예요?",
-    translation: "What is Dara going to do today?",
+    translation: "Apa yang akan Dara lakukan hari ini?",
   },
 ] as const;
 
 export const speakingPracticeExpressions = [
-  { korean: "친구를 만나다", translation: "meet a friend" },
-  { korean: "일이 많다", translation: "have a lot of work" },
+  { korean: "친구를 만나다", translation: "bertemu teman" },
+  { korean: "일이 많다", translation: "memiliki banyak pekerjaan" },
 ] as const;
 
 export const speakingPracticeDialogue = [
@@ -78,12 +79,12 @@ export const usefulExpressionDialogue = [
   {
     speaker: "가",
     korean: "안녕하세요? 처음 뵙겠습니다.",
-    translation: "Hello. It is a pleasure to meet you.",
+    translation: "Halo. Senang bertemu dengan Anda.",
   },
   {
     speaker: "나",
     korean: "안녕하세요? 잘 부탁드립니다.",
-    translation: "Hello. Nice to meet you as well.",
+    translation: "Halo. Mohon bantuannya.",
   },
 ] as const;
 
@@ -93,7 +94,7 @@ export const conversationSpeakingPracticeDefaults = {
   practiceContentType: "",
   practicePromptKo: "제시된 표현을 활용하여 대화해 보세요.",
   practicePromptTranslation:
-    "Practice speaking using the provided expressions.",
+    "Cobalah mengobrol menggunakan ungkapan yang disediakan.",
   practiceExpressions: JSON.stringify(speakingPracticeExpressions),
   practiceDialogue: JSON.stringify(speakingPracticeDialogue),
 } as const;
@@ -103,10 +104,10 @@ export const conversationUsefulExpressionDefaults = {
   usefulExpressionEyebrow: "유용한 표현 · Ekspresi berguna",
   usefulExpressionAudioTrack: "31",
   usefulExpressionPhraseKo: "잘 부탁드립니다.",
-  usefulExpressionPhraseTranslation: "Nice to meet you.",
+  usefulExpressionPhraseTranslation: "Senang bertemu dengan Anda.",
   usefulExpressionDialogue: JSON.stringify(usefulExpressionDialogue),
   usefulExpressionNote:
-    "There is no exact equivalent of ‘잘 부탁드립니다’ in English. It is commonly used when meeting someone for the first time and expresses a hope for a good relationship.",
+    "Tidak ada padanan yang tepat untuk ‘잘 부탁드립니다’ dalam bahasa Indonesia. Ungkapan ini biasa digunakan saat pertama kali bertemu untuk menyampaikan harapan akan hubungan yang baik.",
 } as const;
 
 export const pronunciationBlockExamples = [
@@ -121,22 +122,22 @@ export const conversationPronunciationDefaults = {
   pronunciationDescriptionKo:
     "‘ㄷ’는 어두의 초성에 올 때는 무성음으로 발음되고 모음 사이에 올 때는 유성음으로 발음됩니다.",
   pronunciationDescriptionTranslation:
-    "When ㄷ appears at the beginning of a syllable, it is pronounced as a voiceless sound. Between vowels, it becomes voiced.",
+    "Ketika ㄷ berada di awal suku kata, bunyinya diucapkan tanpa suara. Di antara dua vokal, bunyinya menjadi bersuara.",
   pronunciationExamples: JSON.stringify(pronunciationBlockExamples),
 } as const;
 
 export const conversationBlockDefaults = {
   theme: "violet",
   sectionVariant: "pronunciation",
-  showTip: true,
+  showTip: false,
   assetId: "",
   fileName: "",
   contentType: "",
-  eyebrow: "대화 · CONVERSATION",
+  eyebrow: "대화 · percakapan",
   number: "02",
   audioTrack: "90",
   lines: JSON.stringify(conversationBlockLines),
-  questionsLabel: "대답해 봐요! · ANSWER ME!",
+  questionsLabel: "대답해 봐요! · jawablah!",
   questions: JSON.stringify(conversationBlockQuestions),
   tipTitle: "-지 못하다",
   tipBody:
@@ -151,15 +152,15 @@ export const conversationBlockDefaults = {
 export const cultureChecklistItems = [
   {
     ko: "한국 문화를 이해하고 간단히 설명할 수 있다.",
-    en: "Can understand and briefly explain Korean culture.",
+    en: "Dapat memahami dan menjelaskan budaya Korea secara singkat.",
   },
   {
     ko: "전통과 현대 생활의 차이를 말할 수 있다.",
-    en: "Can talk about differences between traditional and modern life.",
+    en: "Dapat menjelaskan perbedaan kehidupan tradisional dan modern.",
   },
   {
     ko: "사진을 보고 문화 정보를 설명할 수 있다.",
-    en: "Can describe cultural information based on photos.",
+    en: "Dapat menjelaskan informasi budaya berdasarkan foto.",
   },
 ] as const;
 
@@ -169,13 +170,13 @@ export const cultureBlockDefaults = {
   showBanner: true,
   spacing: "comfortable",
   surface: "card",
-  eyebrow: "문화와 정보 · Budaya dan informasi",
+  eyebrow: "문화와 정보 · BUDAYA & INFORMASI",
   titleKo: "한국의 온돌과 좌식 생활",
-  titleEn: "Ondol and Floor-sitting Life in Korea",
+  titleEn: "Ondol dan Budaya Duduk di Lantai di Korea",
   sections: cultureSectionsDefault,
   showChecklist: true,
   checklistTitleKo: "확인해요",
-  checklistTitleEn: "self assessment",
+  checklistTitleEn: "evaluasi mandiri",
   checklistItems: JSON.stringify(cultureChecklistItems),
 } as const;
 
@@ -198,18 +199,18 @@ export const grammarBlockTextDefaults = {
   descriptionKo:
     "‘-아요/어요’는 동사나 형용사에 붙어 비격식 상황에서 문장을 끝맺을 때 사용합니다.",
   descriptionTranslation:
-    "‘-아요/어요’ is attached to verbs and adjectives to end sentences politely in informal situations.",
+    "‘-아요/어요’ dilekatkan pada kata kerja atau kata sifat untuk mengakhiri kalimat secara sopan dalam situasi informal.",
   ruleColumnOne: "조건",
   ruleColumnTwo: "형태",
   ruleColumnThree: "예",
   ruleRows: JSON.stringify(grammarBlockRuleRows),
-  examplesLabel: "예문 · EXAMPLES",
+  examplesLabel: "예문 · contoh",
   examples: JSON.stringify(grammarBlockExamples),
   tipTitle: "확장 · TIP",
   tipKo:
     "‘동작 명사+-하다’ 유형은 의미 변화 없이 ‘동작 명사+을/를 하다’의 형태로도 사용할 수 있습니다.",
   tipTranslation:
-    "An action noun with 하다 can also be written as the action noun followed by 을/를 하다 without changing the meaning.",
+    "Kata benda tindakan dengan 하다 juga dapat ditulis sebagai kata benda tindakan diikuti 을/를 하다 tanpa mengubah makna.",
 } as const;
 
 export const grammarBlockDefaults = {
@@ -238,10 +239,10 @@ export const lessonPageDefaults = {
   vocabularyLabel: "어휘 · Kosakata",
   vocabularyTitle: "가구와 전자제품",
   vocabularyDescription: "Perabotan dan perangkat elektronik",
-  cultureLabel: "문화와 정보 · Budaya dan informasi",
+  cultureLabel: "문화와 정보 · budaya & informasi",
   cultureTitle: "한국의 도시",
   cultureDescription: "Kota-kota di Korea",
-  objectivesLabel: "학습 목표 · Tujuan pembelajaran",
+  objectivesLabel: "학습 목표 · TUJUAN PEMBELAJARAN",
   objectiveOne:
     "집에 있는 물건에 대해 말할 수 있다.\nDapat membicarakan benda-benda di rumah.",
   objectiveTwo:
@@ -256,7 +257,7 @@ const lessonPageTextProps = Object.fromEntries(
 );
 
 export const hakgyoBlockCatalog = {
-  catalogVersion: 10,
+  catalogVersion: 11,
   editor: "BlockNote",
   format: {
     description:
@@ -339,7 +340,10 @@ export const hakgyoBlockCatalog = {
           enum: conversationBlockSectionVariants,
           default: conversationBlockDefaults.sectionVariant,
         },
-        showTip: { type: "boolean", default: true },
+        showTip: {
+          type: "boolean",
+          default: conversationBlockDefaults.showTip,
+        },
         showUsefulExpressionNote: {
           type: "boolean",
           default: conversationBlockDefaults.showUsefulExpressionNote,
@@ -553,7 +557,7 @@ export const hakgyoBlockCatalog = {
         ],
         jsonProps: {
           sections:
-            "Ordered JSON array of culture sections. Supported types: text ({ id, type, ko, en }), media ({ id, type, columns, images }), and split ({ id, type, mediaSide, mediaWidth, mediaStack, ko, en, images }). Images contain assetId, fileName, contentType, alt, caption, aspect, and fit.",
+            "Ordered JSON array of culture sections. Supported types: text ({ id, type, ko, en }), media ({ id, type, columns, images }, with 1, 2, or 3 columns), and split ({ id, type, mediaSide, mediaWidth, mediaStack, ko, en, images }). Images contain assetId, fileName, contentType, alt, caption, aspect, and fit.",
           checklistItems:
             "JSON array of { ko, en } objects. The editor can add and remove checklist rows.",
         },

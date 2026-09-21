@@ -19,24 +19,18 @@ export function AssessmentQuestion({
   onOpen?: () => void;
   disabled?: boolean;
 }) {
-  return (
-    <StudyGlass>
-      {current !== undefined &&
-      total !== undefined &&
-      answered !== undefined &&
-      onOpen ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Questions. ${answered} of ${total} answered. Current question ${current + 1}.`}
-          accessibilityHint="Open the question list to jump to any question"
-          accessibilityState={{ disabled }}
-          disabled={disabled}
-          onPress={onOpen}
-          className="gap-2 border-b border-border/70 pb-4 active:opacity-75"
-        >
+  const showHeader =
+    current !== undefined &&
+    total !== undefined &&
+    answered !== undefined &&
+    onOpen;
+  const content = (
+    <>
+      {showHeader ? (
+        <View className="gap-2 border-b border-border/70 pb-4">
           <View className="flex-row items-center justify-between gap-3">
             <Text className="font-bold text-foreground">
-              Question {current + 1} of {total}
+              Question {(current as number) + 1} of {total}
             </Text>
             <Text className="text-sm font-bold text-primary">Questions ▦</Text>
           </View>
@@ -47,13 +41,16 @@ export function AssessmentQuestion({
           >
             <View
               className="h-full rounded-full bg-primary"
-              style={{ width: `${total ? (answered / total) * 100 : 0}%` }}
+              style={{
+                width: `${total ? ((answered as number) / (total as number)) * 100 : 0}%`,
+              }}
             />
           </View>
           <Text className="text-xs text-muted-foreground">
-            {answered} answered · {total - answered} remaining
+            {answered} answered · {(total as number) - (answered as number)}{" "}
+            remaining
           </Text>
-        </Pressable>
+        </View>
       ) : null}
       {detail ? (
         <Text className="text-[10px] font-black uppercase tracking-[2px] text-muted-foreground">
@@ -61,6 +58,24 @@ export function AssessmentQuestion({
         </Text>
       ) : null}
       {children}
+    </>
+  );
+  if (!showHeader) {
+    return <StudyGlass>{content}</StudyGlass>;
+  }
+  return (
+    <StudyGlass isInteractive={!disabled}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Questions. ${answered} of ${total} answered. Current question ${(current as number) + 1}.`}
+        accessibilityHint="Open the question list to jump to any question"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={onOpen}
+        className="gap-4 active:opacity-75"
+      >
+        {content}
+      </Pressable>
     </StudyGlass>
   );
 }

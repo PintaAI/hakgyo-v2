@@ -2,6 +2,7 @@ export const cultureSectionPresets = [
   "text",
   "media-one",
   "media-two",
+  "media-three",
   "split-image-left",
   "split-image-right",
   "split-stack-left",
@@ -36,7 +37,7 @@ export type CultureTextSection = {
 export type CultureMediaSection = {
   id: string;
   type: "media";
-  columns: 1 | 2;
+  columns: 1 | 2 | 3;
   images: CultureMedia[];
 };
 
@@ -56,12 +57,12 @@ export type CultureSection =
 
 const defaultTextOne = {
   ko: "한국에는 바닥에 앉아 식사하고 휴식하는 좌식 생활이 있습니다. 가족이 바닥에 함께 앉아 대화하며 자연스럽게 유대감을 나눕니다.",
-  en: "In Korea, people often sit on the floor to eat and relax. Families sit together on the floor, talk, and naturally build closeness.",
+  en: "Di Korea, orang sering duduk di lantai untuk makan dan beristirahat. Keluarga duduk bersama, berbincang, dan membangun kedekatan secara alami.",
 };
 
 const defaultTextTwo = {
   ko: "이러한 생활은 바닥을 따뜻하게 하는 전통 난방인 '온돌'과 함께 이어져 왔습니다. 오늘날에도 아파트의 따뜻한 바닥에 앉아 TV를 보거나 쉬는 모습을 쉽게 볼 수 있습니다.",
-  en: "This lifestyle continued together with 'ondol', the traditional heating that keeps the floor warm. Even today, you can often see people sitting on the warm apartment floor to watch TV or rest.",
+  en: "Kebiasaan ini berkembang bersama ondol, sistem pemanas tradisional yang menghangatkan lantai. Hingga kini, orang masih sering duduk di lantai apartemen yang hangat untuk menonton TV atau beristirahat.",
 };
 
 export function createCultureMedia(id: string): CultureMedia {
@@ -72,7 +73,7 @@ export function createCultureMedia(id: string): CultureMedia {
     contentType: "",
     alt: "",
     caption: "",
-    aspect: "4:3",
+    aspect: "3:2",
     fit: "cover",
   };
 }
@@ -85,8 +86,12 @@ export function createCultureSection(
     return { id, type: "text", ko: "", en: "" };
   }
 
-  if (preset === "media-one" || preset === "media-two") {
-    const count = preset === "media-two" ? 2 : 1;
+  if (
+    preset === "media-one" ||
+    preset === "media-two" ||
+    preset === "media-three"
+  ) {
+    const count = preset === "media-three" ? 3 : preset === "media-two" ? 2 : 1;
     return {
       id,
       type: "media",
@@ -156,7 +161,7 @@ function parseMedia(value: unknown, fallbackId: string): CultureMedia | null {
     contentType: readString(value.contentType),
     alt: readString(value.alt),
     caption: readString(value.caption),
-    aspect: aspect ?? "4:3",
+    aspect: aspect ?? "3:2",
     fit: fit ?? "cover",
   };
 }
@@ -207,7 +212,8 @@ export function parseCultureSections(value: string): CultureSection[] {
         }
 
         if (entry.type === "media") {
-          const columns = entry.columns === 1 ? 1 : 2;
+          const columns =
+            entry.columns === 1 || entry.columns === 3 ? entry.columns : 2;
           return {
             id,
             type: "media",

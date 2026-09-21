@@ -1,7 +1,7 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { router } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
-import type { ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import {
   Alert,
   Image,
@@ -29,8 +29,10 @@ import {
 import { apiUrl } from "../../config";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
+import { AppSegmentedControl } from "../app-segmented-control";
 import { GlassBox } from "../GlassBox";
 import { Eyebrow, QueryState } from "../learning-ui";
+import { CourseOutlineList } from "./course-outline-list";
 import {
   CohortMilestoneTimeline,
   type CohortMilestoneGroup,
@@ -432,6 +434,7 @@ export function CohortCard({
   outline?: RouterOutputs["learning"]["getCourseOutline"];
   isFirst?: boolean;
 }) {
+  const [curriculumSegment, setCurriculumSegment] = useState(0);
   const upcoming = cohort.meetings
     .filter((meeting) => meetingState(meeting, now) !== "ended")
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
@@ -506,11 +509,29 @@ export function CohortCard({
   // room. ~56pt native bar; swap for useHeaderHeight() if this drifts.
   const headerTopPadding = isFirst ? insets.top + 64 : 16;
 
-  const openCourse = () =>
+  const openOutlineItem: ComponentProps<
+    typeof CourseOutlineList
+  >["onOpenItem"] = (item, attempt) => {
+    if (attempt?.status === "IN_PROGRESS") {
+      router.push({
+        pathname:
+          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+        params: {
+          courseId: cohort.course.id,
+          courseItemId: item.id,
+          attemptId: attempt.id,
+        },
+      });
+      return;
+    }
     router.push({
-      pathname: "/courses/[courseId]",
-      params: { courseId: cohort.course.id },
+      pathname: "/courses/[courseId]/items/[courseItemId]",
+      params: {
+        courseId: cohort.course.id,
+        courseItemId: item.id,
+      },
     });
+  };
   const openNextItem =
     nextOutlineItem && nextTypeLabel
       ? () =>
@@ -707,19 +728,6 @@ export function CohortCard({
                 tint={glassTint}
               />
             ) : null}
-            <GlassChip
-              icon={
-                <SymbolView
-                  fallback={<View />}
-                  name="book.closed"
-                  size={13}
-                  tintColor={colors.foreground}
-                />
-              }
-              label="Buka bab"
-              onPress={openCourse}
-              tint={glassTint}
-            />
           </View>
         </View>
         {progress !== null ? (
@@ -757,13 +765,33 @@ export function CohortCard({
           </View>
         ) : null}
 
-        {milestoneGroup && milestoneGroup.milestones.length > 0 ? (
-          <View className="gap-2">
-            <Eyebrow>{`Completed (${milestoneGroup.completedCount})`}</Eyebrow>
-            <CohortMilestoneTimeline
-              courseId={cohort.course.id}
-              milestones={milestoneGroup.milestones}
+        {outline || milestoneGroup ? (
+          <View className="gap-3">
+            <Eyebrow>Kurikulum pembelajaran</Eyebrow>
+            <AppSegmentedControl
+              values={["Selesai", "Bab"]}
+              selectedIndex={curriculumSegment}
+              onIndexChange={setCurriculumSegment}
             />
+            {curriculumSegment === 0 ? (
+              milestoneGroup && milestoneGroup.milestones.length > 0 ? (
+                <CohortMilestoneTimeline
+                  courseId={cohort.course.id}
+                  milestones={milestoneGroup.milestones}
+                />
+              ) : (
+                <Text className="py-4 text-center text-sm text-muted-foreground">
+                  Belum ada aktivitas yang selesai.
+                </Text>
+              )
+            ) : (
+              <CourseOutlineList
+                courseId={cohort.course.id}
+                showActiveState={false}
+                showHeader={false}
+                onOpenItem={openOutlineItem}
+              />
+            )}
           </View>
         ) : null}
       </View>

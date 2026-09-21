@@ -76,6 +76,7 @@ const culturePresetLabels: Record<CultureSectionPreset, string> = {
   text: "Bilingual text",
   "media-one": "One image",
   "media-two": "Two images",
+  "media-three": "Three images",
   "split-image-left": "Gambar kiri",
   "split-image-right": "Gambar kanan",
   "split-stack-left": "Stacked images",
@@ -160,7 +161,11 @@ function getSectionImages(section: CultureSection) {
 function getSectionPreset(section: CultureSection): CultureSectionPreset {
   if (section.type === "text") return "text";
   if (section.type === "media") {
-    return section.columns === 1 ? "media-one" : "media-two";
+    return section.columns === 1
+      ? "media-one"
+      : section.columns === 3
+        ? "media-three"
+        : "media-two";
   }
   if (section.mediaStack === "column") return "split-stack-left";
   return section.mediaSide === "right"
@@ -233,7 +238,7 @@ function TextPair({
       {editable || en ? (
         <div data-culture-translation style={{ color: translationColor }}>
           <EditableBlockText
-          ariaLabel="Teks budaya bahasa Inggris"
+            ariaLabel="Teks budaya bahasa Inggris"
             className="w-full text-sm leading-relaxed"
             editable={editable}
             onChange={(value) => onChange({ ko, en: value })}
@@ -336,8 +341,8 @@ function CultureImage({
         {editable ? (
           <div className="absolute right-2 bottom-2 flex gap-1.5">
             {image.assetId ? (
-                <button
-                  aria-label="Hapus gambar"
+              <button
+                aria-label="Hapus gambar"
                 className="bg-background/90 text-muted-foreground hover:text-destructive grid size-7 place-items-center rounded-md shadow-sm backdrop-blur"
                 onClick={onClear}
                 type="button"
@@ -444,7 +449,13 @@ function SectionMedia({
 
   return (
     <div
-      className={`grid min-w-0 gap-4 ${stack === "row" && visibleImages.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+      className={`grid min-w-0 gap-4 ${
+        stack === "row" && visibleImages.length === 3
+          ? "grid-cols-3"
+          : stack === "row" && visibleImages.length > 1
+            ? "grid-cols-2"
+            : "grid-cols-1"
+      }`}
     >
       {visibleImages.map((image) => {
         const index = images.findIndex((item) => item.id === image.id);
@@ -762,7 +773,7 @@ export const cultureBlock = createReactBlockSpec(
               />
               <div style={{ color: scheme.accent }}>
                 <EditableBlockText
-                    ariaLabel="Judul budaya bahasa Inggris"
+                  ariaLabel="Judul budaya bahasa Inggris"
                   className="mt-1 w-full text-sm font-semibold"
                   editable={editable}
                   onChange={(titleEn) =>
@@ -977,7 +988,7 @@ export const cultureBlock = createReactBlockSpec(
                   />
                   <span className="text-muted-foreground">·</span>
                   <EditableBlockText
-                        ariaLabel="Judul checklist bahasa Inggris"
+                    ariaLabel="Judul checklist bahasa Inggris"
                     className="text-muted-foreground w-auto text-xs font-semibold tracking-[0.14em] uppercase"
                     editable={editable}
                     onChange={(checklistTitleEn) =>
