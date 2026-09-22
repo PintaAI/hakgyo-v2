@@ -13,6 +13,7 @@ import {
   protectedProcedure,
   type TRPCContext,
 } from "~/server/api/trpc";
+import { buildSidebarIndicatorCandidates } from "~/server/mobile/sidebar-indicators";
 import { r2, r2Bucket } from "~/server/r2";
 
 const ASSET_DOWNLOAD_TTL_SECONDS = 5 * 60;
@@ -63,6 +64,8 @@ async function getDashboard(
   ctx: TRPCContext,
   input: z.infer<typeof organizationScope>,
 ) {
+  const actorUserId = ctx.actorUserId;
+  if (!actorUserId) throw new TRPCError({ code: "UNAUTHORIZED" });
   const learning = learningRouter.createCaller(ctx);
   const assessment = assessmentRouter.createCaller(ctx);
   const assessmentEvent = assessmentEventRouter.createCaller(ctx);
@@ -223,6 +226,32 @@ async function getDashboard(
     ),
   );
 
+  const sidebarOrganizationId = input?.organizationId;
+  const sidebarCandidates = sidebarOrganizationId
+    ? buildSidebarIndicatorCandidates({
+        outlines: outlineEntries,
+        events,
+        cohorts,
+      })
+    : [];
+  const sidebarSeen = sidebarOrganizationId
+    ? await ctx.db.learnerSidebarSeen.findMany({
+        where: {
+          userId: actorUserId,
+          organizationId: sidebarOrganizationId,
+          indicatorKey: {
+            in: sidebarCandidates.map((candidate) => candidate.key),
+          },
+        },
+        select: { indicatorKey: true },
+      })
+    : [];
+  const seenKeys = new Set(sidebarSeen.map((entry) => entry.indicatorKey));
+  const sidebarItems = sidebarCandidates.map((candidate) => ({
+    ...candidate,
+    unread: !seenKeys.has(candidate.key),
+  }));
+
   return {
     generatedAt: new Date(),
     organizationId: input?.organizationId ?? null,
@@ -251,6 +280,10 @@ async function getDashboard(
       vocabulary: vocabularyPractice,
       assessment: assessmentPractice,
     },
+    sidebarIndicators: {
+      unreadCount: sidebarItems.filter((item) => item.unread).length,
+      items: sidebarItems,
+    },
     assetDownloads,
   };
 }
@@ -259,6 +292,26 @@ export const mobileSyncRouter = createTRPCRouter({
   getDashboard: protectedProcedure
     .input(organizationScope)
     .query(({ ctx, input }) => getDashboard(ctx, input)),
+
+  markSidebarSeen: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.string().min(1),
+        keys: z.array(z.string().min(1).max(240)).min(1).max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const keys = [...new Set(input.keys)];
+      await ctx.db.learnerSidebarSeen.createMany({
+        data: keys.map((indicatorKey) => ({
+          userId: ctx.actorUserId,
+          organizationId: input.organizationId,
+          indicatorKey,
+        })),
+        skipDuplicates: true,
+      });
+      return { seen: keys };
+    }),
 
   startAssessment: protectedProcedure
     .input(

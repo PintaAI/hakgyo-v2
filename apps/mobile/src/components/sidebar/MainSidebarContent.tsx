@@ -4,6 +4,11 @@ import { Pressable, Text, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 
 import { api } from "../../lib/trpc";
+import {
+  countUnreadIndicators,
+  MAIN_SIDEBAR_INDICATOR_KINDS,
+} from "../../lib/sidebar-indicator-count";
+import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import {
   assessmentAttemptPresentation,
@@ -42,12 +47,14 @@ function SidebarActionRow({
   title,
   detail,
   badge,
+  unread = false,
   onPress,
 }: {
   icon: "timer" | "video.fill" | "checkmark.seal.fill";
   title: string;
   detail: string;
   badge?: string;
+  unread?: boolean;
   onPress: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -87,6 +94,19 @@ function SidebarActionRow({
             >
               {title}
             </Text>
+            {unread ? (
+              <View
+                className="rounded-full px-1.5 py-0.5"
+                style={{ backgroundColor: colors.destructive }}
+              >
+                <Text
+                  className="text-[10px] font-bold"
+                  style={{ color: colors.destructiveForeground }}
+                >
+                  New
+                </Text>
+              </View>
+            ) : null}
             {badge ? (
               <View
                 className="rounded-full px-1.5 py-0.5"
@@ -119,8 +139,20 @@ export function MainSidebarContent({
 }: {
   onNavigate: (action: () => void) => void;
 }) {
-  const { colors } = useAppTheme();
-  const { activeOrganizationId } = useAppTheme();
+  const { activeOrganizationId, colors } = useAppTheme();
+  const { indicator, items, markEntitySeen, markSeen } = useSidebarIndicators();
+  const mainSidebarUnreadCount = countUnreadIndicators(
+    items,
+    MAIN_SIDEBAR_INDICATOR_KINDS,
+  );
+  const markMainSidebarSeen = () =>
+    markSeen(
+      items
+        .filter(
+          (item) => item.unread && MAIN_SIDEBAR_INDICATOR_KINDS.has(item.kind),
+        )
+        .map((item) => item.key),
+    );
   const scope = activeOrganizationId
     ? { organizationId: activeOrganizationId }
     : undefined;
@@ -160,6 +192,29 @@ export function MainSidebarContent({
 
   return (
     <>
+      {mainSidebarUnreadCount > 0 ? (
+        <View
+          className="mx-1 mb-2 flex-row items-center justify-between rounded-xl px-3 py-2"
+          style={{ backgroundColor: colors.sidebarAccent }}
+        >
+          <Text
+            className="text-xs font-semibold"
+            style={{ color: colors.foreground }}
+          >
+            {mainSidebarUnreadCount} new{" "}
+            {mainSidebarUnreadCount === 1 ? "update" : "updates"}
+          </Text>
+          <Pressable accessibilityRole="button" onPress={markMainSidebarSeen}>
+            <Text
+              className="text-xs font-bold"
+              style={{ color: colors.primary }}
+            >
+              Catch up
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {upcomingEvents.length > 0 ? (
         <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
           <SectionHeader label="Up next" count={upcomingEvents.length} />
@@ -176,7 +231,9 @@ export function MainSidebarContent({
                   title={event.title}
                   detail={`${assessmentSourceBadge(event)} · ${event.course.title}${event.closesAt ? ` · ${closesLabel(event.closesAt, now)}` : ""}`}
                   badge={urgent ? "Due" : undefined}
+                  unread={indicator("ASSESSMENT", event.id)?.unread ?? false}
                   onPress={() => {
+                    markEntitySeen("ASSESSMENT", event.id);
                     if (event.entry.destination === "ATTEMPT" && attempt) {
                       onNavigate(() =>
                         router.push({
@@ -218,7 +275,11 @@ export function MainSidebarContent({
                   title={meeting.title}
                   detail={`${cohort.name} · ${dateLabel(meeting.startsAt)}`}
                   badge={state === "live" ? "Live" : undefined}
-                  onPress={() => openMeeting(meeting, cohort.course.id)}
+                  unread={indicator("MEETING", meeting.id)?.unread ?? false}
+                  onPress={() => {
+                    markEntitySeen("MEETING", meeting.id);
+                    openMeeting(meeting, cohort.course.id);
+                  }}
                 />
               );
             })}

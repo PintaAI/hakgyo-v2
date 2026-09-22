@@ -47,6 +47,7 @@ model User {
   adminActionTargets          AdminAuditLog[]              @relation("AdminAuditTarget")
   pushTargets                 PushTarget[]
   notifications               Notification[]
+  sidebarSeen                 LearnerSidebarSeen[]
 
   @@unique([email])
   @@map("user")
@@ -534,6 +535,23 @@ model Organization {
   assets                 Asset[]
   activityEvents         UserActivityEvent[]
   notifications          Notification[]
+  sidebarSeen            LearnerSidebarSeen[]
+}
+
+/// A durable read receipt for one version of a learner-facing sidebar item.
+/// Availability remains derived from domain data; these rows only answer
+/// whether that available item has already been acknowledged by the learner.
+model LearnerSidebarSeen {
+  userId         String
+  organizationId String
+  indicatorKey   String
+  seenAt         DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, organizationId, indicatorKey])
+  @@index([userId, organizationId, seenAt])
+  @@map("learnerSidebarSeen")
 }
 
 model OrganizationMember {

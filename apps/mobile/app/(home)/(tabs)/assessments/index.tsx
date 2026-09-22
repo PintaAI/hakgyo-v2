@@ -14,11 +14,9 @@ import { OrganizationSwitcherTrigger } from "../../../../src/components/organiza
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
-import { useDrawer } from "../../../../src/providers/DrawerProvider";
-import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
+import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 
 export default function PracticeTab() {
-  const { open } = useDrawer();
   const { activeOrganizationId } = useAppTheme();
   const incoming = useLocalSearchParams<{
     courseId?: string | string[];
@@ -78,13 +76,7 @@ export default function PracticeTab() {
   });
   return (
     <>
-      <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button
-          icon={toolbarIcons.menu}
-          accessibilityLabel="Open menu"
-          onPress={open}
-        />
-      </Stack.Toolbar>
+      <SidebarToolbarButton />
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.View hidesSharedBackground>

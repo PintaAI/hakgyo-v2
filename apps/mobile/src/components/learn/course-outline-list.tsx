@@ -8,6 +8,7 @@ import { getCourseResumeItem } from "../../lib/course-learning-path";
 import { authClient } from "../../lib/auth-client";
 import { api } from "../../lib/trpc";
 import { useAppTheme } from "../../providers/AppThemeProvider";
+import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { QueryState } from "../learning-ui";
 import { LearningItemRow } from "./learning-item-row";
 
@@ -40,6 +41,7 @@ export function CourseOutlineList({
 }) {
   const { data: session } = authClient.useSession();
   const { activeOrganizationId } = useAppTheme();
+  const { indicator, markEntitySeen } = useSidebarIndicators();
   const dashboard = api.mobileSync.getDashboard.useQuery(
     activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
     { enabled: Boolean(session && courseId), retry: false },
@@ -96,6 +98,7 @@ export function CourseOutlineList({
         course.modules.map((module, moduleIndex) => {
           const locked = module.access === "LOCKED";
           const hasSubtitle = locked || !!module.description;
+          const unread = indicator("MODULE", module.id)?.unread ?? false;
 
           return (
             <View
@@ -114,7 +117,9 @@ export function CourseOutlineList({
                     {String(moduleIndex + 1).padStart(2, "0")}
                   </Text>
                 </View>
-                <View className={`min-w-0 flex-1 ${hasSubtitle ? "gap-1" : ""}`}>
+                <View
+                  className={`min-w-0 flex-1 ${hasSubtitle ? "gap-1" : ""}`}
+                >
                   <Text
                     className="text-base font-bold text-foreground"
                     numberOfLines={1}
@@ -135,15 +140,24 @@ export function CourseOutlineList({
                     </Text>
                   ) : null}
                 </View>
-                <Text
-                  className={`${hasSubtitle ? "pt-1" : ""} text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground`}
+                <View
+                  className={`${hasSubtitle ? "pt-1" : ""} items-end gap-1`}
                 >
-                  {module.isCompleted
-                    ? "Completed"
-                    : locked
-                      ? "Locked"
-                      : `${module.items.filter((item) => item.isCompleted).length}/${module.items.length} done`}
-                </Text>
+                  {unread ? (
+                    <View className="rounded-full bg-destructive px-1.5 py-0.5">
+                      <Text className="text-[10px] font-bold text-destructive-foreground">
+                        New
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Text className="text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground">
+                    {module.isCompleted
+                      ? "Completed"
+                      : locked
+                        ? "Locked"
+                        : `${module.items.filter((item) => item.isCompleted).length}/${module.items.length} done`}
+                  </Text>
+                </View>
               </View>
 
               {module.items.length === 0 ? (
@@ -191,7 +205,10 @@ export function CourseOutlineList({
                         )}
                         isLast={isLast}
                         showChevron={!locked && !isCurrent}
-                        onPress={() => onOpenItem(item, attempt)}
+                        onPress={() => {
+                          markEntitySeen("MODULE", module.id);
+                          onOpenItem(item, attempt);
+                        }}
                         disabled={locked}
                         accessibilityHint={assessmentState?.action}
                       />

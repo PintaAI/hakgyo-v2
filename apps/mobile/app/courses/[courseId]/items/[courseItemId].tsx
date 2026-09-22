@@ -20,9 +20,10 @@ import { assessmentAttemptPresentation } from "../../../../src/lib/assessment-st
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
 import type { LearningPathCourse } from "../../../../src/lib/course-learning-path";
+import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
-import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
+import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import {
   StudyAction,
   StudyGlass,
@@ -81,6 +82,7 @@ function CourseItemContent({
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
   const { activeOrganizationId, colors } = useAppTheme();
+  const { markEntitySeen } = useSidebarIndicators();
   const dashboard = api.mobileSync.getDashboard.useQuery(
     activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
     { enabled: Boolean(session && courseId), retry: false },
@@ -101,7 +103,6 @@ function CourseItemContent({
     },
   );
   const initialOutline = useRef<LearningPathCourse>(undefined);
-  const { open } = useDrawer();
   const resolveAssetUrl = useApiAssetResolver();
   const itemQuery = api.learning.getCourseItem.useQuery(
     { courseItemId },
@@ -130,6 +131,9 @@ function CourseItemContent({
   const startAssessment = api.mobileSync.startAssessment.useMutation();
   const [selectedCohortId, setSelectedCohortId] = useState<string>();
   const item = itemQuery.data ?? dashboardItem;
+  const currentModuleId = (outline.data ?? dashboardOutline)?.modules.find(
+    (module) => module.items.some((entry) => entry.id === courseItemId),
+  )?.id;
   const material = item?.material;
   const vocabulary = item?.vocabularySet;
   const assessment = assessmentQuery.data ?? dashboardAssessment;
@@ -140,6 +144,9 @@ function CourseItemContent({
     maxAttempts: assessment?.maxAttempts ?? null,
     available: true,
   });
+  useEffect(() => {
+    if (currentModuleId) markEntitySeen("MODULE", currentModuleId);
+  }, [currentModuleId, markEntitySeen]);
   useEffect(() => {
     if (!isSessionPending && !session && courseId && courseItemId) {
       router.replace({
@@ -207,13 +214,7 @@ function CourseItemContent({
     <>
       {/* Sidebar trigger replaces the back chevron: the drawer carries the
           course contents, so learners navigate without leaving the screen. */}
-      <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button
-          icon={toolbarIcons.menu}
-          accessibilityLabel="Open course contents"
-          onPress={open}
-        />
-      </Stack.Toolbar>
+      <SidebarToolbarButton accessibilityLabel="Open course contents" />
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon={toolbarIcons.home}

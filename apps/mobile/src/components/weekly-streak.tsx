@@ -11,8 +11,8 @@ import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { api } from "../lib/trpc";
 import {
   getStreakLabel,
+  getStreakProgressDays,
   getStreakStage,
-  getWeeklyProgressDays,
 } from "../lib/streak";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
@@ -42,10 +42,17 @@ export function WeeklyStreak({
   const currentStreak = data?.summary.currentStreak;
   const stage = getStreakStage(currentStreak ?? 0);
   const tierColor = TIER_COLORS[colorScheme][stage.tone];
-  const days = data ? getWeeklyProgressDays(data.weeklyActivity) : [];
-  const newestActiveDate = [...days]
-    .reverse()
-    .find((day) => day.active)?.dateKey;
+  const days = data
+    ? getStreakProgressDays({
+        ...data.weeklyActivity,
+        currentStreak: data.summary.currentStreak,
+      })
+    : [];
+  const newestActiveDate = days.reduce<string | undefined>(
+    (newest, day) =>
+      day.active && (!newest || day.dateKey > newest) ? day.dateKey : newest,
+    undefined,
+  );
   const streakLabel = getStreakLabel(currentStreak ?? 0);
 
   useEffect(() => {
@@ -118,13 +125,16 @@ export function WeeklyStreak({
 
             <View className="flex-row">
               {days.map((day) => {
-                const accessibilityLabel = `${day.weekday} ${day.dateNumber}, ${day.active ? "activity completed" : day.future ? "upcoming" : "no activity"}`;
+                const dayTierColor = day.tone
+                  ? TIER_COLORS[colorScheme][day.tone]
+                  : tierColor;
+                const accessibilityLabel = `${day.weekday} ${day.dateNumber}, ${day.active ? `${day.tone} streak activity completed` : day.future ? "upcoming" : "no activity"}`;
                 const dayContent = day.active ? (
                   <SymbolView
                     fallback={<Text className="text-base">🔥</Text>}
                     name="flame.fill"
                     size={18}
-                    tintColor={tierColor}
+                    tintColor={dayTierColor}
                     weight="semibold"
                   />
                 ) : (
@@ -168,7 +178,7 @@ export function WeeklyStreak({
                           glassEffectStyle="clear"
                           style={dayStyle}
                           tintColor={withOpacity(
-                            colors.primary,
+                            day.active ? dayTierColor : colors.primary,
                             colorScheme === "dark" ? 0.35 : 0.18,
                           )}
                         >
@@ -181,7 +191,7 @@ export function WeeklyStreak({
                             ...dayStyle,
                             {
                               backgroundColor: day.active
-                                ? withOpacity(tierColor, 0.14)
+                                ? withOpacity(dayTierColor, 0.14)
                                 : colors.muted,
                             },
                           ]}

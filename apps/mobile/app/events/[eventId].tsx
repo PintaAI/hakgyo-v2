@@ -7,9 +7,11 @@ import { StudyAction, StudyGlass } from "../../src/components/study-glass";
 import { assessmentAttemptPresentation } from "../../src/lib/assessment-state";
 import { dateLabel } from "../../src/lib/study";
 import { api } from "../../src/lib/trpc";
+import { useSidebarIndicators } from "../../src/lib/sidebar-indicators";
 
 export default function AssessmentEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const { markEntitySeen } = useSidebarIndicators();
   const utils = api.useUtils();
   const query = api.assessmentEvent.getForLearner.useQuery(
     { eventId },
@@ -21,6 +23,10 @@ export default function AssessmentEventScreen() {
   const attemptState = assessmentAttemptPresentation(attempt);
   const invalidated = !!event?.participants[0]?.invalidatedAt;
   const assessment = event?.courseItem.assessment;
+
+  useEffect(() => {
+    if (eventId) markEntitySeen("ASSESSMENT", eventId);
+  }, [eventId, markEntitySeen]);
 
   function openAttempt(attemptId: string, replace = false) {
     if (!event) return;

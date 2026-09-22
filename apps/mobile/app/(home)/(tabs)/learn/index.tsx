@@ -3,7 +3,6 @@ import { Stack, useFocusEffect } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   FlatList,
   View,
   type LayoutChangeEvent,
@@ -24,10 +23,12 @@ import {
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
-import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
+import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
+import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
 
 function CohortCarousel({
   cohorts,
@@ -145,7 +146,6 @@ function CohortCarousel({
 }
 
 export default function LearnTab() {
-  const { open } = useDrawer();
   const { data: session } = authClient.useSession();
   const { activeOrganizationId } = useAppTheme();
   const organizationScope = activeOrganizationId
@@ -157,6 +157,8 @@ export default function LearnTab() {
     queryOptions,
   );
   const { isSyncing, syncNow } = useMobileSync();
+  const { openUpdates } = useDrawer();
+  const { unreadCount } = useSidebarIndicators();
   const [now, setNow] = useState(Date.now);
 
   useFocusEffect(
@@ -206,27 +208,19 @@ export default function LearnTab() {
   );
   return (
     <>
-      <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button
-          icon={toolbarIcons.menu}
-          accessibilityLabel="Open menu"
-          onPress={open}
-        />
-      </Stack.Toolbar>
-      {/* Mock: two buttons in one placement render as a joined group. */}
+      <SidebarToolbarButton />
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
-          icon={toolbarIcons.search}
-          accessibilityLabel="Search"
-          onPress={() => Alert.alert("Search", "Mock search (not wired yet).")}
-        />
-        <Stack.Toolbar.Button
           icon={toolbarIcons.notifications}
-          accessibilityLabel="Notifications"
-          onPress={() =>
-            Alert.alert("Notifications", "Mock notifications (not wired yet).")
-          }
-        />
+          accessibilityLabel="Open learning updates"
+          onPress={openUpdates}
+        >
+          {unreadCount > 0 ? (
+            <Stack.Toolbar.Badge>
+              {unreadCount > 99 ? "99+" : String(unreadCount)}
+            </Stack.Toolbar.Badge>
+          ) : null}
+        </Stack.Toolbar.Button>
       </Stack.Toolbar>
       <StudyScreen
         title=""

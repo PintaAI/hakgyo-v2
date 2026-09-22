@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import {
   getStreakLabel,
+  getStreakProgressDays,
   getStreakStage,
-  getWeeklyProgressDays,
 } from "./streak";
 
 describe("streak stage", () => {
@@ -27,69 +27,79 @@ describe("streak stage", () => {
   });
 });
 
-test("builds a Monday-to-Sunday activity calendar", () => {
-  expect(
-    getWeeklyProgressDays({
-      activeDates: ["2026-09-07", "2026-09-09"],
-      startsOn: "2026-09-07",
-      today: "2026-09-09",
-    }),
-  ).toEqual([
-    {
+describe("streak progress days", () => {
+  test("keeps all weekdays green when a Tuesday streak reaches Monday", () => {
+    const days = getStreakProgressDays({
+      activeDates: ["2026-09-14"],
+      currentStreak: 7,
+      startsOn: "2026-09-14",
+      today: "2026-09-14",
+    });
+
+    expect(
+      days.map(({ active, dateKey, tone, weekday }) => ({
+        active,
+        dateKey,
+        tone,
+        weekday,
+      })),
+    ).toEqual([
+      { active: true, dateKey: "2026-09-14", tone: "green", weekday: "Mon" },
+      { active: true, dateKey: "2026-09-08", tone: "green", weekday: "Tue" },
+      { active: true, dateKey: "2026-09-09", tone: "green", weekday: "Wed" },
+      { active: true, dateKey: "2026-09-10", tone: "green", weekday: "Thu" },
+      { active: true, dateKey: "2026-09-11", tone: "green", weekday: "Fri" },
+      { active: true, dateKey: "2026-09-12", tone: "green", weekday: "Sat" },
+      { active: true, dateKey: "2026-09-13", tone: "green", weekday: "Sun" },
+    ]);
+  });
+
+  test("promotes only Tuesday when the streak reaches its second Tuesday", () => {
+    const days = getStreakProgressDays({
+      activeDates: ["2026-09-14", "2026-09-15"],
+      currentStreak: 8,
+      startsOn: "2026-09-14",
+      today: "2026-09-15",
+    });
+
+    expect(days.map((day) => day.tone)).toEqual([
+      "green",
+      "yellow",
+      "green",
+      "green",
+      "green",
+      "green",
+      "green",
+    ]);
+    expect(days.find((day) => day.weekday === "Tue")).toMatchObject({
       active: true,
-      dateKey: "2026-09-07",
-      dateNumber: 7,
-      future: false,
-      today: false,
-      weekday: "Mon",
-    },
-    {
-      active: false,
-      dateKey: "2026-09-08",
-      dateNumber: 8,
-      future: false,
-      today: false,
-      weekday: "Tue",
-    },
-    {
-      active: true,
-      dateKey: "2026-09-09",
-      dateNumber: 9,
-      future: false,
+      dateKey: "2026-09-15",
       today: true,
-      weekday: "Wed",
-    },
-    {
-      active: false,
-      dateKey: "2026-09-10",
-      dateNumber: 10,
-      future: true,
-      today: false,
-      weekday: "Thu",
-    },
-    {
-      active: false,
-      dateKey: "2026-09-11",
-      dateNumber: 11,
-      future: true,
-      today: false,
-      weekday: "Fri",
-    },
-    {
-      active: false,
-      dateKey: "2026-09-12",
-      dateNumber: 12,
-      future: true,
-      today: false,
-      weekday: "Sat",
-    },
-    {
-      active: false,
-      dateKey: "2026-09-13",
-      dateNumber: 13,
-      future: true,
-      today: false,
-      weekday: "Sun",
-    },
-  ]);
+      tone: "yellow",
+    });
+  });
+
+  test("resets the bubbles when the continuous streak is broken", () => {
+    expect(
+      getStreakProgressDays({
+        activeDates: [],
+        currentStreak: 0,
+        startsOn: "2026-09-14",
+        today: "2026-09-16",
+      }).map(({ active, future, tone, today }) => ({
+        active,
+        future,
+        tone,
+        today,
+      })),
+    ).toEqual([
+      { active: false, future: false, tone: null, today: false },
+      { active: false, future: false, tone: null, today: false },
+      { active: false, future: false, tone: null, today: true },
+      { active: false, future: true, tone: null, today: false },
+      { active: false, future: true, tone: null, today: false },
+      { active: false, future: true, tone: null, today: false },
+      { active: false, future: true, tone: null, today: false },
+    ]);
+  });
 });

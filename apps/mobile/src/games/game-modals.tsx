@@ -14,6 +14,9 @@ const gameSymbols = {
   "word-fall": "keyboard.fill",
   sentences: "text.bubble.fill",
   match: "link",
+  "syllable-forge": "character.book.closed.fill",
+  "stroke-master": "pencil",
+  "word-builder": "text.word.spacing",
 } satisfies Record<GameKey, SymbolViewProps["name"]>;
 
 function GameModalContent({
@@ -225,6 +228,7 @@ export function GameStartModal({
   onDismiss,
   onSecondary,
   primaryLabel = "Start",
+  primaryDisabled = false,
   secondaryLabel = "Back",
 }: {
   gameKey: GameKey;
@@ -236,6 +240,7 @@ export function GameStartModal({
   onDismiss?: () => void;
   onSecondary: () => void;
   primaryLabel?: string;
+  primaryDisabled?: boolean;
   secondaryLabel?: string;
 }) {
   return (
@@ -247,6 +252,7 @@ export function GameStartModal({
       onDismiss={onDismiss}
       onPrimary={onPrimary}
       onSecondary={onSecondary}
+      primaryDisabled={primaryDisabled}
       primaryLabel={primaryLabel}
       secondaryLabel={secondaryLabel}
       title={title}

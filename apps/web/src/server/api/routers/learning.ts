@@ -79,6 +79,8 @@ export const learningRouter = createTRPCRouter({
               timezone: true,
               status: true,
               joinUrl: true,
+              createdAt: true,
+              updatedAt: true,
             },
           },
           _count: {

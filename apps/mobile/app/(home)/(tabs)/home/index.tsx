@@ -2,8 +2,7 @@ import { router, Stack, type Href } from "expo-router";
 import { useState } from "react";
 import { Image, Platform, Pressable, Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
-import { useDrawer } from "../../../../src/providers/DrawerProvider";
-import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
+import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import {
   QueryState,
   StudyScreen,
@@ -18,7 +17,6 @@ import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvid
 import { api } from "../../../../src/lib/trpc";
 
 export default function HomeTab() {
-  const { open } = useDrawer();
   const { data: session } = authClient.useSession();
   const { activeOrganizationId } = useAppTheme();
   const { syncNow } = useMobileSyncActions();
@@ -45,13 +43,7 @@ export default function HomeTab() {
 
   return (
     <>
-      <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button
-          icon={toolbarIcons.menu}
-          accessibilityLabel="Open menu"
-          onPress={open}
-        />
-      </Stack.Toolbar>
+      <SidebarToolbarButton />
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.View hidesSharedBackground>

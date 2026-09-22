@@ -123,6 +123,39 @@ const tools: Tool[] = [
   },
 ];
 
+const hangeulTools: Tool[] = [
+  {
+    key: "stroke-master",
+    title: "Stroke Master",
+    subtitle: "Trace the strokes",
+    sourceLabel: "Hangeul",
+    icon: "pencil",
+    fallback: "✎",
+    resource: "VOCABULARY_SET",
+    available: false,
+  },
+  {
+    key: "syllable-forge",
+    title: "Syllable Forge",
+    subtitle: "Build a syllable block",
+    sourceLabel: "Hangeul",
+    icon: "character.book.closed.fill",
+    fallback: "한",
+    resource: "VOCABULARY_SET",
+    available: false,
+  },
+  {
+    key: "word-builder",
+    title: "Word Builder",
+    subtitle: "Connect syllable blocks",
+    sourceLabel: "Hangeul",
+    icon: "text.word.spacing",
+    fallback: "가나",
+    resource: "VOCABULARY_SET",
+    available: false,
+  },
+];
+
 // One corner family for the whole hub, shared with cohort-card so the two
 // tabs read as a set. Chips and icon circles stay fully round.
 const SURFACE_RADIUS = 20;
@@ -841,6 +874,20 @@ export function PracticeHub(props: HubProps) {
 
   return (
     <>
+      <View className="gap-3 pt-1">
+        <Eyebrow>Hangeul Mastery</Eyebrow>
+        <GamePicker
+          tools={hangeulTools}
+          onSelect={(key) => {
+            if (!isGameKey(key)) return;
+            router.push({
+              pathname: "/games/[gameKey]",
+              params: { gameKey: key },
+            });
+          }}
+          selectedKey={null}
+        />
+      </View>
       <QueryState
         error={props.coursesError}
         pending={props.coursesPending}

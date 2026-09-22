@@ -19,6 +19,21 @@ export const gameCatalog = {
     icon: "⌁",
     description: "Connect each word to its meaning.",
   },
+  "syllable-forge": {
+    title: "Syllable Forge",
+    icon: "한",
+    description: "Build Hangeul syllable blocks.",
+  },
+  "stroke-master": {
+    title: "Stroke Master",
+    icon: "✎",
+    description: "Trace Hangeul characters in the correct stroke order.",
+  },
+  "word-builder": {
+    title: "Word Builder",
+    icon: "가나",
+    description: "Connect syllable blocks to build Korean words.",
+  },
 } satisfies Record<string, GameDefinition>;
 
 export type GameDefinition = {

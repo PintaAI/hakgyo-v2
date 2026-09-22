@@ -27,6 +27,7 @@ import {
   timeLabel,
 } from "../../lib/study";
 import { apiUrl } from "../../config";
+import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { AppSegmentedControl } from "../app-segmented-control";
@@ -53,6 +54,8 @@ export type CohortMeeting = {
   timezone: string;
   status: string;
   joinUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type LearnCohort = {
@@ -435,6 +438,7 @@ export function CohortCard({
   isFirst?: boolean;
 }) {
   const [curriculumSegment, setCurriculumSegment] = useState(0);
+  const { markEntitySeen } = useSidebarIndicators();
   const upcoming = cohort.meetings
     .filter((meeting) => meetingState(meeting, now) !== "ended")
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
@@ -459,6 +463,7 @@ export function CohortCard({
 
   const openFeaturedAssessment = () => {
     if (!featured) return;
+    markEntitySeen("ASSESSMENT", featured.id);
     const attempt = featured.attempts[0];
     if (featured.entry.destination === "ATTEMPT" && attempt) {
       router.push({
@@ -487,6 +492,7 @@ export function CohortCard({
       module.items.map((item) => ({
         ...item,
         available: canOpenModule(module.access),
+        moduleId: module.id,
         moduleTitle: module.title,
       })),
     )
@@ -534,9 +540,10 @@ export function CohortCard({
   };
   const openNextItem =
     nextOutlineItem && nextTypeLabel
-      ? () =>
-          nextOutlineItem.type === "ASSESSMENT" &&
-          nextOutlineItem.attempt?.status === "IN_PROGRESS"
+      ? () => {
+          markEntitySeen("MODULE", nextOutlineItem.moduleId);
+          return nextOutlineItem.type === "ASSESSMENT" &&
+            nextOutlineItem.attempt?.status === "IN_PROGRESS"
             ? router.push({
                 pathname:
                   "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
@@ -552,7 +559,8 @@ export function CohortCard({
                   courseId: cohort.course.id,
                   courseItemId: nextOutlineItem.id,
                 },
-              })
+              });
+        }
       : undefined;
 
   // Pick the single hero by urgency.
@@ -573,7 +581,10 @@ export function CohortCard({
           : `Starts ${timeLabel(next.startsAt)} · ${next.durationMinutes} min`,
       pill: joinUrl ? "Join" : "Details",
       pillIcon: joinUrl ? zoomBrandIcon : undefined,
-      onPress: () => openMeeting(next, cohort.course.id),
+      onPress: () => {
+        markEntitySeen("MEETING", next.id);
+        openMeeting(next, cohort.course.id);
+      },
     };
   } else if (featured && featuredActionable && featuredUrgent) {
     hero = {
@@ -623,7 +634,10 @@ export function CohortCard({
       detail: joinUrl
         ? `${dateLabel(next.startsAt)} · ${next.durationMinutes} min · Tap to join`
         : `${dateLabel(next.startsAt)} · ${next.durationMinutes} min · Details on web`,
-      onPress: () => openMeeting(next, cohort.course.id),
+      onPress: () => {
+        markEntitySeen("MEETING", next.id);
+        openMeeting(next, cohort.course.id);
+      },
     });
   }
   if (featured && hero?.kind !== "assessment") {
