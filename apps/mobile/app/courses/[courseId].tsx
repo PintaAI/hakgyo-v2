@@ -1,8 +1,8 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { Image } from "expo-image";
 import { useEffect } from "react";
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   Text,
@@ -120,9 +120,11 @@ export default function CourseDetailScreen() {
                 <Image
                   accessibilityIgnoresInvertColors
                   blurRadius={5}
+                  cachePolicy="memory-disk"
                   className="absolute inset-0 z-0 h-full w-full"
-                  resizeMode="cover"
+                  contentFit="cover"
                   source={{ uri: course.thumbnailUrl }}
+                  transition={0}
                 />
                 <View
                   className="absolute inset-0 z-10"

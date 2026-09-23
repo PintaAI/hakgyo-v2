@@ -7,6 +7,7 @@ import { Action, Empty, StudyScreen } from "../../src/components/learning-ui";
 import { VocabularySession } from "../../src/components/vocabulary-session";
 import { gameCatalog, isGameKey } from "../../src/games/catalog";
 import { GameBackToolbar, GamePage } from "../../src/games/game-screens";
+import { HangeulScreen } from "../../src/games/hangeul/hangeul-screen";
 import { SyllableForgeScreen } from "../../src/games/syllable-forge/syllable-forge-screen";
 import { VocabularyMatchScreen } from "../../src/games/vocabulary-match/vocabulary-match-screen";
 import { WordFallScreen } from "../../src/games/word-fall/word-fall-screen";
@@ -34,6 +35,10 @@ export default function GameRoute() {
   const courseIdParam = first(params.courseId);
   const { data: session } = authClient.useSession();
   const game = isGameKey(key) ? gameCatalog[key] : undefined;
+
+  if (key === "stroke-master") {
+    return <HangeulScreen />;
+  }
 
   if (key === "syllable-forge") {
     return <SyllableForgeScreen />;

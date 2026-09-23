@@ -1,5 +1,6 @@
 import { router } from "expo-router";
-import { Image, Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
@@ -44,9 +45,11 @@ export function CourseCard({
         <>
           <Image
             accessibilityIgnoresInvertColors
+            cachePolicy="memory-disk"
             className="absolute inset-0 z-0 size-full"
-            resizeMode="cover"
+            contentFit="cover"
             source={{ uri: course.thumbnailUrl }}
+            transition={0}
           />
           <View
             className="absolute inset-0 z-10"

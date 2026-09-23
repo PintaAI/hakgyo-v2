@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { useContentRenderer } from "./context";
 
@@ -99,15 +100,17 @@ export function ContentImage({
           <Image
             accessibilityIgnoresInvertColors
             accessibilityLabel={accessibilityLabel}
+            cachePolicy="memory-disk"
             className="h-full w-full"
+            contentFit={fit}
             onLoad={(event) => {
               if (aspect !== "auto") return;
-              const { height, width } = event.nativeEvent.source;
+              const { height, width } = event.source;
               if (height > 0 && width > 0)
                 setNaturalAspectRatio(width / height);
             }}
-            resizeMode={fit}
             source={{ uri: resolved.url }}
+            transition={0}
           />
         ) : resolved.status === "loading" ? (
           <View className="flex-1 items-center justify-center">

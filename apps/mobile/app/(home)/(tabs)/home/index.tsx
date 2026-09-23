@@ -1,6 +1,7 @@
 import { router, Stack, type Href } from "expo-router";
+import { Image } from "expo-image";
 import { useState } from "react";
-import { Image, Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import {
@@ -71,9 +72,11 @@ export default function HomeTab() {
           <View className="size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary">
             {session?.user.image ? (
               <Image
+                cachePolicy="memory-disk"
                 className="size-full"
-                resizeMode="cover"
+                contentFit="cover"
                 source={{ uri: session.user.image }}
+                transition={0}
               />
             ) : (
               <Text className="text-xs font-bold text-primary-foreground">

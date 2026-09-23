@@ -41,6 +41,10 @@ export const toolbarIcons = {
     ios: "keyboard.chevron.compact.down",
     android: import("@expo/material-symbols/keyboard_hide.xml"),
   }),
+  hint: Icon.select({
+    ios: "lightbulb.fill",
+    android: import("@expo/material-symbols/lightbulb.xml"),
+  }),
   mic: Icon.select({
     ios: "mic.fill",
     android: import("@expo/material-symbols/mic.xml"),

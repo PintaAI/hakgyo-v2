@@ -20,19 +20,19 @@ export const gameCatalog = {
     description: "Connect each word to its meaning.",
   },
   "syllable-forge": {
-    title: "Syllable Forge",
-    icon: "한",
-    description: "Build Hangeul syllable blocks.",
+    title: "Susun 한글",
+    icon: "글",
+    description: "Ketik huruf dan susun menjadi blok suku kata Hangeul.",
   },
   "stroke-master": {
-    title: "Stroke Master",
-    icon: "✎",
-    description: "Trace Hangeul characters in the correct stroke order.",
+    title: "Hangeul",
+    icon: "한",
+    description: "Kenali 10 vokal dan 14 konsonan dasar Hangeul.",
   },
   "word-builder": {
-    title: "Word Builder",
+    title: "Susun kata",
     icon: "가나",
-    description: "Connect syllable blocks to build Korean words.",
+    description: "Build Korean words from syllable blocks.",
   },
 } satisfies Record<string, GameDefinition>;
 

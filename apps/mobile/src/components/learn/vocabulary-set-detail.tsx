@@ -2,11 +2,11 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { router } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { SymbolView } from "expo-symbols";
+import { Image } from "expo-image";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   Text,
   View,
@@ -58,9 +58,11 @@ function EntryImage({
   return (
     <Image
       accessibilityIgnoresInvertColors
+      cachePolicy="memory-disk"
       className={className}
-      resizeMode="cover"
+      contentFit="cover"
       source={{ uri: url }}
+      transition={0}
     />
   );
 }

@@ -61,8 +61,10 @@ type Tool = {
   title: string;
   subtitle: string;
   sourceLabel: string;
+  unavailableLabel?: string;
   icon: SymbolViewProps["name"];
   fallback: string;
+  textIcon?: boolean;
   resource: PracticeFilter;
   available: boolean;
   // Contextual disable, distinct from available=false ("Soon", not built).
@@ -126,29 +128,34 @@ const tools: Tool[] = [
 const hangeulTools: Tool[] = [
   {
     key: "stroke-master",
-    title: "Stroke Master",
-    subtitle: "Trace the strokes",
-    sourceLabel: "Hangeul",
+    title: "Hangeul",
+    subtitle: "Pelajari huruf Hangeul",
+    sourceLabel: "한글",
+    unavailableLabel: "한글",
     icon: "pencil",
-    fallback: "✎",
+    fallback: "한",
+    textIcon: true,
     resource: "VOCABULARY_SET",
-    available: false,
+    available: true,
   },
   {
     key: "syllable-forge",
-    title: "Syllable Forge",
-    subtitle: "Build a syllable block",
+    title: "Susun 한글",
+    subtitle: "Susun suku kata Hangeul",
     sourceLabel: "Hangeul",
+    unavailableLabel: "한글",
     icon: "character.book.closed.fill",
-    fallback: "한",
+    fallback: "글",
+    textIcon: true,
     resource: "VOCABULARY_SET",
-    available: false,
+    available: true,
   },
   {
     key: "word-builder",
-    title: "Word Builder",
-    subtitle: "Connect syllable blocks",
+    title: "Susun kata",
+    subtitle: "Susun kata dari suku kata",
     sourceLabel: "Hangeul",
+    unavailableLabel: "한글",
     icon: "text.word.spacing",
     fallback: "가나",
     resource: "VOCABULARY_SET",
@@ -185,17 +192,23 @@ function GameIcon({
       className={`items-center justify-center rounded-full ${selected ? "bg-primary" : tool.available ? "bg-primary/10" : "bg-muted"}`}
       style={{ width: size, height: size }}
     >
-      <SymbolView
-        fallback={
-          <Text className="text-base font-black" style={{ color: glyph }}>
-            {tool.fallback}
-          </Text>
-        }
-        name={tool.icon}
-        size={Math.round(size * 0.42)}
-        tintColor={glyph}
-        weight="bold"
-      />
+      {tool.textIcon ? (
+        <Text className="text-base font-black" style={{ color: glyph }}>
+          {tool.fallback}
+        </Text>
+      ) : (
+        <SymbolView
+          fallback={
+            <Text className="text-base font-black" style={{ color: glyph }}>
+              {tool.fallback}
+            </Text>
+          }
+          name={tool.icon}
+          size={Math.round(size * 0.42)}
+          tintColor={glyph}
+          weight="bold"
+        />
+      )}
     </View>
   );
 }
@@ -218,9 +231,11 @@ function GameTile({
     colors.primary,
     colorScheme === "dark" ? 0.35 : 0.18,
   );
-  // Badge names the data source in Indonesian; games that don't exist yet
-  // keep "Soon". The badge turns primary when the tile is selected.
-  const badgeLabel = tool.available ? tool.sourceLabel : "Soon";
+  // A game can replace the default "Soon" badge with a domain label.
+  // The badge turns primary when the tile is selected.
+  const badgeLabel = tool.available
+    ? tool.sourceLabel
+    : (tool.unavailableLabel ?? "Soon");
   const disabled = !tool.available || !!tool.disabledHint;
   const badge = (
     <View

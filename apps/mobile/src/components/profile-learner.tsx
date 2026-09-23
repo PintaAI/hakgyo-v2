@@ -1,6 +1,7 @@
 import { SymbolView } from "expo-symbols";
+import { Image } from "expo-image";
 import { useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { achievementLabel, dateLabel } from "../lib/study";
 import { useAppTheme } from "../providers/AppThemeProvider";
@@ -77,9 +78,11 @@ export function ProfileHero({
           >
             {image ? (
               <Image
+                cachePolicy="memory-disk"
                 className="size-full"
-                resizeMode="cover"
+                contentFit="cover"
                 source={{ uri: image }}
+                transition={0}
               />
             ) : (
               <Text
@@ -110,10 +113,7 @@ export function ProfileHero({
         </View>
       </View>
       <View className="gap-0.5">
-        <Text
-          className="text-base font-bold text-foreground"
-          numberOfLines={1}
-        >
+        <Text className="text-base font-bold text-foreground" numberOfLines={1}>
           {displayName}
         </Text>
         <Text className="text-sm text-muted-foreground" numberOfLines={1}>
@@ -227,9 +227,7 @@ export function MilestoneTrail({
   const { colors } = useAppTheme();
 
   if (isPending || error || !achievements) {
-    return (
-      <QueryState pending={isPending} error={error} retry={onRetry} />
-    );
+    return <QueryState pending={isPending} error={error} retry={onRetry} />;
   }
 
   return (
@@ -288,8 +286,7 @@ export function MilestoneTrail({
                           className="text-xs leading-4 text-muted-foreground"
                           numberOfLines={1}
                         >
-                          Earned ·{" "}
-                          {dateLabel(new Date(achievement.earnedAt))}
+                          Earned · {dateLabel(new Date(achievement.earnedAt))}
                         </Text>
                       </View>
                       <Text className="pt-0.5 text-[10px] font-bold tabular-nums text-muted-foreground">

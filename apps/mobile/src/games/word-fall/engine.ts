@@ -4,7 +4,7 @@ export type WordFallWord = {
   definition: string;
 };
 
-export type WordFallPowerUp = "shield" | "freeze" | "heart" | "blast" | "force";
+export type WordFallPowerUp = "shield" | "freeze" | "heart" | "reveal" | "force";
 
 export type WordFallReviewReason = "missed" | "mistyped";
 
@@ -207,6 +207,10 @@ export function selectWordTarget(
 
 export function levelForDestroyed(destroyed: number) {
   return 1 + Math.floor(Math.max(0, destroyed) / 6);
+}
+
+export function destroyedForLevel(level: number) {
+  return Math.max(0, Math.floor(level) - 1) * 6;
 }
 
 export function maximumActiveWords(level: number) {

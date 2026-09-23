@@ -1,10 +1,10 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { router } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
+import { Image } from "expo-image";
 import { useState, type ComponentProps, type ReactNode } from "react";
 import {
   Alert,
-  Image,
   Linking,
   Pressable,
   StyleSheet,
@@ -254,8 +254,11 @@ function HeroPill({ hero }: { hero: CohortHero }) {
       {hero.pillIcon ? (
         <Image
           accessibilityIgnoresInvertColors
+          cachePolicy="memory-disk"
+          contentFit="contain"
           source={hero.pillIcon}
           style={{ width: 14, height: 14 }}
+          transition={0}
         />
       ) : null}
       <Text className="text-sm font-bold text-primary-foreground">
@@ -360,8 +363,11 @@ function PlateRowView({
           <View className="h-9 flex-row items-center gap-1.5 px-3.5">
             <Image
               accessibilityIgnoresInvertColors
+              cachePolicy="memory-disk"
+              contentFit="contain"
               source={row.brandIcon}
               style={{ width: 14, height: 14 }}
+              transition={0}
             />
             <Text className="text-xs font-semibold text-foreground">Zoom</Text>
             <SymbolView
@@ -679,9 +685,11 @@ export function CohortCard({
             <Image
               accessibilityIgnoresInvertColors
               blurRadius={3}
+              cachePolicy="memory-disk"
               className="absolute inset-0 z-0 size-full"
-              resizeMode="cover"
+              contentFit="cover"
               source={{ uri: thumbnailUrl }}
+              transition={0}
             />
             <View
               className="absolute inset-0 z-10"
@@ -730,8 +738,11 @@ export function CohortCard({
                 icon={
                   <Image
                     accessibilityIgnoresInvertColors
+                    cachePolicy="memory-disk"
+                    contentFit="contain"
                     source={whatsappBrandIcon}
                     style={{ width: 14, height: 14 }}
+                    transition={0}
                   />
                 }
                 label="Group"

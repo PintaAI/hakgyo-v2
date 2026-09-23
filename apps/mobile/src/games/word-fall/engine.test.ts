@@ -6,6 +6,7 @@ import {
   analyzeTyping,
   answerTextForWord,
   comboMultiplier,
+  destroyedForLevel,
   fallDurationForLevel,
   isWordFallInputEditable,
   knockbackDelayMs,
@@ -171,5 +172,25 @@ describe("word fall engine", () => {
 
   test("reveals one definition character for each completed character", () => {
     expect(maskedDefinition("South Korea", 3)).toBe("Sou•• •••••");
+  });
+
+  test("starts each level with the matching destroyed count", () => {
+    expect(destroyedForLevel(1)).toBe(0);
+    expect(destroyedForLevel(4)).toBe(18);
+    for (const level of [1, 2, 5, 10]) {
+      expect(levelForDestroyed(destroyedForLevel(level))).toBe(level);
+    }
+  });
+
+  test("lets the player pick a starting level on the start screen", () => {
+    const screenSource = readFileSync(
+      new URL("./word-fall-screen.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(screenSource).toContain("<LevelSelector");
+    expect(screenSource).toContain(
+      "setDestroyed(destroyedForLevel(startLevel))",
+    );
+    expect(screenSource).toContain("tertiaryLabel={");
   });
 });

@@ -10,12 +10,12 @@ import {
 } from "react";
 import {
   ActivityIndicator,
-  Image,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import {
   Gesture,
   GestureDetector,
@@ -222,7 +222,7 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
           if (!url) return;
           if (preloadedImageUrls.current.has(url)) return;
           preloadedImageUrls.current.add(url);
-          return Image.prefetch(url).then(
+          return Image.prefetch(url, "memory-disk").then(
             (cached) => {
               if (!cached) preloadedImageUrls.current.delete(url);
             },
@@ -1181,9 +1181,11 @@ function CardContent({
                     card.imageAccessibilityLabel ??
                     `${card.prompt} illustration`
                   }
-                  resizeMode="contain"
+                  cachePolicy="memory-disk"
+                  contentFit="contain"
                   source={{ uri: image.url }}
                   style={[styles.image, { height: promptText.imageHeight }]}
+                  transition={0}
                 />
               ) : null}
               <Text

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getOrganizationSwitcherOptions } from "../lib/organization-switcher";
@@ -23,9 +24,11 @@ function OrganizationMark({
       {logoUrl ? (
         <Image
           accessibilityIgnoresInvertColors
+          cachePolicy="memory-disk"
           className="size-full"
-          resizeMode="cover"
+          contentFit="cover"
           source={{ uri: logoUrl }}
+          transition={0}
         />
       ) : (
         <Text className="text-xs font-black text-primary">

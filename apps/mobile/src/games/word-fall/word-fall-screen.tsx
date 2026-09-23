@@ -49,6 +49,7 @@ import {
   answerTextForWord,
   cleanTypingText,
   comboMultiplier,
+  destroyedForLevel,
   fallDurationForLevel,
   isWordFallInputEditable,
   knockbackDelayMs,
@@ -101,6 +102,13 @@ const STARTING_HEALTH = 3;
 const MAX_HEALTH = 6;
 const FORCE_REWARD_CHARGES = 10;
 const MAX_FORCE_CHARGES = 20;
+const REVEAL_DURATION_MS = 6_000;
+const MAX_REVEAL_CHARGES = 5;
+const MAX_START_LEVEL = 10;
+const START_LEVEL_OPTIONS = Array.from(
+  { length: MAX_START_LEVEL },
+  (_, index) => index + 1,
+);
 
 function powerUpForRoll(roll: number): WordFallPowerUp | undefined {
   if (roll >= 0.15) return undefined;
@@ -108,7 +116,7 @@ function powerUpForRoll(roll: number): WordFallPowerUp | undefined {
   if (roll < 0.06) return "freeze";
   if (roll < 0.09) return "heart";
   if (roll < 0.12) return "force";
-  return "blast";
+  return "reveal";
 }
 
 function powerUpLabel(powerUp: WordFallPowerUp) {
@@ -116,7 +124,7 @@ function powerUpLabel(powerUp: WordFallPowerUp) {
   if (powerUp === "freeze") return "FREEZE";
   if (powerUp === "heart") return "+HEART";
   if (powerUp === "force") return "FORCE";
-  return "BLAST";
+  return "REVEAL";
 }
 
 function powerUpColor(powerUp: WordFallPowerUp, colors: ThemeColors) {
@@ -124,7 +132,7 @@ function powerUpColor(powerUp: WordFallPowerUp, colors: ThemeColors) {
   if (powerUp === "freeze") return colors.chart2;
   if (powerUp === "heart") return colors.destructive;
   if (powerUp === "force") return colors.highlightOrangeText;
-  return colors.highlightYellowText;
+  return colors.highlightGreenText;
 }
 
 function playerCenterY(field: FieldSize, playerLift = 0) {
@@ -158,6 +166,7 @@ function FallingWordView({
   playerLift,
   mistyped,
   paused,
+  revealed,
   onImpact,
 }: {
   entity: FallingWord;
@@ -165,6 +174,7 @@ function FallingWordView({
   playerLift: SharedValue<number>;
   mistyped: string;
   paused: boolean;
+  revealed: boolean;
   onImpact: (id: string) => void;
 }) {
   const { colors } = useAppTheme();
@@ -309,7 +319,9 @@ function FallingWordView({
   const mistypedLength = Array.from(mistyped).length;
   const hiddenDefinition = definitionCharacters
     .slice(entity.matched + mistypedLength)
-    .map((character) => (character.trim() === "" ? character : "•"))
+    .map((character) =>
+      revealed || character.trim() === "" ? character : "•",
+    )
     .join("");
 
   return (
@@ -593,6 +605,96 @@ function LearningRecap({ items }: { items: readonly WordFallReviewItem[] }) {
   );
 }
 
+function levelDetail(level: number) {
+  const fallSeconds = Math.round(fallDurationForLevel(level, 0.5) / 1000);
+  const maxWords = maximumActiveWords(level);
+  return `~${fallSeconds}s per word · up to ${maxWords} at once`;
+}
+
+function LevelSelector({
+  selected,
+  onSelect,
+}: {
+  selected: number;
+  onSelect: (level: number) => void;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    <View style={styles.levelSelector}>
+      <Text style={[styles.levelSelectorTitle, { color: colors.foreground }]}>
+        Starting level
+      </Text>
+      <ScrollView
+        nestedScrollEnabled
+        showsVerticalScrollIndicator
+        style={[
+          styles.levelList,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+          },
+        ]}
+      >
+        {START_LEVEL_OPTIONS.map((option, index) => {
+          const active = option === selected;
+          const last = index === START_LEVEL_OPTIONS.length - 1;
+          return (
+            <Pressable
+              key={option}
+              accessibilityLabel={`Start at level ${option}, ${levelDetail(option)}`}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              onPress={() => onSelect(option)}
+              style={({ pressed }) => [
+                styles.levelRow,
+                {
+                  backgroundColor: active
+                    ? withOpacity(colors.primary, 0.08)
+                    : "transparent",
+                  borderBottomColor: colors.border,
+                  borderBottomWidth: last
+                    ? 0
+                    : StyleSheet.hairlineWidth,
+                  opacity: pressed ? 0.6 : 1,
+                },
+              ]}
+            >
+              <View style={styles.levelRowCopy}>
+                <Text
+                  style={[
+                    styles.levelRowTitle,
+                    { color: colors.foreground },
+                  ]}
+                >
+                  Level {option}
+                </Text>
+                <Text
+                  style={[
+                    styles.levelRowDetail,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  {levelDetail(option)}
+                </Text>
+              </View>
+              {active ? (
+                <Text
+                  style={[
+                    styles.levelRowCheck,
+                    { color: colors.primary },
+                  ]}
+                >
+                  ✓
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
 export function WordFallScreen({
   words,
   onExit,
@@ -620,6 +722,7 @@ export function WordFallScreen({
   const healthRef = useRef(STARTING_HEALTH);
   const shieldRef = useRef(0);
   const forceChargesRef = useRef(0);
+  const revealChargesRef = useRef(0);
   const comboRef = useRef(0);
   const mistakeActiveRef = useRef(false);
   const mistakeWordIdsRef = useRef(new Set<string>());
@@ -637,6 +740,8 @@ export function WordFallScreen({
   const [health, setHealth] = useState(STARTING_HEALTH);
   const [shield, setShield] = useState(0);
   const [forceCharges, setForceCharges] = useState(0);
+  const [revealCharges, setRevealCharges] = useState(0);
+  const [revealed, setRevealed] = useState(false);
   const [score, setScore] = useState(0);
   const [destroyed, setDestroyed] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -649,6 +754,8 @@ export function WordFallScreen({
   const [bursts, setBursts] = useState<BurstModel[]>([]);
   const [frozen, setFrozen] = useState(false);
   const [pendingReportCount, setPendingReportCount] = useState(0);
+  const [startLevel, setStartLevel] = useState(1);
+  const [showLevelPicker, setShowLevelPicker] = useState(false);
   const playerLift = useSharedValue(0);
   const playerRecoil = useSharedValue(0);
   const level = levelForDestroyed(destroyed);
@@ -953,18 +1060,27 @@ export function WordFallScreen({
         schedule(() => setFrozen(false), 2_500);
         return;
       }
-      const cleared = entitiesRef.current.filter((entity) => !entity.completed);
-      for (const entity of cleared)
-        addBurst(
-          entityPosition(entity, field, playerLift.value),
-          powerUpColor("blast", colors),
+      if (powerUp === "reveal") {
+        revealChargesRef.current = Math.min(
+          MAX_REVEAL_CHARGES,
+          revealChargesRef.current + 1,
         );
-      commitEntities([]);
-      setScore((current) => current + cleared.length * 15);
-      setDestroyed((current) => current + cleared.length);
+        setRevealCharges(revealChargesRef.current);
+        return;
+      }
     },
-    [addBurst, colors, commitEntities, field, playerLift, schedule],
+    [schedule],
   );
+
+  const activateReveal = useCallback(() => {
+    if (phase !== "running" || revealed) return;
+    if (revealChargesRef.current <= 0) return;
+    revealChargesRef.current -= 1;
+    setRevealCharges(revealChargesRef.current);
+    setRevealed(true);
+    schedule(() => setRevealed(false), REVEAL_DURATION_MS);
+    focusInput();
+  }, [focusInput, phase, revealed, schedule]);
 
   const finishWord = useCallback(
     (id: string) => {
@@ -1050,6 +1166,7 @@ export function WordFallScreen({
     healthRef.current = STARTING_HEALTH;
     shieldRef.current = 0;
     forceChargesRef.current = 0;
+    revealChargesRef.current = 0;
     comboRef.current = 0;
     mistakeActiveRef.current = false;
     mistakeWordIdsRef.current.clear();
@@ -1060,17 +1177,20 @@ export function WordFallScreen({
     setHealth(STARTING_HEALTH);
     setShield(0);
     setForceCharges(0);
+    setRevealCharges(0);
+    setRevealed(false);
     setScore(0);
-    setDestroyed(0);
+    setDestroyed(destroyedForLevel(startLevel));
     setCombo(0);
     setReviewItems([]);
     setInput("");
     setLockedTargetId(null);
     setFrozen(false);
+    setShowLevelPicker(false);
     progressSessionIdRef.current = onSessionStart();
     setPhase("running");
     focusInputOnAndroid();
-  }, [clearTimers, focusInputOnAndroid, onSessionStart, playerRecoil]);
+  }, [clearTimers, focusInputOnAndroid, onSessionStart, playerRecoil, startLevel]);
 
   const pauseGame = useCallback(() => {
     if (phase !== "running") return;
@@ -1288,7 +1408,7 @@ export function WordFallScreen({
       />
 
       <View onLayout={onFieldLayout} style={styles.field}>
-        {shield > 0 || frozen || forceCharges > 0 ? (
+        {shield > 0 || frozen || forceCharges > 0 || revealCharges > 0 || revealed ? (
           <View style={styles.activePowerUps}>
             {shield > 0 ? (
               <View
@@ -1359,6 +1479,58 @@ export function WordFallScreen({
                 </Text>
               </View>
             ) : null}
+            {revealed ? (
+              <View
+                style={[
+                  styles.statusChip,
+                  {
+                    backgroundColor: withOpacity(
+                      powerUpColor("reveal", colors),
+                      0.14,
+                    ),
+                    borderColor: powerUpColor("reveal", colors),
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusChipText,
+                    { color: powerUpColor("reveal", colors) },
+                  ]}
+                >
+                  Revealing
+                </Text>
+              </View>
+            ) : null}
+            {revealCharges > 0 ? (
+              <Pressable
+                accessibilityLabel={`Activate reveal, ${revealCharges} charge${revealCharges === 1 ? "" : "s"} left`}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: revealed }}
+                disabled={revealed}
+                onPress={activateReveal}
+                style={[
+                  styles.statusChip,
+                  {
+                    backgroundColor: withOpacity(
+                      powerUpColor("reveal", colors),
+                      revealed ? 0.07 : 0.14,
+                    ),
+                    borderColor: powerUpColor("reveal", colors),
+                    opacity: revealed ? 0.5 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusChipText,
+                    { color: powerUpColor("reveal", colors) },
+                  ]}
+                >
+                  Reveal ×{revealCharges}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
 
@@ -1371,6 +1543,7 @@ export function WordFallScreen({
             onImpact={handleImpact}
             paused={phase !== "running" || frozen || entity.completed}
             playerLift={playerLift}
+            revealed={revealed}
           />
         ))}
         {projectiles.map((projectile) => (
@@ -1429,11 +1602,20 @@ export function WordFallScreen({
       </View>
 
       <GameStartModal
+        closeButton
         detail="Type each word's definition before it reaches your ship. Correct letters reveal as you type."
         gameKey="word-fall"
         onDismiss={focusInputAfterModalDismiss}
         onPrimary={resetGame}
         onSecondary={exit}
+        tertiaryLabel={showLevelPicker ? "Done selecting" : "Select level"}
+        tertiaryDetail={showLevelPicker ? undefined : `Level ${startLevel}`}
+        onTertiary={() => setShowLevelPicker((current) => !current)}
+        tertiaryContent={
+          showLevelPicker ? (
+            <LevelSelector selected={startLevel} onSelect={setStartLevel} />
+          ) : undefined
+        }
         title="Word Fall"
         visible={phase === "ready"}
       />
@@ -1631,6 +1813,26 @@ const styles = StyleSheet.create({
   recapTerm: { fontSize: 16, fontWeight: "800" },
   recapDefinition: { fontSize: 12, lineHeight: 17 },
   recapReason: { fontSize: 10, fontWeight: "800", textAlign: "right" },
+  levelSelector: { gap: 10 },
+  levelSelectorTitle: { fontSize: 14, fontWeight: "800" },
+  levelList: {
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    maxHeight: 264,
+    overflow: "hidden",
+  },
+  levelRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    minHeight: 60,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  levelRowCopy: { flex: 1, gap: 2 },
+  levelRowTitle: { fontSize: 16, fontWeight: "700" },
+  levelRowDetail: { fontSize: 12, lineHeight: 17 },
+  levelRowCheck: { fontSize: 20, fontWeight: "900" },
   finishContent: { alignSelf: "stretch", gap: 12 },
   finishFooter: { maxHeight: 320 },
   finishFooterContent: { paddingBottom: 4 },

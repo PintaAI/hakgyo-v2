@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -66,9 +67,11 @@ export function SidebarShell({
       <View className="mb-5 flex-row items-center gap-3 px-1">
         {thumbnailUrl ? (
           <Image
+            cachePolicy="memory-disk"
             className="size-11 rounded-2xl"
-            resizeMode="cover"
+            contentFit="cover"
             source={{ uri: thumbnailUrl }}
+            transition={0}
           />
         ) : thumbnailFallbackLabel ? (
           <View
@@ -134,9 +137,11 @@ export function SidebarShell({
             >
               {session?.user.image ? (
                 <Image
+                  cachePolicy="memory-disk"
                   className="size-full"
-                  resizeMode="cover"
+                  contentFit="cover"
                   source={{ uri: session.user.image }}
+                  transition={0}
                 />
               ) : (
                 <Text
