@@ -4,7 +4,10 @@ export type WordFallWord = {
   definition: string;
 };
 
-export type WordFallPowerUp = "shield" | "freeze" | "heart" | "reveal" | "force";
+export type WordFallAnswerMode = "ID" | "KR";
+
+export type WordFallPowerUp =
+  "shield" | "freeze" | "heart" | "reveal" | "force";
 
 export type WordFallReviewReason = "missed" | "mistyped";
 
@@ -44,8 +47,18 @@ export function isWordFallInputEditable(phase: WordFallPhase) {
   return phase === "running";
 }
 
-export function answerTextForWord(word: WordFallWord) {
-  return word.definition;
+export function answerTextForWord(
+  word: WordFallWord,
+  mode: WordFallAnswerMode = "ID",
+) {
+  return mode === "KR" ? word.term : word.definition;
+}
+
+export function promptTextForWord(
+  word: WordFallWord,
+  mode: WordFallAnswerMode,
+) {
+  return mode === "KR" ? word.definition : word.term;
 }
 
 const HANGUL_BASE = 0xac00;
@@ -247,9 +260,14 @@ export function comboMultiplier(combo: number) {
   return Math.min(3, 1 + Math.max(0, Math.floor(combo) - 1) * 0.1);
 }
 
-export function pointsForWord(word: WordFallWord, level: number, combo = 1) {
+export function pointsForWord(
+  word: WordFallWord,
+  level: number,
+  combo = 1,
+  mode: WordFallAnswerMode = "ID",
+) {
   const basePoints =
-    Math.max(1, Array.from(answerTextForWord(word)).length) *
+    Math.max(1, Array.from(answerTextForWord(word, mode)).length) *
     10 *
     Math.max(1, level);
   return Math.round(basePoints * comboMultiplier(combo));

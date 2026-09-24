@@ -14,6 +14,7 @@ import {
   maskedDefinition,
   maximumActiveWords,
   pointsForWord,
+  promptTextForWord,
   pushStrengthForLevel,
   selectWordTarget,
   wordFallResult,
@@ -87,14 +88,23 @@ describe("word fall engine", () => {
     expect(Number(bottomInset)).toBeGreaterThanOrEqual(120);
   });
 
-  test("uses the definition as the typed answer", () => {
+  test("switches the prompt and typed answer with the answer language", () => {
+    const word = {
+      id: "korea",
+      term: "한국",
+      definition: "South Korea",
+    };
+
+    expect(promptTextForWord(word, "ID")).toBe("한국");
+    expect(answerTextForWord(word, "ID")).toBe("South Korea");
+    expect(promptTextForWord(word, "KR")).toBe("South Korea");
+    expect(answerTextForWord(word, "KR")).toBe("한국");
     expect(
-      answerTextForWord({
-        id: "korea",
-        term: "한국",
-        definition: "South Korea",
-      }),
-    ).toBe("South Korea");
+      selectWordTarget(
+        [{ id: word.id, answer: answerTextForWord(word, "KR"), impactAt: 1 }],
+        "한",
+      ),
+    ).toBe(word.id);
   });
 
   test("tracks the correct prefix and blocks progress after a mistake", () => {
@@ -158,6 +168,7 @@ describe("word fall engine", () => {
     expect(comboMultiplier(4)).toBeCloseTo(1.3);
     expect(comboMultiplier(99)).toBe(3);
     expect(pointsForWord(word, 1, 4)).toBe(78);
+    expect(pointsForWord(word, 1, 4, "KR")).toBe(26);
   });
 
   test("deduplicates recap vocabulary while preserving review reasons", () => {

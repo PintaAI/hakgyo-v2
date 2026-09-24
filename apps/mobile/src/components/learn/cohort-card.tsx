@@ -689,6 +689,7 @@ export function CohortCard({
               className="absolute inset-0 z-0 size-full"
               contentFit="cover"
               source={{ uri: thumbnailUrl }}
+              style={StyleSheet.absoluteFill}
               transition={0}
             />
             <View

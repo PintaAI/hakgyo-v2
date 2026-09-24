@@ -5,6 +5,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CourseLearningFooter } from "../components/learn/course-learning-footer";
+import { GlassBox } from "../components/GlassBox";
 import { StudyAction } from "../components/study-glass";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
@@ -84,38 +85,6 @@ function GameModalContent({
   const game = gameCatalog[gameKey];
   return (
     <View style={styles.surface}>
-      {showCloseButton && onSecondary ? (
-        <Pressable
-          accessibilityLabel="Close"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={onSecondary}
-          style={({ pressed }) => [
-            styles.closeButton,
-            {
-              backgroundColor: colors.secondary,
-              opacity: pressed ? 0.6 : 1,
-            },
-          ]}
-        >
-          <SymbolView
-            fallback={
-              <Text
-                style={[
-                  styles.closeFallback,
-                  { color: colors.mutedForeground },
-                ]}
-              >
-                ×
-              </Text>
-            }
-            name="xmark"
-            size={14}
-            tintColor={colors.mutedForeground}
-            weight="bold"
-          />
-        </Pressable>
-      ) : null}
       {hero ? <View style={styles.hero}>{hero}</View> : null}
       <View style={styles.heading}>
         <View
@@ -158,6 +127,36 @@ function GameModalContent({
             {title}
           </Text>
         </View>
+        {showCloseButton && onSecondary ? (
+          <GlassBox
+            isInteractive
+            glassEffectStyle="clear"
+            tintColor={withOpacity(colors.mutedForeground, 0.12)}
+            style={styles.closeGlass}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              hitSlop={2}
+              onPress={onSecondary}
+              style={styles.closeButton}
+            >
+              <SymbolView
+                fallback={
+                  <Text
+                    style={[styles.closeFallback, { color: colors.foreground }]}
+                  >
+                    ×
+                  </Text>
+                }
+                name="xmark"
+                size={16}
+                tintColor={colors.foreground}
+                weight="bold"
+              />
+            </Pressable>
+          </GlassBox>
+        ) : null}
       </View>
       <Text style={[styles.detail, { color: colors.mutedForeground }]}>
         {detail}
@@ -179,7 +178,7 @@ function GameModalContent({
         </StudyAction>
         {tertiaryLabel && onTertiary ? (
           <Pressable
-            accessibilityLabel={`${tertiaryLabel}${tertiaryDetail ? `, ${tertiaryDetail}` : ""}`}
+              accessibilityLabel={`${tertiaryLabel}${tertiaryDetail ? `, ${tertiaryDetail}` : ""}`}
             accessibilityRole="button"
             onPress={onTertiary}
             style={({ pressed }) => [
@@ -367,12 +366,10 @@ export function GameStartModal({
   onSecondary,
   primaryLabel = "Start",
   primaryDisabled = false,
-  secondaryLabel = "Back",
   tertiaryLabel,
   tertiaryDetail,
   onTertiary,
   tertiaryContent,
-  closeButton = false,
 }: {
   gameKey: GameKey;
   visible: boolean;
@@ -385,12 +382,10 @@ export function GameStartModal({
   onSecondary: () => void;
   primaryLabel?: string;
   primaryDisabled?: boolean;
-  secondaryLabel?: string;
   tertiaryLabel?: string;
   tertiaryDetail?: string;
   onTertiary?: () => void;
   tertiaryContent?: ReactNode;
-  closeButton?: boolean;
 }) {
   return (
     <GameModal
@@ -404,12 +399,11 @@ export function GameStartModal({
       onSecondary={onSecondary}
       primaryDisabled={primaryDisabled}
       primaryLabel={primaryLabel}
-      secondaryLabel={closeButton ? undefined : secondaryLabel}
       tertiaryLabel={tertiaryLabel}
       tertiaryDetail={tertiaryDetail}
       onTertiary={onTertiary}
       tertiaryContent={tertiaryContent}
-      showCloseButton={closeButton}
+      showCloseButton
       title={title}
       verticallyCentered
       visible={visible}
@@ -452,18 +446,21 @@ const styles = StyleSheet.create({
   modalBody: { alignSelf: "center", maxWidth: 520, width: "100%" },
   modalBodyVerticallyCentered: { flex: 1, justifyContent: "center" },
   surface: { gap: 22 },
+  closeGlass: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 40,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 40,
+  },
   closeButton: {
     alignItems: "center",
-    borderRadius: 22,
-    height: 36,
+    height: "100%",
     justifyContent: "center",
-    position: "absolute",
-    right: 0,
-    top: 0,
-    width: 36,
-    zIndex: 1,
+    width: "100%",
   },
-  closeFallback: { fontSize: 24, lineHeight: 28 },
+  closeFallback: { fontSize: 22, fontWeight: "700", lineHeight: 24 },
   hero: { alignSelf: "stretch" },
   startHeroImage: { alignSelf: "center", height: 180, width: "100%" },
   heading: { alignItems: "center", flexDirection: "row", gap: 16 },

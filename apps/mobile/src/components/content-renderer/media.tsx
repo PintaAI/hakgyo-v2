@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { Image } from "expo-image";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
@@ -110,6 +110,7 @@ export function ContentImage({
                 setNaturalAspectRatio(width / height);
             }}
             source={{ uri: resolved.url }}
+            style={{ width: "100%", height: "100%" }}
             transition={0}
           />
         ) : resolved.status === "loading" ? (
@@ -152,6 +153,13 @@ function AudioPlayer({
 }) {
   const player = useAudioPlayer(url, { updateInterval: 250 });
   const status = useAudioPlayerStatus(player);
+  const started = useRef(false);
+  useEffect(() => {
+    if (status.isLoaded && !started.current) {
+      started.current = true;
+      player.play();
+    }
+  }, [player, status.isLoaded]);
   const progress = status.duration
     ? Math.min(100, (status.currentTime / status.duration) * 100)
     : 0;
@@ -214,6 +222,7 @@ export function ContentAudio({
   source?: string;
 }) {
   const resolved = useResolvedSource(source);
+  const [activeUrl, setActiveUrl] = useState<string | null>(null);
 
   if (resolved.status === "loading") {
     return (
@@ -229,6 +238,31 @@ export function ContentAudio({
           Audio unavailable
         </Text>
       </View>
+    );
+  }
+
+  if (activeUrl !== resolved.url) {
+    return (
+      <Pressable
+        accessibilityLabel={`Play ${fileName || "audio"}`}
+        accessibilityRole="button"
+        className="flex-row items-center gap-3 rounded-xl border border-border bg-muted/40 p-4"
+        onPress={() => setActiveUrl(resolved.url)}
+      >
+        <View className="size-11 items-center justify-center rounded-full bg-primary">
+          <Text className="text-base font-black text-primary-foreground">
+            ▶
+          </Text>
+        </View>
+        <View className="min-w-0 flex-1">
+          <Text className="font-bold text-foreground" numberOfLines={1}>
+            {fileName || "Audio"}
+          </Text>
+          {caption ? (
+            <Text className="text-sm text-muted-foreground">{caption}</Text>
+          ) : null}
+        </View>
+      </Pressable>
     );
   }
 

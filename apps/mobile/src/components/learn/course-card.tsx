@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { Image } from "expo-image";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
@@ -49,6 +49,7 @@ export function CourseCard({
             className="absolute inset-0 z-0 size-full"
             contentFit="cover"
             source={{ uri: course.thumbnailUrl }}
+            style={StyleSheet.absoluteFill}
             transition={0}
           />
           <View

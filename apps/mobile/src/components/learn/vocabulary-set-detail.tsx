@@ -29,10 +29,10 @@ export type VocabularySetEntry = {
 
 function EntryImage({
   assetId,
-  className,
+  variant,
 }: {
   assetId: string;
-  className?: string;
+  variant: "grid" | "list";
 }) {
   const resolveAssetUrl = useApiAssetResolver();
   const [url, setUrl] = useState<string | null>(null);
@@ -54,7 +54,9 @@ function EntryImage({
   }, [assetId, resolveAssetUrl]);
 
   if (failed) return null;
-  if (!url) return <View className={`bg-muted ${className ?? ""}`} />;
+  const className =
+    variant === "grid" ? "h-28 w-full rounded-xl" : "size-14 rounded-xl";
+  if (!url) return <View className={`bg-muted ${className}`} />;
   return (
     <Image
       accessibilityIgnoresInvertColors
@@ -62,6 +64,11 @@ function EntryImage({
       className={className}
       contentFit="cover"
       source={{ uri: url }}
+      style={
+        variant === "grid"
+          ? { width: "100%", height: 112 }
+          : { width: 56, height: 56 }
+      }
       transition={0}
     />
   );
@@ -203,10 +210,7 @@ function WordGridCard({
   return (
     <View className="gap-2 rounded-[20px] border border-border bg-card p-4">
       {entry.imageAsset ? (
-        <EntryImage
-          assetId={entry.imageAsset.id}
-          className="h-28 w-full rounded-xl"
-        />
+        <EntryImage assetId={entry.imageAsset.id} variant="grid" />
       ) : null}
       <Text className="text-[15px] font-bold leading-5 text-foreground">
         {entry.term}
@@ -296,10 +300,7 @@ export function VocabularySetDetail({
             />
           ) : null}
           {entry.imageAsset ? (
-            <EntryImage
-              assetId={entry.imageAsset.id}
-              className="size-14 rounded-xl"
-            />
+            <EntryImage assetId={entry.imageAsset.id} variant="list" />
           ) : null}
         </View>
       ),

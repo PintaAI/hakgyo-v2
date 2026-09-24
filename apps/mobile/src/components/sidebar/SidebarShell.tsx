@@ -71,6 +71,7 @@ export function SidebarShell({
             className="size-11 rounded-2xl"
             contentFit="cover"
             source={{ uri: thumbnailUrl }}
+            style={{ width: 44, height: 44 }}
             transition={0}
           />
         ) : thumbnailFallbackLabel ? (
@@ -141,6 +142,7 @@ export function SidebarShell({
                   className="size-full"
                   contentFit="cover"
                   source={{ uri: session.user.image }}
+                  style={{ width: "100%", height: "100%" }}
                   transition={0}
                 />
               ) : (

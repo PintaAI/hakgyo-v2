@@ -20,6 +20,9 @@ function memoryStore(): MobileSyncStore {
     saveCache: async (userId, payload) => {
       caches.set(userId, payload);
     },
+    clearCache: async (userId) => {
+      caches.delete(userId);
+    },
     getOperation: async (userId, id) => operations.get(key(userId, id)) ?? null,
     putOperation: async (userId, operation) => {
       operations.set(key(userId, operation.id), structuredClone(operation));
@@ -75,6 +78,38 @@ function commitResult(
 }
 
 describe("mobile sync engine", () => {
+  test("clears only cached queries after pending operations have synced", async () => {
+    const store = memoryStore();
+    const client = new QueryClient();
+    const engine = createMobileSyncEngine({
+      userId: "user-1",
+      queryClient: client,
+      store,
+      transport: { commit: async ({ operations }) => commitResult(operations) },
+      isOnline: async () => true,
+      applyDashboard: () => undefined,
+    });
+    await engine.initialize();
+    client.setQueryData(["old-course"], { title: "Old" });
+    await store.saveCache("user-1", "stale cache");
+    await engine.putOperation({
+      id: "content:item-1",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-1",
+    });
+
+    await expect(engine.clearLocalCache()).rejects.toThrow(
+      "Pending learning progress",
+    );
+    expect(client.getQueryData<{ title: string }>(["old-course"])).toEqual({
+      title: "Old",
+    });
+    await engine.checkpoint("organization-1");
+    await engine.clearLocalCache();
+    expect(client.getQueryData(["old-course"])).toBeUndefined();
+    expect(await store.loadCache("user-1")).toBeNull();
+    await engine.dispose();
+  });
   test("ignores an unversioned cache from the incomplete sync schema", async () => {
     const store = memoryStore();
     const legacyClient = new QueryClient();

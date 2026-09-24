@@ -82,6 +82,7 @@ export function ProfileHero({
                 className="size-full"
                 contentFit="cover"
                 source={{ uri: image }}
+                style={{ width: "100%", height: "100%" }}
                 transition={0}
               />
             ) : (

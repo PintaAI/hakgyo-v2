@@ -791,7 +791,6 @@ export function VocabularySession({
         onPrimary={beginRound}
         onSecondary={exit}
         primaryLabel={`Start practice · ${readyWords.length} words`}
-        secondaryLabel="Back"
         title="Cards"
         visible={showStart}
       />

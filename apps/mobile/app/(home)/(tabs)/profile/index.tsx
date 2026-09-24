@@ -25,7 +25,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 
 export default function ProfileTab() {
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
+  const { data: session, refetch: refetchSession } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [segment, setSegment] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,9 @@ export default function ProfileTab() {
     isRefreshingOrganizations,
     refreshOrganizations,
   } = useAppTheme();
-  const { isSyncing, pendingCount, syncNow } = useMobileSync();
+  const { isSyncing, pendingCount, syncNow, clearLocalDataAndResync } =
+    useMobileSync();
+  const [isResetting, setIsResetting] = useState(false);
   const progress = api.gamification.getMySummary.useQuery();
   const displayName = session?.user.name || "Hakgyo learner";
   const initials = displayName
@@ -181,6 +183,60 @@ export default function ProfileTab() {
               }
             />
           </SettingsSection>
+
+          {__DEV__ ? (
+            <SettingsSection title="Development">
+              <SettingsRow
+                label="Clear local data & resync"
+                detail={
+                  isResetting
+                    ? "Clearing and syncing…"
+                    : "Refresh cached learning data and images"
+                }
+                symbol="arrow.clockwise"
+                fallback="↻"
+                onPress={() => {
+                  if (isResetting || isSyncing) return;
+                  Alert.alert(
+                    "Clear local data?",
+                    "Pending progress will sync first. Local cached learning data and images will then be downloaded again.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Clear & resync",
+                        onPress: () => {
+                          setIsResetting(true);
+                          void clearLocalDataAndResync(
+                            activeOrganizationId ?? undefined,
+                          )
+                            .then(async () => {
+                              await Promise.all([
+                                refreshOrganizations(),
+                                progress.refetch(),
+                                refetchSession(),
+                              ]);
+                              Alert.alert(
+                                "Resync complete",
+                                "Local data has been refreshed.",
+                              );
+                            })
+                            .catch((cause: unknown) => {
+                              Alert.alert(
+                                "Unable to resync",
+                                cause instanceof Error
+                                  ? cause.message
+                                  : "Please try again online.",
+                              );
+                            })
+                            .finally(() => setIsResetting(false));
+                        },
+                      },
+                    ],
+                  );
+                }}
+              />
+            </SettingsSection>
+          ) : null}
 
           <SettingsSection title="Support">
             <SettingsRow

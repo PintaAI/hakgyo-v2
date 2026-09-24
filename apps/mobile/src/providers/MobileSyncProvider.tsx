@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import * as Network from "expo-network";
+import { Image } from "expo-image";
 import {
   useCallback,
   createContext,
@@ -49,6 +50,9 @@ type MobileSyncContextValue = {
     organizationId?: string;
   }) => Promise<SyncCheckpointResult>;
   syncNow: (organizationId?: string) => Promise<SyncCheckpointResult>;
+  clearLocalDataAndResync: (
+    organizationId?: string,
+  ) => Promise<SyncCheckpointResult>;
 };
 
 type MobileSyncStatusValue = Pick<
@@ -253,6 +257,39 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     [utils],
   );
 
+  const clearLocalDataAndResync = useCallback(
+    async (organizationId?: string) => {
+      const engine = engineRef.current;
+      if (!engine || !userId) throw new Error("Mobile sync is not ready.");
+      setIsSyncing(true);
+      try {
+        const flush = await engine.checkpoint(organizationId);
+        if (
+          flush.state !== "synced" ||
+          (await sqliteMobileSyncStore.countOperations(userId))
+        ) {
+          throw new Error(
+            "Sync pending progress before clearing local data. Try again online.",
+          );
+        }
+        await engine.clearLocalCache();
+        await assetCache?.clear();
+        await Image.clearDiskCache();
+        await Image.clearMemoryCache();
+        const result = await engine.checkpoint(organizationId);
+        if (result.state !== "synced") {
+          throw new Error(
+            "Local data cleared, but resync failed. Try syncing again online.",
+          );
+        }
+        return result;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [assetCache, userId],
+  );
+
   const actions = useMemo<MobileSyncActionsValue>(
     () => ({
       cacheDashboard: applyDashboard,
@@ -284,8 +321,9 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         return checkpoint(organizationId);
       },
       syncNow: checkpoint,
+      clearLocalDataAndResync,
     }),
-    [applyDashboard, checkpoint],
+    [applyDashboard, checkpoint, clearLocalDataAndResync],
   );
   const status = useMemo<MobileSyncStatusValue>(
     () => ({

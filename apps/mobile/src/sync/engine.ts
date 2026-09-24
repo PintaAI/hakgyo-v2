@@ -214,6 +214,21 @@ export function createMobileSyncEngine({
     return promise;
   }
 
+  async function clearLocalCache() {
+    await checkpointTail;
+    await serialized(async () => {
+      if (await store.countOperations(userId)) {
+        throw new Error(
+          "Pending learning progress must sync before clearing local data.",
+        );
+      }
+      if (persistTimer) clearTimeout(persistTimer);
+      persistTimer = undefined;
+      queryClient.clear();
+      await store.clearCache(userId);
+    });
+  }
+
   async function dispose() {
     disposed = true;
     unsubscribe?.();
@@ -229,6 +244,7 @@ export function createMobileSyncEngine({
     putOperation,
     recordVocabularyAttempt,
     checkpoint,
+    clearLocalCache,
     dispose,
   };
 }

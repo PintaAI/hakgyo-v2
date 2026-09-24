@@ -76,6 +76,7 @@ export default function HomeTab() {
                 className="size-full"
                 contentFit="cover"
                 source={{ uri: session.user.image }}
+                style={{ width: 24, height: 24 }}
                 transition={0}
               />
             ) : (

@@ -745,7 +745,6 @@ export function HangeulScreen() {
         onPrimary={() => setPhase("learn")}
         onSecondary={leave}
         primaryLabel="Mulai belajar"
-        secondaryLabel="Kembali"
         title="Kenalan dengan Hangeul"
         visible={phase === "intro"}
       />

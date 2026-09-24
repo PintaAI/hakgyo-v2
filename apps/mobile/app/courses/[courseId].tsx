@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -124,6 +125,7 @@ export default function CourseDetailScreen() {
                   className="absolute inset-0 z-0 h-full w-full"
                   contentFit="cover"
                   source={{ uri: course.thumbnailUrl }}
+                  style={StyleSheet.absoluteFill}
                   transition={0}
                 />
                 <View

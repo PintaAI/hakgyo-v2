@@ -403,7 +403,6 @@ export function SyllableForgeScreen() {
           </Text>
         }
         primaryLabel="Mulai menyusun"
-        secondaryLabel="Kembali"
         onPrimary={() => dispatch({ type: "start" })}
         onSecondary={leave}
       />

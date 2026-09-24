@@ -50,6 +50,10 @@ export function createDeviceAssetFileStore(userId: string): AssetFileStore {
   }
 
   return {
+    async clear() {
+      if (directory.exists) directory.delete();
+      indexedFiles = undefined;
+    },
     getUri(assetId) {
       return indexFiles().get(safePathSegment(assetId)) ?? null;
     },

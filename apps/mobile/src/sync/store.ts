@@ -8,6 +8,7 @@ export type MobileSyncStore = {
   initialize: () => Promise<void>;
   loadCache: (userId: string) => Promise<string | null>;
   saveCache: (userId: string, payload: string) => Promise<void>;
+  clearCache: (userId: string) => Promise<void>;
   getOperation: (
     userId: string,
     id: string,
@@ -96,6 +97,13 @@ export function createMobileSyncStore(
         payload,
         Date.now(),
       );
+    },
+
+    async clearCache(userId) {
+      await initialize();
+      await (
+        await database()
+      ).runAsync("DELETE FROM mobile_sync_cache WHERE user_id = ?", userId);
     },
 
     async getOperation(userId, id) {

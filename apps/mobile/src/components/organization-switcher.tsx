@@ -28,6 +28,7 @@ function OrganizationMark({
           className="size-full"
           contentFit="cover"
           source={{ uri: logoUrl }}
+          style={{ width: "100%", height: "100%" }}
           transition={0}
         />
       ) : (

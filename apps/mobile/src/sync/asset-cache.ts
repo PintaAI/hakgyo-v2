@@ -1,6 +1,7 @@
 export type AssetFileStore = {
   getUri: (assetId: string) => Promise<string | null> | string | null;
   download: (assetId: string, download: AssetDownload) => Promise<string>;
+  clear?: () => Promise<void>;
 };
 
 export type AssetDownload = {
@@ -13,6 +14,7 @@ export type AssetDownloadMap = Record<string, AssetDownload>;
 
 export function createAssetCache(store: AssetFileStore) {
   const pending = new Map<string, Promise<string>>();
+  const preloads = new Set<Promise<void>>();
 
   async function resolve(
     assetId: string,
@@ -30,7 +32,7 @@ export function createAssetCache(store: AssetFileStore) {
     return download;
   }
 
-  async function preload(downloads: AssetDownloadMap) {
+  async function runPreload(downloads: AssetDownloadMap) {
     const entries = Object.entries(downloads);
     let next = 0;
     const workers = Array.from(
@@ -51,5 +53,18 @@ export function createAssetCache(store: AssetFileStore) {
     await Promise.all(workers);
   }
 
-  return { preload, resolve };
+  function preload(downloads: AssetDownloadMap) {
+    const job = runPreload(downloads);
+    preloads.add(job);
+    void job.finally(() => preloads.delete(job));
+    return job;
+  }
+
+  async function clear() {
+    await Promise.allSettled([...preloads]);
+    await Promise.allSettled([...pending.values()]);
+    await store.clear?.();
+  }
+
+  return { preload, resolve, clear };
 }
