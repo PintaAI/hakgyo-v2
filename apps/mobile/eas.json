@@ -8,9 +8,35 @@
       "bun": "1.3.14",
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
       "env": {
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_API_URL": "https://jennie-linux.tail2268a1.ts.net",
+        "DIRECT_URL": "postgresql://unused:unused@localhost:5432/unused"
+      }
+    },
+    "preview": {
+      "bun": "1.3.14",
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_API_URL": "https://hakgyo-v2.vercel.app",
+        "DIRECT_URL": "postgresql://unused:unused@localhost:5432/unused"
+      }
+    },
+    "production": {
+      "bun": "1.3.14",
+      "channel": "production",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_API_URL": "https://hakgyo-v2.vercel.app",
         "DIRECT_URL": "postgresql://unused:unused@localhost:5432/unused"
       }
     }
+  },
+  "submit": {
+    "production": {}
   }
 }

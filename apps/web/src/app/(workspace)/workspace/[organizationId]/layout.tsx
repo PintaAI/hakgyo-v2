@@ -52,6 +52,8 @@ export default async function WorkspaceLayout({
       thumbnailUrl: course.thumbnailUrl,
     }));
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
+  const defaultRightOpen =
+    cookieStore.get("right_sidebar_state")?.value !== "false";
   const organizationTheme = membership.organization.themeEnabled
     ? parseOrganizationTheme(membership.organization.theme)
     : null;
@@ -60,7 +62,10 @@ export default async function WorkspaceLayout({
     <>
       <OrganizationThemeBootstrap theme={organizationTheme} />
       <OrganizationThemeProvider theme={organizationTheme}>
-        <SidebarProvider defaultOpen={defaultOpen}>
+        <SidebarProvider
+          defaultOpen={defaultOpen}
+          defaultRightOpen={defaultRightOpen}
+        >
           <AppSidebar
             organizationSlug={organizationSlug}
             organization={membership.organization}
@@ -81,14 +86,19 @@ export default async function WorkspaceLayout({
                 />
                 <WorkspaceBreadcrumb organizationSlug={organizationSlug} />
               </div>
-              <div className="ml-auto flex items-center px-4">
+              <div className="ml-auto flex items-center gap-1 px-4">
                 <NotificationBell />
+                <div
+                  id="workspace-editor-sidebar-trigger-outlet"
+                  className="contents"
+                />
               </div>
             </header>
             <div className="flex-1 p-4 md:p-6 lg:p-8">
               <div className="mx-auto w-full max-w-7xl">{children}</div>
             </div>
           </SidebarInset>
+          <div id="workspace-editor-sidebar-outlet" className="contents" />
         </SidebarProvider>
       </OrganizationThemeProvider>
     </>

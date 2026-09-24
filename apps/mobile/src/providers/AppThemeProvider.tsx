@@ -17,6 +17,7 @@ import { AppState, useColorScheme } from "react-native";
 
 import { authClient } from "../lib/auth-client";
 import { api } from "../lib/trpc";
+import { resolveActiveBrand } from "../theme/active-brand";
 import { type ColorScheme, type ThemeColors } from "../theme/colors";
 import { createMobileTheme } from "../theme/organization-theme";
 
@@ -276,12 +277,12 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     userId,
   ]);
 
-  const selectedBrand =
-    availableOrganizations.find(
-      ({ organizationId }) => organizationId === selectedOrganizationId,
-    ) ?? defaultBrand;
-  const routeBrand = routeBrandQuery.data;
-  const activeBrand = routeBrand?.organizationId ? routeBrand : selectedBrand;
+  const activeBrand = resolveActiveBrand({
+    availableOrganizations,
+    defaultBrand,
+    routeBrand: routeBrandQuery.data,
+    selectedOrganizationId,
+  });
   const mobileTheme = useMemo(
     () => createMobileTheme(colorScheme, activeBrand.theme),
     [activeBrand.theme, colorScheme],

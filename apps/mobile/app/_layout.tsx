@@ -28,8 +28,13 @@ void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function RootNavigator() {
   const { data: session, isPending } = authClient.useSession();
-  const { activeOrganizationId, colorScheme, colors, isHydrated } =
-    useAppTheme();
+  const {
+    activeOrganizationId,
+    colorScheme,
+    colors,
+    isHydrated,
+    refreshOrganizations,
+  } = useAppTheme();
   // "fade" for exactly one push after a drawer item tap (see
   // DrawerProvider.navigate); every other navigation uses the default slide.
   const { transition } = useTransitionOverride();
@@ -154,18 +159,31 @@ function RootNavigator() {
               <Stack.Screen
                 name="organization-switcher"
                 options={{
-                  headerShown: false,
+                  headerShown: Platform.OS === "ios",
+                  headerBackVisible: false,
+                  headerShadowVisible: false,
+                  headerStyle: { backgroundColor: "transparent" },
+                  title: "Choose organization",
+                  contentStyle: { backgroundColor: "transparent" },
                   presentation: "formSheet",
                   sheetAllowedDetents: [0.55, 0.9],
                   sheetInitialDetentIndex: 0,
                   sheetCornerRadius: 28,
                   sheetElevation: 24,
-                  sheetGrabberVisible: true,
+                  sheetGrabberVisible: false,
                   sheetExpandsWhenScrolledToEdge: true,
                   sheetLargestUndimmedDetentIndex: "none",
                 }}
+                listeners={{
+                  transitionEnd: (event) => {
+                    if (!event.data.closing) void refreshOrganizations();
+                  },
+                }}
               />
-              <Stack.Screen name="events/[eventId]" options={{ animation: transition }} />
+              <Stack.Screen
+                name="events/[eventId]"
+                options={{ animation: transition }}
+              />
               <Stack.Screen name="vocabulary/[vocabularySetId]" />
               <Stack.Screen
                 name="games/[gameKey]"
@@ -173,7 +191,11 @@ function RootNavigator() {
               />
               <Stack.Screen
                 name="courses/[courseId]/items/[courseItemId]"
-                options={{ headerShown: true, headerTitle: "", animation: transition }}
+                options={{
+                  headerShown: true,
+                  headerTitle: "",
+                  animation: transition,
+                }}
               />
               <Stack.Screen
                 name="courses/[courseId]/items/[courseItemId]/learning-progress"

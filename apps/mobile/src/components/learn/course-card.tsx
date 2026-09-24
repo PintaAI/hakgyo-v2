@@ -1,10 +1,8 @@
 import { router } from "expo-router";
 import { Image } from "expo-image";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, Text, View } from "react-native";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
-import { withOpacity } from "../../theme/colors";
 
 export type StandaloneCourse = {
   id: string;
@@ -24,9 +22,8 @@ export function CourseCard({
   isFirst?: boolean;
   onPress?: () => void;
 }) {
-  const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
-  const contentTopPadding = isFirst ? insets.top + 20 : 20;
+  void isFirst;
   const handlePress =
     onPress ??
     (() =>
@@ -34,66 +31,66 @@ export function CourseCard({
         pathname: "/courses/[courseId]",
         params: { courseId: course.id },
       }));
+  const initial = course.title.trim().charAt(0).toUpperCase() || "C";
+  const modeLabel =
+    course.progressionMode === "SEQUENTIAL" ? "Sequential" : "Open";
   return (
     <Pressable
       accessibilityHint="Opens the course details"
       accessibilityRole="button"
-      className="relative min-h-48 overflow-hidden rounded-xl border border-border bg-card"
+      className="flex-row items-center gap-2.5 rounded-xl px-2.5 py-2"
       onPress={handlePress}
+      style={{ backgroundColor: "transparent" }}
     >
       {course.thumbnailUrl ? (
-        <>
-          <Image
-            accessibilityIgnoresInvertColors
-            cachePolicy="memory-disk"
-            className="absolute inset-0 z-0 size-full"
-            contentFit="cover"
-            source={{ uri: course.thumbnailUrl }}
-            style={StyleSheet.absoluteFill}
-            transition={0}
-          />
-          <View
-            className="absolute inset-0 z-10"
-            style={{ backgroundColor: withOpacity(colors.background, 0.78) }}
-          />
-        </>
-      ) : null}
-      <View
-        className="relative z-20 min-h-48 justify-between gap-8 p-5"
-        style={{ paddingTop: contentTopPadding }}
-      >
-        <View className="gap-2">
-          <View className="flex-row items-start justify-between gap-3">
-            <Text className="flex-1 text-lg font-black text-foreground">
-              {course.title}
-            </Text>
-            <View className="rounded-full border border-border px-2 py-1">
-              <Text className="text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground">
-                {course.progressionMode === "SEQUENTIAL"
-                  ? "Sequential"
-                  : "Open"}
-              </Text>
-            </View>
-          </View>
-          <Text className="text-sm font-semibold text-muted-foreground">
-            {course.organization.name}
-          </Text>
-        </View>
-        {course.description ? (
+        <Image
+          accessibilityIgnoresInvertColors
+          cachePolicy="memory-disk"
+          contentFit="cover"
+          source={{ uri: course.thumbnailUrl }}
+          style={{ width: 44, height: 44, borderRadius: 12 }}
+          transition={0}
+        />
+      ) : (
+        <View
+          className="items-center justify-center"
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            backgroundColor: colors.sidebarAccent,
+          }}
+        >
           <Text
-            className="text-sm leading-5 text-muted-foreground"
-            numberOfLines={3}
+            className="text-base font-black"
+            style={{ color: colors.primary }}
           >
-            {course.description}
+            {initial}
           </Text>
-        ) : null}
-        <View className="flex-row items-center justify-between gap-3">
-          <Text className="text-xs font-semibold uppercase tracking-[1px] text-muted-foreground">
-            Course
-          </Text>
-          <Text className="text-sm font-black text-foreground">Open →</Text>
         </View>
+      )}
+      <View className="min-w-0 flex-1">
+        <Text
+          className="font-semibold"
+          numberOfLines={1}
+          style={{ color: colors.foreground, fontSize: 13 }}
+        >
+          {course.title}
+        </Text>
+        <Text
+          className="text-xs"
+          numberOfLines={1}
+          style={{ color: colors.mutedForeground }}
+        >
+          {course.organization.name} · {modeLabel}
+        </Text>
       </View>
+      <Text
+        className="text-lg font-bold"
+        style={{ color: colors.mutedForeground }}
+      >
+        ›
+      </Text>
     </Pressable>
   );
 }

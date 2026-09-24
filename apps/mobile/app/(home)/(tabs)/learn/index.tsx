@@ -20,6 +20,7 @@ import {
   QueryState,
   StudyScreen,
 } from "../../../../src/components/learning-ui";
+import { DoodleBackground } from "../../../../src/components/doodle-background";
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
@@ -208,6 +209,7 @@ export default function LearnTab() {
   );
   return (
     <>
+      <DoodleBackground />
       <SidebarToolbarButton />
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button

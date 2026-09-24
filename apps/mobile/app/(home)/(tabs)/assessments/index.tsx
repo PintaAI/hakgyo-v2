@@ -6,8 +6,9 @@ import {
   useLocalSearchParams,
 } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import { Platform, ScrollView } from "react-native";
+import { Platform, ScrollView, Text } from "react-native";
 import { api } from "../../../../src/lib/trpc";
+import { DoodleBackground } from "../../../../src/components/doodle-background";
 import { StudyScreen } from "../../../../src/components/learning-ui";
 import { PracticeHub } from "../../../../src/components/practice-hub";
 import { OrganizationSwitcherTrigger } from "../../../../src/components/organization-switcher";
@@ -76,6 +77,7 @@ export default function PracticeTab() {
   });
   return (
     <>
+      <DoodleBackground />
       <SidebarToolbarButton />
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="right">
@@ -88,7 +90,7 @@ export default function PracticeTab() {
         </Stack.Toolbar>
       ) : null}
       <StudyScreen
-        title="Practice"
+        title=""
         keyboardAvoiding
         automaticallyAdjustKeyboardInsets
         scrollViewRef={scrollViewRef}
@@ -97,6 +99,12 @@ export default function PracticeTab() {
           void syncNow(activeOrganizationId ?? undefined);
         }}
       >
+        <Text
+          accessibilityRole="header"
+          className="text-[26px] font-black leading-8 tracking-tight text-foreground"
+        >
+          Latihan
+        </Text>
         {Platform.OS !== "ios" ? (
           <OrganizationSwitcherTrigger
             onPress={() => router.push("/organization-switcher" as Href)}

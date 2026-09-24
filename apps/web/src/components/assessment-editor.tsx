@@ -8,18 +8,20 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactElement,
+  type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangleIcon,
   ArrowLeftIcon,
   CheckCircle2Icon,
+  ChevronDownIcon,
   ClipboardCheckIcon,
   FileQuestionIcon,
   ListIcon,
   LoaderCircleIcon,
   PlusIcon,
-  Settings2Icon,
   Trash2Icon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -30,6 +32,7 @@ import {
   type BlockNoteDocument,
   type EditorAssetStorageOptions,
 } from "~/components/editor";
+import { EditorSidebar } from "~/components/editor-sidebar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +46,6 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -63,8 +65,8 @@ import {
   SheetTrigger,
 } from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
-import { Textarea } from "~/components/ui/textarea";
 import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
+import { cn } from "~/lib/utils";
 import {
   createAutosaveRegistry,
   type AutosaveRegistry,
@@ -305,6 +307,29 @@ function getPublishValidationError(questions: Question[]) {
     }
   }
 
+  return null;
+}
+
+function getQuestionIssue(question: Question) {
+  if (!hasBlockNoteContent(question.prompt)) {
+    return "Pertanyaan belum diisi";
+  }
+  if (question.type === "WRITTEN") return null;
+  if (question.options.length < MIN_ASSESSMENT_OPTIONS) {
+    return "Kurang dari dua opsi";
+  }
+  if (question.options.some((option) => !hasBlockNoteContent(option.content))) {
+    return "Ada opsi yang kosong";
+  }
+  const correctOptions = question.options.filter(
+    (option) => option.isCorrect,
+  ).length;
+  if (question.type === "SINGLE_CHOICE" && correctOptions !== 1) {
+    return "Harus tepat satu jawaban benar";
+  }
+  if (question.type === "MULTIPLE_CHOICE" && correctOptions < 1) {
+    return "Belum ada jawaban benar";
+  }
   return null;
 }
 
@@ -760,13 +785,54 @@ function AssessmentEditorForm({
   );
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [newQuestionId, setNewQuestionId] = useState<string | null>(null);
+  const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(
+    null,
+  );
+  // Keeps a collapsing row's editor mounted until its close animation
+  // finishes, then drops it. Driven from the toggle handler (not an
+  // effect) so it never trips set-state-in-effect.
+  const [closingQuestionId, setClosingQuestionId] = useState<string | null>(
+    null,
+  );
   const [pendingQuestionNavigationId, setPendingQuestionNavigationId] =
     useState<string | null>(null);
   const [questionNavigatorOpen, setQuestionNavigatorOpen] = useState(false);
   const [questionNavigatorTargetId, setQuestionNavigatorTargetId] = useState<
     string | null
   >(null);
-  const scrollAnimationFrameRef = useRef<number | null>(null);
+  // While a row is expanding/collapsing, rows glide under a stationary
+  // cursor and would each briefly match :hover. Freeze the hover-revealed
+  // row actions for the duration of the animation so they can't flash.
+  const [hoverActionsFrozen, setHoverActionsFrozen] = useState(false);
+  const hoverFreezeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const skipInitialHoverFreeze = useRef(true);
+
+  function toggleQuestion(questionId: string) {
+    if (expandedQuestionId === questionId) {
+      setExpandedQuestionId(null);
+      setClosingQuestionId(questionId);
+      setTimeout(() => {
+        setClosingQuestionId((current) =>
+          current === questionId ? null : current,
+        );
+      }, 300);
+    } else {
+      setClosingQuestionId(null);
+      setExpandedQuestionId(questionId);
+    }
+  }
+
+  const openQuestion = useCallback((questionId: string) => {
+    setClosingQuestionId(null);
+    setExpandedQuestionId(questionId);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`assessment-question-${questionId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
   const displayQuestions = useMemo(() => {
     if (!assessment) return [];
     if (!recoveredDraft) return assessment.questions;
@@ -806,6 +872,10 @@ function AssessmentEditorForm({
         label: getBlockNotePlainText(question.prompt) || `Soal ${index + 1}`,
         points: question.points,
       })),
+    [displayQuestions],
+  );
+  const totalPoints = useMemo(
+    () => displayQuestions.reduce((sum, question) => sum + question.points, 0),
     [displayQuestions],
   );
   const questionIdKey = useMemo(
@@ -890,14 +960,32 @@ function AssessmentEditorForm({
     [queueDraftUpdate],
   );
 
-  useEffect(
-    () => () => {
-      if (scrollAnimationFrameRef.current !== null) {
-        cancelAnimationFrame(scrollAnimationFrameRef.current);
+  useEffect(() => {
+    if (skipInitialHoverFreeze.current) {
+      skipInitialHoverFreeze.current = false;
+      return;
+    }
+    setHoverActionsFrozen(true);
+    if (hoverFreezeTimeoutRef.current !== null) {
+      clearTimeout(hoverFreezeTimeoutRef.current);
+    }
+    hoverFreezeTimeoutRef.current = setTimeout(() => {
+      setHoverActionsFrozen(false);
+      hoverFreezeTimeoutRef.current = null;
+    }, 350);
+    return () => {
+      if (hoverFreezeTimeoutRef.current !== null) {
+        clearTimeout(hoverFreezeTimeoutRef.current);
+        hoverFreezeTimeoutRef.current = null;
       }
-    },
-    [],
-  );
+    };
+  }, [expandedQuestionId]);
+
+  useEffect(() => {
+    if (!newQuestionId) return;
+    const timeout = setTimeout(() => setNewQuestionId(null), 1600);
+    return () => clearTimeout(timeout);
+  }, [newQuestionId]);
 
   useEffect(() => {
     if (assessment && !hasLocalChangesRef.current && !recoveredDraft) {
@@ -946,41 +1034,6 @@ function AssessmentEditorForm({
     return () => observer.disconnect();
   }, [questionIdKey]);
 
-  const navigateToQuestion = useCallback((questionId: string) => {
-    const questionElement = document.getElementById(
-      `assessment-question-${questionId}`,
-    );
-    if (!questionElement) return;
-
-    if (scrollAnimationFrameRef.current !== null) {
-      cancelAnimationFrame(scrollAnimationFrameRef.current);
-    }
-    const startY = window.scrollY;
-    const questionRect = questionElement.getBoundingClientRect();
-    const targetY = Math.max(
-      0,
-      startY +
-        questionRect.top -
-        Math.max(24, (window.innerHeight - questionRect.height) / 2),
-    );
-    const distance = targetY - startY;
-    let startedAt: number | null = null;
-
-    const animateScroll = (now: number) => {
-      startedAt ??= now;
-      const progress = Math.min((now - startedAt) / 500, 1);
-      const easedProgress = 1 - Math.pow(1 - progress, 3);
-      window.scrollTo(0, startY + distance * easedProgress);
-      if (progress < 1) {
-        scrollAnimationFrameRef.current = requestAnimationFrame(animateScroll);
-      } else {
-        scrollAnimationFrameRef.current = null;
-      }
-    };
-    scrollAnimationFrameRef.current = requestAnimationFrame(animateScroll);
-    setActiveQuestionId(questionId);
-  }, []);
-
   useEffect(() => {
     if (
       !pendingQuestionNavigationId ||
@@ -990,21 +1043,23 @@ function AssessmentEditorForm({
     }
 
     const frame = requestAnimationFrame(() => {
-      navigateToQuestion(pendingQuestionNavigationId);
+      document
+        .getElementById(`assessment-question-${pendingQuestionNavigationId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
       setPendingQuestionNavigationId(null);
     });
     return () => cancelAnimationFrame(frame);
-  }, [navigateToQuestion, pendingQuestionNavigationId, questionMapItems]);
+  }, [pendingQuestionNavigationId, questionMapItems]);
 
   useEffect(() => {
     if (questionNavigatorOpen || !questionNavigatorTargetId) return;
 
     const timeout = window.setTimeout(() => {
-      navigateToQuestion(questionNavigatorTargetId);
+      openQuestion(questionNavigatorTargetId);
       setQuestionNavigatorTargetId(null);
     }, 200);
     return () => window.clearTimeout(timeout);
-  }, [navigateToQuestion, questionNavigatorOpen, questionNavigatorTargetId]);
+  }, [openQuestion, questionNavigatorOpen, questionNavigatorTargetId]);
 
   const addQuestion = () => {
     void autosaveRegistry
@@ -1012,6 +1067,8 @@ function AssessmentEditorForm({
       .then(async () => {
         const createdQuestionId = await onAddQuestion();
         if (createdQuestionId) {
+          setClosingQuestionId(null);
+          setExpandedQuestionId(createdQuestionId);
           setNewQuestionId(createdQuestionId);
           setPendingQuestionNavigationId(createdQuestionId);
         }
@@ -1133,6 +1190,11 @@ function AssessmentEditorForm({
   }, [assessment, autosaveStatus, draftScope]);
 
   const skipInitialSettingsSave = useRef(true);
+  // Settings only autosave after the user (or draft recovery) actually
+  // changes them. A boolean "skip first run" ref is not enough under
+  // StrictMode's double-invoked mount effects — the discarded first pass
+  // would flip it and make the second pass look like a real edit.
+  const settingsTouchedRef = useRef(false);
   const loadedDraftKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -1156,6 +1218,7 @@ function AssessmentEditorForm({
         latestDraftRef.current = draft.payload;
         hasLocalChangesRef.current = true;
         skipInitialSettingsSave.current = false;
+        settingsTouchedRef.current = true;
         setTitle(draft.payload.title);
         setDescription(draft.payload.description ?? "");
         setStatus(draft.payload.status);
@@ -1189,6 +1252,7 @@ function AssessmentEditorForm({
       skipInitialSettingsSave.current = false;
       return;
     }
+    if (!settingsTouchedRef.current) return;
 
     queueDraftUpdate((current) => ({
       ...current,
@@ -1232,404 +1296,424 @@ function AssessmentEditorForm({
   ]);
 
   return (
-    <div className="flex w-full flex-col gap-6">
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div className="flex min-w-0 items-center gap-3">
-            <Button
-              aria-label="Kembali ke assessment"
-              onClick={() => {
-                void autosaveRegistry
-                  .flushAll()
-                  .then(onBack)
-                  .catch(() =>
-                    toast.error(
-                      "Perubahan belum berhasil disimpan. Coba lagi sebelum meninggalkan halaman.",
-                    ),
-                  );
-              }}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              <ArrowLeftIcon />
-            </Button>
-            <div className="min-w-0">
-              <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
-                <ClipboardCheckIcon className="size-3.5" />
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button
+            aria-label="Kembali"
+            onClick={() => {
+              void autosaveRegistry
+                .flushAll()
+                .then(onBack)
+                .catch(() =>
+                  toast.error(
+                    "Perubahan belum berhasil disimpan. Coba lagi sebelum meninggalkan halaman.",
+                  ),
+                );
+            }}
+            size="icon"
+            type="button"
+            variant="outline"
+          >
+            <ArrowLeftIcon />
+          </Button>
+          <div className="min-w-0">
+            <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
+              <ClipboardCheckIcon className="size-3.5 shrink-0" />
+              <span className="truncate">
                 {contextLabel ??
-                  (assessment ? "Edit assessment" : "Assessment baru")}
-              </div>
-              <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
-                {title.trim() || "Assessment tanpa judul"}
-              </h1>
-              <div
-                className={
-                  autosaveStatus === "error"
-                    ? "text-destructive mt-1 flex items-center gap-1.5 text-xs"
-                    : "text-muted-foreground mt-1 flex items-center gap-1.5 text-xs"
-                }
-                role="status"
+                  (assessment ? "Assessment" : "Assessment baru")}
+              </span>
+            </p>
+            <p
+              className={
+                autosaveStatus === "error"
+                  ? "text-destructive mt-0.5 flex items-center gap-1.5 text-xs"
+                  : "text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs"
+              }
+              role="status"
+            >
+              {autosaveStatus === "pending" || autosaveStatus === "saving" ? (
+                <LoaderCircleIcon className="size-3.5 animate-spin" />
+              ) : autosaveStatus === "error" ? (
+                <AlertTriangleIcon className="size-3.5" />
+              ) : (
+                <CheckCircle2Icon className="size-3.5" />
+              )}
+              <span>{autosaveStatusLabels[autosaveStatus]}</span>
+              {autosaveStatus === "error" ? (
+                <button
+                  className="underline underline-offset-2"
+                  onClick={() => {
+                    void autosaveRegistry.flushAll().catch(() => undefined);
+                  }}
+                  type="button"
+                >
+                  Coba lagi
+                </button>
+              ) : null}
+            </p>
+          </div>
+        </div>
+        {assessment && canDelete ? (
+          <AlertDialog>
+            <AlertDialogTrigger
+              render={
+                <Button
+                  type="button"
+                  aria-label="Hapus assessment"
+                  variant="destructive"
+                  size="icon"
+                />
+              }
+            >
+              <Trash2Icon />
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Hapus assessment ini?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tindakan ini permanen. Semua soal, penempatan di course,
+                  event, jawaban, hasil, dan progres siswa akan ikut dihapus.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Batal</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={isDeleting}
+                  onClick={() => {
+                    cancelSettingsSave();
+                    void flushSettingsSave()
+                      .then(onDelete)
+                      .catch(() => undefined);
+                  }}
+                  variant="destructive"
+                >
+                  {isDeleting && <LoaderCircleIcon className="animate-spin" />}
+                  Hapus
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : null}
+      </header>
+
+      <div className="grid gap-1">
+        <input
+          aria-label="Judul assessment"
+          autoFocus={!assessment}
+          className="font-heading placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 -mx-2 w-full min-w-0 rounded-md bg-transparent px-2 py-1 text-3xl font-semibold tracking-tight transition-colors outline-none"
+          maxLength={200}
+          onChange={(event) => {
+            settingsTouchedRef.current = true;
+            setTitle(event.target.value);
+          }}
+          placeholder="Assessment tanpa judul"
+          value={title}
+        />
+        <textarea
+          aria-label="Deskripsi assessment"
+          className="text-muted-foreground placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:text-foreground field-sizing-content -mx-2 max-h-48 w-full resize-none rounded-md bg-transparent px-2 py-1 text-sm transition-colors outline-none"
+          maxLength={10000}
+          onChange={(event) => {
+            settingsTouchedRef.current = true;
+            setDescription(event.target.value);
+          }}
+          placeholder="Jelaskan tujuan assessment ini kepada siswa (opsional)…"
+          rows={1}
+          value={description}
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label className="text-muted-foreground text-[11px] tracking-wide uppercase">
+          Petunjuk pengerjaan
+        </Label>
+        <div className="bg-muted/20 overflow-hidden rounded-lg border">
+          <DynamicBlockNoteEditor
+            initialContent={instructions}
+            key={`assessment-instructions:${recoveredDraft?.updatedAt ?? "server"}`}
+            onChange={(value) => {
+              settingsTouchedRef.current = true;
+              setInstructions(value);
+            }}
+            placeholder="Tulis petunjuk pengerjaan..."
+            trailingBlock={false}
+            theme={editorTheme}
+            assetStorage={assetStorage}
+          />
+        </div>
+        <p className="text-muted-foreground text-xs">
+          Gunakan menu / untuk menambahkan gambar atau audio.
+        </p>
+      </div>
+
+      {assessment ? (
+        <>
+          <section className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 -mx-1 grid gap-2 px-1 pt-1 pb-3 backdrop-blur">
+            <div className="flex items-center gap-2">
+              <Button
+                disabled={questionBusy}
+                onClick={addQuestion}
+                type="button"
               >
-                {autosaveStatus === "pending" || autosaveStatus === "saving" ? (
-                  <LoaderCircleIcon className="size-3 animate-spin" />
-                ) : autosaveStatus === "error" ? (
-                  <AlertTriangleIcon className="size-3" />
+                {questionBusy ? (
+                  <LoaderCircleIcon
+                    className="animate-spin"
+                    data-icon="inline-start"
+                  />
                 ) : (
-                  <CheckCircle2Icon className="size-3" />
+                  <PlusIcon data-icon="inline-start" />
                 )}
-                <span>{autosaveStatusLabels[autosaveStatus]}</span>
-                {autosaveStatus === "error" ? (
-                  <button
-                    className="underline underline-offset-2"
-                    onClick={() => {
-                      void autosaveRegistry.flushAll().catch(() => undefined);
-                    }}
-                    type="button"
+                Tambah soal
+              </Button>
+              <div className="ml-auto flex items-center gap-2">
+                <p
+                  className="text-muted-foreground hidden text-xs sm:block"
+                  role="status"
+                >
+                  {displayQuestions.length} soal · {totalPoints} poin
+                </p>
+                {questionMapItems.length ? (
+                  <Sheet
+                    onOpenChange={setQuestionNavigatorOpen}
+                    open={questionNavigatorOpen}
                   >
-                    Coba lagi
-                  </button>
+                    <SheetTrigger
+                      render={
+                        <Button
+                          className="lg:hidden"
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        />
+                      }
+                    >
+                      <ListIcon data-icon="inline-start" />
+                      Navigasi
+                    </SheetTrigger>
+                    <SheetContent
+                      className="max-h-[80svh] rounded-t-2xl"
+                      side="bottom"
+                    >
+                      <SheetHeader className="border-b pr-12">
+                        <SheetTitle>Daftar soal</SheetTitle>
+                        <SheetDescription>
+                          Pilih soal untuk langsung menuju bagian yang ingin
+                          diedit.
+                        </SheetDescription>
+                      </SheetHeader>
+                      <div className="min-h-0 overflow-y-auto px-4 pb-5">
+                        <QuestionNavigator
+                          activeQuestionId={activeQuestionId}
+                          items={questionMapItems}
+                          onSelect={(questionId) => {
+                            setQuestionNavigatorTargetId(questionId);
+                            setQuestionNavigatorOpen(false);
+                          }}
+                        />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
                 ) : null}
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {assessment && canDelete ? (
-              <AlertDialog>
-                <AlertDialogTrigger
-                  render={
-                    <Button type="button" variant="destructive" size="icon" />
-                  }
-                >
-                  <Trash2Icon />
-                  <span className="sr-only">Hapus assessment</span>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Hapus assessment ini?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tindakan ini permanen. Semua soal, penempatan di course,
-                      event, jawaban, hasil, dan progres siswa akan ikut
-                      dihapus.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction
-                      disabled={isDeleting}
-                      onClick={() => {
-                        cancelSettingsSave();
-                        void flushSettingsSave()
-                          .then(onDelete)
-                          .catch(() => undefined);
-                      }}
-                      variant="destructive"
-                    >
-                      {isDeleting && (
-                        <LoaderCircleIcon className="animate-spin" />
-                      )}
-                      Hapus
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            ) : null}
-          </div>
-        </div>
+          </section>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-          <section className="grid min-w-0 gap-6">
-            <Card className="gap-0 py-0 shadow-sm">
-              <CardHeader className="bg-foreground text-background relative overflow-hidden rounded-none px-5 py-6 sm:px-6">
-                <div className="pointer-events-none absolute top-0 right-0 size-44 translate-x-14 -translate-y-20 rounded-full border border-current opacity-10" />
-                <div className="pointer-events-none absolute top-0 right-0 size-28 translate-x-8 -translate-y-12 rounded-full border border-current opacity-10" />
-                <div className="relative flex items-start gap-3">
-                  <span className="bg-background/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
-                    <Settings2Icon className="size-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
-                      Setup assessment
-                    </p>
-                    <CardTitle className="text-background mt-1 text-xl font-semibold">
-                      Pengaturan assessment
-                    </CardTitle>
-                    <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                      Atur identitas dan petunjuk sebelum menyusun soal.
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-5 p-5 sm:p-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="assessment-title">Judul</Label>
-                  <Input
-                    autoFocus={!assessment}
-                    id="assessment-title"
-                    maxLength={200}
-                    onChange={(event) => setTitle(event.target.value)}
-                    placeholder="Mis. Evaluasi Bab 1"
-                    value={title}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="assessment-description">Deskripsi</Label>
-                  <Textarea
-                    id="assessment-description"
-                    maxLength={10000}
-                    onChange={(event) => setDescription(event.target.value)}
-                    placeholder="Jelaskan tujuan assessment ini kepada siswa."
-                    rows={3}
-                    value={description}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Petunjuk pengerjaan</Label>
-                  <div className="overflow-hidden rounded-lg border">
-                    <DynamicBlockNoteEditor
-                      initialContent={instructions}
-                      key={`assessment-instructions:${recoveredDraft?.updatedAt ?? "server"}`}
-                      onChange={setInstructions}
-                      placeholder="Tulis petunjuk pengerjaan..."
-                      trailingBlock={false}
+          {displayQuestions.length ? (
+            <>
+              <ol className="grid gap-2">
+                {displayQuestions.map((question, index) => (
+                  <li
+                    key={`${question.id}:${recoveredDraft?.updatedAt ?? "server"}`}
+                  >
+                    <QuestionRow
+                      active={activeQuestionId === question.id}
+                      autosaveRegistry={autosaveRegistry}
+                      autoFocusPrompt={newQuestionId === question.id}
+                      busy={questionBusy}
+                      expanded={expandedQuestionId === question.id}
+                      highlighted={newQuestionId === question.id}
+                      hoverActionsFrozen={hoverActionsFrozen}
+                      index={index}
+                      onAddOption={onAddOption}
+                      onDeleteOption={onDeleteOption}
+                      onDeleteQuestion={onDeleteQuestion}
+                      onDraftChange={saveQuestionDraft}
+                      onDraftOptionChange={saveOptionDraft}
+                      onSave={onSaveQuestion}
+                      onSaveOption={onSaveOption}
+                      onToggle={() => toggleQuestion(question.id)}
+                      onToggleCorrect={onToggleCorrect}
+                      question={question}
+                      recoverOnMount={Boolean(recoveredDraft)}
+                      renderForm={
+                        expandedQuestionId === question.id ||
+                        closingQuestionId === question.id
+                      }
                       theme={editorTheme}
                       assetStorage={assetStorage}
                     />
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    Gunakan menu / untuk menambahkan gambar atau audio.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {assessment ? (
-              <section className="grid gap-4 border-t pt-6">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <h2 className="font-heading text-xl font-semibold">Soal</h2>
-                    <p className="text-muted-foreground text-sm">
-                      Soal baru ditambahkan di bagian paling bawah. Router saat
-                      ini belum menyediakan pengurutan manual.
-                    </p>
-                  </div>
-                  <div className="hidden items-center gap-2 lg:flex">
-                    <Badge variant="secondary">
-                      {displayQuestions.length} soal
-                    </Badge>
-                    <Button
-                      disabled={questionBusy}
-                      onClick={addQuestion}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      <PlusIcon data-icon="inline-start" />
-                      Tambah soal
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="bg-background/95 sticky top-2 z-20 flex items-center justify-between gap-2 rounded-lg border p-2 shadow-sm backdrop-blur lg:hidden">
-                  <Badge className="shrink-0" variant="secondary">
-                    {displayQuestions.length} soal
-                  </Badge>
-                  <div className="flex min-w-0 items-center gap-2">
-                    {questionMapItems.length ? (
-                      <Sheet
-                        onOpenChange={setQuestionNavigatorOpen}
-                        open={questionNavigatorOpen}
-                      >
-                        <SheetTrigger
-                          render={
-                            <Button size="sm" type="button" variant="outline" />
-                          }
-                        >
-                          <ListIcon data-icon="inline-start" />
-                          Navigasi
-                        </SheetTrigger>
-                        <SheetContent
-                          className="max-h-[80svh] rounded-t-2xl"
-                          side="bottom"
-                        >
-                          <SheetHeader className="border-b pr-12">
-                            <SheetTitle>Daftar soal</SheetTitle>
-                            <SheetDescription>
-                              Pilih soal untuk langsung menuju bagian yang ingin
-                              diedit.
-                            </SheetDescription>
-                          </SheetHeader>
-                          <div className="min-h-0 overflow-y-auto px-4 pb-5">
-                            <QuestionNavigator
-                              activeQuestionId={activeQuestionId}
-                              items={questionMapItems}
-                              onSelect={(questionId) => {
-                                setQuestionNavigatorTargetId(questionId);
-                                setQuestionNavigatorOpen(false);
-                              }}
-                            />
-                          </div>
-                        </SheetContent>
-                      </Sheet>
-                    ) : null}
-                    <Button
-                      disabled={questionBusy}
-                      onClick={addQuestion}
-                      size="sm"
-                      type="button"
-                    >
-                      <PlusIcon data-icon="inline-start" />
-                      Tambah soal
-                    </Button>
-                  </div>
-                </div>
-
-                {displayQuestions.length ? (
-                  <div className="grid gap-4">
-                    {displayQuestions.map((question, index) => (
-                      <QuestionCard
-                        autosaveRegistry={autosaveRegistry}
-                        autoFocusPrompt={newQuestionId === question.id}
-                        busy={questionBusy}
-                        highlighted={activeQuestionId === question.id}
-                        index={index}
-                        key={`${question.id}:${recoveredDraft?.updatedAt ?? "server"}`}
-                        onAddOption={onAddOption}
-                        onDeleteOption={onDeleteOption}
-                        onDeleteQuestion={onDeleteQuestion}
-                        onSave={onSaveQuestion}
-                        onDraftChange={saveQuestionDraft}
-                        onDraftOptionChange={saveOptionDraft}
-                        onSaveOption={onSaveOption}
-                        onToggleCorrect={onToggleCorrect}
-                        question={question}
-                        recoverOnMount={Boolean(recoveredDraft)}
-                        theme={editorTheme}
-                        assetStorage={assetStorage}
-                      />
-                    ))}
-                  </div>
+                  </li>
+                ))}
+              </ol>
+              <button
+                className="text-muted-foreground hover:border-foreground/30 hover:text-foreground flex items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-sm transition-colors disabled:pointer-events-none disabled:opacity-50"
+                disabled={questionBusy}
+                onClick={addQuestion}
+                type="button"
+              >
+                {questionBusy ? (
+                  <LoaderCircleIcon className="size-4 animate-spin" />
                 ) : (
-                  <div className="text-muted-foreground bg-muted/20 rounded-xl border border-dashed px-6 py-10 text-center text-sm">
-                    Tambahkan soal pertama untuk mulai membangun assessment.
-                  </div>
+                  <PlusIcon className="size-4" />
                 )}
-              </section>
-            ) : (
-              <div className="bg-muted/20 text-muted-foreground rounded-xl border border-dashed px-6 py-10 text-center text-sm">
-                Isi detail assessment terlebih dahulu, lalu tambahkan soal dan
-                opsi jawaban. Perubahan disimpan otomatis.
-              </div>
-            )}
-          </section>
-
-          <aside className="grid min-w-0 gap-4 lg:sticky lg:top-6">
-            <div className="bg-card grid gap-5 rounded-xl border p-5 shadow-xs">
-              <div className="grid gap-2">
-                <Label htmlFor="assessment-status">Status</Label>
-                <Select
-                  disabled={!assessment}
-                  value={status}
-                  onValueChange={(value) => {
-                    if (
-                      value === "DRAFT" ||
-                      value === "PUBLISHED" ||
-                      value === "ARCHIVED"
-                    ) {
-                      setStatus(value);
-                    }
-                  }}
-                >
-                  <SelectTrigger className="w-full" id="assessment-status">
-                    <SelectValue>{assessmentStatusLabels[status]}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DRAFT">Draft</SelectItem>
-                    <SelectItem value="PUBLISHED">Published</SelectItem>
-                    <SelectItem value="ARCHIVED">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-                {!assessment ? (
-                  <p className="text-muted-foreground text-xs">
-                    Assessment baru disimpan sebagai draft. Tambahkan soal lalu
-                    publish dari halaman edit.
-                  </p>
-                ) : status === "PUBLISHED" && !displayQuestions.length ? (
-                  <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
-                    <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
-                    Tambahkan soal sebelum memasang assessment ke course.
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="grid gap-4 border-t pt-5">
-                <NumberField
-                  id="assessment-passing-score"
-                  label="Nilai lulus (%)"
-                  max={100}
-                  min={0}
-                  onChange={setPassingScore}
-                  placeholder="Kosongkan jika tidak ada"
-                  value={passingScore}
-                />
-                <NumberField
-                  id="assessment-max-attempts"
-                  label="Maksimal percobaan"
-                  min={1}
-                  onChange={setMaxAttempts}
-                  placeholder="Kosongkan jika tidak dibatasi"
-                  value={maxAttempts}
-                />
-                <NumberField
-                  id="assessment-time-limit"
-                  label="Batas waktu (menit)"
-                  min={1}
-                  onChange={setTimeLimitMinutes}
-                  placeholder="Kosongkan jika tanpa batas"
-                  value={timeLimitMinutes}
-                />
-              </div>
-
-              <div className="grid gap-4 border-t pt-5">
-                <ToggleField
-                  checked={shuffleQuestions}
-                  description="Acak urutan soal untuk setiap attempt."
-                  label="Acak soal"
-                  onCheckedChange={setShuffleQuestions}
-                />
-                <ToggleField
-                  checked={shuffleOptions}
-                  description="Acak urutan opsi untuk setiap attempt."
-                  label="Acak opsi"
-                  onCheckedChange={setShuffleOptions}
-                />
-              </div>
+                Tambah soal berikutnya
+              </button>
+            </>
+          ) : (
+            <div className="bg-muted/20 rounded-xl border border-dashed px-6 py-12 text-center">
+              <FileQuestionIcon className="text-muted-foreground/60 mx-auto mb-3 size-7" />
+              <p className="text-sm font-medium">Belum ada soal</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Tekan tombol Tambah soal di atas untuk membuat soal pertama.
+              </p>
             </div>
-
-            <div className="bg-card hidden gap-3 rounded-xl border p-4 shadow-xs lg:grid">
-              <div>
-                <h2 className="font-heading text-sm font-semibold">
-                  Peta soal
-                </h2>
-                <p className="text-muted-foreground text-xs">
-                  Lompat langsung ke soal yang ingin diedit.
-                </p>
-              </div>
-              {assessment?.questions.length ? (
-                <QuestionNavigator
-                  activeQuestionId={activeQuestionId}
-                  items={questionMapItems}
-                  onSelect={navigateToQuestion}
-                />
-              ) : (
-                <p className="text-muted-foreground rounded-md border border-dashed px-3 py-4 text-center text-xs">
-                  Belum ada soal.
-                </p>
-              )}
-            </div>
-          </aside>
+          )}
+        </>
+      ) : (
+        <div className="bg-muted/20 rounded-xl border border-dashed px-6 py-14 text-center">
+          <ClipboardCheckIcon className="text-muted-foreground/60 mx-auto mb-3 size-7" />
+          <p className="text-sm font-medium">Mulai dengan judul</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Isi judul di atas — assessment dibuat otomatis, lalu Anda bisa
+            langsung menambahkan soal.
+          </p>
         </div>
-      </div>
+      )}
+
+      <EditorSidebar
+        title="Pengaturan assessment"
+        description="Aturan dan navigasi soal"
+      >
+        <div className="grid gap-5 p-4">
+          <div className="grid gap-2">
+            <Label htmlFor="assessment-status">Status</Label>
+            <Select
+              disabled={!assessment}
+              value={status}
+              onValueChange={(value) => {
+                if (
+                  value === "DRAFT" ||
+                  value === "PUBLISHED" ||
+                  value === "ARCHIVED"
+                ) {
+                  settingsTouchedRef.current = true;
+                  setStatus(value);
+                }
+              }}
+            >
+              <SelectTrigger className="w-full" id="assessment-status">
+                <SelectValue>{assessmentStatusLabels[status]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="PUBLISHED">Published</SelectItem>
+                <SelectItem value="ARCHIVED">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+            {!assessment ? (
+              <p className="text-muted-foreground text-xs">
+                Assessment baru disimpan sebagai draft. Tambahkan soal lalu
+                publish dari halaman edit.
+              </p>
+            ) : status === "PUBLISHED" && !displayQuestions.length ? (
+              <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                Tambahkan soal sebelum memasang assessment ke course.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="grid gap-4 border-t pt-5">
+            <NumberField
+              id="assessment-passing-score"
+              label="Nilai lulus (%)"
+              max={100}
+              min={0}
+              onChange={(value) => {
+                settingsTouchedRef.current = true;
+                setPassingScore(value);
+              }}
+              placeholder="Kosongkan jika tidak ada"
+              value={passingScore}
+            />
+            <NumberField
+              id="assessment-max-attempts"
+              label="Maksimal percobaan"
+              min={1}
+              onChange={(value) => {
+                settingsTouchedRef.current = true;
+                setMaxAttempts(value);
+              }}
+              placeholder="Kosongkan jika tidak dibatasi"
+              value={maxAttempts}
+            />
+            <NumberField
+              id="assessment-time-limit"
+              label="Batas waktu (menit)"
+              min={1}
+              onChange={(value) => {
+                settingsTouchedRef.current = true;
+                setTimeLimitMinutes(value);
+              }}
+              placeholder="Kosongkan jika tanpa batas"
+              value={timeLimitMinutes}
+            />
+          </div>
+
+          <div className="grid gap-4 border-t pt-5">
+            <ToggleField
+              checked={shuffleQuestions}
+              description="Acak urutan soal untuk setiap attempt."
+              label="Acak soal"
+              onCheckedChange={(checked) => {
+                settingsTouchedRef.current = true;
+                setShuffleQuestions(checked);
+              }}
+            />
+            <ToggleField
+              checked={shuffleOptions}
+              description="Acak urutan opsi untuk setiap attempt."
+              label="Acak opsi"
+              onCheckedChange={(checked) => {
+                settingsTouchedRef.current = true;
+                setShuffleOptions(checked);
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="border-sidebar-border grid gap-3 border-t p-4">
+          <div>
+            <h2 className="font-heading text-sm font-semibold">Peta soal</h2>
+            <p className="text-muted-foreground text-xs">
+              Lompat langsung ke soal yang ingin diedit.
+            </p>
+          </div>
+          {assessment?.questions.length ? (
+            <QuestionNavigator
+              activeQuestionId={activeQuestionId}
+              items={questionMapItems}
+              onSelect={openQuestion}
+            />
+          ) : (
+            <p className="text-muted-foreground rounded-md border border-dashed px-3 py-4 text-center text-xs">
+              Belum ada soal.
+            </p>
+          )}
+        </div>
+      </EditorSidebar>
     </div>
   );
 }
@@ -1737,12 +1821,247 @@ type QuestionDraft = {
   type: QuestionType;
 };
 
-type QuestionCardProps = {
+type QuestionRowProps = {
+  active: boolean;
   autosaveRegistry: AutosaveRegistry;
   autoFocusPrompt: boolean;
   busy: boolean;
+  expanded: boolean;
   highlighted: boolean;
+  hoverActionsFrozen: boolean;
   index: number;
+  onAddOption: (questionId: string) => Promise<void>;
+  onDeleteOption: (optionId: string) => Promise<void>;
+  onDeleteQuestion: (questionId: string) => Promise<void>;
+  onDraftChange: (questionId: string, value: QuestionFields) => void;
+  onDraftOptionChange: (
+    questionId: string,
+    optionId: string,
+    content: BlockNoteDocument,
+  ) => void;
+  onSave: (questionId: string, value: QuestionFields) => Promise<boolean>;
+  onSaveOption: (
+    optionId: string,
+    content: BlockNoteDocument,
+  ) => Promise<boolean>;
+  onToggle: () => void;
+  onToggleCorrect: (
+    question: Question,
+    optionId: string,
+    checked: boolean,
+  ) => Promise<void>;
+  question: Question;
+  recoverOnMount: boolean;
+  renderForm: boolean;
+  theme: "light" | "dark";
+  assetStorage?: EditorAssetStorageOptions;
+};
+
+const QuestionRow = memo(function QuestionRow({
+  active,
+  autosaveRegistry,
+  autoFocusPrompt,
+  busy,
+  expanded,
+  highlighted,
+  hoverActionsFrozen,
+  index,
+  onAddOption,
+  onDeleteOption,
+  onDeleteQuestion,
+  onDraftChange,
+  onDraftOptionChange,
+  onSave,
+  onSaveOption,
+  onToggle,
+  onToggleCorrect,
+  question,
+  recoverOnMount,
+  renderForm,
+  theme,
+  assetStorage,
+}: QuestionRowProps) {
+  const issue = getQuestionIssue(question);
+  const preview = getBlockNotePlainText(question.prompt);
+
+  return (
+    <article
+      className={cn(
+        "group bg-card scroll-mt-24 rounded-xl border transition-[background-color,border-color,box-shadow] duration-300",
+        expanded
+          ? "border-primary/40 shadow-sm"
+          : "hover:border-foreground/20",
+        highlighted && "border-primary/50 bg-primary/[0.06]",
+        !expanded && !highlighted && active && "bg-muted/30",
+      )}
+      data-question-id={question.id}
+      id={`assessment-question-${question.id}`}
+    >
+      <div className="flex items-start gap-1 py-2.5 pr-1.5 pl-3">
+        <button
+          aria-expanded={expanded}
+          className="focus-visible:ring-ring/50 flex min-w-0 flex-1 flex-col gap-1.5 rounded-lg text-left outline-none focus-visible:ring-3"
+          onClick={onToggle}
+          type="button"
+        >
+          <span className="flex w-full min-w-0 items-center gap-2">
+            <span className="bg-muted text-muted-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+              {index + 1}
+            </span>
+            {issue ? (
+              <span title={issue}>
+                <AlertTriangleIcon
+                  aria-label={issue}
+                  className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+                />
+              </span>
+            ) : null}
+            <span className="ml-auto flex shrink-0 items-center gap-1.5">
+              <Badge variant="secondary">
+                {questionTypeLabels[question.type]}
+              </Badge>
+              <span className="text-muted-foreground text-xs">
+                {question.points} poin
+              </span>
+            </span>
+            <ChevronDownIcon
+              className={cn(
+                "text-muted-foreground size-4 shrink-0 transition-transform duration-200",
+                expanded && "rotate-180",
+              )}
+            />
+          </span>
+          {!expanded ? (
+            <span
+              className={cn(
+                "line-clamp-2 w-full min-w-0 text-sm",
+                preview ? "text-muted-foreground" : "text-muted-foreground/60",
+              )}
+            >
+              {preview || "Belum ada pertanyaan"}
+            </span>
+          ) : null}
+        </button>
+        <DeleteQuestionAlert
+          busy={busy}
+          onDelete={() => onDeleteQuestion(question.id)}
+          trigger={
+            <Button
+              aria-label={`Hapus soal ${index + 1}`}
+              className={cn(
+                "mt-0.5 shrink-0 transition-opacity duration-200 sm:opacity-0 sm:focus-visible:opacity-100",
+                !hoverActionsFrozen &&
+                  "sm:group-hover:opacity-100 sm:group-hover:delay-200",
+              )}
+              disabled={busy}
+              size="icon-xs"
+              type="button"
+              variant="ghost"
+            />
+          }
+        />
+      </div>
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none",
+          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div
+          className={cn(
+            "min-h-0 overflow-hidden transition-opacity duration-300 motion-reduce:transition-none",
+            expanded ? "opacity-100" : "opacity-0",
+          )}
+        >
+          {renderForm ? (
+            <QuestionEditor
+              autosaveRegistry={autosaveRegistry}
+              autoFocusPrompt={autoFocusPrompt}
+              busy={busy}
+              onAddOption={onAddOption}
+              onDeleteOption={onDeleteOption}
+              onDeleteQuestion={onDeleteQuestion}
+              onDraftChange={onDraftChange}
+              onDraftOptionChange={onDraftOptionChange}
+              onSave={onSave}
+              onSaveOption={onSaveOption}
+              onToggleCorrect={onToggleCorrect}
+              question={question}
+              recoverOnMount={recoverOnMount}
+              theme={theme}
+              assetStorage={assetStorage}
+            />
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}, areQuestionRowPropsEqual);
+
+function areQuestionRowPropsEqual(
+  previous: QuestionRowProps,
+  next: QuestionRowProps,
+) {
+  return (
+    previous.active === next.active &&
+    previous.autosaveRegistry === next.autosaveRegistry &&
+    previous.autoFocusPrompt === next.autoFocusPrompt &&
+    previous.busy === next.busy &&
+    previous.expanded === next.expanded &&
+    previous.highlighted === next.highlighted &&
+    previous.hoverActionsFrozen === next.hoverActionsFrozen &&
+    previous.index === next.index &&
+    previous.onDraftChange === next.onDraftChange &&
+    previous.onDraftOptionChange === next.onDraftOptionChange &&
+    previous.question === next.question &&
+    previous.recoverOnMount === next.recoverOnMount &&
+    previous.renderForm === next.renderForm &&
+    previous.theme === next.theme
+  );
+}
+
+function DeleteQuestionAlert({
+  busy,
+  children,
+  onDelete,
+  trigger,
+}: {
+  busy: boolean;
+  children?: ReactNode;
+  onDelete: () => Promise<void>;
+  trigger: ReactElement;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger render={trigger}>
+        {children ?? <Trash2Icon />}
+      </AlertDialogTrigger>
+      <AlertDialogContent size="sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Hapus soal ini?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Soal dan semua opsi jawabannya akan dihapus permanen.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={busy}
+            onClick={onDelete}
+            variant="destructive"
+          >
+            Hapus
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+type QuestionEditorProps = {
+  autosaveRegistry: AutosaveRegistry;
+  autoFocusPrompt: boolean;
+  busy: boolean;
   onAddOption: (questionId: string) => Promise<void>;
   onDeleteOption: (optionId: string) => Promise<void>;
   onDeleteQuestion: (questionId: string) => Promise<void>;
@@ -1768,12 +2087,10 @@ type QuestionCardProps = {
   assetStorage?: EditorAssetStorageOptions;
 };
 
-const QuestionCard = memo(function QuestionCard({
+function QuestionEditor({
   autosaveRegistry,
   autoFocusPrompt,
   busy,
-  highlighted,
-  index,
   onAddOption,
   onDeleteOption,
   onDeleteQuestion,
@@ -1786,7 +2103,7 @@ const QuestionCard = memo(function QuestionCard({
   recoverOnMount,
   theme,
   assetStorage,
-}: QuestionCardProps) {
+}: QuestionEditorProps) {
   const [type, setType] = useState<QuestionType>(question.type);
   const [prompt, setPrompt] = useState<BlockNoteDocument>(
     toBlockNoteDocument(question.prompt) as BlockNoteDocument,
@@ -1796,6 +2113,11 @@ const QuestionCard = memo(function QuestionCard({
   );
   const [points, setPoints] = useState(String(question.points));
   const [correctAnswerBusy, setCorrectAnswerBusy] = useState(false);
+  // Only autosave after the user actually edits — or when a recovered draft
+  // is being synced back to the server. StrictMode double-invokes mount
+  // effects, which would otherwise make merely expanding a row look like a
+  // real change and fire a phantom save.
+  const questionTouchedRef = useRef(recoverOnMount);
 
   const {
     cancel: cancelQuestionSave,
@@ -1840,6 +2162,7 @@ const QuestionCard = memo(function QuestionCard({
       skipInitialQuestionSave.current = false;
       return;
     }
+    if (!questionTouchedRef.current) return;
 
     const parsedPoints = Number(points);
     onDraftChange(question.id, {
@@ -1864,237 +2187,233 @@ const QuestionCard = memo(function QuestionCard({
   ]);
 
   return (
-    <Card
-      className={
-        highlighted
-          ? "bg-muted/20 scroll-mt-24 transition-colors duration-300"
-          : "scroll-mt-24 transition-colors duration-300"
-      }
-      data-question-id={question.id}
-      id={`assessment-question-${question.id}`}
-    >
-      <CardHeader className="border-b">
-        <div className="flex items-start justify-between gap-3">
-          <CardTitle className="flex items-center gap-2">
-            <span className="bg-muted text-muted-foreground flex size-7 items-center justify-center rounded-md text-xs">
-              {index + 1}
-            </span>
-            Soal {index + 1}
-          </CardTitle>
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  aria-label={`Hapus soal ${index + 1}`}
-                  disabled={busy}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                />
+    <div className="grid gap-4 border-t p-3 sm:p-4">
+      <div className="grid gap-1.5">
+        <Label className="text-muted-foreground text-[11px] tracking-wide uppercase">
+          Pertanyaan
+        </Label>
+        <div className="bg-muted/20 overflow-hidden rounded-lg border">
+          <DynamicBlockNoteEditor
+            autoFocus={autoFocusPrompt}
+            initialContent={toBlockNoteDocument(question.prompt)}
+            onChange={(value) => {
+              questionTouchedRef.current = true;
+              setPrompt(value);
+            }}
+            placeholder="Tulis pertanyaan..."
+            trailingBlock={false}
+            theme={theme}
+            assetStorage={assetStorage}
+          />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
+        <div className="grid gap-1.5">
+          <Label
+            className="text-muted-foreground text-[11px] tracking-wide uppercase"
+            htmlFor={`question-type-${question.id}`}
+          >
+            Tipe soal
+          </Label>
+          <Select
+            value={type}
+            onValueChange={(value) => {
+              if (
+                value === "SINGLE_CHOICE" ||
+                value === "MULTIPLE_CHOICE" ||
+                value === "WRITTEN"
+              ) {
+                questionTouchedRef.current = true;
+                setType(value);
               }
+            }}
+          >
+            <SelectTrigger
+              className="w-full"
+              id={`question-type-${question.id}`}
             >
-              <Trash2Icon />
-            </AlertDialogTrigger>
-            <AlertDialogContent size="sm">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Hapus soal ini?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Soal dan semua opsi jawabannya akan dihapus permanen.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={busy}
-                  onClick={() => {
-                    cancelQuestionSave();
-                    void onDeleteQuestion(question.id);
-                  }}
-                  variant="destructive"
-                >
-                  Hapus
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+              <SelectValue>{questionTypeLabels[type]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="SINGLE_CHOICE">Pilihan tunggal</SelectItem>
+              <SelectItem value="MULTIPLE_CHOICE">Pilihan ganda</SelectItem>
+              <SelectItem value="WRITTEN">Jawaban tertulis</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </CardHeader>
-      <CardContent className="grid gap-5">
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Pertanyaan</Label>
-            <div className="overflow-hidden rounded-lg border">
-              <DynamicBlockNoteEditor
-                autoFocus={autoFocusPrompt}
-                initialContent={toBlockNoteDocument(question.prompt)}
-                onChange={setPrompt}
-                placeholder="Tulis pertanyaan..."
-                trailingBlock={false}
-                theme={theme}
-                assetStorage={assetStorage}
-              />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
-            <div className="grid gap-2">
-              <Label htmlFor={`question-type-${question.id}`}>Tipe soal</Label>
-              <Select
-                value={type}
-                onValueChange={(value) => {
-                  if (
-                    value === "SINGLE_CHOICE" ||
-                    value === "MULTIPLE_CHOICE" ||
-                    value === "WRITTEN"
-                  ) {
-                    setType(value);
-                  }
-                }}
-              >
-                <SelectTrigger
-                  className="w-full"
-                  id={`question-type-${question.id}`}
-                >
-                  <SelectValue>{questionTypeLabels[type]}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SINGLE_CHOICE">Pilihan tunggal</SelectItem>
-                  <SelectItem value="MULTIPLE_CHOICE">Pilihan ganda</SelectItem>
-                  <SelectItem value="WRITTEN">Jawaban tertulis</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor={`question-points-${question.id}`}>Poin</Label>
-              <Input
-                id={`question-points-${question.id}`}
-                min={1}
-                onChange={(event) => setPoints(event.target.value)}
-                type="number"
-                value={points}
-              />
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <Label>Penjelasan jawaban (opsional)</Label>
-            <div className="overflow-hidden rounded-lg border">
-              <DynamicBlockNoteEditor
-                initialContent={toBlockNoteDocument(question.explanation)}
-                onChange={setExplanation}
-                placeholder="Tulis penjelasan jawaban..."
-                trailingBlock={false}
-                theme={theme}
-                assetStorage={assetStorage}
-              />
-            </div>
-          </div>
+        <div className="grid gap-1.5">
+          <Label
+            className="text-muted-foreground text-[11px] tracking-wide uppercase"
+            htmlFor={`question-points-${question.id}`}
+          >
+            Poin
+          </Label>
+          <Input
+            id={`question-points-${question.id}`}
+            min={1}
+            onChange={(event) => {
+              questionTouchedRef.current = true;
+              setPoints(event.target.value);
+            }}
+            type="number"
+            value={points}
+          />
         </div>
+      </div>
+      <div className="grid gap-1.5">
+        <Label className="text-muted-foreground text-[11px] tracking-wide uppercase">
+          Penjelasan jawaban (opsional)
+        </Label>
+        <div className="bg-muted/20 overflow-hidden rounded-lg border">
+          <DynamicBlockNoteEditor
+            initialContent={toBlockNoteDocument(question.explanation)}
+            onChange={(value) => {
+              questionTouchedRef.current = true;
+              setExplanation(value);
+            }}
+            placeholder="Tulis penjelasan jawaban..."
+            trailingBlock={false}
+            theme={theme}
+            assetStorage={assetStorage}
+          />
+        </div>
+      </div>
 
-        {type === "WRITTEN" && question.options.length ? (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-            <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
-            <p>
-              Opsi lama dipertahankan dan bisa dihapus satu per satu, tetapi
-              akan diabaikan oleh sistem untuk soal tertulis. Jika tipe
-              dikembalikan, opsi tersebut akan muncul lagi.
-            </p>
-          </div>
-        ) : null}
+      {type === "WRITTEN" && question.options.length ? (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+          <p>
+            Opsi lama dipertahankan dan bisa dihapus satu per satu, tetapi
+            akan diabaikan oleh sistem untuk soal tertulis. Jika tipe
+            dikembalikan, opsi tersebut akan muncul lagi.
+          </p>
+        </div>
+      ) : null}
 
-        {type !== "WRITTEN" || question.options.length ? (
-          <div className="grid gap-3 border-t pt-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="font-heading font-semibold">Opsi jawaban</h3>
-                <p className="text-muted-foreground text-xs">
-                  {type === "MULTIPLE_CHOICE"
-                    ? "Tandai semua opsi yang benar."
-                    : type === "SINGLE_CHOICE"
-                      ? "Tandai satu opsi yang benar."
-                      : "Opsi tersimpan hanya untuk menjaga data saat tipe berubah."}
-                </p>
-              </div>
-              {type !== "WRITTEN" ? (
-                <Button
-                  disabled={
-                    busy || question.options.length >= MAX_ASSESSMENT_OPTIONS
-                  }
-                  onClick={() => onAddOption(question.id)}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <PlusIcon data-icon="inline-start" />
-                  {question.options.length >= MAX_ASSESSMENT_OPTIONS
-                    ? "Maksimal 4 opsi"
-                    : "Tambah opsi"}
-                </Button>
-              ) : null}
-            </div>
-            {question.options.length ? (
-              <div className="grid gap-2">
-                {question.options.map((option, optionIndex) => (
-                  <OptionRow
-                    autosaveRegistry={autosaveRegistry}
-                    busy={busy}
-                    canDelete={
-                      type === "WRITTEN" ||
-                      question.options.length > MIN_ASSESSMENT_OPTIONS
-                    }
-                    correctAnswerBusy={correctAnswerBusy}
-                    index={optionIndex}
-                    key={option.id}
-                    onDelete={() => onDeleteOption(option.id)}
-                    onDraftChange={onDraftOptionChange}
-                    onToggleCorrect={async (checked) => {
-                      setCorrectAnswerBusy(true);
-                      try {
-                        await onToggleCorrect(question, option.id, checked);
-                      } finally {
-                        setCorrectAnswerBusy(false);
-                      }
-                    }}
-                    onSave={(content) => onSaveOption(option.id, content)}
-                    option={option}
-                    questionId={question.id}
-                    recoverOnMount={recoverOnMount}
-                    theme={theme}
-                    assetStorage={assetStorage}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-4 text-center text-xs">
-                Belum ada opsi. Tambahkan setidaknya dua opsi untuk soal
-                pilihan.
+      {type !== "WRITTEN" || question.options.length ? (
+        <div className="grid gap-3 border-t pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-heading text-sm font-semibold">
+                Opsi jawaban
+              </h3>
+              <p className="text-muted-foreground text-xs">
+                {type === "MULTIPLE_CHOICE"
+                  ? "Tandai semua opsi yang benar."
+                  : type === "SINGLE_CHOICE"
+                    ? "Tandai satu opsi yang benar."
+                    : "Opsi tersimpan hanya untuk menjaga data saat tipe berubah."}
               </p>
-            )}
+            </div>
+            {type !== "WRITTEN" ? (
+              <Button
+                disabled={
+                  busy || question.options.length >= MAX_ASSESSMENT_OPTIONS
+                }
+                onClick={() => onAddOption(question.id)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <PlusIcon data-icon="inline-start" />
+                {question.options.length >= MAX_ASSESSMENT_OPTIONS
+                  ? "Maksimal 4 opsi"
+                  : "Tambah opsi"}
+              </Button>
+            ) : null}
           </div>
-        ) : (
-          <div className="bg-muted/30 text-muted-foreground flex items-start gap-2 rounded-lg border p-3 text-xs">
-            <FileQuestionIcon className="mt-0.5 size-4 shrink-0" />
-            Soal tertulis akan diperiksa manual setelah siswa mengirim jawaban.
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}, areQuestionCardPropsEqual);
+          {question.options.length ? (
+            <div className="grid gap-2">
+              {question.options.map((option, optionIndex) => (
+                <OptionRow
+                  autosaveRegistry={autosaveRegistry}
+                  busy={busy}
+                  canDelete={
+                    type === "WRITTEN" ||
+                    question.options.length > MIN_ASSESSMENT_OPTIONS
+                  }
+                  correctAnswerBusy={correctAnswerBusy}
+                  index={optionIndex}
+                  key={option.id}
+                  onDelete={() => onDeleteOption(option.id)}
+                  onDraftChange={onDraftOptionChange}
+                  onToggleCorrect={async (checked) => {
+                    setCorrectAnswerBusy(true);
+                    try {
+                      await onToggleCorrect(question, option.id, checked);
+                    } finally {
+                      setCorrectAnswerBusy(false);
+                    }
+                  }}
+                  onSave={(content) => onSaveOption(option.id, content)}
+                  option={option}
+                  questionId={question.id}
+                  recoverOnMount={recoverOnMount}
+                  theme={theme}
+                  assetStorage={assetStorage}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-4 text-center text-xs">
+              Belum ada opsi. Tambahkan setidaknya dua opsi untuk soal
+              pilihan.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="bg-muted/30 text-muted-foreground flex items-start gap-2 rounded-lg border p-3 text-xs">
+          <FileQuestionIcon className="mt-0.5 size-4 shrink-0" />
+          Soal tertulis akan diperiksa manual setelah siswa mengirim jawaban.
+        </div>
+      )}
 
-function areQuestionCardPropsEqual(
-  previous: QuestionCardProps,
-  next: QuestionCardProps,
-) {
-  return (
-    previous.autosaveRegistry === next.autosaveRegistry &&
-    previous.autoFocusPrompt === next.autoFocusPrompt &&
-    previous.busy === next.busy &&
-    previous.highlighted === next.highlighted &&
-    previous.index === next.index &&
-    previous.onDraftChange === next.onDraftChange &&
-    previous.onDraftOptionChange === next.onDraftOptionChange &&
-    previous.question === next.question &&
-    previous.recoverOnMount === next.recoverOnMount &&
-    previous.theme === next.theme
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+        <p className="flex items-center gap-1.5 text-xs" role="status">
+          {questionSaveStatus === "pending" ||
+          questionSaveStatus === "saving" ? (
+            <>
+              <LoaderCircleIcon className="text-muted-foreground size-3.5 animate-spin" />
+              <span className="text-muted-foreground">Menyimpan…</span>
+            </>
+          ) : questionSaveStatus === "error" ? (
+            <>
+              <AlertTriangleIcon className="text-destructive size-3.5" />
+              <span className="text-destructive">Gagal menyimpan</span>
+            </>
+          ) : questionSaveStatus === "saved" ? (
+            <>
+              <CheckCircle2Icon className="text-muted-foreground size-3.5" />
+              <span className="text-muted-foreground">Tersimpan</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2Icon className="text-muted-foreground size-3.5" />
+              <span className="text-muted-foreground">Belum ada perubahan</span>
+            </>
+          )}
+        </p>
+        <DeleteQuestionAlert
+          busy={busy}
+          onDelete={async () => {
+            cancelQuestionSave();
+            await onDeleteQuestion(question.id);
+          }}
+          trigger={
+            <Button
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              disabled={busy}
+              size="sm"
+              type="button"
+              variant="ghost"
+            />
+          }
+        >
+          <Trash2Icon data-icon="inline-start" />
+          Hapus soal
+        </DeleteQuestionAlert>
+      </div>
+    </div>
   );
 }
 
@@ -2140,6 +2459,9 @@ const OptionRow = memo(function OptionRow({
   );
   const [editing, setEditing] = useState(false);
   const editorAreaRef = useRef<HTMLDivElement>(null);
+  // Same StrictMode guard as the question editor: only autosave after the
+  // user actually edits (or a recovered draft is being synced back).
+  const contentTouchedRef = useRef(recoverOnMount);
 
   const {
     cancel: cancelOptionSave,
@@ -2172,6 +2494,7 @@ const OptionRow = memo(function OptionRow({
       skipInitialOptionSave.current = false;
       return;
     }
+    if (!contentTouchedRef.current) return;
 
     onDraftChange(questionId, option.id, content);
     scheduleOptionSave(content);
@@ -2219,7 +2542,7 @@ const OptionRow = memo(function OptionRow({
         disabled={busy || correctAnswerBusy}
         onCheckedChange={(checked) => void onToggleCorrect(checked === true)}
       />
-      <span className="text-foreground w-8 shrink-0 text-center text-2xl leading-none font-semibold">
+      <span className="text-foreground w-6 shrink-0 text-center text-lg leading-none font-semibold">
         {getAssessmentOptionLabel(index)}
       </span>
       <div
@@ -2260,7 +2583,10 @@ const OptionRow = memo(function OptionRow({
             autoFocus={editing}
             editable={editing}
             initialContent={toBlockNoteDocument(option.content)}
-            onChange={setContent}
+            onChange={(value) => {
+              contentTouchedRef.current = true;
+              setContent(value);
+            }}
             placeholder="Tulis opsi jawaban..."
             trailingBlock={false}
             theme={theme}

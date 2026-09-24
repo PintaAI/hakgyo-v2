@@ -1,7 +1,12 @@
-import { useEffect } from "react";
 import { Image } from "expo-image";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 import { getOrganizationSwitcherOptions } from "../lib/organization-switcher";
 import { useAppTheme } from "../providers/AppThemeProvider";
@@ -122,109 +127,95 @@ export function OrganizationSwitcherContent({
     availableOrganizations,
     colors,
     isRefreshingOrganizations,
-    refreshOrganizations,
     selectOrganization,
   } = useAppTheme();
-  // The sheet mounts each time it opens, so refresh here: an organization
-  // joined since the last fetch (new cohort enrollment, invite accepted on
-  // web) shows up instead of the stale cached list.
-  useEffect(() => {
-    void refreshOrganizations();
-  }, [refreshOrganizations]);
   const switcherOptions = getOrganizationSwitcherOptions(
     activeBrand,
     availableOrganizations,
   );
 
   return (
-    // NativeWind's safe-area integration only wraps SafeAreaProvider;
-    // SafeAreaView needs native styles to fill the form sheet.
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      edges={["bottom"]}
+    <ScrollView
+      className="flex-1"
+      contentContainerClassName="flex-grow gap-2 px-5 pb-5 pt-4"
+      contentInsetAdjustmentBehavior="automatic"
+      showsVerticalScrollIndicator={false}
     >
-      <View className="flex-1 gap-2 px-5 pb-5 pt-4">
+      {Platform.OS !== "ios" ? (
         <View className="flex-row items-center justify-between gap-4">
           <Text className="text-xl font-black text-foreground">
             Choose organization
           </Text>
           <Pressable
+            accessibilityLabel="Close organization switcher"
             accessibilityRole="button"
             className="rounded-full px-3 py-2 active:opacity-60"
             onPress={onClose}
           >
-            <Text className="text-sm font-bold text-primary">Done</Text>
+            <Text className="text-xl font-bold text-primary">×</Text>
           </Pressable>
         </View>
-        <Text className="mb-2 text-sm text-muted-foreground">
-          Learning content and branding will switch together.
-        </Text>
-        {isRefreshingOrganizations ? (
-          <Text className="mb-2 text-xs text-muted-foreground">
-            Updating organizations…
-          </Text>
-        ) : null}
-        <ScrollView
-          contentContainerClassName="gap-2 pb-4"
-          contentInsetAdjustmentBehavior="automatic"
-          showsVerticalScrollIndicator={false}
-        >
-          {switcherOptions.map((organization) => {
-            const selected =
-              organization.organizationId === activeBrand.organizationId;
-            return (
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                className={`flex-row items-center gap-3 rounded-2xl border px-3 py-3 active:opacity-70 ${
-                  selected
-                    ? "border-primary bg-primary/10"
-                    : "border-border bg-card"
-                }`}
-                key={organization.organizationId ?? "hakgyo-default"}
-                onPress={() => {
-                  onClose();
-                  if (organization.organizationId) {
-                    void selectOrganization(organization.organizationId);
-                  }
-                }}
-              >
-                <OrganizationMark
-                  logoUrl={organization.logoUrl}
-                  name={organization.name}
-                  size="size-11"
-                />
-                <View className="min-w-0 flex-1 gap-0.5">
-                  <Text
-                    className="text-base font-bold text-foreground"
-                    numberOfLines={1}
-                  >
-                    {organization.name}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground">
-                    {organization.isThemed
-                      ? "Organization theme"
-                      : "Hakgyo theme"}
-                  </Text>
-                </View>
-                {selected ? (
-                  <Text
-                    className="text-lg font-black"
-                    style={{ color: colors.primary }}
-                  >
-                    ✓
-                  </Text>
-                ) : null}
-              </Pressable>
-            );
-          })}
-          {availableOrganizations.length === 0 ? (
-            <Text className="py-5 text-center text-sm text-muted-foreground">
-              No active organization enrollments yet.
-            </Text>
-          ) : null}
-        </ScrollView>
+      ) : null}
+      <View className="h-5 justify-center">
+        <ActivityIndicator
+          accessibilityLabel="Updating organizations"
+          animating={isRefreshingOrganizations}
+          color={colors.primary}
+          size="small"
+        />
       </View>
-    </SafeAreaView>
+      {switcherOptions.map((organization) => {
+        const selected =
+          organization.organizationId === activeBrand.organizationId;
+        return (
+          <Pressable
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            className={`flex-row items-center gap-3 rounded-2xl border px-3 py-3 active:opacity-70 ${
+              selected
+                ? "border-primary bg-primary/10"
+                : "border-border bg-card"
+            }`}
+            key={organization.organizationId ?? "hakgyo-default"}
+            onPress={() => {
+              onClose();
+              if (organization.organizationId) {
+                void selectOrganization(organization.organizationId);
+              }
+            }}
+          >
+            <OrganizationMark
+              logoUrl={organization.logoUrl}
+              name={organization.name}
+              size="size-11"
+            />
+            <View className="min-w-0 flex-1 gap-0.5">
+              <Text
+                className="text-base font-bold text-foreground"
+                numberOfLines={1}
+              >
+                {organization.name}
+              </Text>
+              <Text className="text-xs text-muted-foreground">
+                {organization.isThemed ? "Organization theme" : "Hakgyo theme"}
+              </Text>
+            </View>
+            {selected ? (
+              <Text
+                className="text-lg font-black"
+                style={{ color: colors.primary }}
+              >
+                ✓
+              </Text>
+            ) : null}
+          </Pressable>
+        );
+      })}
+      {availableOrganizations.length === 0 ? (
+        <Text className="py-5 text-center text-sm text-muted-foreground">
+          No active organization enrollments yet.
+        </Text>
+      ) : null}
+    </ScrollView>
   );
 }

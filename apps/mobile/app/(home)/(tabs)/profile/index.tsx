@@ -1,10 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { router } from "expo-router";
+import * as Updates from "expo-updates";
+import { useUpdates } from "expo-updates";
 import { useState } from "react";
 import { Alert, Linking, Text } from "react-native";
 
 import { AppSegmentedControl } from "../../../../src/components/app-segmented-control";
+import { DoodleBackground } from "../../../../src/components/doodle-background";
 import { StudyScreen } from "../../../../src/components/learning-ui";
 import {
   MilestoneTrail,
@@ -22,11 +25,15 @@ import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
+const UPDATE_CHANNEL = Updates.channel ?? "unpublished";
+const CURRENT_UPDATE_ID = Updates.updateId ?? null;
 
 export default function ProfileTab() {
   const queryClient = useQueryClient();
   const { data: session, refetch: refetchSession } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const { isUpdatePending } = useUpdates();
   const [segment, setSegment] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const {
@@ -46,6 +53,74 @@ export default function ProfileTab() {
     .map((part) => part.charAt(0).toUpperCase())
     .slice(0, 2)
     .join("");
+
+  const handleCheckForUpdates = async () => {
+    if (isCheckingUpdates) return;
+    setIsCheckingUpdates(true);
+
+    try {
+      if (__DEV__ || !Updates.isEnabled) {
+        Alert.alert(
+          "Updates",
+          "Over-the-air updates only work in standalone builds. You are running in development mode.",
+        );
+        return;
+      }
+      if (isUpdatePending) {
+        Alert.alert(
+          "Update ready",
+          "A downloaded update is waiting. Restart now to apply it?",
+          [
+            { text: "Later", style: "cancel" },
+            {
+              text: "Restart",
+              onPress: () => void Updates.reloadAsync(),
+            },
+          ],
+        );
+        return;
+      }
+      const result = await Updates.checkForUpdateAsync();
+      if (!result.isAvailable) {
+        Alert.alert(
+          "Up to date",
+          `You are on the latest ${UPDATE_CHANNEL} update (v${APP_VERSION}).`,
+        );
+        return;
+      }
+      Alert.alert(
+        "Update available",
+        "Download it and restart the app now?",
+        [
+          { text: "Later", style: "cancel" },
+          {
+            text: "Download & restart",
+            onPress: () =>
+              void (async () => {
+                try {
+                  await Updates.fetchUpdateAsync();
+                  await Updates.reloadAsync();
+                } catch (cause) {
+                  Alert.alert(
+                    "Update failed",
+                    cause instanceof Error
+                      ? cause.message
+                      : "Could not download the update.",
+                  );
+                }
+              })(),
+          },
+        ],
+      );
+    } catch (cause) {
+      Alert.alert(
+        "Update check failed",
+        cause instanceof Error ? cause.message : "Could not check for updates.",
+      );
+    } finally {
+      setIsCheckingUpdates(false);
+    }
+  };
 
   const handleSignOut = async () => {
     setError(null);
@@ -70,14 +145,22 @@ export default function ProfileTab() {
   };
 
   return (
-    <StudyScreen
-      title="Profile"
-      onRefresh={() => {
-        void syncNow(activeOrganizationId ?? undefined);
-        void refreshOrganizations();
-      }}
-      refreshing={isSyncing || isRefreshingOrganizations}
-    >
+    <>
+      <DoodleBackground />
+      <StudyScreen
+        title=""
+        onRefresh={() => {
+          void syncNow(activeOrganizationId ?? undefined);
+          void refreshOrganizations();
+        }}
+        refreshing={isSyncing || isRefreshingOrganizations}
+      >
+      <Text
+        accessibilityRole="header"
+        className="text-[26px] font-black leading-8 tracking-tight text-foreground"
+      >
+        Profil
+      </Text>
       <AppSegmentedControl
         values={["Profile", "Settings"]}
         selectedIndex={segment}
@@ -161,24 +244,32 @@ export default function ProfileTab() {
             />
             <SettingsRow
               label="Check for updates"
-              detail={`v${APP_VERSION}`}
+              detail={
+                isCheckingUpdates
+                  ? "Checking…"
+                  : isUpdatePending
+                    ? "Restart to apply"
+                    : `v${APP_VERSION}`
+              }
               symbol="checkmark"
               fallback="✓"
-              onPress={() =>
-                Alert.alert(
-                  "Updates",
-                  "Over-the-air updates are not configured yet. You are on the installed build.",
-                )
-              }
+              onPress={() => void handleCheckForUpdates()}
             />
             <SettingsRow
               label={`App version ${APP_VERSION}`}
+              detail={
+                CURRENT_UPDATE_ID
+                  ? `${UPDATE_CHANNEL} · ${CURRENT_UPDATE_ID.slice(0, 8)}`
+                  : UPDATE_CHANNEL
+              }
               symbol="list.bullet"
               fallback="i"
               onPress={() =>
                 Alert.alert(
-                  "Updates",
-                  "Over-the-air updates are not configured yet. You are on the installed build.",
+                  "App version",
+                  CURRENT_UPDATE_ID
+                    ? `v${APP_VERSION} (${UPDATE_CHANNEL})\nUpdate: ${CURRENT_UPDATE_ID}`
+                    : `v${APP_VERSION} (${UPDATE_CHANNEL})\nEmbedded build, no OTA update applied yet.`,
                 )
               }
             />
@@ -262,6 +353,7 @@ export default function ProfileTab() {
           ) : null}
         </>
       )}
-    </StudyScreen>
+      </StudyScreen>
+    </>
   );
 }

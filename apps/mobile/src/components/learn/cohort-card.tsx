@@ -678,7 +678,7 @@ export function CohortCard({
   }
 
   return (
-    <View className="bg-background" style={styles.card}>
+    <View style={styles.card}>
       <View className="relative justify-end bg-muted">
         {thumbnailUrl ? (
           <>
@@ -795,28 +795,26 @@ export function CohortCard({
           <View className="gap-3">
             <Eyebrow>Kurikulum pembelajaran</Eyebrow>
             <AppSegmentedControl
-              values={["Selesai", "Bab"]}
+              values={["Bab", "Selesai"]}
               selectedIndex={curriculumSegment}
               onIndexChange={setCurriculumSegment}
             />
             {curriculumSegment === 0 ? (
-              milestoneGroup && milestoneGroup.milestones.length > 0 ? (
-                <CohortMilestoneTimeline
-                  courseId={cohort.course.id}
-                  milestones={milestoneGroup.milestones}
-                />
-              ) : (
-                <Text className="py-4 text-center text-sm text-muted-foreground">
-                  Belum ada aktivitas yang selesai.
-                </Text>
-              )
-            ) : (
               <CourseOutlineList
                 courseId={cohort.course.id}
                 showActiveState={false}
                 showHeader={false}
                 onOpenItem={openOutlineItem}
               />
+            ) : milestoneGroup && milestoneGroup.milestones.length > 0 ? (
+              <CohortMilestoneTimeline
+                courseId={cohort.course.id}
+                milestones={milestoneGroup.milestones}
+              />
+            ) : (
+              <Text className="py-4 text-center text-sm text-muted-foreground">
+                Belum ada aktivitas yang selesai.
+              </Text>
             )}
           </View>
         ) : null}

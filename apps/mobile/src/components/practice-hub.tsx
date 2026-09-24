@@ -159,7 +159,7 @@ const hangeulTools: Tool[] = [
     icon: "text.word.spacing",
     fallback: "가나",
     resource: "VOCABULARY_SET",
-    available: false,
+    available: true,
   },
 ];
 

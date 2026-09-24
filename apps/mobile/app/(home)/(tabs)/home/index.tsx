@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
+import { DoodleBackground } from "../../../../src/components/doodle-background";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import {
   QueryState,
@@ -44,6 +45,7 @@ export default function HomeTab() {
 
   return (
     <>
+      <DoodleBackground />
       <SidebarToolbarButton />
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="right">

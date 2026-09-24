@@ -11,6 +11,7 @@ import { HangeulScreen } from "../../src/games/hangeul/hangeul-screen";
 import { SyllableForgeScreen } from "../../src/games/syllable-forge/syllable-forge-screen";
 import { VocabularyMatchScreen } from "../../src/games/vocabulary-match/vocabulary-match-screen";
 import { WordFallScreen } from "../../src/games/word-fall/word-fall-screen";
+import { WordBuilderScreen } from "../../src/games/word-builder/word-builder-screen";
 import { authClient } from "../../src/lib/auth-client";
 import { api } from "../../src/lib/trpc";
 import { useVocabularyProgressReporter } from "../../src/lib/use-vocabulary-progress";
@@ -42,6 +43,10 @@ export default function GameRoute() {
 
   if (key === "syllable-forge") {
     return <SyllableForgeScreen />;
+  }
+
+  if (key === "word-builder") {
+    return <WordBuilderScreen />;
   }
 
   if (key === "cards") {

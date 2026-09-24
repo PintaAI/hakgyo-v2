@@ -43,7 +43,9 @@
   transform: rotate(35deg);
 }
 .courseCard {
-  transition: border-color 150ms;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
 }
 .courseCard:hover {
   border-color: var(--primary);

@@ -58,21 +58,25 @@ async function TeacherDashboard({
             label: "Course saya",
             value: courses.length,
             href: `${root}/courses`,
+            icon: "course",
           },
           {
             label: "Group belajar",
             value: cohortsPage.total ?? cohortsPage.items.length,
             href: `${root}/courses`,
+            icon: "cohort",
           },
           {
             label: "Materi saya",
             value: materials.length,
             href: `${root}/library/materials`,
+            icon: "material",
           },
           {
             label: "Perlu review",
             value: pendingReviews,
             href: `${root}/reviews`,
+            icon: "review",
           },
         ],
       }}
@@ -127,21 +131,25 @@ export default async function DashboardPage({
             label: "Total course",
             value: analytics.courses.total,
             href: `${root}/courses`,
+            icon: "course",
           },
           {
             label: "Group belajar",
             value: analytics.cohorts.total,
             href: `${root}/courses`,
+            icon: "cohort",
           },
           {
             label: "Anggota",
             value: analytics.members,
             href: `${root}/members`,
+            icon: "member",
           },
           {
             label: "Perlu review",
             value: analytics.actionItems.attemptsInReview,
             href: `${root}/reviews`,
+            icon: "review",
           },
         ],
       }}

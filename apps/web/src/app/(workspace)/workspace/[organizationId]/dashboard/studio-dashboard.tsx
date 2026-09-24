@@ -1,17 +1,38 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, BookOpen, FileText, Layers, Plus } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  ClipboardCheck,
+  FileText,
+  Inbox,
+  Layers,
+  Plus,
+  Users,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { type ReactNode } from "react";
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import styles from "./studio-dashboard.module.css";
+
+export type StatIcon = "course" | "cohort" | "member" | "material" | "review";
+
+const STAT_ICONS: Record<StatIcon, LucideIcon> = {
+  course: BookOpen,
+  cohort: Users,
+  member: UserRound,
+  material: FileText,
+  review: ClipboardCheck,
+};
 
 export type StudioDashboardData = {
   name: string;
   role: string;
   root: string;
   canCreateCourse: boolean;
-  stats: { label: string; value: number; href: string }[];
+  stats: { label: string; value: number; href: string; icon: StatIcon }[];
   courses: {
     id: string;
     title: string;
@@ -24,7 +45,7 @@ export type StudioDashboardData = {
     courseId: string;
     name: string;
     status: string;
-    course: { title: string };
+    course: { title: string; thumbnailUrl?: string | null };
     _count: { enrollments: number };
   }[];
   pendingReviews: number;
@@ -127,12 +148,35 @@ function Groups({ data }: { data: StudioDashboardData }) {
                 href={`${data.root}/courses/${group.courseId}/cohorts/${group.id}`}
                 className="hover:bg-muted/50 flex items-center gap-3 py-4"
               >
+                <span
+                  aria-hidden="true"
+                  className="bg-accent text-accent-foreground relative size-10 shrink-0 overflow-hidden rounded-md border"
+                >
+                  {group.course.thumbnailUrl ? (
+                    <Image
+                      src={group.course.thumbnailUrl}
+                      alt=""
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="grid size-full place-items-center font-serif text-lg">
+                      {group.course.title.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">
                     {group.name}
                   </span>
-                  <span className="text-muted-foreground mt-1 block truncate text-xs">
-                    {group.course.title} · {group._count.enrollments} siswa
+                  <span className="text-muted-foreground mt-1 flex min-w-0 items-center gap-1.5 text-xs">
+                    <span className="min-w-0 truncate">{group.course.title}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="inline-flex shrink-0 items-center gap-1">
+                      <Users className="size-3" />
+                      {group._count.enrollments} siswa
+                    </span>
                   </span>
                 </span>
                 <Status value={group.status} />
@@ -215,22 +259,39 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
         aria-label="Ringkasan workspace"
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
       >
-        {data.stats.map((stat) => (
-          <Link
-            key={stat.label}
-            href={stat.href}
-            className="hover:border-primary rounded-lg border p-6"
-          >
-            <div className="text-muted-foreground flex items-center justify-between text-xs">
-              {stat.label}
-              <ArrowUpRight className="size-3.5" />
-            </div>
-            <p className="mt-5 text-4xl font-medium tracking-tight tabular-nums">
-              {stat.value}
-              <span className="bg-primary ml-2 inline-block size-1.5 rounded-full" />
-            </p>
-          </Link>
-        ))}
+        {data.stats.map((stat) => {
+          const StatIcon = STAT_ICONS[stat.icon];
+          const isAttention = stat.icon === "review" && stat.value > 0;
+          return (
+            <Link
+              key={stat.label}
+              href={stat.href}
+              className="bg-card hover:border-primary rounded-lg border p-6 shadow-xs transition-shadow hover:shadow-sm"
+            >
+              <div className="text-muted-foreground flex items-center justify-between gap-2 text-xs">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "grid size-7 shrink-0 place-items-center rounded-md border",
+                      isAttention
+                        ? "bg-primary text-primary-foreground border-transparent"
+                        : "bg-muted text-foreground",
+                    )}
+                  >
+                    <StatIcon className="size-3.5" />
+                  </span>
+                  <span className="truncate">{stat.label}</span>
+                </span>
+                <ArrowUpRight className="size-3.5 shrink-0" />
+              </div>
+              <p className="mt-5 text-4xl font-medium tracking-tight tabular-nums">
+                {stat.value}
+                <span className="bg-primary ml-2 inline-block size-1.5 rounded-full" />
+              </p>
+            </Link>
+          );
+        })}
       </section>
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
         <section>
@@ -247,7 +308,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
                   href={`${data.root}/courses/${course.id}`}
                   className={cn(
                     styles.courseCard,
-                    "group overflow-hidden rounded-lg border",
+                    "bg-card group overflow-hidden rounded-lg border shadow-xs hover:shadow-sm",
                   )}
                 >
                   <div
@@ -281,10 +342,18 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
                     <h3 className="truncate text-base font-semibold">
                       {course.title}
                     </h3>
-                    <p className="text-muted-foreground mt-2 text-xs">
-                      {course._count.modules} bab{" "}
-                      <span className="mx-2">/</span>
-                      {course._count.cohorts} Group belajar
+                    <p className="text-muted-foreground mt-2 flex items-center gap-1.5 text-xs">
+                      <span className="inline-flex items-center gap-1">
+                        <Layers className="size-3" />
+                        {course._count.modules} bab
+                      </span>
+                      <span aria-hidden="true" className="mx-1">
+                        /
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Users className="size-3" />
+                        {course._count.cohorts} Group belajar
+                      </span>
                     </p>
                   </div>
                 </Link>
@@ -303,8 +372,11 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
           </div>
         </section>
         <aside className="space-y-7">
-          <section className="bg-muted rounded-lg border p-6">
-            <p className={styles.eyebrow}>Butuh perhatian</p>
+          <section className="bg-muted rounded-lg border p-6 shadow-xs">
+            <p className={cn(styles.eyebrow, "flex items-center gap-1.5")}>
+              <Inbox className="size-3.5" />
+              Butuh perhatian
+            </p>
             <div className="my-5 flex items-end gap-3">
               <span className="text-5xl font-medium tracking-tight">
                 {data.pendingReviews}

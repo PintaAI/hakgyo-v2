@@ -18,7 +18,9 @@ export default function AssessmentsTabLayout() {
             Platform.OS === "ios" ? "transparent" : colors.background,
         },
         headerTintColor: colors.foreground,
-        headerLargeTitle: true,
+        // No native large title: the screen renders a custom in-content
+        // header instead (same pattern as the Home tab greeting).
+        headerLargeTitle: false,
         headerTransparent: Platform.OS === "ios",
         scrollEdgeEffects: Platform.OS === "ios" ? { top: "soft" } : undefined,
       }}

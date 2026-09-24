@@ -80,7 +80,7 @@ export function StudyScreen({
   const viewport = (
     <ScrollView
       ref={scrollViewRef}
-      className="flex-1 bg-background"
+      className="flex-1"
       contentInsetAdjustmentBehavior={behavior}
       automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
       automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
@@ -125,7 +125,7 @@ export function StudyScreen({
         <View
           ref={viewportRef}
           collapsable={false}
-          className="flex-1 bg-background"
+          className="flex-1"
           onLayout={measureViewportOffset}
         >
           <KeyboardAvoidingView

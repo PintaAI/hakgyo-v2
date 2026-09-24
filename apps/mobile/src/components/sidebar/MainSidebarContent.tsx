@@ -329,7 +329,7 @@ export function MainSidebarContent({
             label="Courses"
             count={dashboard.data.courses.length}
           />
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: 1 }}>
             {dashboard.data.courses.map((course) => (
               <CourseCard
                 course={course}

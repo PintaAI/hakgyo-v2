@@ -32,7 +32,7 @@ export const gameCatalog = {
   "word-builder": {
     title: "Susun kata",
     icon: "가나",
-    description: "Build Korean words from syllable blocks.",
+    description: "Susun kata Korea dari blok suku kata Hangeul.",
   },
 } satisfies Record<string, GameDefinition>;
 

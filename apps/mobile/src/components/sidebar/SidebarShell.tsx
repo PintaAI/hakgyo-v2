@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { Image } from "expo-image";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -10,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authClient } from "../../lib/auth-client";
 import { useAppTheme } from "../../providers/AppThemeProvider";
+import { withOpacity } from "../../theme/colors";
 import { GlassBox } from "../GlassBox";
 
 type SidebarShellProps = {
@@ -50,6 +52,10 @@ export function SidebarShell({
       { scale: interpolate(progress.value, [0, 1], [0.95, 1]) },
     ],
   }));
+  const topPadding = Math.max(insets.top + 16, 54);
+  const hasHero = Boolean(thumbnailUrl);
+  const footerBottom = Math.max(insets.bottom, 16);
+  const [footerHeight, setFooterHeight] = useState(88);
 
   return (
     <Animated.View
@@ -58,78 +64,127 @@ export function SidebarShell({
         {
           backgroundColor: colors.background,
           flex: 1,
-          padding: 16,
-          paddingBottom: Math.max(insets.bottom, 16),
-          paddingTop: Math.max(insets.top + 16, 54),
+          paddingHorizontal: 16,
+          paddingBottom: 0,
+          paddingTop: hasHero ? 0 : topPadding,
         },
       ]}
     >
-      <View className="mb-5 flex-row items-center gap-3 px-1">
-        {thumbnailUrl ? (
+      {hasHero ? (
+        <View
+          className="overflow-hidden"
+          style={{
+            marginHorizontal: -16,
+            marginTop: 0,
+            minHeight: 84 + topPadding,
+            borderBottomLeftRadius: 24,
+            borderBottomRightRadius: 0,
+          }}
+        >
           <Image
+            accessibilityIgnoresInvertColors
             cachePolicy="memory-disk"
-            className="size-11 rounded-2xl"
             contentFit="cover"
-            source={{ uri: thumbnailUrl }}
-            style={{ width: 44, height: 44 }}
+            source={{ uri: thumbnailUrl ?? undefined }}
+            style={StyleSheet.absoluteFill}
             transition={0}
           />
-        ) : thumbnailFallbackLabel ? (
           <View
-            className="size-11 items-center justify-center rounded-2xl"
-            style={{ backgroundColor: colors.primary }}
+            className="absolute inset-0"
+            style={{
+              backgroundColor: withOpacity(colors.background, 0.62),
+            }}
+          />
+          <View
+            className="relative justify-end gap-1 px-4 pb-4"
+            style={{ minHeight: 84 + topPadding, paddingTop: topPadding + 12 }}
           >
             <Text
-              className="text-base font-black"
-              style={{ color: colors.primaryForeground }}
+              className="text-xl font-black tracking-tight"
+              numberOfLines={2}
+              style={{ color: colors.foreground }}
             >
-              {thumbnailFallbackLabel}
+              {title}
+            </Text>
+            <Text
+              className="text-xs font-semibold uppercase tracking-[2px]"
+              numberOfLines={1}
+              style={{ color: colors.mutedForeground }}
+            >
+              {subtitle}
             </Text>
           </View>
-        ) : null}
-        <View className="min-w-0 flex-1">
-          <Text
-            className="text-xl font-black tracking-tight"
-            numberOfLines={1}
-            style={{ color: colors.foreground }}
-          >
-            {title}
-          </Text>
-          <Text
-            className="text-xs font-semibold uppercase tracking-[2px]"
-            numberOfLines={1}
-            style={{ color: colors.mutedForeground }}
-          >
-            {subtitle}
-          </Text>
         </View>
-      </View>
+      ) : (
+        <View className="mb-5 flex-row items-center gap-3 px-1">
+          {thumbnailFallbackLabel ? (
+            <View
+              className="size-11 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: colors.primary }}
+            >
+              <Text
+                className="text-base font-black"
+                style={{ color: colors.primaryForeground }}
+              >
+                {thumbnailFallbackLabel}
+              </Text>
+            </View>
+          ) : null}
+          <View className="min-w-0 flex-1">
+            <Text
+              className="text-xl font-black tracking-tight"
+              numberOfLines={1}
+              style={{ color: colors.foreground }}
+            >
+              {title}
+            </Text>
+            <Text
+              className="text-xs font-semibold uppercase tracking-[2px]"
+              numberOfLines={1}
+              style={{ color: colors.mutedForeground }}
+            >
+              {subtitle}
+            </Text>
+          </View>
+        </View>
+      )}
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 12 }}
+        contentContainerStyle={{
+          paddingBottom: footerHeight + footerBottom + 12,
+        }}
         showsVerticalScrollIndicator={false}
       >
         {children}
       </ScrollView>
 
-      <Pressable
-        accessibilityLabel="Open profile"
-        accessibilityRole="button"
-        className="overflow-hidden rounded-3xl"
-        onPress={onOpenProfile}
+      <GlassBox
+        colorScheme={colorScheme}
+        glassEffectStyle="clear"
+        isInteractive
+        tintColor={withOpacity(colors.primary, 0.2)}
+        onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}
+        style={{
+          position: "absolute",
+          left: 16,
+          right: 16,
+          bottom: footerBottom,
+          borderColor: colors.border,
+          borderRadius: 24,
+          borderWidth: 1,
+          shadowColor: "#000000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 12,
+          elevation: 6,
+        }}
       >
-        <GlassBox
-          colorScheme={colorScheme}
-          glassEffectStyle="clear"
-          isInteractive
-          style={{
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-            borderRadius: 24,
-            borderWidth: 1,
-            padding: 12,
-          }}
+        <Pressable
+          accessibilityLabel="Open profile"
+          accessibilityRole="button"
+          onPress={onOpenProfile}
+          style={{ padding: 12, borderRadius: 24 }}
         >
           <View className="flex-row items-center gap-3">
             <View
@@ -179,8 +234,8 @@ export function SidebarShell({
               ›
             </Text>
           </View>
-        </GlassBox>
-      </Pressable>
+        </Pressable>
+      </GlassBox>
     </Animated.View>
   );
 }

@@ -18,6 +18,7 @@ import {
   DynamicBlockNoteEditor,
   type EditorAssetStorageOptions,
 } from "~/components/editor";
+import { EditorSidebar } from "~/components/editor-sidebar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+} from "~/components/ui/sidebar";
 import { Textarea } from "~/components/ui/textarea";
 import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
 import { api, type RouterInputs } from "~/trpc/react";
@@ -468,7 +474,11 @@ function MaterialEditorForm({
   }
 
   return (
-    <form className="flex w-full flex-col gap-6" onSubmit={handleSubmit}>
+    <form
+      id="material-editor-form"
+      className="mx-auto flex w-full max-w-6xl flex-col gap-6"
+      onSubmit={handleSubmit}
+    >
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex min-w-0 items-center gap-3">
           <Button
@@ -585,123 +595,131 @@ function MaterialEditorForm({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-        <section className="bg-card min-w-0 overflow-hidden rounded-xl border shadow-xs">
-          <div className="border-b px-5 py-4">
-            <h2 className="font-heading font-semibold">Konten pelajaran</h2>
-            <p className="text-muted-foreground text-sm">
-              Ketik{" "}
-              <kbd className="bg-muted rounded border px-1 py-0.5 text-[0.7rem]">
-                /
-              </kbd>{" "}
-              untuk menambahkan heading, daftar, media, dan blok lainnya.
-            </p>
-          </div>
-          <div className="min-h-[32rem] py-5">
-            <DynamicBlockNoteEditor
-              initialContent={initialContent}
-              onChange={(value) => {
-                setContent(value);
-                if (materialId) {
-                  trackDraft({
-                    title,
-                    description,
-                    content: value,
-                    requirementPolicy,
-                  });
-                }
-              }}
-              placeholder="Tulis konten pelajaran..."
-              theme={theme}
-              assetStorage={assetStorage}
-              resourceLibrary={resourceLibrary}
-            />
-          </div>
-        </section>
+      <section className="bg-card min-w-0 overflow-hidden rounded-xl border shadow-xs">
+        <div className="border-b px-5 py-4">
+          <h2 className="font-heading font-semibold">Konten pelajaran</h2>
+          <p className="text-muted-foreground text-sm">
+            Ketik{" "}
+            <kbd className="bg-muted rounded border px-1 py-0.5 text-[0.7rem]">
+              /
+            </kbd>{" "}
+            untuk menambahkan heading, daftar, media, dan blok lainnya.
+          </p>
+        </div>
+        <div className="min-h-[32rem] py-5">
+          <DynamicBlockNoteEditor
+            initialContent={initialContent}
+            onChange={(value) => {
+              setContent(value);
+              if (materialId) {
+                trackDraft({
+                  title,
+                  description,
+                  content: value,
+                  requirementPolicy,
+                });
+              }
+            }}
+            placeholder="Tulis konten pelajaran..."
+            theme={theme}
+            assetStorage={assetStorage}
+            resourceLibrary={resourceLibrary}
+          />
+        </div>
+      </section>
 
-        <aside className="bg-card grid gap-5 rounded-xl border p-5 shadow-xs lg:sticky lg:top-6">
-          <div className="grid gap-2">
-            <Label htmlFor="material-title">Judul</Label>
-            <Input
-              autoFocus={!materialId}
-              id="material-title"
-              maxLength={200}
-              onChange={(event) => {
-                const nextTitle = event.target.value;
-                setTitle(nextTitle);
-                if (materialId) {
-                  trackDraft({
-                    title: nextTitle,
-                    description,
-                    content,
-                    requirementPolicy,
-                  });
-                }
-              }}
-              placeholder="Mis. Memperkenalkan diri"
-              value={title}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="material-description">Deskripsi</Label>
-            <Textarea
-              id="material-description"
-              maxLength={10000}
-              onChange={(event) => {
-                const nextDescription = event.target.value;
-                setDescription(nextDescription);
-                if (materialId) {
-                  trackDraft({
-                    title,
-                    description: nextDescription,
-                    content,
-                    requirementPolicy,
-                  });
-                }
-              }}
-              placeholder="Apa yang akan dikerjakan siswa?"
-              rows={6}
-              value={description}
-            />
-            <p className="text-muted-foreground text-xs">
-              Ditampilkan kepada penulis saat memilih konten untuk sebuah
-              course.
-            </p>
-          </div>
-          <div className="grid gap-2 border-t pt-5">
-            <Label htmlFor="requirement-policy">Kebijakan penyelesaian</Label>
-            <Select
-              value={requirementPolicy}
-              onValueChange={(value) => {
-                if (value === "ALL" || value === "ANY") {
-                  setRequirementPolicy(value);
+      <EditorSidebar
+        title="Pengaturan materi"
+        description="Identitas dan penyelesaian"
+      >
+        <SidebarGroup>
+          <SidebarGroupLabel>Informasi materi</SidebarGroupLabel>
+          <SidebarGroupContent className="grid gap-5">
+            <div className="grid gap-2">
+              <Label htmlFor="material-title">Judul</Label>
+              <Input
+                autoFocus={!materialId}
+                form="material-editor-form"
+                id="material-title"
+                maxLength={200}
+                onChange={(event) => {
+                  const nextTitle = event.target.value;
+                  setTitle(nextTitle);
+                  if (materialId) {
+                    trackDraft({
+                      title: nextTitle,
+                      description,
+                      content,
+                      requirementPolicy,
+                    });
+                  }
+                }}
+                placeholder="Mis. Memperkenalkan diri"
+                value={title}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="material-description">Deskripsi</Label>
+              <Textarea
+                form="material-editor-form"
+                id="material-description"
+                maxLength={10000}
+                onChange={(event) => {
+                  const nextDescription = event.target.value;
+                  setDescription(nextDescription);
                   if (materialId) {
                     trackDraft({
                       title,
-                      description,
+                      description: nextDescription,
                       content,
-                      requirementPolicy: value,
+                      requirementPolicy,
                     });
                   }
-                }
-              }}
-            >
-              <SelectTrigger className="w-full" id="requirement-policy">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Penuhi semua requirement</SelectItem>
-                <SelectItem value="ANY">
-                  Penuhi salah satu requirement
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-muted-foreground text-xs">
-              Berlaku ketika tugas atau requirement kosakata dipasang.
-            </p>
-          </div>
-        </aside>
-      </div>
+                }}
+                placeholder="Apa yang akan dikerjakan siswa?"
+                rows={6}
+                value={description}
+              />
+              <p className="text-muted-foreground text-xs">
+                Ditampilkan kepada penulis saat memilih konten untuk sebuah
+                course.
+              </p>
+            </div>
+            <div className="grid gap-2 border-t pt-5">
+              <Label htmlFor="requirement-policy">Kebijakan penyelesaian</Label>
+              <Select
+                value={requirementPolicy}
+                onValueChange={(value) => {
+                  if (value === "ALL" || value === "ANY") {
+                    setRequirementPolicy(value);
+                    if (materialId) {
+                      trackDraft({
+                        title,
+                        description,
+                        content,
+                        requirementPolicy: value,
+                      });
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full" id="requirement-policy">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Penuhi semua requirement</SelectItem>
+                  <SelectItem value="ANY">
+                    Penuhi salah satu requirement
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Berlaku ketika tugas atau requirement kosakata dipasang.
+              </p>
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </EditorSidebar>
     </form>
   );
 }

@@ -5,6 +5,10 @@ export const toolbarIcons = {
     ios: "chevron.left",
     android: import("@expo/material-symbols/arrow_back.xml"),
   }),
+  close: Icon.select({
+    ios: "xmark",
+    android: import("@expo/material-symbols/close.xml"),
+  }),
   menu: Icon.select({
     ios: "sidebar.left",
     android: import("@expo/material-symbols/menu.xml"),
