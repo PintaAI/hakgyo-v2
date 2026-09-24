@@ -1480,11 +1480,7 @@ export function WordFallScreen({
       />
 
       <View onLayout={onFieldLayout} style={styles.field}>
-        {shield > 0 ||
-        frozen ||
-        forceCharges > 0 ||
-        revealCharges > 0 ||
-        revealed ? (
+        {shield > 0 || frozen || forceCharges > 0 || revealed ? (
           <View style={styles.activePowerUps}>
             {shield > 0 ? (
               <View
@@ -1578,35 +1574,6 @@ export function WordFallScreen({
                 </Text>
               </View>
             ) : null}
-            {revealCharges > 0 ? (
-              <Pressable
-                accessibilityLabel={`Activate reveal, ${revealCharges} charge${revealCharges === 1 ? "" : "s"} left`}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: revealed }}
-                disabled={revealed}
-                onPress={activateReveal}
-                style={[
-                  styles.statusChip,
-                  {
-                    backgroundColor: withOpacity(
-                      powerUpColor("reveal", colors),
-                      revealed ? 0.07 : 0.14,
-                    ),
-                    borderColor: powerUpColor("reveal", colors),
-                    opacity: revealed ? 0.5 : 1,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusChipText,
-                    { color: powerUpColor("reveal", colors) },
-                  ]}
-                >
-                  Reveal ×{revealCharges}
-                </Text>
-              </Pressable>
-            ) : null}
           </View>
         ) : null}
 
@@ -1674,6 +1641,35 @@ export function WordFallScreen({
               playerShieldPositionStyle,
             ]}
           />
+        ) : null}
+        {revealCharges > 0 && phase === "running" ? (
+          <Pressable
+            accessibilityLabel={`Activate reveal, ${revealCharges} charge${revealCharges === 1 ? "" : "s"} left`}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: revealed }}
+            disabled={revealed}
+            onPress={activateReveal}
+            style={({ pressed }) => [
+              styles.revealButton,
+              {
+                backgroundColor: withOpacity(
+                  powerUpColor("reveal", colors),
+                  revealed ? 0.07 : 0.16,
+                ),
+                borderColor: powerUpColor("reveal", colors),
+                opacity: pressed || revealed ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.revealButtonText,
+                { color: powerUpColor("reveal", colors) },
+              ]}
+            >
+              Reveal ×{revealCharges}
+            </Text>
+          </Pressable>
         ) : null}
       </View>
 
@@ -1880,6 +1876,19 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   statusChipText: { fontSize: 11, fontWeight: "800" },
+  revealButton: {
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    bottom: PLAYER_BOTTOM + 48,
+    justifyContent: "center",
+    minHeight: 48,
+    paddingHorizontal: 18,
+    position: "absolute",
+    right: 12,
+    zIndex: 10,
+  },
+  revealButtonText: { fontSize: 14, fontWeight: "800" },
   recap: { gap: 8 },
   modeSelector: { alignItems: "center", flexDirection: "row", gap: 12 },
   modeSelectorCopy: { flex: 1, gap: 3 },

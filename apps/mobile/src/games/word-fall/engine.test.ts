@@ -185,6 +185,15 @@ describe("word fall engine", () => {
     expect(maskedDefinition("South Korea", 3)).toBe("Sou•• •••••");
   });
 
+  test("keeps the reveal button near the player for thumb reach", () => {
+    const screenSource = readFileSync(
+      new URL("./word-fall-screen.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(screenSource).toContain("styles.revealButton");
+    expect(screenSource).toContain("bottom: PLAYER_BOTTOM");
+  });
+
   test("starts each level with the matching destroyed count", () => {
     expect(destroyedForLevel(1)).toBe(0);
     expect(destroyedForLevel(4)).toBe(18);
