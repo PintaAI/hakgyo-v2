@@ -412,6 +412,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
           </div>
         </section>
         <aside className="space-y-7">
+          <Activity data={data} />
           <section className="bg-muted rounded-lg border p-6 shadow-xs">
             <p className={cn(styles.eyebrow, "flex items-center gap-1.5")}>
               <Inbox className="size-3.5" />
@@ -431,8 +432,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
               Buka antrean <ArrowUpRight className="size-4" />
             </Action>
           </section>
-          <Activity data={data} />
-          <div className="border-t pt-5">
+          <div>
             <Action href={`${data.root}/library/materials`}>
               <BookOpen className="size-4" />
               Jelajahi bahan ajar

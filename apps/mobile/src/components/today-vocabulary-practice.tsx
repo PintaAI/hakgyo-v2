@@ -413,6 +413,13 @@ export function TodayVocabularyPractice({
               ? `${card.vocabularySetTitle} · ${card.courseTitle}`
               : "Ready for another mix?"}
           </Text>
+          <View className="items-center">
+            <VocabularyModeSwitch
+              mode={mode}
+              onChange={handleModeChange}
+              disabled={moving || speechBusy}
+            />
+          </View>
           <VocabularyPracticeDeck
             key={roundKey}
             ref={deckRef}
@@ -430,13 +437,6 @@ export function TodayVocabularyPractice({
             onInteractionChange={handleInteractionChange}
             onAdvanceComplete={finishAdvance}
           />
-          <View className="items-center">
-            <VocabularyModeSwitch
-              mode={mode}
-              onChange={handleModeChange}
-              disabled={moving || speechBusy}
-            />
-          </View>
           {card ? (
             <View className="gap-3">
               <Text className="text-center text-xs text-muted-foreground">

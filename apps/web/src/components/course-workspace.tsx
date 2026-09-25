@@ -803,12 +803,6 @@ function OverviewSection({
               })}
             </ol>
           )}
-          <div className="bg-muted/40 text-muted-foreground flex items-center justify-between border-t px-4 py-3 text-xs">
-            <span>{stats.itemCount} total learning item</span>
-            <span>
-              {course.progressionMode === "OPEN" ? "Akses terbuka" : "Bertahap"}
-            </span>
-          </div>
         </Card>
 
         <div className="grid gap-4">
@@ -1453,12 +1447,27 @@ function LearnersSection({
                 {visible.map((enrollment) => (
                   <TableRow key={enrollment.id}>
                     <TableCell className="max-w-64 pl-4 whitespace-normal">
-                      <span className="block font-medium">
-                        {enrollment.user.name}
-                      </span>
-                      <span className="text-muted-foreground block truncate text-xs">
-                        {enrollment.user.email}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="shrink-0">
+                          {enrollment.user.image ? (
+                            <AvatarImage
+                              src={enrollment.user.image}
+                              alt={enrollment.user.name}
+                            />
+                          ) : null}
+                          <AvatarFallback>
+                            {getInitials(enrollment.user.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="min-w-0">
+                          <span className="block font-medium">
+                            {enrollment.user.name}
+                          </span>
+                          <span className="text-muted-foreground block truncate text-xs">
+                            {enrollment.user.email}
+                          </span>
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{enrollment.source}</Badge>

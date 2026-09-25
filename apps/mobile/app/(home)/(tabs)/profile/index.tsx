@@ -236,7 +236,7 @@ export default function ProfileTab() {
                   ? "Syncing…"
                   : pendingCount
                     ? `${pendingCount} change${pendingCount === 1 ? "" : "s"} waiting to sync`
-                    : "Available offline; checks for updates automatically"
+                    : "Up to date"
               }
               symbol="arrow.triangle.2.circlepath"
               fallback="↻"

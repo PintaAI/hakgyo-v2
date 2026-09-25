@@ -11,6 +11,7 @@ export type LearnerStats = {
   vocabularyMastered: number;
   modulesMastered: number;
   assessmentAttempts: number;
+  totalXp: number;
 };
 
 export type LearnerAchievement = {
@@ -50,9 +51,9 @@ export function ProfileHero({
       value: stats?.vocabularyMastered,
     },
     {
-      label: "Modules",
-      accessibilityLabel: "Modules mastered",
-      value: stats?.modulesMastered,
+      label: "XP",
+      accessibilityLabel: "Total XP",
+      value: stats?.totalXp,
     },
     {
       label: "Attempts",
@@ -104,7 +105,7 @@ export function ProfileHero({
               className="flex-1 items-center gap-0.5"
             >
               <Text className="text-lg font-black tabular-nums text-foreground">
-                {isPending ? "–" : (counter.value ?? 0)}
+                {isPending ? "–" : (counter.value ?? 0).toLocaleString()}
               </Text>
               <Text className="text-xs text-muted-foreground">
                 {counter.label}

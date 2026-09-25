@@ -47,6 +47,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { ReviewQueue } from "~/components/review-queue";
 import {
   Card,
@@ -170,6 +171,15 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
   return "Perubahan belum berhasil disimpan. Silakan coba lagi.";
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
 function EmptyState({
@@ -790,12 +800,27 @@ function Learners({
                 {visible.map((enrollment) => (
                   <TableRow key={enrollment.id}>
                     <TableCell className="pl-4">
-                      <span className="block font-medium">
-                        {enrollment.user.name}
-                      </span>
-                      <span className="text-muted-foreground block text-xs">
-                        {enrollment.user.email}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="shrink-0">
+                          {enrollment.user.image ? (
+                            <AvatarImage
+                              src={enrollment.user.image}
+                              alt={enrollment.user.name}
+                            />
+                          ) : null}
+                          <AvatarFallback>
+                            {getInitials(enrollment.user.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="min-w-0">
+                          <span className="block font-medium">
+                            {enrollment.user.name}
+                          </span>
+                          <span className="text-muted-foreground block text-xs">
+                            {enrollment.user.email}
+                          </span>
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{enrollment.source}</Badge>

@@ -166,6 +166,7 @@ export const gamificationRouter = createTRPCRouter({
       profileStats: {
         assessmentAttempts,
         modulesMastered,
+        totalXp: summary?.totalXp ?? 0,
         vocabularyMastered,
       },
       summary: summary

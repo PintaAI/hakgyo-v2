@@ -81,6 +81,15 @@ const docsIconMap: Record<string, ComponentType<{ className?: string }>> = {
 
 function isRouteActive(pathname: string, item: NavigationLink): boolean {
   const match = item.match ?? item.href;
+  const isCohortRoute = /\/courses\/[^/]+\/cohorts(?:\/|$)/.test(pathname);
+  if (
+    isCohortRoute &&
+    match.includes("/courses") &&
+    !match.includes("/cohorts/")
+  ) {
+    return false;
+  }
+
   return (
     pathname === match ||
     pathname.startsWith(`${match}/`) ||
@@ -193,6 +202,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
+  const [visibleCohortCount, setVisibleCohortCount] = useState(10);
   const workspaceRoot = `/workspace/${organizationSlug}`;
   const isManager = role === "OWNER" || role === "ADMIN";
   const showCohortShortcuts = role === "OWNER" || role === "TEACHER";
@@ -216,11 +226,6 @@ export function AppSidebar({
       })),
     },
     {
-      title: "Reviews",
-      href: `${workspaceRoot}/reviews`,
-      icon: ClipboardCheckIcon,
-    },
-    {
       title: "Bahan ajar",
       href: `${workspaceRoot}/library/materials`,
       match: `${workspaceRoot}/library`,
@@ -242,6 +247,11 @@ export function AppSidebar({
           icon: ClipboardCheckIcon,
         },
       ],
+    },
+    {
+      title: "Reviews",
+      href: `${workspaceRoot}/reviews`,
+      icon: ClipboardCheckIcon,
     },
   ];
   const organizationNavigation: NavigationItem[] = [
@@ -350,8 +360,8 @@ export function AppSidebar({
           <SidebarGroup>
             <SidebarGroupLabel>Group belajar</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {cohortShortcuts.map((cohort) => {
+              <SidebarMenu className="gap-1">
+                {cohortShortcuts.slice(0, visibleCohortCount).map((cohort) => {
                   const href = `${workspaceRoot}/courses/${cohort.course.id}/cohorts/${cohort.id}`;
                   const active = isRouteActive(pathname, {
                     title: cohort.name,
@@ -362,6 +372,7 @@ export function AppSidebar({
                     <SidebarMenuItem key={cohort.id}>
                       <SidebarMenuButton
                         isActive={active}
+                        className="h-auto p-3"
                         tooltip={`${cohort.name} · ${cohort.course.title}`}
                         render={
                           <Link
@@ -393,6 +404,21 @@ export function AppSidebar({
                     </SidebarMenuItem>
                   );
                 })}
+                {visibleCohortCount < cohortShortcuts.length ? (
+                  <SidebarMenuItem>
+                    <button
+                      type="button"
+                      className="text-sidebar-foreground/70 hover:text-sidebar-foreground w-full px-2 py-1 text-left text-xs group-data-[collapsible=icon]:hidden"
+                      onClick={() =>
+                        setVisibleCohortCount((count) =>
+                          Math.min(count + 10, cohortShortcuts.length),
+                        )
+                      }
+                    >
+                      Load more
+                    </button>
+                  </SidebarMenuItem>
+                ) : null}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

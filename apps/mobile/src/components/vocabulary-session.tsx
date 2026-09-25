@@ -685,6 +685,13 @@ export function VocabularySession({
             {speech.errorMessage}
           </Text>
         ) : null}
+        <View className="items-center">
+          <VocabularyModeSwitch
+            mode={mode}
+            onChange={handleModeChange}
+            disabled={!roundActive || busy}
+          />
+        </View>
         {visibleCards.length === 0 ? (
           <View className="items-center gap-4 rounded-3xl border border-border bg-card p-6">
             <Text className="text-3xl">🌱</Text>
@@ -715,13 +722,6 @@ export function VocabularySession({
             onAdvanceComplete={finishAdvance}
           />
         )}
-        <View className="items-center">
-          <VocabularyModeSwitch
-            mode={mode}
-            onChange={handleModeChange}
-            disabled={!roundActive || busy}
-          />
-        </View>
       </View>
 
       {sessionError ? (

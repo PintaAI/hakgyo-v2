@@ -232,7 +232,9 @@ export const enrollmentRouter = createTRPCRouter({
           take: input.limit + 1,
           cursor: input.cursor ? { id: input.cursor } : undefined,
           skip: input.cursor ? 1 : undefined,
-          include: { user: { select: { id: true, name: true, email: true } } },
+          include: {
+            user: { select: { id: true, name: true, email: true, image: true } },
+          },
         }),
         input.includeTotal
           ? ctx.db.courseEnrollment.count({ where })
@@ -293,7 +295,9 @@ export const enrollmentRouter = createTRPCRouter({
           take: input.limit + 1,
           cursor: input.cursor ? { id: input.cursor } : undefined,
           skip: input.cursor ? 1 : undefined,
-          include: { user: { select: { id: true, name: true, email: true } } },
+          include: {
+            user: { select: { id: true, name: true, email: true, image: true } },
+          },
         }),
         input.includeTotal
           ? ctx.db.cohortEnrollment.count({ where })

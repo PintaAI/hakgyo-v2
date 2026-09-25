@@ -1,6 +1,10 @@
 import { organizationPublicSlugSchema } from "~/lib/organization-landing";
 import { TRPCError } from "@trpc/server";
-import { parseOrganizationTheme } from "@hakgyo/shared";
+import {
+  normalizeOrganizationTheme,
+  organizationThemeSeedsSchema,
+  parseOrganizationTheme,
+} from "@hakgyo/shared";
 import { z } from "zod";
 
 import { Prisma } from "../../../../generated/prisma/client";
@@ -674,6 +678,38 @@ export const organizationRouter = createTRPCRouter({
           cause: error,
         });
       }
+    }),
+
+  updateTheme: protectedProcedure
+    .input(
+      z.object({
+        organizationId: id,
+        theme: organizationThemeSeedsSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.actorUserId,
+      });
+      const existing = await ctx.db.organization.findUnique({
+        where: { id: input.organizationId },
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      // Persist only the four brand seeds; destructive is kept in the red
+      // hue range. Layout tokens fall back to schema defaults on read.
+      // themeEnabled is left untouched so editing colors never toggles
+      // an intentionally disabled theme back on.
+      const theme = normalizeOrganizationTheme(input.theme);
+      return ctx.db.organization.update({
+        where: { id: input.organizationId },
+        data: { theme },
+        select: { theme: true, themeEnabled: true, updatedAt: true },
+      });
     }),
 
   setThemeEnabled: protectedProcedure
