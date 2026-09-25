@@ -71,6 +71,14 @@ const statusVariant = {
   CANCELLED: "destructive",
 } as const;
 
+const participantStatusLabels = {
+  ALL: "Semua status",
+  NOT_STARTED: "Belum mulai",
+  IN_PROGRESS: "Mengerjakan",
+  IN_REVIEW: "Perlu review",
+  GRADED: "Selesai",
+} as const;
+
 const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
   month: "short",
@@ -609,7 +617,7 @@ function EventResults({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2"><Badge variant="outline">Belum mulai: {event.counts.notStarted}</Badge><Badge variant="outline">Mengerjakan: {event.counts.inProgress}</Badge><Badge variant="outline">Perlu review: {event.counts.inReview}</Badge><Badge variant="outline">Selesai: {event.counts.graded}</Badge></div>
-      <div className="flex flex-wrap gap-3"><Input aria-label="Cari peserta" placeholder="Nama atau email siswa" value={search} onChange={e => onSearch(e.target.value)} /><select aria-label="Status peserta" className="bg-background rounded border px-3 py-2 text-sm" value={status ?? ""} onChange={e => onStatus((e.target.value || undefined) as typeof status)}><option value="">Semua status</option><option value="NOT_STARTED">Belum mulai</option><option value="IN_PROGRESS">Mengerjakan</option><option value="IN_REVIEW">Perlu review</option><option value="GRADED">Selesai</option></select></div>
+      <div className="flex flex-wrap gap-3"><Input aria-label="Cari peserta" placeholder="Nama atau email siswa" value={search} onChange={e => onSearch(e.target.value)} /><Select value={status ?? "ALL"} onValueChange={value => { if (!value) return; onStatus(value === "ALL" ? undefined : value as Exclude<typeof status, undefined>); }}><SelectTrigger aria-label="Status peserta"><span className="flex flex-1 text-left">{participantStatusLabels[status ?? "ALL"]}</span></SelectTrigger><SelectContent align="end">{(Object.keys(participantStatusLabels) as Array<keyof typeof participantStatusLabels>).map(value => <SelectItem key={value} value={value}>{participantStatusLabels[value]}</SelectItem>)}</SelectContent></Select></div>
       {event.status === "CLOSED" && event.leaderboard.length ? (
         <div className="grid gap-3 sm:grid-cols-3">
           {event.leaderboard.slice(0, 3).map((entry) => (

@@ -9,12 +9,14 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Detail = RouterOutputs["assessment"]["getReviewAttempt"];
 type Kind = "CHAPTER" | "QUICK_ASSESSMENT" | "TRYOUT";
 type Status = "IN_REVIEW" | "GRADED" | "IN_PROGRESS";
 const statusLabel = { IN_REVIEW: "Perlu review", SUBMITTED: "Terkirim", GRADED: "Selesai", IN_PROGRESS: "Mengerjakan" };
+const kindLabel = { ALL: "Semua jenis", CHAPTER: "Asesmen bab", QUICK_ASSESSMENT: "On-demand · cohort", TRYOUT: "Tryout · course" } as const;
 const date = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
 function contentText(value: unknown): string {
@@ -111,7 +113,10 @@ export function ReviewQueue({ organizationId, courseId, cohortId, cohortName, ev
     { enabled: !cohortScoped },
   );
   const data = query.data;
-  const selectClass = "border-input bg-background h-10 rounded-md border px-3 text-sm";
+  const courses = filters.data?.courses ?? [];
+  const cohorts = (filters.data?.cohorts ?? []).filter(c => !(courseId ?? course) || c.courseId === (courseId ?? course));
+  const courseLabel = courses.find(c => c.id === course)?.title ?? "Semua course";
+  const cohortLabel = cohorts.find(c => c.id === cohort)?.name ?? "Semua cohort";
   return <div className="space-y-5">
     <header className="space-y-2"><h1 className="text-2xl font-semibold">{cohortName ? `Asesmen · ${cohortName}` : "Hasil & review asesmen"}</h1><p className="text-muted-foreground text-sm">Pantau semua pengerjaan, lihat hasil otomatis, dan review jawaban tertulis. Data diperbarui setiap 30 detik.</p></header>
     <div className="grid grid-cols-3 gap-3">
@@ -120,9 +125,26 @@ export function ReviewQueue({ organizationId, courseId, cohortId, cohortName, ev
     <div className="flex flex-wrap items-end gap-3">
       <form className="flex gap-2" onSubmit={e => { e.preventDefault(); setAppliedSearch(search.trim()); setPage(1); }}><Input aria-label="Cari siswa atau asesmen" placeholder="Nama, email, asesmen…" value={search} onChange={e => setSearch(e.target.value)} /><Button type="submit" variant="outline" aria-label="Cari"><SearchIcon className="size-4" /></Button></form>
       {!cohortScoped ? <>
-        <select aria-label="Jenis asesmen" className={selectClass} value={kind} onChange={e => { setKind(e.target.value as Kind | "ALL"); setPage(1); }}><option value="ALL">Semua jenis</option><option value="CHAPTER">Asesmen bab</option><option value="QUICK_ASSESSMENT">On-demand · cohort</option><option value="TRYOUT">Tryout · course</option></select>
-        {!courseId ? <select aria-label="Course" className={selectClass} value={course} onChange={e => { setCourse(e.target.value); setCohort(""); setPage(1); }}><option value="">Semua course</option>{filters.data?.courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select> : null}
-        <select aria-label="Cohort" className={selectClass} value={cohort} onChange={e => { setCohort(e.target.value); setPage(1); }}><option value="">Semua cohort</option>{filters.data?.cohorts.filter(c => !(courseId ?? course) || c.courseId === (courseId ?? course)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <Select value={kind} onValueChange={value => { if (value) { setKind(value); setPage(1); } }}>
+          <SelectTrigger aria-label="Jenis asesmen" className="h-10"><span className="flex flex-1 text-left">{kindLabel[kind]}</span></SelectTrigger>
+          <SelectContent align="end">
+            {(Object.keys(kindLabel) as Array<Kind | "ALL">).map(value => <SelectItem key={value} value={value}>{kindLabel[value]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {!courseId ? <Select value={course || "ALL"} onValueChange={value => { if (value) { setCourse(value === "ALL" ? "" : value); setCohort(""); setPage(1); } }}>
+          <SelectTrigger aria-label="Course" className="h-10 max-w-56"><span className="flex flex-1 truncate text-left">{courseLabel}</span></SelectTrigger>
+          <SelectContent align="end">
+            <SelectItem value="ALL">Semua course</SelectItem>
+            {courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+          </SelectContent>
+        </Select> : null}
+        <Select value={cohort || "ALL"} onValueChange={value => { if (value) { setCohort(value === "ALL" ? "" : value); setPage(1); } }}>
+          <SelectTrigger aria-label="Cohort" className="h-10 max-w-56"><span className="flex flex-1 truncate text-left">{cohortLabel}</span></SelectTrigger>
+          <SelectContent align="end">
+            <SelectItem value="ALL">Semua cohort</SelectItem>
+            {cohorts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Button variant="outline" onClick={() => { setStatus("ALL"); setPage(1); }}>Semua status</Button>
       </> : null}
     </div>

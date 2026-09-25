@@ -68,6 +68,10 @@ export default function VocabularySetScreen() {
               id: entry.id,
               term: entry.term,
               definition: entry.definition,
+              examples: entry.examples,
+              audioAsset: entry.audioAssetId
+                ? { id: entry.audioAssetId }
+                : null,
               imageAsset: entry.imageAssetId
                 ? { id: entry.imageAssetId }
                 : null,

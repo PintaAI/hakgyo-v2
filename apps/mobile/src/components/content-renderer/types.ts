@@ -25,6 +25,7 @@ export type InlineNode = InlineLinkNode | InlineTextNode;
 export type AssetUrlResolver = (assetId: string) => Promise<string | null>;
 
 export type ResourceReferenceData = {
+  sourceCourseItemId?: string;
   vocabularySets: Array<{
     id: string;
     title: string;

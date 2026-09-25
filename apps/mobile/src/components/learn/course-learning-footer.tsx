@@ -142,7 +142,7 @@ export function CourseLearningFooter({
           });
           return;
         }
-        const after = sync.result.dashboard.outlines[courseId];
+        const after = sync.result.dashboard?.outlines[courseId];
         if (!after) {
           throw new Error(
             "Completion synced, but the updated course did not load.",

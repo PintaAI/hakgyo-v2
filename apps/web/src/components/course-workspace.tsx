@@ -18,6 +18,7 @@ import {
   ArrowUpIcon,
   CalendarDaysIcon,
   CheckIcon,
+  CircleHelpIcon,
   ClipboardIcon,
   ClockIcon,
   CrownIcon,
@@ -81,7 +82,7 @@ import {
 } from "~/components/ui/dialog";
 import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
-import { ImageUpload } from "~/components/ui/image-upload";
+import { CenteredImageUpload } from "~/components/ui/centered-image-upload";
 import { Label } from "~/components/ui/label";
 import {
   Select,
@@ -102,6 +103,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Textarea } from "~/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import {
   courseThumbnailContentTypes,
@@ -147,6 +149,17 @@ const enrollmentStatus = {
   COMPLETED: "Selesai",
   CANCELLED: "Dibatalkan",
 } as const;
+
+const courseCurrencies = [
+  { code: "IDR", symbol: "Rp", flag: "🇮🇩" },
+  { code: "USD", symbol: "$", flag: "🇺🇸" },
+  { code: "SGD", symbol: "S$", flag: "🇸🇬" },
+  { code: "MYR", symbol: "RM", flag: "🇲🇾" },
+  { code: "EUR", symbol: "€", flag: "🇪🇺" },
+  { code: "JPY", symbol: "¥", flag: "🇯🇵" },
+  { code: "GBP", symbol: "£", flag: "🇬🇧" },
+  { code: "AUD", symbol: "A$", flag: "🇦🇺" },
+] as const;
 
 const cohortStatus = {
   DRAFT: "Draf",
@@ -1454,26 +1467,30 @@ function LearnersSection({
                       {dateFormatter.format(enrollment.enrolledAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <select
-                        aria-label={`Status ${enrollment.user.name}`}
-                        className="border-input bg-background focus-visible:ring-ring h-8 rounded-lg border px-2 text-sm outline-none focus-visible:ring-2"
-                        disabled={updateEnrollment.isPending}
+                      <Select
                         value={enrollment.status}
-                        onChange={(event) =>
-                          updateStatus(
-                            enrollment,
-                            event.target.value as Enrollment["status"],
-                          )
-                        }
+                        disabled={updateEnrollment.isPending}
+                        onValueChange={(value) => {
+                          if (value) void updateStatus(enrollment, value);
+                        }}
                       >
-                        {Object.entries(enrollmentStatus).map(
-                          ([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ),
-                        )}
-                      </select>
+                        <SelectTrigger
+                          aria-label={`Status ${enrollment.user.name}`}
+                        >
+                          <span className="flex flex-1 text-left">
+                            {enrollmentStatus[enrollment.status]}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent align="end">
+                          {Object.entries(enrollmentStatus).map(
+                            ([value, label]) => (
+                              <SelectItem key={value} value={value}>
+                                {label}
+                              </SelectItem>
+                            ),
+                          )}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="pr-4 text-right">
                       <Button
@@ -1549,20 +1566,25 @@ function LearnersSection({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="learner-status">Status awal</Label>
-                  <select
-                    id="learner-status"
-                    className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
+                  <Select
                     value={status}
-                    onChange={(event) =>
-                      setStatus(event.target.value as Enrollment["status"])
-                    }
+                    onValueChange={(value) => {
+                      if (value) setStatus(value);
+                    }}
                   >
-                    {Object.entries(enrollmentStatus).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="learner-status" className="w-full">
+                      <span className="flex flex-1 text-left">
+                        {enrollmentStatus[status]}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(enrollmentStatus).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="learner-expiry">Akses hingga</Label>
@@ -1940,19 +1962,27 @@ function InvitesSection({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="invite-cohort">Target</Label>
-                  <select
-                    id="invite-cohort"
-                    className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
-                    value={cohortId}
-                    onChange={(event) => setCohortId(event.target.value)}
+                  <Select
+                    value={cohortId || "ALL"}
+                    onValueChange={(value) => {
+                      if (value) setCohortId(value === "ALL" ? "" : value);
+                    }}
                   >
-                    <option value="">Seluruh course</option>
-                    {cohorts?.map((cohort) => (
-                      <option key={cohort.id} value={cohort.id}>
-                        {cohort.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="invite-cohort" className="w-full">
+                      <span className="flex flex-1 text-left">
+                        {cohorts?.find((cohort) => cohort.id === cohortId)
+                          ?.name ?? "Seluruh course"}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">Seluruh course</SelectItem>
+                      {cohorts?.map((cohort) => (
+                        <SelectItem key={cohort.id} value={cohort.id}>
+                          {cohort.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -2078,6 +2108,14 @@ function AccessSection({
   const selectedOwner = data.organization.members.find(
     (member) => member.id === ownerMembershipId,
   );
+  const selectedEditor = availableEditors.find(
+    (member) => member.id === editorMembershipId,
+  );
+  const editorTriggerLabel = selectedEditor
+    ? `${selectedEditor.user.name} · ${selectedEditor.role}`
+    : availableEditors.length === 0
+      ? "Semua member sudah memiliki akses"
+      : "Pilih member organisasi";
 
   return (
     <section className="space-y-6">
@@ -2184,28 +2222,31 @@ function AccessSection({
                 undangan, atau pengaturan course.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <select
-                  id="new-course-editor"
-                  className="border-input bg-background h-9 min-w-0 flex-1 rounded-lg border px-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                  value={editorMembershipId}
+                <Select
+                  value={editorMembershipId || "NONE"}
                   disabled={
                     availableEditors.length === 0 || addEditor.isPending
                   }
-                  onChange={(event) =>
-                    setEditorMembershipId(event.target.value)
-                  }
+                  onValueChange={(value) => {
+                    if (value && value !== "NONE") setEditorMembershipId(value);
+                  }}
                 >
-                  <option value="">
-                    {availableEditors.length === 0
-                      ? "Semua member sudah memiliki akses"
-                      : "Pilih member organisasi"}
-                  </option>
-                  {availableEditors.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.user.name} · {member.role}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="new-course-editor"
+                    className="min-w-0 flex-1"
+                  >
+                    <span className="flex min-w-0 flex-1 text-left">
+                      {editorTriggerLabel}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableEditors.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.user.name} · {member.role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button
                   disabled={!editorMembershipId || addEditor.isPending}
                   onClick={grantEditor}
@@ -2265,20 +2306,33 @@ function AccessSection({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <select
-                aria-label="Manager course baru"
-                className="border-input bg-background h-9 w-full rounded-lg border px-2.5 text-sm"
-                value={ownerMembershipId}
+              <Select
+                value={ownerMembershipId || "NONE"}
                 disabled={updateCourse.isPending}
-                onChange={(event) => setOwnerMembershipId(event.target.value)}
+                onValueChange={(value) => {
+                  if (value)
+                    setOwnerMembershipId(value === "NONE" ? "" : value);
+                }}
               >
-                <option value="">Pilih manager baru</option>
-                {data.organization.members.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.user.name} · {member.role}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  aria-label="Manager course baru"
+                  className="w-full"
+                >
+                  <span className="flex flex-1 text-left">
+                    {selectedOwner
+                      ? `${selectedOwner.user.name} · ${selectedOwner.role}`
+                      : "Pilih manager baru"}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">Pilih manager baru</SelectItem>
+                  {data.organization.members.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.user.name} · {member.role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 className="w-full"
                 variant="outline"
@@ -2326,6 +2380,20 @@ function AccessSection({
   );
 }
 
+function FieldHelp({ content }: { content: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        aria-label="Penjelasan"
+        className="text-muted-foreground hover:text-foreground inline-flex cursor-help transition-colors"
+      >
+        <CircleHelpIcon className="size-3.5" />
+      </TooltipTrigger>
+      <TooltipContent>{content}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function SettingsSection({
   course,
   coursesHref,
@@ -2346,6 +2414,9 @@ function SettingsSection({
   const [thumbnailUrl, setThumbnailUrl] = useState(course.thumbnailUrl);
   const [price, setPrice] = useState(String(course.price));
   const [currency, setCurrency] = useState(course.currency);
+  const selectedCurrency = courseCurrencies.find(
+    (item) => item.code === currency,
+  );
   const [enrollmentMode, setEnrollmentMode] = useState(
     course.enrollmentMode ?? "INHERIT",
   );
@@ -2519,42 +2590,31 @@ function SettingsSection({
                 onChange={(event) => setTitle(event.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="settings-slug">Slug otomatis</Label>
-              <div
-                id="settings-slug"
-                className="bg-muted text-muted-foreground rounded-lg border px-2.5 py-2 text-sm"
-              >
-                {course.slug}
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="space-y-2">
+                <Label htmlFor="settings-description">Deskripsi</Label>
+                <Textarea
+                  id="settings-description"
+                  className="min-h-28"
+                  maxLength={10000}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                />
               </div>
-              <p className="text-muted-foreground text-xs">
-                Slug dibuat otomatis dari nama course dan dijaga tetap unik.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="settings-description">Deskripsi</Label>
-              <Textarea
-                id="settings-description"
-                className="min-h-28"
-                maxLength={10000}
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="settings-thumbnail">Thumbnail course</Label>
-              <ImageUpload
-                id="settings-thumbnail"
-                value={thumbnailUrl}
-                alt="Thumbnail course"
-                accept={courseThumbnailContentTypes.join(",")}
-                helpText="JPEG, PNG, WebP, atau GIF. Maksimal 5 MB."
-                isPending={thumbnailBusy || updateCourse.isPending}
-                onUpload={uploadThumbnail}
-                onRemove={removeThumbnail}
-                replaceLabel="Ganti thumbnail"
-                removeLabel="Hapus thumbnail"
-              />
+              <div className="space-y-2">
+                <Label htmlFor="settings-thumbnail">Thumbnail course</Label>
+                <CenteredImageUpload
+                  id="settings-thumbnail"
+                  value={thumbnailUrl}
+                  alt="Thumbnail course"
+                  accept={courseThumbnailContentTypes.join(",")}
+                  busy={thumbnailBusy || updateCourse.isPending}
+                  onUpload={uploadThumbnail}
+                  onRemove={removeThumbnail}
+                  uploadLabel="Unggah thumbnail"
+                  replaceLabel="Ganti thumbnail"
+                />
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -2570,16 +2630,37 @@ function SettingsSection({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="settings-currency">Currency</Label>
-                <Input
-                  id="settings-currency"
-                  maxLength={3}
-                  minLength={3}
-                  required
-                  value={currency}
-                  onChange={(event) =>
-                    setCurrency(event.target.value.toUpperCase())
-                  }
-                />
+                <Select
+                  value={selectedCurrency?.code}
+                  onValueChange={(value) => {
+                    if (value) setCurrency(value);
+                  }}
+                >
+                  <SelectTrigger id="settings-currency" className="w-full">
+                    <span className="flex flex-1 items-center gap-2 text-left">
+                      {selectedCurrency ? (
+                        <>
+                          <span aria-hidden="true">
+                            {selectedCurrency.flag}
+                          </span>
+                          <span>
+                            {selectedCurrency.code} · {selectedCurrency.symbol}
+                          </span>
+                        </>
+                      ) : (
+                        currency || "Pilih currency"
+                      )}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courseCurrencies.map((item) => (
+                      <SelectItem key={item.code} value={item.code}>
+                        <span aria-hidden="true">{item.flag}</span>
+                        {item.code} · {item.symbol}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardContent>
@@ -2590,35 +2671,67 @@ function SettingsSection({
             <CardHeader className="border-b">
               <CardTitle>Aturan akses</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="settings-enrollment">Tipe course</Label>
-                <select
-                  id="settings-enrollment"
-                  className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
+            <CardContent className="pt-2">
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Label htmlFor="settings-enrollment">Tipe course</Label>
+                  <FieldHelp content="Ikuti organisasi untuk memakai pengaturan default, atau timpa khusus course ini. Public bisa ditemukan dan diikuti siswa, private hanya untuk siswa yang diundang." />
+                </div>
+                <Select
                   value={enrollmentMode}
-                  onChange={(event) => setEnrollmentMode(event.target.value)}
+                  onValueChange={(value) => {
+                    if (value) setEnrollmentMode(value);
+                  }}
                 >
-                  <option value="INHERIT">Ikuti organisasi</option>
-                  <option value="OPEN">Public course</option>
-                  <option value="INVITE_ONLY">Private course</option>
-                </select>
+                  <SelectTrigger
+                    id="settings-enrollment"
+                    aria-label="Tipe course"
+                    className="w-44 shrink-0"
+                  >
+                    <span className="flex flex-1 text-left">
+                      {
+                        {
+                          INHERIT: "Ikuti organisasi",
+                          OPEN: "Public course",
+                          INVITE_ONLY: "Private course",
+                        }[enrollmentMode]
+                      }
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="INHERIT">Ikuti organisasi</SelectItem>
+                    <SelectItem value="OPEN">Public course</SelectItem>
+                    <SelectItem value="INVITE_ONLY">Private course</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="settings-progression">Progression</Label>
-                <select
-                  id="settings-progression"
-                  className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
+              <div className="flex items-center justify-between gap-4 border-t py-4">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Label htmlFor="settings-progression">Progression</Label>
+                  <FieldHelp content="Terbuka membebaskan siswa membuka semua materi, bertahap mengharuskan menyelesaikan item sebelumnya secara berurutan." />
+                </div>
+                <Select
                   value={progressionMode}
-                  onChange={(event) =>
-                    setProgressionMode(
-                      event.target.value as Course["progressionMode"],
-                    )
-                  }
+                  onValueChange={(value) => {
+                    if (value) setProgressionMode(value);
+                  }}
                 >
-                  <option value="OPEN">Terbuka</option>
-                  <option value="SEQUENTIAL">Bertahap</option>
-                </select>
+                  <SelectTrigger
+                    id="settings-progression"
+                    aria-label="Progression"
+                    className="w-44 shrink-0"
+                  >
+                    <span className="flex flex-1 text-left">
+                      {progressionMode === "SEQUENTIAL"
+                        ? "Bertahap"
+                        : "Terbuka"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="OPEN">Terbuka</SelectItem>
+                    <SelectItem value="SEQUENTIAL">Bertahap</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>

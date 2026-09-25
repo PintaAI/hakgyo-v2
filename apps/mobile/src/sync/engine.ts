@@ -10,6 +10,7 @@ import SuperJSON from "superjson";
 import type { MobileSyncStore } from "./store";
 import type {
   MobileDashboard,
+  MobileSyncCommitResult,
   MobileSyncOperation,
   MobileSyncTransport,
   SyncCheckpointResult,
@@ -17,6 +18,7 @@ import type {
 } from "./types";
 
 const QUERY_CACHE_VERSION = 2;
+const MAX_DASHBOARD_AGE_MS = 24 * 60 * 60 * 1000;
 
 type PersistedQueryCache = {
   version: typeof QUERY_CACHE_VERSION;
@@ -30,6 +32,7 @@ type EngineOptions = {
   transport: MobileSyncTransport;
   isOnline: () => Promise<boolean>;
   applyDashboard: (dashboard: MobileDashboard) => void;
+  getCachedDashboard?: (organizationId?: string) => MobileDashboard | undefined;
   onPendingCountChange?: (count: number) => void;
 };
 
@@ -47,6 +50,7 @@ export function createMobileSyncEngine({
   transport,
   isOnline,
   applyDashboard,
+  getCachedDashboard,
   onPendingCountChange,
 }: EngineOptions) {
   let disposed = false;
@@ -175,20 +179,56 @@ export function createMobileSyncEngine({
       return { state: "queued", reason: "unavailable" };
     }
 
-    const operations = (await store.listOperations(userId)).slice(0, 500);
+    const operations = await store.listOperations(userId, 5000);
     try {
-      const result = await transport.commit({ organizationId, operations });
+      const acknowledgedOperationIds: string[] = [];
+      const failures: MobileSyncCommitResult["failures"] = [];
+      const results: MobileSyncCommitResult["results"] = [];
+      let dashboard: MobileDashboard | null = null;
+      const batches = Math.max(1, Math.ceil(operations.length / 500));
+      for (let index = 0; index < batches; index += 1) {
+        const batch = operations.slice(index * 500, (index + 1) * 500);
+        const result = await transport.commit({
+          organizationId,
+          operations: batch,
+          includeDashboard: index === batches - 1,
+        });
+        acknowledgedOperationIds.push(...result.acknowledgedOperationIds);
+        failures.push(...result.failures);
+        results.push(...result.results);
+        await serialized(async () => {
+          const sentById = new Map(
+            batch.map((operation) => [operation.id, operation]),
+          );
+          const safeToRemove: string[] = [];
+          for (const id of result.acknowledgedOperationIds) {
+            const current = await store.getOperation(userId, id);
+            if (
+              current &&
+              JSON.stringify(current) === JSON.stringify(sentById.get(id))
+            ) {
+              safeToRemove.push(id);
+            }
+          }
+          await store.removeOperations(userId, safeToRemove);
+          await updatePendingCount();
+        });
+        if (result.dashboard) dashboard = result.dashboard;
+      }
+      if (!dashboard)
+        throw new Error("Dashboard missing from final sync batch");
       await serialized(async () => {
-        await store.removeOperations(userId, result.acknowledgedOperationIds);
-        applyDashboard(result.dashboard);
+        applyDashboard(dashboard);
         if (persistTimer) {
           clearTimeout(persistTimer);
           persistTimer = undefined;
         }
         await persistCache();
-        await updatePendingCount();
       });
-      return { state: "synced", result };
+      return {
+        state: "synced",
+        result: { acknowledgedOperationIds, failures, results, dashboard },
+      };
     } catch {
       return { state: "queued", reason: "unavailable" };
     }
@@ -212,6 +252,38 @@ export function createMobileSyncEngine({
     );
     activeCheckpoints.set(scope, { version, promise });
     return promise;
+  }
+
+  async function checkForUpdates(organizationId?: string) {
+    await writeTail;
+    if (pendingCount > 0) {
+      const result = await checkpoint(organizationId);
+      if (result.state === "synced" && pendingCount > 0) {
+        return { state: "queued", reason: "unavailable" } as const;
+      }
+      return result;
+    }
+    const dashboard = getCachedDashboard?.(organizationId);
+    if (!dashboard) return checkpoint(organizationId);
+    if (!transport.getRevision) return checkpoint(organizationId);
+    const generatedAt = new Date(dashboard.generatedAt).getTime();
+    if (
+      !Number.isFinite(generatedAt) ||
+      Date.now() - generatedAt >= MAX_DASHBOARD_AGE_MS
+    ) {
+      return checkpoint(organizationId);
+    }
+    try {
+      if (!(await isOnline()))
+        return { state: "queued", reason: "offline" } as const;
+      const revision = await transport.getRevision(
+        organizationId ? { organizationId } : undefined,
+      );
+      if (revision === dashboard.revision) return { state: "current" } as const;
+      return checkpoint(organizationId);
+    } catch {
+      return { state: "queued", reason: "unavailable" } as const;
+    }
   }
 
   async function clearLocalCache() {
@@ -244,6 +316,7 @@ export function createMobileSyncEngine({
     putOperation,
     recordVocabularyAttempt,
     checkpoint,
+    checkForUpdates,
     clearLocalCache,
     dispose,
   };

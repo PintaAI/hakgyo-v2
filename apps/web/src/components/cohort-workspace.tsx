@@ -67,6 +67,7 @@ import { DatePicker } from "~/components/ui/date-picker";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
@@ -803,26 +804,31 @@ function Learners({
                       {dateFormatter.format(enrollment.enrolledAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <select
-                        aria-label={`Status ${enrollment.user.name}`}
-                        className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+                      <Select
                         value={enrollment.status}
                         disabled={mutation.isPending || removeEnrollment.isPending}
-                        onChange={(event) =>
-                          save(
-                            enrollment.user.email,
-                            event.target.value as CohortEnrollment["status"],
-                          )
-                        }
+                        onValueChange={(value) => {
+                          if (value)
+                            void save(enrollment.user.email, value);
+                        }}
                       >
-                        {Object.entries(enrollmentLabels).map(
-                          ([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ),
-                        )}
-                      </select>
+                        <SelectTrigger
+                          aria-label={`Status ${enrollment.user.name}`}
+                        >
+                          <span className="flex flex-1 text-left">
+                            {enrollmentLabels[enrollment.status]}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent align="end">
+                          {Object.entries(enrollmentLabels).map(
+                            ([value, label]) => (
+                              <SelectItem key={value} value={value}>
+                                {label}
+                              </SelectItem>
+                            ),
+                          )}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="pr-4 text-right">
                       <Button
@@ -890,20 +896,25 @@ function Learners({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cohort-learner-status">Status awal</Label>
-                <select
-                  id="cohort-learner-status"
-                  className="border-input bg-background h-9 w-full rounded-lg border px-2.5 text-sm"
+                <Select
                   value={status}
-                  onChange={(event) =>
-                    setStatus(event.target.value as CohortEnrollment["status"])
-                  }
+                  onValueChange={(value) => {
+                    if (value) setStatus(value);
+                  }}
                 >
-                  {Object.entries(enrollmentLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="cohort-learner-status" className="w-full">
+                    <span className="flex flex-1 text-left">
+                      {enrollmentLabels[status]}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(enrollmentLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter className="mt-5">
@@ -1070,19 +1081,27 @@ function Staff({ canManage, cohort }: { canManage: boolean; cohort: Cohort }) {
                 </span>
                 <div className="flex shrink-0 items-center gap-2">
                   {canManage ? (
-                    <select
-                      className="border-input bg-background h-8 rounded-lg border px-2 text-xs"
+                    <Select
                       value={staff.role}
-                      onChange={(event) =>
-                        changeRole(
-                          staff.id,
-                          event.target.value as "INSTRUCTOR" | "ASSISTANT",
-                        )
-                      }
+                      onValueChange={(value) => {
+                        if (value) void changeRole(staff.id, value);
+                      }}
                     >
-                      <option value="INSTRUCTOR">Instructor</option>
-                      <option value="ASSISTANT">Assistant</option>
-                    </select>
+                      <SelectTrigger
+                        aria-label={`Role ${staff.organizationMember.user.name}`}
+                        className="h-8 text-xs"
+                      >
+                        <span className="flex flex-1 text-left">
+                          {staff.role === "INSTRUCTOR"
+                            ? "Instructor"
+                            : "Assistant"}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        <SelectItem value="INSTRUCTOR">Instructor</SelectItem>
+                        <SelectItem value="ASSISTANT">Assistant</SelectItem>
+                      </SelectContent>
+                    </Select>
                   ) : (
                     <Badge variant="secondary">
                       {staff.role === "INSTRUCTOR" ? "Instructor" : "Assistant"}
@@ -1128,17 +1147,22 @@ function Staff({ canManage, cohort }: { canManage: boolean; cohort: Cohort }) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="staff-role">Role</Label>
-                  <select
-                    id="staff-role"
-                    className="border-input bg-background h-9 w-full rounded-lg border px-2.5 text-sm"
+                  <Select
                     value={role}
-                    onChange={(event) =>
-                      setRole(event.target.value as "INSTRUCTOR" | "ASSISTANT")
-                    }
+                    onValueChange={(value) => {
+                      if (value) setRole(value);
+                    }}
                   >
-                    <option value="INSTRUCTOR">Instructor</option>
-                    <option value="ASSISTANT">Assistant</option>
-                  </select>
+                    <SelectTrigger id="staff-role" className="w-full">
+                      <span className="flex flex-1 text-left">
+                        {role === "INSTRUCTOR" ? "Instructor" : "Assistant"}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INSTRUCTOR">Instructor</SelectItem>
+                      <SelectItem value="ASSISTANT">Assistant</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <p className="text-muted-foreground text-xs">
                     Instructor dapat mengelola meeting, invite, dan review.
                     Assistant hanya mengelola siswa dan melihat jadwal.
@@ -1830,18 +1854,25 @@ function FieldSelect({
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <select
-        id={id}
-        className="border-input bg-background h-9 w-full rounded-lg border px-2.5 text-sm"
+      <Select
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onValueChange={(next) => {
+          if (next) onChange(next);
+        }}
       >
-        {options.map(([option, text]) => (
-          <option key={option} value={option}>
-            {text}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger id={id} className="w-full">
+          <span className="flex flex-1 text-left">
+            {options.find(([option]) => option === value)?.[1] ?? value}
+          </span>
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(([option, text]) => (
+            <SelectItem key={option} value={option}>
+              {text}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

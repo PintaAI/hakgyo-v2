@@ -45,6 +45,12 @@ import { useEditorAssetUpload } from "../asset-upload-context";
 import { AssetUrl } from "./asset-media-block";
 import { CustomBlockToolbar } from "./custom-block-toolbar";
 import { EditableBlockText } from "./editable-block-text";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "~/components/ui/select";
 
 type ChecklistItem = { ko: string; en: string };
 
@@ -371,40 +377,48 @@ function CultureImage({
 
       {editable ? (
         <div className="grid min-w-0 gap-2 sm:grid-cols-2">
-          <select
-            aria-label="Rasio gambar"
-            className="border-border bg-background h-8 rounded-md border px-2 text-xs"
-            onChange={(event) =>
-              onChange({
-                ...image,
-                aspect: event.target.value as CultureMedia["aspect"],
-              })
-            }
+          <Select
             value={image.aspect}
+            onValueChange={(value) => {
+              if (value) onChange({ ...image, aspect: value });
+            }}
           >
-            {cultureImageAspects.map((aspect) => (
-              <option key={aspect} value={aspect}>
-                Ratio: {aspect}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Penyesuaian gambar"
-            className="border-border bg-background h-8 rounded-md border px-2 text-xs"
-            onChange={(event) =>
-              onChange({
-                ...image,
-                fit: event.target.value as CultureMedia["fit"],
-              })
-            }
+            <SelectTrigger
+              aria-label="Rasio gambar"
+              size="sm"
+              className="text-xs"
+            >
+              <span className="flex flex-1 text-left">Ratio: {image.aspect}</span>
+            </SelectTrigger>
+            <SelectContent>
+              {cultureImageAspects.map((aspect) => (
+                <SelectItem key={aspect} value={aspect}>
+                  Ratio: {aspect}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
             value={image.fit}
+            onValueChange={(value) => {
+              if (value) onChange({ ...image, fit: value });
+            }}
           >
-            {cultureImageFits.map((fit) => (
-              <option key={fit} value={fit}>
-                Fit: {fit}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              aria-label="Penyesuaian gambar"
+              size="sm"
+              className="text-xs"
+            >
+              <span className="flex flex-1 text-left">Fit: {image.fit}</span>
+            </SelectTrigger>
+            <SelectContent>
+              {cultureImageFits.map((fit) => (
+                <SelectItem key={fit} value={fit}>
+                  Fit: {fit}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <EditableBlockText
             ariaLabel="Teks alternatif gambar"
             className="text-muted-foreground w-full text-xs sm:col-span-2"
@@ -565,18 +579,25 @@ function EditorSelect({
   value: string;
 }) {
   return (
-    <select
-      aria-label={ariaLabel}
-      className="border-border bg-background h-8 rounded-md border px-2 text-xs"
-      onChange={(event) => onChange(event.target.value)}
+    <Select
       value={value}
+      onValueChange={(next) => {
+        if (next) onChange(next);
+      }}
     >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger aria-label={ariaLabel} size="sm" className="text-xs">
+        <span className="flex flex-1 text-left">
+          {options.find((option) => option.value === value)?.label ?? value}
+        </span>
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

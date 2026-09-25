@@ -20,4 +20,5 @@ export type SyncCheckpointResult =
 
 export type MobileSyncTransport = {
   commit: (input: MobileSyncCommitInput) => Promise<MobileSyncCommitResult>;
+  getRevision?: (input?: { organizationId?: string }) => Promise<string>;
 };

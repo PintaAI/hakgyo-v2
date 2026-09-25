@@ -60,12 +60,94 @@ const syncOperation = z.discriminatedUnion("kind", [
   }),
 ]);
 
+async function getRevision(
+  ctx: TRPCContext,
+  input: z.infer<typeof organizationScope>,
+) {
+  const userId = ctx.actorUserId;
+  if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
+  const organizationId = input?.organizationId;
+  if (organizationId) {
+    const access = await Promise.all([
+      ctx.db.organizationMember.findFirst({
+        where: { userId, organizationId },
+        select: { id: true },
+      }),
+      ctx.db.courseEnrollment.findFirst({
+        where: { userId, course: { organizationId } },
+        select: { id: true },
+      }),
+      ctx.db.cohortEnrollment.findFirst({
+        where: { userId, cohort: { organizationId } },
+        select: { id: true },
+      }),
+    ]);
+    if (access.every((entry) => !entry)) {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }
+  }
+  const organizationIds = organizationId
+    ? [organizationId]
+    : [
+        ...new Set(
+          (
+            await Promise.all([
+              ctx.db.organizationMember.findMany({
+                where: { userId },
+                select: { organizationId: true },
+              }),
+              ctx.db.courseEnrollment.findMany({
+                where: { userId },
+                select: { course: { select: { organizationId: true } } },
+              }),
+              ctx.db.cohortEnrollment.findMany({
+                where: { userId },
+                select: { cohort: { select: { organizationId: true } } },
+              }),
+            ])
+          )
+            .flatMap((entries) =>
+              entries.map((entry) =>
+                "organizationId" in entry
+                  ? entry.organizationId
+                  : "course" in entry
+                    ? entry.course.organizationId
+                    : entry.cohort.organizationId,
+              ),
+            )
+            .sort(),
+        ),
+      ];
+  const revisions = await ctx.db.mobileSyncRevision.findMany({
+    where: {
+      OR: [
+        { scopeType: "user", scopeId: userId },
+        ...organizationIds.map((scopeId) => ({
+          scopeType: "organization",
+          scopeId,
+        })),
+      ],
+    },
+    select: { scopeType: true, scopeId: true, revision: true },
+  });
+  const userRevision =
+    revisions.find((entry) => entry.scopeType === "user")?.revision ?? 0n;
+  const organizationRevisions = organizationIds.map(
+    (id) =>
+      `${id}=${revisions.find((entry) => entry.scopeType === "organization" && entry.scopeId === id)?.revision ?? 0n}`,
+  );
+  return `${userRevision}:${organizationRevisions.join(",")}`;
+}
+
 async function getDashboard(
   ctx: TRPCContext,
   input: z.infer<typeof organizationScope>,
 ) {
   const actorUserId = ctx.actorUserId;
   if (!actorUserId) throw new TRPCError({ code: "UNAUTHORIZED" });
+  // Capture before the snapshot. A concurrent write then changes the revision
+  // again, so the next check repairs any partially-read dashboard.
+  const revision = await getRevision(ctx, input);
   const learning = learningRouter.createCaller(ctx);
   const assessment = assessmentRouter.createCaller(ctx);
   const assessmentEvent = assessmentEventRouter.createCaller(ctx);
@@ -254,6 +336,7 @@ async function getDashboard(
 
   return {
     generatedAt: new Date(),
+    revision,
     organizationId: input?.organizationId ?? null,
     courses,
     cohorts,
@@ -289,6 +372,9 @@ async function getDashboard(
 }
 
 export const mobileSyncRouter = createTRPCRouter({
+  getRevision: protectedProcedure
+    .input(organizationScope)
+    .query(({ ctx, input }) => getRevision(ctx, input)),
   getDashboard: protectedProcedure
     .input(organizationScope)
     .query(({ ctx, input }) => getDashboard(ctx, input)),
@@ -352,6 +438,7 @@ export const mobileSyncRouter = createTRPCRouter({
       z.object({
         organizationId: z.string().min(1).optional(),
         operations: z.array(syncOperation).max(500),
+        includeDashboard: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -452,12 +539,15 @@ export const mobileSyncRouter = createTRPCRouter({
         acknowledgedOperationIds: results.map((result) => result.id),
         failures,
         results,
-        dashboard: await getDashboard(
-          ctx,
-          input.organizationId
-            ? { organizationId: input.organizationId }
-            : undefined,
-        ),
+        dashboard:
+          input.includeDashboard === false
+            ? null
+            : await getDashboard(
+                ctx,
+                input.organizationId
+                  ? { organizationId: input.organizationId }
+                  : undefined,
+              ),
       };
     }),
 });

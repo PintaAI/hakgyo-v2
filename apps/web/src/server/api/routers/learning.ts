@@ -419,6 +419,7 @@ export const learningRouter = createTRPCRouter({
               term: true,
               definition: true,
               examples: true,
+              audioAssetId: true,
               imageAssetId: true,
             },
           },

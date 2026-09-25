@@ -61,6 +61,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
@@ -374,20 +375,27 @@ export function KurikulumEditor({
             >
               Progression
             </Label>
-            <select
-              id="kurikulum-progression"
-              className="border-input bg-background focus-visible:ring-ring h-9 min-w-48 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2 disabled:opacity-50"
-              disabled={updateProgression.isPending}
+            <Select
               value={progressionMode}
-              onChange={(event) =>
-                changeProgressionMode(
-                  event.target.value as Course["progressionMode"],
-                )
-              }
+              disabled={updateProgression.isPending}
+              onValueChange={(value) => {
+                if (value) void changeProgressionMode(value);
+              }}
             >
-              <option value="OPEN">Terbuka</option>
-              <option value="SEQUENTIAL">Bertahap</option>
-            </select>
+              <SelectTrigger
+                id="kurikulum-progression"
+                aria-label="Progression"
+                className="min-w-48"
+              >
+                <span className="flex flex-1 text-left">
+                  {progressionMode === "OPEN" ? "Terbuka" : "Bertahap"}
+                </span>
+              </SelectTrigger>
+              <SelectContent align="end">
+                <SelectItem value="OPEN">Terbuka</SelectItem>
+                <SelectItem value="SEQUENTIAL">Bertahap</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button onClick={() => setModuleDialog({ open: true })}>
             <PlusIcon data-icon="inline-start" />
@@ -1082,25 +1090,31 @@ function ItemDialog({
 
             <div className="space-y-2">
               <Label htmlFor="item-resource">{itemMeta[type].label}</Label>
-              <select
-                id="item-resource"
-                className="border-input bg-background focus-visible:ring-ring h-10 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2 disabled:opacity-50"
+              <Select
+                value={resourceId || "NONE"}
                 disabled={resources.length === 0}
-                required
-                value={resourceId}
-                onChange={(event) => setResourceId(event.target.value)}
+                onValueChange={(value) => {
+                  if (value && value !== "NONE") setResourceId(value);
+                }}
               >
-                <option value="">
-                  {resources.length === 0
-                    ? `Belum ada ${resourceLabel} tersedia`
-                    : `Pilih ${resourceLabel}`}
-                </option>
-                {resources.map((resource) => (
-                  <option key={resource.id} value={resource.id}>
-                    {resource.title}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="item-resource" className="h-10 w-full">
+                  <span className="flex min-w-0 flex-1 truncate text-left">
+                    {resources.find(
+                      (resource) => resource.id === resourceId,
+                    )?.title ??
+                      (resources.length === 0
+                        ? `Belum ada ${resourceLabel} tersedia`
+                        : `Pilih ${resourceLabel}`)}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {resources.map((resource) => (
+                    <SelectItem key={resource.id} value={resource.id}>
+                      {resource.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {resources.length === 0 ? (
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                   <CircleOffIcon className="size-3.5" />

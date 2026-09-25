@@ -15,6 +15,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
@@ -112,18 +113,25 @@ export function AssessmentLibrary({
                 value={search}
               />
             </div>
-            <select
-              aria-label="Filter status assessment"
-              className="border-input bg-background focus-visible:ring-ring h-8 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
-              onChange={(event) => setStatus(event.target.value as Status)}
+            <Select
               value={status}
+              onValueChange={(value) => {
+                if (value) setStatus(value);
+              }}
             >
-              {Object.keys(statusLabels).map((value) => (
-                <option key={value} value={value}>
-                  {statusLabels[value as Status]}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger aria-label="Filter status assessment">
+                <span className="flex flex-1 text-left">
+                  {statusLabels[status]}
+                </span>
+              </SelectTrigger>
+              <SelectContent align="end">
+                {(Object.keys(statusLabels) as Array<Status>).map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {statusLabels[value]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="mb-3 flex items-center justify-between gap-3">

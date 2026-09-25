@@ -17,7 +17,10 @@ export type MobileSyncStore = {
     userId: string,
     operation: MobileSyncOperation,
   ) => Promise<void>;
-  listOperations: (userId: string) => Promise<MobileSyncOperation[]>;
+  listOperations: (
+    userId: string,
+    limit?: number,
+  ) => Promise<MobileSyncOperation[]>;
   removeOperations: (userId: string, ids: string[]) => Promise<void>;
   countOperations: (userId: string) => Promise<number>;
 };
@@ -140,14 +143,15 @@ export function createMobileSyncStore(
       );
     },
 
-    async listOperations(userId) {
+    async listOperations(userId, limit = 5000) {
       await initialize();
       const rows = await (
         await database()
       ).getAllAsync<OperationRow>(
         `SELECT payload FROM mobile_sync_operation
-         WHERE user_id = ? ORDER BY created_at ASC`,
+         WHERE user_id = ? ORDER BY created_at ASC LIMIT ?`,
         userId,
+        limit,
       );
       return rows.map((row) => JSON.parse(row.payload) as MobileSyncOperation);
     },
