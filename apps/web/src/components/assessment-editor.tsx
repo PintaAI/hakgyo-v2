@@ -88,6 +88,7 @@ import {
   MAX_ASSESSMENT_OPTIONS,
   MIN_ASSESSMENT_OPTIONS,
 } from "~/lib/assessment-options";
+import { getAssessmentPublishValidationError } from "~/lib/assessment-publication";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { authClient } from "~/server/better-auth/client";
 import {
@@ -275,39 +276,6 @@ function removeOption(assessment: Assessment | undefined, optionId: string) {
       };
     }),
   };
-}
-
-function getPublishValidationError(questions: Question[]) {
-  if (questions.length === 0) {
-    return "Tambahkan setidaknya satu soal sebelum memublikasikan assessment.";
-  }
-
-  for (const [index, question] of questions.entries()) {
-    if (!hasBlockNoteContent(question.prompt)) {
-      return `Soal ${index + 1} belum memiliki pertanyaan.`;
-    }
-    if (question.type === "WRITTEN") continue;
-    if (question.options.length < MIN_ASSESSMENT_OPTIONS) {
-      return `Soal ${index + 1} harus memiliki setidaknya dua opsi.`;
-    }
-    if (
-      question.options.some((option) => !hasBlockNoteContent(option.content))
-    ) {
-      return `Semua opsi pada soal ${index + 1} wajib memiliki isi.`;
-    }
-
-    const correctOptions = question.options.filter(
-      (option) => option.isCorrect,
-    ).length;
-    if (question.type === "SINGLE_CHOICE" && correctOptions !== 1) {
-      return `Soal ${index + 1} harus memiliki tepat satu jawaban benar.`;
-    }
-    if (question.type === "MULTIPLE_CHOICE" && correctOptions < 1) {
-      return `Soal ${index + 1} harus memiliki setidaknya satu jawaban benar.`;
-    }
-  }
-
-  return null;
 }
 
 function getQuestionIssue(question: Question) {
@@ -1109,7 +1077,8 @@ function AssessmentEditorForm({
         );
         throw new Error("Assessment must be created before publishing");
       }
-      const validationError = getPublishValidationError(displayQuestions);
+      const validationError =
+        getAssessmentPublishValidationError(displayQuestions);
       if (validationError) {
         toast.error(validationError);
         throw new Error(validationError);
@@ -1413,7 +1382,7 @@ function AssessmentEditorForm({
         />
         <textarea
           aria-label="Deskripsi assessment"
-          className="text-muted-foreground placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:text-foreground field-sizing-content -mx-2 max-h-48 w-full resize-none rounded-md bg-transparent px-2 py-1 text-sm transition-colors outline-none"
+          className="text-muted-foreground placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:text-foreground -mx-2 field-sizing-content max-h-48 w-full resize-none rounded-md bg-transparent px-2 py-1 text-sm transition-colors outline-none"
           maxLength={10000}
           onChange={(event) => {
             settingsTouchedRef.current = true;
@@ -1888,9 +1857,7 @@ const QuestionRow = memo(function QuestionRow({
     <article
       className={cn(
         "group bg-card scroll-mt-24 rounded-xl border transition-[background-color,border-color,box-shadow] duration-300",
-        expanded
-          ? "border-primary/40 shadow-sm"
-          : "hover:border-foreground/20",
+        expanded ? "border-primary/40 shadow-sm" : "hover:border-foreground/20",
         highlighted && "border-primary/50 bg-primary/[0.06]",
         !expanded && !highlighted && active && "bg-muted/30",
       )}
@@ -2283,9 +2250,9 @@ function QuestionEditor({
         <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
           <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
           <p>
-            Opsi lama dipertahankan dan bisa dihapus satu per satu, tetapi
-            akan diabaikan oleh sistem untuk soal tertulis. Jika tipe
-            dikembalikan, opsi tersebut akan muncul lagi.
+            Opsi lama dipertahankan dan bisa dihapus satu per satu, tetapi akan
+            diabaikan oleh sistem untuk soal tertulis. Jika tipe dikembalikan,
+            opsi tersebut akan muncul lagi.
           </p>
         </div>
       ) : null}
@@ -2356,8 +2323,7 @@ function QuestionEditor({
             </div>
           ) : (
             <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-4 text-center text-xs">
-              Belum ada opsi. Tambahkan setidaknya dua opsi untuk soal
-              pilihan.
+              Belum ada opsi. Tambahkan setidaknya dua opsi untuk soal pilihan.
             </p>
           )}
         </div>

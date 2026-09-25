@@ -29,6 +29,18 @@ describe("assessment BlockNote document compatibility", () => {
     );
   });
 
+  test("treats an uploaded file block without text as content", () => {
+    expect(
+      hasBlockNoteContent([
+        { type: "image", props: { url: "hakgyo-asset:asset-1" }, content: [] },
+        { type: "paragraph", content: [] },
+      ]),
+    ).toBe(true);
+    expect(hasBlockNoteContent([{ type: "image", props: { url: "" } }])).toBe(
+      false,
+    );
+  });
+
   test("extracts readable text from a nested BlockNote document", () => {
     expect(
       getBlockNotePlainText([

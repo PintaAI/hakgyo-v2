@@ -18,6 +18,7 @@ import {
   sanitizeMaterialContent,
 } from "~/server/material-reference-service";
 import { syncMaterialPdfPageAssets } from "~/server/pdf-book/service";
+import { getAssessmentPublishValidationError } from "~/lib/assessment-publication";
 
 const id = z.string().min(1);
 const json = z.custom<Prisma.InputJsonValue>((value) => value !== undefined);
@@ -100,6 +101,47 @@ async function reorder(
 
     await updatePositions(ids.map((_, index) => temporaryPosition + index));
     await updatePositions(ids.map((_, index) => index));
+  });
+}
+
+// Publishing a course item also publishes its draft assessment, so the
+// assessment must pass the same checks as publishing from the editor.
+async function getDraftAssessmentToPublish(assessmentId: string) {
+  const assessment = await db.assessment.findUnique({
+    where: { id: assessmentId },
+    select: {
+      status: true,
+      questions: {
+        orderBy: { position: "asc" },
+        select: {
+          type: true,
+          prompt: true,
+          options: {
+            orderBy: { position: "asc" },
+            select: { content: true, isCorrect: true },
+          },
+        },
+      },
+    },
+  });
+  if (!assessment) throw new TRPCError({ code: "NOT_FOUND" });
+  if (assessment.status !== "DRAFT") return null;
+  const validationError = getAssessmentPublishValidationError(
+    assessment.questions,
+  );
+  if (validationError)
+    throw new TRPCError({ code: "BAD_REQUEST", message: validationError });
+  return assessmentId;
+}
+
+async function publishDraftAssessment(
+  tx: Prisma.TransactionClient,
+  assessmentId: string | null,
+) {
+  if (!assessmentId) return;
+  await tx.assessment.updateMany({
+    where: { id: assessmentId, status: "DRAFT" },
+    data: { status: "PUBLISHED", publishedAt: new Date() },
   });
 }
 
@@ -299,7 +341,12 @@ export const contentRouter = createTRPCRouter({
           organizationId: courseModule.organizationId,
         });
       }
+      const assessmentToPublish =
+        input.isPublished && input.relation.type === "ASSESSMENT"
+          ? await getDraftAssessmentToPublish(input.relation.assessmentId)
+          : null;
       return db.$transaction(async (tx) => {
+        await publishDraftAssessment(tx, assessmentToPublish);
         const aggregate = await tx.courseItem.aggregate({
           where: { moduleId: input.moduleId },
           _max: { position: true },
@@ -331,6 +378,7 @@ export const contentRouter = createTRPCRouter({
           moduleId: true,
           isPublished: true,
           materialId: true,
+          assessmentId: true,
           material: { select: { content: true } },
           module: { select: { courseId: true } },
         },
@@ -409,19 +457,34 @@ export const contentRouter = createTRPCRouter({
           });
         }
       }
-      return db.courseItem.update({
-        where: { id: input.itemId },
-        data: {
-          isPublished: input.isPublished,
-          ...(input.relation
-            ? {
-                materialId: null,
-                assessmentId: null,
-                vocabularySetId: null,
-                ...input.relation,
-              }
-            : {}),
-        },
+      const nextAssessmentId =
+        input.relation?.type === "ASSESSMENT"
+          ? input.relation.assessmentId
+          : input.relation
+            ? null
+            : item.assessmentId;
+      const assessmentToPublish =
+        (input.isPublished ?? item.isPublished) &&
+        (input.relation || input.isPublished === true) &&
+        nextAssessmentId
+          ? await getDraftAssessmentToPublish(nextAssessmentId)
+          : null;
+      return db.$transaction(async (tx) => {
+        await publishDraftAssessment(tx, assessmentToPublish);
+        return tx.courseItem.update({
+          where: { id: input.itemId },
+          data: {
+            isPublished: input.isPublished,
+            ...(input.relation
+              ? {
+                  materialId: null,
+                  assessmentId: null,
+                  vocabularySetId: null,
+                  ...input.relation,
+                }
+              : {}),
+          },
+        });
       });
     }),
   deleteItem: protectedProcedure

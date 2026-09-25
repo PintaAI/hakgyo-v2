@@ -57,6 +57,7 @@ export function hasBlockNoteContent(value: unknown): boolean {
     const record = block as Record<string, unknown>;
     const props = record.props as Record<string, unknown> | undefined;
     if (typeof props?.assetId === "string" && props.assetId) return true;
+    if (typeof props?.url === "string" && props.url.trim()) return true;
     return (
       plainText(record.content).trim().length > 0 ||
       hasBlockNoteContent(record.children)

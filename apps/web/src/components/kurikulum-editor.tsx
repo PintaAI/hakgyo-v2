@@ -244,6 +244,7 @@ export function KurikulumEditor({
     await Promise.all([
       utils.course.get.invalidate({ courseId: course.id }),
       utils.course.getWorkspaceOverview.invalidate(workspaceQueryInput),
+      utils.assessment.invalidate(),
     ]);
     router.refresh();
   }
