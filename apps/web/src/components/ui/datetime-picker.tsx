@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { CalendarDaysIcon } from "lucide-react";
 
@@ -59,11 +59,12 @@ function DateTimePicker({
       ? format(parsedValue, "dd MMM yyyy, HH:mm")
       : null;
 
-  const [timeDraft, setTimeDraft] = useState(timePart);
-
-  useEffect(() => {
-    setTimeDraft(timePart);
-  }, [timePart]);
+  const [timeDraftState, setTimeDraftState] = useState({
+    source: timePart,
+    value: timePart,
+  });
+  const timeDraft =
+    timeDraftState.source === timePart ? timeDraftState.value : timePart;
 
   function handleDateSelect(date: Date | undefined) {
     if (!date) {
@@ -73,13 +74,13 @@ function DateTimePicker({
     const nextDate = format(date, "yyyy-MM-dd");
     const nextTime =
       timePart && TIME_PATTERN.test(timePart) ? timePart : DEFAULT_TIME;
-    setTimeDraft(nextTime);
+    setTimeDraftState({ source: nextTime, value: nextTime });
     onChange(`${nextDate}T${nextTime}`);
   }
 
   function handleTimeChange(next: string) {
     const cleaned = next.replace(/[^0-9:]/g, "").slice(0, 5);
-    setTimeDraft(cleaned);
+    setTimeDraftState({ source: timePart, value: cleaned });
     if (!datePart || !TIME_PATTERN.test(cleaned)) return;
     onChange(`${datePart}T${cleaned}`);
   }

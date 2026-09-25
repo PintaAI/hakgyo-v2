@@ -394,7 +394,7 @@ export function AssessmentEventManager({
                   items={assessmentSelectItems}
                   value={courseItemId}
                   onValueChange={(value) =>
-                    setCourseItemId((value as string | null) ?? null)
+                    setCourseItemId(value ?? null)
                   }
                 >
                   <SelectTrigger id="event-assessment" className="w-full">
