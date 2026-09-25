@@ -1,7 +1,9 @@
 import { getReadableForeground } from "@hakgyo/shared";
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
+import { VocabularyAudioButton } from "../vocabulary-audio-button";
 import { InlineContent } from "./inline-content";
 import { assetSource, ContentAudio, ContentImage } from "./media";
 import { booleanProp, isRecord, parseJsonArray, stringProp } from "./normalize";
@@ -82,6 +84,7 @@ function firstExample(value: unknown) {
 function VocabularyReference({ block }: BlockRendererProps) {
   const { colors, onOpenResource, resourceReferences } = useContentRenderer();
   const [query, setQuery] = useState("");
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const vocabularySetId = stringProp(block.props, "vocabularySetId");
   const resource = resourceReferences?.vocabularySets.find(
     (set) => set.id === vocabularySetId,
@@ -140,29 +143,59 @@ function VocabularyReference({ block }: BlockRendererProps) {
             className="gap-3 rounded-xl border border-border p-4"
             key={entry.id}
           >
-            {entry.imageAsset ? (
-              <ContentImage
-                accessibilityLabel={entry.term}
-                source={assetSource(entry.imageAsset.id)}
-              />
-            ) : null}
-            <View className="gap-1">
-              <Text className="text-lg font-black text-foreground">
-                {entry.term}
-              </Text>
-              <Text className="text-sm leading-5 text-muted-foreground">
-                {entry.definition}
-              </Text>
-              {firstExample(entry.examples) ? (
-                <Text className="mt-1 text-sm italic leading-5 text-foreground">
-                  “{firstExample(entry.examples)}”
-                </Text>
+            <Pressable
+              accessibilityLabel={`View details for ${entry.term}`}
+              accessibilityRole="button"
+              className="gap-3 active:opacity-60"
+              onPress={() => {
+                const sourceCourseItemId =
+                  resourceReferences?.sourceCourseItemId ??
+                  resource.courseItemId;
+                if (!sourceCourseItemId) {
+                  onOpenResource?.(
+                    "vocabulary",
+                    resource.id,
+                    resource.courseItemId,
+                  );
+                  return;
+                }
+                setSpeakingId(null);
+                router.push({
+                  pathname: "/vocabulary/[vocabularySetId]/items/[entryId]",
+                  params: {
+                    vocabularySetId: resource.id,
+                    entryId: entry.id,
+                    sourceCourseItemId,
+                  },
+                });
+              }}
+            >
+              {entry.imageAsset ? (
+                <ContentImage
+                  accessibilityLabel={entry.term}
+                  source={assetSource(entry.imageAsset.id)}
+                />
               ) : null}
-            </View>
+              <View className="gap-1">
+                <Text className="text-lg font-black text-foreground">
+                  {entry.term}
+                </Text>
+                <Text className="text-sm leading-5 text-muted-foreground">
+                  {entry.definition}
+                </Text>
+                {firstExample(entry.examples) ? (
+                  <Text className="mt-1 text-sm italic leading-5 text-foreground">
+                    “{firstExample(entry.examples)}”
+                  </Text>
+                ) : null}
+              </View>
+            </Pressable>
             {entry.audioAsset ? (
-              <ContentAudio
-                fileName={entry.audioAsset.fileName}
-                source={assetSource(entry.audioAsset.id)}
+              <VocabularyAudioButton
+                assetId={entry.audioAsset.id}
+                entryId={entry.id}
+                onSpeak={setSpeakingId}
+                speakingId={speakingId}
               />
             ) : null}
           </View>

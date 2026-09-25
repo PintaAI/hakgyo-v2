@@ -13,6 +13,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { type ReactNode } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import styles from "./studio-dashboard.module.css";
@@ -29,6 +31,9 @@ const STAT_ICONS: Record<StatIcon, LucideIcon> = {
 
 export type StudioDashboardData = {
   name: string;
+  organizationLogoUrl: string | null;
+  userName: string;
+  userImage: string | null;
   role: string;
   root: string;
   canCreateCourse: boolean;
@@ -231,16 +236,51 @@ function Activity({ data }: { data: StudioDashboardData }) {
   );
 }
 export function StudioDashboard({ data }: { data: StudioDashboardData }) {
+  const organizationInitial = data.name.trim().charAt(0).toUpperCase() || "?";
+  const userInitials = data.userName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
   return (
     <div className="min-w-0 space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-5 border-b pb-8">
-        <div>
+        <div className="min-w-0">
           <p className={styles.eyebrow}>Workspace / {data.role}</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
-            Ruang untuk bertumbuh.
+          <h1 className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <Avatar className="size-8 rounded-lg after:rounded-lg">
+                {data.organizationLogoUrl ? (
+                  <AvatarImage
+                    src={data.organizationLogoUrl}
+                    alt={`Logo ${data.name}`}
+                    className="rounded-lg"
+                  />
+                ) : null}
+                <AvatarFallback className="rounded-lg font-semibold">
+                  {organizationInitial}
+                </AvatarFallback>
+              </Avatar>
+              <span className="truncate">{data.name}</span>
+            </span>
+            <span aria-hidden="true" className="text-muted-foreground font-normal">
+              ·
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <Avatar className="size-8">
+                {data.userImage ? (
+                  <AvatarImage src={data.userImage} alt="" />
+                ) : null}
+                <AvatarFallback>{userInitials}</AvatarFallback>
+              </Avatar>
+              <span className="truncate">{data.userName}</span>
+              <Badge variant="secondary">{data.role}</Badge>
+            </span>
           </h1>
           <p className="text-muted-foreground mt-3 text-sm">
-            {data.name} · Semua yang Anda perlukan untuk mengajar lebih baik.
+            Semua yang Anda perlukan untuk mengajar lebih baik.
           </p>
         </div>
         <Action

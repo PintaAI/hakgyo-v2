@@ -1,21 +1,15 @@
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { router } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { SymbolView } from "expo-symbols";
 import { Image } from "expo-image";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useApiAssetResolver } from "../content-renderer";
 import { Eyebrow } from "../learning-ui";
 import { StudyAction, StudyGlass } from "../study-glass";
+import { VocabularyAudioButton } from "../vocabulary-audio-button";
 
 const VIEW_MODE_KEY = "hakgyo:vocab-view-mode:v1";
 
@@ -23,16 +17,17 @@ export type VocabularySetEntry = {
   id: string;
   term: string;
   definition: string;
+  examples?: unknown;
   audioAsset?: { id: string } | null;
   imageAsset?: { id: string } | null;
 };
 
-function EntryImage({
+export function EntryImage({
   assetId,
   variant,
 }: {
   assetId: string;
-  variant: "grid" | "list";
+  variant: "grid" | "list" | "detail";
 }) {
   const resolveAssetUrl = useApiAssetResolver();
   const [url, setUrl] = useState<string | null>(null);
@@ -40,6 +35,8 @@ function EntryImage({
 
   useEffect(() => {
     let cancelled = false;
+    setUrl(null);
+    setFailed(false);
     void resolveAssetUrl(assetId).then(
       (resolved) => {
         if (!cancelled) setUrl(resolved);
@@ -55,7 +52,11 @@ function EntryImage({
 
   if (failed) return null;
   const className =
-    variant === "grid" ? "h-28 w-full rounded-xl" : "size-14 rounded-xl";
+    variant === "grid"
+      ? "h-28 w-full rounded-xl"
+      : variant === "detail"
+        ? "h-44 w-full rounded-2xl"
+        : "size-14 rounded-xl";
   if (!url) return <View className={`bg-muted ${className}`} />;
   return (
     <Image
@@ -67,134 +68,12 @@ function EntryImage({
       style={
         variant === "grid"
           ? { width: "100%", height: 112 }
-          : { width: 56, height: 56 }
+          : variant === "detail"
+            ? { width: "100%", height: 176 }
+            : { width: 56, height: 56 }
       }
       transition={0}
     />
-  );
-}
-
-function SpeakerToggle({
-  url,
-  entryId,
-  speakingId,
-  onSpeak,
-}: {
-  url: string;
-  entryId: string;
-  speakingId: string | null;
-  onSpeak: (entryId: string | null) => void;
-}) {
-  const { colors } = useAppTheme();
-  const player = useAudioPlayer(url);
-  const status = useAudioPlayerStatus(player);
-
-  useEffect(() => {
-    if (speakingId !== entryId && status.playing) player.pause();
-  }, [speakingId, entryId, status.playing, player]);
-
-  useEffect(() => {
-    player.play();
-    onSpeak(entryId);
-    // Autoplay is intentionally tied to the tap that mounted this control.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <Pressable
-      accessibilityLabel={
-        status.playing ? "Pause pronunciation" : "Play pronunciation"
-      }
-      accessibilityRole="button"
-      className="size-8 items-center justify-center rounded-full bg-muted active:opacity-60"
-      onPress={() => {
-        if (status.playing) {
-          player.pause();
-          onSpeak(null);
-        } else {
-          if (status.didJustFinish) void player.seekTo(0);
-          player.play();
-          onSpeak(entryId);
-        }
-      }}
-    >
-      <SymbolView
-        fallback={
-          <Text className="text-xs font-black text-primary">
-            {status.playing ? "◉" : "♪"}
-          </Text>
-        }
-        name={status.playing ? "speaker.wave.2.fill" : "speaker.fill"}
-        size={14}
-        tintColor={colors.primary}
-        weight="semibold"
-      />
-    </Pressable>
-  );
-}
-
-function WordSpeakerButton({
-  assetId,
-  entryId,
-  speakingId,
-  onSpeak,
-}: {
-  assetId: string;
-  entryId: string;
-  speakingId: string | null;
-  onSpeak: (entryId: string | null) => void;
-}) {
-  const { colors } = useAppTheme();
-  const resolveAssetUrl = useApiAssetResolver();
-  const [url, setUrl] = useState<string | null>(null);
-  const [resolving, setResolving] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  if (failed) return null;
-  if (url) {
-    return (
-      <SpeakerToggle
-        entryId={entryId}
-        onSpeak={onSpeak}
-        speakingId={speakingId}
-        url={url}
-      />
-    );
-  }
-
-  return (
-    <Pressable
-      accessibilityLabel="Play pronunciation"
-      accessibilityRole="button"
-      className="size-8 items-center justify-center rounded-full bg-muted active:opacity-60"
-      disabled={resolving}
-      onPress={() => {
-        if (resolving) return;
-        setResolving(true);
-        void resolveAssetUrl(assetId).then(
-          (resolved) => {
-            setUrl(resolved);
-            setResolving(false);
-          },
-          () => {
-            setFailed(true);
-            setResolving(false);
-          },
-        );
-      }}
-    >
-      {resolving ? (
-        <ActivityIndicator color={colors.primary} size="small" />
-      ) : (
-        <SymbolView
-          fallback={<Text className="text-xs font-black text-primary">♪</Text>}
-          name="speaker.fill"
-          size={14}
-          tintColor={colors.primary}
-          weight="semibold"
-        />
-      )}
-    </Pressable>
   );
 }
 
@@ -202,25 +81,34 @@ function WordGridCard({
   entry,
   speakingId,
   onSpeak,
+  onOpen,
 }: {
   entry: VocabularySetEntry;
   speakingId: string | null;
   onSpeak: (entryId: string | null) => void;
+  onOpen: () => void;
 }) {
   return (
     <View className="gap-2 rounded-[20px] border border-border bg-card p-4">
-      {entry.imageAsset ? (
-        <EntryImage assetId={entry.imageAsset.id} variant="grid" />
-      ) : null}
-      <Text className="text-[15px] font-bold leading-5 text-foreground">
-        {entry.term}
-      </Text>
-      <Text className="text-xs leading-4 text-muted-foreground">
-        {entry.definition}
-      </Text>
+      <Pressable
+        accessibilityLabel={`View details for ${entry.term}`}
+        accessibilityRole="button"
+        className="gap-2 active:opacity-60"
+        onPress={onOpen}
+      >
+        {entry.imageAsset ? (
+          <EntryImage assetId={entry.imageAsset.id} variant="grid" />
+        ) : null}
+        <Text className="text-[15px] font-bold leading-5 text-foreground">
+          {entry.term}
+        </Text>
+        <Text className="text-xs leading-4 text-muted-foreground">
+          {entry.definition}
+        </Text>
+      </Pressable>
       {entry.audioAsset ? (
         <View className="flex-row justify-end pt-1">
-          <WordSpeakerButton
+          <VocabularyAudioButton
             assetId={entry.audioAsset.id}
             entryId={entry.id}
             onSpeak={onSpeak}
@@ -266,45 +154,69 @@ export function VocabularySetDetail({
     }
   }, []);
 
+  const openEntry = useCallback(
+    (entry: VocabularySetEntry) => {
+      if (!courseItemId) return;
+      setSpeakingId(null);
+      router.push({
+        pathname: "/vocabulary/[vocabularySetId]/items/[entryId]",
+        params: {
+          vocabularySetId: vocabulary.id,
+          entryId: entry.id,
+          sourceCourseItemId: courseItemId,
+        },
+      });
+    },
+    [courseItemId, vocabulary.id],
+  );
+
   const renderEntry = useCallback(
     ({ item: entry, index }: { item: VocabularySetEntry; index: number }) =>
       viewMode === "grid" ? (
         <View className="min-w-0 flex-1 pb-3">
           <WordGridCard
             entry={entry}
+            onOpen={() => openEntry(entry)}
             onSpeak={setSpeakingId}
             speakingId={speakingId}
           />
         </View>
       ) : (
         <View
-          className={`flex-row gap-3 py-3 ${index === total - 1 ? "" : "border-b border-border/60"}`}
+          className={`flex-row items-center gap-3 py-3 ${index === total - 1 ? "" : "border-b border-border/60"}`}
         >
-          <Text className="w-6 pt-0.5 text-xs font-bold tabular-nums text-muted-foreground">
-            {index + 1}
-          </Text>
-          <View className="min-w-0 flex-1 gap-0.5">
-            <Text className="text-[15px] font-semibold text-foreground">
-              {entry.term}
+          <Pressable
+            accessibilityLabel={`View details for ${entry.term}`}
+            accessibilityRole="button"
+            className="min-w-0 flex-1 flex-row items-center gap-3 active:opacity-60"
+            onPress={() => openEntry(entry)}
+          >
+            <Text className="w-6 text-xs font-bold tabular-nums text-muted-foreground">
+              {index + 1}
             </Text>
-            <Text className="text-xs leading-4 text-muted-foreground">
-              {entry.definition}
-            </Text>
-          </View>
+            <View className="min-w-0 flex-1 gap-0.5">
+              <Text className="text-[15px] font-semibold text-foreground">
+                {entry.term}
+              </Text>
+              <Text className="text-xs leading-4 text-muted-foreground">
+                {entry.definition}
+              </Text>
+            </View>
+            {entry.imageAsset ? (
+              <EntryImage assetId={entry.imageAsset.id} variant="list" />
+            ) : null}
+          </Pressable>
           {entry.audioAsset ? (
-            <WordSpeakerButton
+            <VocabularyAudioButton
               assetId={entry.audioAsset.id}
               entryId={entry.id}
               onSpeak={setSpeakingId}
               speakingId={speakingId}
             />
           ) : null}
-          {entry.imageAsset ? (
-            <EntryImage assetId={entry.imageAsset.id} variant="list" />
-          ) : null}
         </View>
       ),
-    [speakingId, total, viewMode],
+    [openEntry, speakingId, total, viewMode],
   );
 
   return (

@@ -1,5 +1,6 @@
 import { organizationRoles } from "~/lib/access";
 import { requireOrganizationRole } from "~/server/auth/dal";
+import { getSession } from "~/server/better-auth/server";
 import { api } from "~/trpc/server";
 import { StudioDashboard } from "./studio-dashboard";
 
@@ -24,6 +25,7 @@ async function TeacherDashboard({
   organizationSlug: string;
 }) {
   const { organizationId, organization } = membership;
+  const session = await getSession();
   const [courses, cohortsPage, materials, reviewQueue] = await Promise.all([
     api.course.list({ organizationId }),
     api.cohort.listForCurrentMember({
@@ -45,6 +47,9 @@ async function TeacherDashboard({
     <StudioDashboard
       data={{
         name: organization.name,
+        organizationLogoUrl: organization.logoUrl,
+        userName: session?.user.name ?? "",
+        userImage: session?.user.image ?? null,
         role: "Pengajar",
         root,
         canCreateCourse:
@@ -103,6 +108,7 @@ export default async function DashboardPage({
     );
   }
   const { organizationId, organization, role } = membership;
+  const session = await getSession();
   const [analytics, courses, cohortsPage, activity] = await Promise.all([
     api.organization.getDashboardAnalytics({ organizationId }),
     api.course.list({ organizationId }),
@@ -115,6 +121,9 @@ export default async function DashboardPage({
     <StudioDashboard
       data={{
         name: organization.name,
+        organizationLogoUrl: organization.logoUrl,
+        userName: session?.user.name ?? "",
+        userImage: session?.user.image ?? null,
         role: role === "OWNER" ? "Pemilik" : "Admin",
         root,
         canCreateCourse: true,

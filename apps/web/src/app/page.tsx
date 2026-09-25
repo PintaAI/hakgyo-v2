@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRightIcon,
   BookOpenCheckIcon,
   CheckIcon,
   ClipboardCheckIcon,
-  GraduationCapIcon,
   Layers3Icon,
   UsersRoundIcon,
   VideoIcon,
@@ -84,8 +84,15 @@ export default function Home() {
             className="group flex items-center gap-3 font-bold tracking-tight"
             aria-label="Hakgyo, beranda"
           >
-            <span className="bg-primary text-primary-foreground grid size-10 place-items-center rounded-[0.9rem] shadow-lg transition-transform group-hover:-rotate-6">
-              <GraduationCapIcon className="size-5" aria-hidden="true" />
+            <span className="grid size-10 place-items-center overflow-hidden rounded-[0.9rem] shadow-lg transition-transform group-hover:-rotate-6">
+              <Image
+                src="/icons/icon-192.png"
+                alt=""
+                width={40}
+                height={40}
+                className="size-10"
+                priority
+              />
             </span>
             <span className="text-xl">hakgyo</span>
           </Link>
@@ -381,7 +388,13 @@ export default function Home() {
 
       <section className="px-5 pb-24 sm:px-8 sm:pb-32 lg:px-10">
         <div className="bg-primary text-primary-foreground mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] px-6 py-14 text-center sm:px-12 sm:py-20">
-          <GraduationCapIcon className="mx-auto size-9" aria-hidden="true" />
+          <Image
+            src="/icons/icon-192.png"
+            alt=""
+            width={72}
+            height={72}
+            className="mx-auto size-[4.5rem] rounded-[1.25rem] shadow-lg"
+          />
           <h2 className="mx-auto mt-6 max-w-3xl text-4xl leading-tight font-black tracking-[-0.04em] sm:text-6xl">
             Bangun ruang belajar yang layak dirindukan.
           </h2>

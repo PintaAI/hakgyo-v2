@@ -14,6 +14,15 @@ datasource db {
   provider = "postgresql"
 }
 
+// Incremented by database triggers for mobile-visible content and learner state.
+model MobileSyncRevision {
+  scopeType String
+  scopeId   String
+  revision  BigInt   @default(1)
+
+  @@id([scopeType, scopeId])
+}
+
 model User {
   id                          String                       @id
   name                        String //@db.Text

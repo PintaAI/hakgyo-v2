@@ -1,8 +1,9 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as Network from "expo-network";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo } from "react";
-import { Platform } from "react-native";
+import { useEffect, useMemo, useRef } from "react";
+import { AppState, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -20,6 +21,7 @@ import {
 } from "../src/navigation/screen-transition";
 import {
   MobileSyncProvider,
+  useMobileSync,
   useMobileSyncActions,
 } from "../src/providers/MobileSyncProvider";
 import "../global.css";
@@ -39,6 +41,13 @@ function RootNavigator() {
   // DrawerProvider.navigate); every other navigation uses the default slide.
   const { transition } = useTransitionOverride();
   const { cacheDashboard } = useMobileSyncActions();
+  const { checkForUpdates, pendingCount } = useMobileSync();
+  const automaticSyncRef = useRef({
+    scope: "",
+    nextAttemptAt: 0,
+    failures: 0,
+    running: false,
+  });
   const dashboard = api.mobileSync.getDashboard.useQuery(
     activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
     { enabled: Boolean(session && isHydrated), retry: false },
@@ -53,6 +62,88 @@ function RootNavigator() {
   useEffect(() => {
     if (dashboard.data) cacheDashboard(dashboard.data);
   }, [cacheDashboard, dashboard.data]);
+
+  useEffect(() => {
+    if (!session || !isHydrated) return;
+    const scope = `${session.user.id}:${activeOrganizationId ?? "all"}`;
+    if (automaticSyncRef.current.scope !== scope) {
+      automaticSyncRef.current = {
+        scope,
+        nextAttemptAt: Date.now() + Math.random() * 5000,
+        failures: 0,
+        running: false,
+      };
+    }
+    const state = automaticSyncRef.current;
+    let active = true;
+    const attempt = () => {
+      if (!active || AppState.currentState !== "active" || state.running)
+        return;
+      if (dashboard.isFetching && !dashboard.data && pendingCount === 0) return;
+      const now = Date.now();
+      if (now < state.nextAttemptAt) return;
+      state.running = true;
+      state.nextAttemptAt = now + 15 * 60_000;
+      const backOff = () => {
+        state.failures = Math.min(state.failures + 1, 6);
+        const base = Math.min(60 * 60_000, 15_000 * 2 ** state.failures);
+        state.nextAttemptAt = Date.now() + base + Math.random() * base;
+      };
+      void checkForUpdates(activeOrganizationId ?? undefined)
+        .then((result) => {
+          if (!active) return;
+          if (result.state === "queued") {
+            backOff();
+          } else {
+            state.failures = 0;
+            state.nextAttemptAt =
+              Date.now() + 15 * 60_000 + Math.random() * 60_000;
+          }
+        })
+        .catch(() => {
+          if (active) backOff();
+        })
+        .finally(() => {
+          state.running = false;
+        });
+    };
+    const timer = setInterval(attempt, 30_000);
+    const startup = setTimeout(
+      attempt,
+      Math.max(0, state.nextAttemptAt - Date.now()),
+    );
+    const appSubscription = AppState.addEventListener("change", (next) => {
+      if (next === "active") attempt();
+    });
+    let wasOffline = false;
+    const networkSubscription = Network.addNetworkStateListener((next) => {
+      const online =
+        next.isConnected !== false && next.isInternetReachable !== false;
+      if (online && wasOffline) {
+        state.nextAttemptAt = Math.min(
+          state.nextAttemptAt,
+          Date.now() + Math.random() * 5000,
+        );
+        setTimeout(attempt, 5000);
+      }
+      wasOffline = !online;
+    });
+    return () => {
+      active = false;
+      clearTimeout(startup);
+      clearInterval(timer);
+      appSubscription.remove();
+      networkSubscription.remove();
+    };
+  }, [
+    activeOrganizationId,
+    checkForUpdates,
+    dashboard.data,
+    dashboard.isFetching,
+    isHydrated,
+    pendingCount,
+    session,
+  ]);
 
   const navigationTheme = useMemo(() => {
     const baseNavigationTheme =
@@ -185,6 +276,33 @@ function RootNavigator() {
                 options={{ animation: transition }}
               />
               <Stack.Screen name="vocabulary/[vocabularySetId]" />
+              <Stack.Screen
+                name="vocabulary/[vocabularySetId]/items/[entryId]"
+                options={Platform.select({
+                  ios: {
+                    presentation: "formSheet",
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.background },
+                    sheetAllowedDetents: [0.55, 0.9],
+                    sheetInitialDetentIndex: 0,
+                    sheetCornerRadius: 28,
+                    sheetGrabberVisible: true,
+                    sheetExpandsWhenScrolledToEdge: true,
+                  },
+                  default: {
+                    presentation: "formSheet",
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.background },
+                    sheetAllowedDetents: [0.55, 0.9],
+                    sheetInitialDetentIndex: 0,
+                    sheetCornerRadius: 28,
+                    sheetElevation: 24,
+                    sheetGrabberVisible: true,
+                    sheetExpandsWhenScrolledToEdge: true,
+                    sheetLargestUndimmedDetentIndex: "none",
+                  },
+                })}
+              />
               <Stack.Screen
                 name="games/[gameKey]"
                 options={{ headerShown: false }}

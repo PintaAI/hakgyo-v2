@@ -230,13 +230,13 @@ export default function ProfileTab() {
 
           <SettingsSection title="Updates">
             <SettingsRow
-              label="Sync learning progress"
+              label="Sync lessons and progress"
               detail={
                 isSyncing
                   ? "Syncing…"
                   : pendingCount
-                    ? `${pendingCount} checkpoint${pendingCount === 1 ? "" : "s"} waiting`
-                    : "Up to date on this device"
+                    ? `${pendingCount} change${pendingCount === 1 ? "" : "s"} waiting to sync`
+                    : "Available offline; checks for updates automatically"
               }
               symbol="arrow.triangle.2.circlepath"
               fallback="↻"

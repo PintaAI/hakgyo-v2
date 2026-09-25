@@ -59,6 +59,7 @@ export function dashboardVocabularyPractice(
       term: entry.term,
       definition: entry.definition,
       examples: entry.examples,
+      audioAssetId: entry.audioAsset?.id ?? null,
       imageAssetId: entry.imageAsset?.id ?? null,
     })),
     courseId: source.embeddedResources.courseId,

@@ -18,12 +18,19 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Material = RouterOutputs["content"]["listMaterials"][number];
 type Scope = "all" | "unused" | `course:${string}`;
 type Sort = "updated-desc" | "updated-asc" | "title-asc";
+
+const sortLabels: Record<Sort, string> = {
+  "updated-desc": "Terakhir diperbarui",
+  "updated-asc": "Paling lama diperbarui",
+  "title-asc": "Judul A-Z",
+};
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -208,16 +215,27 @@ export function MaterialLibrary({
                   value={search}
                 />
               </div>
-              <select
-                aria-label="Urutkan materi"
-                className="border-input bg-background focus-visible:ring-ring h-9 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-2"
-                onChange={(event) => setSort(event.target.value as Sort)}
+              <Select
                 value={sort}
+                onValueChange={(value) => {
+                  if (value) setSort(value);
+                }}
               >
-                <option value="updated-desc">Terakhir diperbarui</option>
-                <option value="updated-asc">Paling lama diperbarui</option>
-                <option value="title-asc">Judul A-Z</option>
-              </select>
+                <SelectTrigger aria-label="Urutkan materi">
+                  <span className="flex flex-1 text-left">
+                    {sortLabels[sort]}
+                  </span>
+                </SelectTrigger>
+                <SelectContent align="end">
+                  {(
+                    Object.keys(sortLabels) as Array<Sort>
+                  ).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {sortLabels[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="mb-3 flex items-center justify-between gap-3">

@@ -2,22 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  LoaderCircleIcon,
-  PaletteIcon,
-  RotateCcwIcon,
-  SparklesIcon,
-} from "lucide-react";
+import { PaletteIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "~/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { CenteredImageUpload } from "~/components/ui/centered-image-upload";
 import { Switch } from "~/components/ui/switch";
 import { createOrganizationThemeTokens } from "@hakgyo/shared";
 import { parseOrganizationTheme } from "~/lib/organization-theme";
@@ -32,7 +21,7 @@ function errorMessage(error: unknown) {
   ) {
     return error.message;
   }
-  return "Tema belum berhasil dibuat. Silakan coba lagi.";
+  return "Tema belum berhasil diperbarui. Silakan coba lagi.";
 }
 
 function ColorValue({ label, value }: { label: string; value: string }) {
@@ -54,49 +43,35 @@ function ColorValue({ label, value }: { label: string; value: string }) {
 }
 
 export function OrganizationThemeSettings({
+  accept,
   enabled,
+  logoBusy,
+  logoName,
   logoUrl,
+  onRemoveLogo,
+  onUploadLogo,
   organizationId,
   theme: rawTheme,
 }: {
+  accept: string;
   enabled: boolean;
+  logoBusy: boolean;
+  logoName: string;
   logoUrl: string | null;
+  onRemoveLogo: () => Promise<void>;
+  onUploadLogo: (file: File) => Promise<void>;
   organizationId: string;
   theme: unknown;
 }) {
   const router = useRouter();
   const utils = api.useUtils();
-  const generateTheme = api.organization.generateTheme.useMutation();
-  const resetTheme = api.organization.resetTheme.useMutation();
   const setThemeEnabled = api.organization.setThemeEnabled.useMutation();
   const theme = parseOrganizationTheme(rawTheme);
   const [themeActive, setThemeActive] = useState(enabled);
-  const busy =
-    generateTheme.isPending ||
-    resetTheme.isPending ||
-    setThemeEnabled.isPending;
-
-  async function handleGenerate() {
-    try {
-      await generateTheme.mutateAsync({ organizationId });
-      setThemeActive(true);
-      await utils.organization.get.invalidate({ organizationId });
-      router.refresh();
-      toast.success("Tema organisasi dibuat dan langsung disimpan.");
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
-  }
-
-  async function handleReset() {
-    try {
-      await resetTheme.mutateAsync({ organizationId });
-      await utils.organization.get.invalidate({ organizationId });
-      router.refresh();
-      toast.success("Tema organisasi dikembalikan ke default.");
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
+  const [prevEnabled, setPrevEnabled] = useState(enabled);
+  if (prevEnabled !== enabled) {
+    setPrevEnabled(enabled);
+    setThemeActive(enabled);
   }
 
   async function handleEnabledChange(nextEnabled: boolean) {
@@ -127,22 +102,49 @@ export function OrganizationThemeSettings({
             <SparklesIcon className="size-4" />
           </span>
           <div className="grid gap-1">
-            <CardTitle>Tema dari logo dengan AI</CardTitle>
+            <CardTitle>Logo &amp; tema</CardTitle>
             <CardDescription>
-              AI memilih empat warna dasar dari logo. Sistem membuat seluruh
-              warna antarmuka untuk mode terang dan gelap secara otomatis,
-              dengan palet yang sama di web dan mobile.
+              Logo tampil di seluruh workspace dan menjadi sumber warna tema
+              untuk mode terang dan gelap di web dan mobile.
             </CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="grid gap-5 pt-5">
+        <CenteredImageUpload
+          id="organization-logo"
+          value={logoUrl}
+          alt={`Logo ${logoName}`}
+          accept={accept}
+          busy={logoBusy}
+          onUpload={onUploadLogo}
+          onRemove={onRemoveLogo}
+          previewClassName="aspect-square w-20 rounded-xl"
+          placeholder={
+            <span className="text-xl font-semibold">
+              {logoName.charAt(0).toUpperCase()}
+            </span>
+          }
+          uploadLabel="Unggah logo"
+          replaceLabel="Ganti logo"
+        />
+
         {!logoUrl ? (
           <div className="bg-muted/50 flex items-start gap-3 rounded-xl border p-4">
             <PaletteIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
             <p className="text-muted-foreground text-sm">
-              Unggah logo organisasi di atas terlebih dahulu. Logo menjadi
-              sumber warna untuk tema.
+              Unggah logo organisasi terlebih dahulu. Tema akan dibuat otomatis
+              dari logo tersebut.
+            </p>
+          </div>
+        ) : null}
+
+        {logoUrl && !theme ? (
+          <div className="bg-muted/50 flex items-start gap-3 rounded-xl border p-4">
+            <PaletteIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+            <p className="text-muted-foreground text-sm">
+              Belum ada tema tersimpan. Unggah ulang logo untuk membuat tema
+              secara otomatis.
             </p>
           </div>
         ) : null}
@@ -151,7 +153,7 @@ export function OrganizationThemeSettings({
           <div className="grid overflow-hidden rounded-xl border lg:grid-cols-[1fr_1.15fr]">
             <div className="col-span-full flex items-center justify-between gap-4 border-b p-4">
               <div className="grid gap-1">
-                <p className="text-sm font-medium">Gunakan tema organisasi</p>
+                <p className="text-sm font-medium">Aktifkan tema organisasi</p>
                 <p className="text-muted-foreground text-xs">
                   {themeActive
                     ? "Tema tersimpan sedang diterapkan ke seluruh workspace."
@@ -159,9 +161,9 @@ export function OrganizationThemeSettings({
                 </p>
               </div>
               <Switch
-                aria-label="Gunakan tema organisasi"
+                aria-label="Aktifkan tema organisasi"
                 checked={themeActive}
-                disabled={busy}
+                disabled={setThemeEnabled.isPending}
                 onCheckedChange={(checked) => void handleEnabledChange(checked)}
               />
             </div>
@@ -257,31 +259,6 @@ export function OrganizationThemeSettings({
             })}
           </div>
         ) : null}
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button disabled={!logoUrl || busy} onClick={handleGenerate}>
-            {generateTheme.isPending ? (
-              <LoaderCircleIcon className="animate-spin" />
-            ) : (
-              <SparklesIcon />
-            )}
-            {theme ? "Buat ulang dari logo" : "Buat tema dari logo"}
-          </Button>
-          {theme ? (
-            <Button disabled={busy} onClick={handleReset} variant="outline">
-              {resetTheme.isPending ? (
-                <LoaderCircleIcon className="animate-spin" />
-              ) : (
-                <RotateCcwIcon />
-              )}
-              Hapus tema tersimpan
-            </Button>
-          ) : null}
-          <p className="text-muted-foreground max-w-lg text-xs">
-            Logo dikirim ke OpenAI hanya saat tombol ini ditekan. Membuat tema
-            baru akan mengganti tema organisasi yang tersimpan.
-          </p>
-        </div>
       </CardContent>
     </Card>
   );

@@ -49,7 +49,12 @@ type MobileSyncContextValue = {
     answers: AssessmentSyncAnswer[];
     organizationId?: string;
   }) => Promise<SyncCheckpointResult>;
-  syncNow: (organizationId?: string) => Promise<SyncCheckpointResult>;
+  syncNow: (
+    organizationId?: string,
+  ) => ReturnType<ReturnType<typeof createMobileSyncEngine>["checkForUpdates"]>;
+  checkForUpdates: (
+    organizationId?: string,
+  ) => ReturnType<ReturnType<typeof createMobileSyncEngine>["checkForUpdates"]>;
   clearLocalDataAndResync: (
     organizationId?: string,
   ) => Promise<SyncCheckpointResult>;
@@ -189,6 +194,8 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       store: sqliteMobileSyncStore,
       transport: {
         commit: (input) => utils.client.mobileSync.commit.mutate(input),
+        getRevision: (input) =>
+          utils.client.mobileSync.getRevision.query(input),
       },
       isOnline: async () => {
         const state = await Network.getNetworkStateAsync();
@@ -197,6 +204,10 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         );
       },
       applyDashboard,
+      getCachedDashboard: (organizationId) =>
+        utils.mobileSync.getDashboard.getData(
+          organizationId ? { organizationId } : undefined,
+        ),
       onPendingCountChange: setPendingCount,
     });
     engineRef.current = engine;
@@ -215,6 +226,7 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     queryClient,
     userId,
     utils.client.mobileSync.commit,
+    utils.client.mobileSync.getRevision,
   ]);
 
   const checkpoint = useCallback(
@@ -320,7 +332,21 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         });
         return checkpoint(organizationId);
       },
-      syncNow: checkpoint,
+      syncNow: async (organizationId) => {
+        const engine = engineRef.current;
+        if (!engine) return { state: "queued", reason: "unavailable" };
+        setIsSyncing(true);
+        try {
+          return await engine.checkForUpdates(organizationId);
+        } finally {
+          setIsSyncing(false);
+        }
+      },
+      checkForUpdates: async (organizationId) => {
+        const engine = engineRef.current;
+        if (!engine) return { state: "queued", reason: "unavailable" };
+        return engine.checkForUpdates(organizationId);
+      },
       clearLocalDataAndResync,
     }),
     [applyDashboard, checkpoint, clearLocalDataAndResync],
