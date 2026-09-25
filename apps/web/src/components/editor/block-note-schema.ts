@@ -9,6 +9,7 @@ import {
   cultureBlockType,
   grammarBlockType,
   lessonPageBlockType,
+  pdfPagesBlockType,
   vocabularyReferenceBlockType,
 } from "~/lib/blocknote/block-catalog";
 
@@ -18,6 +19,7 @@ import { conversationBlock } from "./blocks/conversation-block";
 import { cultureBlock } from "./blocks/culture-block";
 import { grammarBlock } from "./blocks/grammar-block";
 import { lessonPageBlock } from "./blocks/lesson-page-block";
+import { pdfPagesBlock } from "./blocks/pdf-pages-block";
 import {
   assessmentReferenceBlock,
   vocabularyReferenceBlock,
@@ -35,6 +37,7 @@ export const hakgyoBlockNoteSchema = BlockNoteSchema.create({
     [grammarBlockType]: grammarBlock,
     [vocabularyReferenceBlockType]: vocabularyReferenceBlock,
     [assessmentReferenceBlockType]: assessmentReferenceBlock,
+    [pdfPagesBlockType]: pdfPagesBlock,
   },
 });
 

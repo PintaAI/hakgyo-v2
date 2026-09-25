@@ -21,6 +21,7 @@ type ContentRendererContextValue = {
   renderers: Readonly<Record<string, ContentBlockRenderer>>;
   resourceReferences?: ResourceReferenceData;
   resolveAssetUrl?: AssetUrlResolver;
+  onReadingProgress?: (key: string, finished: boolean) => void;
 };
 
 const ContentRendererContext =
@@ -35,11 +36,13 @@ export function ContentRendererProvider({
   children,
   onOpenUrl,
   onOpenResource,
+  onReadingProgress,
   renderers,
   resourceReferences,
   resolveAssetUrl,
 }: {
   children: ReactNode;
+  onReadingProgress?: (key: string, finished: boolean) => void;
   onOpenUrl?: (url: string) => void | Promise<void>;
   onOpenResource?: (
     type: ResourceReferenceType,
@@ -56,6 +59,7 @@ export function ContentRendererProvider({
       colors,
       onOpenUrl: onOpenUrl ?? openExternalUrl,
       onOpenResource,
+      onReadingProgress,
       renderers,
       resourceReferences,
       resolveAssetUrl,
@@ -63,6 +67,7 @@ export function ContentRendererProvider({
     [
       colors,
       onOpenResource,
+      onReadingProgress,
       onOpenUrl,
       renderers,
       resourceReferences,

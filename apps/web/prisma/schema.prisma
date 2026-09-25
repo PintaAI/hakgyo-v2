@@ -18,7 +18,7 @@ datasource db {
 model MobileSyncRevision {
   scopeType String
   scopeId   String
-  revision  BigInt   @default(1)
+  revision  BigInt @default(1)
 
   @@id([scopeType, scopeId])
 }
@@ -420,6 +420,11 @@ enum CohortMeetingStatus {
   CANCELLED
 }
 
+enum PdfBookStatus {
+  PROCESSING
+  READY
+}
+
 enum CourseItemType {
   MATERIAL
   ASSESSMENT
@@ -542,6 +547,7 @@ model Organization {
   vocabularySets         VocabularySet[]
   zoomConnection         ZoomConnection?
   assets                 Asset[]
+  pdfBooks               PdfBook[]
   activityEvents         UserActivityEvent[]
   notifications          Notification[]
   sidebarSeen            LearnerSidebarSeen[]
@@ -586,6 +592,7 @@ model OrganizationMember {
   assessmentEventAudits        AssessmentEventAudit[]       @relation("AssessmentEventAuditActor")
   invalidatedEventParticipants AssessmentEventParticipant[] @relation("AssessmentEventParticipantInvalidator")
   sentOrganizationInvites      OrganizationInvite[]         @relation("OrganizationInviteSender")
+  createdPdfBooks              PdfBook[]                    @relation("PdfBookCreator")
 
   @@unique([organizationId, userId])
   @@unique([id, organizationId])
@@ -1200,10 +1207,54 @@ model Asset {
   assessments           AssessmentAsset[]
   vocabularyEntries     VocabularyEntry[] @relation("VocabularyEntryAudio")
   vocabularyEntryImages VocabularyEntry[] @relation("VocabularyEntryImage")
+  pdfBookPage           PdfBookPage?      @relation("PdfBookPageImage")
+  pdfBookThumbnail      PdfBookPage?      @relation("PdfBookPageThumbnail")
 
   @@unique([id, organizationId])
   @@index([organizationId, deletedAt])
   @@index([uploadedByUserId, deletedAt])
+}
+
+// An uploaded PDF book rendered to page images in the author's browser.
+// Books are immutable once READY; lessons reference page ranges through the
+// pdfPages BlockNote block, and MaterialAsset links grant learners access.
+model PdfBook {
+  id                    String             @id @default(cuid())
+  organizationId        String
+  createdByMembershipId String
+  title                 String
+  fileName              String
+  pageCount             Int
+  // Number of PDF pages before printed page 1 (covers, table of contents).
+  pageOffset            Int                @default(0)
+  status                PdfBookStatus      @default(PROCESSING)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy             OrganizationMember @relation("PdfBookCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  pages                 PdfBookPage[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+}
+
+model PdfBookPage {
+  bookId           String
+  pageNumber       Int
+  organizationId   String
+  assetId          String  @unique
+  thumbnailAssetId String  @unique
+  width            Int
+  height           Int
+  // Extracted text layer, kept for search and AI-assisted drafting.
+  text             String?
+  book             PdfBook @relation(fields: [bookId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  asset            Asset   @relation("PdfBookPageImage", fields: [assetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  thumbnailAsset   Asset   @relation("PdfBookPageThumbnail", fields: [thumbnailAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([bookId, pageNumber])
+  @@unique([assetId, organizationId])
+  @@unique([thumbnailAssetId, organizationId])
 }
 
 model AssessmentAsset {

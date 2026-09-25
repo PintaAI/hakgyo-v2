@@ -24,6 +24,7 @@ import {
   MessagesSquareIcon,
   NotebookTabsIcon,
   ClipboardCheckIcon,
+  FileStackIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,6 +37,7 @@ import {
   cultureBlockType,
   grammarBlockType,
   lessonPageBlockType,
+  pdfPagesBlockType,
   vocabularyReferenceBlockType,
 } from "~/lib/blocknote/block-catalog";
 import { getCultureAssetIds } from "~/lib/blocknote/culture-content";
@@ -53,6 +55,7 @@ import {
   type HakgyoPartialBlock,
 } from "./block-note-schema";
 import { DynamicLearnerBlockNoteDocument } from "./dynamic-learner-block-note-document";
+import { PdfBookProvider } from "./pdf-book-context";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
 import { api } from "~/trpc/react";
 import {
@@ -344,6 +347,23 @@ export function BlockNoteEditor({
           content: "Tambahkan tip belajar yang mudah diingat...",
         }),
     },
+    // PDF pages are lesson content: page access is granted through the material.
+    ...(resourceLibrary
+      ? [
+          {
+            title: "Halaman buku PDF",
+            subtext:
+              "Tampilkan rentang halaman dari buku PDF yang sudah diunggah.",
+            aliases: ["pdf", "buku", "book", "halaman", "page", "ebook"],
+            group: "Media Hakgyo",
+            icon: <FileStackIcon className="size-4" />,
+            onItemClick: () =>
+              insertOrUpdateBlockForSlashMenu(editor, {
+                type: pdfPagesBlockType,
+              }),
+          },
+        ]
+      : []),
     ...(uploadAsset
       ? [
           {
@@ -362,62 +382,68 @@ export function BlockNoteEditor({
     ...getDefaultReactSlashMenuItems(editor),
   ];
 
+  const organizationId = resourceLibrary?.organizationId;
+
   return (
-    <ResourceReferenceProvider editorLibrary={resourceLibrary}>
-      <BlockPreviewProvider
-        previewBlock={(block) => setPreviewBlock(block as HakgyoBlock)}
-      >
-        <AssetUploadProvider
-          value={
-            uploadAsset ? { upload: uploadAsset, remove: removeAsset } : null
-          }
+    <PdfBookProvider
+      value={organizationId ? { mode: "editor", organizationId } : null}
+    >
+      <ResourceReferenceProvider editorLibrary={resourceLibrary}>
+        <BlockPreviewProvider
+          previewBlock={(block) => setPreviewBlock(block as HakgyoBlock)}
         >
-          <BlockNoteView
-            autoFocus={autoFocus}
-            editable={editable}
-            editor={editor}
-            onChange={() => {
-              const currentAssetIds = collectAssetIds(editor.document);
-              if (removeAsset) {
-                for (const assetId of assetIdsRef.current) {
-                  if (!currentAssetIds.has(assetId)) {
-                    void removeAsset(assetId).catch(() =>
-                      toast.error("File gagal dihapus dari penyimpanan."),
-                    );
+          <AssetUploadProvider
+            value={
+              uploadAsset ? { upload: uploadAsset, remove: removeAsset } : null
+            }
+          >
+            <BlockNoteView
+              autoFocus={autoFocus}
+              editable={editable}
+              editor={editor}
+              onChange={() => {
+                const currentAssetIds = collectAssetIds(editor.document);
+                if (removeAsset) {
+                  for (const assetId of assetIdsRef.current) {
+                    if (!currentAssetIds.has(assetId)) {
+                      void removeAsset(assetId).catch(() =>
+                        toast.error("File gagal dihapus dari penyimpanan."),
+                      );
+                    }
                   }
                 }
-              }
-              assetIdsRef.current = currentAssetIds;
-              onChange?.(editor.document);
-            }}
-            slashMenu={false}
-            theme={theme}
-          >
-            <SuggestionMenuController
-              getItems={async (query) =>
-                filterSuggestionItems(slashMenuItems(editor), query)
-              }
-              triggerCharacter="/"
-            />
-          </BlockNoteView>
-        </AssetUploadProvider>
-
-        <Dialog
-          onOpenChange={(open) => {
-            if (!open) setPreviewBlock(null);
-          }}
-          open={previewBlock !== null}
-        >
-          <DialogContent className="bg-background h-[min(52rem,calc(100svh-2rem))] gap-0 overflow-y-auto p-0 sm:max-w-5xl">
-            {previewBlock ? (
-              <DynamicLearnerBlockNoteDocument
-                content={[previewBlock]}
-                theme={theme}
+                assetIdsRef.current = currentAssetIds;
+                onChange?.(editor.document);
+              }}
+              slashMenu={false}
+              theme={theme}
+            >
+              <SuggestionMenuController
+                getItems={async (query) =>
+                  filterSuggestionItems(slashMenuItems(editor), query)
+                }
+                triggerCharacter="/"
               />
-            ) : null}
-          </DialogContent>
-        </Dialog>
-      </BlockPreviewProvider>
-    </ResourceReferenceProvider>
+            </BlockNoteView>
+          </AssetUploadProvider>
+
+          <Dialog
+            onOpenChange={(open) => {
+              if (!open) setPreviewBlock(null);
+            }}
+            open={previewBlock !== null}
+          >
+            <DialogContent className="bg-background h-[min(52rem,calc(100svh-2rem))] gap-0 overflow-y-auto p-0 sm:max-w-5xl">
+              {previewBlock ? (
+                <DynamicLearnerBlockNoteDocument
+                  content={[previewBlock]}
+                  theme={theme}
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
+        </BlockPreviewProvider>
+      </ResourceReferenceProvider>
+    </PdfBookProvider>
   );
 }

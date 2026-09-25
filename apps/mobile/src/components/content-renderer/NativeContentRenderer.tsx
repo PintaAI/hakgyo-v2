@@ -13,6 +13,7 @@ export function NativeContentRenderer({
   emptyState,
   onOpenUrl,
   onOpenResource,
+  onReadingProgress,
   renderers,
   resourceReferences,
   resolveAssetUrl,
@@ -31,6 +32,7 @@ export function NativeContentRenderer({
     <ContentRendererProvider
       onOpenUrl={onOpenUrl}
       onOpenResource={onOpenResource}
+      onReadingProgress={onReadingProgress}
       renderers={rendererMap}
       resourceReferences={resourceReferences}
       resolveAssetUrl={resolveAssetUrl}

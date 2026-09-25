@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { collectPdfPageRanges, formatPdfPageRange } from "@hakgyo/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -27,9 +28,11 @@ import {
   BookOpenIcon,
   CheckCircle2Icon,
   CircleOffIcon,
+  FileStackIcon,
   FileTextIcon,
   GripVerticalIcon,
   Layers3Icon,
+  LightbulbIcon,
   ListChecksIcon,
   LoaderCircleIcon,
   PencilIcon,
@@ -61,7 +64,12 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
@@ -118,6 +126,25 @@ function resourceTitle(
   }
   return vocabularySets.find((resource) => resource.id === item.vocabularySetId)
     ?.title;
+}
+
+/** "PDF · Hal. 24–31" for lessons built from PDF book pages. */
+function pdfLessonLabel(
+  item: CourseItem,
+  materials: Material[],
+  pageOffsets: ReadonlyMap<string, number>,
+) {
+  if (item.type !== "MATERIAL") return null;
+  const material = materials.find(({ id }) => id === item.materialId);
+  const ranges = collectPdfPageRanges(material?.content);
+  const first = ranges[0];
+  if (!first) return null;
+  const label = formatPdfPageRange(
+    first.startPage,
+    first.endPage,
+    pageOffsets.get(first.bookId) ?? 0,
+  );
+  return `PDF · ${label}${ranges.length > 1 ? ` +${ranges.length - 1}` : ""}`;
 }
 
 function resourceHref(
@@ -193,6 +220,13 @@ export function KurikulumEditor({
   const updateItem = api.content.updateItem.useMutation();
   const deleteModule = api.content.deleteModule.useMutation();
   const deleteItem = api.content.deleteItem.useMutation();
+  const pdfBooks = api.pdfBook.list.useQuery({
+    organizationId: course.organizationId,
+  });
+  const pageOffsets = new Map(
+    (pdfBooks.data ?? []).map((book) => [book.id, book.pageOffset]),
+  );
+  const importPdfHref = `/workspace/${organizationSlug}/courses/${course.id}/kurikulum/impor-pdf`;
   if (course.modules !== modulesSource) {
     setModulesSource(course.modules);
     setModules(course.modules);
@@ -397,6 +431,13 @@ export function KurikulumEditor({
               </SelectContent>
             </Select>
           </div>
+          <Link
+            href={importPdfHref}
+            className={buttonVariants({ variant: "outline" })}
+          >
+            <FileStackIcon data-icon="inline-start" />
+            Buat dari PDF
+          </Link>
           <Button onClick={() => setModuleDialog({ open: true })}>
             <PlusIcon data-icon="inline-start" />
             Tambah bab
@@ -417,24 +458,42 @@ export function KurikulumEditor({
       </section>
 
       {modules.length === 0 ? (
-        <div className="rounded-xl border border-dashed px-5 py-16 text-center">
-          <span className="bg-muted mx-auto flex size-12 items-center justify-center rounded-full">
-            <Layers3Icon className="text-muted-foreground size-5" />
-          </span>
-          <h2 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
-            Mulai dengan bab pertama
-          </h2>
-          <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm leading-relaxed">
-            Bab mengelompokkan learning item dan menentukan urutan yang dijalani
-            siswa.
-          </p>
-          <Button
-            className="mt-5"
-            onClick={() => setModuleDialog({ open: true })}
-          >
-            <PlusIcon data-icon="inline-start" />
-            Buat bab
-          </Button>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col items-center rounded-xl border border-dashed px-5 py-12 text-center">
+            <span className="bg-muted flex size-12 items-center justify-center rounded-full">
+              <Layers3Icon className="text-muted-foreground size-5" />
+            </span>
+            <h2 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
+              Mulai dari nol
+            </h2>
+            <p className="text-muted-foreground mt-2 max-w-xs text-sm leading-relaxed">
+              Buat bab, lalu susun materi, kosakata, dan assessment dengan
+              editor Hakgyo.
+            </p>
+            <Button
+              className="mt-5"
+              onClick={() => setModuleDialog({ open: true })}
+            >
+              <PlusIcon data-icon="inline-start" />
+              Buat bab
+            </Button>
+          </div>
+          <div className="flex flex-col items-center rounded-xl border border-dashed px-5 py-12 text-center">
+            <span className="bg-muted flex size-12 items-center justify-center rounded-full">
+              <FileStackIcon className="text-muted-foreground size-5" />
+            </span>
+            <h2 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
+              Impor dari buku PDF
+            </h2>
+            <p className="text-muted-foreground mt-2 max-w-xs text-sm leading-relaxed">
+              Sudah punya buku sendiri? Unggah PDF dan petakan halamannya ke
+              setiap bab dalam beberapa menit.
+            </p>
+            <Link href={importPdfHref} className={cn(buttonVariants(), "mt-5")}>
+              <FileStackIcon data-icon="inline-start" />
+              Impor PDF
+            </Link>
+          </div>
         </div>
       ) : (
         <DndContext
@@ -458,6 +517,7 @@ export function KurikulumEditor({
                   isItemUpdatePending={updateItem.isPending}
                   isReordering={isReordering}
                   materials={materials}
+                  pageOffsets={pageOffsets}
                   assessments={assessments}
                   courseId={course.id}
                   organizationSlug={organizationSlug}
@@ -552,6 +612,7 @@ function SortableModuleCard({
   isReordering,
   isItemUpdatePending,
   materials,
+  pageOffsets,
   assessments,
   organizationSlug,
   vocabularySets,
@@ -567,6 +628,7 @@ function SortableModuleCard({
   isReordering: boolean;
   isItemUpdatePending: boolean;
   materials: Material[];
+  pageOffsets: ReadonlyMap<string, number>;
   assessments: Assessment[];
   organizationSlug: string;
   vocabularySets: VocabularySet[];
@@ -589,6 +651,12 @@ function SortableModuleCard({
     data: { kind: "module" },
   });
   const style = { transform: CSS.Transform.toString(transform), transition };
+  const hasPdfLesson = module.items.some((item) =>
+    Boolean(pdfLessonLabel(item, materials, pageOffsets)),
+  );
+  const hasPractice = module.items.some(
+    (item) => item.type === "VOCABULARY_SET" || item.type === "ASSESSMENT",
+  );
 
   return (
     <li
@@ -664,6 +732,7 @@ function SortableModuleCard({
                   resourceTitle(item, materials, assessments, vocabularySets) ??
                   "Resource tidak tersedia"
                 }
+                pdfLabel={pdfLessonLabel(item, materials, pageOffsets)}
                 onTogglePublished={onTogglePublished}
                 onDeleteItem={() => onDeleteItem(item)}
               />
@@ -675,6 +744,19 @@ function SortableModuleCard({
           Bab ini belum memiliki learning item.
         </div>
       )}
+      {hasPdfLesson && !hasPractice ? (
+        <div className="flex flex-wrap items-center gap-2 border-t bg-amber-500/5 px-4 py-2.5 text-xs sm:px-5">
+          <LightbulbIcon className="size-3.5 shrink-0 text-amber-600" />
+          <span className="text-muted-foreground flex-1">
+            Tambahkan kosakata atau kuis agar siswa bisa berlatih setelah
+            membaca halaman PDF bab ini.
+          </span>
+          <Button size="xs" variant="outline" onClick={onAddItem}>
+            <PlusIcon data-icon="inline-start" />
+            Tambah kosakata atau kuis
+          </Button>
+        </div>
+      ) : null}
       <div className="bg-muted/30 border-t px-4 py-3 sm:px-5">
         <Button size="sm" variant="outline" onClick={onAddItem}>
           <PlusIcon data-icon="inline-start" />
@@ -692,9 +774,11 @@ function SortableItemRow({
   isReordering,
   href,
   title,
+  pdfLabel,
   onTogglePublished,
   onDeleteItem,
 }: {
+  pdfLabel: string | null;
   item: CourseItem;
   moduleId: string;
   isPending: boolean;
@@ -718,7 +802,7 @@ function SortableItemRow({
   });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const meta = itemMeta[item.type];
-  const Icon = meta.icon;
+  const Icon = pdfLabel ? FileStackIcon : meta.icon;
 
   return (
     <li
@@ -755,7 +839,7 @@ function SortableItemRow({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{title}</span>
           <span className="text-muted-foreground mt-0.5 block text-[11px] tracking-wide uppercase">
-            {meta.label}
+            {pdfLabel ?? meta.label}
           </span>
         </span>
       </Link>
@@ -1099,9 +1183,8 @@ function ItemDialog({
               >
                 <SelectTrigger id="item-resource" className="h-10 w-full">
                   <span className="flex min-w-0 flex-1 truncate text-left">
-                    {resources.find(
-                      (resource) => resource.id === resourceId,
-                    )?.title ??
+                    {resources.find((resource) => resource.id === resourceId)
+                      ?.title ??
                       (resources.length === 0
                         ? `Belum ada ${resourceLabel} tersedia`
                         : `Pilih ${resourceLabel}`)}

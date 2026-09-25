@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
+import type { PdfBookResource } from "@hakgyo/shared";
+
 import { api } from "~/trpc/react";
 
 export type VocabularyReferenceResource = {
@@ -33,6 +35,7 @@ export type LearnerReferenceResources = {
   sourceCourseItemId: string;
   vocabularySets: VocabularyReferenceResource[];
   assessments: AssessmentReferenceResource[];
+  pdfBooks?: PdfBookResource[];
 };
 
 export type EditorResourceLibrary = {

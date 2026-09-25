@@ -1,3 +1,4 @@
+import type { PdfBookResource } from "@hakgyo/shared";
 import type { ComponentType, ReactNode } from "react";
 
 export type ContentBlock = {
@@ -47,6 +48,7 @@ export type ResourceReferenceData = {
     questionCount: number;
     courseItemId: string | null;
   }>;
+  pdfBooks?: PdfBookResource[];
 };
 
 export type ResourceReferenceType = "assessment" | "vocabulary";
@@ -72,4 +74,6 @@ export type NativeContentRendererProps = {
   renderers?: Readonly<Record<string, ContentBlockRenderer>>;
   resourceReferences?: ResourceReferenceData;
   resolveAssetUrl?: AssetUrlResolver;
+  /** Reports whether a paged block (e.g. PDF pages) has been read to its end. */
+  onReadingProgress?: (key: string, finished: boolean) => void;
 };

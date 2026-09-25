@@ -15,6 +15,7 @@ import {
   hakgyoBlockCatalog,
   lessonPageBlockType,
   lessonPageThemes,
+  pdfPagesBlockType,
   vocabularyReferenceBlockType,
 } from "./block-catalog";
 
@@ -34,6 +35,7 @@ describe("Hakgyo BlockNote catalog", () => {
       calloutBlockType,
       assetAudioBlockType,
       assetImageBlockType,
+      pdfPagesBlockType,
     ]);
     const callout = hakgyoBlockCatalog.customBlocks.find(
       (block) => block.type === calloutBlockType,

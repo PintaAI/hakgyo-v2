@@ -5,6 +5,10 @@ import {
   collectMaterialReferenceIds,
   removeInvalidMaterialReferences,
 } from "~/lib/blocknote/resource-references";
+import {
+  getLearnerPdfBooks,
+  sanitizePdfPageBlocks,
+} from "~/server/pdf-book/service";
 
 type DatabaseClient = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
@@ -36,10 +40,14 @@ export async function sanitizeMaterialContent(
         })
       : [],
   ]);
-  const cleaned = removeInvalidMaterialReferences(content, {
-    assessmentIds: new Set(assessments.map(({ id }) => id)),
-    vocabularySetIds: new Set(vocabularySets.map(({ id }) => id)),
-  });
+  const cleaned = await sanitizePdfPageBlocks(
+    db,
+    organizationId,
+    removeInvalidMaterialReferences(content, {
+      assessmentIds: new Set(assessments.map(({ id }) => id)),
+      vocabularySetIds: new Set(vocabularySets.map(({ id }) => id)),
+    }),
+  );
   return (cleaned.length ? cleaned : emptyDocument) as Prisma.InputJsonValue;
 }
 
@@ -130,7 +138,7 @@ export async function getLearnerMaterialReferences(
   },
 ) {
   const references = collectMaterialReferenceIds(input.content);
-  const [vocabularySets, assessments] = await Promise.all([
+  const [vocabularySets, assessments, pdfBooks] = await Promise.all([
     db.vocabularySet.findMany({
       where: {
         id: { in: references.vocabularySetIds },
@@ -176,9 +184,11 @@ export async function getLearnerMaterialReferences(
         },
       },
     }),
+    getLearnerPdfBooks(db, input),
   ]);
 
   return {
+    pdfBooks,
     vocabularySets: vocabularySets.flatMap(({ courseItems, ...set }) =>
       courseItems[0] ? [{ ...set, courseItemId: courseItems[0].id }] : [],
     ),

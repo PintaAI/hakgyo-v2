@@ -10,6 +10,15 @@ import { withSerwist } from "@serwist/turbopack";
 const config = {
   allowedDevOrigins: ["jennie-linux.tail2268a1.ts.net"],
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    "/pdfjs/*": [
+      "./node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
+      "./node_modules/pdfjs-dist/cmaps/**/*",
+      "./node_modules/pdfjs-dist/standard_fonts/**/*",
+      "./node_modules/pdfjs-dist/wasm/**/*",
+      "./node_modules/pdfjs-dist/iccs/**/*",
+    ],
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev" },

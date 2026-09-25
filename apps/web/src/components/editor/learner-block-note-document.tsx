@@ -9,6 +9,7 @@ import { BlockNoteView } from "@blocknote/shadcn";
 import { api } from "~/trpc/react";
 
 import { AssetUploadProvider } from "./asset-upload-context";
+import { PdfBookProvider } from "./pdf-book-context";
 import {
   hakgyoBlockNoteSchema,
   type HakgyoPartialBlock,
@@ -55,7 +56,11 @@ export function LearnerBlockNoteDocument({
   );
   return resources ? (
     <ResourceReferenceProvider learnerResources={resources}>
-      {document}
+      <PdfBookProvider
+        value={{ mode: "learner", books: resources.pdfBooks ?? [] }}
+      >
+        {document}
+      </PdfBookProvider>
     </ResourceReferenceProvider>
   ) : (
     document

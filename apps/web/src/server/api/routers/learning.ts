@@ -295,7 +295,7 @@ export const learningRouter = createTRPCRouter({
             moduleId: item.moduleId,
             organizationId: item.organizationId,
           })
-        : { vocabularySets: [], assessments: [] };
+        : { pdfBooks: [], vocabularySets: [], assessments: [] };
       const selectedMaterial = item.material;
       const learnerMaterial = selectedMaterial
         ? await (async () => {

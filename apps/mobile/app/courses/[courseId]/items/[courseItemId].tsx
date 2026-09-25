@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { resolveAssessmentEntry } from "@hakgyo/shared";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -57,8 +57,11 @@ function CourseItemContent({
   courseItemId: string;
 }) {
   const wasAtBottom = useRef(false);
+  const isAtBottom = useRef(false);
   const materialContentHeight = useRef(0);
   const materialViewportHeight = useRef(0);
+  // Paged blocks (PDF book pages) that the learner hasn't finished yet.
+  const unreadPagedBlocks = useRef(new Set<string>());
   const openLearningSheet = () => {
     router.push({
       pathname: "/courses/[courseId]/items/[courseItemId]/learning-progress",
@@ -66,7 +69,7 @@ function CourseItemContent({
     });
   };
   const openLearningSheetAtBottom = () => {
-    if (wasAtBottom.current) return;
+    if (wasAtBottom.current || unreadPagedBlocks.current.size > 0) return;
     wasAtBottom.current = true;
     openLearningSheet();
   };
@@ -79,6 +82,19 @@ function CourseItemContent({
       openLearningSheetAtBottom();
     }
   };
+  const openLearningSheetRef = useRef(() => {});
+  openLearningSheetRef.current = () => {
+    if (isAtBottom.current) openLearningSheetAtBottom();
+    else openLearningSheetForShortContent();
+  };
+  const onReadingProgress = useCallback((key: string, finished: boolean) => {
+    if (!finished) {
+      unreadPagedBlocks.current.add(key);
+      return;
+    }
+    if (!unreadPagedBlocks.current.delete(key)) return;
+    if (unreadPagedBlocks.current.size === 0) openLearningSheetRef.current();
+  }, []);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
   const { activeOrganizationId, colors } = useAppTheme();
@@ -419,6 +435,7 @@ function CourseItemContent({
               contentInset.bottom -
               (contentOffset.y + layoutMeasurement.height);
             const atBottom = distanceFromBottom <= 32;
+            isAtBottom.current = atBottom;
             if (atBottom) openLearningSheetAtBottom();
             else if (distanceFromBottom > 120) wasAtBottom.current = false;
           }}
@@ -431,6 +448,7 @@ function CourseItemContent({
             content={material.content}
             resourceReferences={item.embeddedResources}
             resolveAssetUrl={resolveAssetUrl}
+            onReadingProgress={onReadingProgress}
             onOpenResource={(type, resourceId, targetCourseItemId) => {
               if (type === "vocabulary") {
                 router.push({

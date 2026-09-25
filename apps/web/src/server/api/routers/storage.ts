@@ -823,12 +823,14 @@ export const storageRouter = createTRPCRouter({
           organization: {
             select: {
               members: {
-                where: { userId, role: { in: ["OWNER", "ADMIN"] } },
-                select: { id: true },
+                where: { userId },
+                select: { role: true },
                 take: 1,
               },
             },
           },
+          pdfBookPage: { select: { bookId: true } },
+          pdfBookThumbnail: { select: { bookId: true } },
           materials: {
             select: {
               material: { select: { courseItems: { select: { id: true } } } },
@@ -861,9 +863,16 @@ export const storageRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
+      const memberRole = asset.organization.members[0]?.role;
+      // Any staff member may browse PDF book pages while authoring lessons.
+      const isPdfBookImage = Boolean(
+        asset.pdfBookPage ?? asset.pdfBookThumbnail,
+      );
       const hasDirectAccess =
         asset.uploadedByUserId === userId ||
-        asset.organization.members.length > 0;
+        memberRole === "OWNER" ||
+        memberRole === "ADMIN" ||
+        (isPdfBookImage && memberRole !== undefined);
       if (!hasDirectAccess) {
         const courseItemIds = new Set([
           ...asset.materials.flatMap(({ material }) =>
@@ -928,6 +937,8 @@ export const storageRouter = createTRPCRouter({
           id: true,
           uploadedByUserId: true,
           deletedAt: true,
+          pdfBookPage: { select: { bookId: true } },
+          pdfBookThumbnail: { select: { bookId: true } },
           _count: {
             select: {
               materials: true,
@@ -941,6 +952,8 @@ export const storageRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
       if (
+        asset.pdfBookPage ||
+        asset.pdfBookThumbnail ||
         asset._count.materials > 0 ||
         asset._count.assessments > 0 ||
         asset._count.vocabularyEntries > 0
@@ -972,6 +985,8 @@ export const storageRouter = createTRPCRouter({
           objectKey: true,
           uploadedByUserId: true,
           deletedAt: true,
+          pdfBookPage: { select: { bookId: true } },
+          pdfBookThumbnail: { select: { bookId: true } },
           _count: {
             select: {
               materials: true,
@@ -985,6 +1000,8 @@ export const storageRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
       if (
+        asset.pdfBookPage ||
+        asset.pdfBookThumbnail ||
         asset._count.materials > 0 ||
         asset._count.assessments > 0 ||
         asset._count.vocabularyEntries > 0

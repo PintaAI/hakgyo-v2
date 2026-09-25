@@ -17,6 +17,7 @@ import {
   assertPublishedMaterialReferences,
   sanitizeMaterialContent,
 } from "~/server/material-reference-service";
+import { syncMaterialPdfPageAssets } from "~/server/pdf-book/service";
 
 const id = z.string().min(1);
 const json = z.custom<Prisma.InputJsonValue>((value) => value !== undefined);
@@ -532,8 +533,16 @@ export const contentRouter = createTRPCRouter({
         input.organizationId,
         input.content,
       );
-      return db.material.create({
-        data: { ...input, content, createdByMembershipId: member.id },
+      return db.$transaction(async (tx) => {
+        const material = await tx.material.create({
+          data: { ...input, content, createdByMembershipId: member.id },
+        });
+        await syncMaterialPdfPageAssets(tx, {
+          materialId: material.id,
+          organizationId: input.organizationId,
+          content,
+        });
+        return material;
       });
     }),
   createMaterialItem: protectedProcedure
@@ -590,6 +599,11 @@ export const contentRouter = createTRPCRouter({
             organizationId: courseModule.organizationId,
             createdByMembershipId: member.id,
           },
+        });
+        await syncMaterialPdfPageAssets(tx, {
+          materialId: material.id,
+          organizationId: courseModule.organizationId,
+          content,
         });
         const item = await tx.courseItem.create({
           data: {
@@ -767,9 +781,19 @@ export const contentRouter = createTRPCRouter({
           });
         }
       }
-      const result = await db.material.updateMany({
-        where: { id: materialId, organizationId },
-        data: { ...data, content },
+      const result = await db.$transaction(async (tx) => {
+        const updated = await tx.material.updateMany({
+          where: { id: materialId, organizationId },
+          data: { ...data, content },
+        });
+        if (updated.count && content !== undefined) {
+          await syncMaterialPdfPageAssets(tx, {
+            materialId,
+            organizationId,
+            content,
+          });
+        }
+        return updated;
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
       return db.material.findUniqueOrThrow({ where: { id: materialId } });

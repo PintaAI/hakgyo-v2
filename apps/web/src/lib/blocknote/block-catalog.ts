@@ -1,3 +1,5 @@
+import { PDF_PAGES_BLOCK_TYPE } from "@hakgyo/shared";
+
 import { cultureSectionsDefault } from "./culture-content";
 
 export const calloutBlockType = "callout";
@@ -9,6 +11,7 @@ export const conversationBlockType = "conversation";
 export const cultureBlockType = "culture";
 export const vocabularyReferenceBlockType = "vocabularyReference";
 export const assessmentReferenceBlockType = "assessmentReference";
+export const pdfPagesBlockType = PDF_PAGES_BLOCK_TYPE;
 export const calloutTones = ["info", "tip", "warning", "success"] as const;
 export const grammarBlockThemes = ["amber", "blue", "green", "rose"] as const;
 export const lessonPageThemes = ["rose", "ocean", "forest", "sunset"] as const;
@@ -656,6 +659,26 @@ export const hakgyoBlockCatalog = {
         fileName: { type: "string", default: "" },
         contentType: { type: "string", default: "" },
         caption: { type: "string", default: "" },
+      },
+    },
+    {
+      type: pdfPagesBlockType,
+      purpose:
+        "Show a page range from an uploaded PDF book as page images, so authors can reuse an existing book layout inside a lesson.",
+      content: "none",
+      props: {
+        bookId: { type: "string", default: "" },
+        startPage: { type: "number", default: 1 },
+        endPage: { type: "number", default: 1 },
+      },
+      guidance: {
+        useWhen: [
+          "The author already has the lesson designed in a PDF book.",
+          "Book pages should be shown as-is, followed by native vocabulary or assessment blocks.",
+        ],
+        avoidWhen: [
+          "The content needs to be editable text, searchable, or interactive.",
+        ],
       },
     },
   ],

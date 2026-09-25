@@ -91,6 +91,7 @@ export async function deleteOrganizationTree(
     }
 
     await tx.materialAsset.deleteMany({ where: { organizationId } });
+    await tx.pdfBook.deleteMany({ where: { organizationId } });
     await tx.assessmentAsset.deleteMany({ where: { organizationId } });
     await tx.materialRequirement.deleteMany({ where: { organizationId } });
     await tx.vocabularyEntry.deleteMany({ where: { organizationId } });
