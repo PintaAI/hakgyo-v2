@@ -10,6 +10,7 @@ import {
   getOpenEnrollmentRejection,
   getOpenEnrollmentUpdate,
 } from "~/server/enrollment/open-enrollment";
+import { withTransactionRetry } from "~/server/db-retry";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
 import { removeCohortEnrollmentAndReconcile } from "~/server/enrollment/cohort-access";
 import { pageInput, pageResult } from "~/server/api/pagination";
@@ -460,13 +461,15 @@ export const enrollmentRouter = createTRPCRouter({
             select: { id: true, source: true },
           });
           if (!courseEnrollment) {
-            await tx.courseEnrollment.create({
+            // skipDuplicates: a concurrent enrollment of the same learner must not abort this one.
+            await tx.courseEnrollment.createMany({
               data: {
                 courseId: cohort.courseId,
                 userId: user.id,
                 status: "ACTIVE",
                 source: "COHORT",
               },
+              skipDuplicates: true,
             });
           } else if (courseEnrollment.source === "COHORT") {
             await tx.courseEnrollment.update({
@@ -640,14 +643,14 @@ export const enrollmentRouter = createTRPCRouter({
   redeemInvite: protectedProcedure
     .input(z.object({ token: z.string().min(20).max(200) }))
     .mutation(({ ctx, input }) =>
-      ctx.db.$transaction(
-        (tx) =>
+      withTransactionRetry(() =>
+        ctx.db.$transaction((tx) =>
           redeemEnrollmentInvite(tx, {
             token: input.token,
             userId: ctx.actorUserId,
             now: new Date(),
           }),
-        { isolationLevel: "Serializable" },
+        ),
       ),
     ),
 });

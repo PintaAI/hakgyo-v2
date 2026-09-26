@@ -50,6 +50,9 @@ export const gamificationRouter = createTRPCRouter({
       ctx.db.userActivityEvent.findMany({
         where: {
           userId: ctx.actorUserId,
+          // Lets the (userId, contributesToStreak, activityDate) index serve
+          // the date range without relying on PostgreSQL 18 skip scans.
+          OR: [{ contributesToStreak: true }, { contributesToStreak: false }],
           activityDate: { gte: calendar.start, lt: calendar.end },
         },
         select: {

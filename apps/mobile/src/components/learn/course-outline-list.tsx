@@ -6,9 +6,9 @@ import {
 } from "../../lib/assessment-state";
 import { getCourseResumeItem } from "../../lib/course-learning-path";
 import { authClient } from "../../lib/auth-client";
-import { api } from "../../lib/trpc";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
+import { useCourseOutline, useSyncIndex } from "../../sync/hooks";
 import { QueryState } from "../learning-ui";
 import { LearningItemRow } from "./learning-item-row";
 
@@ -42,21 +42,11 @@ export function CourseOutlineList({
   const { data: session } = authClient.useSession();
   const { activeOrganizationId } = useAppTheme();
   const { indicator, markEntitySeen } = useSidebarIndicators();
-  const dashboard = api.mobileSync.getDashboard.useQuery(
-    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
-    { enabled: Boolean(session && courseId), retry: false },
-  );
-  const dashboardCourse = dashboard.data?.outlines[courseId];
-  const outlineQuery = api.learning.getCourseOutline.useQuery(
-    { courseId },
-    {
-      enabled: Boolean(
-        session && courseId && !dashboard.isPending && !dashboardCourse,
-      ),
-      retry: false,
-    },
-  );
-  const course = dashboardCourse ?? outlineQuery.data;
+  const dashboard = useSyncIndex(activeOrganizationId);
+  const outlineQuery = useCourseOutline(courseId, {
+    enabled: Boolean(session && courseId),
+  });
+  const course = outlineQuery.data;
   const resumeItem = course && getCourseResumeItem(course);
   const courseAttempts = dashboard.data?.attempts.filter(
     (attempt) => attempt.courseItem.module.courseId === courseId,
@@ -65,9 +55,12 @@ export function CourseOutlineList({
   if (!course) {
     return (
       <QueryState
-        pending={dashboard.isPending || outlineQuery.isPending}
-        error={dashboard.error ?? outlineQuery.error}
-        retry={() => void dashboard.refetch()}
+        pending={outlineQuery.isPending}
+        error={outlineQuery.error}
+        retry={() => {
+          void dashboard.refetch();
+          void outlineQuery.refetch();
+        }}
       />
     );
   }

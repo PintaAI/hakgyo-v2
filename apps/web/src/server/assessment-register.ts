@@ -1,7 +1,11 @@
 import { z } from "zod";
 import type { Prisma } from "../../generated/prisma/client";
 
-export const assessmentKinds = ["CHAPTER", "QUICK_ASSESSMENT", "TRYOUT"] as const;
+export const assessmentKinds = [
+  "CHAPTER",
+  "QUICK_ASSESSMENT",
+  "TRYOUT",
+] as const;
 export const registerInput = z.object({
   page: z.number().int().min(1).max(100000).default(1),
   limit: z.number().int().min(1).max(50).default(20),
@@ -28,57 +32,121 @@ export function reviewScope(member: {
     organizationId: member.organizationId,
     OR: [
       ...(simple
-        ? member.role === "TEACHER" ? [{ cohortId: null }] : []
-        : [{ courseItem: { module: { course: { ownerMembershipId: member.id } } } }]),
-      { cohort: { staff: { some: {
-        organizationMemberId: member.id,
-        ...(simple ? {} : { role: "INSTRUCTOR" as const }),
-      } } } },
+        ? member.role === "TEACHER"
+          ? [{ cohortId: null }]
+          : []
+        : [
+            {
+              courseItem: {
+                module: { course: { ownerMembershipId: member.id } },
+              },
+            },
+          ]),
+      {
+        cohort: {
+          staff: {
+            some: {
+              organizationMemberId: member.id,
+              ...(simple ? {} : { role: "INSTRUCTOR" as const }),
+            },
+          },
+        },
+      },
     ],
   };
 }
 
-export function registerWhere(input: z.infer<typeof registerInput>): Prisma.AssessmentAttemptWhereInput {
+export function registerWhere(
+  input: z.infer<typeof registerInput>,
+): Prisma.AssessmentAttemptWhereInput {
   return {
-    ...(input.kind === "CHAPTER" ? { assessmentEventId: null }
-      : input.kind ? { assessmentEvent: { type: input.kind } } : {}),
+    ...(input.kind === "CHAPTER"
+      ? { assessmentEventId: null }
+      : input.kind
+        ? { assessmentEvent: { type: input.kind } }
+        : {}),
     ...(input.eventId ? { assessmentEventId: input.eventId } : {}),
     cohortId: input.cohortId,
-    courseItem: input.courseId ? { module: { courseId: input.courseId } } : undefined,
-    ...(input.search ? { OR: [
-      { user: { name: { contains: input.search, mode: "insensitive" } } },
-      { user: { email: { contains: input.search, mode: "insensitive" } } },
-      { assessment: { title: { contains: input.search, mode: "insensitive" } } },
-      { assessmentEvent: { title: { contains: input.search, mode: "insensitive" } } },
-    ] } : {}),
+    courseItem: input.courseId
+      ? { module: { courseId: input.courseId } }
+      : undefined,
+    ...(input.search
+      ? {
+          OR: [
+            { user: { name: { contains: input.search, mode: "insensitive" } } },
+            {
+              user: { email: { contains: input.search, mode: "insensitive" } },
+            },
+            {
+              assessment: {
+                title: { contains: input.search, mode: "insensitive" },
+              },
+            },
+            {
+              assessmentEvent: {
+                title: { contains: input.search, mode: "insensitive" },
+              },
+            },
+          ],
+        }
+      : {}),
   };
 }
 
 export const attemptSummarySelect = {
-  id: true, userId: true, courseItemId: true, attemptNumber: true,
-  status: true, score: true, maxScore: true,
-  startedAt: true, submittedAt: true, gradedAt: true,
+  id: true,
+  userId: true,
+  courseItemId: true,
+  attemptNumber: true,
+  status: true,
+  score: true,
+  maxScore: true,
+  startedAt: true,
+  submittedAt: true,
+  gradedAt: true,
   user: { select: { id: true, name: true, email: true } },
   assessment: { select: { id: true, title: true, passingScore: true } },
-  courseItem: { select: { module: { select: {
-    id: true, title: true, courseId: true, course: { select: { id: true, title: true } },
-  } } } },
+  courseItem: {
+    select: {
+      module: {
+        select: {
+          id: true,
+          title: true,
+          courseId: true,
+          course: { select: { id: true, title: true } },
+        },
+      },
+    },
+  },
   cohort: { select: { id: true, name: true } },
-  assessmentEvent: { select: { id: true, title: true, type: true, scope: true, status: true } },
-  _count: { select: { answers: { where: { question: { type: "WRITTEN" } } } } },
+  assessmentEvent: {
+    select: { id: true, title: true, type: true, scope: true, status: true },
+  },
 } satisfies Prisma.AssessmentAttemptSelect;
 
 export function assessmentContext(attempt: {
   assessment: { title: string };
-  courseItem: { module: { title: string; course: { id: string; title: string } } };
+  courseItem: {
+    module: { title: string; course: { id: string; title: string } };
+  };
   cohort: { id: string; name: string } | null;
-  assessmentEvent: { id: string; title: string; type: "QUICK_ASSESSMENT" | "TRYOUT"; scope: "COHORT" | "COURSE" } | null;
+  assessmentEvent: {
+    id: string;
+    title: string;
+    type: "QUICK_ASSESSMENT" | "TRYOUT";
+    scope: "COHORT" | "COURSE";
+  } | null;
 }) {
   const event = attempt.assessmentEvent;
   const kind = event?.type ?? "CHAPTER";
   return {
     kind,
-    label: kind === "CHAPTER" ? "Asesmen bab" : kind === "TRYOUT" ? "Tryout" : "Asesmen on-demand",
+    label:
+      kind === "CHAPTER"
+        ? "Asesmen bab"
+        : kind === "TRYOUT"
+          ? "Tryout"
+          : "Asesmen on-demand",
     title: event?.title ?? attempt.assessment.title,
     course: attempt.courseItem.module.course,
     moduleTitle: attempt.courseItem.module.title,
@@ -88,21 +156,49 @@ export function assessmentContext(attempt: {
   };
 }
 
-type Summary = Prisma.AssessmentAttemptGetPayload<{ select: typeof attemptSummarySelect }>;
+// `_count.answers` is the number of WRITTEN answers. It is attached per page (see
+// `countWrittenAnswers`) because a relation `_count` compiles to a whole-table grouped subquery.
+type Summary = Prisma.AssessmentAttemptGetPayload<{
+  select: typeof attemptSummarySelect;
+}> & {
+  _count: { answers: number };
+};
+
+async function countWrittenAnswers(
+  db: Prisma.TransactionClient,
+  attemptIds: string[],
+) {
+  if (attemptIds.length === 0) return new Map<string, number>();
+  const groups = await db.assessmentAnswer.groupBy({
+    by: ["attemptId"],
+    where: { attemptId: { in: attemptIds }, question: { type: "WRITTEN" } },
+    _count: { _all: true },
+  });
+  return new Map(groups.map((group) => [group.attemptId, group._count._all]));
+}
 
 export function summarizeAttempt(attempt: Summary, invalidated = false) {
-  const final = attempt.status === "GRADED" && !invalidated && attempt.assessmentEvent?.status !== "CANCELLED";
+  const final =
+    attempt.status === "GRADED" &&
+    !invalidated &&
+    attempt.assessmentEvent?.status !== "CANCELLED";
   const score = final ? attempt.score : null;
   const maxScore = final ? attempt.maxScore : null;
   return {
     ...attempt,
     context: assessmentContext(attempt),
     invalidated,
-    score, maxScore,
-    grading: attempt._count.answers > 0 ? "TEACHER" as const : "AUTOMATIC" as const,
-    passed: score !== null && maxScore !== null && maxScore > 0
-      ? attempt.assessment.passingScore === null || score * 100 / maxScore >= attempt.assessment.passingScore
-      : null,
+    score,
+    maxScore,
+    grading:
+      attempt._count.answers > 0
+        ? ("TEACHER" as const)
+        : ("AUTOMATIC" as const),
+    passed:
+      score !== null && maxScore !== null && maxScore > 0
+        ? attempt.assessment.passingScore === null ||
+          (score * 100) / maxScore >= attempt.assessment.passingScore
+        : null,
   };
 }
 
@@ -114,28 +210,61 @@ export async function listRegisteredAttempts(
   const base = { AND: [scope, registerWhere(input)] };
   const where: Prisma.AssessmentAttemptWhereInput = {
     ...base,
-    status: input.status === "IN_REVIEW" ? { in: ["IN_REVIEW", "SUBMITTED"] } : input.status,
+    status:
+      input.status === "IN_REVIEW"
+        ? { in: ["IN_REVIEW", "SUBMITTED"] }
+        : input.status,
   };
   const [rows, total, counts] = await Promise.all([
-    db.assessmentAttempt.findMany({ where, select: attemptSummarySelect,
-      orderBy: input.status === "IN_REVIEW"
-        ? [{ submittedAt: "asc" }, { id: "asc" }]
-        : [{ startedAt: "desc" }, { id: "desc" }],
-      skip: (input.page - 1) * input.limit, take: input.limit,
+    db.assessmentAttempt.findMany({
+      where,
+      select: attemptSummarySelect,
+      orderBy:
+        input.status === "IN_REVIEW"
+          ? [{ submittedAt: "asc" }, { id: "asc" }]
+          : [{ startedAt: "desc" }, { id: "desc" }],
+      skip: (input.page - 1) * input.limit,
+      take: input.limit,
     }),
     db.assessmentAttempt.count({ where }),
     db.assessmentAttempt.groupBy({ by: ["status"], where: base, _count: true }),
   ]);
-  const participants = await db.assessmentEventParticipant.findMany({
-    where: { invalidatedAt: { not: null }, OR: rows.flatMap(row => row.assessmentEvent
-      ? [{ eventId: row.assessmentEvent.id, userId: row.userId }] : []) },
-    select: { eventId: true, userId: true },
-  });
-  const invalidated = new Set(participants.map(p => `${p.eventId}:${p.userId}`));
-  const count = (status: string) => counts.find(c => c.status === status)?._count ?? 0;
+  const [participants, writtenAnswerCounts] = await Promise.all([
+    db.assessmentEventParticipant.findMany({
+      where: {
+        invalidatedAt: { not: null },
+        OR: rows.flatMap((row) =>
+          row.assessmentEvent
+            ? [{ eventId: row.assessmentEvent.id, userId: row.userId }]
+            : [],
+        ),
+      },
+      select: { eventId: true, userId: true },
+    }),
+    countWrittenAnswers(
+      db,
+      rows.map((row) => row.id),
+    ),
+  ]);
+  const invalidated = new Set(
+    participants.map((p) => `${p.eventId}:${p.userId}`),
+  );
+  const count = (status: string) =>
+    counts.find((c) => c.status === status)?._count ?? 0;
   return {
-    items: rows.map(row => summarizeAttempt(row, invalidated.has(`${row.assessmentEvent?.id}:${row.userId}`))),
-    total, page: input.page, pageCount: Math.ceil(total / input.limit),
-    counts: { IN_REVIEW: count("IN_REVIEW") + count("SUBMITTED"), GRADED: count("GRADED"), IN_PROGRESS: count("IN_PROGRESS") },
+    items: rows.map((row) =>
+      summarizeAttempt(
+        { ...row, _count: { answers: writtenAnswerCounts.get(row.id) ?? 0 } },
+        invalidated.has(`${row.assessmentEvent?.id}:${row.userId}`),
+      ),
+    ),
+    total,
+    page: input.page,
+    pageCount: Math.ceil(total / input.limit),
+    counts: {
+      IN_REVIEW: count("IN_REVIEW") + count("SUBMITTED"),
+      GRADED: count("GRADED"),
+      IN_PROGRESS: count("IN_PROGRESS"),
+    },
   };
 }

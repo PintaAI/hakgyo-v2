@@ -152,6 +152,65 @@ integration(
       expect(
         await db.vocabularyPracticeAttempt.count({ where: { userId } }),
       ).toBe(3);
+
+      // An entry deleted since an offline session is skipped, without
+      // failing the other attempts of the batch.
+      const removed = await db.vocabularyEntry.create({
+        data: {
+          organizationId: organization.id,
+          vocabularySetId: vocabularySet.id,
+          term: "삭제",
+          definition: "deleted",
+        },
+      });
+      await db.vocabularyEntry.delete({ where: { id: removed.id } });
+      const withMissing = await caller.recordVocabularyAttempts({
+        ...base,
+        sessionId: "session-4",
+        attempts: [
+          { ...base.attempts[0]!, attemptId: "missing", entryId: removed.id },
+          { ...base.attempts[0]!, attemptId: "fifth", result: "INCORRECT" },
+        ],
+      });
+      expect(withMissing).toMatchObject({
+        accepted: 1,
+        duplicates: 0,
+        skipped: 1,
+      });
+      expect(
+        await db.vocabularyPracticeAttempt.count({ where: { userId } }),
+      ).toBe(4);
+
+      // An existing entry of another set is still rejected.
+      const otherSet = await db.vocabularySet.create({
+        data: {
+          organizationId: organization.id,
+          createdByMembershipId: member.id,
+          title: "Other",
+        },
+      });
+      const otherEntry = await db.vocabularyEntry.create({
+        data: {
+          organizationId: organization.id,
+          vocabularySetId: otherSet.id,
+          term: "다른",
+          definition: "other",
+        },
+      });
+      const otherSetError = await caller
+        .recordVocabularyAttempts({
+          ...base,
+          sessionId: "session-5",
+          attempts: [
+            {
+              ...base.attempts[0]!,
+              attemptId: "other-set",
+              entryId: otherEntry.id,
+            },
+          ],
+        })
+        .catch((cause: unknown) => cause);
+      expect(otherSetError).toMatchObject({ code: "NOT_FOUND" });
     } finally {
       if (ids.organizationId) {
         await db.userActivityEvent.deleteMany({ where: { userId } });

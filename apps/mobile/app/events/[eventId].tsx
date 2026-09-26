@@ -1,3 +1,4 @@
+import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
 import { Text } from "react-native";
@@ -8,16 +9,16 @@ import { assessmentAttemptPresentation } from "../../src/lib/assessment-state";
 import { dateLabel } from "../../src/lib/study";
 import { api } from "../../src/lib/trpc";
 import { useSidebarIndicators } from "../../src/lib/sidebar-indicators";
+import { useMobileSyncActions } from "../../src/providers/MobileSyncProvider";
+import { useLearnerEvent } from "../../src/sync/hooks";
 
 export default function AssessmentEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { markEntitySeen } = useSidebarIndicators();
-  const utils = api.useUtils();
-  const query = api.assessmentEvent.getForLearner.useQuery(
-    { eventId },
-    { enabled: !!eventId },
-  );
-  const start = api.mobileSync.startEventAssessment.useMutation();
+  const { saveStartedAttempt } = useMobileSyncActions();
+  // Online detail (leaderboard included), persisted for offline reopening.
+  const query = useLearnerEvent(eventId);
+  const start = api.mobileSyncV2.startEventAssessment.useMutation();
   const event = query.data;
   const attempt = event?.attempts[0];
   const attemptState = assessmentAttemptPresentation(attempt);
@@ -54,18 +55,12 @@ export default function AssessmentEventScreen() {
   async function begin() {
     if (!event || invalidated) return;
     try {
-      const result = await start.mutateAsync({ eventId });
-      utils.assessment.getMyAttempt.setData(
-        { attemptId: result.attempt.id },
-        result.attempt,
-      );
-      utils.assessment.getForCourseItem.setData(
-        {
-          courseItemId: result.attempt.courseItemId,
-          attemptId: result.attempt.id,
-        },
-        result.assessmentDetail,
-      );
+      const result = await start.mutateAsync({
+        eventId,
+        protocol: SYNC_PROTOCOL,
+      });
+      // Persisted locally so the attempt resumes offline.
+      await saveStartedAttempt(result);
       openAttempt(result.attempt.id, true);
     } catch {
       /* Mutation error is shown below. */

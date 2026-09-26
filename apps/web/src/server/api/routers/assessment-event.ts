@@ -2,8 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { resolveAssessmentEntry } from "@hakgyo/shared";
 import { z } from "zod";
 
+import { after } from "next/server";
+
 import { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  autoSubmitEventAttempts,
+  lockAttemptStart,
+} from "~/server/assessment-attempt";
 import {
   countLatestAssessmentEventAttemptStatuses,
   getAssessmentEventLeaderboard,
@@ -14,10 +20,19 @@ import {
   requireCohortPermission,
   requireCoursePermission,
 } from "~/server/authorization";
+import {
+  isUniqueConstraintError,
+  withTransactionRetry,
+} from "~/server/db-retry";
 
 const id = z.string().min(1);
 const reason = z.string().trim().min(3).max(1000);
-const eventSummarySelect = {
+/**
+ * Event summary fields without relation counts. A relation `_count` in `findMany` compiles to a
+ * whole-table grouped subquery, so list queries use this select and attach counts for their page
+ * with `withEventSummaryCounts`. Single-row queries keep the counts in `eventSummarySelect`.
+ */
+const eventSummaryBaseSelect = {
   id: true,
   title: true,
   type: true,
@@ -41,6 +56,19 @@ const eventSummarySelect = {
           description: true,
           passingScore: true,
           maxAttempts: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.AssessmentEventSelect;
+const eventSummarySelect = {
+  ...eventSummaryBaseSelect,
+  courseItem: {
+    select: {
+      ...eventSummaryBaseSelect.courseItem.select,
+      assessment: {
+        select: {
+          ...eventSummaryBaseSelect.courseItem.select.assessment.select,
           _count: { select: { questions: true } },
         },
       },
@@ -48,6 +76,88 @@ const eventSummarySelect = {
   },
   _count: { select: { participants: true, attempts: true } },
 } satisfies Prisma.AssessmentEventSelect;
+
+type EventSummaryRow = {
+  id: string;
+  courseItem: { assessment: { id: string } | null };
+};
+type WithEventSummaryCounts<T extends EventSummaryRow> = Omit<
+  T,
+  "courseItem"
+> & {
+  courseItem: Omit<T["courseItem"], "assessment"> & {
+    assessment:
+      | (NonNullable<T["courseItem"]["assessment"]> & {
+          _count: { questions: number };
+        })
+      | null;
+  };
+  _count: { participants: number; attempts: number };
+};
+
+/** Adds the `eventSummarySelect` counts to rows loaded with `eventSummaryBaseSelect`. */
+async function withEventSummaryCounts<T extends EventSummaryRow>(
+  db: Prisma.TransactionClient | Prisma.DefaultPrismaClient,
+  events: T[],
+): Promise<WithEventSummaryCounts<T>[]> {
+  if (events.length === 0) return [];
+  const eventIds = events.map((event) => event.id);
+  const assessmentIds = [
+    ...new Set(
+      events.flatMap((event) =>
+        event.courseItem.assessment ? [event.courseItem.assessment.id] : [],
+      ),
+    ),
+  ];
+  const [participantGroups, attemptGroups, questionGroups] = await Promise.all([
+    db.assessmentEventParticipant.groupBy({
+      by: ["eventId"],
+      where: { eventId: { in: eventIds } },
+      _count: { _all: true },
+    }),
+    db.assessmentAttempt.groupBy({
+      by: ["assessmentEventId"],
+      where: { assessmentEventId: { in: eventIds } },
+      _count: { _all: true },
+    }),
+    assessmentIds.length
+      ? db.assessmentQuestion.groupBy({
+          by: ["assessmentId"],
+          where: { assessmentId: { in: assessmentIds } },
+          _count: { _all: true },
+        })
+      : [],
+  ]);
+  const participants = new Map(
+    participantGroups.map((group) => [group.eventId, group._count._all]),
+  );
+  const attempts = new Map(
+    attemptGroups.map((group) => [group.assessmentEventId, group._count._all]),
+  );
+  const questions = new Map(
+    questionGroups.map((group) => [group.assessmentId, group._count._all]),
+  );
+  return events.map((event) => {
+    const assessment = event.courseItem.assessment;
+    // Generic spreads are not narrowed by TypeScript; the shape matches the declared type.
+    return {
+      ...event,
+      courseItem: {
+        ...event.courseItem,
+        assessment: assessment
+          ? {
+              ...assessment,
+              _count: { questions: questions.get(assessment.id) ?? 0 },
+            }
+          : null,
+      },
+      _count: {
+        participants: participants.get(event.id) ?? 0,
+        attempts: attempts.get(event.id) ?? 0,
+      },
+    } as unknown as WithEventSummaryCounts<T>;
+  });
+}
 const learnerAttemptSelect = {
   id: true,
   attemptNumber: true,
@@ -231,13 +341,17 @@ export const assessmentEventRouter = createTRPCRouter({
             ...where,
           },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          select: eventSummarySelect,
+          select: eventSummaryBaseSelect,
           skip: (input.page - 1) * 10,
           take: 10,
         }),
         ctx.db.assessmentEvent.count({ where }),
       ]);
-      return { items, total, pageCount: Math.ceil(total / 10) };
+      return {
+        items: await withEventSummaryCounts(ctx.db, items),
+        total,
+        pageCount: Math.ceil(total / 10),
+      };
     }),
 
   create: protectedProcedure
@@ -334,8 +448,14 @@ export const assessmentEventRouter = createTRPCRouter({
         input.eventId,
         ctx.actorUserId,
       );
-      return ctx.db.$transaction(
-        async (tx) => {
+      // READ COMMITTED with the event row locked: concurrent open/close/cancel of this event wait
+      // for each other, and the DRAFT -> OPEN transition is re-checked by the conditional update.
+      // Participants are inserted with ON CONFLICT DO NOTHING.
+      return withTransactionRetry(() =>
+        ctx.db.$transaction(async (tx) => {
+          await tx.$queryRaw`
+            SELECT "id" FROM "AssessmentEvent" WHERE "id" = ${input.eventId} FOR UPDATE
+          `;
           const event = await tx.assessmentEvent.findUnique({
             where: { id: input.eventId },
             select: {
@@ -427,8 +547,7 @@ export const assessmentEventRouter = createTRPCRouter({
             },
           });
           return { opened: true, participantCount };
-        },
-        { isolationLevel: "Serializable" },
+        }),
       );
     }),
 
@@ -440,13 +559,25 @@ export const assessmentEventRouter = createTRPCRouter({
         input.eventId,
         ctx.actorUserId,
       );
-      return ctx.db.$transaction(async (tx) => {
-        const now = new Date();
+      let now = new Date();
+      await ctx.db.$transaction(async (tx) => {
         const updated = await tx.assessmentEvent.updateMany({
           where: { id: input.eventId, status: "OPEN" },
           data: { status: "CLOSED", closedAt: now },
         });
-        if (updated.count !== 1) throw new TRPCError({ code: "CONFLICT" });
+        if (updated.count !== 1) {
+          // Closing an already closed event re-runs the grading below, which
+          // recovers attempts a failed or interrupted auto-submit left open.
+          const event = await tx.assessmentEvent.findUnique({
+            where: { id: input.eventId },
+            select: { status: true, closedAt: true },
+          });
+          if (event?.status !== "CLOSED") {
+            throw new TRPCError({ code: "CONFLICT" });
+          }
+          now = event.closedAt ?? now;
+          return;
+        }
         await tx.assessmentEventAudit.create({
           data: {
             eventId: input.eventId,
@@ -454,8 +585,27 @@ export const assessmentEventRouter = createTRPCRouter({
             action: "CLOSED",
           },
         });
-        return { closed: true };
       });
+      // Learners can no longer save or submit once the event is closed, so grade the attempts
+      // still in progress as submitted at close time. The close itself is already committed; a
+      // grading failure leaves those attempts in progress until the event is closed again.
+      // Grading a large event takes a while, so it runs after the response when possible.
+      const gradeOpenAttempts = () =>
+        autoSubmitEventAttempts(ctx.db, input.eventId, now).catch(
+          (error: unknown) => {
+            console.error("Failed to auto-submit attempts of a closed event", {
+              eventId: input.eventId,
+              error,
+            });
+          },
+        );
+      try {
+        after(gradeOpenAttempts);
+      } catch {
+        // Outside a Next.js request scope (e.g. MCP, tests): grade inline.
+        await gradeOpenAttempts();
+      }
+      return { closed: true };
     }),
 
   cancel: protectedProcedure
@@ -506,111 +656,129 @@ export const assessmentEventRouter = createTRPCRouter({
   startAttempt: protectedProcedure
     .input(z.object({ eventId: id }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.$transaction(
-        async (tx) => {
-          const event = await tx.assessmentEvent.findFirst({
-            where: {
-              id: input.eventId,
-              participants: {
-                some: {
-                  userId: ctx.actorUserId,
-                  invalidatedAt: null,
+      // READ COMMITTED + a per-learner/item advisory lock (shared with standalone attempts, which
+      // use the same attempt numbering). The (courseItemId, userId, attemptNumber) unique
+      // constraint stays as a backstop: on P2002 the transaction re-runs and returns the
+      // in-progress attempt created by the winner.
+      return withTransactionRetry(
+        () =>
+          ctx.db.$transaction(async (tx) => {
+            // FOR SHARE makes `close` wait for in-flight starts, so its auto-submit sees them.
+            const [eventItem] = await tx.$queryRaw<
+              Array<{ courseItemId: string }>
+            >`
+              SELECT "courseItemId" FROM "AssessmentEvent"
+              WHERE "id" = ${input.eventId}
+              FOR SHARE
+            `;
+            if (!eventItem) throw new TRPCError({ code: "NOT_FOUND" });
+            await lockAttemptStart(tx, ctx.actorUserId, eventItem.courseItemId);
+            const event = await tx.assessmentEvent.findFirst({
+              where: {
+                id: input.eventId,
+                participants: {
+                  some: {
+                    userId: ctx.actorUserId,
+                    invalidatedAt: null,
+                  },
                 },
               },
-            },
-            select: {
-              id: true,
-              status: true,
-              closesAt: true,
-              courseId: true,
-              cohortId: true,
-              courseItemId: true,
-              organizationId: true,
-              courseItem: {
-                select: {
-                  isPublished: true,
-                  assessment: {
-                    select: {
-                      id: true,
-                      status: true,
-                      maxAttempts: true,
+              select: {
+                id: true,
+                status: true,
+                closesAt: true,
+                courseId: true,
+                cohortId: true,
+                courseItemId: true,
+                organizationId: true,
+                courseItem: {
+                  select: {
+                    isPublished: true,
+                    assessment: {
+                      select: {
+                        id: true,
+                        status: true,
+                        maxAttempts: true,
+                      },
                     },
                   },
                 },
               },
-            },
-          });
-          if (!event) throw new TRPCError({ code: "NOT_FOUND" });
-          if (
-            event.status !== "OPEN" ||
-            !event.closesAt ||
-            event.closesAt <= new Date()
-          ) {
-            throw new TRPCError({
-              code: "PRECONDITION_FAILED",
-              message: "This assessment event is no longer open",
             });
-          }
-          if (
-            !event.courseItem.isPublished ||
-            event.courseItem.assessment?.status !== "PUBLISHED"
-          ) {
-            throw new TRPCError({
-              code: "PRECONDITION_FAILED",
-              message: "The assessment is no longer available",
+            if (!event) throw new TRPCError({ code: "NOT_FOUND" });
+            if (
+              event.status !== "OPEN" ||
+              !event.closesAt ||
+              event.closesAt <= new Date()
+            ) {
+              throw new TRPCError({
+                code: "PRECONDITION_FAILED",
+                message: "This assessment event is no longer open",
+              });
+            }
+            if (
+              !event.courseItem.isPublished ||
+              event.courseItem.assessment?.status !== "PUBLISHED"
+            ) {
+              throw new TRPCError({
+                code: "PRECONDITION_FAILED",
+                message: "The assessment is no longer available",
+              });
+            }
+            const current = await tx.assessmentAttempt.findFirst({
+              where: {
+                assessmentEventId: event.id,
+                userId: ctx.actorUserId,
+                status: "IN_PROGRESS",
+              },
+              orderBy: { attemptNumber: "desc" },
             });
-          }
-          const current = await tx.assessmentAttempt.findFirst({
-            where: {
-              assessmentEventId: event.id,
-              userId: ctx.actorUserId,
-              status: "IN_PROGRESS",
-            },
-            orderBy: { attemptNumber: "desc" },
-          });
-          if (current) return { ...current, courseId: event.courseId };
-          // One grouped count serves both the per-event limit and the item-wide attempt number
-          // (event attempts always use the event's course item).
-          const attemptGroups = await tx.assessmentAttempt.groupBy({
-            by: ["assessmentEventId"],
-            where: {
-              courseItemId: event.courseItemId,
-              userId: ctx.actorUserId,
-            },
-            _count: { _all: true },
-          });
-          const eventAttemptCount =
-            attemptGroups.find((group) => group.assessmentEventId === event.id)
-              ?._count._all ?? 0;
-          if (
-            event.courseItem.assessment.maxAttempts !== null &&
-            eventAttemptCount >= event.courseItem.assessment.maxAttempts
-          ) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "Maximum attempts reached",
+            if (current) return { ...current, courseId: event.courseId };
+            // One grouped query serves both the per-event limit and the item-wide attempt number
+            // (event attempts always use the event's course item).
+            const attemptGroups = await tx.assessmentAttempt.groupBy({
+              by: ["assessmentEventId"],
+              where: {
+                courseItemId: event.courseItemId,
+                userId: ctx.actorUserId,
+              },
+              _count: { _all: true },
+              _max: { attemptNumber: true },
             });
-          }
-          const attemptNumber =
-            attemptGroups.reduce(
-              (total, group) => total + group._count._all,
-              0,
-            ) + 1;
-          const created = await tx.assessmentAttempt.create({
-            data: {
-              assessmentId: event.courseItem.assessment.id,
-              courseItemId: event.courseItemId,
-              organizationId: event.organizationId,
-              cohortId: event.cohortId,
-              userId: ctx.actorUserId,
-              attemptNumber,
-              shuffleSeed: crypto.randomUUID(),
-              assessmentEventId: event.id,
-            },
-          });
-          return { ...created, courseId: event.courseId };
-        },
-        { isolationLevel: "Serializable" },
+            const eventAttemptCount =
+              attemptGroups.find(
+                (group) => group.assessmentEventId === event.id,
+              )?._count._all ?? 0;
+            if (
+              event.courseItem.assessment.maxAttempts !== null &&
+              eventAttemptCount >= event.courseItem.assessment.maxAttempts
+            ) {
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: "Maximum attempts reached",
+              });
+            }
+            // max + 1 (not count + 1): numbers stay unique after an event's attempts are deleted.
+            const attemptNumber =
+              attemptGroups.reduce(
+                (max, group) => Math.max(max, group._max.attemptNumber ?? 0),
+                0,
+              ) + 1;
+            const created = await tx.assessmentAttempt.create({
+              data: {
+                assessmentId: event.courseItem.assessment.id,
+                courseItemId: event.courseItemId,
+                organizationId: event.organizationId,
+                cohortId: event.cohortId,
+                userId: ctx.actorUserId,
+                attemptNumber,
+                shuffleSeed: crypto.randomUUID(),
+                assessmentEventId: event.id,
+              },
+            });
+            return { ...created, courseId: event.courseId };
+          }),
+        { shouldRetry: isUniqueConstraintError },
       );
     }),
 
@@ -627,7 +795,7 @@ export const assessmentEventRouter = createTRPCRouter({
         participants: { some: { userId: ctx.actorUserId } },
       });
       const learnerEventSelect = {
-        ...eventSummarySelect,
+        ...eventSummaryBaseSelect,
         participants: {
           where: { userId: ctx.actorUserId },
           select: { invalidatedAt: true, invalidationReason: true },
@@ -667,42 +835,44 @@ export const assessmentEventRouter = createTRPCRouter({
         ]),
       );
       const now = new Date();
-      return [...activeEvents, ...closedEvents]
-        .sort(compareLearnerEvents)
-        .map(({ attempts, ...event }) => {
-          const latestAttempt = attempts[0];
-          const attemptCount = attemptCountByEventId.get(event.id) ?? 0;
-          const invalidated = Boolean(event.participants[0]?.invalidatedAt);
-          const available =
-            event.status === "OPEN" &&
-            Boolean(event.closesAt && event.closesAt > now);
-          return {
-            ...event,
-            attemptCount,
-            entry: resolveAssessmentEntry({
-              attemptStatus: latestAttempt?.status,
-              attemptsUsed: attemptCount,
-              maxAttempts: event.courseItem.assessment?.maxAttempts ?? null,
-              available,
-              invalidated,
-            }),
-            attempts: latestAttempt
-              ? [
-                  {
-                    ...latestAttempt,
-                    score:
-                      latestAttempt.status === "GRADED" && !invalidated
-                        ? latestAttempt.score
-                        : null,
-                    maxScore:
-                      latestAttempt.status === "GRADED" && !invalidated
-                        ? latestAttempt.maxScore
-                        : null,
-                  },
-                ]
-              : [],
-          };
-        });
+      const events = await withEventSummaryCounts(ctx.db, [
+        ...activeEvents,
+        ...closedEvents,
+      ]);
+      return events.sort(compareLearnerEvents).map(({ attempts, ...event }) => {
+        const latestAttempt = attempts[0];
+        const attemptCount = attemptCountByEventId.get(event.id) ?? 0;
+        const invalidated = Boolean(event.participants[0]?.invalidatedAt);
+        const available =
+          event.status === "OPEN" &&
+          Boolean(event.closesAt && event.closesAt > now);
+        return {
+          ...event,
+          attemptCount,
+          entry: resolveAssessmentEntry({
+            attemptStatus: latestAttempt?.status,
+            attemptsUsed: attemptCount,
+            maxAttempts: event.courseItem.assessment?.maxAttempts ?? null,
+            available,
+            invalidated,
+          }),
+          attempts: latestAttempt
+            ? [
+                {
+                  ...latestAttempt,
+                  score:
+                    latestAttempt.status === "GRADED" && !invalidated
+                      ? latestAttempt.score
+                      : null,
+                  maxScore:
+                    latestAttempt.status === "GRADED" && !invalidated
+                      ? latestAttempt.maxScore
+                      : null,
+                },
+              ]
+            : [],
+        };
+      });
     }),
 
   getForLearner: protectedProcedure

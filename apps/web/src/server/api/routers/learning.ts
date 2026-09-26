@@ -90,9 +90,9 @@ export const learningRouter = createTRPCRouter({
     .input(
       z.object({ organizationId: z.string().min(1).optional() }).optional(),
     )
-    .query(({ ctx, input }) => {
+    .query(async ({ ctx, input }) => {
       const now = new Date();
-      return ctx.db.cohort.findMany({
+      const cohorts = await ctx.db.cohort.findMany({
         where: {
           organizationId: input?.organizationId,
           status: { in: [...accessGrantingCohortStatuses] },
@@ -145,13 +145,6 @@ export const learningRouter = createTRPCRouter({
               updatedAt: true,
             },
           },
-          _count: {
-            select: {
-              enrollments: {
-                where: { status: { in: [...activeEnrollmentStatuses] } },
-              },
-            },
-          },
           enrollments: {
             where: {
               userId: ctx.actorUserId,
@@ -170,14 +163,34 @@ export const learningRouter = createTRPCRouter({
           },
         },
       });
+      // Counted per page instead of a relation `_count`, which Prisma
+      // compiles into an aggregate over every cohort enrollment.
+      const enrollmentCounts =
+        cohorts.length === 0
+          ? []
+          : await ctx.db.cohortEnrollment.groupBy({
+              by: ["cohortId"],
+              where: {
+                cohortId: { in: cohorts.map((cohort) => cohort.id) },
+                status: { in: [...activeEnrollmentStatuses] },
+              },
+              _count: { _all: true },
+            });
+      const countByCohort = new Map(
+        enrollmentCounts.map((row) => [row.cohortId, row._count._all]),
+      );
+      return cohorts.map((cohort) => ({
+        ...cohort,
+        _count: { enrollments: countByCohort.get(cohort.id) ?? 0 },
+      }));
     }),
   listMyCourses: protectedProcedure
     .input(
       z.object({ organizationId: z.string().min(1).optional() }).optional(),
     )
-    .query(({ ctx, input }) =>
+    .query(async ({ ctx, input }) =>
       ctx.db.course.findMany({
-        where: enrolledCourseWhere({
+        where: await enrolledCourseWhere({
           userId: ctx.actorUserId,
           organizationId: input?.organizationId,
         }),
@@ -200,7 +213,7 @@ export const learningRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const outlines = await getCourseOutlinesForUser(
-        enrolledCourseWhere({
+        await enrolledCourseWhere({
           userId: ctx.actorUserId,
           organizationId: input?.organizationId,
         }),
@@ -309,7 +322,6 @@ export const learningRouter = createTRPCRouter({
           id: true,
           title: true,
           description: true,
-          _count: { select: { entries: true } },
           courseItems: {
             where: { moduleId: source.moduleId, isPublished: true },
             orderBy: [{ position: "asc" }, { id: "asc" }],
@@ -338,6 +350,8 @@ export const learningRouter = createTRPCRouter({
       });
       return {
         ...vocabularySet,
+        // Every entry is loaded, so count them instead of a relation `_count`.
+        _count: { entries: vocabularySet.entries.length },
         courseId: source.module.courseId,
         practiceCourseItemId,
       };

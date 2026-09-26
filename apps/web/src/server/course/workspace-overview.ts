@@ -58,16 +58,12 @@ export async function getCourseWorkspaceOverview(input: {
           },
         },
       },
+      // Every module is loaded (Prisma applies a nested `take` in memory
+      // anyway), so the module count comes from the same rows.
       modules: {
         orderBy: { position: "asc" },
-        take: 5,
-        select: {
-          id: true,
-          title: true,
-          _count: { select: { items: true } },
-        },
+        select: { id: true, title: true },
       },
-      _count: { select: { modules: true } },
     },
   });
 
@@ -88,8 +84,8 @@ export async function getCourseWorkspaceOverview(input: {
         userId: input.userId,
         canViewCohorts: evaluation.access.canViewCohorts,
         canViewAllCohorts: evaluation.access.canViewAllCohorts,
-        moduleCount: courseRecord._count.modules,
-        modules: courseRecord.modules,
+        moduleCount: courseRecord.modules.length,
+        modules: courseRecord.modules.slice(0, 5),
       })
     : null;
 
@@ -122,61 +118,73 @@ async function getManagerOverview(input: {
   canViewCohorts: boolean;
   canViewAllCohorts: boolean;
   moduleCount: number;
-  modules: Array<{
-    id: string;
-    title: string;
-    _count: { items: number };
-  }>;
+  modules: Array<{ id: string; title: string }>;
 }) {
   const now = new Date();
-  const stats = await fetchStats({
-    itemCount: () =>
-      db.courseItem.count({ where: { module: { courseId: input.courseId } } }),
-    cohortCount: () =>
-      input.canViewCohorts
-        ? db.cohort.count({
-            where: {
-              courseId: input.courseId,
-              ...(input.canViewAllCohorts
-                ? {}
-                : {
-                    staff: {
-                      some: {
-                        organizationMember: { userId: input.userId },
+  // Item counts for the listed modules only; a nested relation `_count`
+  // would aggregate every course item in the database.
+  const [stats, itemCounts] = await Promise.all([
+    fetchStats({
+      itemCount: () =>
+        db.courseItem.count({
+          where: { module: { courseId: input.courseId } },
+        }),
+      cohortCount: () =>
+        input.canViewCohorts
+          ? db.cohort.count({
+              where: {
+                courseId: input.courseId,
+                ...(input.canViewAllCohorts
+                  ? {}
+                  : {
+                      staff: {
+                        some: {
+                          organizationMember: { userId: input.userId },
+                        },
                       },
-                    },
-                  }),
-            },
-          })
-        : Promise.resolve(0),
-    activeLearnerCount: () =>
-      db.courseEnrollment.count({
-        where: { courseId: input.courseId, status: "ACTIVE" },
-      }),
-    activeInviteCount: () =>
-      db.enrollmentInvite.count({
-        where: {
-          courseId: input.courseId,
-          revokedAt: null,
-          AND: [
-            { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
-            {
-              OR: [
-                { maxUses: null },
-                { useCount: { lt: db.enrollmentInvite.fields.maxUses } },
-              ],
-            },
-          ],
-        },
-      }),
-  });
+                    }),
+              },
+            })
+          : Promise.resolve(0),
+      activeLearnerCount: () =>
+        db.courseEnrollment.count({
+          where: { courseId: input.courseId, status: "ACTIVE" },
+        }),
+      activeInviteCount: () =>
+        db.enrollmentInvite.count({
+          where: {
+            courseId: input.courseId,
+            revokedAt: null,
+            AND: [
+              { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+              {
+                OR: [
+                  { maxUses: null },
+                  { useCount: { lt: db.enrollmentInvite.fields.maxUses } },
+                ],
+              },
+            ],
+          },
+        }),
+    }),
+    input.modules.length === 0
+      ? Promise.resolve([])
+      : db.courseItem.groupBy({
+          by: ["moduleId"],
+          where: { moduleId: { in: input.modules.map((module) => module.id) } },
+          _count: { _all: true },
+        }),
+  ]);
+  const itemCountByModule = new Map(
+    itemCounts.map((row) => [row.moduleId, row._count._all]),
+  );
 
   return {
     stats: { moduleCount: input.moduleCount, ...stats },
     modules: input.modules.map((module) => ({
       id: module.id,
       title: module.title,
-      itemCount: module._count.items,
+      itemCount: itemCountByModule.get(module.id) ?? 0,
     })),
   };
 }

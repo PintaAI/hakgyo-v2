@@ -1,4 +1,4 @@
-import { collectPdfPageRanges } from "@hakgyo/shared";
+import { collectPdfPageRanges, PDF_PAGES_BLOCK_TYPE } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -97,7 +97,8 @@ async function reorder(
           FROM (VALUES ${Prisma.join(
             ids.map(
               (resourceId, index) =>
-                Prisma.sql`(${resourceId}, ${positions[index]})`,
+                // Driver adapters send untyped params; cast so VALUES isn't inferred as text.
+                Prisma.sql`(${resourceId}, ${positions[index]}::int)`,
             ),
           )}) AS ordering(id, position)
           WHERE target."id" = ordering.id
@@ -596,12 +597,23 @@ export const contentRouter = createTRPCRouter({
         permission: "content.manage",
         userId: ctx.actorUserId,
       });
-      const materials = await db.material.findMany({
-        where: {
-          courseItems: { some: { module: { courseId: input.courseId } } },
-        },
-        select: { id: true, content: true },
-      });
+      // Only materials whose document mentions a pdfPages block are
+      // transferred and parsed; the text match is a cheap superset filter and
+      // collectPdfPageRanges still does the exact extraction.
+      const materials = await db.$queryRaw<
+        Array<{ id: string; content: Prisma.JsonValue }>
+      >(Prisma.sql`
+        SELECT m."id", m."content"
+        FROM "Material" m
+        WHERE m."id" IN (
+          SELECT item."materialId"
+          FROM "CourseItem" item
+          JOIN "CourseModule" module ON module."id" = item."moduleId"
+          WHERE module."courseId" = ${input.courseId}
+            AND item."materialId" IS NOT NULL
+        )
+          AND strpos(m."content"::text, ${`"${PDF_PAGES_BLOCK_TYPE}"`}) > 0
+      `);
       return Object.fromEntries(
         materials.flatMap(({ id: materialId, content }) => {
           const ranges = collectPdfPageRanges(content);
@@ -1129,7 +1141,7 @@ export const contentRouter = createTRPCRouter({
         : undefined;
       // Light list for pickers and library cards; full entries come from
       // getVocabularySet.
-      return db.vocabularySet.findMany({
+      const sets = await db.vocabularySet.findMany({
         where: {
           organizationId: input.organizationId,
           ...(member.organization.permissionMode === "ADVANCED" &&
@@ -1144,6 +1156,7 @@ export const contentRouter = createTRPCRouter({
                   {
                     entries: {
                       some: {
+                        organizationId: input.organizationId,
                         OR: [{ term: contains }, { definition: contains }],
                       },
                     },
@@ -1160,14 +1173,54 @@ export const contentRouter = createTRPCRouter({
           createdAt: true,
           updatedAt: true,
           createdByMembershipId: true,
-          _count: { select: { entries: true } },
-          entries: {
-            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-            take: vocabularyPreviewEntryCount,
-            select: { id: true, term: true },
-          },
         },
       });
+      if (sets.length === 0) return [];
+      // Entry counts and previews are loaded per set id: a relation `_count`
+      // aggregates the whole entry table and a nested `take` loads every
+      // entry before trimming in memory.
+      const setIds = sets.map((set) => set.id);
+      const [counts, previews] = await Promise.all([
+        db.vocabularyEntry.groupBy({
+          by: ["vocabularySetId"],
+          where: {
+            vocabularySetId: { in: setIds },
+            organizationId: input.organizationId,
+          },
+          _count: { _all: true },
+        }),
+        db.$queryRaw<
+          Array<{ vocabularySetId: string; id: string; term: string }>
+        >(Prisma.sql`
+          SELECT s."vocabularySetId", e."id", e."term"
+          FROM unnest(${setIds}::text[]) AS s("vocabularySetId")
+          CROSS JOIN LATERAL (
+            SELECT entry."id", entry."term", entry."createdAt"
+            FROM "VocabularyEntry" entry
+            WHERE entry."vocabularySetId" = s."vocabularySetId"
+            ORDER BY entry."createdAt" ASC, entry."id" ASC
+            LIMIT ${vocabularyPreviewEntryCount}::int
+          ) e
+          ORDER BY s."vocabularySetId", e."createdAt" ASC, e."id" ASC
+        `),
+      ]);
+      const countBySet = new Map(
+        counts.map((row) => [row.vocabularySetId, row._count._all]),
+      );
+      const previewBySet = new Map<
+        string,
+        Array<{ id: string; term: string }>
+      >();
+      for (const { vocabularySetId, ...entry } of previews) {
+        const list = previewBySet.get(vocabularySetId);
+        if (list) list.push(entry);
+        else previewBySet.set(vocabularySetId, [entry]);
+      }
+      return sets.map((set) => ({
+        ...set,
+        _count: { entries: countBySet.get(set.id) ?? 0 },
+        entries: previewBySet.get(set.id) ?? [],
+      }));
     }),
   getVocabularySet: protectedProcedure
     .input(z.object({ organizationId: id, vocabularySetId: id }))

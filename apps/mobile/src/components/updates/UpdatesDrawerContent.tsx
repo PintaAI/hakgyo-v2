@@ -8,10 +8,12 @@ import Animated, {
 import { useDrawerProgress } from "react-native-drawer-layout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useMemo } from "react";
+
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { dateLabel } from "../../lib/study";
-import { api } from "../../lib/trpc";
 import { useAppTheme } from "../../providers/AppThemeProvider";
+import { useCourseOutlines, useSyncIndex } from "../../sync/hooks";
 import { openMeeting } from "../learn/cohort-card";
 
 type UpdatesDrawerContentProps = {
@@ -27,13 +29,20 @@ export function UpdatesDrawerContent({
   const { activeOrganizationId, colors } = useAppTheme();
   const { items, markAllSeen, markEntitySeen, unreadCount } =
     useSidebarIndicators();
-  const scope = activeOrganizationId
-    ? { organizationId: activeOrganizationId }
-    : undefined;
-  const dashboard = api.mobileSync.getDashboard.useQuery(scope, {
-    enabled: Boolean(activeOrganizationId),
-    retry: false,
-  });
+  const index = useSyncIndex(activeOrganizationId);
+  // Module updates deep-link into a module's first item, which needs the
+  // composed outline of the courses that have unread module indicators.
+  const moduleCourseIds = useMemo(
+    () =>
+      items
+        .filter((item) => item.kind === "MODULE")
+        .map((item) => item.courseId),
+    [items],
+  );
+  const { outlines } = useCourseOutlines(moduleCourseIds);
+  const dashboard = {
+    data: index.data ? { ...index.data, outlines } : undefined,
+  };
   const updateItems = [...items].sort(
     (first, second) => Number(second.unread) - Number(first.unread),
   );

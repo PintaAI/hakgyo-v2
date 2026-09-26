@@ -52,7 +52,7 @@ function getAvailablePracticeItems(userId: string, organizationId?: string) {
     async () =>
       practiceItemsFromOutlines(
         await getCourseOutlinesForUser(
-          enrolledCourseWhere({ userId, organizationId }),
+          await enrolledCourseWhere({ userId, organizationId }),
           userId,
           { managementAccess: false },
         ),
@@ -103,16 +103,39 @@ export async function getVocabularyPool(
         select: {
           id: true,
           title: true,
-          _count: { select: { entries: true } },
         },
       },
     },
   });
+  // Sets without entries are skipped. Checked per page of set ids instead of
+  // a relation `_count`, which aggregates the whole entry table.
+  const vocabularySetIds = [
+    ...new Set(
+      placementMetadata.flatMap((placement) =>
+        placement.vocabularySet ? [placement.vocabularySet.id] : [],
+      ),
+    ),
+  ];
+  const setsWithEntries = new Set(
+    vocabularySetIds.length === 0
+      ? []
+      : (
+          await ctx.db.vocabularyEntry.groupBy({
+            by: ["vocabularySetId"],
+            where: { vocabularySetId: { in: vocabularySetIds } },
+          })
+        ).map((row) => row.vocabularySetId),
+  );
   const seenSets = new Set<string>();
   const sets = placementMetadata.flatMap((placement) => {
     const set = placement.vocabularySet;
     const source = placementById.get(placement.id);
-    if (!set || set._count.entries === 0 || !source || seenSets.has(set.id)) {
+    if (
+      !set ||
+      !setsWithEntries.has(set.id) ||
+      !source ||
+      seenSets.has(set.id)
+    ) {
       return [];
     }
     seenSets.add(set.id);
@@ -240,26 +263,41 @@ export async function getAssessmentSample(
           id: true,
           title: true,
           status: true,
-          _count: {
-            select: {
-              questions: {
-                where: {
-                  type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
-                },
-              },
-            },
-          },
         },
       },
     },
   });
+  // Assessments without choice questions are skipped; checked for this page
+  // of assessment ids instead of a relation `_count` over every question.
+  const assessmentIds = [
+    ...new Set(
+      placementMetadata.flatMap((placement) =>
+        placement.assessment?.status === "PUBLISHED"
+          ? [placement.assessment.id]
+          : [],
+      ),
+    ),
+  ];
+  const assessmentsWithQuestions = new Set(
+    assessmentIds.length === 0
+      ? []
+      : (
+          await ctx.db.assessmentQuestion.groupBy({
+            by: ["assessmentId"],
+            where: {
+              assessmentId: { in: assessmentIds },
+              type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
+            },
+          })
+        ).map((row) => row.assessmentId),
+  );
   const seenAssessments = new Set<string>();
   const assessments = placementMetadata.flatMap((placement) => {
     const assessment = placement.assessment;
     const source = placementById.get(placement.id);
     if (
       assessment?.status !== "PUBLISHED" ||
-      assessment._count.questions === 0 ||
+      !assessmentsWithQuestions.has(assessment.id) ||
       !source ||
       seenAssessments.has(assessment.id)
     ) {
@@ -425,15 +463,12 @@ export const practiceRouter = createTRPCRouter({
       // Practice is limited to courses the learner is enrolled in (staff
       // access alone does not count), outside locked modules.
       const [enrolledCourse, outline] = await Promise.all([
-        ctx.db.course.findFirst({
-          where: {
-            AND: [
-              { id: source.module.courseId },
-              enrolledCourseWhere({ userId: ctx.actorUserId }),
-            ],
-          },
-          select: { id: true },
-        }),
+        enrolledCourseWhere({ userId: ctx.actorUserId }).then((enrolled) =>
+          ctx.db.course.findFirst({
+            where: { AND: [{ id: source.module.courseId }, enrolled] },
+            select: { id: true },
+          }),
+        ),
         getCourseOutlineForUser(source.module.courseId, ctx.actorUserId, {
           managementAccess: false,
         }),

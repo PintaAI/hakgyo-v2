@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -9,9 +10,9 @@ import {
   type LearningPathItem,
 } from "../../lib/course-learning-path";
 import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
-import { api } from "../../lib/trpc";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../providers/MobileSyncProvider";
+import { readCourseOutline, useCourseOutline } from "../../sync/hooks";
 import { StudyAction } from "../study-glass";
 
 type Milestone = NonNullable<ReturnType<typeof getLearningMilestone>>;
@@ -40,8 +41,8 @@ export function CourseLearningFooter({
   initialOutline?: LearningPathCourse;
   requirementActions?: LearningRequirementAction[];
 }) {
-  const utils = api.useUtils();
-  const outline = api.learning.getCourseOutline.useQuery({ courseId });
+  const queryClient = useQueryClient();
+  const outline = useCourseOutline(courseId);
   const { activeOrganizationId } = useAppTheme();
   const { completeContent } = useMobileSyncActions();
   const baseline = useRef(initialOutline);
@@ -115,7 +116,8 @@ export function CourseLearningFooter({
     setIssue(undefined);
     try {
       const before =
-        utils.learning.getCourseOutline.getData({ courseId }) ?? outline.data;
+        readCourseOutline(queryClient, courseId, activeOrganizationId) ??
+        outline.data;
       if (!before)
         throw new Error("Course data is not available on this device.");
       baseline.current ??= before;
@@ -142,24 +144,19 @@ export function CourseLearningFooter({
           });
           return;
         }
-        const after = sync.result.dashboard?.outlines[courseId];
+        // The checkpoint applied the server's learner patch to the local
+        // index, so the outline recomposes from the bundle with the new
+        // progress (and unlocks) already in place.
+        const after = readCourseOutline(
+          queryClient,
+          courseId,
+          activeOrganizationId,
+        );
         if (!after) {
           throw new Error(
             "Completion synced, but the updated course did not load.",
           );
         }
-        utils.learning.getCourseOutline.setData({ courseId }, after);
-        // Refresh other cached surfaces without starting more server calls.
-        void Promise.allSettled([
-          utils.learning.getCourseItem.invalidate(
-            { courseItemId },
-            { refetchType: "none" },
-          ),
-          utils.learning.listMyCourses.invalidate(undefined, {
-            refetchType: "none",
-          }),
-          utils.gamification.invalidate(undefined, { refetchType: "none" }),
-        ]);
         if (!mounted.current) return;
         const next = getLearningPath(after, courseItemId);
         if (!next?.item.isCompleted)

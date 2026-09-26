@@ -2,434 +2,540 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  ArrowDownIcon,
   ArrowRightIcon,
-  BookOpenCheckIcon,
+  ArrowUpRightIcon,
+  BookOpenIcon,
   CheckIcon,
   ClipboardCheckIcon,
-  Layers3Icon,
+  GraduationCapIcon,
+  LanguagesIcon,
+  LayersIcon,
+  PlusIcon,
   UsersRoundIcon,
-  VideoIcon,
 } from "lucide-react";
 
+import { LandingProductPreview } from "~/components/landing-product-preview";
 import { ThemeToggle } from "~/components/theme-toggle";
+import { buttonVariants } from "~/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "Platform belajar dan mengajar yang lebih terarah",
+  title: "Satu ruang untuk setiap langkah belajar",
   description:
-    "Kelola course, materi, tugas, cohort, dan perkembangan peserta dalam satu ruang belajar bersama Hakgyo.",
+    "Rancang kurikulum, buat materi dan kosakata, kelola group belajar, serta tinjau tugas peserta dalam satu platform pembelajaran Hakgyo.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Hakgyo | Ruang belajar yang tumbuh bersama",
+    title: "Hakgyo | Satu ruang untuk setiap langkah belajar",
     description:
-      "Satu ruang untuk merancang pembelajaran, mendampingi peserta, dan melihat perkembangan mereka.",
+      "Dari menyusun materi hingga mendampingi peserta. Temukan ruang untuk belajar dan mengajar bersama Hakgyo.",
     type: "website",
     locale: "id_ID",
     url: "/",
   },
   twitter: {
     card: "summary",
-    title: "Hakgyo | Ruang belajar yang tumbuh bersama",
+    title: "Hakgyo | Satu ruang untuk setiap langkah belajar",
     description:
-      "Kelola pembelajaran dari materi hingga perkembangan peserta dalam satu tempat.",
+      "Kurikulum, materi, kosakata, dan group belajar dalam satu ruang.",
   },
 };
 
-const features = [
+const capabilities = [
+  { icon: LayersIcon, name: "Kurikulum terstruktur" },
+  { icon: BookOpenIcon, name: "Materi interaktif" },
+  { icon: LanguagesIcon, name: "Latihan kosakata" },
+  { icon: ClipboardCheckIcon, name: "Tugas & review" },
+  { icon: UsersRoundIcon, name: "Group belajar" },
+];
+const steps = [
   {
-    icon: Layers3Icon,
     number: "01",
-    title: "Kurikulum yang jelas",
+    title: "Rancang jalurnya.",
     description:
-      "Susun bab, materi, vocabulary, dan tugas dalam alur yang mudah diikuti.",
+      "Susun course menjadi bab. Hubungkan materi, set kosakata, dan tugas, lalu tentukan urutan belajar peserta.",
+    tag: "COURSE & KURIKULUM",
+    icon: LayersIcon,
   },
   {
-    icon: UsersRoundIcon,
     number: "02",
-    title: "Cohort yang terhubung",
+    title: "Hidupkan kelasnya.",
     description:
-      "Kelola peserta dan kelas belajar tanpa kehilangan konteks setiap kelompok.",
+      "Kelompokkan peserta dalam cohort, atur pengajar, dan jadwalkan pertemuan Zoom sesuai kebutuhan kelas.",
+    tag: "COHORT & PERTEMUAN",
+    icon: UsersRoundIcon,
   },
   {
-    icon: ClipboardCheckIcon,
     number: "03",
-    title: "Progres yang terlihat",
+    title: "Dampingi prosesnya.",
     description:
-      "Tinjau submission dan perkembangan belajar dari ruang kerja yang sama.",
+      "Tinjau jawaban tugas dan ikuti perkembangan peserta. Beri perhatian pada langkah belajar berikutnya.",
+    tag: "ASSESSMENT & REVIEW",
+    icon: ClipboardCheckIcon,
   },
-] as const;
-
+];
+const questions = [
+  [
+    "Untuk siapa Hakgyo dibuat?",
+    "Hakgyo menyediakan ruang kerja untuk organisasi, pengajar, dan pengelola kelas, serta area belajar untuk peserta. Course, bahan ajar, dan group belajar terhubung dalam platform yang sama.",
+  ],
+  [
+    "Apa saja yang bisa dimasukkan ke dalam course?",
+    "Anda dapat menyusun bab berisi materi, set kosakata, dan tugas atau assessment. Editor materi mendukung konten pembelajaran, termasuk blok percakapan dan pelafalan untuk pembelajaran bahasa.",
+  ],
+  [
+    "Apakah peserta bisa belajar sesuai urutannya?",
+    "Ya. Course mendukung pengaturan progresi bertahap untuk mengarahkan peserta mengikuti urutan pembelajaran. Peserta mengakses course dan melanjutkan aktivitas melalui area belajar.",
+  ],
+  [
+    "Bagaimana cara mulai menggunakan Hakgyo?",
+    "Buka katalog untuk menjelajahi course, atau masuk dan buat akun untuk mengakses area belajar. Untuk mengelola pembelajaran, Anda dapat membuat organisasi dan mulai menyusun course di workspace.",
+  ],
+];
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "Hakgyo",
   applicationCategory: "EducationalApplication",
   operatingSystem: "Web",
-  description:
-    "Platform pembelajaran untuk mengelola course, materi, tugas, cohort, dan perkembangan peserta.",
+  description: metadata.description,
   inLanguage: "id-ID",
 };
+const container = "mx-auto max-w-7xl px-6 sm:px-10 lg:px-16";
+
+function Brand() {
+  return (
+    <Link
+      href="/"
+      aria-label="Hakgyo, beranda"
+      className="inline-flex items-center gap-2.5 text-xl font-semibold tracking-[-0.06em]"
+    >
+      <Image
+        src="/icons/icon-192.png"
+        alt=""
+        width={36}
+        height={36}
+        className="size-9 rounded-lg"
+      />
+      hakgyo
+    </Link>
+  );
+}
 
 export default function Home() {
   return (
-    <main className="bg-background text-foreground selection:bg-primary selection:text-primary-foreground min-h-screen overflow-hidden">
+    <div className="bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-
-      <header className="border-border relative z-20 border-b">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
-          <Link
-            href="/"
-            className="group flex items-center gap-3 font-bold tracking-tight"
-            aria-label="Hakgyo, beranda"
-          >
-            <span className="grid size-10 place-items-center overflow-hidden rounded-[0.9rem] shadow-lg transition-transform group-hover:-rotate-6">
-              <Image
-                src="/icons/icon-192.png"
-                alt=""
-                width={40}
-                height={40}
-                className="size-10"
-                priority
-              />
-            </span>
-            <span className="text-xl">hakgyo</span>
-          </Link>
-
+      <a
+        href="#konten"
+        className="bg-primary text-primary-foreground sr-only fixed top-3 left-3 z-50 rounded-lg px-4 py-3 focus:not-sr-only"
+      >
+        Lewati navigasi
+      </a>
+      <header className="border-border border-b">
+        <div
+          className={`${container} flex h-20 items-center justify-between gap-4`}
+        >
+          <Brand />
           <nav
-            className="hidden items-center gap-8 text-sm font-medium md:flex"
             aria-label="Navigasi utama"
+            className="text-muted-foreground hidden items-center gap-8 text-sm md:flex"
           >
-            <a className="hover:text-primary transition" href="#fitur">
-              Fitur
+            <a
+              href="#platform"
+              className="hover:text-foreground transition-colors"
+            >
+              Platform
             </a>
-            <a className="hover:text-primary transition" href="#cara-kerja">
+            <a
+              href="#cara-kerja"
+              className="hover:text-foreground transition-colors"
+            >
               Cara kerja
             </a>
-            <Link className="hover:text-primary transition" href="/catalog">
-              Katalog
+            <Link
+              href="/catalog"
+              className="hover:text-foreground transition-colors"
+            >
+              Katalog course
             </Link>
           </nav>
-
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <Link
               href="/auth"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-ring inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-bold transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2"
+              className={buttonVariants({
+                variant: "outline",
+                className: "h-10 gap-3 px-5",
+              })}
             >
-              Masuk
-              <ArrowRightIcon className="size-4" aria-hidden="true" />
+              Masuk <ArrowUpRightIcon aria-hidden="true" />
             </Link>
           </div>
         </div>
       </header>
-
-      <section className="relative">
-        <div className="absolute inset-0 [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [mask-image:linear-gradient(to_bottom,black,transparent_85%)] [background-size:42px_42px]" />
-        <div className="relative mx-auto grid max-w-7xl gap-16 px-5 pt-16 pb-24 sm:px-8 sm:pt-24 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-10 lg:pt-28 lg:pb-32">
-          <div>
-            <div className="border-border bg-card inline-flex -rotate-1 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold tracking-[0.12em] uppercase shadow-lg">
-              <span className="bg-primary size-2 rounded-full" />
-              Ruang belajar digital
-            </div>
-            <h1 className="mt-8 max-w-3xl text-[clamp(3.5rem,8vw,7.4rem)] leading-[0.86] font-black tracking-[-0.065em]">
-              Belajar,
-              <span className="text-primary block font-serif font-normal italic">
-                bertumbuh,
-              </span>
-              bersama.
-            </h1>
-            <p className="text-muted-foreground mt-8 max-w-xl text-lg leading-8 sm:text-xl">
-              Hakgyo membantu pendidik merancang pengalaman belajar yang rapi,
-              mendampingi setiap cohort, dan melihat progres tanpa
-              berpindah-pindah alat.
+      <main id="konten">
+        <section
+          className={`${container} pt-16 pb-14 sm:pt-24 sm:pb-20`}
+          aria-labelledby="hero-title"
+        >
+          <div className="text-muted-foreground mb-7 flex items-center gap-3 text-[10px] font-medium tracking-[0.2em] uppercase sm:text-xs">
+            <span className="bg-primary h-px w-8" />
+            Ruang untuk belajar. Ruang untuk tumbuh.
+          </div>
+          <h1
+            id="hero-title"
+            className="max-w-5xl text-[clamp(3.15rem,7.6vw,6.75rem)] leading-[1.03] font-medium tracking-[-0.065em]"
+          >
+            Setiap langkah belajar,
+            <br />
+            <span className="text-muted-foreground">punya tempatnya.</span>
+          </h1>
+          <div className="mt-9 flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
+            <p className="text-muted-foreground max-w-lg text-base leading-7 sm:text-lg sm:leading-8">
+              Dari materi pertama hingga pencapaian berikutnya. Satukan
+              kurikulum, latihan, dan kelas dalam satu ruang belajar yang
+              terarah.
             </p>
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-wrap items-center gap-3 lg:pb-1">
               <Link
                 href="/auth"
-                className="bg-primary text-primary-foreground group focus-visible:outline-ring inline-flex min-h-14 items-center justify-center gap-3 rounded-full px-7 font-bold shadow-lg transition hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-4"
+                className={buttonVariants({ className: "h-12 gap-5 px-6" })}
               >
-                Mulai belajar
-                <ArrowRightIcon
-                  className="size-5 transition-transform group-hover:translate-x-1"
-                  aria-hidden="true"
-                />
+                Mulai bersama Hakgyo <ArrowRightIcon aria-hidden="true" />
               </Link>
               <Link
                 href="/catalog"
-                className="border-border bg-card/70 hover:bg-card focus-visible:outline-ring inline-flex min-h-14 items-center justify-center rounded-full border px-7 font-bold transition focus-visible:outline-2 focus-visible:outline-offset-4"
+                className={buttonVariants({
+                  variant: "ghost",
+                  className: "h-12 gap-2 px-4",
+                })}
               >
-                Jelajahi course
+                Jelajahi course <ArrowUpRightIcon aria-hidden="true" />
               </Link>
             </div>
-            <ul
-              className="text-muted-foreground mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm"
-              aria-label="Keunggulan Hakgyo"
-            >
-              {[
-                "Kurikulum terstruktur",
-                "Progres terpantau",
-                "Web dan mobile",
-              ].map((item) => (
-                <li className="flex items-center gap-2" key={item}>
-                  <span className="bg-secondary text-secondary-foreground grid size-5 place-items-center rounded-full">
-                    <CheckIcon className="size-3" aria-hidden="true" />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
           </div>
+        </section>
 
-          <div className="relative mx-auto w-full max-w-2xl lg:translate-x-6">
-            <div className="bg-secondary text-secondary-foreground absolute -top-10 -right-5 hidden rotate-6 rounded-lg px-4 py-3 font-serif text-sm italic shadow-lg sm:block">
-              kelas hari ini
-            </div>
-            <div className="border-foreground bg-accent text-accent-foreground absolute -bottom-8 -left-5 z-10 hidden -rotate-3 rounded-full border-2 px-5 py-2 text-sm font-bold sm:block">
-              Semua progres, satu tempat
-            </div>
-            <div className="bg-primary border-foreground rotate-[1.5deg] rounded-[2rem] border-2 p-2 shadow-lg">
-              <div className="bg-card overflow-hidden rounded-[1.45rem]">
-                <div className="border-border flex items-center justify-between border-b px-5 py-4">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-primary size-2.5 rounded-full" />
-                    <span className="bg-secondary size-2.5 rounded-full" />
-                    <span className="bg-muted-foreground size-2.5 rounded-full" />
-                  </div>
-                  <span className="text-muted-foreground text-[0.65rem] font-bold tracking-[0.18em] uppercase">
-                    Workspace kelas
-                  </span>
-                </div>
-                <div className="grid min-h-[27rem] grid-cols-[4.25rem_1fr] sm:grid-cols-[10rem_1fr]">
-                  <aside className="bg-muted border-border border-r p-3 sm:p-5">
-                    <div className="mb-8 flex items-center gap-2 font-bold">
-                      <span className="bg-primary text-primary-foreground grid size-7 place-items-center rounded-lg text-[0.65rem]">
-                        H
-                      </span>
-                      <span className="hidden sm:inline">Bahasa 101</span>
-                    </div>
-                    <div className="text-muted-foreground space-y-2 text-xs font-medium">
-                      {[
-                        BookOpenCheckIcon,
-                        Layers3Icon,
-                        UsersRoundIcon,
-                        ClipboardCheckIcon,
-                      ].map((Icon, index) => (
-                        <div
-                          className={`bg-card flex items-center gap-2 rounded-lg p-2 ${index === 1 ? "text-foreground shadow-sm" : ""}`}
-                          key={index}
-                        >
-                          <Icon
-                            className="size-4 shrink-0"
-                            aria-hidden="true"
-                          />
-                          <span className="hidden sm:inline">
-                            {
-                              ["Ringkasan", "Kurikulum", "Peserta", "Review"][
-                                index
-                              ]
-                            }
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </aside>
-                  <div className="p-5 sm:p-7">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-primary text-[0.65rem] font-bold tracking-[0.15em] uppercase">
-                          Kurikulum
-                        </p>
-                        <h2 className="mt-2 text-xl font-black sm:text-2xl">
-                          Percakapan dasar
-                        </h2>
-                      </div>
-                      <span className="bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-[0.65rem] font-bold">
-                        72% selesai
-                      </span>
-                    </div>
-                    <div className="mt-7 space-y-3">
-                      {[
-                        ["01", "Salam dan perkenalan", "3 materi"],
-                        ["02", "Kehidupan sehari-hari", "5 materi"],
-                        ["03", "Latihan percakapan", "Tugas"],
-                      ].map(([number, title, meta], index) => (
-                        <div
-                          className={`flex items-center gap-4 rounded-2xl border p-4 ${index === 1 ? "bg-accent border-primary/40" : "bg-background border-border"}`}
-                          key={number}
-                        >
-                          <span
-                            className={`grid size-9 shrink-0 place-items-center rounded-xl text-xs font-black ${index === 0 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-                          >
-                            {number}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold">
-                              {title}
-                            </p>
-                            <p className="text-muted-foreground mt-1 text-xs">
-                              {meta}
-                            </p>
-                          </div>
-                          {index === 0 ? (
-                            <CheckIcon
-                              className="text-primary size-4"
-                              aria-label="Selesai"
-                            />
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-5 grid grid-cols-2 gap-3">
-                      <div className="bg-secondary rounded-2xl p-4">
-                        <p className="text-2xl font-black">24</p>
-                        <p className="text-muted-foreground text-xs">
-                          Peserta aktif
-                        </p>
-                      </div>
-                      <div className="bg-accent rounded-2xl p-4">
-                        <p className="text-2xl font-black">8</p>
-                        <p className="text-muted-foreground text-xs">
-                          Tugas direview
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <section
+          id="platform"
+          aria-label="Pratinjau platform Hakgyo"
+          className="bg-muted/45 border-border scroll-mt-6 border-y"
+        >
+          <div className={`${container} py-8 sm:py-12`}>
+            <LandingProductPreview />
+          </div>
+        </section>
+        <div className={`${container} py-8 sm:py-10`}>
+          <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-x-8 gap-y-5 lg:justify-between">
+            {capabilities.map(({ icon: Icon, name }) => (
+              <span
+                key={name}
+                className="flex items-center gap-2.5 text-xs font-medium sm:text-sm"
+              >
+                <Icon className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                {name}
+              </span>
+            ))}
           </div>
         </div>
-      </section>
 
-      <section
-        id="fitur"
-        className="bg-primary text-primary-foreground border-border border-y py-24 sm:py-32"
-      >
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-          <div className="grid gap-10 lg:grid-cols-2 lg:items-end">
+        <section
+          id="cara-kerja"
+          className={`${container} scroll-mt-8 py-16 sm:py-24`}
+        >
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div>
-              <p className="text-primary-foreground/70 text-xs font-bold tracking-[0.2em] uppercase">
-                Dari rencana ke hasil
+              <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+                01 / Dari persiapan ke pendampingan
               </p>
-              <h2 className="mt-5 max-w-2xl text-4xl leading-tight font-black tracking-[-0.04em] sm:text-6xl">
-                Pembelajaran yang terasa manusiawi.
+              <h2 className="mt-5 max-w-2xl text-4xl leading-[1.12] font-medium tracking-[-0.045em] sm:text-5xl">
+                Lebih teratur mengajar.
+                <br />
+                <span className="text-muted-foreground">
+                  Lebih leluasa berkembang.
+                </span>
               </h2>
             </div>
-            <p className="text-primary-foreground/70 max-w-xl text-lg leading-8 lg:justify-self-end">
-              Teknologi seharusnya merapikan pekerjaan pendidik, bukan menambah
-              kerumitan. Hakgyo menyatukan proses penting dalam alur yang fokus.
-            </p>
+            <ArrowDownIcon
+              className="text-muted-foreground hidden size-9 md:block"
+              strokeWidth={1}
+              aria-hidden="true"
+            />
           </div>
-          <div className="mt-16 grid gap-px overflow-hidden rounded-[2rem] border border-background/15 bg-background/15 lg:grid-cols-3">
-            {features.map(({ icon: Icon, number, title, description }) => (
+          <div className="border-border mt-12 grid border-t md:grid-cols-3">
+            {steps.map(({ number, title, description, tag, icon: Icon }) => (
               <article
-                className="bg-primary hover:bg-primary-foreground/5 p-7 transition sm:p-9"
                 key={number}
+                className="border-border border-b py-8 md:border-r md:border-b-0 md:px-7 md:first:pl-0 md:last:border-r-0 md:last:pr-0"
               >
                 <div className="flex items-center justify-between">
-                  <span className="bg-primary-foreground text-primary grid size-12 place-items-center rounded-2xl transition-transform group-hover:-rotate-6">
-                    <Icon className="size-5" aria-hidden="true" />
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {number}
                   </span>
-                  <span className="text-primary-foreground/60 font-mono text-xs">
-                    /{number}
-                  </span>
+                  <Icon
+                    className="size-5"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  />
                 </div>
-                <h3 className="mt-12 text-2xl font-bold">{title}</h3>
-                <p className="text-primary-foreground/70 mt-4 leading-7">
+                <h3 className="mt-10 text-2xl font-medium tracking-tight">
+                  {title}
+                </h3>
+                <p className="text-muted-foreground mt-4 text-sm leading-7">
                   {description}
+                </p>
+                {number === "02" ? (
+                  <div className="mt-5 flex flex-wrap items-center gap-4">
+                    <span className="text-muted-foreground text-xs">
+                      Terhubung dengan
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                      <Image
+                        src="/brands/zoom.png"
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="size-6 rounded-full"
+                      />
+                      Zoom
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                      <Image
+                        src="/brands/whatsapp.svg"
+                        alt=""
+                        width={20}
+                        height={20}
+                        className="size-5"
+                      />
+                      WhatsApp
+                    </span>
+                  </div>
+                ) : null}
+                <p className="text-muted-foreground mt-8 text-[10px] tracking-[0.16em]">
+                  {tag}
                 </p>
               </article>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="cara-kerja" className="py-24 sm:py-32">
-        <div className="mx-auto grid max-w-7xl gap-16 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:px-10">
+        <section className="bg-muted/45 border-border border-y">
+          <div
+            className={`${container} grid items-center gap-12 py-16 sm:py-24 lg:grid-cols-2 lg:gap-20`}
+          >
+            <div>
+              <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+                02 / Bukan sekadar membaca
+              </p>
+              <h2 className="mt-5 text-4xl leading-[1.12] font-medium tracking-[-0.045em] sm:text-5xl">
+                Materi yang mengajak
+                <br />
+                <span className="text-muted-foreground">ikut berlatih.</span>
+              </h2>
+              <p className="text-muted-foreground mt-6 max-w-md leading-7">
+                Bangun pemahaman lewat percakapan, kosakata, dan latihan. Setiap
+                bagian punya peran dalam perjalanan belajar peserta.
+              </p>
+              <ul className="mt-8 space-y-4">
+                {[
+                  "Percakapan dengan terjemahan",
+                  "Kosakata, arti, dan contoh penggunaan",
+                  "Latihan pelafalan dan pemahaman",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-3 text-sm">
+                    <CheckIcon className="size-4" aria-hidden="true" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/catalog"
+                className="mt-9 inline-flex items-center gap-4 border-b border-current pb-2 text-sm font-medium"
+              >
+                Temukan course Anda{" "}
+                <ArrowUpRightIcon className="size-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <figure className="min-w-0">
+              <div className="border-border bg-card overflow-hidden rounded-2xl border p-3 shadow-[0_20px_60px_-30px_color-mix(in_oklch,var(--foreground)_20%,transparent)] sm:p-5">
+                <div className="border-border text-muted-foreground mb-5 flex items-center justify-between border-b pb-4 text-[10px] tracking-[0.12em]">
+                  <span>DI DALAM MATERI</span>
+                  <LanguagesIcon className="size-4" aria-hidden="true" />
+                </div>
+                <Image
+                  src="/images/landing/conversation-light.jpg"
+                  alt="Contoh blok percakapan Korea dengan terjemahan Indonesia dan pertanyaan pemahaman di Hakgyo."
+                  width={602}
+                  height={570}
+                  sizes="(max-width: 1024px) 90vw, 500px"
+                  className="h-auto w-full dark:hidden"
+                />
+                <Image
+                  src="/images/landing/conversation-dark.jpg"
+                  alt="Contoh blok percakapan Korea dengan terjemahan Indonesia dan pertanyaan pemahaman di Hakgyo."
+                  width={602}
+                  height={570}
+                  sizes="(max-width: 1024px) 90vw, 500px"
+                  className="hidden h-auto w-full dark:block"
+                />
+              </div>
+              <figcaption className="text-muted-foreground mt-4 text-center text-xs">
+                Cuplikan asli blok percakapan · contoh materi bahasa Korea
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section className={`${container} py-16 sm:py-24`}>
+          <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+            03 / Dua peran, satu tujuan
+          </p>
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
+            <article className="bg-primary text-primary-foreground relative overflow-hidden rounded-2xl p-8 sm:p-10">
+              <UsersRoundIcon
+                className="size-6"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
+              <p className="mt-10 text-xs tracking-[0.15em] uppercase opacity-70">
+                Untuk pengajar & organisasi
+              </p>
+              <h2 className="mt-3 text-3xl font-medium tracking-tight">
+                Ruang untuk merancang.
+              </h2>
+              <p className="mt-4 max-w-md text-sm leading-7 opacity-80">
+                Kelola bahan ajar, anggota, dan group belajar. Bangun identitas
+                organisasi lewat tema dan halaman publik Anda sendiri.
+              </p>
+              <Link
+                href="/organizations/new"
+                className={buttonVariants({
+                  variant: "secondary",
+                  className: "mt-8 h-11 gap-4 px-5",
+                })}
+              >
+                Buat ruang belajar <ArrowUpRightIcon aria-hidden="true" />
+              </Link>
+            </article>
+            <article className="bg-secondary text-secondary-foreground rounded-2xl p-8 sm:p-10">
+              <GraduationCapIcon
+                className="size-6"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
+              <p className="text-muted-foreground mt-10 text-xs tracking-[0.15em] uppercase">
+                Untuk peserta
+              </p>
+              <h2 className="mt-3 text-3xl font-medium tracking-tight">
+                Ruang untuk melangkah.
+              </h2>
+              <p className="text-muted-foreground mt-4 max-w-md text-sm leading-7">
+                Ikuti alur course, pelajari materi, dan kerjakan latihan.
+                Lanjutkan perjalanan dari area belajar yang menyimpan progres
+                Anda.
+              </p>
+              <Link
+                href="/catalog"
+                className={buttonVariants({
+                  variant: "outline",
+                  className: "mt-8 h-11 gap-4 px-5",
+                })}
+              >
+                Lihat katalog course <ArrowUpRightIcon aria-hidden="true" />
+              </Link>
+            </article>
+          </div>
+        </section>
+
+        <section
+          className={`${container} grid gap-10 pt-4 pb-20 sm:pb-28 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20`}
+          aria-labelledby="faq-title"
+        >
           <div>
-            <p className="text-primary text-xs font-bold tracking-[0.2em] uppercase">
-              Satu ekosistem
+            <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+              Sebelum mulai
             </p>
-            <h2 className="mt-5 text-4xl leading-tight font-black tracking-[-0.04em] sm:text-5xl">
-              Siap untuk kelas yang bergerak dinamis.
+            <h2
+              id="faq-title"
+              className="mt-5 text-4xl font-medium tracking-[-0.045em]"
+            >
+              Kenali lebih dekat.
             </h2>
-            <p className="text-muted-foreground mt-6 text-lg leading-8">
-              Dari sesi langsung hingga belajar mandiri, setiap aktivitas tetap
-              berada dalam konteks course dan cohort.
-            </p>
+            <Link
+              href="/docs"
+              className="text-muted-foreground hover:text-foreground mt-6 inline-flex items-center gap-2 text-sm"
+            >
+              Baca panduan aplikasi{" "}
+              <ArrowUpRightIcon className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
+          <div className="border-border border-t">
+            {questions.map(([question, answer]) => (
+              <details key={question} className="group border-border border-b">
+                <summary className="focus-visible:outline-ring flex min-h-20 cursor-pointer list-none items-center justify-between gap-6 py-5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                  {question}
+                  <PlusIcon
+                    className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-45 motion-reduce:transition-none"
+                    aria-hidden="true"
+                  />
+                </summary>
+                <p className="text-muted-foreground max-w-xl pr-8 pb-6 text-sm leading-7">
+                  {answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-muted/50 border-border border-y">
+          <div
+            className={`${container} flex flex-col items-start justify-between gap-8 py-14 sm:py-20 lg:flex-row lg:items-center`}
+          >
+            <div>
+              <p className="text-muted-foreground mb-4 text-xs tracking-[0.18em] uppercase">
+                Langkah berikutnya, bersama.
+              </p>
+              <h2 className="text-4xl font-medium tracking-[-0.045em] sm:text-5xl">
+                Belajar punya banyak arah.
+                <br />
+                <span className="text-muted-foreground">Mulai dari sini.</span>
+              </h2>
+            </div>
             <Link
               href="/auth"
-              className="border-foreground mt-9 inline-flex items-center gap-2 border-b-2 pb-1 font-bold transition hover:gap-4"
+              className={buttonVariants({ className: "h-14 gap-8 px-7" })}
             >
-              Buat ruang belajar
-              <ArrowRightIcon className="size-4" aria-hidden="true" />
+              Mulai bersama Hakgyo <ArrowRightIcon aria-hidden="true" />
             </Link>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <article className="bg-card border-border rounded-[2rem] border p-7 shadow-lg">
-              <VideoIcon className="text-primary size-7" aria-hidden="true" />
-              <h3 className="mt-8 text-xl font-bold">Belajar sinkron</h3>
-              <p className="text-muted-foreground mt-3 leading-7">
-                Hubungkan kelas dan sesi Zoom dengan alur belajar peserta.
-              </p>
-            </article>
-            <article className="bg-secondary text-secondary-foreground border-border rounded-[2rem] border p-7 sm:translate-y-8">
-              <BookOpenCheckIcon className="size-7" aria-hidden="true" />
-              <h3 className="mt-8 text-xl font-bold">Belajar mandiri</h3>
-              <p className="mt-3 leading-7">
-                Materi dan tugas tetap mudah diakses, kapan pun peserta siap.
-              </p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-5 pb-24 sm:px-8 sm:pb-32 lg:px-10">
-        <div className="bg-primary text-primary-foreground mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] px-6 py-14 text-center sm:px-12 sm:py-20">
-          <Image
-            src="/icons/icon-192.png"
-            alt=""
-            width={72}
-            height={72}
-            className="mx-auto size-[4.5rem] rounded-[1.25rem] shadow-lg"
-          />
-          <h2 className="mx-auto mt-6 max-w-3xl text-4xl leading-tight font-black tracking-[-0.04em] sm:text-6xl">
-            Bangun ruang belajar yang layak dirindukan.
-          </h2>
-          <p className="text-primary-foreground/80 mx-auto mt-5 max-w-xl text-lg leading-8">
-            Mulai susun pengalaman belajar yang lebih terarah bersama Hakgyo.
-          </p>
-          <Link
-            href="/auth"
-            className="bg-primary-foreground text-primary focus-visible:outline-primary-foreground mt-9 inline-flex min-h-14 items-center gap-3 rounded-full px-8 font-bold transition hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-4"
+        </section>
+      </main>
+      <footer className={`${container} py-10`}>
+        <div className="flex flex-col justify-between gap-8 sm:flex-row sm:items-center">
+          <Brand />
+          <nav
+            aria-label="Navigasi footer"
+            className="text-muted-foreground flex flex-wrap gap-6 text-sm"
           >
-            Mulai sekarang
-            <ArrowRightIcon className="size-5" aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
-
-      <footer className="border-border border-t">
-        <div className="text-muted-foreground mx-auto flex max-w-7xl flex-col gap-5 px-5 py-8 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
-          <p className="text-foreground font-bold">
-            hakgyo{" "}
-            <span className="text-muted-foreground font-normal">
-              / belajar bersama
-            </span>
-          </p>
-          <nav className="flex gap-6" aria-label="Navigasi footer">
-            <Link className="hover:text-foreground" href="/catalog">
+            <Link href="/catalog" className="hover:text-foreground">
               Katalog
             </Link>
-            <Link className="hover:text-foreground" href="/auth">
+            <Link href="/docs" className="hover:text-foreground">
+              Panduan
+            </Link>
+            <Link href="/auth" className="hover:text-foreground">
               Masuk
             </Link>
           </nav>
-          <p>&copy; {new Date().getFullYear()} Hakgyo</p>
+        </div>
+        <div className="border-border text-muted-foreground mt-8 flex flex-wrap justify-between gap-3 border-t pt-6 text-xs">
+          <p>© {new Date().getFullYear()} Hakgyo</p>
+          <p>Dibangun untuk proses. Dirancang untuk progres.</p>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }

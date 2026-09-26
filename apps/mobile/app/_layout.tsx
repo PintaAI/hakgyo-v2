@@ -8,7 +8,9 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { authClient } from "../src/lib/auth-client";
-import { api, TRPCProvider } from "../src/lib/trpc";
+import { TRPCProvider } from "../src/lib/trpc";
+import { ForcedUpdateGate } from "../src/components/forced-update-gate";
+import { useSyncIndex } from "../src/sync/hooks";
 import {
   AppThemeProvider,
   useAppTheme,
@@ -22,7 +24,6 @@ import {
 import {
   MobileSyncProvider,
   useMobileSync,
-  useMobileSyncActions,
 } from "../src/providers/MobileSyncProvider";
 import "../global.css";
 
@@ -40,18 +41,23 @@ function RootNavigator() {
   // "fade" for exactly one push after a drawer item tap (see
   // DrawerProvider.navigate); every other navigation uses the default slide.
   const { transition } = useTransitionOverride();
-  const { cacheDashboard } = useMobileSyncActions();
-  const { checkForUpdates, pendingCount } = useMobileSync();
+  const {
+    checkForUpdates,
+    getNextCheckAfterMs,
+    pendingCount,
+    upgradeRequired,
+  } = useMobileSync();
   const automaticSyncRef = useRef({
     scope: "",
     nextAttemptAt: 0,
     failures: 0,
     running: false,
   });
-  const dashboard = api.mobileSync.getDashboard.useQuery(
-    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
-    { enabled: Boolean(session && isHydrated), retry: false },
-  );
+  // The learner index is the local replacement for the old dashboard fetch:
+  // the engine writes it after every sync and screens read it from SQLite.
+  const index = useSyncIndex(session ? activeOrganizationId : undefined);
+  const hasIndex = Boolean(index.data);
+  const indexLoading = index.isPending && !hasIndex;
 
   useEffect(() => {
     if (!isPending && isHydrated) {
@@ -60,16 +66,19 @@ function RootNavigator() {
   }, [isHydrated, isPending]);
 
   useEffect(() => {
-    if (dashboard.data) cacheDashboard(dashboard.data);
-  }, [cacheDashboard, dashboard.data]);
-
-  useEffect(() => {
-    if (!session || !isHydrated) return;
+    // An outdated client must not keep polling; the gate handles recovery.
+    if (!session || !isHydrated || upgradeRequired) return;
     const scope = `${session.user.id}:${activeOrganizationId ?? "all"}`;
     if (automaticSyncRef.current.scope !== scope) {
+      // With a local index and nothing to upload the app is usable offline,
+      // so spread the automatic check over a minute to avoid a thundering
+      // herd (e.g. many launches after an outage or a push). Without an
+      // index, or with queued progress, sync promptly. User actions
+      // (pull-to-refresh, completing content) sync immediately.
+      const startupJitterMs = hasIndex && pendingCount === 0 ? 60_000 : 5_000;
       automaticSyncRef.current = {
         scope,
-        nextAttemptAt: Date.now() + Math.random() * 5000,
+        nextAttemptAt: Date.now() + Math.random() * startupJitterMs,
         failures: 0,
         running: false,
       };
@@ -79,7 +88,7 @@ function RootNavigator() {
     const attempt = () => {
       if (!active || AppState.currentState !== "active" || state.running)
         return;
-      if (dashboard.isFetching && !dashboard.data && pendingCount === 0) return;
+      if (indexLoading && pendingCount === 0) return;
       const now = Date.now();
       if (now < state.nextAttemptAt) return;
       state.running = true;
@@ -96,8 +105,11 @@ function RootNavigator() {
             backOff();
           } else {
             state.failures = 0;
+            // The server can stretch the poll interval (manifest
+            // `checkAfterMs`) to shed load; never poll more often than 15 min.
+            const interval = Math.max(15 * 60_000, getNextCheckAfterMs() ?? 0);
             state.nextAttemptAt =
-              Date.now() + 15 * 60_000 + Math.random() * 60_000;
+              Date.now() + interval + Math.random() * 60_000;
           }
         })
         .catch(() => {
@@ -138,11 +150,13 @@ function RootNavigator() {
   }, [
     activeOrganizationId,
     checkForUpdates,
-    dashboard.data,
-    dashboard.isFetching,
+    getNextCheckAfterMs,
+    hasIndex,
+    indexLoading,
     isHydrated,
     pendingCount,
     session,
+    upgradeRequired,
   ]);
 
   const navigationTheme = useMemo(() => {
@@ -163,6 +177,17 @@ function RootNavigator() {
   }, [colorScheme, colors]);
 
   if (isPending || !isHydrated) return null;
+
+  if (upgradeRequired) {
+    return (
+      <>
+        <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+        <ThemeProvider value={navigationTheme}>
+          <ForcedUpdateGate minProtocol={upgradeRequired.minProtocol} />
+        </ThemeProvider>
+      </>
+    );
+  }
 
   return (
     <>

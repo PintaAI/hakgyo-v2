@@ -151,23 +151,53 @@ export const pdfBookRouter = createTRPCRouter({
           status: true,
           createdAt: true,
           createdBy: { select: { userId: true } },
-          _count: { select: { pages: true } },
-          pages: {
-            orderBy: { pageNumber: "asc" },
-            take: 1,
-            select: { thumbnailAsset: { select: { objectKey: true } } },
-          },
         },
       });
+      // Uploaded page count and first-page thumbnail per book, both read
+      // from the page primary key. A relation `_count` and nested `take` in
+      // the findMany would aggregate and load every page of every book.
+      const pageSummaries =
+        books.length === 0
+          ? []
+          : await db.$queryRaw<
+              Array<{
+                bookId: string;
+                uploadedPages: number;
+                coverObjectKey: string | null;
+              }>
+            >(Prisma.sql`
+              SELECT
+                b."id" AS "bookId",
+                (
+                  SELECT COUNT(*)::int
+                  FROM "PdfBookPage" page
+                  WHERE page."bookId" = b."id"
+                ) AS "uploadedPages",
+                (
+                  SELECT asset."objectKey"
+                  FROM "PdfBookPage" page
+                  JOIN "Asset" asset ON asset."id" = page."thumbnailAssetId"
+                  WHERE page."bookId" = b."id"
+                  ORDER BY page."pageNumber" ASC
+                  LIMIT 1
+                ) AS "coverObjectKey"
+              FROM unnest(${books.map((book) => book.id)}::text[]) AS b("id")
+            `);
+      const summaryByBook = new Map(
+        pageSummaries.map((summary) => [summary.bookId, summary]),
+      );
       return Promise.all(
-        books.map(async ({ _count, pages, createdBy, ...book }) => ({
-          ...book,
-          uploadedPages: _count.pages,
-          isOwnUpload: createdBy.userId === ctx.actorUserId,
-          coverUrl: pages[0]
-            ? await signedPageUrl(pages[0].thumbnailAsset.objectKey)
-            : null,
-        })),
+        books.map(async ({ createdBy, ...book }) => {
+          const summary = summaryByBook.get(book.id);
+          return {
+            ...book,
+            uploadedPages: summary?.uploadedPages ?? 0,
+            isOwnUpload: createdBy.userId === ctx.actorUserId,
+            coverUrl: summary?.coverObjectKey
+              ? await signedPageUrl(summary.coverObjectKey)
+              : null,
+          };
+        }),
       );
     }),
 

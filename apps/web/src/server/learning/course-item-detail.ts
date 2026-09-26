@@ -111,7 +111,6 @@ function courseItemDetailSelect(userId: string) {
         title: true,
         description: true,
         status: true,
-        _count: { select: { questions: true } },
       },
     },
     progress: {
@@ -153,7 +152,10 @@ export async function getCourseItemDetails(
         ]
       : [],
   );
-  const [references, vocabularyEvidence] = await Promise.all([
+  const assessmentIds = [
+    ...new Set(items.flatMap((item) => item.assessment?.id ?? [])),
+  ];
+  const [references, vocabularyEvidence, questionCounts] = await Promise.all([
     getLearnerMaterialReferencesForSources(
       db,
       materialItems.map(({ source }) => source),
@@ -169,7 +171,19 @@ export async function getCourseItemDetails(
         ),
       ),
     ),
+    // Per assessment id rather than a nested relation `_count`, which Prisma
+    // compiles into an aggregate over every question in the database.
+    assessmentIds.length === 0
+      ? Promise.resolve([])
+      : db.assessmentQuestion.groupBy({
+          by: ["assessmentId"],
+          where: { assessmentId: { in: assessmentIds } },
+          _count: { _all: true },
+        }),
   ]);
+  const questionCountByAssessment = new Map(
+    questionCounts.map((row) => [row.assessmentId, row._count._all]),
+  );
   const referencesByItem = new Map(
     materialItems.map(({ id }, index) => [id, references[index]!]),
   );
@@ -222,6 +236,14 @@ export async function getCourseItemDetails(
       : null;
     return {
       ...item,
+      assessment: item.assessment
+        ? {
+            ...item.assessment,
+            _count: {
+              questions: questionCountByAssessment.get(item.assessment.id) ?? 0,
+            },
+          }
+        : null,
       material: learnerMaterial,
       embeddedResources: {
         ...embeddedResources,

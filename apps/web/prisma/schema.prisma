@@ -14,13 +14,33 @@ datasource db {
   provider = "postgresql"
 }
 
-// Incremented by database triggers for mobile-visible content and learner state.
-model MobileSyncRevision {
-  scopeType String
-  scopeId   String
-  revision  BigInt @default(1)
+// Append-only change log written by database triggers for learner-visible
+// changes (see the mobile_sync_change_log migration). Read through
+// src/server/mobile/sync-log.ts with raw SQL because xid8 is unsupported by
+// the client; declared here so `prisma migrate diff` stays clean.
+model MobileSyncChange {
+  id         BigInt              @id @default(autoincrement())
+  txid       Unsupported("xid8") @default(dbgenerated("pg_current_xact_id()"))
+  scopeType  String
+  scopeId    String
+  kind       String
+  entityType String              @default("")
+  entityId   String              @default("")
+  createdAt  DateTime            @default(now()) @db.Timestamptz(6)
 
-  @@id([scopeType, scopeId])
+  @@unique([txid, scopeType, scopeId, kind, entityType, entityId], map: "MobileSyncChange_dedupe")
+  @@index([scopeType, scopeId, kind, txid(sort: Desc)], map: "MobileSyncChange_scope_txid")
+  @@index([createdAt], map: "MobileSyncChange_createdAt")
+  @@ignore
+}
+
+// Single row: how far MobileSyncChange has been compacted.
+model MobileSyncCompaction {
+  id          Int                  @id @default(1)
+  floorTxid   Unsupported("xid8")?
+  compactedAt DateTime?            @db.Timestamptz(6)
+
+  @@ignore
 }
 
 model User {
@@ -59,6 +79,9 @@ model User {
   sidebarSeen                 LearnerSidebarSeen[]
 
   @@unique([email])
+  @@index([createdAt])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "user_name_trgm_idx")
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "user_email_trgm_idx")
   @@map("user")
 }
 
@@ -75,6 +98,7 @@ model AdminAuditLog {
   target       User?    @relation("AdminAuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
+  @@index([actorUserId, createdAt])
   @@index([targetUserId, createdAt])
   @@map("adminAuditLog")
 }
@@ -568,7 +592,6 @@ model LearnerSidebarSeen {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@id([userId, organizationId, indicatorKey])
-  @@index([userId, organizationId, seenAt])
   @@index([organizationId])
   @@map("learnerSidebarSeen")
 }
@@ -601,6 +624,7 @@ model OrganizationMember {
   @@unique([organizationId, userId])
   @@unique([id, organizationId])
   @@index([userId])
+  @@index([organizationId, createdAt])
 }
 
 model OrganizationInvite {
@@ -623,6 +647,8 @@ model OrganizationInvite {
 
   @@index([organizationId, createdAt])
   @@index([email, acceptedAt, revokedAt])
+  @@index([invitedByMembershipId])
+  @@index([acceptedByUserId])
 }
 
 model Course {
@@ -652,7 +678,10 @@ model Course {
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
   @@index([ownerMembershipId])
-  @@index([organizationId, status])
+  @@index([status, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, updatedAt])
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "Course_title_trgm_idx")
 }
 
 model CourseCollaborator {
@@ -741,7 +770,6 @@ model CohortMeeting {
 
   @@index([cohortId, startsAt])
   @@index([createdByMembershipId])
-  @@index([status, startsAt])
   @@index([organizationId, status, startsAt])
 }
 
@@ -872,6 +900,7 @@ model Assessment {
   @@index([organizationId, status])
   @@index([organizationId, updatedAt])
   @@index([createdByMembershipId])
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "Assessment_title_trgm_idx")
 }
 
 model AssessmentQuestion {
@@ -945,6 +974,8 @@ model VocabularyEntry {
   @@index([vocabularySetId, createdAt, id])
   @@index([audioAssetId])
   @@index([imageAssetId])
+  @@index([term(ops: raw("gin_trgm_ops"))], type: Gin, map: "VocabularyEntry_term_trgm_idx")
+  @@index([definition(ops: raw("gin_trgm_ops"))], type: Gin, map: "VocabularyEntry_definition_trgm_idx")
 }
 
 model CourseEnrollment {
@@ -960,6 +991,7 @@ model CourseEnrollment {
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, userId])
+  @@index([courseId, enrolledAt])
   @@index([userId, status])
 }
 
@@ -975,6 +1007,7 @@ model CohortEnrollment {
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([cohortId, userId])
+  @@index([cohortId, enrolledAt])
   @@index([userId, status])
 }
 
@@ -1030,7 +1063,6 @@ model UserActivityEvent {
 
   @@index([userId, occurredAt])
   @@index([userId, contributesToStreak, activityDate])
-  @@index([userId, action, occurredAt])
   @@index([organizationId, occurredAt])
 }
 
@@ -1123,7 +1155,7 @@ model AssessmentEvent {
   audits                AssessmentEventAudit[]
 
   @@unique([id, organizationId])
-  @@index([courseId, status, createdAt])
+  @@index([courseId, cohortId, createdAt])
   @@index([cohortId, status, createdAt])
   @@index([courseItemId])
   @@index([createdByMembershipId])
@@ -1245,6 +1277,7 @@ model PdfBook {
 
   @@unique([id, organizationId])
   @@index([organizationId, status])
+  @@index([createdByMembershipId])
 }
 
 model PdfBookPage {
@@ -1303,7 +1336,6 @@ model VocabularyProgress {
 
   @@id([entryId, userId])
   @@index([userId, masteredAt])
-  @@index([userId, nextReviewAt])
 }
 
 model VocabularyPracticeAttempt {

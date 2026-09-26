@@ -1,6 +1,11 @@
+import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { useSyncIndex, type LearnerIndex } from "../sync/hooks";
+import type { LocalIndexRecord } from "../sync/local-data";
+import { indexScope, syncQueryKeys } from "../sync/query-keys";
 import { api } from "./trpc";
 import {
   countUnreadIndicators,
@@ -9,54 +14,63 @@ import {
 
 export type { SidebarIndicatorKind } from "./sidebar-indicator-count";
 
+export type SidebarIndicatorItem =
+  LearnerIndex["sidebarIndicators"]["items"][number];
+
 export function useSidebarIndicators() {
   const { activeOrganizationId } = useAppTheme();
-  const scope = activeOrganizationId
-    ? { organizationId: activeOrganizationId }
-    : undefined;
-  const utils = api.useUtils();
-  const dashboard = api.mobileSync.getDashboard.useQuery(scope, {
-    enabled: Boolean(activeOrganizationId),
-    retry: false,
-  });
-  const mutation = api.mobileSync.markSidebarSeen.useMutation();
-  // Older persisted dashboard snapshots predate sidebarIndicators. Keep the
-  // first render safe while React Query refreshes that cache entry.
-  const items = dashboard.data?.sidebarIndicators?.items ?? [];
+  const queryClient = useQueryClient();
+  const index = useSyncIndex(activeOrganizationId);
+  const mutation = api.mobileSyncV2.markSidebarSeen.useMutation();
+  // Indicators are only computed for an organization scope.
+  const items: SidebarIndicatorItem[] = activeOrganizationId
+    ? (index.data?.sidebarIndicators.items ?? [])
+    : [];
 
   const markSeen = useCallback(
     (keys: string[]) => {
-      if (!scope || keys.length === 0) return;
+      if (!activeOrganizationId || keys.length === 0) return;
       const uniqueKeys = [...new Set(keys)];
       const keySet = new Set(uniqueKeys);
-      utils.mobileSync.getDashboard.setData(scope, (current) => {
-        if (!current) return current;
-        const nextItems = (current.sidebarIndicators?.items ?? []).map(
-          (item) => (keySet.has(item.key) ? { ...item, unread: false } : item),
-        );
-        return {
-          ...current,
-          sidebarIndicators: {
-            items: nextItems,
-            unreadCount: nextItems.filter((item) => item.unread).length,
-          },
-        };
-      });
+      // Optimistic update on the learner index; the server's next index
+      // (new token after the mutation) confirms it.
+      queryClient.setQueryData<LocalIndexRecord<LearnerIndex> | null>(
+        syncQueryKeys.index(indexScope(activeOrganizationId)),
+        (current) => {
+          if (!current) return current;
+          const nextItems = (current.index.sidebarIndicators?.items ?? []).map(
+            (item) =>
+              keySet.has(item.key) ? { ...item, unread: false } : item,
+          );
+          return {
+            ...current,
+            index: {
+              ...current.index,
+              sidebarIndicators: {
+                items: nextItems,
+                unreadCount: nextItems.filter((item) => item.unread).length,
+              },
+            },
+          };
+        },
+      );
       for (let offset = 0; offset < uniqueKeys.length; offset += 100) {
         mutation.mutate(
           {
-            organizationId: scope.organizationId,
+            protocol: SYNC_PROTOCOL,
+            organizationId: activeOrganizationId,
             keys: uniqueKeys.slice(offset, offset + 100),
           },
           {
             onError: () => {
-              void utils.mobileSync.getDashboard.invalidate(scope);
+              // Restore the server's view of the indicators.
+              void index.refetch();
             },
           },
         );
       }
     },
-    [mutation, scope, utils.mobileSync.getDashboard],
+    [activeOrganizationId, index, mutation, queryClient],
   );
 
   const indicator = useCallback(

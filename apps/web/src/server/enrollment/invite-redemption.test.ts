@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
 import type { Prisma } from "../../../generated/prisma/client";
-import { consumeEnrollmentInvite } from "./invite-redemption";
+import {
+  consumeEnrollmentInvite,
+  redeemEnrollmentInvite,
+} from "./invite-redemption";
 
 const now = new Date("2026-08-17T00:00:00.000Z");
 
@@ -106,5 +109,57 @@ describe("invite redemption", () => {
       ),
     ).toBe("BAD_REQUEST");
     expect(updateCount).toBe(0);
+  });
+
+  test("does not consume a use when the learner is already enrolled", async () => {
+    const { tx, getUseCount } = createTransaction();
+    const upserts: unknown[] = [];
+    Object.assign(tx, {
+      $executeRaw: () => Promise.resolve(1),
+      courseEnrollment: {
+        findUnique: () =>
+          Promise.resolve({ id: "enrollment-1", status: "ACTIVE" }),
+        upsert: (args: unknown) => {
+          upserts.push(args);
+          return Promise.resolve({});
+        },
+      },
+    });
+
+    const result = await redeemEnrollmentInvite(tx, {
+      token: "one-time-token-that-is-long-enough",
+      userId: "user-1",
+      now,
+    });
+    expect(result).toEqual({
+      type: "COURSE",
+      courseId: "course-1",
+      cohortId: null,
+    });
+    expect(getUseCount()).toBe(0);
+    expect(upserts).toHaveLength(0);
+  });
+
+  test("consumes a use and enrolls a new learner", async () => {
+    const { tx, getUseCount } = createTransaction();
+    const upserts: unknown[] = [];
+    Object.assign(tx, {
+      $executeRaw: () => Promise.resolve(1),
+      courseEnrollment: {
+        findUnique: () => Promise.resolve(null),
+        upsert: (args: unknown) => {
+          upserts.push(args);
+          return Promise.resolve({});
+        },
+      },
+    });
+
+    await redeemEnrollmentInvite(tx, {
+      token: "one-time-token-that-is-long-enough",
+      userId: "user-1",
+      now,
+    });
+    expect(getUseCount()).toBe(1);
+    expect(upserts).toHaveLength(1);
   });
 });

@@ -203,6 +203,7 @@ export function createVocabularyProgressService(
           VocabularyProgressState & { contentHash: string }
         >();
         let duplicates = 0;
+        let skipped = 0;
 
         for (const attempt of attempts) {
           const pair = `${attempt.sessionId}\u0000${attempt.entryId}`;
@@ -212,7 +213,14 @@ export function createVocabularyProgressService(
           }
 
           const entry = entriesById.get(attempt.entryId);
-          if (entry?.vocabularySetId !== attempt.vocabularySetId) {
+          // An entry deleted since the (offline) attempt has nothing left to
+          // record progress on; skip it instead of rejecting the whole batch.
+          if (!entry) {
+            skipped += 1;
+            continue;
+          }
+          // An existing entry must belong to the authorized set.
+          if (entry.vocabularySetId !== attempt.vocabularySetId) {
             throw new TRPCError({ code: "NOT_FOUND" });
           }
 
@@ -313,6 +321,7 @@ export function createVocabularyProgressService(
         return {
           accepted: acceptedAttempts.length,
           duplicates,
+          skipped,
           sets,
         };
       });

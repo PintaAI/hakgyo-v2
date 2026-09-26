@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
+import { isUniqueConstraintError } from "../db-retry";
 
 export const ORGANIZATION_INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -95,14 +96,28 @@ export async function acceptOrganizationInvite(
     });
   }
 
-  const membership = await tx.organizationMember.create({
-    data: {
-      organizationId: invite.organizationId,
-      userId: input.userId,
-      role: invite.role,
-    },
-    select: { id: true, role: true },
-  });
+  let membership: Prisma.OrganizationMemberGetPayload<{
+    select: { id: true; role: true };
+  }>;
+  try {
+    membership = await tx.organizationMember.create({
+      data: {
+        organizationId: invite.organizationId,
+        userId: input.userId,
+        role: invite.role,
+      },
+      select: { id: true, role: true },
+    });
+  } catch (error) {
+    // Joined concurrently (another invite or a direct add) after the check above.
+    if (isUniqueConstraintError(error)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "You are already a member of this organization",
+      });
+    }
+    throw error;
+  }
 
   return { inviteId: invite.id, membership, organization: invite.organization };
 }

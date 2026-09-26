@@ -32,6 +32,7 @@ import { Action, Empty, Eyebrow, QueryState } from "./learning-ui";
 
 export type Course = RouterOutputs["learning"]["listMyCourses"][number];
 type Event = RouterOutputs["assessmentEvent"]["listForLearner"][number];
+type CourseOutline = RouterOutputs["learning"]["getCourseOutline"];
 type PracticeFilter = "VOCABULARY_SET" | "ASSESSMENT";
 
 export type PreselectedVocabularySource = {
@@ -51,7 +52,7 @@ type HubProps = {
   now: number;
   onRetryCourses: () => void;
   onRetryEvents: () => void;
-  outlines: RouterOutputs["mobileSync"]["getDashboard"]["outlines"];
+  outlines: Record<string, CourseOutline>;
   onResourceFocus?: (offsetY: number) => void;
   preselectedSource?: PreselectedVocabularySource;
 };
@@ -500,7 +501,7 @@ export function ResourceLibrary({
   sourceLabel: string;
   gameKey?: GameKey;
   onRetry: () => void;
-  outlines: RouterOutputs["mobileSync"]["getDashboard"]["outlines"];
+  outlines: Record<string, CourseOutline>;
 }) {
   const { colors, colorScheme } = useAppTheme();
   const [query, setQuery] = useState("");

@@ -1,5 +1,6 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { resolveAssessmentEntry } from "@hakgyo/shared";
+import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,6 +23,12 @@ import { api } from "../../../../src/lib/trpc";
 import type { LearningPathCourse } from "../../../../src/lib/course-learning-path";
 import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
+import {
+  useCourseItem,
+  useCourseOutline,
+  useItemAssessment,
+} from "../../../../src/sync/hooks";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import {
@@ -97,62 +104,34 @@ function CourseItemContent({
   }, []);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
-  const { activeOrganizationId, colors } = useAppTheme();
+  const { colors } = useAppTheme();
   const { markEntitySeen } = useSidebarIndicators();
-  const dashboard = api.mobileSync.getDashboard.useQuery(
-    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
-    { enabled: Boolean(session && courseId), retry: false },
-  );
-  const dashboardOutline = dashboard.data?.outlines[courseId];
-  const dashboardItem = dashboard.data?.itemDetails[courseItemId];
-  const dashboardAssessment = dashboard.data?.assessmentDetails[courseItemId];
-  const utils = api.useUtils();
+  const { prefetchLesson, saveStartedAttempt } = useMobileSyncActions();
+  // Everything below composes from the local course bundle + learner index;
+  // the online procedures only run when the bundle is not on the device yet.
   // Keep the progress sheet's outline warm while the learner reads.
-  const outline = api.learning.getCourseOutline.useQuery(
-    { courseId },
-    {
-      enabled: Boolean(
-        session && courseId && !dashboard.isPending && !dashboardOutline,
-      ),
-      retry: false,
-      initialData: dashboardOutline,
-    },
-  );
+  const outline = useCourseOutline(courseId, {
+    enabled: Boolean(session && courseId),
+  });
   const initialOutline = useRef<LearningPathCourse>(undefined);
   const resolveAssetUrl = useApiAssetResolver();
-  const itemQuery = api.learning.getCourseItem.useQuery(
-    { courseItemId },
-    {
-      enabled: Boolean(
-        session && courseItemId && !dashboard.isPending && !dashboardItem,
-      ),
-      retry: false,
-      initialData: dashboardItem,
-    },
+  const itemQuery = useCourseItem(courseId || undefined, courseItemId, {
+    enabled: Boolean(session),
+  });
+  const assessmentQuery = useItemAssessment(
+    courseId || undefined,
+    courseItemId,
+    { enabled: Boolean(session && itemQuery.data?.assessment) },
   );
-  const assessmentQuery = api.assessment.getForCourseItem.useQuery(
-    { courseItemId },
-    {
-      enabled: Boolean(
-        session &&
-        courseItemId &&
-        (dashboardItem ?? itemQuery.data)?.assessment &&
-        !dashboard.isPending &&
-        !dashboardAssessment,
-      ),
-      retry: false,
-      initialData: dashboardAssessment,
-    },
-  );
-  const startAssessment = api.mobileSync.startAssessment.useMutation();
+  const startAssessment = api.mobileSyncV2.startAssessment.useMutation();
   const [selectedCohortId, setSelectedCohortId] = useState<string>();
-  const item = itemQuery.data ?? dashboardItem;
-  const currentModuleId = (outline.data ?? dashboardOutline)?.modules.find(
-    (module) => module.items.some((entry) => entry.id === courseItemId),
+  const item = itemQuery.data;
+  const currentModuleId = outline.data?.modules.find((module) =>
+    module.items.some((entry) => entry.id === courseItemId),
   )?.id;
   const material = item?.material;
   const vocabulary = item?.vocabularySet;
-  const assessment = assessmentQuery.data ?? dashboardAssessment;
+  const assessment = assessmentQuery.data;
   const latestAttempt = assessment?.latestStandaloneAttempt;
   const assessmentEntry = resolveAssessmentEntry({
     attemptStatus: latestAttempt?.status,
@@ -163,6 +142,12 @@ function CourseItemContent({
   useEffect(() => {
     if (currentModuleId) markEntitySeen("MODULE", currentModuleId);
   }, [currentModuleId, markEntitySeen]);
+  // Warm this lesson's (and the next lesson's) media into the asset cache.
+  useEffect(() => {
+    const resolvedCourseId = courseId || itemQuery.courseId;
+    if (resolvedCourseId && courseItemId)
+      prefetchLesson(resolvedCourseId, courseItemId);
+  }, [courseId, courseItemId, itemQuery.courseId, prefetchLesson]);
   useEffect(() => {
     if (!isSessionPending && !session && courseId && courseItemId) {
       router.replace({
@@ -193,21 +178,12 @@ function CourseItemContent({
     const cohortId = cohorts.length === 1 ? cohorts[0]?.id : selectedCohortId;
     try {
       const result = await startAssessment.mutateAsync({
+        protocol: SYNC_PROTOCOL,
         courseItemId,
         cohortId,
       });
-      utils.assessment.getMyAttempt.setData(
-        { attemptId: result.attempt.id },
-        result.attempt,
-      );
-      utils.assessment.getForCourseItem.setData(
-        { courseItemId, attemptId: result.attempt.id },
-        result.assessmentDetail,
-      );
-      utils.assessment.getForCourseItem.setData(
-        { courseItemId },
-        result.assessmentDetail,
-      );
+      // Persisted locally so the attempt resumes offline.
+      await saveStartedAttempt(result);
       router.push({
         pathname:
           "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
@@ -221,10 +197,8 @@ function CourseItemContent({
   const loading =
     isSessionPending ||
     (!session && Boolean(courseItemId)) ||
-    ((dashboard.isPending || itemQuery.isPending) && !item) ||
-    (Boolean(item?.assessment) &&
-      (dashboard.isPending || assessmentQuery.isPending) &&
-      !assessment);
+    (itemQuery.isPending && !item) ||
+    (Boolean(item?.assessment) && assessmentQuery.isPending && !assessment);
 
   return (
     <>

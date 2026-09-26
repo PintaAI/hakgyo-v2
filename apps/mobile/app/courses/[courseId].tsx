@@ -13,8 +13,8 @@ import {
 import { CourseOutlineList } from "../../src/components/learn/course-outline-list";
 import { getCourseResumeItem } from "../../src/lib/course-learning-path";
 import { authClient } from "../../src/lib/auth-client";
-import { api } from "../../src/lib/trpc";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
+import { useCourseOutline } from "../../src/sync/hooks";
 import { withOpacity } from "../../src/theme/colors";
 
 export default function CourseDetailScreen() {
@@ -24,21 +24,11 @@ export default function CourseDetailScreen() {
     : (params.courseId ?? "");
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
-  const { activeOrganizationId, colors } = useAppTheme();
-  const dashboard = api.mobileSync.getDashboard.useQuery(
-    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
-    { enabled: Boolean(session && courseId), retry: false },
-  );
-  const dashboardCourse = dashboard.data?.outlines[courseId];
-  const courseQuery = api.learning.getCourseOutline.useQuery(
-    { courseId },
-    {
-      enabled: Boolean(
-        session && courseId && !dashboard.isPending && !dashboardCourse,
-      ),
-      retry: false,
-    },
-  );
+  const { colors } = useAppTheme();
+  // Local bundle + learner index; online only when the bundle is missing.
+  const courseQuery = useCourseOutline(courseId, {
+    enabled: Boolean(session && courseId),
+  });
 
   useEffect(() => {
     if (!isSessionPending && !session && courseId) {
@@ -49,7 +39,7 @@ export default function CourseDetailScreen() {
     }
   }, [courseId, isSessionPending, session]);
 
-  const course = dashboardCourse ?? courseQuery.data;
+  const course = courseQuery.data;
   const resumeItem = course && getCourseResumeItem(course);
   const allItems = course?.modules.flatMap((module) => module.items) ?? [];
   const completedCount = allItems.filter((item) => item.isCompleted).length;
@@ -76,12 +66,12 @@ export default function CourseDetailScreen() {
             Opening your course…
           </Text>
         </View>
-      ) : (dashboard.isPending || courseQuery.isPending) && !course ? (
+      ) : courseQuery.isPending && !course ? (
         <View className="flex-1 items-center justify-center gap-3 bg-background">
           <ActivityIndicator color={colors.primary} />
           <Text className="text-sm text-muted-foreground">Loading course…</Text>
         </View>
-      ) : dashboard.isError || courseQuery.isError || !course ? (
+      ) : courseQuery.error || !course ? (
         <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
           <View className="size-12 items-center justify-center rounded-lg bg-destructive/10">
             <Text className="text-lg font-black text-destructive">!</Text>

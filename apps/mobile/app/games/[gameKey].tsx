@@ -13,7 +13,7 @@ import { VocabularyMatchScreen } from "../../src/games/vocabulary-match/vocabula
 import { WordFallScreen } from "../../src/games/word-fall/word-fall-screen";
 import { WordBuilderScreen } from "../../src/games/word-builder/word-builder-screen";
 import { authClient } from "../../src/lib/auth-client";
-import { api } from "../../src/lib/trpc";
+import { useCourseItem } from "../../src/sync/hooks";
 import { useVocabularyProgressReporter } from "../../src/lib/use-vocabulary-progress";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 
@@ -125,10 +125,9 @@ function VocabularyCardsRoute({
 }) {
   const [scrollGesture] = useState(() => Gesture.Native());
   const [roundActive, setRoundActive] = useState(false);
-  const item = api.learning.getCourseItem.useQuery(
-    { courseItemId: sourceCourseItemId },
-    { enabled: Boolean(sourceCourseItemId && sessionReady), retry: false },
-  );
+  const item = useCourseItem(courseId || undefined, sourceCourseItemId, {
+    enabled: sessionReady,
+  });
   const vocabulary = item.data?.vocabularySet;
   const effectiveCourseId = courseId || item.data?.module.courseId || "";
   const words =
@@ -237,10 +236,9 @@ function VocabularyMatchRoute({
   sourceCourseItemId: string;
   sessionReady: boolean;
 }) {
-  const item = api.learning.getCourseItem.useQuery(
-    { courseItemId: sourceCourseItemId },
-    { enabled: Boolean(sourceCourseItemId && sessionReady), retry: false },
-  );
+  const item = useCourseItem(courseId || undefined, sourceCourseItemId, {
+    enabled: sessionReady,
+  });
   const vocabulary = item.data?.vocabularySet;
   const effectiveCourseId = courseId || item.data?.module.courseId || "";
   const words = vocabulary?.entries ?? [];
@@ -291,10 +289,9 @@ function WordFallRoute({
   sourceCourseItemId: string;
   sessionReady: boolean;
 }) {
-  const item = api.learning.getCourseItem.useQuery(
-    { courseItemId: sourceCourseItemId },
-    { enabled: Boolean(sourceCourseItemId && sessionReady), retry: false },
-  );
+  const item = useCourseItem(courseId || undefined, sourceCourseItemId, {
+    enabled: sessionReady,
+  });
   const vocabulary = item.data?.vocabularySet;
   const effectiveCourseId = courseId || item.data?.module.courseId || "";
   const words = vocabulary?.entries ?? [];

@@ -5,9 +5,11 @@ import type { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { pageInput, pageResult } from "~/server/api/pagination";
 import {
-  getMissingWrittenQuestionIds,
-  groupScoresByValue,
-} from "~/server/assessment-logic";
+  gradableAttemptSelect,
+  gradeInProgressAttempt,
+  lockAttemptStart,
+  lockInProgressAttempt,
+} from "~/server/assessment-attempt";
 import { isAssessmentExpired } from "~/server/assessment-timing";
 import {
   buildAssessmentAnswerContentUpdate,
@@ -29,6 +31,10 @@ import {
   shapeLearnerAssessment,
 } from "~/server/assessment/learner-view";
 import { deleteAssessmentWithProgress } from "~/server/content-resource-deletion";
+import {
+  isUniqueConstraintError,
+  withTransactionRetry,
+} from "~/server/db-retry";
 import {
   MAX_ASSESSMENT_OPTIONS,
   MIN_ASSESSMENT_OPTIONS,
@@ -330,9 +336,17 @@ export const assessmentRouter = createTRPCRouter({
       const event = assessmentEvent
         ? (({ participants: _participants, ...rest }) => rest)(assessmentEvent)
         : null;
+      const writtenAnswers = answers.filter(
+        (answer) => answer.question.type === "WRITTEN",
+      ).length;
       return {
         ...summarizeAttempt(
-          { ...summary, assessment, assessmentEvent: event },
+          {
+            ...summary,
+            assessment,
+            assessmentEvent: event,
+            _count: { answers: writtenAnswers },
+          },
           invalidated,
         ),
         answers,
@@ -351,7 +365,7 @@ export const assessmentRouter = createTRPCRouter({
         ...input,
         userId: ctx.actorUserId,
       });
-      return ctx.db.assessment.findMany({
+      const assessments = await ctx.db.assessment.findMany({
         where: {
           organizationId: input.organizationId,
           ...(member.organization.permissionMode === "ADVANCED" &&
@@ -372,9 +386,40 @@ export const assessmentRouter = createTRPCRouter({
           timeLimitMinutes: true,
           createdAt: true,
           updatedAt: true,
-          _count: { select: { questions: true, courseItems: true } },
         },
       });
+      // Relation `_count` compiles to whole-table grouped subqueries; count only these rows.
+      const assessmentIds = assessments.map((assessment) => assessment.id);
+      const [questionGroups, courseItemGroups] = assessmentIds.length
+        ? await Promise.all([
+            ctx.db.assessmentQuestion.groupBy({
+              by: ["assessmentId"],
+              where: { assessmentId: { in: assessmentIds } },
+              _count: { _all: true },
+            }),
+            ctx.db.courseItem.groupBy({
+              by: ["assessmentId"],
+              where: { assessmentId: { in: assessmentIds } },
+              _count: { _all: true },
+            }),
+          ])
+        : [[], []];
+      const questionCounts = new Map(
+        questionGroups.map((group) => [group.assessmentId, group._count._all]),
+      );
+      const courseItemCounts = new Map(
+        courseItemGroups.map((group) => [
+          group.assessmentId,
+          group._count._all,
+        ]),
+      );
+      return assessments.map((assessment) => ({
+        ...assessment,
+        _count: {
+          questions: questionCounts.get(assessment.id) ?? 0,
+          courseItems: courseItemCounts.get(assessment.id) ?? 0,
+        },
+      }));
     }),
   get: protectedProcedure
     .input(z.object({ assessmentId: id }))
@@ -448,13 +493,21 @@ export const assessmentRouter = createTRPCRouter({
         input.assessmentId,
         ctx.actorUserId,
       );
-      const position = await ctx.db.assessmentQuestion.aggregate({
-        where: { assessmentId: input.assessmentId },
-        _max: { position: true },
-      });
-      return ctx.db.assessmentQuestion.create({
-        data: { ...input, position: (position._max.position ?? -1) + 1 },
-      });
+      // Lock the assessment so concurrent creates cannot compute the same next position.
+      return withTransactionRetry(() =>
+        ctx.db.$transaction(async (tx) => {
+          await tx.$queryRaw`
+            SELECT "id" FROM "Assessment" WHERE "id" = ${input.assessmentId} FOR UPDATE
+          `;
+          const position = await tx.assessmentQuestion.aggregate({
+            where: { assessmentId: input.assessmentId },
+            _max: { position: true },
+          });
+          return tx.assessmentQuestion.create({
+            data: { ...input, position: (position._max.position ?? -1) + 1 },
+          });
+        }),
+      );
     }),
   updateQuestion: protectedProcedure
     .input(questionFields.partial().extend({ questionId: id }))
@@ -499,33 +552,39 @@ export const assessmentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const question = await ctx.db.assessmentQuestion.findUnique({
         where: { id: input.questionId },
-        select: {
-          assessmentId: true,
-          type: true,
-          _count: { select: { options: true } },
-        },
+        select: { assessmentId: true, type: true },
       });
       if (!question) throw new TRPCError({ code: "NOT_FOUND" });
       if (question.type === "WRITTEN")
         throw new TRPCError({ code: "BAD_REQUEST" });
-      if (question._count.options >= MAX_ASSESSMENT_OPTIONS) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Sebuah soal pilihan maksimal memiliki empat opsi.",
-        });
-      }
       await requireAssessmentManagement(
         ctx.db,
         question.assessmentId,
         ctx.actorUserId,
       );
-      const position = await ctx.db.assessmentOption.aggregate({
-        where: { questionId: input.questionId },
-        _max: { position: true },
-      });
-      return ctx.db.assessmentOption.create({
-        data: { ...input, position: (position._max.position ?? -1) + 1 },
-      });
+      // Lock the question so the option cap and the next position are checked against
+      // committed options only, one create at a time.
+      return withTransactionRetry(() =>
+        ctx.db.$transaction(async (tx) => {
+          await tx.$queryRaw`
+            SELECT "id" FROM "AssessmentQuestion" WHERE "id" = ${input.questionId} FOR UPDATE
+          `;
+          const position = await tx.assessmentOption.aggregate({
+            where: { questionId: input.questionId },
+            _count: { _all: true },
+            _max: { position: true },
+          });
+          if (position._count._all >= MAX_ASSESSMENT_OPTIONS) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Sebuah soal pilihan maksimal memiliki empat opsi.",
+            });
+          }
+          return tx.assessmentOption.create({
+            data: { ...input, position: (position._max.position ?? -1) + 1 },
+          });
+        }),
+      );
     }),
   updateOption: protectedProcedure
     .input(optionFields.partial().extend({ optionId: id }))
@@ -546,8 +605,13 @@ export const assessmentRouter = createTRPCRouter({
       const { optionId, ...data } = input;
 
       if (data.isCorrect && option.question.type === "SINGLE_CHOICE") {
-        return ctx.db.$transaction(
-          async (tx) => {
+        // The question row lock serializes concurrent "mark correct" calls for the same question,
+        // so exactly one option ends up correct without serializable isolation.
+        return withTransactionRetry(() =>
+          ctx.db.$transaction(async (tx) => {
+            await tx.$queryRaw`
+              SELECT "id" FROM "AssessmentQuestion" WHERE "id" = ${option.questionId} FOR UPDATE
+            `;
             await tx.assessmentOption.updateMany({
               where: {
                 questionId: option.questionId,
@@ -560,8 +624,7 @@ export const assessmentRouter = createTRPCRouter({
               where: { id: optionId },
               data,
             });
-          },
-          { isolationLevel: "Serializable" },
+          }),
         );
       }
 
@@ -749,132 +812,141 @@ export const assessmentRouter = createTRPCRouter({
         courseItemId: input.courseItemId,
         userId: ctx.actorUserId,
       });
-      return ctx.db.$transaction(
-        async (tx) => {
-          const item = await tx.courseItem.findUnique({
-            where: { id: input.courseItemId },
-            select: {
-              organizationId: true,
-              module: { select: { courseId: true } },
-              assessment: {
-                select: { id: true, status: true, maxAttempts: true },
+      // READ COMMITTED + a per-learner/item advisory lock instead of serializable isolation. The
+      // (courseItemId, userId, attemptNumber) unique constraint stays as a backstop: on P2002 the
+      // whole transaction re-runs and returns the in-progress attempt created by the winner.
+      return withTransactionRetry(
+        () =>
+          ctx.db.$transaction(async (tx) => {
+            await lockAttemptStart(tx, ctx.actorUserId, input.courseItemId);
+            const item = await tx.courseItem.findUnique({
+              where: { id: input.courseItemId },
+              select: {
+                organizationId: true,
+                module: { select: { courseId: true } },
+                assessment: {
+                  select: { id: true, status: true, maxAttempts: true },
+                },
               },
-            },
-          });
-          if (item?.assessment?.status !== "PUBLISHED") {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Assessment is not published",
             });
-          }
-          const eligibleWhere = eligibleCohortEnrollmentWhere(
-            ctx.actorUserId,
-            { courseId: item.module.courseId },
-            new Date(),
-          );
-          const cohortEnrollments = await tx.cohortEnrollment.findMany({
-            where: {
-              ...eligibleWhere,
-              cohort: {
-                ...eligibleWhere.cohort,
-                ...(input.cohortId ? { id: input.cohortId } : {}),
-              },
-            },
-            orderBy: { enrolledAt: "desc" },
-            select: { cohortId: true },
-            take: input.cohortId ? 1 : 2,
-          });
-          if (input.cohortId && cohortEnrollments.length === 0) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "You are not actively enrolled in this study group",
-            });
-          }
-          if (!input.cohortId && cohortEnrollments.length > 1) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Select a study group before starting this assessment",
-            });
-          }
-          const cohortId =
-            input.cohortId ?? cohortEnrollments[0]?.cohortId ?? null;
-          const current = await tx.assessmentAttempt.findFirst({
-            where: {
-              courseItemId: input.courseItemId,
-              userId: ctx.actorUserId,
-              status: "IN_PROGRESS",
-              assessmentEventId: null,
-            },
-            orderBy: { attemptNumber: "desc" },
-          });
-          if (current) {
-            if (current.cohortId && cohortId && current.cohortId !== cohortId) {
+            if (item?.assessment?.status !== "PUBLISHED") {
               throw new TRPCError({
-                code: "CONFLICT",
-                message: "This attempt belongs to another study group",
+                code: "BAD_REQUEST",
+                message: "Assessment is not published",
               });
             }
-            if (!current.cohortId && cohortId) {
-              return tx.assessmentAttempt.update({
-                where: { id: current.id },
-                data: { cohortId },
-              });
-            }
-            return current;
-          }
-          // One grouped query yields both the standalone attempt count (for maxAttempts) and the
-          // highest attempt number across standalone and event attempts of this item.
-          const attemptGroups = await tx.assessmentAttempt.groupBy({
-            by: ["assessmentEventId"],
-            where: {
-              courseItemId: input.courseItemId,
-              userId: ctx.actorUserId,
-            },
-            _count: { _all: true },
-            _max: { attemptNumber: true },
-          });
-          const count =
-            attemptGroups.find((group) => group.assessmentEventId === null)
-              ?._count._all ?? 0;
-          const lastAttemptNumber = attemptGroups.reduce(
-            (max, group) => Math.max(max, group._max.attemptNumber ?? 0),
-            0,
-          );
-          if (
-            item.assessment.maxAttempts !== null &&
-            count >= item.assessment.maxAttempts
-          ) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "Maximum attempts reached",
+            const eligibleWhere = eligibleCohortEnrollmentWhere(
+              ctx.actorUserId,
+              { courseId: item.module.courseId },
+              new Date(),
+            );
+            const cohortEnrollments = await tx.cohortEnrollment.findMany({
+              where: {
+                ...eligibleWhere,
+                cohort: {
+                  ...eligibleWhere.cohort,
+                  ...(input.cohortId ? { id: input.cohortId } : {}),
+                },
+              },
+              orderBy: { enrolledAt: "desc" },
+              select: { cohortId: true },
+              take: input.cohortId ? 1 : 2,
             });
-          }
-          await tx.contentProgress.upsert({
-            where: {
-              courseItemId_userId: {
+            if (input.cohortId && cohortEnrollments.length === 0) {
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: "You are not actively enrolled in this study group",
+              });
+            }
+            if (!input.cohortId && cohortEnrollments.length > 1) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Select a study group before starting this assessment",
+              });
+            }
+            const cohortId =
+              input.cohortId ?? cohortEnrollments[0]?.cohortId ?? null;
+            const current = await tx.assessmentAttempt.findFirst({
+              where: {
+                courseItemId: input.courseItemId,
+                userId: ctx.actorUserId,
+                status: "IN_PROGRESS",
+                assessmentEventId: null,
+              },
+              orderBy: { attemptNumber: "desc" },
+            });
+            if (current) {
+              if (
+                current.cohortId &&
+                cohortId &&
+                current.cohortId !== cohortId
+              ) {
+                throw new TRPCError({
+                  code: "CONFLICT",
+                  message: "This attempt belongs to another study group",
+                });
+              }
+              if (!current.cohortId && cohortId) {
+                return tx.assessmentAttempt.update({
+                  where: { id: current.id },
+                  data: { cohortId },
+                });
+              }
+              return current;
+            }
+            // One grouped query yields both the standalone attempt count (for maxAttempts) and the
+            // highest attempt number across standalone and event attempts of this item.
+            const attemptGroups = await tx.assessmentAttempt.groupBy({
+              by: ["assessmentEventId"],
+              where: {
                 courseItemId: input.courseItemId,
                 userId: ctx.actorUserId,
               },
-            },
-            create: {
-              courseItemId: input.courseItemId,
-              userId: ctx.actorUserId,
-            },
-            update: {},
-          });
-          return tx.assessmentAttempt.create({
-            data: {
-              assessmentId: item.assessment.id,
-              courseItemId: input.courseItemId,
-              organizationId: item.organizationId,
-              cohortId,
-              userId: ctx.actorUserId,
-              attemptNumber: lastAttemptNumber + 1,
-              shuffleSeed: crypto.randomUUID(),
-            },
-          });
-        },
-        { isolationLevel: "Serializable" },
+              _count: { _all: true },
+              _max: { attemptNumber: true },
+            });
+            const count =
+              attemptGroups.find((group) => group.assessmentEventId === null)
+                ?._count._all ?? 0;
+            const lastAttemptNumber = attemptGroups.reduce(
+              (max, group) => Math.max(max, group._max.attemptNumber ?? 0),
+              0,
+            );
+            if (
+              item.assessment.maxAttempts !== null &&
+              count >= item.assessment.maxAttempts
+            ) {
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: "Maximum attempts reached",
+              });
+            }
+            await tx.contentProgress.upsert({
+              where: {
+                courseItemId_userId: {
+                  courseItemId: input.courseItemId,
+                  userId: ctx.actorUserId,
+                },
+              },
+              create: {
+                courseItemId: input.courseItemId,
+                userId: ctx.actorUserId,
+              },
+              update: {},
+            });
+            return tx.assessmentAttempt.create({
+              data: {
+                assessmentId: item.assessment.id,
+                courseItemId: input.courseItemId,
+                organizationId: item.organizationId,
+                cohortId,
+                userId: ctx.actorUserId,
+                attemptNumber: lastAttemptNumber + 1,
+                shuffleSeed: crypto.randomUUID(),
+              },
+            });
+          }),
+        { shouldRetry: isUniqueConstraintError },
       );
     }),
 
@@ -938,141 +1010,152 @@ export const assessmentRouter = createTRPCRouter({
           message: "Duplicate questions",
         });
       }
-      return ctx.db.$transaction(async (tx) => {
-        const currentAttempt = await tx.assessmentAttempt.findUnique({
-          where: { id: input.attemptId },
-          select: {
-            status: true,
-            assessmentId: true,
-            startedAt: true,
-            assessment: { select: { timeLimitMinutes: true } },
-            assessmentEvent: {
-              select: {
-                status: true,
-                durationMinutes: true,
-                closesAt: true,
+      return withTransactionRetry(() =>
+        ctx.db.$transaction(async (tx) => {
+          // Serializes saves and submission of this attempt; a finished attempt is a conflict.
+          if (!(await lockInProgressAttempt(tx, input.attemptId))) {
+            throw new TRPCError({ code: "CONFLICT" });
+          }
+          const currentAttempt = await tx.assessmentAttempt.findUnique({
+            where: { id: input.attemptId },
+            select: {
+              status: true,
+              assessmentId: true,
+              startedAt: true,
+              assessment: { select: { timeLimitMinutes: true } },
+              assessmentEvent: {
+                select: {
+                  status: true,
+                  durationMinutes: true,
+                  closesAt: true,
+                },
               },
             },
-          },
-        });
-        if (currentAttempt?.status !== "IN_PROGRESS") {
-          throw new TRPCError({ code: "CONFLICT" });
-        }
-        if (
-          currentAttempt.assessmentEvent &&
-          currentAttempt.assessmentEvent.status !== "OPEN"
-        ) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "This assessment event is no longer open",
           });
-        }
-        if (
-          isAssessmentExpired(
-            currentAttempt.startedAt,
-            currentAttempt.assessmentEvent?.durationMinutes ??
-              currentAttempt.assessment.timeLimitMinutes,
-            new Date(),
-            currentAttempt.assessmentEvent?.closesAt,
-          )
-        ) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "The assessment time limit has expired",
-          });
-        }
-
-        const questions = await tx.assessmentQuestion.findMany({
-          where: {
-            assessmentId: currentAttempt.assessmentId,
-            id: { in: input.answers.map((answer) => answer.questionId) },
-          },
-          select: { id: true, type: true, options: { select: { id: true } } },
-        });
-        const questionsById = new Map(
-          questions.map((question) => [question.id, question]),
-        );
-
-        for (const answer of input.answers) {
-          const question = questionsById.get(answer.questionId);
-          if (!question) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Invalid question",
-            });
+          if (currentAttempt?.status !== "IN_PROGRESS") {
+            throw new TRPCError({ code: "CONFLICT" });
           }
-          const validOptions = new Set(question.options.map(({ id }) => id));
           if (
-            answer.optionIds.some((optionId) => !validOptions.has(optionId))
+            currentAttempt.assessmentEvent &&
+            currentAttempt.assessmentEvent.status !== "OPEN"
           ) {
             throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Invalid option",
+              code: "PRECONDITION_FAILED",
+              message: "This assessment event is no longer open",
             });
           }
           if (
-            question.type === "WRITTEN"
-              ? answer.optionIds.length > 0
-              : answer.content !== undefined
+            isAssessmentExpired(
+              currentAttempt.startedAt,
+              currentAttempt.assessmentEvent?.durationMinutes ??
+                currentAttempt.assessment.timeLimitMinutes,
+              new Date(),
+              currentAttempt.assessmentEvent?.closesAt,
+            )
           ) {
             throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Answer shape does not match question",
+              code: "PRECONDITION_FAILED",
+              message: "The assessment time limit has expired",
             });
           }
-          if (
-            question.type === "SINGLE_CHOICE" &&
-            answer.optionIds.length > 1
-          ) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Select at most one option",
-            });
-          }
-        }
 
-        await tx.assessmentAnswer.createMany({
-          data: input.answers.map((answer) => ({
-            attemptId: input.attemptId,
-            organizationId: attempt.organizationId,
-            questionId: answer.questionId,
-            ...(answer.content === undefined
-              ? {}
-              : { content: answer.content }),
-          })),
-          skipDuplicates: true,
-        });
-
-        await tx.$executeRaw(
-          buildAssessmentAnswerContentUpdate(input.attemptId, input.answers),
-        );
-
-        const savedAnswers = await tx.assessmentAnswer.findMany({
-          where: {
-            attemptId: input.attemptId,
-            questionId: {
-              in: input.answers.map((answer) => answer.questionId),
+          const questions = await tx.assessmentQuestion.findMany({
+            where: {
+              assessmentId: currentAttempt.assessmentId,
+              id: { in: input.answers.map((answer) => answer.questionId) },
             },
-          },
-          select: { id: true, questionId: true },
-        });
-        const answerIdsByQuestionId = new Map(
-          savedAnswers.map((answer) => [answer.questionId, answer.id]),
-        );
-        await tx.assessmentAnswerSelection.deleteMany({
-          where: { answerId: { in: savedAnswers.map((answer) => answer.id) } },
-        });
-        const selections = input.answers.flatMap((answer) => {
-          const answerId = answerIdsByQuestionId.get(answer.questionId);
-          return answerId
-            ? answer.optionIds.map((optionId) => ({ answerId, optionId }))
-            : [];
-        });
-        if (selections.length) {
-          await tx.assessmentAnswerSelection.createMany({ data: selections });
-        }
-        return { saved: input.answers.length };
-      });
+            select: { id: true, type: true, options: { select: { id: true } } },
+          });
+          const questionsById = new Map(
+            questions.map((question) => [question.id, question]),
+          );
+
+          for (const answer of input.answers) {
+            const question = questionsById.get(answer.questionId);
+            if (!question) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Invalid question",
+              });
+            }
+            const validOptions = new Set(question.options.map(({ id }) => id));
+            if (
+              answer.optionIds.some((optionId) => !validOptions.has(optionId))
+            ) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Invalid option",
+              });
+            }
+            if (
+              question.type === "WRITTEN"
+                ? answer.optionIds.length > 0
+                : answer.content !== undefined
+            ) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Answer shape does not match question",
+              });
+            }
+            if (
+              question.type === "SINGLE_CHOICE" &&
+              answer.optionIds.length > 1
+            ) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Select at most one option",
+              });
+            }
+          }
+
+          await tx.assessmentAnswer.createMany({
+            data: input.answers.map((answer) => ({
+              attemptId: input.attemptId,
+              organizationId: attempt.organizationId,
+              questionId: answer.questionId,
+              ...(answer.content === undefined
+                ? {}
+                : { content: answer.content }),
+            })),
+            skipDuplicates: true,
+          });
+
+          await tx.$executeRaw(
+            buildAssessmentAnswerContentUpdate(input.attemptId, input.answers),
+          );
+
+          const savedAnswers = await tx.assessmentAnswer.findMany({
+            where: {
+              attemptId: input.attemptId,
+              questionId: {
+                in: input.answers.map((answer) => answer.questionId),
+              },
+            },
+            select: { id: true, questionId: true },
+          });
+          const answerIdsByQuestionId = new Map(
+            savedAnswers.map((answer) => [answer.questionId, answer.id]),
+          );
+          await tx.assessmentAnswerSelection.deleteMany({
+            where: {
+              answerId: { in: savedAnswers.map((answer) => answer.id) },
+            },
+          });
+          const selections = input.answers.flatMap((answer) => {
+            const answerId = answerIdsByQuestionId.get(answer.questionId);
+            return answerId
+              ? answer.optionIds.map((optionId) => ({ answerId, optionId }))
+              : [];
+          });
+          if (selections.length) {
+            await tx.assessmentAnswerSelection.createMany({
+              data: selections,
+              skipDuplicates: true,
+            });
+          }
+          return { saved: input.answers.length };
+        }),
+      );
     }),
 
   submitAttempt: protectedProcedure
@@ -1114,159 +1197,58 @@ export const assessmentRouter = createTRPCRouter({
       }
       if (attempt.status !== "IN_PROGRESS")
         throw new TRPCError({ code: "CONFLICT" });
-      return ctx.db.$transaction(async (tx) => {
-        const full = await tx.assessmentAttempt.findUnique({
-          where: { id: input.attemptId },
-          select: {
-            id: true,
-            organizationId: true,
-            courseItemId: true,
-            status: true,
-            startedAt: true,
-            assessment: {
-              select: {
-                status: true,
-                timeLimitMinutes: true,
-                passingScore: true,
-                questions: {
-                  select: {
-                    id: true,
-                    type: true,
-                    points: true,
-                    options: { select: { id: true, isCorrect: true } },
-                  },
+      return withTransactionRetry(() =>
+        ctx.db.$transaction(async (tx) => {
+          // Serializes with saves and event auto-submission of this attempt.
+          if (!(await lockInProgressAttempt(tx, input.attemptId))) {
+            throw new TRPCError({ code: "CONFLICT" });
+          }
+          const full = await tx.assessmentAttempt.findUnique({
+            where: { id: input.attemptId },
+            select: gradableAttemptSelect,
+          });
+          if (
+            full?.userId !== ctx.actorUserId ||
+            full.status !== "IN_PROGRESS" ||
+            full.assessment.status !== "PUBLISHED" ||
+            (full.assessmentEvent && full.assessmentEvent.status !== "OPEN")
+          ) {
+            throw new TRPCError({ code: "CONFLICT" });
+          }
+          const now = new Date();
+          const expired = isAssessmentExpired(
+            full.startedAt,
+            full.assessmentEvent?.durationMinutes ??
+              full.assessment.timeLimitMinutes,
+            now,
+            full.assessmentEvent?.closesAt,
+          );
+          const graded = await gradeInProgressAttempt(tx, full, now);
+          if (graded.passed && !full.assessmentEvent) {
+            await tx.contentProgress.upsert({
+              where: {
+                courseItemId_userId: {
+                  courseItemId: full.courseItemId,
+                  userId: ctx.actorUserId,
                 },
               },
-            },
-            assessmentEvent: {
-              select: {
-                status: true,
-                durationMinutes: true,
-                closesAt: true,
-              },
-            },
-            answers: {
-              select: {
-                id: true,
-                questionId: true,
-                selectedOptions: { select: { optionId: true } },
-              },
-            },
-          },
-        });
-        if (
-          full?.status !== "IN_PROGRESS" ||
-          full.assessment.status !== "PUBLISHED" ||
-          (full.assessmentEvent && full.assessmentEvent.status !== "OPEN")
-        ) {
-          throw new TRPCError({ code: "CONFLICT" });
-        }
-        const now = new Date();
-        const expired = isAssessmentExpired(
-          full.startedAt,
-          full.assessmentEvent?.durationMinutes ??
-            full.assessment.timeLimitMinutes,
-          now,
-          full.assessmentEvent?.closesAt,
-        );
-        const answers = new Map(
-          full.answers.map((answer) => [answer.questionId, answer]),
-        );
-        const missingWrittenQuestionIds = getMissingWrittenQuestionIds(
-          full.assessment.questions.map((question) => ({
-            id: question.id,
-            type: question.type,
-            optionIds: question.options.map((option) => option.id),
-          })),
-          new Set(answers.keys()),
-        );
-        if (missingWrittenQuestionIds.length) {
-          await tx.assessmentAnswer.createMany({
-            data: missingWrittenQuestionIds.map((questionId) => ({
-              attemptId: full.id,
-              organizationId: full.organizationId,
-              questionId,
-            })),
-            skipDuplicates: true,
-          });
-        }
-        let score = 0;
-        let maxScore = 0;
-        let needsReview = false;
-        const autoScores: Array<{ answerId: string; score: number }> = [];
-        for (const question of full.assessment.questions) {
-          maxScore += question.points;
-          const answer = answers.get(question.id);
-          if (question.type === "WRITTEN") {
-            needsReview = true;
-            continue;
-          }
-          const expected = question.options
-            .filter((option) => option.isCorrect)
-            .map((option) => option.id)
-            .sort();
-          const selected = (
-            answer?.selectedOptions.map((selection) => selection.optionId) ?? []
-          ).sort();
-          const autoScore =
-            expected.length === selected.length &&
-            expected.every((value, index) => value === selected[index])
-              ? question.points
-              : 0;
-          score += autoScore;
-          if (answer)
-            autoScores.push({ answerId: answer.id, score: autoScore });
-        }
-        for (const [autoScore, answerIds] of groupScoresByValue(autoScores)) {
-          await tx.assessmentAnswer.updateMany({
-            where: { id: { in: answerIds } },
-            data: { autoScore },
-          });
-        }
-        const updated = await tx.assessmentAttempt.updateMany({
-          where: {
-            id: input.attemptId,
-            userId: ctx.actorUserId,
-            status: "IN_PROGRESS",
-          },
-          data: {
-            status: needsReview ? "IN_REVIEW" : "GRADED",
-            score,
-            maxScore,
-            submittedAt: now,
-            gradedAt: needsReview ? null : now,
-          },
-        });
-        if (updated.count !== 1) throw new TRPCError({ code: "CONFLICT" });
-        const passed =
-          !needsReview &&
-          maxScore > 0 &&
-          (full.assessment.passingScore === null ||
-            (score / maxScore) * 100 >= full.assessment.passingScore);
-        if (passed && !full.assessmentEvent) {
-          await tx.contentProgress.upsert({
-            where: {
-              courseItemId_userId: {
+              create: {
                 courseItemId: full.courseItemId,
                 userId: ctx.actorUserId,
+                status: "COMPLETED",
+                completedAt: now,
               },
-            },
-            create: {
-              courseItemId: full.courseItemId,
-              userId: ctx.actorUserId,
-              status: "COMPLETED",
-              completedAt: now,
-            },
-            update: { status: "COMPLETED", completedAt: now },
-          });
-        }
-        return {
-          status: needsReview ? ("IN_REVIEW" as const) : ("GRADED" as const),
-          score,
-          maxScore,
-          expired,
-        };
-      });
+              update: { status: "COMPLETED", completedAt: now },
+            });
+          }
+          return {
+            status: graded.status,
+            score: graded.score,
+            maxScore: graded.maxScore,
+            expired,
+          };
+        }),
+      );
     }),
 
   listMyAttempts: protectedProcedure
@@ -1410,125 +1392,136 @@ export const assessmentRouter = createTRPCRouter({
         input.attemptId,
         ctx.actorUserId,
       );
-      return ctx.db.$transaction(async (tx) => {
-        const attempt = await tx.assessmentAttempt.findUnique({
-          where: { id: input.attemptId },
-          select: {
-            id: true,
-            userId: true,
-            status: true,
-            maxScore: true,
-            courseItemId: true,
-            assessment: { select: { passingScore: true } },
-            assessmentEvent: {
-              select: {
-                status: true,
-                participants: {
-                  where: { userId: access.attempt.userId },
-                  select: { invalidatedAt: true },
+      return withTransactionRetry(() =>
+        ctx.db.$transaction(async (tx) => {
+          // Serializes concurrent reviews of the same attempt.
+          await tx.$queryRaw`
+          SELECT "id" FROM "AssessmentAttempt" WHERE "id" = ${input.attemptId} FOR UPDATE
+        `;
+          const attempt = await tx.assessmentAttempt.findUnique({
+            where: { id: input.attemptId },
+            select: {
+              id: true,
+              userId: true,
+              status: true,
+              maxScore: true,
+              courseItemId: true,
+              assessment: { select: { passingScore: true } },
+              assessmentEvent: {
+                select: {
+                  status: true,
+                  participants: {
+                    where: { userId: access.attempt.userId },
+                    select: { invalidatedAt: true },
+                  },
+                },
+              },
+              answers: {
+                select: {
+                  id: true,
+                  autoScore: true,
+                  manualScore: true,
+                  question: { select: { points: true, type: true } },
                 },
               },
             },
-            answers: {
-              select: {
-                id: true,
-                autoScore: true,
-                manualScore: true,
-                question: { select: { points: true, type: true } },
-              },
-            },
-          },
-        });
-        if (attempt?.status !== "IN_REVIEW")
-          throw new TRPCError({ code: "CONFLICT" });
-        if (
-          attempt.assessmentEvent?.status === "CANCELLED" ||
-          attempt.assessmentEvent?.participants[0]?.invalidatedAt
-        ) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "This participation is no longer valid for review",
           });
-        }
-        const byId = new Map(
-          attempt.answers.map((answer) => [answer.id, answer]),
-        );
-        // Later entries win for duplicate answer ids, as with sequential updates.
-        const reviews = new Map<string, (typeof input.answers)[number]>();
-        for (const review of input.answers) {
-          const answer = byId.get(review.answerId);
+          if (attempt?.status !== "IN_REVIEW")
+            throw new TRPCError({ code: "CONFLICT" });
           if (
-            answer?.question.type !== "WRITTEN" ||
-            review.score > answer.question.points
+            attempt.assessmentEvent?.status === "CANCELLED" ||
+            attempt.assessmentEvent?.participants[0]?.invalidatedAt
+          ) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: "This participation is no longer valid for review",
+            });
+          }
+          const byId = new Map(
+            attempt.answers.map((answer) => [answer.id, answer]),
+          );
+          // Later entries win for duplicate answer ids, as with sequential updates.
+          const reviews = new Map<string, (typeof input.answers)[number]>();
+          for (const review of input.answers) {
+            const answer = byId.get(review.answerId);
+            if (
+              answer?.question.type !== "WRITTEN" ||
+              review.score > answer.question.points
+            ) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Invalid review score",
+              });
+            }
+            answer.manualScore = review.score;
+            reviews.delete(review.answerId);
+            reviews.set(review.answerId, review);
+          }
+          if (
+            attempt.answers.some(
+              (answer) =>
+                answer.question.type === "WRITTEN" &&
+                answer.manualScore === null,
+            )
           ) {
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message: "Invalid review score",
+              message: "Every written answer must be reviewed",
             });
           }
-          answer.manualScore = review.score;
-          reviews.delete(review.answerId);
-          reviews.set(review.answerId, review);
-        }
-        if (
-          attempt.answers.some(
-            (answer) =>
-              answer.question.type === "WRITTEN" && answer.manualScore === null,
-          )
-        ) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Every written answer must be reviewed",
+          await tx.$executeRaw(
+            buildAssessmentAnswerReviewUpdate({
+              attemptId: attempt.id,
+              reviewedByMembershipId: access.membership.id,
+              reviewedAt: new Date(),
+              reviews: [...reviews.values()],
+            }),
+          );
+          const score = attempt.answers.reduce(
+            (total, answer) =>
+              total + (answer.manualScore ?? answer.autoScore ?? 0),
+            0,
+          );
+          const now = new Date();
+          const finalized = await tx.assessmentAttempt.updateMany({
+            where: { id: attempt.id, status: "IN_REVIEW" },
+            data: { status: "GRADED", score, gradedAt: now },
           });
-        }
-        await tx.$executeRaw(
-          buildAssessmentAnswerReviewUpdate({
-            attemptId: attempt.id,
-            reviewedByMembershipId: access.membership.id,
-            reviewedAt: new Date(),
-            reviews: [...reviews.values()],
-          }),
-        );
-        const score = attempt.answers.reduce(
-          (total, answer) =>
-            total + (answer.manualScore ?? answer.autoScore ?? 0),
-          0,
-        );
-        const now = new Date();
-        const finalized = await tx.assessmentAttempt.updateMany({
-          where: { id: attempt.id, status: "IN_REVIEW" },
-          data: { status: "GRADED", score, gradedAt: now },
-        });
-        if (finalized.count !== 1)
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "Another teacher has already completed this review",
-          });
-        const passed =
-          attempt.maxScore !== null &&
-          attempt.maxScore > 0 &&
-          (attempt.assessment.passingScore === null ||
-            (score / attempt.maxScore) * 100 >=
-              attempt.assessment.passingScore);
-        if (passed && !attempt.assessmentEvent) {
-          await tx.contentProgress.upsert({
-            where: {
-              courseItemId_userId: {
+          if (finalized.count !== 1)
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "Another teacher has already completed this review",
+            });
+          const passed =
+            attempt.maxScore !== null &&
+            attempt.maxScore > 0 &&
+            (attempt.assessment.passingScore === null ||
+              (score / attempt.maxScore) * 100 >=
+                attempt.assessment.passingScore);
+          if (passed && !attempt.assessmentEvent) {
+            await tx.contentProgress.upsert({
+              where: {
+                courseItemId_userId: {
+                  courseItemId: attempt.courseItemId,
+                  userId: attempt.userId,
+                },
+              },
+              create: {
                 courseItemId: attempt.courseItemId,
                 userId: attempt.userId,
+                status: "COMPLETED",
+                completedAt: now,
               },
-            },
-            create: {
-              courseItemId: attempt.courseItemId,
-              userId: attempt.userId,
-              status: "COMPLETED",
-              completedAt: now,
-            },
-            update: { status: "COMPLETED", completedAt: now },
-          });
-        }
-        return { status: "GRADED" as const, score, maxScore: attempt.maxScore };
-      });
+              update: { status: "COMPLETED", completedAt: now },
+            });
+          }
+          return {
+            status: "GRADED" as const,
+            score,
+            maxScore: attempt.maxScore,
+          };
+        }),
+      );
     }),
   listAttemptsNeedingReview: protectedProcedure
     .input(

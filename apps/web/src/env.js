@@ -11,6 +11,9 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string()
         : z.string().optional(),
+    // Bearer token Vercel sends to /api/cron/* routes. Optional so a deploy
+    // without it still builds; cron routes reject every request until set.
+    CRON_SECRET: z.string().min(1).optional(),
     APP_URL: z
       .string()
       .url()
@@ -37,6 +40,8 @@ export const env = createEnv({
     ELEVENLABS_API_KEY: z.string().min(1).optional(),
     DATABASE_URL: z.string().url(),
     DIRECT_URL: z.string().url(),
+    // Max connections per server instance in the Neon adapter pool.
+    DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
     CLOUDFLARE_R2_ENDPOINT: z.string().url(),
     CLOUDFLARE_R2_ACCESS_KEY_ID: z.string().min(1),
     CLOUDFLARE_R2_SECRET_ACCESS_KEY: z.string().min(1),
@@ -70,6 +75,7 @@ export const env = createEnv({
    */
   runtimeEnv: {
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    CRON_SECRET: process.env.CRON_SECRET,
     APP_URL: process.env.APP_URL,
     BETTER_AUTH_GOOGLE_CLIENT_ID: process.env.BETTER_AUTH_GOOGLE_CLIENT_ID,
     BETTER_AUTH_GOOGLE_CLIENT_SECRET:
@@ -79,6 +85,7 @@ export const env = createEnv({
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
     DATABASE_URL: process.env.DATABASE_URL,
     DIRECT_URL: process.env.DIRECT_URL,
+    DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX,
     CLOUDFLARE_R2_ENDPOINT: process.env.CLOUDFLARE_R2_ENDPOINT,
     CLOUDFLARE_R2_ACCESS_KEY_ID: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
     CLOUDFLARE_R2_SECRET_ACCESS_KEY:

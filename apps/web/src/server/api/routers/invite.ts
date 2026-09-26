@@ -6,6 +6,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { withTransactionRetry } from "~/server/db-retry";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
 import { resolveUnifiedInvite } from "~/server/invites/unified";
 import {
@@ -35,8 +36,10 @@ export const inviteRouter = createTRPCRouter({
       });
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return ctx.db.$transaction(
-        async (tx) => {
+      // READ COMMITTED: invite claims are conditional updates and memberships/enrollments are
+      // protected by unique constraints, so serializable isolation only produced 40001 aborts.
+      return withTransactionRetry(() =>
+        ctx.db.$transaction(async (tx) => {
           const organizationInvite = await tx.organizationInvite.findUnique({
             where: {
               tokenHash: hashOrganizationInviteToken(input.token),
@@ -68,8 +71,7 @@ export const inviteRouter = createTRPCRouter({
             ...result,
             destination: `/learn/${result.courseId}`,
           };
-        },
-        { isolationLevel: "Serializable" },
+        }),
       );
     }),
 });

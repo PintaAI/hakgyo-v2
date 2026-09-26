@@ -5,7 +5,7 @@ import {
   CourseLearningFooter,
   type LearningRequirementAction,
 } from "../../../../../src/components/learn/course-learning-footer";
-import { api } from "../../../../../src/lib/trpc";
+import { useCourseItem } from "../../../../../src/sync/hooks";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -23,10 +23,7 @@ export default function LearningProgressSheet() {
     firstParam(params.completionMode) === "assessment"
       ? "assessment"
       : "manual";
-  const item = api.learning.getCourseItem.useQuery(
-    { courseItemId },
-    { enabled: Boolean(courseItemId), retry: false },
-  );
+  const item = useCourseItem(courseId || undefined, courseItemId);
   const vocabularySet = item.data?.vocabularySet;
   const materialRequirementActions: LearningRequirementAction[] =
     item.data?.material?.requiredActivities.map((activity) => ({

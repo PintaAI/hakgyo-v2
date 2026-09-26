@@ -1,4 +1,3 @@
-import type { RouterOutputs } from "@hakgyo/api";
 import { Stack, useFocusEffect } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -23,13 +22,17 @@ import {
 import { DoodleBackground } from "../../../../src/components/doodle-background";
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { authClient } from "../../../../src/lib/auth-client";
-import { api } from "../../../../src/lib/trpc";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
+import {
+  useCourseOutlines,
+  useSyncIndex,
+  type CourseOutline,
+} from "../../../../src/sync/hooks";
 
 function CohortCarousel({
   cohorts,
@@ -51,7 +54,7 @@ function CohortCarousel({
   now: number;
   onRetryEvents: () => void;
   organizationId: string;
-  outlines: RouterOutputs["mobileSync"]["getDashboard"]["outlines"];
+  outlines: Record<string, CourseOutline>;
   userId: string;
 }) {
   const [pageWidth, setPageWidth] = useState(0);
@@ -149,14 +152,13 @@ function CohortCarousel({
 export default function LearnTab() {
   const { data: session } = authClient.useSession();
   const { activeOrganizationId } = useAppTheme();
-  const organizationScope = activeOrganizationId
-    ? { organizationId: activeOrganizationId }
-    : undefined;
-  const queryOptions = { enabled: Boolean(activeOrganizationId) };
-  const dashboard = api.mobileSync.getDashboard.useQuery(
-    organizationScope,
-    queryOptions,
+  const dashboard = useSyncIndex(activeOrganizationId);
+  const cohortCourseIds = useMemo(
+    () => (dashboard.data?.cohorts ?? []).map((cohort) => cohort.course.id),
+    [dashboard.data?.cohorts],
   );
+  // Composed per course from the local bundles (progress, resume item).
+  const { outlines } = useCourseOutlines(cohortCourseIds);
   const { isSyncing, syncNow } = useMobileSync();
   const { openUpdates } = useDrawer();
   const { unreadCount } = useSidebarIndicators();
@@ -250,7 +252,7 @@ export default function LearnTab() {
               now={now}
               onRetryEvents={() => void dashboard.refetch()}
               organizationId={activeOrganizationId!}
-              outlines={dashboard.data?.outlines ?? {}}
+              outlines={outlines}
               userId={session!.user.id}
             />
           </View>

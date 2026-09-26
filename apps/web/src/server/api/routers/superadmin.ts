@@ -195,7 +195,7 @@ async function listUsers(database: Database, input: z.infer<typeof pageInput>) {
         ],
       }
     : undefined;
-  const [items, total] = await Promise.all([
+  const [users, total] = await Promise.all([
     database.user.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -209,11 +209,27 @@ async function listUsers(database: Database, input: z.infer<typeof pageInput>) {
         suspendedAt: true,
         deletedAt: true,
         createdAt: true,
-        _count: { select: { sessions: true } },
       },
     }),
     database.user.count({ where }),
   ]);
+  // Session counts for this page only; a relation `_count` in the findMany
+  // aggregates every session in the database.
+  const sessionCounts =
+    users.length === 0
+      ? []
+      : await database.session.groupBy({
+          by: ["userId"],
+          where: { userId: { in: users.map((user) => user.id) } },
+          _count: { _all: true },
+        });
+  const sessionCountByUser = new Map(
+    sessionCounts.map((row) => [row.userId, row._count._all]),
+  );
+  const items = users.map((user) => ({
+    ...user,
+    _count: { sessions: sessionCountByUser.get(user.id) ?? 0 },
+  }));
   return { items, total, page: input.page, pageSize };
 }
 

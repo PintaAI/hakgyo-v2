@@ -68,6 +68,17 @@ export type TRPCContext =
       requestCache: RequestCache;
     };
 
+function isUpgradeRequiredCause(
+  cause: unknown,
+): cause is Error & { minProtocol: number } {
+  return (
+    cause instanceof Error &&
+    cause.name === "UpgradeRequiredError" &&
+    "minProtocol" in cause &&
+    typeof cause.minProtocol === "number"
+  );
+}
+
 /**
  * 2. INITIALIZATION
  *
@@ -84,6 +95,12 @@ const t = initTRPC.context<TRPCContext>().create({
         ...shape.data,
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
+        // Mobile clients older than MIN_SYNC_PROTOCOL (see
+        // `~/server/mobile/protocol`). Matched by name instead of an import,
+        // which would make that module and this one depend on each other.
+        upgradeRequired: isUpgradeRequiredCause(error.cause)
+          ? { minProtocol: error.cause.minProtocol }
+          : null,
       },
     };
   },

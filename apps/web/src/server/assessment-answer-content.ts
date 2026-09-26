@@ -5,18 +5,28 @@ type ContentAnswer = {
   content?: Prisma.InputJsonValue;
 };
 
+function compareKeys(left: string, right: string) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/**
+ * Rows are emitted in `questionId` order so concurrent writers touch answers in a deterministic
+ * order.
+ */
 export function buildAssessmentAnswerContentUpdate(
   attemptId: string,
   answers: ContentAnswer[],
 ) {
   const contentRows = Prisma.join(
-    answers.map(
-      (answer) => Prisma.sql`(
+    [...answers]
+      .sort((left, right) => compareKeys(left.questionId, right.questionId))
+      .map(
+        (answer) => Prisma.sql`(
         ${answer.questionId},
         ${answer.content !== undefined}::boolean,
         ${answer.content === undefined ? null : JSON.stringify(answer.content)}
       )`,
-    ),
+      ),
   );
 
   return Prisma.sql`
@@ -43,6 +53,7 @@ type AnswerReview = {
 /**
  * Applies every manual review score/feedback of one attempt in a single statement. Omitted
  * feedback keeps the stored value, matching Prisma's `feedback: undefined` update semantics.
+ * Rows are emitted in `answerId` order for a deterministic lock order.
  */
 export function buildAssessmentAnswerReviewUpdate(input: {
   attemptId: string;
@@ -51,14 +62,16 @@ export function buildAssessmentAnswerReviewUpdate(input: {
   reviews: AnswerReview[];
 }) {
   const reviewRows = Prisma.join(
-    input.reviews.map(
-      (review) => Prisma.sql`(
+    [...input.reviews]
+      .sort((left, right) => compareKeys(left.answerId, right.answerId))
+      .map(
+        (review) => Prisma.sql`(
         ${review.answerId}::text,
         ${review.score}::int,
         ${review.feedback !== undefined}::boolean,
         ${review.feedback === undefined ? null : JSON.stringify(review.feedback)}::text
       )`,
-    ),
+      ),
   );
 
   return Prisma.sql`

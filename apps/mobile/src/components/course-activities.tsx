@@ -1,6 +1,6 @@
 import { router } from "expo-router";
-import { api } from "../lib/trpc";
 import { canOpenModule } from "../lib/study";
+import { useCourseOutline } from "../sync/hooks";
 import { Empty, QueryState, Row } from "./learning-ui";
 
 export function CourseActivities({
@@ -12,7 +12,7 @@ export function CourseActivities({
   practice?: boolean;
   nextOnly?: boolean;
 }) {
-  const query = api.learning.getCourseOutline.useQuery({ courseId });
+  const query = useCourseOutline(courseId);
   const items =
     query.data?.modules.flatMap((module) =>
       module.items.map((item) => ({

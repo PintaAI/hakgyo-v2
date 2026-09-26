@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
 
-export async function consumeEnrollmentInvite(
+async function findRedeemableEnrollmentInvite(
   tx: Prisma.TransactionClient,
   token: string,
   now: Date,
@@ -25,6 +25,19 @@ export async function consumeEnrollmentInvite(
       message: "Invite is no longer valid",
     });
   }
+  return invite;
+}
+
+/**
+ * Claims one use with a conditional increment. The `useCount < maxUses` guard is evaluated
+ * atomically by the UPDATE (it re-checks the row after waiting on a concurrent claim), so it is
+ * safe under READ COMMITTED without serializable isolation.
+ */
+async function claimEnrollmentInviteUse(
+  tx: Prisma.TransactionClient,
+  invite: { id: string; maxUses: number | null; useCount: number },
+  now: Date,
+) {
   if (invite.maxUses !== null && invite.useCount >= invite.maxUses) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -47,7 +60,15 @@ export async function consumeEnrollmentInvite(
       message: "Invite was already consumed",
     });
   }
+}
 
+export async function consumeEnrollmentInvite(
+  tx: Prisma.TransactionClient,
+  token: string,
+  now: Date,
+) {
+  const invite = await findRedeemableEnrollmentInvite(tx, token, now);
+  await claimEnrollmentInviteUse(tx, invite, now);
   return invite;
 }
 
@@ -55,7 +76,16 @@ export async function redeemEnrollmentInvite(
   tx: Prisma.TransactionClient,
   input: { token: string; userId: string; now: Date },
 ) {
-  const invite = await consumeEnrollmentInvite(tx, input.token, input.now);
+  const invite = await findRedeemableEnrollmentInvite(
+    tx,
+    input.token,
+    input.now,
+  );
+  // Serialize redemptions by the same learner for the same target so a double-click cannot
+  // consume two uses before either enrollment is visible.
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(hashtextextended(${`invite-redeem:${invite.cohortId ?? invite.courseId}:${input.userId}`}, 0))
+  `;
   const existing = invite.cohortId
     ? await tx.cohortEnrollment.findUnique({
         where: {
@@ -74,6 +104,7 @@ export async function redeemEnrollmentInvite(
         },
       });
 
+  // Learners who are already enrolled do not consume a use.
   if (existing?.status === "ACTIVE" || existing?.status === "COMPLETED") {
     if (invite.cohortId) {
       await grantCohortCourseAccess(
@@ -90,6 +121,7 @@ export async function redeemEnrollmentInvite(
     };
   }
 
+  await claimEnrollmentInviteUse(tx, invite, input.now);
   if (invite.cohortId) {
     await grantCohortCourseAccess(tx, invite.courseId, input.userId, input.now);
     await tx.cohortEnrollment.upsert({

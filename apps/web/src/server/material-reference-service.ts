@@ -201,7 +201,6 @@ export async function getLearnerMaterialReferencesForSources(
             organizationId: true,
             title: true,
             description: true,
-            _count: { select: { questions: true } },
             courseItems: {
               where: { moduleId: { in: moduleIds }, isPublished: true },
               select: { id: true, moduleId: true },
@@ -210,6 +209,23 @@ export async function getLearnerMaterialReferencesForSources(
         }),
     getLearnerPdfBooksForSources(db, sources),
   ]);
+  // Question counts for the referenced assessments only; a relation `_count`
+  // in this findMany would aggregate every question in the database.
+  const questionCounts =
+    assessments.length === 0
+      ? []
+      : await db.assessmentQuestion.groupBy({
+          by: ["assessmentId"],
+          where: {
+            assessmentId: {
+              in: assessments.map((assessment) => assessment.id),
+            },
+          },
+          _count: { _all: true },
+        });
+  const questionCountByAssessment = new Map(
+    questionCounts.map((row) => [row.assessmentId, row._count._all]),
+  );
 
   return sources.map((source, index) => {
     const reference = references[index]!;
@@ -230,7 +246,7 @@ export async function getLearnerMaterialReferencesForSources(
         },
       ),
       assessments: assessments.flatMap(
-        ({ _count, courseItems, organizationId, ...assessment }) => {
+        ({ courseItems, organizationId, ...assessment }) => {
           const courseItem = courseItems.find(
             (candidate) => candidate.moduleId === source.moduleId,
           );
@@ -240,7 +256,8 @@ export async function getLearnerMaterialReferencesForSources(
             ? [
                 {
                   ...assessment,
-                  questionCount: _count.questions,
+                  questionCount:
+                    questionCountByAssessment.get(assessment.id) ?? 0,
                   courseItemId: courseItem.id,
                 },
               ]

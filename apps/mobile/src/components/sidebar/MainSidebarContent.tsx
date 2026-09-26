@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 
-import { api } from "../../lib/trpc";
+import { useSyncIndex } from "../../sync/hooks";
 import {
   countUnreadIndicators,
   MAIN_SIDEBAR_INDICATOR_KINDS,
@@ -153,14 +153,10 @@ export function MainSidebarContent({
         )
         .map((item) => item.key),
     );
-  const scope = activeOrganizationId
-    ? { organizationId: activeOrganizationId }
-    : undefined;
   const [now] = useState(() => Date.now());
 
-  const dashboard = api.mobileSync.getDashboard.useQuery(scope, {
-    enabled: Boolean(activeOrganizationId),
-  });
+  // Local learner index (events, cohorts, attempts, courses).
+  const dashboard = useSyncIndex(activeOrganizationId);
 
   const upcomingEvents = (dashboard.data?.events ?? [])
     .filter((event) => !isStaleClosedOnDemandAssessment(event, now))

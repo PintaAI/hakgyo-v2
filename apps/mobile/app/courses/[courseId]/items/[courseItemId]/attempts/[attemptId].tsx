@@ -36,6 +36,7 @@ import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-dra
 import { assessmentTerminalResult } from "../../../../../../src/lib/assessment-state";
 import { useAppTheme } from "../../../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../../../src/providers/MobileSyncProvider";
+import { useLearnerAttempt } from "../../../../../../src/sync/hooks";
 
 type Answer = { content?: string; optionIds: string[] };
 
@@ -147,17 +148,9 @@ function AssessmentAttemptContent({
   const { activeOrganizationId } = useAppTheme();
   const { completeAssessment } = useMobileSyncActions();
   const resolveAssetUrl = useApiAssetResolver();
-  const assessment = api.assessment.getForCourseItem.useQuery(
-    { courseItemId, attemptId },
-    { enabled: Boolean(courseItemId && attemptId), retry: false },
-  );
-  const attempt = api.assessment.getMyAttempt.useQuery(
-    { attemptId },
-    {
-      enabled: Boolean(attemptId),
-      retry: false,
-    },
-  );
+  // Resumable attempts come from the local index / persisted start result;
+  // graded ones from the persisted checkpoint result. Online otherwise.
+  const { assessment, attempt } = useLearnerAttempt(attemptId, courseItemId);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -637,7 +630,8 @@ function AssessmentAttemptContent({
                     disabled={busy}
                     onPress={() => {
                       const next =
-                        currentIndex < assessment.data.questions.length - 1
+                        currentIndex <
+                        (assessment.data?.questions.length ?? 0) - 1
                           ? currentIndex + 1
                           : nextUnanswered;
                       if (expired) setCurrentIndex(next);

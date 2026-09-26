@@ -7,9 +7,7 @@ import { EntryImage } from "../../../../src/components/learn/vocabulary-set-deta
 import { StudyAction } from "../../../../src/components/study-glass";
 import { VocabularyAudioButton } from "../../../../src/components/vocabulary-audio-button";
 import { authClient } from "../../../../src/lib/auth-client";
-import { api } from "../../../../src/lib/trpc";
-import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
-import { dashboardVocabularyPractice } from "../../../../src/sync/dashboard-cache";
+import { useVocabularyPractice } from "../../../../src/sync/hooks";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -31,38 +29,19 @@ export default function VocabularyItemSheet() {
     vocabularySetId?: string | string[];
     entryId?: string | string[];
     sourceCourseItemId?: string | string[];
+    courseId?: string | string[];
   }>();
   const vocabularySetId = first(params.vocabularySetId);
   const entryId = first(params.entryId);
   const sourceCourseItemId = first(params.sourceCourseItemId);
+  const courseId = first(params.courseId);
   const { data: session } = authClient.useSession();
-  const { activeOrganizationId } = useAppTheme();
   const [speakingId, setSpeakingId] = useState<string | null>(null);
-  const dashboard = api.mobileSync.getDashboard.useQuery(
-    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
-    { enabled: Boolean(session && activeOrganizationId), retry: false },
-  );
-  const dashboardPractice = dashboard.data
-    ? dashboardVocabularyPractice(dashboard.data, {
-        vocabularySetId,
-        sourceCourseItemId,
-      })
-    : undefined;
-  const query = api.learning.getVocabularyPractice.useQuery(
-    { vocabularySetId, sourceCourseItemId },
-    {
-      enabled: Boolean(
-        session &&
-        vocabularySetId &&
-        sourceCourseItemId &&
-        !dashboard.isPending &&
-        !dashboardPractice,
-      ),
-      initialData: dashboardPractice,
-      retry: false,
-    },
-  );
-  const vocabulary = dashboardPractice ?? query.data;
+  const query = useVocabularyPractice(vocabularySetId, sourceCourseItemId, {
+    courseId: courseId || undefined,
+    enabled: Boolean(session),
+  });
+  const vocabulary = query.data;
   const index =
     vocabulary?.entries.findIndex((entry) => entry.id === entryId) ?? -1;
   const entry = index >= 0 ? vocabulary?.entries[index] : undefined;
@@ -72,15 +51,9 @@ export default function VocabularyItemSheet() {
     return (
       <View className="gap-4 px-5 pb-6 pt-6">
         <QueryState
-          error={dashboard.error ?? query.error}
-          pending={
-            (dashboard.isPending || query.isPending) &&
-            Boolean(vocabularySetId && sourceCourseItemId)
-          }
-          retry={() => {
-            void dashboard.refetch();
-            void query.refetch();
-          }}
+          error={query.error}
+          pending={query.isPending}
+          retry={() => void query.refetch()}
         />
         {vocabulary && !entry ? <Empty>Word unavailable.</Empty> : null}
         {!vocabularySetId || !sourceCourseItemId ? (

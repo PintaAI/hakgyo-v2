@@ -84,7 +84,13 @@ export function resolveBrandContext({
 }
 
 type BrandDatabase = Pick<typeof db, "cohort" | "course">;
-type BrandListDatabase = Pick<typeof db, "organization">;
+type BrandListDatabase = Pick<
+  typeof db,
+  | "organization"
+  | "organizationMember"
+  | "courseEnrollment"
+  | "cohortEnrollment"
+>;
 
 type GetActiveBrandContextInput = {
   db: BrandDatabase;
@@ -251,45 +257,49 @@ export async function listAvailableBrandContexts({
   actorUserId: string;
   now?: Date;
 }) {
-  const organizations = await database.organization.findMany({
-    where: {
-      OR: [
-        { members: { some: { userId: actorUserId } } },
-        {
-          courses: {
-            some: {
-              status: "PUBLISHED",
-              OR: [
-                {
-                  enrollments: {
-                    some: {
-                      userId: actorUserId,
-                      status: { in: [...activeEnrollmentStatuses] },
-                      source: { not: "COHORT" },
-                      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-                    },
-                  },
-                },
-                {
-                  cohorts: {
-                    some: {
-                      status: { in: [...accessGrantingCohortStatuses] },
-                      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
-                      enrollments: {
-                        some: {
-                          userId: actorUserId,
-                          status: { in: [...activeEnrollmentStatuses] },
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
+  // Driven from the user's own memberships and enrollments (userId-indexed)
+  // instead of evaluating membership/enrollment subqueries for every
+  // organization.
+  const [memberships, courseEnrollments, cohortEnrollments] = await Promise.all(
+    [
+      database.organizationMember.findMany({
+        where: { userId: actorUserId },
+        select: { organizationId: true },
+      }),
+      database.courseEnrollment.findMany({
+        where: {
+          userId: actorUserId,
+          status: { in: [...activeEnrollmentStatuses] },
+          source: { not: "COHORT" },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          course: { status: "PUBLISHED" },
+        },
+        select: { course: { select: { organizationId: true } } },
+      }),
+      database.cohortEnrollment.findMany({
+        where: {
+          userId: actorUserId,
+          status: { in: [...activeEnrollmentStatuses] },
+          cohort: {
+            status: { in: [...accessGrantingCohortStatuses] },
+            OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+            course: { status: "PUBLISHED" },
           },
         },
-      ],
-    },
+        select: { cohort: { select: { organizationId: true } } },
+      }),
+    ],
+  );
+  const organizationIds = [
+    ...new Set([
+      ...memberships.map(({ organizationId }) => organizationId),
+      ...courseEnrollments.map(({ course }) => course.organizationId),
+      ...cohortEnrollments.map(({ cohort }) => cohort.organizationId),
+    ]),
+  ];
+  if (organizationIds.length === 0) return [];
+  const organizations = await database.organization.findMany({
+    where: { id: { in: organizationIds } },
     orderBy: [{ name: "asc" }, { id: "asc" }],
     select: organizationBrandSelect,
   });

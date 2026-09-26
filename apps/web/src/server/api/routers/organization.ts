@@ -20,9 +20,11 @@ import { generateOrganizationTheme } from "~/server/ai/organization-theme";
 import { fetchStats } from "~/server/foundation/fetch-stats";
 import { pageInput, pageResult } from "~/server/api/pagination";
 import {
-  canDemoteOwner,
-  isSerializableConflict,
-} from "~/server/organization-role";
+  isTransientTransactionError,
+  isUniqueConstraintError,
+  withTransactionRetry,
+} from "~/server/db-retry";
+import { canDemoteOwner } from "~/server/organization-role";
 import { revokeZoomConnection } from "~/server/integrations/zoom";
 import {
   acceptOrganizationInvite,
@@ -909,36 +911,80 @@ export const organizationRouter = createTRPCRouter({
             }
           : {}),
       };
-      const [items, roleCounts] = await Promise.all([
-        db.organizationMember.findMany({
-          where,
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
-          include: {
-            user: {
-              select: { id: true, name: true, email: true, image: true },
-            },
-            _count: {
-              select: {
-                ownedCourses: true,
-                courseCollaborations: true,
-                cohortStaffMemberships: true,
-              },
-            },
+      // One grouped count yields both the filtered total and the owner
+      // count (which ignores the role filter).
+      const roleCountsPromise = input.includeTotal
+        ? db.organizationMember.groupBy({
+            by: ["role"],
+            where: { ...where, role: undefined },
+            _count: { _all: true },
+          })
+        : Promise.resolve(undefined);
+      const members = await db.organizationMember.findMany({
+        where,
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: input.limit + 1,
+        cursor: input.cursor ? { id: input.cursor } : undefined,
+        skip: input.cursor ? 1 : undefined,
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, image: true },
           },
-        }),
-        // One grouped count yields both the filtered total and the owner
-        // count (which ignores the role filter).
-        input.includeTotal
-          ? db.organizationMember.groupBy({
-              by: ["role"],
-              where: { ...where, role: undefined },
-              _count: { _all: true },
-            })
-          : Promise.resolve(undefined),
-      ]);
+        },
+      });
+      // Relation `_count` compiles to whole-table grouped subqueries, so count only this page.
+      const memberIds = members.map((member) => member.id);
+      const [roleCounts, ownedCourses, collaborations, cohortStaff] =
+        await Promise.all([
+          roleCountsPromise,
+          memberIds.length
+            ? db.course.groupBy({
+                by: ["ownerMembershipId"],
+                where: { ownerMembershipId: { in: memberIds } },
+                _count: { _all: true },
+              })
+            : [],
+          memberIds.length
+            ? db.courseCollaborator.groupBy({
+                by: ["organizationMemberId"],
+                where: { organizationMemberId: { in: memberIds } },
+                _count: { _all: true },
+              })
+            : [],
+          memberIds.length
+            ? db.cohortStaff.groupBy({
+                by: ["organizationMemberId"],
+                where: { organizationMemberId: { in: memberIds } },
+                _count: { _all: true },
+              })
+            : [],
+        ]);
+      const ownedCourseCounts = new Map(
+        ownedCourses.map((group) => [
+          group.ownerMembershipId,
+          group._count._all,
+        ]),
+      );
+      const collaborationCounts = new Map(
+        collaborations.map((group) => [
+          group.organizationMemberId,
+          group._count._all,
+        ]),
+      );
+      const cohortStaffCounts = new Map(
+        cohortStaff.map((group) => [
+          group.organizationMemberId,
+          group._count._all,
+        ]),
+      );
+      const items = members.map((member) => ({
+        ...member,
+        _count: {
+          ownedCourses: ownedCourseCounts.get(member.id) ?? 0,
+          courseCollaborations: collaborationCounts.get(member.id) ?? 0,
+          cohortStaffMemberships: cohortStaffCounts.get(member.id) ?? 0,
+        },
+      }));
       const countFor = (role: string) =>
         roleCounts?.find((group) => group.role === role)?._count._all ?? 0;
       const total = roleCounts
@@ -993,13 +1039,24 @@ export const organizationRouter = createTRPCRouter({
           message: "User is already an organization member",
         });
       }
-      return db.organizationMember.create({
-        data: {
-          organizationId: input.organizationId,
-          userId: user.id,
-          role: input.role,
-        },
-      });
+      try {
+        return await db.organizationMember.create({
+          data: {
+            organizationId: input.organizationId,
+            userId: user.id,
+            role: input.role,
+          },
+        });
+      } catch (error) {
+        // Added concurrently (e.g. an invite accepted) after the check above.
+        if (isUniqueConstraintError(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "User is already an organization member",
+          });
+        }
+        throw error;
+      }
     }),
 
   updateMemberRole: protectedProcedure
@@ -1016,17 +1073,22 @@ export const organizationRouter = createTRPCRouter({
         permission: "organization.members.manage",
         userId: ctx.actorUserId,
       });
-      for (let retry = 0; retry < 3; retry += 1) {
-        try {
-          return await ctx.db.$transaction(
-            async (tx) => {
+      try {
+        // Three attempts in total, as before. The Organization row lock serializes role changes
+        // (including two concurrent owner demotions), so READ COMMITTED sees the committed owner
+        // count after acquiring it.
+        return await withTransactionRetry(
+          () =>
+            ctx.db.$transaction(async (tx) => {
               // Serialize role changes for this organization, including two
-              // concurrent attempts to demote different owners.
+              // concurrent attempts to demote different owners. NO KEY UPDATE
+              // does not conflict with the KEY SHARE locks that foreign-key
+              // checks take, so org-scoped inserts elsewhere are not blocked.
               await tx.$queryRaw`
                 SELECT "id"
                 FROM "Organization"
                 WHERE "id" = ${input.organizationId}
-                FOR UPDATE
+                FOR NO KEY UPDATE
               `;
               const member = await tx.organizationMember.findFirst({
                 where: {
@@ -1069,33 +1131,18 @@ export const organizationRouter = createTRPCRouter({
                 where: { id: member.id },
                 data: { role: input.role },
               });
-            },
-            { isolationLevel: "Serializable" },
-          );
-        } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            isSerializableConflict(error) &&
-            retry < 2
-          ) {
-            continue;
-          }
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            isSerializableConflict(error)
-          ) {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "The organization changed concurrently. Try again.",
-            });
-          }
-          throw error;
+            }),
+          { retries: 2 },
+        );
+      } catch (error) {
+        if (isTransientTransactionError(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "The organization changed concurrently. Try again.",
+          });
         }
+        throw error;
       }
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "The organization changed concurrently. Try again.",
-      });
     }),
 
   removeMember: protectedProcedure

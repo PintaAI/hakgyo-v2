@@ -288,7 +288,7 @@ describe("getActiveBrandContext", () => {
 });
 
 describe("listAvailableBrandContexts", () => {
-  test("returns switchable identities in one query and sanitizes disabled themes", async () => {
+  test("returns switchable identities and sanitizes disabled themes", async () => {
     const findMany = mock(() =>
       Promise.resolve([
         organization("first"),
@@ -300,11 +300,27 @@ describe("listAvailableBrandContexts", () => {
     );
 
     const result = await listAvailableBrandContexts({
-      db: { organization: { findMany } } as never,
+      db: {
+        organization: { findMany },
+        organizationMember: {
+          findMany: () => Promise.resolve([{ organizationId: "first" }]),
+        },
+        courseEnrollment: {
+          findMany: () =>
+            Promise.resolve([{ course: { organizationId: "second" } }]),
+        },
+        cohortEnrollment: {
+          findMany: () =>
+            Promise.resolve([{ cohort: { organizationId: "first" } }]),
+        },
+      } as never,
       actorUserId: "learner-in-two-organizations",
     });
 
     expect(findMany).toHaveBeenCalledTimes(1);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { in: ["first", "second"] } } }),
+    );
     expect(result.map(({ organizationId }) => organizationId)).toEqual([
       "first",
       "second",

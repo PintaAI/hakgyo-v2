@@ -44,34 +44,32 @@ export const getSignedInDestination = cache(async (userId: string) => {
     return getWorkspaceFallback(membership.organization.slug, membership.role);
   }
 
-  const enrollment = await db.course.findFirst({
-    where: {
-      status: "PUBLISHED",
-      OR: [
-        {
-          enrollments: {
-            some: {
-              userId,
-              status: { in: ["ACTIVE", "COMPLETED"] },
-              source: { not: "COHORT" },
-            },
-          },
+  // Driven from the user's own enrollments (userId-indexed) rather than
+  // evaluating enrollment subqueries against every published course.
+  const [directEnrollment, cohortEnrollment] = await Promise.all([
+    db.courseEnrollment.findFirst({
+      where: {
+        userId,
+        status: { in: ["ACTIVE", "COMPLETED"] },
+        source: { not: "COHORT" },
+        course: { status: "PUBLISHED" },
+      },
+      select: { id: true },
+    }),
+    db.cohortEnrollment.findFirst({
+      where: {
+        userId,
+        status: { in: ["ACTIVE", "COMPLETED"] },
+        cohort: {
+          status: { in: [...accessGrantingCohortStatuses] },
+          OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+          course: { status: "PUBLISHED" },
         },
-        {
-          cohorts: {
-            some: {
-              status: { in: [...accessGrantingCohortStatuses] },
-              OR: [{ endsAt: null }, { endsAt: { gt: now } }],
-              enrollments: {
-                some: { userId, status: { in: ["ACTIVE", "COMPLETED"] } },
-              },
-            },
-          },
-        },
-      ],
-    },
-    select: { id: true },
-  });
+      },
+      select: { id: true },
+    }),
+  ]);
+  const enrollment = directEnrollment ?? cohortEnrollment;
 
   return enrollment ? "/learn/courses" : routeAccess.signedInFallbackPath;
 });

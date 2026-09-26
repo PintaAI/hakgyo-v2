@@ -12,6 +12,7 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { getCourseWorkspaceOverview } from "~/server/course/workspace-overview";
+import { withCourseCounts } from "~/server/course/counts";
 import { organizationBrandSelect } from "~/server/brand/context";
 import { db } from "~/server/db";
 
@@ -124,8 +125,8 @@ export const courseRouter = createTRPCRouter({
         })
         .default({ limit: 50 }),
     )
-    .query(({ ctx, input }) =>
-      ctx.db.course.findMany({
+    .query(async ({ ctx, input }) => {
+      const courses = await ctx.db.course.findMany({
         where: {
           status: "PUBLISHED",
           organizationId: input.organizationId,
@@ -149,10 +150,10 @@ export const courseRouter = createTRPCRouter({
               defaultEnrollmentMode: true,
             },
           },
-          _count: { select: { modules: true, cohorts: true } },
         },
-      }),
-    ),
+      });
+      return withCourseCounts(courses);
+    }),
   getPublished: publicProcedure
     .input(z.object({ courseId: id }))
     .query(async ({ ctx, input }) => {
@@ -226,10 +227,10 @@ export const courseRouter = createTRPCRouter({
             },
             select: { id: true },
           },
-          _count: { select: { modules: true, cohorts: true } },
         },
       });
-      return courses.map(({ collaborators, cohorts, ...course }) => {
+      const counted = await withCourseCounts(courses);
+      return counted.map(({ collaborators, cohorts, ...course }) => {
         const canViewAllCohorts =
           member.role === "OWNER" ||
           member.role === "ADMIN" ||

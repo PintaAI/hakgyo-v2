@@ -10,6 +10,7 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { getOrganizationCohortScope } from "~/server/authorization/cohort-scope";
+import { Prisma } from "../../../../generated/prisma/client";
 import { db } from "~/server/db";
 import {
   grantCohortCourseAccessForUsers,
@@ -52,6 +53,72 @@ async function requireManagedCohort(
   const { id, courseId, organizationId, access } =
     await requireCohortPermission({ cohortId, userId, permission });
   return { id, courseId, organizationId, access };
+}
+
+/**
+ * Relation `_count` inside a list `findMany` is compiled into a grouped
+ * aggregate over the whole child table, so page counts are loaded with one
+ * follow-up query per relation keyed by the page's cohort ids instead.
+ */
+async function withCohortCounts<T extends { id: string }>(cohorts: T[]) {
+  if (cohorts.length === 0) return [];
+  const cohortIds = cohorts.map((cohort) => cohort.id);
+  const where = { cohortId: { in: cohortIds } };
+  const [staff, enrollments, meetings] = await Promise.all([
+    db.cohortStaff.groupBy({ by: ["cohortId"], where, _count: { _all: true } }),
+    db.cohortEnrollment.groupBy({
+      by: ["cohortId"],
+      where,
+      _count: { _all: true },
+    }),
+    db.cohortMeeting.groupBy({
+      by: ["cohortId"],
+      where,
+      _count: { _all: true },
+    }),
+  ]);
+  const toMap = (rows: Array<{ cohortId: string; _count: { _all: number } }>) =>
+    new Map(rows.map((row) => [row.cohortId, row._count._all]));
+  const staffCounts = toMap(staff);
+  const enrollmentCounts = toMap(enrollments);
+  const meetingCounts = toMap(meetings);
+  return cohorts.map((cohort) => ({
+    ...cohort,
+    _count: {
+      staff: staffCounts.get(cohort.id) ?? 0,
+      enrollments: enrollmentCounts.get(cohort.id) ?? 0,
+      meetings: meetingCounts.get(cohort.id) ?? 0,
+    },
+  }));
+}
+
+type LearnerPreview = { id: string; name: string; image: string | null };
+
+/** Latest four enrolled learners per cohort, limited in SQL per cohort. */
+async function getCohortLearnerPreviews(cohortIds: string[]) {
+  const previews = new Map<string, LearnerPreview[]>();
+  if (cohortIds.length === 0) return previews;
+  const rows = await db.$queryRaw<Array<LearnerPreview & { cohortId: string }>>(
+    Prisma.sql`
+      SELECT c."cohortId", u."id", u."name", u."image"
+      FROM unnest(${cohortIds}::text[]) AS c("cohortId")
+      CROSS JOIN LATERAL (
+        SELECT e."userId", e."enrolledAt", e."id"
+        FROM "CohortEnrollment" e
+        WHERE e."cohortId" = c."cohortId"
+        ORDER BY e."enrolledAt" DESC, e."id" DESC
+        LIMIT 4
+      ) e
+      JOIN "user" u ON u."id" = e."userId"
+      ORDER BY c."cohortId", e."enrolledAt" DESC, e."id" DESC
+    `,
+  );
+  for (const { cohortId, ...user } of rows) {
+    const list = previews.get(cohortId);
+    if (list) list.push(user);
+    else previews.set(cohortId, [user]);
+  }
+  return previews;
 }
 
 export const cohortRouter = createTRPCRouter({
@@ -104,16 +171,13 @@ export const cohortRouter = createTRPCRouter({
           skip: input.cursor ? 1 : undefined,
           include: {
             course: { select: { id: true, title: true, thumbnailUrl: true } },
-            _count: {
-              select: { staff: true, enrollments: true, meetings: true },
-            },
           },
         }),
         input.includeTotal
           ? db.cohort.count({ where })
           : Promise.resolve(undefined),
       ]);
-      return pageResult(items, input.limit, total);
+      return pageResult(await withCohortCounts(items), input.limit, total);
     }),
   listForCurrentMember: protectedProcedure
     .input(
@@ -145,16 +209,13 @@ export const cohortRouter = createTRPCRouter({
           skip: input.cursor ? 1 : undefined,
           include: {
             course: { select: { id: true, title: true, thumbnailUrl: true } },
-            _count: {
-              select: { staff: true, enrollments: true, meetings: true },
-            },
           },
         }),
         input.includeTotal
           ? db.cohort.count({ where })
           : Promise.resolve(undefined),
       ]);
-      return pageResult(items, input.limit, total);
+      return pageResult(await withCohortCounts(items), input.limit, total);
     }),
   list: protectedProcedure
     .input(
@@ -206,26 +267,19 @@ export const cohortRouter = createTRPCRouter({
           take: input.limit + 1,
           cursor: input.cursor ? { id: input.cursor } : undefined,
           skip: input.cursor ? 1 : undefined,
-          include: {
-            enrollments: {
-              orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
-              take: 4,
-              select: {
-                user: { select: { id: true, name: true, image: true } },
-              },
-            },
-            _count: {
-              select: { staff: true, enrollments: true, meetings: true },
-            },
-          },
         }),
         input.includeTotal
           ? db.cohort.count({ where })
           : Promise.resolve(undefined),
       ]);
-      const items = cohorts.map(({ enrollments, ...cohort }) => ({
+      const cohortIds = cohorts.map((cohort) => cohort.id);
+      const [counted, learnerPreviews] = await Promise.all([
+        withCohortCounts(cohorts),
+        getCohortLearnerPreviews(cohortIds),
+      ]);
+      const items = counted.map((cohort) => ({
         ...cohort,
-        learnerPreview: enrollments.map(({ user }) => user),
+        learnerPreview: learnerPreviews.get(cohort.id) ?? [],
       }));
       return pageResult(items, input.limit, total);
     }),

@@ -16,16 +16,14 @@ import { TodayAssessmentPractice } from "../../../../src/components/today-assess
 import { OrganizationSwitcherTrigger } from "../../../../src/components/organization-switcher";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
-import { api } from "../../../../src/lib/trpc";
+import { useSyncIndex } from "../../../../src/sync/hooks";
 
 export default function HomeTab() {
   const { data: session } = authClient.useSession();
   const { activeOrganizationId } = useAppTheme();
   const { syncNow } = useMobileSyncActions();
-  const dashboard = api.mobileSync.getDashboard.useQuery(
-    activeOrganizationId ? { organizationId: activeOrganizationId } : undefined,
-    { enabled: Boolean(session && activeOrganizationId), retry: false },
-  );
+  // Local learner index (streak, today's practice pools); synced by the engine.
+  const dashboard = useSyncIndex(session ? activeOrganizationId : undefined);
   const [refreshing, setRefreshing] = useState(false);
   const [scrollGesture] = useState(() => Gesture.Native());
 
