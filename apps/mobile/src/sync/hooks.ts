@@ -352,6 +352,21 @@ export function useCourseOutline(
   return { ...result, refetch: online.refetch };
 }
 
+/**
+ * `useQueries` combiner for a variable number of queries. Module-level so its
+ * reference is stable: TanStack only re-runs it (and returns new arrays) when a
+ * query result changes, which keeps the arrays safe as memo dependencies.
+ */
+function combineQueryData<TData>(
+  results: readonly { data: TData | undefined; isPending: boolean }[],
+) {
+  return {
+    data: results.map((result) => result.data),
+    pending: results.map((result) => result.isPending),
+    anyPending: results.some((result) => result.isPending),
+  };
+}
+
 /** Composes outlines for several courses (cohort cards, practice hub). */
 export function useCourseOutlines(courseIds: string[]) {
   const { localData } = useSyncData();
@@ -367,17 +382,15 @@ export function useCourseOutlines(courseIds: string[]) {
       staleTime: Infinity,
       gcTime: Infinity,
     })),
+    combine: combineQueryData,
   });
-  const structureData = structures.map((query) => query.data);
-  const localResolved =
-    !index.isPending && structures.every((query) => !query.isPending);
+  const localResolved = !index.isPending && !structures.anyPending;
   const locals = useMemo(
     () =>
-      structureData.map((record) =>
+      structures.data.map((record) =>
         record && index.data ? composeOutline(record, index.data) : undefined,
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [index.data, ...structureData],
+    [index.data, structures.data],
   );
   const missingKey = ids
     .filter((_, position) => localResolved && locals[position] === undefined)
@@ -394,13 +407,14 @@ export function useCourseOutlines(courseIds: string[]) {
       staleTime: Infinity,
       retry: false,
     })),
+    combine: combineQueryData,
   });
   useEffect(() => {
     for (const courseId of missingKey ? missingKey.split("|") : []) {
       localData.requestBundle(courseId);
     }
   }, [localData, missingKey]);
-  const onlineData = onlines.map((query) => query.data);
+  const onlineData = onlines.data;
   const outlines = useMemo(() => {
     const map: Record<string, CourseOutline> = {};
     ids.forEach((courseId, position) => {
@@ -408,14 +422,13 @@ export function useCourseOutlines(courseIds: string[]) {
       if (outline) map[courseId] = outline;
     });
     return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids, locals, ...onlineData]);
+  }, [ids, locals, onlineData]);
   return {
     outlines,
     isPending:
       !localResolved ||
-      onlines.some(
-        (query, position) => locals[position] === undefined && query.isPending,
+      onlines.pending.some(
+        (pending, position) => locals[position] === undefined && pending,
       ),
   };
 }
