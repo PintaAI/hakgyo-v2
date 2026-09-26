@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type DragEvent,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -17,6 +18,8 @@ import {
   ArrowLeftIcon,
   CheckCircle2Icon,
   ChevronDownIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   ClipboardCheckIcon,
   FileQuestionIcon,
   ListIcon,
@@ -33,6 +36,16 @@ import {
   type EditorAssetStorageOptions,
 } from "~/components/editor";
 import { EditorSidebar } from "~/components/editor-sidebar";
+import {
+  AiImportButton,
+  firstImageFile,
+  type PreparedImportImage,
+} from "~/components/ai-image-import";
+import {
+  useAssessmentImageImport,
+  type ExtractedAssessmentQuestion,
+  type ImportedAssessmentQuestion,
+} from "~/components/assessment-image-import";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -360,6 +373,10 @@ export function AssessmentEditor({
   const deleteOption = api.assessment.deleteOption.useMutation();
   const attachAsset = api.assessment.attachAsset.useMutation();
   const detachAsset = api.assessment.detachAsset.useMutation();
+  const extractQuestions =
+    api.assessmentImport.extractQuestionsFromImage.useMutation();
+  const createImportedQuestions =
+    api.assessmentImport.createQuestions.useMutation();
   const createdAssessmentIdRef = useRef<string | null>(null);
   // Every page rendering the editor already verified organization membership on the server
   // (the delete procedure re-checks authorship), so no client-side organization fetch is needed.
@@ -481,6 +498,33 @@ export function AssessmentEditor({
           return created.id;
         } catch (error) {
           toast.error(errorMessage(error));
+        }
+      }}
+      onExtractImage={async (image) => {
+        if (!assessmentId) return [];
+        try {
+          const { questions } = await extractQuestions.mutateAsync({
+            assessmentId,
+            ...image,
+          });
+          return questions;
+        } catch (error) {
+          throw new Error(errorMessage(error));
+        }
+      }}
+      onSaveImportedQuestions={async (questions) => {
+        if (!assessmentId) return false;
+        try {
+          const { created } = await createImportedQuestions.mutateAsync({
+            assessmentId,
+            questions,
+          });
+          await refreshQuestions();
+          toast.success(`${created} soal ditambahkan.`);
+          return true;
+        } catch (error) {
+          toast.error(errorMessage(error));
+          return false;
         }
       }}
       onDelete={async () => {
@@ -677,7 +721,9 @@ function AssessmentEditorForm({
   onDelete,
   onDeleteOption,
   onDeleteQuestion,
+  onExtractImage,
   onSave,
+  onSaveImportedQuestions,
   onSaveOption,
   onSaveQuestion,
   onToggleCorrect,
@@ -695,7 +741,13 @@ function AssessmentEditorForm({
   onDelete: () => Promise<void>;
   onDeleteOption: (optionId: string) => Promise<void>;
   onDeleteQuestion: (questionId: string) => Promise<void>;
+  onExtractImage: (
+    image: PreparedImportImage,
+  ) => Promise<ExtractedAssessmentQuestion[]>;
   onSave: (value: AssessmentFields) => Promise<void>;
+  onSaveImportedQuestions: (
+    questions: ImportedAssessmentQuestion[],
+  ) => Promise<boolean>;
   onSaveOption: (
     optionId: string,
     content: BlockNoteDocument,
@@ -754,15 +806,18 @@ function AssessmentEditorForm({
   );
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [newQuestionId, setNewQuestionId] = useState<string | null>(null);
-  const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(
-    null,
-  );
-  // Keeps a collapsing row's editor mounted until its close animation
-  // finishes, then drops it. Driven from the toggle handler (not an
+  const [expandedQuestionIds, setExpandedQuestionIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  // Keeps collapsing rows' editors mounted until their close animation
+  // finishes, then drops them. Driven from the toggle handlers (not an
   // effect) so it never trips set-state-in-effect.
-  const [closingQuestionId, setClosingQuestionId] = useState<string | null>(
-    null,
-  );
+  const [closingQuestionIds, setClosingQuestionIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  // The question "Tambah soal" opened; closed again when the next one is
+  // added so adding in a row doesn't leave a trail of open editors.
+  const autoOpenedQuestionIdRef = useRef<string | null>(null);
   const [pendingQuestionNavigationId, setPendingQuestionNavigationId] =
     useState<string | null>(null);
   const [questionNavigatorOpen, setQuestionNavigatorOpen] = useState(false);
@@ -778,30 +833,52 @@ function AssessmentEditorForm({
   );
   const skipInitialHoverFreeze = useRef(true);
 
+  const expandQuestions = useCallback((questionIds: string[]) => {
+    setClosingQuestionIds((current) => {
+      const next = new Set(current);
+      for (const questionId of questionIds) next.delete(questionId);
+      return next;
+    });
+    setExpandedQuestionIds((current) => new Set([...current, ...questionIds]));
+  }, []);
+
+  function collapseQuestions(questionIds: string[]) {
+    if (!questionIds.length) return;
+    setExpandedQuestionIds((current) => {
+      const next = new Set(current);
+      for (const questionId of questionIds) next.delete(questionId);
+      return next;
+    });
+    setClosingQuestionIds((current) => new Set([...current, ...questionIds]));
+    setTimeout(() => {
+      setClosingQuestionIds((current) => {
+        const next = new Set(current);
+        for (const questionId of questionIds) next.delete(questionId);
+        return next;
+      });
+    }, 300);
+  }
+
   function toggleQuestion(questionId: string) {
-    if (expandedQuestionId === questionId) {
-      setExpandedQuestionId(null);
-      setClosingQuestionId(questionId);
-      setTimeout(() => {
-        setClosingQuestionId((current) =>
-          current === questionId ? null : current,
-        );
-      }, 300);
+    autoOpenedQuestionIdRef.current = null;
+    if (expandedQuestionIds.has(questionId)) {
+      collapseQuestions([questionId]);
     } else {
-      setClosingQuestionId(null);
-      setExpandedQuestionId(questionId);
+      expandQuestions([questionId]);
     }
   }
 
-  const openQuestion = useCallback((questionId: string) => {
-    setClosingQuestionId(null);
-    setExpandedQuestionId(questionId);
-    requestAnimationFrame(() => {
-      document
-        .getElementById(`assessment-question-${questionId}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, []);
+  const openQuestion = useCallback(
+    (questionId: string) => {
+      expandQuestions([questionId]);
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`assessment-question-${questionId}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+    [expandQuestions],
+  );
   const displayQuestions = useMemo(() => {
     if (!assessment) return [];
     if (!recoveredDraft) return assessment.questions;
@@ -948,7 +1025,7 @@ function AssessmentEditorForm({
         hoverFreezeTimeoutRef.current = null;
       }
     };
-  }, [expandedQuestionId]);
+  }, [expandedQuestionIds]);
 
   useEffect(() => {
     if (!newQuestionId) return;
@@ -1030,14 +1107,59 @@ function AssessmentEditorForm({
     return () => window.clearTimeout(timeout);
   }, [openQuestion, questionNavigatorOpen, questionNavigatorTargetId]);
 
+  const imageImport = useAssessmentImageImport({
+    onExtract: onExtractImage,
+    onSave: onSaveImportedQuestions,
+  });
+  const [importDragActive, setImportDragActive] = useState(false);
+  const allQuestionsExpanded =
+    displayQuestions.length > 0 &&
+    displayQuestions.every((question) => expandedQuestionIds.has(question.id));
+
+  // Pasting a screenshot anywhere outside a text field starts an import;
+  // pastes into inputs and the rich-text editors keep their own behaviour.
+  const startImageImport = imageImport.start;
+  const startImageImportRef = useRef(startImageImport);
+  useEffect(() => {
+    startImageImportRef.current = startImageImport;
+  });
+  useEffect(() => {
+    function handlePaste(event: globalThis.ClipboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest("input, textarea, select, [contenteditable='true']")
+      ) {
+        return;
+      }
+      const file = firstImageFile(event.clipboardData?.files);
+      if (!file) return;
+      event.preventDefault();
+      startImageImportRef.current(file);
+    }
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, []);
+
+  function handleImportDrop(event: DragEvent<HTMLElement>) {
+    if (!event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    setImportDragActive(false);
+    const file = firstImageFile(event.dataTransfer.files);
+    if (file) imageImport.start(file);
+  }
+
   const addQuestion = () => {
     void autosaveRegistry
       .flushAll()
       .then(async () => {
         const createdQuestionId = await onAddQuestion();
         if (createdQuestionId) {
-          setClosingQuestionId(null);
-          setExpandedQuestionId(createdQuestionId);
+          const previous = autoOpenedQuestionIdRef.current;
+          if (previous && previous !== createdQuestionId) {
+            collapseQuestions([previous]);
+          }
+          autoOpenedQuestionIdRef.current = createdQuestionId;
+          expandQuestions([createdQuestionId]);
           setNewQuestionId(createdQuestionId);
           setPendingQuestionNavigationId(createdQuestionId);
         }
@@ -1420,7 +1542,27 @@ function AssessmentEditorForm({
 
       {assessment ? (
         <>
-          <section className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 -mx-1 grid gap-2 px-1 pt-1 pb-3 backdrop-blur">
+          <section
+            className={cn(
+              "bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 -mx-1 grid gap-2 rounded-lg px-1 pt-1 pb-3 backdrop-blur transition-shadow",
+              importDragActive && "ring-primary/60 ring-2",
+            )}
+            onDragLeave={(event) => {
+              if (
+                !event.currentTarget.contains(
+                  event.relatedTarget as Node | null,
+                )
+              ) {
+                setImportDragActive(false);
+              }
+            }}
+            onDragOver={(event) => {
+              if (!event.dataTransfer.types.includes("Files")) return;
+              event.preventDefault();
+              setImportDragActive(true);
+            }}
+            onDrop={handleImportDrop}
+          >
             <div className="flex items-center gap-2">
               <Button
                 disabled={questionBusy}
@@ -1437,6 +1579,11 @@ function AssessmentEditorForm({
                 )}
                 Tambah soal
               </Button>
+              <AiImportButton
+                busy={imageImport.busy}
+                onSelect={imageImport.start}
+                title="Impor soal dari gambar dengan AI"
+              />
               <div className="ml-auto flex items-center gap-2">
                 <p
                   className="text-muted-foreground hidden text-xs sm:block"
@@ -1444,6 +1591,33 @@ function AssessmentEditorForm({
                 >
                   {displayQuestions.length} soal · {totalPoints} poin
                 </p>
+                {displayQuestions.length ? (
+                  <Button
+                    onClick={() => {
+                      autoOpenedQuestionIdRef.current = null;
+                      const questionIds = displayQuestions.map(
+                        (question) => question.id,
+                      );
+                      if (allQuestionsExpanded) {
+                        collapseQuestions(questionIds);
+                      } else {
+                        expandQuestions(questionIds);
+                      }
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {allQuestionsExpanded ? (
+                      <ChevronsDownUpIcon data-icon="inline-start" />
+                    ) : (
+                      <ChevronsUpDownIcon data-icon="inline-start" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {allQuestionsExpanded ? "Tutup semua" : "Buka semua"}
+                    </span>
+                  </Button>
+                ) : null}
                 {questionMapItems.length ? (
                   <Sheet
                     onOpenChange={setQuestionNavigatorOpen}
@@ -1489,6 +1663,7 @@ function AssessmentEditorForm({
               </div>
             </div>
           </section>
+          {imageImport.dialog}
 
           {displayQuestions.length ? (
             <>
@@ -1502,7 +1677,7 @@ function AssessmentEditorForm({
                       autosaveRegistry={autosaveRegistry}
                       autoFocusPrompt={newQuestionId === question.id}
                       busy={questionBusy}
-                      expanded={expandedQuestionId === question.id}
+                      expanded={expandedQuestionIds.has(question.id)}
                       highlighted={newQuestionId === question.id}
                       hoverActionsFrozen={hoverActionsFrozen}
                       index={index}
@@ -1518,8 +1693,8 @@ function AssessmentEditorForm({
                       question={question}
                       recoverOnMount={Boolean(recoveredDraft)}
                       renderForm={
-                        expandedQuestionId === question.id ||
-                        closingQuestionId === question.id
+                        expandedQuestionIds.has(question.id) ||
+                        closingQuestionIds.has(question.id)
                       }
                       theme={editorTheme}
                       assetStorage={assetStorage}
@@ -1546,7 +1721,8 @@ function AssessmentEditorForm({
               <FileQuestionIcon className="text-muted-foreground/60 mx-auto mb-3 size-7" />
               <p className="text-sm font-medium">Belum ada soal</p>
               <p className="text-muted-foreground mt-1 text-sm">
-                Tekan tombol Tambah soal di atas untuk membuat soal pertama.
+                Tekan Tambah soal di atas, atau Impor AI untuk membaca soal dari
+                gambar.
               </p>
             </div>
           )}

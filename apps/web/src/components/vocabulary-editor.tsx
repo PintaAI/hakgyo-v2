@@ -49,12 +49,14 @@ import {
 } from "~/components/ui/alert-dialog";
 import { useAssetDownloadUrl } from "~/components/asset-download-url";
 import {
+  AiImportButton,
   firstImageFile,
-  ImageImportButton,
+  type PreparedImportImage,
+} from "~/components/ai-image-import";
+import {
   useVocabularyImageImport,
   type ExtractedVocabularyEntry,
   type ImportedVocabularyEntry,
-  type PreparedVocabularyImage,
 } from "~/components/vocabulary-image-import";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -576,7 +578,7 @@ function VocabularySetForm({
   onDelete: () => Promise<void>;
   onDeleteEntry: (entryId: string) => Promise<void>;
   onExtractImage: (
-    image: PreparedVocabularyImage,
+    image: PreparedImportImage,
   ) => Promise<ExtractedVocabularyEntry[]>;
   onSaveImportedEntries: (
     entries: ImportedVocabularyEntry[],
@@ -1123,7 +1125,11 @@ function QuickAddForm({
         )}
         <span className="hidden sm:inline">Tambah</span>
       </Button>
-      <ImageImportButton busy={importBusy} onSelect={onImportImage} />
+      <AiImportButton
+        busy={importBusy}
+        onSelect={onImportImage}
+        title="Impor kosakata dengan AI"
+      />
     </form>
   );
 }

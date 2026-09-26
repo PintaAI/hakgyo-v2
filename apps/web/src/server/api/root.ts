@@ -3,6 +3,7 @@ import { organizationLandingRouter } from "~/server/api/routers/organization-lan
 import { accountRouter } from "~/server/api/routers/account";
 import { assessmentRouter } from "~/server/api/routers/assessment";
 import { assessmentEventRouter } from "~/server/api/routers/assessment-event";
+import { assessmentImportRouter } from "~/server/api/routers/assessment-import";
 import { brandRouter } from "~/server/api/routers/brand";
 import { cohortRouter } from "~/server/api/routers/cohort";
 import { contentRouter } from "~/server/api/routers/content";
@@ -30,6 +31,7 @@ export const appRouter = createTRPCRouter({
   account: accountRouter,
   assessment: assessmentRouter,
   assessmentEvent: assessmentEventRouter,
+  assessmentImport: assessmentImportRouter,
   brand: brandRouter,
   cohort: cohortRouter,
   content: contentRouter,
