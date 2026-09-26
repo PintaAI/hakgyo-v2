@@ -321,3 +321,17 @@ html.dark:not(.bn-root) {
 .bn-root.bn-shadcn[data-color-scheme] .bn-default-styles {
   font-family: var(--bn-font-family);
 }
+
+@theme {
+  --animate-scan-line: scan-line 2.4s ease-in-out infinite;
+
+  @keyframes scan-line {
+    0%,
+    100% {
+      top: 0%;
+    }
+    50% {
+      top: 100%;
+    }
+  }
+}

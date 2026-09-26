@@ -18,6 +18,10 @@ import {
   assertPublishedMaterialReferences,
   sanitizeMaterialContent,
 } from "~/server/material-reference-service";
+import {
+  extractVocabularyFromImage,
+  type ExtractedVocabularyEntry,
+} from "~/server/ai/vocabulary-extraction";
 import { syncMaterialPdfPageAssets } from "~/server/pdf-book/service";
 import { getAssessmentPublishValidationError } from "~/lib/assessment-publication";
 
@@ -166,6 +170,10 @@ async function requireOwnedContent(
     createdByMembershipId,
     action,
   });
+}
+
+function normalizeVocabularyTerm(term: string) {
+  return term.trim().toLocaleLowerCase();
 }
 
 async function requireVocabularyAsset(
@@ -1380,5 +1388,124 @@ export const contentRouter = createTRPCRouter({
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
       return { deleted: true };
+    }),
+  // Reads a screenshot of a vocabulary list. Nothing is written: the author
+  // adjusts the result and saves it through `createVocabularyEntries`.
+  extractVocabularyFromImage: protectedProcedure
+    .input(
+      z.object({
+        organizationId: id,
+        vocabularySetId: id,
+        mediaType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+        // Base64 without the data-URL prefix; clients downscale first.
+        imageBase64: z
+          .string()
+          .min(1)
+          .max(8 * 1024 * 1024)
+          .regex(/^[A-Za-z0-9+/]+={0,2}$/),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const vocabularySet = await db.vocabularySet.findFirst({
+        where: {
+          id: input.vocabularySetId,
+          organizationId: input.organizationId,
+        },
+        select: { title: true, createdByMembershipId: true },
+      });
+      if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireOwnedContent(
+        input.organizationId,
+        ctx.actorUserId,
+        vocabularySet.createdByMembershipId,
+      );
+
+      let extracted: ExtractedVocabularyEntry[];
+      try {
+        extracted = await extractVocabularyFromImage({
+          imageBase64: input.imageBase64,
+          mediaType: input.mediaType,
+          setTitle: vocabularySet.title,
+        });
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "OPENAI_API_KEY_MISSING"
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "OPENAI_API_KEY belum dikonfigurasi di server.",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "AI belum berhasil membaca gambar. Silakan coba lagi.",
+          cause: error,
+        });
+      }
+
+      // Flag terms the set already has (or that repeat within the image) so
+      // the review step can leave them unselected by default.
+      const existing = await db.vocabularyEntry.findMany({
+        where: { vocabularySetId: input.vocabularySetId },
+        select: { term: true },
+      });
+      const known = new Set(
+        existing.map((entry) => normalizeVocabularyTerm(entry.term)),
+      );
+      return {
+        entries: extracted.map((entry) => {
+          const term = normalizeVocabularyTerm(entry.term);
+          const duplicate = known.has(term);
+          known.add(term);
+          return { ...entry, duplicate };
+        }),
+      };
+    }),
+  createVocabularyEntries: protectedProcedure
+    .input(
+      z.object({
+        organizationId: id,
+        vocabularySetId: id,
+        entries: z
+          .array(
+            z.object({
+              term: z.string().trim().min(1).max(500),
+              romanization: z.string().trim().max(500),
+              definition: z.string().trim().min(1).max(5000),
+              examples: z.array(z.string().trim().min(1).max(5000)).max(20),
+            }),
+          )
+          .min(1)
+          .max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const vocabularySet = await db.vocabularySet.findFirst({
+        where: {
+          id: input.vocabularySetId,
+          organizationId: input.organizationId,
+        },
+        select: { createdByMembershipId: true },
+      });
+      if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireOwnedContent(
+        input.organizationId,
+        ctx.actorUserId,
+        vocabularySet.createdByMembershipId,
+      );
+      // Rows sharing one statement timestamp would sort arbitrarily; offset
+      // each by a millisecond to keep the order the author reviewed.
+      const createdAt = Date.now();
+      const result = await db.vocabularyEntry.createMany({
+        data: input.entries.map(({ romanization, ...entry }, index) => ({
+          ...entry,
+          metadata: romanization ? { romanization } : undefined,
+          createdAt: new Date(createdAt + index),
+          organizationId: input.organizationId,
+          vocabularySetId: input.vocabularySetId,
+        })),
+      });
+      return { created: result.count };
     }),
 });

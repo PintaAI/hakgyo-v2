@@ -7,7 +7,10 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
+  type KeyboardEvent,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -17,6 +20,8 @@ import {
   ArrowLeftIcon,
   CheckCircle2Icon,
   ChevronDownIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   CircleAlertIcon,
   ImageIcon,
   LanguagesIcon,
@@ -43,6 +48,14 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { useAssetDownloadUrl } from "~/components/asset-download-url";
+import {
+  firstImageFile,
+  ImageImportButton,
+  useVocabularyImageImport,
+  type ExtractedVocabularyEntry,
+  type ImportedVocabularyEntry,
+  type PreparedVocabularyImage,
+} from "~/components/vocabulary-image-import";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -91,6 +104,19 @@ function parseExamples(value: string) {
     .split("\n")
     .map((example) => example.trim())
     .filter(Boolean);
+}
+
+function hasDraggedFiles(event: DragEvent) {
+  return event.dataTransfer.types.includes("Files");
+}
+
+/** Splits dropped or pasted files into the first image and first audio. */
+function pickEntryAssets(files: FileList | null | undefined) {
+  const list = Array.from(files ?? []);
+  return {
+    image: list.find((file) => file.type.startsWith("image/")),
+    audio: list.find((file) => file.type.startsWith("audio/")),
+  };
 }
 
 /**
@@ -201,6 +227,8 @@ export function VocabularyEditor({
   const createEntry = api.content.createVocabularyEntry.useMutation();
   const updateEntry = api.content.updateVocabularyEntry.useMutation();
   const deleteEntry = api.content.deleteVocabularyEntry.useMutation();
+  const extractEntries = api.content.extractVocabularyFromImage.useMutation();
+  const createEntries = api.content.createVocabularyEntries.useMutation();
   const createUpload = api.storage.createUploadUrl.useMutation();
   const confirmUpload = api.storage.confirmUpload.useMutation();
   const discardUpload = api.storage.deleteDocument.useMutation();
@@ -368,6 +396,35 @@ export function VocabularyEditor({
           return null;
         }
       }}
+      onExtractImage={async (image) => {
+        if (!vocabularySetId) return [];
+        try {
+          const { entries } = await extractEntries.mutateAsync({
+            organizationId,
+            vocabularySetId,
+            ...image,
+          });
+          return entries;
+        } catch (error) {
+          throw new Error(errorMessage(error));
+        }
+      }}
+      onSaveImportedEntries={async (entries) => {
+        if (!vocabularySetId) return false;
+        try {
+          const { created } = await createEntries.mutateAsync({
+            organizationId,
+            vocabularySetId,
+            entries,
+          });
+          await refreshVocabulary();
+          toast.success(`${created} istilah ditambahkan.`);
+          return true;
+        } catch (error) {
+          toast.error(errorMessage(error));
+          return false;
+        }
+      }}
       onDelete={async () => {
         if (!vocabularySetId) return;
         try {
@@ -495,6 +552,8 @@ function VocabularySetForm({
   onCreateEntry,
   onDelete,
   onDeleteEntry,
+  onExtractImage,
+  onSaveImportedEntries,
   onRemoveAudio,
   onRemoveImage,
   onSave,
@@ -516,6 +575,12 @@ function VocabularySetForm({
   onCreateEntry: (entry: EntryFields) => Promise<string | null>;
   onDelete: () => Promise<void>;
   onDeleteEntry: (entryId: string) => Promise<void>;
+  onExtractImage: (
+    image: PreparedVocabularyImage,
+  ) => Promise<ExtractedVocabularyEntry[]>;
+  onSaveImportedEntries: (
+    entries: ImportedVocabularyEntry[],
+  ) => Promise<boolean>;
   onRemoveAudio: (entryId: string) => Promise<void>;
   onRemoveImage: (entryId: string) => Promise<void>;
   onSave: (value: {
@@ -533,23 +598,66 @@ function VocabularySetForm({
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [search, setSearch] = useState("");
-  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
-  // Keeps a collapsing row's form mounted until its close animation
-  // finishes, then drops it. Driven from the toggle handler (not an
+  const [expandedEntryIds, setExpandedEntryIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  // Keeps collapsing rows' forms mounted until their close animation
+  // finishes, then drops them. Driven from the toggle handlers (not an
   // effect) so it never trips set-state-in-effect.
-  const [closingEntryId, setClosingEntryId] = useState<string | null>(null);
+  const [closingEntryIds, setClosingEntryIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  // The entry quick-add opened for the author; closed again when the next
+  // one is added so rapid entry doesn't leave a trail of open rows.
+  const autoOpenedEntryIdRef = useRef<string | null>(null);
+
+  // Set when Shift+Enter adds an entry, so its examples field takes focus.
+  const [focusExamplesEntryId, setFocusExamplesEntryId] = useState<
+    string | null
+  >(null);
+
+  function expandEntries(entryIds: string[]) {
+    setClosingEntryIds((current) => {
+      const next = new Set(current);
+      for (const entryId of entryIds) next.delete(entryId);
+      return next;
+    });
+    setExpandedEntryIds((current) => new Set([...current, ...entryIds]));
+  }
+
+  function collapseEntries(entryIds: string[]) {
+    if (!entryIds.length) return;
+    setExpandedEntryIds((current) => {
+      const next = new Set(current);
+      for (const entryId of entryIds) next.delete(entryId);
+      return next;
+    });
+    setClosingEntryIds((current) => new Set([...current, ...entryIds]));
+    setTimeout(() => {
+      setClosingEntryIds((current) => {
+        const next = new Set(current);
+        for (const entryId of entryIds) next.delete(entryId);
+        return next;
+      });
+    }, 300);
+  }
 
   function toggleEntry(entryId: string) {
-    if (expandedEntryId === entryId) {
-      setExpandedEntryId(null);
-      setClosingEntryId(entryId);
-      setTimeout(() => {
-        setClosingEntryId((current) => (current === entryId ? null : current));
-      }, 300);
+    setFocusExamplesEntryId(null);
+    autoOpenedEntryIdRef.current = null;
+    if (expandedEntryIds.has(entryId)) {
+      collapseEntries([entryId]);
     } else {
-      setClosingEntryId(null);
-      setExpandedEntryId(entryId);
+      expandEntries([entryId]);
     }
+  }
+
+  function openNewEntry(entryId: string, focusExamples: boolean) {
+    const previous = autoOpenedEntryIdRef.current;
+    if (previous && previous !== entryId) collapseEntries([previous]);
+    autoOpenedEntryIdRef.current = entryId;
+    expandEntries([entryId]);
+    setFocusExamplesEntryId(focusExamples ? entryId : null);
   }
   const [lastAddedEntryId, setLastAddedEntryId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
@@ -566,6 +674,17 @@ function VocabularySetForm({
         : sortedEntries,
     [deferredSearch, sortedEntries],
   );
+  const imageImport = useVocabularyImageImport({
+    onExtract: onExtractImage,
+    onSave: async (imported) => {
+      const saved = await onSaveImportedEntries(imported);
+      if (saved) setSearch("");
+      return saved;
+    },
+  });
+  const allVisibleExpanded =
+    visibleEntries.length > 0 &&
+    visibleEntries.every((entry) => expandedEntryIds.has(entry.id));
   const audioCount = useMemo(
     () => entries.filter((entry) => entry.audioAssetId).length,
     [entries],
@@ -624,7 +743,7 @@ function VocabularySetForm({
         hoverFreezeTimeoutRef.current = null;
       }
     };
-  }, [expandedEntryId]);
+  }, [expandedEntryIds]);
 
   const detailsSaving =
     isSaving || detailsStatus === "pending" || detailsStatus === "saving";
@@ -759,23 +878,50 @@ function VocabularySetForm({
             <QuickAddForm
               autoFocus={entries.length === 0}
               busy={createBusy}
+              importBusy={imageImport.busy}
               onCreate={onCreateEntry}
-              onCreated={(entryId) => {
+              onCreated={(entryId, focusExamples) => {
                 setSearch("");
                 setLastAddedEntryId(entryId);
+                openNewEntry(entryId, focusExamples);
               }}
+              onImportImage={imageImport.start}
             />
           </section>
+          {imageImport.dialog}
 
-          <p
-            className="text-muted-foreground -mt-4 text-center text-xs"
-            role="status"
-          >
-            {deferredSearch
-              ? `${visibleEntries.length} dari ${entries.length}`
-              : entries.length}{" "}
-            istilah · {audioCount} audio
-          </p>
+          <div className="text-muted-foreground -mt-4 flex items-center justify-between gap-2 text-xs">
+            <p role="status">
+              {deferredSearch
+                ? `${visibleEntries.length} dari ${entries.length}`
+                : entries.length}{" "}
+              istilah · {audioCount} audio
+            </p>
+            {visibleEntries.length ? (
+              <Button
+                onClick={() => {
+                  setFocusExamplesEntryId(null);
+                  autoOpenedEntryIdRef.current = null;
+                  const visibleIds = visibleEntries.map((entry) => entry.id);
+                  if (allVisibleExpanded) {
+                    collapseEntries(visibleIds);
+                  } else {
+                    expandEntries(visibleIds);
+                  }
+                }}
+                size="xs"
+                type="button"
+                variant="ghost"
+              >
+                {allVisibleExpanded ? (
+                  <ChevronsDownUpIcon data-icon="inline-start" />
+                ) : (
+                  <ChevronsUpDownIcon data-icon="inline-start" />
+                )}
+                {allVisibleExpanded ? "Tutup semua" : "Buka semua"}
+              </Button>
+            ) : null}
+          </div>
 
           {visibleEntries.length ? (
             <div className="grid items-start gap-2 lg:grid-cols-2">
@@ -790,12 +936,13 @@ function VocabularySetForm({
                         busy={entryBusy}
                         canDelete={canDelete}
                         entry={entry}
-                        expanded={expandedEntryId === entry.id}
+                        expanded={expandedEntryIds.has(entry.id)}
+                        focusExamples={focusExamplesEntryId === entry.id}
                         highlighted={lastAddedEntryId === entry.id}
                         hoverActionsFrozen={hoverActionsFrozen}
                         renderForm={
-                          expandedEntryId === entry.id ||
-                          closingEntryId === entry.id
+                          expandedEntryIds.has(entry.id) ||
+                          closingEntryIds.has(entry.id)
                         }
                         onDelete={() => onDeleteEntry(entry.id)}
                         onRemoveAudio={() => onRemoveAudio(entry.id)}
@@ -838,7 +985,8 @@ function VocabularySetForm({
               <LanguagesIcon className="text-muted-foreground/60 mx-auto mb-3 size-7" />
               <p className="text-sm font-medium">Belum ada istilah</p>
               <p className="text-muted-foreground mt-1 text-sm">
-                Ketik istilah dan definisi di formulir atas, lalu tekan Enter.
+                Ketik istilah dan definisi di formulir atas, lalu tekan Enter,
+                atau tempel gambar daftar kosakata agar AI mengisinya.
               </p>
             </div>
           )}
@@ -860,21 +1008,58 @@ function VocabularySetForm({
 function QuickAddForm({
   autoFocus,
   busy,
+  importBusy,
   onCreate,
   onCreated,
+  onImportImage,
 }: {
   autoFocus: boolean;
   busy: boolean;
+  importBusy: boolean;
   onCreate: (entry: EntryFields) => Promise<string | null>;
-  onCreated: (entryId: string) => void;
+  onCreated: (entryId: string, focusExamples: boolean) => void;
+  onImportImage: (file: File) => void;
 }) {
   const termInputRef = useRef<HTMLInputElement>(null);
   const [term, setTerm] = useState("");
   const [definition, setDefinition] = useState("");
+  const [dragActive, setDragActive] = useState(false);
   const canSubmit = Boolean(term.trim() && definition.trim());
+
+  function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    // Shift+Enter adds the entry and jumps into its examples field.
+    if (
+      event.key !== "Enter" ||
+      !event.shiftKey ||
+      event.nativeEvent.isComposing
+    ) {
+      return;
+    }
+    event.preventDefault();
+    void submitEntry(true);
+  }
+
+  function handlePaste(event: ClipboardEvent<HTMLFormElement>) {
+    const file = firstImageFile(event.clipboardData.files);
+    if (!file) return;
+    event.preventDefault();
+    if (!importBusy) onImportImage(file);
+  }
+
+  function handleDrop(event: DragEvent<HTMLFormElement>) {
+    if (!hasDraggedFiles(event)) return;
+    event.preventDefault();
+    setDragActive(false);
+    const file = firstImageFile(event.dataTransfer.files);
+    if (file && !importBusy) onImportImage(file);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    await submitEntry(false);
+  }
+
+  async function submitEntry(focusExamples: boolean) {
     if (!canSubmit) return;
     const draft = {
       term: term.trim(),
@@ -887,12 +1072,28 @@ function QuickAddForm({
     setDefinition("");
     termInputRef.current?.focus();
     const createdId = await onCreate(draft);
-    if (createdId) onCreated(createdId);
+    if (createdId) onCreated(createdId, focusExamples);
   }
 
   return (
     <form
-      className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2"
+      className={cn(
+        "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg transition-shadow",
+        dragActive && "ring-primary/60 ring-2 ring-offset-2",
+      )}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setDragActive(false);
+        }
+      }}
+      onDragOver={(event) => {
+        if (!hasDraggedFiles(event)) return;
+        event.preventDefault();
+        setDragActive(true);
+      }}
+      onDrop={handleDrop}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
       onSubmit={handleSubmit}
     >
       <Input
@@ -910,7 +1111,8 @@ function QuickAddForm({
         className="bg-card h-9"
         maxLength={5000}
         onChange={(event) => setDefinition(event.target.value)}
-        placeholder="Definisi — tekan Enter untuk menambah"
+        placeholder="Definisi — Enter menambah, Shift+Enter + contoh"
+        title="Enter: tambah istilah. Shift+Enter: tambah lalu isi contoh."
         value={definition}
       />
       <Button aria-label="Tambah entri" disabled={!canSubmit} type="submit">
@@ -921,6 +1123,7 @@ function QuickAddForm({
         )}
         <span className="hidden sm:inline">Tambah</span>
       </Button>
+      <ImageImportButton busy={importBusy} onSelect={onImportImage} />
     </form>
   );
 }
@@ -930,6 +1133,7 @@ function EntryRow({
   canDelete,
   entry,
   expanded,
+  focusExamples,
   highlighted,
   hoverActionsFrozen,
   renderForm,
@@ -947,6 +1151,7 @@ function EntryRow({
   canDelete: boolean;
   entry: VocabularyEntry;
   expanded: boolean;
+  focusExamples: boolean;
   highlighted: boolean;
   hoverActionsFrozen: boolean;
   renderForm: boolean;
@@ -961,6 +1166,23 @@ function EntryRow({
   uploadingImage: boolean;
 }) {
   const hasExamples = examplesToText(entry.examples).trim().length > 0;
+  const [dragActive, setDragActive] = useState(false);
+
+  // Dropping onto any row — collapsed or open — attaches the first image
+  // and first audio file without opening the file picker.
+  async function handleDrop(event: DragEvent<HTMLElement>) {
+    if (!hasDraggedFiles(event)) return;
+    event.preventDefault();
+    setDragActive(false);
+    if (busy || uploadingAudio || uploadingImage) return;
+    const { image, audio } = pickEntryAssets(event.dataTransfer.files);
+    if (!image && !audio) {
+      toast.error("Seret file gambar atau audio.");
+      return;
+    }
+    if (image) await onUploadImage(image);
+    if (audio) await onUploadAudio(audio);
+  }
 
   return (
     <article
@@ -968,7 +1190,20 @@ function EntryRow({
         "group bg-card scroll-mt-32 rounded-xl border transition-[background-color,border-color,box-shadow] duration-300",
         expanded ? "border-primary/40 shadow-sm" : "hover:border-foreground/20",
         highlighted && "border-primary/50 bg-primary/[0.06]",
+        dragActive && "border-primary ring-primary/30 ring-3",
       )}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setDragActive(false);
+        }
+      }}
+      onDragOver={(event) => {
+        if (!hasDraggedFiles(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+        setDragActive(true);
+      }}
+      onDrop={(event) => void handleDrop(event)}
     >
       <div className="flex items-center gap-1 pr-1.5">
         <button
@@ -1040,6 +1275,7 @@ function EntryRow({
               busy={busy}
               canDelete={canDelete}
               entry={entry}
+              focusExamples={focusExamples}
               onDelete={onDelete}
               onRemoveAudio={onRemoveAudio}
               onRemoveImage={onRemoveImage}
@@ -1060,6 +1296,7 @@ function EntryForm({
   busy,
   canDelete,
   entry,
+  focusExamples,
   onDelete,
   onRemoveAudio,
   onRemoveImage,
@@ -1072,6 +1309,7 @@ function EntryForm({
   busy: boolean;
   canDelete: boolean;
   entry: VocabularyEntry;
+  focusExamples: boolean;
   onDelete: () => Promise<void>;
   onRemoveAudio: () => Promise<void>;
   onRemoveImage: () => Promise<void>;
@@ -1106,8 +1344,21 @@ function EntryForm({
     (draft) => scheduleEntrySave(draft),
   );
 
+  // Pasting an image or audio file anywhere in the open entry attaches it;
+  // plain-text pastes fall through to the focused field.
+  function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
+    const { image, audio } = pickEntryAssets(event.clipboardData.files);
+    if (!image && !audio) return;
+    event.preventDefault();
+    if (busy || uploadingAudio || uploadingImage) return;
+    void (async () => {
+      if (image) await onUploadImage(image);
+      if (audio) await onUploadAudio(audio);
+    })();
+  }
+
   return (
-    <div className="grid gap-4 border-t p-3 sm:p-4">
+    <div className="grid gap-4 border-t p-3 sm:p-4" onPaste={handlePaste}>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label
@@ -1148,6 +1399,7 @@ function EntryForm({
           Contoh pemakaian
         </Label>
         <Textarea
+          autoFocus={focusExamples}
           className="min-h-9 resize-y"
           id={`examples-${entry.id}`}
           onChange={(event) => setExamples(event.target.value)}
@@ -1311,7 +1563,7 @@ function ImageAttachment({
             {entry.imageAsset?.fileName ?? "Belum ada gambar"}
           </p>
           <p className="text-muted-foreground text-[11px]">
-            PNG atau JPG, maks 10 MB
+            PNG atau JPG, maks 10 MB · seret atau tempel ke sini
           </p>
         </div>
         <Button
@@ -1389,7 +1641,7 @@ function AudioAttachment({
             <>
               <p className="text-xs font-medium">Belum ada audio</p>
               <p className="text-muted-foreground text-[11px]">
-                MP3 atau WAV, maks 50 MB
+                MP3 atau WAV, maks 50 MB · seret ke sini
               </p>
             </>
           )}
