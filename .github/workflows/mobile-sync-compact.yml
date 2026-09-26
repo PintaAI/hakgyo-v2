@@ -1,0 +1,25 @@
+name: Mobile sync compaction
+
+# Daily cleanup of superseded MobileSyncChange rows (see
+# apps/web/src/app/api/cron/mobile-sync-compact/route.ts). Runs here instead of
+# Vercel Cron; CRON_SECRET must match the value set in Vercel.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call compaction route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 300 \
+            -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            https://hakgyo-v2.vercel.app/api/cron/mobile-sync-compact

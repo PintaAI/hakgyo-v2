@@ -17,7 +17,8 @@ function isAuthorized(request: Request) {
 }
 
 /**
- * Vercel cron entry point (see vercel.json). Vercel sends
+ * Daily compaction entry point, called by the GitHub Actions workflow
+ * `.github/workflows/mobile-sync-compact.yml` with
  * `Authorization: Bearer ${CRON_SECRET}`; the same header works for manual
  * runs with curl.
  */

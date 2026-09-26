@@ -11,7 +11,7 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string()
         : z.string().optional(),
-    // Bearer token Vercel sends to /api/cron/* routes. Optional so a deploy
+    // Bearer token the scheduled GitHub workflow sends to /api/cron/* routes. Optional so a deploy
     // without it still builds; cron routes reject every request until set.
     CRON_SECRET: z.string().min(1).optional(),
     APP_URL: z
