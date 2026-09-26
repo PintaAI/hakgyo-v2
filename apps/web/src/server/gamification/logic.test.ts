@@ -7,6 +7,8 @@ import {
   getLocalDateKey,
   getRewardForAction,
   isValidTimeZone,
+  summarizeStreakRuns,
+  type StreakRun,
 } from "./logic";
 
 describe("gamification logic", () => {
@@ -100,5 +102,50 @@ describe("gamification logic", () => {
         new Set(["FIRST_ACTIVITY"]),
       ),
     ).toEqual(["STREAK_3"]);
+  });
+
+  test("summarizes streak runs exactly like calculateStreak", () => {
+    const day = (offset: number) =>
+      new Date(Date.UTC(2026, 8, 1) + offset * 86_400_000);
+    const toRuns = (offsets: number[]): StreakRun[] => {
+      const sorted = [...new Set(offsets)].sort((a, b) => a - b);
+      const runs: StreakRun[] = [];
+      for (const offset of sorted) {
+        const last = runs.at(-1);
+        if (last?.endsOn.getTime() === day(offset - 1).getTime()) {
+          last.endsOn = day(offset);
+          last.length += 1;
+        } else {
+          runs.push({ startsOn: day(offset), endsOn: day(offset), length: 1 });
+        }
+      }
+      return runs;
+    };
+    let seed = 7;
+    const random = () => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed / 2_147_483_648;
+    };
+    const cases: number[][] = [[], [0], [0, 1, 2], [5, 6, 9, 10, 11, 12]];
+    for (let index = 0; index < 50; index += 1) {
+      cases.push(
+        Array.from({ length: Math.floor(random() * 25) }, () =>
+          Math.floor(random() * 30),
+        ),
+      );
+    }
+    for (const offsets of cases) {
+      for (const todayOffset of [8, 12, 20, 29, 30, 31]) {
+        const today = day(todayOffset).toISOString().slice(0, 10);
+        const expected = calculateStreak(offsets.map(day), {
+          now: new Date(`${today}T12:00:00.000Z`),
+          timeZone: "UTC",
+        });
+        expect(summarizeStreakRuns(toRuns(offsets), today)).toEqual({
+          currentStreak: expected.currentStreak,
+          longestStreak: expected.longestStreak,
+        });
+      }
+    }
   });
 });

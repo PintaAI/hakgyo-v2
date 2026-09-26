@@ -20,9 +20,13 @@ export default async function Page({
     moduleId,
     assessmentId,
   } = await params;
+  // Start the course lookup alongside the membership check; its errors are
+  // surfaced only after the membership check so redirects keep precedence.
+  const coursePromise = api.course.get({ courseId });
+  coursePromise.catch(() => undefined);
   const membership =
     await requireOrganizationMembershipBySlug(organizationSlug);
-  const course = await api.course.get({ courseId });
+  const course = await coursePromise;
   const courseModule = course.modules.find((module) => module.id === moduleId);
 
   if (

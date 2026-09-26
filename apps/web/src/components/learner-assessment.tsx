@@ -240,12 +240,41 @@ export function AssessmentAttempt({
   attempt: Attempt;
   serverTime: Date;
 }) {
-  const router = useRouter();
   const utils = api.useUtils();
   const attemptQuery = api.assessment.getMyAttempt.useQuery({ attemptId: initialAttempt.id }, { initialData: initialAttempt, refetchInterval: query => query.state.data?.status === "IN_REVIEW" || query.state.data?.status === "SUBMITTED" ? 15_000 : false });
   const attempt = attemptQuery.data;
-  const assessmentQuery = api.assessment.getForCourseItem.useQuery({ courseItemId, attemptId: attempt.id }, { initialData: initialAssessment, refetchInterval: attempt.status !== "IN_PROGRESS" ? 15_000 : false });
+  // Poll only while the result can still change: pending review, or a graded quick assessment
+  // whose answers are revealed once its event closes.
+  const assessmentQuery = api.assessment.getForCourseItem.useQuery(
+    { courseItemId, attemptId: attempt.id },
+    {
+      initialData: initialAssessment,
+      refetchInterval: (query) =>
+        attempt.status === "IN_REVIEW" ||
+        attempt.status === "SUBMITTED" ||
+        (attempt.status === "GRADED" &&
+          query.state.data?.event?.type === "QUICK_ASSESSMENT" &&
+          query.state.data.event.status === "OPEN")
+          ? 15_000
+          : false,
+    },
+  );
   const assessment = assessmentQuery.data;
+  // Grading changes what getForCourseItem reveals; refresh it once when a review completes
+  // instead of polling it after the attempt is graded.
+  const previousStatus = useRef(attempt.status);
+  useEffect(() => {
+    const wasPendingReview =
+      previousStatus.current === "IN_REVIEW" ||
+      previousStatus.current === "SUBMITTED";
+    previousStatus.current = attempt.status;
+    if (wasPendingReview && attempt.status === "GRADED") {
+      void utils.assessment.getForCourseItem.invalidate({
+        courseItemId,
+        attemptId: attempt.id,
+      });
+    }
+  }, [attempt.id, attempt.status, courseItemId, utils]);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>(() =>
     Object.fromEntries(
@@ -278,7 +307,12 @@ export function AssessmentAttempt({
   const save = api.assessment.saveAnswers.useMutation();
   const autosave = api.assessment.saveAnswers.useMutation();
   const submit = api.assessment.submitAttempt.useMutation();
-  const lastAutosaved = useRef("");
+  // Question ids edited since their last successful save; autosave sends only these.
+  const dirtyQuestionIds = useRef(new Set<string>());
+  const answersRef = useRef(answers);
+  const autosaveRun = useRef<Promise<void> | null>(null);
+  // Set for the whole submit flow so repeated clicks and pending autosave timers can't race it.
+  const submitting = useRef(false);
   const question = assessment.questions[current];
   const answeredCount = assessment.questions.filter((entry) => {
     const answer = answers[entry.id];
@@ -299,10 +333,45 @@ export function AssessmentAttempt({
   const passed =
     scorePercent !== null && scorePercent >= (assessment.passingScore ?? 0);
 
+  const editAnswer = (
+    questionId: string,
+    update: (current: Record<string, Answer>) => Answer,
+  ) => {
+    dirtyQuestionIds.current.add(questionId);
+    setAnswers((currentAnswers) => ({
+      ...currentAnswers,
+      [questionId]: update(currentAnswers),
+    }));
+  };
+
+  // Answers still unsaved, plus a callback that clears those that were not edited again meanwhile.
+  const takeDirtyAnswers = () => {
+    const pending = [...dirtyQuestionIds.current].flatMap((questionId) => {
+      const answer = answersRef.current[questionId];
+      return answer ? [answer] : [];
+    });
+    return {
+      pending,
+      markSaved: () => {
+        for (const answer of pending) {
+          if (answersRef.current[answer.questionId] === answer) {
+            dirtyQuestionIds.current.delete(answer.questionId);
+          }
+        }
+      },
+    };
+  };
+
   const submitAssessment = async () => {
-    if (submit.isPending || save.isPending || isFinished) return;
+    if (submitting.current || submit.isPending || save.isPending || isFinished)
+      return;
+    submitting.current = true;
     try {
-      const payload = Object.values(answers);
+      // Let a running autosave finish so it cannot overwrite the final save with older content.
+      await autosaveRun.current;
+      // Everything else is already persisted by autosave (saveAnswers only touches the answers
+      // it receives).
+      const { pending: payload, markSaved } = takeDirtyAnswers();
       let savedLate = false;
       if (payload.length) {
         try {
@@ -312,6 +381,7 @@ export function AssessmentAttempt({
               answers: payload.slice(index, index + 200),
             });
           }
+          markSaved();
         } catch (error) {
           const code =
             typeof error === "object" &&
@@ -340,11 +410,12 @@ export function AssessmentAttempt({
             ? "Jawaban dikirim untuk diperiksa."
             : "Assessment berhasil dinilai.",
       );
-      router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Jawaban gagal dikirim.",
       );
+    } finally {
+      submitting.current = false;
     }
   };
   const onTimeExpired = useEffectEvent(() => {
@@ -366,42 +437,53 @@ export function AssessmentAttempt({
   }, [secondsLeft, isFinished]);
 
   useEffect(() => {
-    if (isFinished || secondsLeft === 0) return;
-    const payload = Object.values(answers);
-    if (!payload.length) return;
-    const signature = JSON.stringify(payload);
-    if (signature === lastAutosaved.current) return;
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          for (let index = 0; index < payload.length; index += 200) {
+    answersRef.current = answers;
+  }, [answers]);
+
+  const flushAutosave = useEffectEvent(() => {
+    // One save at a time so an older payload can never land after a newer one.
+    if (autosaveRun.current || submitting.current) return;
+    autosaveRun.current = (async () => {
+      try {
+        for (;;) {
+          const { pending, markSaved } = takeDirtyAnswers();
+          if (!pending.length) break;
+          for (let index = 0; index < pending.length; index += 200) {
             await autosave.mutateAsync({
               attemptId: attempt.id,
-              answers: payload.slice(index, index + 200),
+              answers: pending.slice(index, index + 200),
             });
           }
-          lastAutosaved.current = signature;
-        } catch {
-          // Submission still performs a final save and reports any error.
+          markSaved();
         }
-      })();
-    }, 800);
+      } catch {
+        // Submission still performs a final save and reports any error.
+      } finally {
+        autosaveRun.current = null;
+      }
+    })();
+  });
+
+  const timeUp = secondsLeft === 0;
+  useEffect(() => {
+    if (isFinished || timeUp || !dirtyQuestionIds.current.size) return;
+    const timer = window.setTimeout(() => flushAutosave(), 800);
     return () => window.clearTimeout(timer);
-  }, [answers, attempt.id, autosave, isFinished, secondsLeft]);
+  }, [answers, isFinished, timeUp]);
 
   const updateOptions = (
     questionId: string,
     optionId: string,
     multiple: boolean,
   ) => {
-    setAnswers((currentAnswers) => {
+    editAnswer(questionId, (currentAnswers) => {
       const existing = currentAnswers[questionId]?.optionIds ?? [];
       const optionIds = multiple
         ? existing.includes(optionId)
           ? existing.filter((id) => id !== optionId)
           : [...existing, optionId]
         : [optionId];
-      return { ...currentAnswers, [questionId]: { questionId, optionIds } };
+      return { questionId, optionIds };
     });
   };
 
@@ -623,16 +705,14 @@ export function AssessmentAttempt({
             {question.type === "WRITTEN" ? (
               <Textarea
                 value={answer?.content ?? ""}
-                onChange={(event) =>
-                  setAnswers((currentAnswers) => ({
-                    ...currentAnswers,
-                    [question.id]: {
-                      questionId: question.id,
-                      content: event.target.value,
-                      optionIds: [],
-                    },
-                  }))
-                }
+                onChange={(event) => {
+                  const content = event.target.value;
+                  editAnswer(question.id, () => ({
+                    questionId: question.id,
+                    content,
+                    optionIds: [],
+                  }));
+                }}
                 placeholder="Tulis jawaban kamu di sini..."
                 className="min-h-44 resize-y p-4 leading-relaxed"
               />

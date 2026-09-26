@@ -8,13 +8,11 @@ import {
   getMissingWrittenQuestionIds,
   groupScoresByValue,
 } from "~/server/assessment-logic";
-import { orderAssessmentQuestions } from "~/server/assessment-order";
-import { shouldRevealAssessmentAnswers } from "~/server/assessment-result-policy";
+import { isAssessmentExpired } from "~/server/assessment-timing";
 import {
-  getAssessmentDeadline,
-  isAssessmentExpired,
-} from "~/server/assessment-timing";
-import { buildAssessmentAnswerContentUpdate } from "~/server/assessment-answer-content";
+  buildAssessmentAnswerContentUpdate,
+  buildAssessmentAnswerReviewUpdate,
+} from "~/server/assessment-answer-content";
 import {
   assessmentContext,
   attemptSummarySelect,
@@ -23,6 +21,13 @@ import {
   reviewScope,
   summarizeAttempt,
 } from "~/server/assessment-register";
+import {
+  eligibleCohortEnrollmentWhere,
+  latestStandaloneAttemptSelect,
+  learnerAssessmentAttemptSelect,
+  learnerAssessmentItemSelect,
+  shapeLearnerAssessment,
+} from "~/server/assessment/learner-view";
 import { deleteAssessmentWithProgress } from "~/server/content-resource-deletion";
 import {
   MAX_ASSESSMENT_OPTIONS,
@@ -89,6 +94,104 @@ async function requireAssessmentManagement(
   return assessment;
 }
 
+/**
+ * Access check for writes to an attempt the user already owns and has in progress.
+ *
+ * The attempt could only be started after the full `requireCourseItemAccess` check (including
+ * outline/module locks), so autosaves only need to confirm access has not been revoked since:
+ * the item and course are still published and the learner still has a live course or cohort
+ * enrollment. That is a single indexed lookup instead of rebuilding the course outline on every
+ * autosave. Anyone who does not match (staff previews, managers, revoked learners) falls back to
+ * the full check, so revocation still blocks saving.
+ */
+async function requireInProgressAttemptAccess(
+  db: Prisma.TransactionClient | Prisma.DefaultPrismaClient,
+  courseItemId: string,
+  userId: string,
+) {
+  const now = new Date();
+  const enrolled = await db.courseItem.findFirst({
+    where: {
+      id: courseItemId,
+      isPublished: true,
+      module: {
+        course: {
+          status: "PUBLISHED",
+          OR: [
+            {
+              enrollments: {
+                some: {
+                  userId,
+                  status: { in: [...activeEnrollmentStatuses] },
+                  source: { not: "COHORT" },
+                  OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+                },
+              },
+            },
+            {
+              cohorts: {
+                some: {
+                  status: { in: [...accessGrantingCohortStatuses] },
+                  OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+                  enrollments: {
+                    some: {
+                      userId,
+                      status: { in: [...activeEnrollmentStatuses] },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    },
+    select: { id: true },
+  });
+  if (!enrolled) await requireCourseItemAccess({ courseItemId, userId });
+}
+
+const reviewAccessSelect = {
+  id: true,
+  organizationId: true,
+  cohortId: true,
+  userId: true,
+  courseItem: { select: { module: { select: { courseId: true } } } },
+} satisfies Prisma.AssessmentAttemptSelect;
+
+async function authorizeReview(
+  db: Prisma.TransactionClient | Prisma.DefaultPrismaClient,
+  attempt: Prisma.AssessmentAttemptGetPayload<{
+    select: typeof reviewAccessSelect;
+  }>,
+  userId: string,
+) {
+  const [, membership] = await Promise.all([
+    attempt.cohortId
+      ? requireCohortPermission({
+          cohortId: attempt.cohortId,
+          permission: "assessment.review",
+          userId,
+        })
+      : requireCoursePermission({
+          courseId: attempt.courseItem.module.courseId,
+          permission: "course.manage",
+          userId,
+        }),
+    db.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: attempt.organizationId,
+          userId,
+        },
+      },
+      select: { id: true },
+    }),
+  ]);
+  if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
+  return membership;
+}
+
 async function requireReviewAccess(
   db: Prisma.TransactionClient | Prisma.DefaultPrismaClient,
   attemptId: string,
@@ -96,38 +199,10 @@ async function requireReviewAccess(
 ) {
   const attempt = await db.assessmentAttempt.findUnique({
     where: { id: attemptId },
-    select: {
-      id: true,
-      organizationId: true,
-      cohortId: true,
-      userId: true,
-      courseItem: { select: { module: { select: { courseId: true } } } },
-    },
+    select: reviewAccessSelect,
   });
   if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
-  if (attempt.cohortId) {
-    await requireCohortPermission({
-      cohortId: attempt.cohortId,
-      permission: "assessment.review",
-      userId,
-    });
-  } else {
-    await requireCoursePermission({
-      courseId: attempt.courseItem.module.courseId,
-      permission: "course.manage",
-      userId,
-    });
-  }
-  const membership = await db.organizationMember.findUnique({
-    where: {
-      organizationId_userId: {
-        organizationId: attempt.organizationId,
-        userId,
-      },
-    },
-    select: { id: true },
-  });
-  if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
+  const membership = await authorizeReview(db, attempt, userId);
   return { attempt, membership };
 }
 
@@ -176,11 +251,24 @@ export const assessmentRouter = createTRPCRouter({
   getReviewAttempt: protectedProcedure
     .input(z.object({ attemptId: id }))
     .query(async ({ ctx, input }) => {
-      await requireReviewAccess(ctx.db, input.attemptId, ctx.actorUserId);
-      const attempt = await ctx.db.assessmentAttempt.findUniqueOrThrow({
+      // Load the review payload and the access fields in one query, then authorize before
+      // returning anything.
+      const attempt = await ctx.db.assessmentAttempt.findUnique({
         where: { id: input.attemptId },
         select: {
+          ...reviewAccessSelect,
           ...attemptSummarySelect,
+          organizationId: true,
+          cohortId: true,
+          assessmentEvent: {
+            select: {
+              ...attemptSummarySelect.assessmentEvent.select,
+              participants: {
+                where: { invalidatedAt: { not: null } },
+                select: { userId: true },
+              },
+            },
+          },
           answers: {
             orderBy: { question: { position: "asc" } },
             select: {
@@ -193,9 +281,8 @@ export const assessmentRouter = createTRPCRouter({
               reviewedAt: true,
               reviewedBy: { select: { user: { select: { name: true } } } },
               selectedOptions: { select: { optionId: true } },
-              question: {
-                select: { id: true, prompt: true, points: true, type: true },
-              },
+              // The prompt is already delivered through `questions`.
+              question: { select: { id: true, points: true, type: true } },
             },
           },
           assessment: {
@@ -221,21 +308,35 @@ export const assessmentRouter = createTRPCRouter({
           },
         },
       });
-      const participant = attempt.assessmentEvent
-        ? await ctx.db.assessmentEventParticipant.findUnique({
-            where: {
-              eventId_userId: {
-                eventId: attempt.assessmentEvent.id,
-                userId: attempt.userId,
-              },
-            },
-            select: { invalidatedAt: true },
-          })
+      if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
+      const {
+        answers,
+        assessment: { questions, ...assessment },
+        assessmentEvent,
+        organizationId,
+        cohortId,
+        ...summary
+      } = attempt;
+      await authorizeReview(
+        ctx.db,
+        { ...summary, organizationId, cohortId },
+        ctx.actorUserId,
+      );
+      const invalidated = Boolean(
+        assessmentEvent?.participants.some(
+          (participant) => participant.userId === attempt.userId,
+        ),
+      );
+      const event = assessmentEvent
+        ? (({ participants: _participants, ...rest }) => rest)(assessmentEvent)
         : null;
       return {
-        ...summarizeAttempt(attempt, !!participant?.invalidatedAt),
-        answers: attempt.answers,
-        questions: attempt.assessment.questions,
+        ...summarizeAttempt(
+          { ...summary, assessment, assessmentEvent: event },
+          invalidated,
+        ),
+        answers,
+        questions,
       };
     }),
   listMyAttemptHistory: protectedProcedure
@@ -259,7 +360,20 @@ export const assessmentRouter = createTRPCRouter({
             : {}),
         },
         orderBy: { updatedAt: "desc" },
-        include: { _count: { select: { questions: true, courseItems: true } } },
+        // List views only need summary fields; `instructions` (rich JSON) is loaded by `get`.
+        select: {
+          id: true,
+          organizationId: true,
+          title: true,
+          description: true,
+          status: true,
+          passingScore: true,
+          maxAttempts: true,
+          timeLimitMinutes: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { questions: true, courseItems: true } },
+        },
       });
     }),
   get: protectedProcedure
@@ -540,203 +654,92 @@ export const assessmentRouter = createTRPCRouter({
   getForCourseItem: protectedProcedure
     .input(z.object({ courseItemId: id, attemptId: id.optional() }))
     .query(async ({ ctx, input }) => {
-      const attempt = input.attemptId
-        ? await ctx.db.assessmentAttempt.findFirst({
-            where: {
-              id: input.attemptId,
-              courseItemId: input.courseItemId,
-              userId: ctx.actorUserId,
-            },
-            select: {
-              id: true,
-              shuffleSeed: true,
-              startedAt: true,
-              status: true,
-              assessmentEvent: {
-                select: {
-                  id: true,
-                  title: true,
-                  type: true,
-                  status: true,
-                  durationMinutes: true,
-                  closesAt: true,
-                  shuffleQuestions: true,
-                  participants: {
-                    where: { userId: ctx.actorUserId },
-                    select: { invalidatedAt: true },
-                  },
-                },
+      // Every lookup below is independent, so they run concurrently. The attempt/access check
+      // still gates the response: nothing is returned unless it resolves.
+      const accessCheck = input.attemptId
+        ? ctx.db.assessmentAttempt
+            .findFirst({
+              where: {
+                id: input.attemptId,
+                courseItemId: input.courseItemId,
+                userId: ctx.actorUserId,
               },
-            },
-          })
-        : null;
-      if (input.attemptId && !attempt) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-      const eventParticipant = attempt?.assessmentEvent?.participants[0];
-      if (
-        attempt?.assessmentEvent &&
-        (!eventParticipant || eventParticipant.invalidatedAt)
-      ) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      if (!attempt?.assessmentEvent) {
-        await requireCourseItemAccess({
-          courseItemId: input.courseItemId,
-          userId: ctx.actorUserId,
-        });
-      }
-      const item = await ctx.db.courseItem.findUnique({
-        where: { id: input.courseItemId },
-        select: {
-          id: true,
-          module: {
-            select: {
-              courseId: true,
-              title: true,
-              course: { select: { id: true, title: true } },
-            },
-          },
-          assessment: {
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              instructions: true,
-              passingScore: true,
-              maxAttempts: true,
-              timeLimitMinutes: true,
-              shuffleQuestions: true,
-              shuffleOptions: true,
-              status: true,
-              questions: {
-                orderBy: { position: "asc" },
-                select: {
-                  id: true,
-                  type: true,
-                  prompt: true,
-                  explanation: true,
-                  points: true,
-                  position: true,
-                  options: {
-                    orderBy: { position: "asc" },
-                    select: {
-                      id: true,
-                      content: true,
-                      position: true,
-                      isCorrect: true,
-                    },
-                  },
+              select: learnerAssessmentAttemptSelect(ctx.actorUserId),
+            })
+            .then(async (attempt) => {
+              if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
+              const eventParticipant = attempt.assessmentEvent?.participants[0];
+              if (
+                attempt.assessmentEvent &&
+                (!eventParticipant || eventParticipant.invalidatedAt)
+              ) {
+                throw new TRPCError({ code: "FORBIDDEN" });
+              }
+              if (!attempt.assessmentEvent) {
+                await requireCourseItemAccess({
+                  courseItemId: input.courseItemId,
+                  userId: ctx.actorUserId,
+                });
+              }
+              return attempt;
+            })
+        : requireCourseItemAccess({
+            courseItemId: input.courseItemId,
+            userId: ctx.actorUserId,
+          }).then(() => null);
+      const [
+        attempt,
+        item,
+        [latestStandaloneAttempt, standaloneAttemptCount],
+        eligibleCohorts,
+      ] = await Promise.all([
+        accessCheck,
+        ctx.db.courseItem.findUnique({
+          where: { id: input.courseItemId },
+          select: learnerAssessmentItemSelect,
+        }),
+        input.attemptId
+          ? ([null, 0] as const)
+          : Promise.all([
+              ctx.db.assessmentAttempt.findFirst({
+                where: {
+                  courseItemId: input.courseItemId,
+                  userId: ctx.actorUserId,
+                  assessmentEventId: null,
                 },
-              },
-            },
-          },
-        },
-      });
+                orderBy: [{ attemptNumber: "desc" }, { startedAt: "desc" }],
+                select: latestStandaloneAttemptSelect,
+              }),
+              ctx.db.assessmentAttempt.count({
+                where: {
+                  courseItemId: input.courseItemId,
+                  userId: ctx.actorUserId,
+                  assessmentEventId: null,
+                },
+              }),
+            ]),
+        ctx.db.cohortEnrollment.findMany({
+          // Scoped by the item's course without waiting for the item.
+          where: eligibleCohortEnrollmentWhere(
+            ctx.actorUserId,
+            { courseItemId: input.courseItemId },
+            new Date(),
+          ),
+          orderBy: { enrolledAt: "desc" },
+          select: { cohort: { select: { id: true, name: true } } },
+        }),
+      ]);
       if (item?.assessment?.status !== "PUBLISHED") {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
-      const [latestStandaloneAttempt, standaloneAttemptCount] = input.attemptId
-        ? [null, 0]
-        : await Promise.all([
-            ctx.db.assessmentAttempt.findFirst({
-              where: {
-                courseItemId: input.courseItemId,
-                userId: ctx.actorUserId,
-                assessmentEventId: null,
-              },
-              orderBy: [{ attemptNumber: "desc" }, { startedAt: "desc" }],
-              select: {
-                id: true,
-                attemptNumber: true,
-                status: true,
-                score: true,
-                maxScore: true,
-                startedAt: true,
-              },
-            }),
-            ctx.db.assessmentAttempt.count({
-              where: {
-                courseItemId: input.courseItemId,
-                userId: ctx.actorUserId,
-                assessmentEventId: null,
-              },
-            }),
-          ]);
-      const now = new Date();
-      const eligibleCohorts = await ctx.db.cohortEnrollment.findMany({
-        where: {
-          userId: ctx.actorUserId,
-          status: { in: [...activeEnrollmentStatuses] },
-          cohort: {
-            courseId: item.module.courseId,
-            status: { in: [...accessGrantingCohortStatuses] },
-            OR: [{ endsAt: null }, { endsAt: { gt: now } }],
-          },
-        },
-        orderBy: { enrolledAt: "desc" },
-        select: { cohort: { select: { id: true, name: true } } },
-      });
-      const answersRevealed = shouldRevealAssessmentAnswers({
-        attemptStatus: attempt?.status ?? "IN_PROGRESS",
-        event: attempt?.assessmentEvent
-          ? {
-              type: attempt.assessmentEvent.type,
-              status: attempt.assessmentEvent.status,
-            }
-          : null,
-      });
-      const questions = orderAssessmentQuestions(
-        item.assessment.questions,
-        attempt?.shuffleSeed ?? attempt?.id ?? input.attemptId,
-        attempt?.assessmentEvent?.shuffleQuestions ??
-          item.assessment.shuffleQuestions,
-        item.assessment.shuffleOptions,
-      ).map(({ explanation, options, ...question }) => ({
-        ...question,
-        explanation: answersRevealed ? explanation : null,
-        options: options.map(({ isCorrect, ...option }) => ({
-          ...option,
-          ...(answersRevealed ? { isCorrect } : {}),
-        })),
-      }));
-      return {
-        ...item.assessment,
-        context: {
-          label:
-            attempt?.assessmentEvent?.type === "TRYOUT"
-              ? "Tryout"
-              : attempt?.assessmentEvent
-                ? "Asesmen on-demand"
-                : "Asesmen bab",
-          title: attempt?.assessmentEvent?.title ?? item.assessment.title,
-          courseTitle: item.module.course.title,
-          moduleTitle: item.module.title,
-        },
-        timeLimitMinutes:
-          attempt?.assessmentEvent?.durationMinutes ??
-          item.assessment.timeLimitMinutes,
-        attemptDeadline: attempt?.assessmentEvent
-          ? getAssessmentDeadline(
-              attempt.startedAt,
-              attempt.assessmentEvent.durationMinutes,
-              attempt.assessmentEvent.closesAt,
-            )
-          : null,
-        event: attempt?.assessmentEvent
-          ? {
-              id: attempt.assessmentEvent.id,
-              title: attempt.assessmentEvent.title,
-              type: attempt.assessmentEvent.type,
-              status: attempt.assessmentEvent.status,
-            }
-          : null,
+      return shapeLearnerAssessment({
+        item: { ...item, assessment: item.assessment },
+        attemptId: input.attemptId,
+        attempt,
         latestStandaloneAttempt,
         standaloneAttemptCount,
-        answersRevealed,
         eligibleCohorts: eligibleCohorts.map(({ cohort }) => cohort),
-        questions,
-      };
+      });
     }),
 
   startAttempt: protectedProcedure
@@ -764,14 +767,16 @@ export const assessmentRouter = createTRPCRouter({
               message: "Assessment is not published",
             });
           }
+          const eligibleWhere = eligibleCohortEnrollmentWhere(
+            ctx.actorUserId,
+            { courseId: item.module.courseId },
+            new Date(),
+          );
           const cohortEnrollments = await tx.cohortEnrollment.findMany({
             where: {
-              userId: ctx.actorUserId,
-              status: { in: [...activeEnrollmentStatuses] },
+              ...eligibleWhere,
               cohort: {
-                courseId: item.module.courseId,
-                status: { in: [...accessGrantingCohortStatuses] },
-                OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+                ...eligibleWhere.cohort,
                 ...(input.cohortId ? { id: input.cohortId } : {}),
               },
             },
@@ -817,13 +822,24 @@ export const assessmentRouter = createTRPCRouter({
             }
             return current;
           }
-          const count = await tx.assessmentAttempt.count({
+          // One grouped query yields both the standalone attempt count (for maxAttempts) and the
+          // highest attempt number across standalone and event attempts of this item.
+          const attemptGroups = await tx.assessmentAttempt.groupBy({
+            by: ["assessmentEventId"],
             where: {
               courseItemId: input.courseItemId,
               userId: ctx.actorUserId,
-              assessmentEventId: null,
             },
+            _count: { _all: true },
+            _max: { attemptNumber: true },
           });
+          const count =
+            attemptGroups.find((group) => group.assessmentEventId === null)
+              ?._count._all ?? 0;
+          const lastAttemptNumber = attemptGroups.reduce(
+            (max, group) => Math.max(max, group._max.attemptNumber ?? 0),
+            0,
+          );
           if (
             item.assessment.maxAttempts !== null &&
             count >= item.assessment.maxAttempts
@@ -853,16 +869,7 @@ export const assessmentRouter = createTRPCRouter({
               organizationId: item.organizationId,
               cohortId,
               userId: ctx.actorUserId,
-              attemptNumber:
-                ((
-                  await tx.assessmentAttempt.aggregate({
-                    where: {
-                      courseItemId: input.courseItemId,
-                      userId: ctx.actorUserId,
-                    },
-                    _max: { attemptNumber: true },
-                  })
-                )._max.attemptNumber ?? 0) + 1,
+              attemptNumber: lastAttemptNumber + 1,
               shuffleSeed: crypto.randomUUID(),
             },
           });
@@ -886,14 +893,9 @@ export const assessmentRouter = createTRPCRouter({
           status: true,
           courseItemId: true,
           organizationId: true,
-          assessmentId: true,
-          startedAt: true,
-          assessment: { select: { timeLimitMinutes: true } },
           assessmentEvent: {
             select: {
               status: true,
-              durationMinutes: true,
-              closesAt: true,
               participants: {
                 where: { userId: ctx.actorUserId },
                 select: { invalidatedAt: true },
@@ -913,6 +915,12 @@ export const assessmentRouter = createTRPCRouter({
         ) {
           throw new TRPCError({ code: "PRECONDITION_FAILED" });
         }
+      } else if (attempt.status === "IN_PROGRESS") {
+        await requireInProgressAttemptAccess(
+          ctx.db,
+          attempt.courseItemId,
+          ctx.actorUserId,
+        );
       } else {
         await requireCourseItemAccess({
           courseItemId: attempt.courseItemId,
@@ -1109,9 +1117,26 @@ export const assessmentRouter = createTRPCRouter({
       return ctx.db.$transaction(async (tx) => {
         const full = await tx.assessmentAttempt.findUnique({
           where: { id: input.attemptId },
-          include: {
+          select: {
+            id: true,
+            organizationId: true,
+            courseItemId: true,
+            status: true,
+            startedAt: true,
             assessment: {
-              include: { questions: { include: { options: true } } },
+              select: {
+                status: true,
+                timeLimitMinutes: true,
+                passingScore: true,
+                questions: {
+                  select: {
+                    id: true,
+                    type: true,
+                    points: true,
+                    options: { select: { id: true, isCorrect: true } },
+                  },
+                },
+              },
             },
             assessmentEvent: {
               select: {
@@ -1120,7 +1145,13 @@ export const assessmentRouter = createTRPCRouter({
                 closesAt: true,
               },
             },
-            answers: { include: { selectedOptions: true } },
+            answers: {
+              select: {
+                id: true,
+                questionId: true,
+                selectedOptions: { select: { optionId: true } },
+              },
+            },
           },
         });
         if (
@@ -1382,17 +1413,29 @@ export const assessmentRouter = createTRPCRouter({
       return ctx.db.$transaction(async (tx) => {
         const attempt = await tx.assessmentAttempt.findUnique({
           where: { id: input.attemptId },
-          include: {
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+            maxScore: true,
+            courseItemId: true,
             assessment: { select: { passingScore: true } },
             assessmentEvent: {
               select: {
-                id: true,
                 status: true,
-                participants: { select: { userId: true, invalidatedAt: true } },
+                participants: {
+                  where: { userId: access.attempt.userId },
+                  select: { invalidatedAt: true },
+                },
               },
             },
             answers: {
-              include: { question: { select: { points: true, type: true } } },
+              select: {
+                id: true,
+                autoScore: true,
+                manualScore: true,
+                question: { select: { points: true, type: true } },
+              },
             },
           },
         });
@@ -1400,9 +1443,7 @@ export const assessmentRouter = createTRPCRouter({
           throw new TRPCError({ code: "CONFLICT" });
         if (
           attempt.assessmentEvent?.status === "CANCELLED" ||
-          attempt.assessmentEvent?.participants.some(
-            (p) => p.userId === attempt.userId && p.invalidatedAt,
-          )
+          attempt.assessmentEvent?.participants[0]?.invalidatedAt
         ) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
@@ -1412,6 +1453,8 @@ export const assessmentRouter = createTRPCRouter({
         const byId = new Map(
           attempt.answers.map((answer) => [answer.id, answer]),
         );
+        // Later entries win for duplicate answer ids, as with sequential updates.
+        const reviews = new Map<string, (typeof input.answers)[number]>();
         for (const review of input.answers) {
           const answer = byId.get(review.answerId);
           if (
@@ -1423,16 +1466,9 @@ export const assessmentRouter = createTRPCRouter({
               message: "Invalid review score",
             });
           }
-          await tx.assessmentAnswer.update({
-            where: { id: answer.id },
-            data: {
-              manualScore: review.score,
-              feedback: review.feedback,
-              reviewedByMembershipId: access.membership.id,
-              reviewedAt: new Date(),
-            },
-          });
           answer.manualScore = review.score;
+          reviews.delete(review.answerId);
+          reviews.set(review.answerId, review);
         }
         if (
           attempt.answers.some(
@@ -1445,6 +1481,14 @@ export const assessmentRouter = createTRPCRouter({
             message: "Every written answer must be reviewed",
           });
         }
+        await tx.$executeRaw(
+          buildAssessmentAnswerReviewUpdate({
+            attemptId: attempt.id,
+            reviewedByMembershipId: access.membership.id,
+            reviewedAt: new Date(),
+            reviews: [...reviews.values()],
+          }),
+        );
         const score = attempt.answers.reduce(
           (total, answer) =>
             total + (answer.manualScore ?? answer.autoScore ?? 0),

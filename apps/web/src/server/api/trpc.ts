@@ -12,7 +12,13 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { auth } from "~/server/better-auth";
+import type { Session } from "~/server/better-auth/config";
 import { db } from "~/server/db";
+import {
+  createRequestCache,
+  runWithRequestCache,
+  type RequestCache,
+} from "~/server/request-cache";
 import { hasAuthenticatedActor } from "~/server/api/trpc-principal";
 import { getSuperadminUser } from "~/server/authorization/superadmin";
 
@@ -28,18 +34,17 @@ import { getSuperadminUser } from "~/server/authorization/superadmin";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const authSession = await auth.api.getSession({
-    headers: opts.headers,
-  });
-  const user = authSession
-    ? await db.user.findUnique({
-        where: { id: authSession.user.id },
-        select: { suspendedAt: true, deletedAt: true },
-      })
-    : null;
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  /** Pre-resolved session (RSC reuses the request-cached lookup). */
+  authSession?: Session | null;
+}) => {
+  const authSession =
+    opts.authSession !== undefined
+      ? opts.authSession
+      : await auth.api.getSession({ headers: opts.headers });
   const session =
-    authSession && user && !user.suspendedAt && !user.deletedAt
+    authSession && !authSession.user.suspendedAt && !authSession.user.deletedAt
       ? authSession
       : null;
   return {
@@ -48,6 +53,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
     headers: opts.headers,
     actorKind: "session" as const,
     actorUserId: session?.user.id ?? null,
+    requestCache: createRequestCache(),
   };
 };
 
@@ -59,6 +65,7 @@ export type TRPCContext =
       db: typeof db;
       headers: Headers;
       session: null;
+      requestCache: RequestCache;
     };
 
 /**
@@ -103,25 +110,24 @@ export const createCallerFactory = t.createCallerFactory;
  */
 export const createTRPCRouter = t.router;
 
+const SLOW_PROCEDURE_MS = 1_000;
+
 /**
- * Middleware for timing procedure execution and adding an artificial delay in development.
- *
- * You can remove this if you don't like it, but it can help catch unwanted waterfalls by simulating
- * network latency that would occur in production but not in local development.
+ * Binds the per-request read cache for queries (see `~/server/request-cache`) and logs procedures
+ * in development or when they are slow.
  */
-const timingMiddleware = t.middleware(async ({ next, path }) => {
+const timingMiddleware = t.middleware(async ({ ctx, next, path, type }) => {
   const start = Date.now();
 
-  if (t._config.isDev) {
-    // artificial delay in dev
-    const waitMs = Math.floor(Math.random() * 400) + 100;
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  const result = await runWithRequestCache(
+    type === "query" ? ctx.requestCache : undefined,
+    () => next(),
+  );
+
+  const elapsed = Date.now() - start;
+  if (t._config.isDev || elapsed >= SLOW_PROCEDURE_MS) {
+    console.log(`[TRPC] ${path} took ${elapsed}ms to execute`);
   }
-
-  const result = await next();
-
-  const end = Date.now();
-  console.log(`[TRPC] ${path} took ${end - start}ms to execute`);
 
   return result;
 });
@@ -165,7 +171,7 @@ export const protectedProcedure = t.procedure
 
 export const superadminProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {
-    const user = await getSuperadminUser(ctx.actorUserId);
+    const user = await getSuperadminUser(ctx.actorUserId, ctx.session?.user);
     return next({ ctx: { superadmin: user } });
   },
 );

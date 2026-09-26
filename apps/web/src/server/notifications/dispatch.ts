@@ -84,20 +84,14 @@ export async function notifyUser(args: NotifyArgs): Promise<NotifyResult> {
     targets.map((target) => sendToTarget(target, payload)),
   );
 
-  let sent = 0;
   let failed = 0;
+  const sentIds: string[] = [];
   const goneIds: string[] = [];
   results.forEach((result, index) => {
     const target = targets[index];
     if (!target) return;
     if (result.status === "fulfilled" && result.value.status === "sent") {
-      sent += 1;
-      void db.pushTarget
-        .update({
-          where: { id: target.id },
-          data: { lastDeliveredAt: new Date() },
-        })
-        .catch(() => undefined);
+      sentIds.push(target.id);
     } else if (
       result.status === "fulfilled" &&
       result.value.status === "gone"
@@ -107,6 +101,16 @@ export async function notifyUser(args: NotifyArgs): Promise<NotifyResult> {
       failed += 1;
     }
   });
+
+  // One best-effort write for every delivered target.
+  if (sentIds.length > 0) {
+    void db.pushTarget
+      .updateMany({
+        where: { id: { in: sentIds } },
+        data: { lastDeliveredAt: new Date() },
+      })
+      .catch(() => undefined);
+  }
 
   if (goneIds.length > 0) {
     await db.pushTarget.updateMany({
@@ -118,7 +122,7 @@ export async function notifyUser(args: NotifyArgs): Promise<NotifyResult> {
   return {
     notificationId: notification.id,
     unreadCount,
-    sent,
+    sent: sentIds.length,
     failed,
     pruned: goneIds.length,
   };

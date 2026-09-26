@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
   CopyIcon,
   CrownIcon,
@@ -52,6 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type OrganizationRole = "OWNER" | "ADMIN" | "TEACHER";
@@ -106,11 +107,11 @@ export function OrganizationMembers({
 }) {
   const utils = api.useUtils();
   const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search.trim().toLowerCase());
+  const debouncedSearch = useDebouncedValue(search.trim().toLowerCase());
   const members = api.organization.listMembers.useInfiniteQuery(
     {
       organizationId,
-      search: deferredSearch || undefined,
+      search: debouncedSearch || undefined,
       includeTotal: true,
     },
     { getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined },

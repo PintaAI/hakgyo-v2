@@ -21,6 +21,14 @@ export type VocabularyReferenceResource = {
   }>;
 };
 
+/** What the resource picker needs; entries are loaded per referenced set. */
+export type VocabularyReferenceSummary = {
+  id: string;
+  title: string;
+  description: string | null;
+  entryCount: number;
+};
+
 export type AssessmentReferenceResource = {
   id: string;
   title: string;
@@ -46,9 +54,12 @@ export type EditorResourceLibrary = {
 type ResourceReferenceContextValue = {
   editable: boolean;
   isLoading: boolean;
+  /** Set in editor mode, where vocabulary entries are fetched per set. */
+  organizationId?: string;
   organizationSlug?: string;
   learner?: Pick<LearnerReferenceResources, "courseId" | "sourceCourseItemId">;
-  vocabularySets: VocabularyReferenceResource[];
+  vocabularySets: VocabularyReferenceSummary[];
+  learnerVocabularySets: VocabularyReferenceResource[];
   assessments: AssessmentReferenceResource[];
   refresh: () => Promise<void>;
 };
@@ -65,6 +76,7 @@ export function ResourceReferenceProvider({
   editorLibrary?: EditorResourceLibrary;
   learnerResources?: LearnerReferenceResources;
 }) {
+  const utils = api.useUtils();
   const vocabulary = api.content.listVocabularySets.useQuery(
     { organizationId: editorLibrary?.organizationId ?? "" },
     { enabled: Boolean(editorLibrary) },
@@ -85,7 +97,14 @@ export function ResourceReferenceProvider({
               sourceCourseItemId: learnerResources.sourceCourseItemId,
             }
           : undefined,
-        vocabularySets: learnerResources?.vocabularySets ?? [],
+        vocabularySets:
+          learnerResources?.vocabularySets.map((set) => ({
+            id: set.id,
+            title: set.title,
+            description: set.description,
+            entryCount: set.entries.length,
+          })) ?? [],
+        learnerVocabularySets: learnerResources?.vocabularySets ?? [],
         assessments: learnerResources?.assessments ?? [],
         refresh: async () => undefined,
       };
@@ -94,31 +113,16 @@ export function ResourceReferenceProvider({
     return {
       editable: true,
       isLoading: vocabulary.isPending || assessments.isPending,
+      organizationId: editorLibrary.organizationId,
       organizationSlug: editorLibrary.organizationSlug,
       vocabularySets:
         vocabulary.data?.map((set) => ({
           id: set.id,
           title: set.title,
           description: set.description,
-          entries: set.entries.map((entry) => ({
-            id: entry.id,
-            term: entry.term,
-            definition: entry.definition,
-            examples: entry.examples,
-            audioAsset: entry.audioAsset
-              ? {
-                  id: entry.audioAsset.id,
-                  fileName: entry.audioAsset.fileName,
-                }
-              : null,
-            imageAsset: entry.imageAsset
-              ? {
-                  id: entry.imageAsset.id,
-                  fileName: entry.imageAsset.fileName,
-                }
-              : null,
-          })),
+          entryCount: set._count.entries,
         })) ?? [],
+      learnerVocabularySets: [],
       assessments:
         assessments.data?.map((assessment) => ({
           id: assessment.id,
@@ -128,10 +132,16 @@ export function ResourceReferenceProvider({
           questionCount: assessment._count.questions,
         })) ?? [],
       refresh: async () => {
-        await Promise.all([vocabulary.refetch(), assessments.refetch()]);
+        await Promise.all([
+          vocabulary.refetch(),
+          assessments.refetch(),
+          utils.content.getVocabularySet.invalidate({
+            organizationId: editorLibrary.organizationId,
+          }),
+        ]);
       },
     };
-  }, [assessments, editorLibrary, learnerResources, vocabulary]);
+  }, [assessments, editorLibrary, learnerResources, utils, vocabulary]);
 
   return (
     <ResourceReferenceContext.Provider value={value}>
@@ -142,4 +152,62 @@ export function ResourceReferenceProvider({
 
 export function useResourceReferences() {
   return useContext(ResourceReferenceContext);
+}
+
+/**
+ * Resolves one referenced vocabulary set with its entries: from the learner
+ * payload, or (in the editor) through a per-set query.
+ */
+export function useVocabularyReference(vocabularySetId: string): {
+  resource: VocabularyReferenceResource | undefined;
+  isLoading: boolean;
+} {
+  const references = useResourceReferences();
+  const organizationId = references?.organizationId;
+  const query = api.content.getVocabularySet.useQuery(
+    { organizationId: organizationId ?? "", vocabularySetId },
+    { enabled: Boolean(organizationId && vocabularySetId) },
+  );
+  const editorResource = useMemo<VocabularyReferenceResource | undefined>(
+    () =>
+      query.data
+        ? {
+            id: query.data.id,
+            title: query.data.title,
+            description: query.data.description,
+            entries: query.data.entries.map((entry) => ({
+              id: entry.id,
+              term: entry.term,
+              definition: entry.definition,
+              examples: entry.examples,
+              audioAsset: entry.audioAsset
+                ? {
+                    id: entry.audioAsset.id,
+                    fileName: entry.audioAsset.fileName,
+                  }
+                : null,
+              imageAsset: entry.imageAsset
+                ? {
+                    id: entry.imageAsset.id,
+                    fileName: entry.imageAsset.fileName,
+                  }
+                : null,
+            })),
+          }
+        : undefined,
+    [query.data],
+  );
+
+  if (!organizationId) {
+    return {
+      resource: references?.learnerVocabularySets.find(
+        (set) => set.id === vocabularySetId,
+      ),
+      isLoading: references?.isLoading ?? false,
+    };
+  }
+  return {
+    resource: editorResource,
+    isLoading: Boolean(vocabularySetId) && query.isPending,
+  };
 }

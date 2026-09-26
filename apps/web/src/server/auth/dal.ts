@@ -16,11 +16,7 @@ import { getSuperadminUser } from "~/server/authorization/superadmin";
 export const requireSession = cache(async () => {
   const session = await getSession();
   if (!session?.user) redirect(routeAccess.signInPath);
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { suspendedAt: true, deletedAt: true },
-  });
-  if (!user || user.suspendedAt || user.deletedAt) {
+  if (session.user.suspendedAt || session.user.deletedAt) {
     redirect(routeAccess.signInPath);
   }
   return session;
@@ -28,7 +24,7 @@ export const requireSession = cache(async () => {
 
 export const requireSuperadminSession = cache(async () => {
   const session = await requireSession();
-  return getSuperadminUser(session.user.id);
+  return getSuperadminUser(session.user.id, session.user);
 });
 
 export const getSignedInDestination = cache(async (userId: string) => {

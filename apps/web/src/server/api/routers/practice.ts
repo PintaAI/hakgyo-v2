@@ -2,10 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { activeEnrollmentStatuses } from "~/server/authorization";
-import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
-import { getCourseOutlineForUser } from "~/server/learning/course-outline";
+import {
+  getCourseOutlineForUser,
+  getCourseOutlinesForUser,
+  type CourseOutline,
+} from "~/server/learning/course-outline";
+import { enrolledCourseWhere } from "~/server/learning/enrolled-courses";
 import type { db as database } from "~/server/db";
+import { memoizeForRequest } from "~/server/request-cache";
 import { vocabularyContentHash } from "~/server/vocabulary/progress-policy";
 import {
   gradePracticeChoice,
@@ -16,18 +20,17 @@ import {
 
 const seed = z.string().trim().min(1).max(100);
 
-async function getAvailablePracticeItems(
-  db: typeof database,
-  userId: string,
-  organizationId?: string,
-) {
-  const courses = await getPracticeCourses(db, userId, organizationId);
-  const outlines = await Promise.all(
-    courses.map((course) =>
-      getCourseOutlineForUser(course.id, userId, { managementAccess: false }),
-    ),
-  );
+export type PracticeItem = {
+  courseId: string;
+  courseTitle: string;
+  courseItemId: string;
+  type: CourseOutline["modules"][number]["items"][number]["type"];
+};
 
+/** Items of learner-view outlines (`managementAccess: false`) outside locked modules. */
+export function practiceItemsFromOutlines(
+  outlines: readonly CourseOutline[],
+): PracticeItem[] {
   return outlines.flatMap((course) =>
     course.modules.flatMap((module) =>
       module.access === "LOCKED"
@@ -42,366 +45,340 @@ async function getAvailablePracticeItems(
   );
 }
 
-function getPracticeCourses(
-  db: typeof database,
-  userId: string,
-  organizationId?: string,
+// Shared by the vocabulary pool and the assessment sample in one request.
+function getAvailablePracticeItems(userId: string, organizationId?: string) {
+  return memoizeForRequest(
+    `practiceItems:${userId}:${organizationId ?? ""}`,
+    async () =>
+      practiceItemsFromOutlines(
+        await getCourseOutlinesForUser(
+          enrolledCourseWhere({ userId, organizationId }),
+          userId,
+          { managementAccess: false },
+        ),
+      ),
+  );
+}
+
+const vocabularyPoolInput = z.object({
+  limit: z.number().int().min(1).max(30).default(24),
+  organizationId: z.string().min(1).optional(),
+  seed,
+});
+
+const assessmentSampleInput = z.object({
+  limit: z.number().int().min(1).max(10).default(5),
+  organizationId: z.string().min(1).optional(),
+  seed,
+});
+
+type PracticeContext = { db: typeof database; actorUserId: string };
+
+/**
+ * `available` lets callers that already built learner-view outlines for the same courses (the
+ * mobile dashboard) skip loading them again.
+ */
+export async function getVocabularyPool(
+  ctx: PracticeContext,
+  input: z.infer<typeof vocabularyPoolInput>,
+  availableItems?: readonly PracticeItem[],
 ) {
-  const now = new Date();
-  return db.course.findMany({
+  const available = (
+    availableItems ??
+    (await getAvailablePracticeItems(ctx.actorUserId, input.organizationId))
+  ).filter((item) => item.type === "VOCABULARY_SET");
+  const placementById = new Map(
+    available.map((item) => [item.courseItemId, item]),
+  );
+  const placementMetadata = await ctx.db.courseItem.findMany({
     where: {
-      organizationId,
-      status: "PUBLISHED",
-      OR: [
-        {
-          enrollments: {
-            some: {
-              userId,
-              status: { in: [...activeEnrollmentStatuses] },
-              source: { not: "COHORT" },
-              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-            },
-          },
+      id: { in: [...placementById.keys()] },
+      isPublished: true,
+      type: "VOCABULARY_SET",
+    },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      vocabularySet: {
+        select: {
+          id: true,
+          title: true,
+          _count: { select: { entries: true } },
         },
-        {
-          cohorts: {
-            some: {
-              status: { in: [...accessGrantingCohortStatuses] },
-              OR: [{ endsAt: null }, { endsAt: { gt: now } }],
-              enrollments: {
-                some: {
-                  userId,
-                  status: { in: [...activeEnrollmentStatuses] },
+      },
+    },
+  });
+  const seenSets = new Set<string>();
+  const sets = placementMetadata.flatMap((placement) => {
+    const set = placement.vocabularySet;
+    const source = placementById.get(placement.id);
+    if (!set || set._count.entries === 0 || !source || seenSets.has(set.id)) {
+      return [];
+    }
+    seenSets.add(set.id);
+    return [{ id: placement.id, set, source }];
+  });
+  const orderedSets = sampleForPractice(
+    sets,
+    `${ctx.actorUserId}:${input.seed}:vocabulary-sets`,
+    sets.length,
+  );
+  async function loadVocabularyCandidates(selectedSets: typeof orderedSets) {
+    const selectedByPlacementId = new Map(
+      selectedSets.map((selected) => [selected.id, selected]),
+    );
+    const placements = await ctx.db.courseItem.findMany({
+      where: { id: { in: [...selectedByPlacementId.keys()] } },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        vocabularySet: {
+          select: {
+            id: true,
+            title: true,
+            entries: {
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+              select: {
+                id: true,
+                term: true,
+                definition: true,
+                imageAssetId: true,
+                progress: {
+                  where: { userId: ctx.actorUserId },
+                  select: {
+                    contentHash: true,
+                    nextReviewAt: true,
+                  },
                 },
               },
             },
           },
         },
-      ],
+      },
+    });
+    return placements.flatMap((placement) => {
+      const set = placement.vocabularySet;
+      const selected = selectedByPlacementId.get(placement.id);
+      if (!set || !selected) return [];
+      const entries = set.entries.filter(
+        (entry) => entry.term.trim() && entry.definition.trim(),
+      );
+      const setVersion = vocabularySetVersion(entries);
+
+      return entries.map((entry) => {
+        const saved = entry.progress[0];
+        const current =
+          saved?.contentHash === vocabularyContentHash(entry) ? saved : null;
+        return {
+          id: entry.id,
+          entryId: entry.id,
+          term: entry.term,
+          definition: entry.definition,
+          imageAssetId: entry.imageAssetId,
+          vocabularySetId: set.id,
+          vocabularySetTitle: set.title,
+          setEntryCount: entries.length,
+          setVersion,
+          courseId: selected.source.courseId,
+          courseTitle: selected.source.courseTitle,
+          sourceCourseItemId: selected.source.courseItemId,
+          due: !current?.nextReviewAt || current.nextReviewAt <= new Date(),
+        };
+      });
+    });
+  }
+  const candidates: Awaited<ReturnType<typeof loadVocabularyCandidates>> = [];
+  const batchSize = Math.min(input.limit * 2, 60);
+  for (
+    let offset = 0;
+    offset < orderedSets.length && candidates.length < input.limit;
+    offset += batchSize
+  ) {
+    candidates.push(
+      ...(await loadVocabularyCandidates(
+        orderedSets.slice(offset, offset + batchSize),
+      )),
+    );
+  }
+  const due = candidates.filter((item) => item.due);
+  const items = sampleForPractice(
+    due.length ? due : candidates,
+    `${ctx.actorUserId}:${input.seed}:vocabulary`,
+    input.limit,
+  ).map(({ id: _id, due: _due, ...item }) => item);
+
+  return {
+    items,
+    hasAvailableContent: candidates.length > 0,
+    serverTime: new Date(),
+  };
+}
+
+export async function getAssessmentSample(
+  ctx: PracticeContext,
+  input: z.infer<typeof assessmentSampleInput>,
+  availableItems?: readonly PracticeItem[],
+) {
+  const available = (
+    availableItems ??
+    (await getAvailablePracticeItems(ctx.actorUserId, input.organizationId))
+  ).filter((item) => item.type === "ASSESSMENT");
+  const placementById = new Map(
+    available.map((item) => [item.courseItemId, item]),
+  );
+  const placementMetadata = await ctx.db.courseItem.findMany({
+    where: {
+      id: { in: [...placementById.keys()] },
+      isPublished: true,
+      type: "ASSESSMENT",
     },
-    orderBy: [{ title: "asc" }, { id: "asc" }],
-    select: { id: true, title: true },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      assessment: {
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          _count: {
+            select: {
+              questions: {
+                where: {
+                  type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   });
+  const seenAssessments = new Set<string>();
+  const assessments = placementMetadata.flatMap((placement) => {
+    const assessment = placement.assessment;
+    const source = placementById.get(placement.id);
+    if (
+      assessment?.status !== "PUBLISHED" ||
+      assessment._count.questions === 0 ||
+      !source ||
+      seenAssessments.has(assessment.id)
+    ) {
+      return [];
+    }
+    seenAssessments.add(assessment.id);
+    return [{ id: placement.id, assessment, source }];
+  });
+  const orderedAssessments = sampleForPractice(
+    assessments,
+    `${ctx.actorUserId}:${input.seed}:assessments`,
+    assessments.length,
+  );
+  async function loadAssessmentCandidates(
+    selectedAssessments: typeof orderedAssessments,
+  ) {
+    const selectedByPlacementId = new Map(
+      selectedAssessments.map((selected) => [selected.id, selected]),
+    );
+    const placements = await ctx.db.courseItem.findMany({
+      where: { id: { in: [...selectedByPlacementId.keys()] } },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        assessment: {
+          select: {
+            id: true,
+            title: true,
+            questions: {
+              where: {
+                type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
+              },
+              orderBy: [{ position: "asc" }, { id: "asc" }],
+              select: {
+                id: true,
+                type: true,
+                prompt: true,
+                options: {
+                  orderBy: [{ position: "asc" }, { id: "asc" }],
+                  select: { id: true, content: true, isCorrect: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    return placements.flatMap((placement) => {
+      const assessment = placement.assessment;
+      const selected = selectedByPlacementId.get(placement.id);
+      if (!assessment || !selected) return [];
+
+      return assessment.questions.flatMap((question) => {
+        const correctCount = question.options.filter(
+          (option) => option.isCorrect,
+        ).length;
+        const valid =
+          question.options.length >= 2 &&
+          (question.type === "SINGLE_CHOICE"
+            ? correctCount === 1
+            : correctCount > 0);
+        if (!valid) return [];
+
+        return [
+          {
+            id: question.id,
+            questionId: question.id,
+            type: question.type,
+            prompt: question.prompt,
+            options: question.options,
+            assessmentTitle: assessment.title,
+            courseId: selected.source.courseId,
+            courseTitle: selected.source.courseTitle,
+            sourceCourseItemId: selected.source.courseItemId,
+          },
+        ];
+      });
+    });
+  }
+  const candidates: Awaited<ReturnType<typeof loadAssessmentCandidates>> = [];
+  const batchSize = Math.min(input.limit * 3, 20);
+  for (
+    let offset = 0;
+    offset < orderedAssessments.length && candidates.length < input.limit;
+    offset += batchSize
+  ) {
+    candidates.push(
+      ...(await loadAssessmentCandidates(
+        orderedAssessments.slice(offset, offset + batchSize),
+      )),
+    );
+  }
+  const questions = sampleForPractice(
+    candidates,
+    `${ctx.actorUserId}:${input.seed}:assessment`,
+    input.limit,
+  ).map(({ id: _id, options, ...question }) => ({
+    ...question,
+    options: preparePracticeOptions(
+      options,
+      `${ctx.actorUserId}:${input.seed}:${question.questionId}:options`,
+    ),
+  }));
+
+  return {
+    questions,
+    hasAvailableContent: candidates.length > 0,
+    serverTime: new Date(),
+  };
 }
 
 export const practiceRouter = createTRPCRouter({
   getVocabularyPool: protectedProcedure
-    .input(
-      z.object({
-        limit: z.number().int().min(1).max(30).default(24),
-        organizationId: z.string().min(1).optional(),
-        seed,
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      const available = (
-        await getAvailablePracticeItems(
-          ctx.db,
-          ctx.actorUserId,
-          input.organizationId,
-        )
-      ).filter((item) => item.type === "VOCABULARY_SET");
-      const placementById = new Map(
-        available.map((item) => [item.courseItemId, item]),
-      );
-      const placementMetadata = await ctx.db.courseItem.findMany({
-        where: {
-          id: { in: [...placementById.keys()] },
-          isPublished: true,
-          type: "VOCABULARY_SET",
-        },
-        orderBy: [{ position: "asc" }, { id: "asc" }],
-        select: {
-          id: true,
-          vocabularySet: {
-            select: {
-              id: true,
-              title: true,
-              _count: { select: { entries: true } },
-            },
-          },
-        },
-      });
-      const seenSets = new Set<string>();
-      const sets = placementMetadata.flatMap((placement) => {
-        const set = placement.vocabularySet;
-        const source = placementById.get(placement.id);
-        if (
-          !set ||
-          set._count.entries === 0 ||
-          !source ||
-          seenSets.has(set.id)
-        ) {
-          return [];
-        }
-        seenSets.add(set.id);
-        return [{ id: placement.id, set, source }];
-      });
-      const orderedSets = sampleForPractice(
-        sets,
-        `${ctx.actorUserId}:${input.seed}:vocabulary-sets`,
-        sets.length,
-      );
-      async function loadVocabularyCandidates(
-        selectedSets: typeof orderedSets,
-      ) {
-        const selectedByPlacementId = new Map(
-          selectedSets.map((selected) => [selected.id, selected]),
-        );
-        const placements = await ctx.db.courseItem.findMany({
-          where: { id: { in: [...selectedByPlacementId.keys()] } },
-          orderBy: [{ position: "asc" }, { id: "asc" }],
-          select: {
-            id: true,
-            vocabularySet: {
-              select: {
-                id: true,
-                title: true,
-                entries: {
-                  orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-                  select: {
-                    id: true,
-                    term: true,
-                    definition: true,
-                    imageAssetId: true,
-                    progress: {
-                      where: { userId: ctx.actorUserId },
-                      select: {
-                        contentHash: true,
-                        nextReviewAt: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        });
-        return placements.flatMap((placement) => {
-          const set = placement.vocabularySet;
-          const selected = selectedByPlacementId.get(placement.id);
-          if (!set || !selected) return [];
-          const entries = set.entries.filter(
-            (entry) => entry.term.trim() && entry.definition.trim(),
-          );
-          const setVersion = vocabularySetVersion(entries);
-
-          return entries.map((entry) => {
-            const saved = entry.progress[0];
-            const current =
-              saved?.contentHash === vocabularyContentHash(entry)
-                ? saved
-                : null;
-            return {
-              id: entry.id,
-              entryId: entry.id,
-              term: entry.term,
-              definition: entry.definition,
-              imageAssetId: entry.imageAssetId,
-              vocabularySetId: set.id,
-              vocabularySetTitle: set.title,
-              setEntryCount: entries.length,
-              setVersion,
-              courseId: selected.source.courseId,
-              courseTitle: selected.source.courseTitle,
-              sourceCourseItemId: selected.source.courseItemId,
-              due: !current?.nextReviewAt || current.nextReviewAt <= new Date(),
-            };
-          });
-        });
-      }
-      const candidates: Awaited<ReturnType<typeof loadVocabularyCandidates>> =
-        [];
-      const batchSize = Math.min(input.limit * 2, 60);
-      for (
-        let offset = 0;
-        offset < orderedSets.length && candidates.length < input.limit;
-        offset += batchSize
-      ) {
-        candidates.push(
-          ...(await loadVocabularyCandidates(
-            orderedSets.slice(offset, offset + batchSize),
-          )),
-        );
-      }
-      const due = candidates.filter((item) => item.due);
-      const items = sampleForPractice(
-        due.length ? due : candidates,
-        `${ctx.actorUserId}:${input.seed}:vocabulary`,
-        input.limit,
-      ).map(({ id: _id, due: _due, ...item }) => item);
-
-      return {
-        items,
-        hasAvailableContent: candidates.length > 0,
-        serverTime: new Date(),
-      };
-    }),
+    .input(vocabularyPoolInput)
+    .query(({ ctx, input }) => getVocabularyPool(ctx, input)),
 
   getAssessmentSample: protectedProcedure
-    .input(
-      z.object({
-        limit: z.number().int().min(1).max(10).default(5),
-        organizationId: z.string().min(1).optional(),
-        seed,
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      const available = (
-        await getAvailablePracticeItems(
-          ctx.db,
-          ctx.actorUserId,
-          input.organizationId,
-        )
-      ).filter((item) => item.type === "ASSESSMENT");
-      const placementById = new Map(
-        available.map((item) => [item.courseItemId, item]),
-      );
-      const placementMetadata = await ctx.db.courseItem.findMany({
-        where: {
-          id: { in: [...placementById.keys()] },
-          isPublished: true,
-          type: "ASSESSMENT",
-        },
-        orderBy: [{ position: "asc" }, { id: "asc" }],
-        select: {
-          id: true,
-          assessment: {
-            select: {
-              id: true,
-              title: true,
-              status: true,
-              _count: {
-                select: {
-                  questions: {
-                    where: {
-                      type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-      const seenAssessments = new Set<string>();
-      const assessments = placementMetadata.flatMap((placement) => {
-        const assessment = placement.assessment;
-        const source = placementById.get(placement.id);
-        if (
-          assessment?.status !== "PUBLISHED" ||
-          assessment._count.questions === 0 ||
-          !source ||
-          seenAssessments.has(assessment.id)
-        ) {
-          return [];
-        }
-        seenAssessments.add(assessment.id);
-        return [{ id: placement.id, assessment, source }];
-      });
-      const orderedAssessments = sampleForPractice(
-        assessments,
-        `${ctx.actorUserId}:${input.seed}:assessments`,
-        assessments.length,
-      );
-      async function loadAssessmentCandidates(
-        selectedAssessments: typeof orderedAssessments,
-      ) {
-        const selectedByPlacementId = new Map(
-          selectedAssessments.map((selected) => [selected.id, selected]),
-        );
-        const placements = await ctx.db.courseItem.findMany({
-          where: { id: { in: [...selectedByPlacementId.keys()] } },
-          orderBy: [{ position: "asc" }, { id: "asc" }],
-          select: {
-            id: true,
-            assessment: {
-              select: {
-                id: true,
-                title: true,
-                questions: {
-                  where: {
-                    type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
-                  },
-                  orderBy: [{ position: "asc" }, { id: "asc" }],
-                  select: {
-                    id: true,
-                    type: true,
-                    prompt: true,
-                    options: {
-                      orderBy: [{ position: "asc" }, { id: "asc" }],
-                      select: { id: true, content: true, isCorrect: true },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        });
-        return placements.flatMap((placement) => {
-          const assessment = placement.assessment;
-          const selected = selectedByPlacementId.get(placement.id);
-          if (!assessment || !selected) return [];
-
-          return assessment.questions.flatMap((question) => {
-            const correctCount = question.options.filter(
-              (option) => option.isCorrect,
-            ).length;
-            const valid =
-              question.options.length >= 2 &&
-              (question.type === "SINGLE_CHOICE"
-                ? correctCount === 1
-                : correctCount > 0);
-            if (!valid) return [];
-
-            return [
-              {
-                id: question.id,
-                questionId: question.id,
-                type: question.type,
-                prompt: question.prompt,
-                options: question.options,
-                assessmentTitle: assessment.title,
-                courseId: selected.source.courseId,
-                courseTitle: selected.source.courseTitle,
-                sourceCourseItemId: selected.source.courseItemId,
-              },
-            ];
-          });
-        });
-      }
-      const candidates: Awaited<ReturnType<typeof loadAssessmentCandidates>> =
-        [];
-      const batchSize = Math.min(input.limit * 3, 20);
-      for (
-        let offset = 0;
-        offset < orderedAssessments.length && candidates.length < input.limit;
-        offset += batchSize
-      ) {
-        candidates.push(
-          ...(await loadAssessmentCandidates(
-            orderedAssessments.slice(offset, offset + batchSize),
-          )),
-        );
-      }
-      const questions = sampleForPractice(
-        candidates,
-        `${ctx.actorUserId}:${input.seed}:assessment`,
-        input.limit,
-      ).map(({ id: _id, options, ...question }) => ({
-        ...question,
-        options: preparePracticeOptions(
-          options,
-          `${ctx.actorUserId}:${input.seed}:${question.questionId}:options`,
-        ),
-      }));
-
-      return {
-        questions,
-        hasAvailableContent: candidates.length > 0,
-        serverTime: new Date(),
-      };
-    }),
+    .input(assessmentSampleInput)
+    .query(({ ctx, input }) => getAssessmentSample(ctx, input)),
 
   gradeAssessmentAnswer: protectedProcedure
     .input(
@@ -412,53 +389,62 @@ export const practiceRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const source = await ctx.db.courseItem.findFirst({
-        where: {
-          id: input.sourceCourseItemId,
-          isPublished: true,
-          type: "ASSESSMENT",
-        },
-        select: { module: { select: { courseId: true } } },
-      });
-      const courses = await getPracticeCourses(ctx.db, ctx.actorUserId);
-      if (
-        !source ||
-        !courses.some((course) => course.id === source.module.courseId)
-      ) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const outline = await getCourseOutlineForUser(
-        source.module.courseId,
-        ctx.actorUserId,
-        { managementAccess: false },
-      );
+      // The question is only used after the access checks below pass.
+      const [source, question] = await Promise.all([
+        ctx.db.courseItem.findFirst({
+          where: {
+            id: input.sourceCourseItemId,
+            isPublished: true,
+            type: "ASSESSMENT",
+          },
+          select: { module: { select: { courseId: true } } },
+        }),
+        ctx.db.assessmentQuestion.findFirst({
+          where: {
+            id: input.questionId,
+            type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
+            assessment: {
+              status: "PUBLISHED",
+              courseItems: {
+                some: {
+                  id: input.sourceCourseItemId,
+                  isPublished: true,
+                  type: "ASSESSMENT",
+                },
+              },
+            },
+          },
+          select: {
+            type: true,
+            explanation: true,
+            options: { select: { id: true, isCorrect: true } },
+          },
+        }),
+      ]);
+      if (!source) throw new TRPCError({ code: "FORBIDDEN" });
+      // Practice is limited to courses the learner is enrolled in (staff
+      // access alone does not count), outside locked modules.
+      const [enrolledCourse, outline] = await Promise.all([
+        ctx.db.course.findFirst({
+          where: {
+            AND: [
+              { id: source.module.courseId },
+              enrolledCourseWhere({ userId: ctx.actorUserId }),
+            ],
+          },
+          select: { id: true },
+        }),
+        getCourseOutlineForUser(source.module.courseId, ctx.actorUserId, {
+          managementAccess: false,
+        }),
+      ]);
+      if (!enrolledCourse) throw new TRPCError({ code: "FORBIDDEN" });
       const available = outline.modules.some(
         (module) =>
           module.access !== "LOCKED" &&
           module.items.some((item) => item.id === input.sourceCourseItemId),
       );
       if (!available) throw new TRPCError({ code: "FORBIDDEN" });
-      const question = await ctx.db.assessmentQuestion.findFirst({
-        where: {
-          id: input.questionId,
-          type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
-          assessment: {
-            status: "PUBLISHED",
-            courseItems: {
-              some: {
-                id: input.sourceCourseItemId,
-                isPublished: true,
-                type: "ASSESSMENT",
-              },
-            },
-          },
-        },
-        select: {
-          type: true,
-          explanation: true,
-          options: { select: { id: true, isCorrect: true } },
-        },
-      });
       if (!question) throw new TRPCError({ code: "NOT_FOUND" });
       const correctCount = question.options.filter(
         (option) => option.isCorrect,

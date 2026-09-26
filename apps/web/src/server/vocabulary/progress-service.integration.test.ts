@@ -75,6 +75,7 @@ integration(
         actorUserId: userId,
         session: null,
         headers: new Headers(),
+        requestCache: new Map(),
       });
       const base = {
         gameKey: "cards",
@@ -130,6 +131,27 @@ integration(
           where: { userId, action: "VOCABULARY_REVIEWED" },
         }),
       ).toBe(2);
+
+      // Within one batch, a repeated attempt id or session entry is a
+      // duplicate, and later attempts build on earlier ones.
+      const batch = await caller.recordVocabularyAttempts({
+        ...base,
+        sessionId: "session-3",
+        attempts: [
+          { ...base.attempts[0]!, attemptId: "third", result: "INCORRECT" },
+          { ...base.attempts[0]!, attemptId: "third" },
+          { ...base.attempts[0]!, attemptId: "fourth" },
+        ],
+      });
+      expect(batch).toMatchObject({ accepted: 1, duplicates: 2 });
+      expect(
+        await db.vocabularyProgress.findUnique({
+          where: { entryId_userId: { entryId: entry.id, userId } },
+        }),
+      ).toMatchObject({ correctRecallCount: 2 });
+      expect(
+        await db.vocabularyPracticeAttempt.count({ where: { userId } }),
+      ).toBe(3);
     } finally {
       if (ids.organizationId) {
         await db.userActivityEvent.deleteMany({ where: { userId } });

@@ -12,7 +12,7 @@ import {
 } from "~/components/ui/sidebar";
 import { cn } from "~/lib/utils";
 import { requireSession } from "~/server/auth/dal";
-import { api } from "~/trpc/server";
+import { getMyCourses } from "./learner-data";
 
 const hanken = Hanken_Grotesk({
   subsets: ["latin"],
@@ -29,11 +29,12 @@ export default async function LearnerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireSession();
-  const [cookieStore, courses] = await Promise.all([
-    cookies(),
-    api.learning.listMyCourses(),
-  ]);
+  // Start the course list with the session check; the redirect for signed-out
+  // visitors must still win over the procedure's UNAUTHORIZED error.
+  const coursesPromise = getMyCourses();
+  coursesPromise.catch(() => undefined);
+  const [, cookieStore] = await Promise.all([requireSession(), cookies()]);
+  const courses = await coursesPromise;
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (

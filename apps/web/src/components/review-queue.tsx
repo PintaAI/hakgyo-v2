@@ -52,9 +52,13 @@ function AttemptDetail({ attempt, onDone }: { attempt: Detail; onDone?: () => vo
     setError("");
     try {
       await review.mutateAsync({ attemptId: attempt.id, answers });
+      // Only the reviewer-side views that show this attempt's status or score change.
       await Promise.all([
-        utils.assessment.invalidate(), utils.assessmentEvent.invalidate(),
-        utils.learning.invalidate(), utils.organization.invalidate(),
+        utils.assessment.getReviewAttempt.invalidate({ attemptId: attempt.id }),
+        utils.assessment.listAttempts.invalidate(),
+        utils.assessment.listAttemptsNeedingReview.invalidate(),
+        utils.organization.getDashboardAnalytics.invalidate(),
+        ...(attempt.assessmentEvent ? [utils.assessmentEvent.getManageable.invalidate({ eventId: attempt.assessmentEvent.id })] : []),
       ]);
       toast.success("Review selesai. Nilai dan feedback sekarang tersedia untuk siswa.");
       onDone?.();

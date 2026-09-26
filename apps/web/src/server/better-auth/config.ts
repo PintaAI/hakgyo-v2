@@ -18,6 +18,10 @@ const mcpResource = `${env.APP_URL}/api/mcp`;
 
 export const auth = betterAuth({
   baseURL: env.APP_URL,
+  advanced: {
+    // Load session + user in one query instead of two sequential lookups.
+    database: { joins: true },
+  },
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
@@ -49,6 +53,11 @@ export const auth = betterAuth({
     enabled: true,
   },
   user: {
+    // Returned with every session so request auth can reject inactive accounts without another query.
+    additionalFields: {
+      suspendedAt: { type: "date", required: false, input: false },
+      deletedAt: { type: "date", required: false, input: false },
+    },
     deleteUser: {
       enabled: true,
       beforeDelete: async (user) => {
@@ -58,9 +67,8 @@ export const auth = betterAuth({
         }
       },
       afterDelete: async (user) => {
-        const { disableAllUserTargets } = await import(
-          "~/server/notifications/dispatch"
-        );
+        const { disableAllUserTargets } =
+          await import("~/server/notifications/dispatch");
         await disableAllUserTargets(user.id, "account deleted").catch(
           (error) => {
             console.error("Failed to disable push targets on delete", error);
@@ -93,7 +101,9 @@ export const auth = betterAuth({
     ...(env.NODE_ENV === "development" ? ["exp://", "exp://**"] : []),
   ],
   plugins: [
-    jwt(),
+    // Server-side getSession calls discard the `set-auth-jwt` header, and signing it costs a JWKS
+    // read plus a signature per request. MCP/OAuth token signing is unaffected.
+    jwt({ disableSettingJwtHeader: true }),
     mcp({
       loginPage: "/",
       consentPage: "/oauth/consent",

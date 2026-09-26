@@ -74,6 +74,9 @@ function getMaterialContent(value: unknown): MaterialContent {
   return blocks.length ? blocks : EMPTY_DOCUMENT;
 }
 
+// Material documents are large; batch keystrokes into fewer saves.
+const materialAutosaveDelayMs = 1500;
+
 function errorMessage(error: unknown) {
   if (
     typeof error === "object" &&
@@ -108,7 +111,6 @@ export function MaterialEditor({
     { organizationId, materialId: materialId ?? "" },
     { enabled: Boolean(materialId) },
   );
-  const organization = api.organization.get.useQuery({ organizationId });
   const createMaterial = api.content.createMaterial.useMutation();
   const createMaterialItem = api.content.createMaterialItem.useMutation();
   const updateMaterial = api.content.updateMaterial.useMutation();
@@ -116,7 +118,6 @@ export function MaterialEditor({
   const attachAsset = api.content.attachMaterialAsset.useMutation();
   const detachAsset = api.content.detachMaterialAsset.useMutation();
   const pendingAssetIdsRef = useRef(new Set<string>());
-  const canDelete = Boolean(organization.data);
 
   const assetStorage: EditorAssetStorageOptions = {
     organizationId,
@@ -194,7 +195,9 @@ export function MaterialEditor({
       initialDescription={material.data?.description ?? ""}
       initialRequirementPolicy={material.data?.requirementPolicy ?? "ALL"}
       initialTitle={material.data?.title ?? ""}
-      canDelete={canDelete}
+      // The pages rendering this editor already require organization
+      // membership; the server still enforces ownership on delete.
+      canDelete
       isDeleting={deleteMaterial.isPending}
       isSaving={
         createMaterial.isPending ||
@@ -227,7 +230,7 @@ export function MaterialEditor({
       ) => {
         try {
           if (materialId) {
-            await updateMaterial.mutateAsync({
+            const saved = await updateMaterial.mutateAsync({
               organizationId,
               materialId,
               title,
@@ -236,10 +239,22 @@ export function MaterialEditor({
               editorSchemaVersion: 1,
               requirementPolicy,
             });
+            // The editor already holds the saved document: patch the cache
+            // instead of refetching it, and only mark it stale so a later
+            // mount picks up the server-sanitized content.
+            const materialInput = { organizationId, materialId };
+            utils.content.getMaterial.setData(materialInput, (current) =>
+              current
+                ? {
+                    ...current,
+                    ...saved,
+                    content: content as typeof current.content,
+                  }
+                : current,
+            );
             await Promise.all([
-              utils.content.getMaterial.invalidate({
-                organizationId,
-                materialId,
+              utils.content.getMaterial.invalidate(materialInput, {
+                refetchType: "none",
               }),
               utils.content.listMaterials.invalidate({ organizationId }),
             ]);
@@ -386,7 +401,7 @@ function MaterialEditorForm({
       setAutosaveStatus("error");
       throw error;
     }
-  });
+  }, materialAutosaveDelayMs);
 
   useEffect(() => {
     if (!materialId) return;

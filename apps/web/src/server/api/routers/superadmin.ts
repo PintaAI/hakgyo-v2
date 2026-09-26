@@ -40,15 +40,13 @@ async function audit(
 export const superadminRouter = createTRPCRouter({
   dashboard: superadminProcedure.query(async ({ ctx }) => {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [recentSignIns, users] = await Promise.all([
+    const [recentSignIns, users, firstPage] = await Promise.all([
       ctx.db.session.count({ where: { createdAt: { gte: since } } }),
       ctx.db.user.count({ where: { deletedAt: null } }),
+      listUsers(ctx.db, { search: "", page: 1 }),
     ]);
 
-    return {
-      metrics: { recentSignIns, users },
-      users: await listUsers(ctx.db, { search: "", page: 1 }),
-    };
+    return { metrics: { recentSignIns, users }, users: firstPage };
   }),
 
   listUsers: superadminProcedure

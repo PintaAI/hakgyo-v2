@@ -270,6 +270,7 @@ describe("getActiveBrandContext", () => {
       actorUserId: null,
       session: null,
       headers: new Headers(),
+      requestCache: new Map(),
     });
 
     const result = await caller.getContext({

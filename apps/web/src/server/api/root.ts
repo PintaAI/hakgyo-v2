@@ -1,3 +1,4 @@
+import { createRequestCache } from "~/server/request-cache";
 import { organizationLandingRouter } from "~/server/api/routers/organization-landing";
 import { accountRouter } from "~/server/api/routers/account";
 import { assessmentRouter } from "~/server/api/routers/assessment";
@@ -62,4 +63,5 @@ export const createMcpCaller = (actorUserId: string) =>
     db,
     headers: new Headers(),
     session: null,
+    requestCache: createRequestCache(),
   });

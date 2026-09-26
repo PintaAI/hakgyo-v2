@@ -56,6 +56,7 @@ import {
 } from "./block-note-schema";
 import { DynamicLearnerBlockNoteDocument } from "./dynamic-learner-block-note-document";
 import { PdfBookProvider } from "./pdf-book-context";
+import { loadAssetDownloadUrl } from "~/components/asset-download-url";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
 import { api } from "~/trpc/react";
 import {
@@ -212,11 +213,7 @@ export function BlockNoteEditor({
   const resolveFileUrl = async (url: string) => {
     const assetId = getAssetId(url);
     if (!assetId) return url;
-    const result = await utils.client.storage.createDownloadUrl.mutate({
-      assetId,
-      disposition: "inline",
-    });
-    return result.downloadUrl;
+    return loadAssetDownloadUrl(utils.client, assetId);
   };
 
   const editor = useCreateBlockNote({

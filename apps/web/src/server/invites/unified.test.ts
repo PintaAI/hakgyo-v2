@@ -55,6 +55,7 @@ function database(input: {
                     {
                       id: "module-1",
                       title: "Introduction",
+                      _count: { items: 1 },
                       items: [
                         {
                           id: "item-1",

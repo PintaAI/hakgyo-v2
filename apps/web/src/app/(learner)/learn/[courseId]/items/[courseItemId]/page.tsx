@@ -13,6 +13,11 @@ export default async function CourseItemPage({
   params: Promise<{ courseId: string; courseItemId: string }>;
 }) {
   const { courseId, courseItemId } = await params;
+  // Most items are materials or vocabulary, so load the item alongside the
+  // outline. Its access check reuses the request-memoized outline. Errors are
+  // only surfaced once the outline confirms the item is a learner activity.
+  const itemPromise = api.learning.getCourseItem({ courseItemId });
+  itemPromise.catch(() => undefined);
   const outline = await api.learning.getCourseOutline({ courseId });
   const outlineItem = outline.modules
     .flatMap((module) => module.items)
@@ -31,7 +36,7 @@ export default async function CourseItemPage({
     );
   }
 
-  const item = await api.learning.getCourseItem({ courseItemId });
+  const item = await itemPromise;
   if (!item) notFound();
 
   return (

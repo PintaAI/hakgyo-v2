@@ -1,4 +1,5 @@
-import type { Prisma } from "../../generated/prisma/client";
+import { Prisma } from "../../generated/prisma/client";
+import { chunk } from "./batch";
 import {
   calculateStreak,
   DEFAULT_ACHIEVEMENT_RULES,
@@ -7,100 +8,137 @@ import {
 
 type Transaction = Prisma.TransactionClient;
 
+// Bounds the size of `IN (...)` lists and multi-row VALUES statements.
+const MAX_BATCH_ROWS = 5000;
+
 async function rebuildGamification(
   tx: Transaction,
   userIds: readonly string[],
 ) {
   if (userIds.length === 0) return;
 
-  const [activities, existingSummaries] = await Promise.all([
-    tx.userActivityEvent.findMany({
+  // Aggregate in SQL instead of loading every user's full activity history.
+  const [totals, streakDays] = await Promise.all([
+    tx.userActivityEvent.groupBy({
+      by: ["userId"],
       where: { userId: { in: [...userIds] } },
-      select: {
-        activityDate: true,
-        contributesToStreak: true,
-        userId: true,
-        xpAwarded: true,
-      },
+      _count: { _all: true },
+      _sum: { xpAwarded: true },
+      _max: { activityDate: true },
     }),
-    tx.userGamification.findMany({
-      where: { userId: { in: [...userIds] } },
-      select: { timeZone: true, userId: true },
+    tx.userActivityEvent.groupBy({
+      by: ["userId", "activityDate"],
+      where: { userId: { in: [...userIds] }, contributesToStreak: true },
     }),
   ]);
-  const activitiesByUser = new Map<
-    string,
-    (typeof activities)[number][]
-  >();
-  for (const activity of activities) {
-    const userActivities = activitiesByUser.get(activity.userId) ?? [];
-    userActivities.push(activity);
-    activitiesByUser.set(activity.userId, userActivities);
+  const totalsByUser = new Map(totals.map((total) => [total.userId, total]));
+  const streakDatesByUser = new Map<string, Date[]>();
+  for (const { activityDate, userId } of streakDays) {
+    const dates = streakDatesByUser.get(userId) ?? [];
+    dates.push(activityDate);
+    streakDatesByUser.set(userId, dates);
   }
-  const timeZones = new Map(
-    existingSummaries.map((summary) => [summary.userId, summary.timeZone]),
-  );
-  const managedAchievementCodes = DEFAULT_ACHIEVEMENT_RULES.map(
+  const managedAchievementCodes: string[] = DEFAULT_ACHIEVEMENT_RULES.map(
     ({ code }) => code,
   );
+  const now = new Date();
 
-  for (const userId of userIds) {
-    const userActivities = activitiesByUser.get(userId) ?? [];
-    const streak = calculateStreak(
-      userActivities
-        .filter(({ contributesToStreak }) => contributesToStreak)
-        .map(({ activityDate }) => activityDate),
-      { now: new Date(), timeZone: "UTC" },
-    );
+  const summaries = userIds.map((userId) => {
+    const total = totalsByUser.get(userId);
+    const streak = calculateStreak(streakDatesByUser.get(userId) ?? [], {
+      now,
+      timeZone: "UTC",
+    });
     const snapshot = {
-      completedActivities: userActivities.length,
+      completedActivities: total?._count._all ?? 0,
       currentStreak: streak.currentStreak,
       longestStreak: streak.longestStreak,
-      totalXp: userActivities.reduce(
-        (total, activity) => total + activity.xpAwarded,
-        0,
+      totalXp: total?._sum.xpAwarded ?? 0,
+    };
+    return {
+      userId,
+      snapshot,
+      lastActivityDate: total?._max.activityDate ?? null,
+      eligibleAchievements: findNewAchievements(
+        snapshot,
+        DEFAULT_ACHIEVEMENT_RULES,
+        new Set(),
       ),
     };
-    const lastActivityDate = userActivities.reduce<Date | null>(
-      (latest, activity) =>
-        !latest || activity.activityDate > latest
-          ? activity.activityDate
-          : latest,
-      null,
-    );
+  });
 
-    await tx.userGamification.upsert({
-      where: { userId },
-      create: {
-        ...snapshot,
-        lastActivityDate,
-        timeZone: timeZones.get(userId) ?? "UTC",
-        userId,
-      },
-      update: { ...snapshot, lastActivityDate },
-    });
+  // One upsert statement per batch. New rows get the default "UTC" time zone
+  // (there is no existing summary to copy it from); existing rows keep theirs.
+  const updatedAt = now.toISOString();
+  for (const batch of chunk(summaries, MAX_BATCH_ROWS)) {
+    await tx.$executeRaw`
+      INSERT INTO "UserGamification" (
+        "userId",
+        "totalXp",
+        "completedActivities",
+        "currentStreak",
+        "longestStreak",
+        "lastActivityDate",
+        "timeZone",
+        "updatedAt"
+      )
+      VALUES ${Prisma.join(
+        batch.map(
+          ({ userId, snapshot, lastActivityDate }) => Prisma.sql`(
+            ${userId},
+            ${snapshot.totalXp}::integer,
+            ${snapshot.completedActivities}::integer,
+            ${snapshot.currentStreak}::integer,
+            ${snapshot.longestStreak}::integer,
+            ${lastActivityDate?.toISOString().slice(0, 10) ?? null}::date,
+            'UTC',
+            ${updatedAt}::timestamp
+          )`,
+        ),
+      )}
+      ON CONFLICT ("userId") DO UPDATE SET
+        "totalXp" = EXCLUDED."totalXp",
+        "completedActivities" = EXCLUDED."completedActivities",
+        "currentStreak" = EXCLUDED."currentStreak",
+        "longestStreak" = EXCLUDED."longestStreak",
+        "lastActivityDate" = EXCLUDED."lastActivityDate",
+        "updatedAt" = EXCLUDED."updatedAt"
+    `;
+  }
 
-    const eligibleAchievements = findNewAchievements(
-      snapshot,
-      DEFAULT_ACHIEVEMENT_RULES,
-      new Set(),
+  // Users with the same eligible achievements share one delete statement.
+  const usersByEligibility = new Map<
+    string,
+    { eligible: string[]; userIds: string[] }
+  >();
+  for (const { eligibleAchievements, userId } of summaries) {
+    const key = eligibleAchievements.join(",");
+    const group = usersByEligibility.get(key) ?? {
+      eligible: eligibleAchievements,
+      userIds: [],
+    };
+    group.userIds.push(userId);
+    usersByEligibility.set(key, group);
+  }
+  for (const {
+    eligible,
+    userIds: groupUserIds,
+  } of usersByEligibility.values()) {
+    const revoked = managedAchievementCodes.filter(
+      (code) => !eligible.includes(code),
     );
-    await tx.userAchievement.deleteMany({
-      where: {
-        code: {
-          in: managedAchievementCodes.filter(
-            (code) => !eligibleAchievements.includes(code),
-          ),
-        },
-        userId,
-      },
-    });
-    if (eligibleAchievements.length) {
-      await tx.userAchievement.createMany({
-        data: eligibleAchievements.map((code) => ({ code, userId })),
-        skipDuplicates: true,
+    if (!revoked.length) continue;
+    for (const batch of chunk(groupUserIds, MAX_BATCH_ROWS)) {
+      await tx.userAchievement.deleteMany({
+        where: { code: { in: revoked }, userId: { in: batch } },
       });
     }
+  }
+  const granted = summaries.flatMap(({ eligibleAchievements, userId }) =>
+    eligibleAchievements.map((code) => ({ code, userId })),
+  );
+  for (const batch of chunk(granted, MAX_BATCH_ROWS)) {
+    await tx.userAchievement.createMany({ data: batch, skipDuplicates: true });
   }
 }
 
@@ -110,26 +148,37 @@ async function deleteCourseItemActivity(
 ) {
   if (itemIds.length === 0) return 0;
 
-  const activities = await tx.userActivityEvent.findMany({
-    where: {
-      OR: itemIds.map((courseItemId) => ({
-        idempotencyKey: {
-          endsWith: `:${courseItemId}`,
-          startsWith: "content-completed:",
-        },
-      })),
-    },
-    select: { id: true, userId: true },
+  // Completion events are recorded together with the learner's progress row
+  // (key `content-completed:${userId}:${courseItemId}`), and progress is only
+  // removed together with its item, so the progress rows name every key.
+  // Exact keys hit the unique index instead of scanning with LIKE patterns.
+  const progress = await tx.contentProgress.findMany({
+    where: { courseItemId: { in: [...itemIds] } },
+    select: { courseItemId: true, userId: true },
   });
+  const keys = progress.map(
+    ({ courseItemId, userId }) => `content-completed:${userId}:${courseItemId}`,
+  );
+  const activities = (
+    await Promise.all(
+      chunk(keys, MAX_BATCH_ROWS).map((batch) =>
+        tx.userActivityEvent.findMany({
+          where: { idempotencyKey: { in: batch } },
+          select: { id: true, userId: true },
+        }),
+      ),
+    )
+  ).flat();
   if (activities.length === 0) return 0;
 
-  await tx.userActivityEvent.deleteMany({
-    where: { id: { in: activities.map(({ id }) => id) } },
-  });
-  await rebuildGamification(
-    tx,
-    [...new Set(activities.map(({ userId }) => userId))],
-  );
+  for (const batch of chunk(activities, MAX_BATCH_ROWS)) {
+    await tx.userActivityEvent.deleteMany({
+      where: { id: { in: batch.map(({ id }) => id) } },
+    });
+  }
+  await rebuildGamification(tx, [
+    ...new Set(activities.map(({ userId }) => userId)),
+  ]);
   return activities.length;
 }
 

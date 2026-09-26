@@ -64,6 +64,21 @@ describe("assessment event ranking", () => {
     expect(ranked.map(({ attemptId }) => attemptId)).toEqual(["complete"]);
   });
 
+  test("breaks full ties by user id in ordinal order like the SQL leaderboard", () => {
+    const tied = (id: string, userId: string) => ({
+      ...attempt(id, 9, "2026-09-04T10:05:00.000Z"),
+      userId,
+    });
+    const ranked = rankAssessmentEventAttempts([
+      tied("lower", "abc"),
+      tied("upper", "Abd"),
+      tied("digit", "9zz"),
+    ]);
+
+    expect(ranked.map(({ userId }) => userId)).toEqual(["9zz", "Abd", "abc"]);
+    expect(ranked.map(({ rank }) => rank)).toEqual([1, 2, 3]);
+  });
+
   test("uses each learner's best valid attempt when re-attempts exist", () => {
     const first = attempt("first", 6, "2026-09-04T10:04:00.000Z");
     const best = {

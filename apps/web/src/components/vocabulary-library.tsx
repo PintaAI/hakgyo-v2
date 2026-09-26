@@ -1,7 +1,8 @@
 "use client";
 
-import { useDeferredValue, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { keepPreviousData } from "@tanstack/react-query";
 import {
   LanguagesIcon,
   LibraryIcon,
@@ -14,6 +15,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { api } from "~/trpc/react";
 
 export function VocabularyLibrary({
@@ -23,19 +25,18 @@ export function VocabularyLibrary({
   organizationId: string;
   organizationSlug: string;
 }) {
-  const vocabularySets = api.content.listVocabularySets.useQuery({
-    organizationId,
-  });
   const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
-  const visibleSets =
-    vocabularySets.data?.filter((set) =>
-      `${set.title} ${set.description ?? ""} ${set.entries
-        .map((entry) => `${entry.term} ${entry.definition}`)
-        .join(" ")}`
-        .toLocaleLowerCase()
-        .includes(deferredSearch),
-    ) ?? [];
+  // Entry terms and definitions are matched on the server, so the list does
+  // not need to ship every entry.
+  const debouncedSearch = useDebouncedValue(search.trim().slice(0, 200));
+  const vocabularySets = api.content.listVocabularySets.useQuery(
+    {
+      organizationId,
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    },
+    { placeholderData: keepPreviousData },
+  );
+  const visibleSets = vocabularySets.data ?? [];
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -102,7 +103,7 @@ export function VocabularyLibrary({
                       <LanguagesIcon className="size-5" />
                     </div>
                     <Badge variant="outline">
-                      {set.entries.length} istilah
+                      {set._count.entries} istilah
                     </Badge>
                   </div>
                   <div className="min-w-0 space-y-1">
@@ -119,12 +120,12 @@ export function VocabularyLibrary({
                         {entry.term}
                       </Badge>
                     ))}
-                    {set.entries.length > 3 && (
+                    {set._count.entries > set.entries.length && (
                       <span className="text-muted-foreground self-center text-xs">
-                        +{set.entries.length - 3} lainnya
+                        +{set._count.entries - set.entries.length} lainnya
                       </span>
                     )}
-                    {!set.entries.length && (
+                    {!set._count.entries && (
                       <span className="text-muted-foreground text-xs">
                         Belum ada istilah
                       </span>
@@ -141,16 +142,16 @@ export function VocabularyLibrary({
             <LanguagesIcon className="size-5" />
           </div>
           <h2 className="font-heading font-semibold">
-            {deferredSearch
+            {debouncedSearch
               ? "Kosakata tidak ditemukan"
               : "Buat set kosakata pertama Anda"}
           </h2>
           <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-            {deferredSearch
+            {debouncedSearch
               ? "Coba judul set, istilah, atau definisi yang berbeda."
               : "Kelompokkan istilah terkait menjadi satu set yang dapat dipakai ulang lintas course."}
           </p>
-          {!deferredSearch && (
+          {!debouncedSearch && (
             <Link
               href={`/workspace/${organizationSlug}/library/vocabulary/new`}
               className={buttonVariants({ className: "mt-4" })}

@@ -128,17 +128,38 @@ export async function getLearnerPdfBooks(
   db: DatabaseClient,
   input: { organizationId: string; content: unknown },
 ): Promise<PdfBookResource[]> {
-  const filter = pageFilter(input.content);
-  if (!filter) return [];
+  const [books] = await getLearnerPdfBooksForSources(db, [input]);
+  return books!;
+}
+
+/**
+ * `getLearnerPdfBooks` for several materials in one query (none when no material embeds pages).
+ * Results are in `sources` order.
+ */
+export async function getLearnerPdfBooksForSources(
+  db: DatabaseClient,
+  sources: readonly { organizationId: string; content: unknown }[],
+): Promise<PdfBookResource[][]> {
+  const rangesBySource = sources.map((source) =>
+    collectPdfPageRanges(source.content),
+  );
+  const filter = sources.flatMap((source, index) =>
+    rangesBySource[index]!.map(({ bookId, startPage, endPage }) => ({
+      organizationId: source.organizationId,
+      bookId,
+      pageNumber: { gte: startPage, lte: endPage },
+    })),
+  );
+  if (!filter.length) return sources.map(() => []);
   const pages = await db.pdfBookPage.findMany({
     where: {
-      organizationId: input.organizationId,
       book: { status: "READY" },
       asset: { confirmedAt: { not: null }, deletedAt: null },
       OR: filter,
     },
     orderBy: [{ bookId: "asc" }, { pageNumber: "asc" }],
     select: {
+      organizationId: true,
       pageNumber: true,
       assetId: true,
       width: true,
@@ -147,11 +168,25 @@ export async function getLearnerPdfBooks(
     },
   });
 
-  const books = new Map<string, PdfBookResource>();
-  for (const { book, ...page } of pages) {
-    const resource = books.get(book.id) ?? { ...book, pages: [] };
-    resource.pages.push(page);
-    books.set(book.id, resource);
-  }
-  return [...books.values()];
+  return sources.map((source, index) => {
+    const ranges = rangesBySource[index]!;
+    const books = new Map<string, PdfBookResource>();
+    for (const { book, organizationId, ...page } of pages) {
+      if (
+        organizationId !== source.organizationId ||
+        !ranges.some(
+          (range) =>
+            range.bookId === book.id &&
+            page.pageNumber >= range.startPage &&
+            page.pageNumber <= range.endPage,
+        )
+      ) {
+        continue;
+      }
+      const resource = books.get(book.id) ?? { ...book, pages: [] };
+      resource.pages.push(page);
+      books.set(book.id, resource);
+    }
+    return [...books.values()];
+  });
 }

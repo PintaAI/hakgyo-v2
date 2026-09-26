@@ -154,6 +154,171 @@ function landingConfigReferencesImage(value: unknown, imageUrl: string) {
   );
 }
 
+const downloadDispositionSchema = z
+  .enum(["attachment", "inline"])
+  .default("attachment");
+const MAX_DOWNLOAD_URL_BATCH = 100;
+
+type DownloadableAsset = {
+  id: string;
+  objectKey: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+};
+
+/**
+ * Returns the confirmed, non-deleted assets from `assetIds` that the user may
+ * download: their own uploads, anything in an organization they own or
+ * administer, PDF book pages for any staff member, and otherwise files linked
+ * to a course item the user can open.
+ */
+async function findDownloadableAssets(
+  assetIds: readonly string[],
+  userId: string,
+): Promise<DownloadableAsset[]> {
+  const assets = await db.asset.findMany({
+    where: {
+      id: { in: [...assetIds] },
+      confirmedAt: { not: null },
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      objectKey: true,
+      fileName: true,
+      contentType: true,
+      size: true,
+      uploadedByUserId: true,
+      organization: {
+        select: {
+          members: {
+            where: { userId },
+            select: { role: true },
+            take: 1,
+          },
+        },
+      },
+      pdfBookPage: { select: { bookId: true } },
+      pdfBookThumbnail: { select: { bookId: true } },
+    },
+  });
+
+  const allowed: DownloadableAsset[] = [];
+  const needsCourseItem = new Map<string, DownloadableAsset>();
+  for (const {
+    organization,
+    pdfBookPage,
+    pdfBookThumbnail,
+    uploadedByUserId,
+    ...asset
+  } of assets) {
+    const memberRole = organization.members[0]?.role;
+    // Any staff member may browse PDF book pages while authoring lessons.
+    const isPdfBookImage = Boolean(pdfBookPage ?? pdfBookThumbnail);
+    const hasDirectAccess =
+      uploadedByUserId === userId ||
+      memberRole === "OWNER" ||
+      memberRole === "ADMIN" ||
+      (isPdfBookImage && memberRole !== undefined);
+    if (hasDirectAccess) allowed.push(asset);
+    else needsCourseItem.set(asset.id, asset);
+  }
+  if (!needsCourseItem.size) return allowed;
+
+  const courseItems = { select: { id: true, isPublished: true } } as const;
+  const links = await db.asset.findMany({
+    where: { id: { in: [...needsCourseItem.keys()] } },
+    select: {
+      id: true,
+      materials: { select: { material: { select: { courseItems } } } },
+      assessments: { select: { assessment: { select: { courseItems } } } },
+      vocabularyEntries: {
+        select: { vocabularySet: { select: { courseItems } } },
+      },
+      vocabularyEntryImages: {
+        select: { vocabularySet: { select: { courseItems } } },
+      },
+    },
+  });
+
+  // Each course item is checked at most once per call, and each asset stops
+  // at the first item that grants access. Published items come first because
+  // learners can only ever open those.
+  const itemAccess = new Map<string, Promise<boolean>>();
+  const canAccessItem = (courseItemId: string) => {
+    let access = itemAccess.get(courseItemId);
+    if (!access) {
+      access = requireCourseItemAccess({ courseItemId, userId }).then(
+        () => true,
+        (error: unknown) => {
+          if (
+            !(error instanceof TRPCError) ||
+            error.code === "INTERNAL_SERVER_ERROR"
+          ) {
+            throw error;
+          }
+          return false;
+        },
+      );
+      itemAccess.set(courseItemId, access);
+    }
+    return access;
+  };
+  for (const link of links) {
+    const items = new Map<string, boolean>();
+    for (const { id, isPublished } of [
+      ...link.materials.flatMap(({ material }) => material.courseItems),
+      ...link.assessments.flatMap(({ assessment }) => assessment.courseItems),
+      ...link.vocabularyEntries.flatMap(
+        ({ vocabularySet }) => vocabularySet.courseItems,
+      ),
+      ...link.vocabularyEntryImages.flatMap(
+        ({ vocabularySet }) => vocabularySet.courseItems,
+      ),
+    ]) {
+      items.set(id, isPublished);
+    }
+    const ordered = [...items]
+      .sort(([, a], [, b]) => Number(b) - Number(a))
+      .map(([id]) => id);
+    // Prefer items another asset in this batch already unlocked.
+    const cached = ordered.filter((id) => itemAccess.has(id));
+    for (const courseItemId of [
+      ...cached,
+      ...ordered.filter((id) => !itemAccess.has(id)),
+    ]) {
+      if (await canAccessItem(courseItemId)) {
+        allowed.push(needsCourseItem.get(link.id)!);
+        break;
+      }
+    }
+  }
+  return allowed;
+}
+
+async function signDownload(
+  asset: DownloadableAsset,
+  disposition: "attachment" | "inline",
+) {
+  const downloadUrl = await getSignedUrl(
+    r2,
+    new GetObjectCommand({
+      Bucket: r2Bucket,
+      Key: asset.objectKey,
+      ResponseContentDisposition: disposition,
+    }),
+    { expiresIn: SIGNED_URL_TTL_SECONDS },
+  );
+  return {
+    downloadUrl,
+    expiresIn: SIGNED_URL_TTL_SECONDS,
+    fileName: asset.fileName,
+    contentType: asset.contentType,
+    size: asset.size,
+  };
+}
+
 export const storageRouter = createTRPCRouter({
   createCourseThumbnailUploadUrl: protectedProcedure
     .input(
@@ -803,128 +968,49 @@ export const storageRouter = createTRPCRouter({
     .input(
       z.object({
         assetId: z.string().min(1),
-        disposition: z.enum(["attachment", "inline"]).default("attachment"),
+        disposition: downloadDispositionSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.actorUserId;
-      const asset = await db.asset.findFirst({
-        where: {
-          id: input.assetId,
-          confirmedAt: { not: null },
-          deletedAt: null,
-        },
-        select: {
-          objectKey: true,
-          fileName: true,
-          contentType: true,
-          size: true,
-          uploadedByUserId: true,
-          organization: {
-            select: {
-              members: {
-                where: { userId },
-                select: { role: true },
-                take: 1,
-              },
-            },
-          },
-          pdfBookPage: { select: { bookId: true } },
-          pdfBookThumbnail: { select: { bookId: true } },
-          materials: {
-            select: {
-              material: { select: { courseItems: { select: { id: true } } } },
-            },
-          },
-          assessments: {
-            select: {
-              assessment: {
-                select: { courseItems: { select: { id: true } } },
-              },
-            },
-          },
-          vocabularyEntries: {
-            select: {
-              vocabularySet: {
-                select: { courseItems: { select: { id: true } } },
-              },
-            },
-          },
-          vocabularyEntryImages: {
-            select: {
-              vocabularySet: {
-                select: { courseItems: { select: { id: true } } },
-              },
-            },
-          },
-        },
-      });
+      const [asset] = await findDownloadableAssets(
+        [input.assetId],
+        ctx.actorUserId,
+      );
       if (!asset) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
+      return signDownload(asset, input.disposition);
+    }),
 
-      const memberRole = asset.organization.members[0]?.role;
-      // Any staff member may browse PDF book pages while authoring lessons.
-      const isPdfBookImage = Boolean(
-        asset.pdfBookPage ?? asset.pdfBookThumbnail,
+  /**
+   * Batched `createDownloadUrl` for documents that show many files. Assets
+   * the user may not download (or that don't exist) map to `null`.
+   */
+  createDownloadUrls: protectedProcedure
+    .input(
+      z.object({
+        assetIds: z.array(z.string().min(1)).min(1).max(MAX_DOWNLOAD_URL_BATCH),
+        disposition: downloadDispositionSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const assetIds = [...new Set(input.assetIds)];
+      const assets = new Map(
+        (await findDownloadableAssets(assetIds, ctx.actorUserId)).map(
+          (asset) => [asset.id, asset],
+        ),
       );
-      const hasDirectAccess =
-        asset.uploadedByUserId === userId ||
-        memberRole === "OWNER" ||
-        memberRole === "ADMIN" ||
-        (isPdfBookImage && memberRole !== undefined);
-      if (!hasDirectAccess) {
-        const courseItemIds = new Set([
-          ...asset.materials.flatMap(({ material }) =>
-            material.courseItems.map(({ id }) => id),
-          ),
-          ...asset.assessments.flatMap(({ assessment }) =>
-            assessment.courseItems.map(({ id }) => id),
-          ),
-          ...asset.vocabularyEntries.flatMap(({ vocabularySet }) =>
-            vocabularySet.courseItems.map(({ id }) => id),
-          ),
-          ...asset.vocabularyEntryImages.flatMap(({ vocabularySet }) =>
-            vocabularySet.courseItems.map(({ id }) => id),
-          ),
-        ]);
-        let canAccessAssociatedItem = false;
-        for (const courseItemId of courseItemIds) {
-          try {
-            await requireCourseItemAccess({ courseItemId, userId });
-            canAccessAssociatedItem = true;
-            break;
-          } catch (error) {
-            if (
-              !(error instanceof TRPCError) ||
-              error.code === "INTERNAL_SERVER_ERROR"
-            ) {
-              throw error;
-            }
-          }
-        }
-        if (!canAccessAssociatedItem) {
-          throw new TRPCError({ code: "NOT_FOUND" });
-        }
-      }
-
-      const downloadUrl = await getSignedUrl(
-        r2,
-        new GetObjectCommand({
-          Bucket: r2Bucket,
-          Key: asset.objectKey,
-          ResponseContentDisposition: input.disposition,
-        }),
-        { expiresIn: SIGNED_URL_TTL_SECONDS },
+      return Object.fromEntries(
+        await Promise.all(
+          assetIds.map(async (assetId) => {
+            const asset = assets.get(assetId);
+            return [
+              assetId,
+              asset ? await signDownload(asset, input.disposition) : null,
+            ] as const;
+          }),
+        ),
       );
-
-      return {
-        downloadUrl,
-        expiresIn: SIGNED_URL_TTL_SECONDS,
-        fileName: asset.fileName,
-        contentType: asset.contentType,
-        size: asset.size,
-      };
     }),
 
   deleteDocument: protectedProcedure

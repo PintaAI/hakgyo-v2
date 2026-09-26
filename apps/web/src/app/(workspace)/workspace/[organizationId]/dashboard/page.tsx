@@ -10,6 +10,8 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
 });
 
+const dashboardCourseLimit = 4;
+
 const activityLabels = {
   MATERIAL_COMPLETED: "Menyelesaikan materi",
   ASSESSMENT_SUBMITTED: "Mengumpulkan tugas",
@@ -25,21 +27,22 @@ async function TeacherDashboard({
   organizationSlug: string;
 }) {
   const { organizationId, organization } = membership;
-  const session = await getSession();
-  const [courses, cohortsPage, materials, reviewQueue] = await Promise.all([
-    api.course.list({ organizationId }),
-    api.cohort.listForCurrentMember({
-      organizationId,
-      includeTotal: true,
-      limit: 5,
-    }),
-    api.content.listMaterials({ organizationId }),
-    api.assessment.listAttemptsNeedingReview({
-      organizationId,
-      includeTotal: true,
-      limit: 1,
-    }),
-  ]);
+  const [session, courses, cohortsPage, materialCount, reviewQueue] =
+    await Promise.all([
+      getSession(),
+      api.course.list({ organizationId }),
+      api.cohort.listForCurrentMember({
+        organizationId,
+        includeTotal: true,
+        limit: 5,
+      }),
+      api.content.countMaterials({ organizationId }),
+      api.assessment.listAttemptsNeedingReview({
+        organizationId,
+        includeTotal: true,
+        limit: 1,
+      }),
+    ]);
   const root = `/workspace/${organizationSlug}`;
   const pendingReviews = reviewQueue.total ?? reviewQueue.items.length;
 
@@ -55,7 +58,8 @@ async function TeacherDashboard({
         canCreateCourse:
           organization.permissionMode === "SIMPLE" ||
           organization.teacherCanCreateCourse,
-        courses,
+        // The dashboard only renders the first few course cards.
+        courses: courses.slice(0, dashboardCourseLimit),
         cohorts: cohortsPage.items,
         pendingReviews,
         stats: [
@@ -73,7 +77,7 @@ async function TeacherDashboard({
           },
           {
             label: "Materi saya",
-            value: materials.length,
+            value: materialCount,
             href: `${root}/library/materials`,
             icon: "material",
           },
@@ -108,13 +112,14 @@ export default async function DashboardPage({
     );
   }
   const { organizationId, organization, role } = membership;
-  const session = await getSession();
-  const [analytics, courses, cohortsPage, activity] = await Promise.all([
-    api.organization.getDashboardAnalytics({ organizationId }),
-    api.course.list({ organizationId }),
-    api.cohort.listByOrganization({ organizationId, limit: 5 }),
-    api.organization.getRecentActivity({ organizationId }),
-  ]);
+  const [session, analytics, courses, cohortsPage, activity] =
+    await Promise.all([
+      getSession(),
+      api.organization.getDashboardAnalytics({ organizationId }),
+      api.course.list({ organizationId }),
+      api.cohort.listByOrganization({ organizationId, limit: 5 }),
+      api.organization.getRecentActivity({ organizationId }),
+    ]);
   const root = `/workspace/${organizationSlug}`;
 
   return (
@@ -127,7 +132,8 @@ export default async function DashboardPage({
         role: role === "OWNER" ? "Pemilik" : "Admin",
         root,
         canCreateCourse: true,
-        courses,
+        // The dashboard only renders the first few course cards.
+        courses: courses.slice(0, dashboardCourseLimit),
         cohorts: cohortsPage.items,
         pendingReviews: analytics.actionItems.attemptsInReview,
         activity: activity.map((item) => ({

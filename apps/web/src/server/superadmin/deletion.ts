@@ -1,13 +1,17 @@
-import { DeleteObjectCommand } from "@aws-sdk/client-s3";
-
 import type { Prisma } from "../../../generated/prisma/client";
 
 import { getManagedCourseThumbnailKey } from "~/lib/course-thumbnail";
 import { getManagedOrganizationLogoKey } from "~/lib/organization-logo";
 import { db } from "~/server/db";
-import { r2, r2Bucket } from "~/server/r2";
+import { deleteR2Objects } from "~/server/r2";
 
 type Transaction = Prisma.TransactionClient;
+
+// Deleting a large organization touches every learner row it owns.
+const ORGANIZATION_DELETE_TRANSACTION_OPTIONS = {
+  maxWait: 10_000,
+  timeout: 120_000,
+};
 
 export async function deleteCourseTree(courseId: string, actorUserId: string) {
   const r2Keys = await collectCourseR2Keys(courseId);
@@ -48,7 +52,7 @@ export async function deleteCourseTree(courseId: string, actorUserId: string) {
     return true;
   });
 
-  if (deleted) await deleteR2Keys(r2Keys);
+  if (deleted) await deleteR2Objects(r2Keys);
   return deleted;
 }
 
@@ -65,30 +69,7 @@ export async function deleteOrganizationTree(
     });
     if (!organization) return false;
 
-    const courses = await tx.course.findMany({
-      where: { organizationId },
-      select: { id: true },
-    });
-    for (const course of courses) {
-      const modules = await tx.courseModule.findMany({
-        where: { courseId: course.id },
-        select: { id: true },
-      });
-      const items = await tx.courseItem.findMany({
-        where: { moduleId: { in: modules.map(({ id }) => id) } },
-        select: { id: true },
-      });
-      const cohorts = await tx.cohort.findMany({
-        where: { courseId: course.id },
-        select: { id: true },
-      });
-      await deleteCourseChildren(tx, {
-        courseId: course.id,
-        itemIds: items.map(({ id }) => id),
-        cohortIds: cohorts.map(({ id }) => id),
-      });
-      await tx.course.delete({ where: { id: course.id } });
-    }
+    await deleteOrganizationCourses(tx, organizationId);
 
     await tx.materialAsset.deleteMany({ where: { organizationId } });
     await tx.pdfBook.deleteMany({ where: { organizationId } });
@@ -113,10 +94,45 @@ export async function deleteOrganizationTree(
       },
     });
     return true;
-  });
+  }, ORGANIZATION_DELETE_TRANSACTION_OPTIONS);
 
-  if (deleted) await deleteR2Keys(r2Keys);
+  if (deleted) await deleteR2Objects(r2Keys);
   return deleted;
+}
+
+/**
+ * Organization-wide equivalent of running `deleteCourseChildren` and then
+ * deleting the course for every course in the organization, as set-based
+ * statements in the same dependency order. Rows are matched through their
+ * organization (composite foreign keys keep `organizationId` in line with the
+ * parent course, module, item, cohort, or attempt) instead of id lists.
+ */
+async function deleteOrganizationCourses(
+  tx: Transaction,
+  organizationId: string,
+) {
+  await tx.assessmentAnswerSelection.deleteMany({
+    where: { answer: { organizationId } },
+  });
+  await tx.assessmentAnswer.deleteMany({ where: { organizationId } });
+  await tx.assessmentAttempt.deleteMany({ where: { organizationId } });
+  await tx.contentProgress.deleteMany({
+    where: { courseItem: { organizationId } },
+  });
+  await tx.courseItem.deleteMany({ where: { organizationId } });
+  await tx.courseModule.deleteMany({ where: { organizationId } });
+  await tx.cohortMeeting.deleteMany({ where: { organizationId } });
+  await tx.cohortStaff.deleteMany({ where: { organizationId } });
+  await tx.cohortEnrollment.deleteMany({
+    where: { cohort: { organizationId } },
+  });
+  await tx.cohort.deleteMany({ where: { organizationId } });
+  await tx.courseCollaborator.deleteMany({ where: { organizationId } });
+  await tx.enrollmentInvite.deleteMany({ where: { organizationId } });
+  await tx.courseEnrollment.deleteMany({
+    where: { course: { organizationId } },
+  });
+  await tx.course.deleteMany({ where: { organizationId } });
 }
 
 async function deleteCourseChildren(
@@ -205,14 +221,4 @@ async function collectOrganizationR2Keys(
   }
 
   return keys;
-}
-
-async function deleteR2Keys(keys: string[]): Promise<void> {
-  for (const key of keys) {
-    try {
-      await r2.send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }));
-    } catch (error) {
-      console.error(`Failed to delete R2 object ${key}`, error);
-    }
-  }
 }

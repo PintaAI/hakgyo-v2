@@ -32,9 +32,10 @@ export default async function WorkspaceLayout({
   ]);
   const role = membership.role;
   const showCohortShortcuts = role === "OWNER" || role === "TEACHER";
-  const [courses, cohortShortcutsPage] = await Promise.all([
-    api.course.list({
+  const [recentCourses, cohortShortcutsPage] = await Promise.all([
+    api.course.listRecent({
       organizationId: membership.organizationId,
+      take: 3,
     }),
     showCohortShortcuts
       ? api.cohort.listForCurrentMember({
@@ -43,14 +44,6 @@ export default async function WorkspaceLayout({
         })
       : null,
   ]);
-  const recentCourses = courses
-    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-    .slice(0, 3)
-    .map((course) => ({
-      id: course.id,
-      title: course.title,
-      thumbnailUrl: course.thumbnailUrl,
-    }));
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
   const defaultRightOpen =
     cookieStore.get("right_sidebar_state")?.value !== "false";

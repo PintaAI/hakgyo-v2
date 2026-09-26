@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { BellIcon, CheckCheckIcon } from "lucide-react";
 
@@ -15,9 +16,7 @@ import {
 import { api } from "~/trpc/react";
 
 function timeAgo(value: Date | string): string {
-  const seconds = Math.floor(
-    (Date.now() - new Date(value).getTime()) / 1000,
-  );
+  const seconds = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
   if (seconds < 60) return "baru saja";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m lalu`;
@@ -32,14 +31,17 @@ function timeAgo(value: Date | string): string {
  */
 export function NotificationBell() {
   const utils = api.useUtils();
+  const [open, setOpen] = useState(false);
   const countQuery = api.notification.unreadCount.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: true,
     refetchInterval: 60_000,
   });
+  // The preview list is only needed while the dropdown is open; the unread
+  // count above keeps polling for the badge.
   const inboxQuery = api.notification.inboxList.useQuery(
     { limit: 5 },
-    { retry: false, refetchOnWindowFocus: true },
+    { retry: false, refetchOnWindowFocus: true, enabled: open },
   );
   const markAllRead = api.notification.markAllRead.useMutation({
     onSettled: () => {
@@ -53,7 +55,7 @@ export function NotificationBell() {
   const items = inboxQuery.data?.items ?? [];
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         render={
           <Button
@@ -92,7 +94,11 @@ export function NotificationBell() {
           ) : null}
         </div>
         <DropdownMenuSeparator />
-        {items.length === 0 ? (
+        {inboxQuery.isPending ? (
+          <p className="text-muted-foreground px-2 py-6 text-center text-sm">
+            Memuat notifikasi...
+          </p>
+        ) : items.length === 0 ? (
           <p className="text-muted-foreground px-2 py-6 text-center text-sm">
             Belum ada notifikasi.
           </p>

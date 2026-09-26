@@ -22,6 +22,25 @@ const enrollmentStatus = z.enum([
   "CANCELLED",
 ]);
 
+/**
+ * One grouped count per list instead of separate total/active counts. The
+ * active total ignores the status filter, matching the list header.
+ */
+function enrollmentTotals(
+  statusCounts: Array<{ status: string; _count: { _all: number } }> | undefined,
+  status: string | undefined,
+) {
+  if (!statusCounts) return { total: undefined, activeTotal: undefined };
+  const countFor = (value: string) =>
+    statusCounts.find((group) => group.status === value)?._count._all ?? 0;
+  return {
+    total: status
+      ? countFor(status)
+      : statusCounts.reduce((sum, group) => sum + group._count._all, 0),
+    activeTotal: countFor("ACTIVE"),
+  };
+}
+
 export const enrollmentRouter = createTRPCRouter({
   enrollOpenCourse: protectedProcedure
     .input(z.object({ courseId: id }))
@@ -225,7 +244,7 @@ export const enrollmentRouter = createTRPCRouter({
             }
           : {}),
       };
-      const [items, total, activeTotal] = await Promise.all([
+      const [items, statusCounts] = await Promise.all([
         ctx.db.courseEnrollment.findMany({
           where,
           orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
@@ -233,18 +252,23 @@ export const enrollmentRouter = createTRPCRouter({
           cursor: input.cursor ? { id: input.cursor } : undefined,
           skip: input.cursor ? 1 : undefined,
           include: {
-            user: { select: { id: true, name: true, email: true, image: true } },
+            user: {
+              select: { id: true, name: true, email: true, image: true },
+            },
           },
         }),
         input.includeTotal
-          ? ctx.db.courseEnrollment.count({ where })
-          : Promise.resolve(undefined),
-        input.includeTotal
-          ? ctx.db.courseEnrollment.count({
-              where: { ...where, status: "ACTIVE" },
+          ? ctx.db.courseEnrollment.groupBy({
+              by: ["status"],
+              where: { ...where, status: undefined },
+              _count: { _all: true },
             })
           : Promise.resolve(undefined),
       ]);
+      const { total, activeTotal } = enrollmentTotals(
+        statusCounts,
+        input.status,
+      );
       return { ...pageResult(items, input.limit, total), activeTotal };
     }),
 
@@ -288,7 +312,7 @@ export const enrollmentRouter = createTRPCRouter({
             }
           : {}),
       };
-      const [items, total, activeTotal] = await Promise.all([
+      const [items, statusCounts] = await Promise.all([
         ctx.db.cohortEnrollment.findMany({
           where,
           orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
@@ -296,18 +320,23 @@ export const enrollmentRouter = createTRPCRouter({
           cursor: input.cursor ? { id: input.cursor } : undefined,
           skip: input.cursor ? 1 : undefined,
           include: {
-            user: { select: { id: true, name: true, email: true, image: true } },
+            user: {
+              select: { id: true, name: true, email: true, image: true },
+            },
           },
         }),
         input.includeTotal
-          ? ctx.db.cohortEnrollment.count({ where })
-          : Promise.resolve(undefined),
-        input.includeTotal
-          ? ctx.db.cohortEnrollment.count({
-              where: { ...where, status: "ACTIVE" },
+          ? ctx.db.cohortEnrollment.groupBy({
+              by: ["status"],
+              where: { ...where, status: undefined },
+              _count: { _all: true },
             })
           : Promise.resolve(undefined),
       ]);
+      const { total, activeTotal } = enrollmentTotals(
+        statusCounts,
+        input.status,
+      );
       return { ...pageResult(items, input.limit, total), activeTotal };
     }),
 

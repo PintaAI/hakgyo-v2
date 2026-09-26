@@ -1,3 +1,4 @@
+import { collectPdfPageRanges } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -21,6 +22,7 @@ import { syncMaterialPdfPageAssets } from "~/server/pdf-book/service";
 import { getAssessmentPublishValidationError } from "~/lib/assessment-publication";
 
 const id = z.string().min(1);
+const vocabularyPreviewEntryCount = 3;
 const json = z.custom<Prisma.InputJsonValue>((value) => value !== undefined);
 const serializedJson = z
   .unknown()
@@ -379,7 +381,6 @@ export const contentRouter = createTRPCRouter({
           isPublished: true,
           materialId: true,
           assessmentId: true,
-          material: { select: { content: true } },
           module: { select: { courseId: true } },
         },
       });
@@ -438,17 +439,15 @@ export const contentRouter = createTRPCRouter({
             : input.relation
               ? null
               : item.materialId;
-        const content =
-          input.relation?.type === "MATERIAL"
-            ? (
-                await db.material.findUnique({
-                  where: { id: input.relation.materialId },
-                  select: { content: true },
-                })
-              )?.content
-            : input.relation
-              ? null
-              : item.material?.content;
+        // Only load the (potentially large) material document when it is checked.
+        const content = materialId
+          ? (
+              await db.material.findUnique({
+                where: { id: materialId },
+                select: { content: true },
+              })
+            )?.content
+          : null;
         if (materialId && content) {
           await assertPublishedMaterialReferences(db, {
             content,
@@ -538,9 +537,15 @@ export const contentRouter = createTRPCRouter({
             : {}),
         },
         orderBy: { updatedAt: "desc" },
-        include: {
-          completionRequirements: { orderBy: { position: "asc" } },
-          assets: { include: { asset: true } },
+        // List views only render metadata and usage; the document itself is
+        // fetched per material through getMaterial.
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+          createdByMembershipId: true,
           createdBy: { select: { id: true, user: { select: { name: true } } } },
           courseItems: {
             select: {
@@ -556,6 +561,45 @@ export const contentRouter = createTRPCRouter({
           },
         },
       });
+    }),
+  countMaterials: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .query(async ({ ctx, input }) => {
+      const member = await requireContentOrganization(
+        input.organizationId,
+        ctx.actorUserId,
+      );
+      return db.material.count({
+        where: {
+          organizationId: input.organizationId,
+          ...(member.organization.permissionMode === "ADVANCED" &&
+          member.role === "TEACHER"
+            ? { createdByMembershipId: member.id }
+            : {}),
+        },
+      });
+    }),
+  /** PDF page ranges of the materials used in a course, keyed by material id. */
+  listCoursePdfPageRanges: protectedProcedure
+    .input(z.object({ courseId: id }))
+    .query(async ({ ctx, input }) => {
+      await requireCoursePermission({
+        courseId: input.courseId,
+        permission: "content.manage",
+        userId: ctx.actorUserId,
+      });
+      const materials = await db.material.findMany({
+        where: {
+          courseItems: { some: { module: { courseId: input.courseId } } },
+        },
+        select: { id: true, content: true },
+      });
+      return Object.fromEntries(
+        materials.flatMap(({ id: materialId, content }) => {
+          const ranges = collectPdfPageRanges(content);
+          return ranges.length ? [[materialId, ranges] as const] : [];
+        }),
+      );
     }),
   getMaterial: protectedProcedure
     .input(z.object({ organizationId: id, materialId: id }))
@@ -836,13 +880,18 @@ export const contentRouter = createTRPCRouter({
           ? undefined
           : await sanitizeMaterialContent(db, organizationId, data.content);
       if (content !== undefined) {
-        for (const item of material.courseItems) {
-          await assertPublishedMaterialReferences(db, {
-            content,
-            moduleId: item.moduleId,
-            organizationId,
-          });
-        }
+        const moduleIds = new Set(
+          material.courseItems.map(({ moduleId }) => moduleId),
+        );
+        await Promise.all(
+          [...moduleIds].map((moduleId) =>
+            assertPublishedMaterialReferences(db, {
+              content,
+              moduleId,
+              organizationId,
+            }),
+          ),
+        );
       }
       const result = await db.$transaction(async (tx) => {
         const updated = await tx.material.updateMany({
@@ -859,7 +908,19 @@ export const contentRouter = createTRPCRouter({
         return updated;
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.material.findUniqueOrThrow({ where: { id: materialId } });
+      // Slim result: autosave runs often and the client already holds the
+      // document it just sent.
+      return db.material.findUniqueOrThrow({
+        where: { id: materialId },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          editorSchemaVersion: true,
+          requirementPolicy: true,
+          updatedAt: true,
+        },
+      });
     }),
   deleteMaterial: protectedProcedure
     .input(z.object({ organizationId: id, materialId: id }))
@@ -893,20 +954,16 @@ export const contentRouter = createTRPCRouter({
         ctx.actorUserId,
         ownedMaterial.createdByMembershipId,
       );
-      const [material, asset] = await Promise.all([
-        db.material.findFirst({
-          where: { id: input.materialId, organizationId: input.organizationId },
-        }),
-        db.asset.findFirst({
-          where: {
-            id: input.assetId,
-            organizationId: input.organizationId,
-            confirmedAt: { not: null },
-            deletedAt: null,
-          },
-        }),
-      ]);
-      if (!material || !asset)
+      const asset = await db.asset.findFirst({
+        where: {
+          id: input.assetId,
+          organizationId: input.organizationId,
+          confirmedAt: { not: null },
+          deletedAt: null,
+        },
+        select: { id: true },
+      });
+      if (!asset)
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Material and asset must belong to the organization",
@@ -948,12 +1005,6 @@ export const contentRouter = createTRPCRouter({
         ctx.actorUserId,
         material.createdByMembershipId,
       );
-      if (
-        !(await db.material.findFirst({
-          where: { id: input.materialId, organizationId: input.organizationId },
-        }))
-      )
-        throw new TRPCError({ code: "NOT_FOUND" });
       const relationId =
         "assessmentId" in input.relation
           ? input.relation.assessmentId
@@ -965,12 +1016,14 @@ export const contentRouter = createTRPCRouter({
                 id: relationId,
                 organizationId: input.organizationId,
               },
+              select: { createdByMembershipId: true },
             })
           : await db.vocabularySet.findFirst({
               where: {
                 id: relationId,
                 organizationId: input.organizationId,
               },
+              select: { createdByMembershipId: true },
             });
       if (!resource)
         throw new TRPCError({
@@ -1051,12 +1104,23 @@ export const contentRouter = createTRPCRouter({
     }),
 
   listVocabularySets: protectedProcedure
-    .input(z.object({ organizationId: id }))
+    .input(
+      z.object({
+        organizationId: id,
+        /** Matches title, description, or any entry term/definition. */
+        search: z.string().trim().max(200).optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const member = await requireContentOrganization(
         input.organizationId,
         ctx.actorUserId,
       );
+      const contains = input.search
+        ? { contains: input.search, mode: "insensitive" as const }
+        : undefined;
+      // Light list for pickers and library cards; full entries come from
+      // getVocabularySet.
       return db.vocabularySet.findMany({
         where: {
           organizationId: input.organizationId,
@@ -1064,8 +1128,47 @@ export const contentRouter = createTRPCRouter({
           member.role === "TEACHER"
             ? { createdByMembershipId: member.id }
             : {}),
+          ...(contains
+            ? {
+                OR: [
+                  { title: contains },
+                  { description: contains },
+                  {
+                    entries: {
+                      some: {
+                        OR: [{ term: contains }, { definition: contains }],
+                      },
+                    },
+                  },
+                ],
+              }
+            : {}),
         },
         orderBy: { updatedAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+          createdByMembershipId: true,
+          _count: { select: { entries: true } },
+          entries: {
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            take: vocabularyPreviewEntryCount,
+            select: { id: true, term: true },
+          },
+        },
+      });
+    }),
+  getVocabularySet: protectedProcedure
+    .input(z.object({ organizationId: id, vocabularySetId: id }))
+    .query(async ({ ctx, input }) => {
+      const vocabularySet = await db.vocabularySet.findFirst({
+        where: {
+          id: input.vocabularySetId,
+          organizationId: input.organizationId,
+        },
         include: {
           entries: {
             orderBy: [{ createdAt: "asc" }, { id: "asc" }],
@@ -1090,6 +1193,13 @@ export const contentRouter = createTRPCRouter({
           },
         },
       });
+      if (!vocabularySet) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireOwnedContent(
+        input.organizationId,
+        ctx.actorUserId,
+        vocabularySet.createdByMembershipId,
+      );
+      return vocabularySet;
     }),
   createVocabularySet: protectedProcedure
     .input(

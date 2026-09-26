@@ -1,9 +1,11 @@
 import { TRPCError } from "@trpc/server";
 
+import type { Prisma } from "../../../generated/prisma/client";
 import { EnrollmentStatus } from "../../../generated/prisma/enums";
 import { db } from "~/server/db";
 import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
 import { getCourseOutlineForUser } from "~/server/learning/course-outline";
+import { memoizeForRequest } from "~/server/request-cache";
 import {
   canAccessLearningContent,
   canManageContent,
@@ -25,27 +27,33 @@ const forbidden = () => {
   throw new TRPCError({ code: "FORBIDDEN" });
 };
 
+// Nullable lookup shared by every membership guard so one request only reads a
+// membership once, whichever guard asks first.
+function findOrganizationMembership(organizationId: string, userId: string) {
+  return memoizeForRequest(`membership:${organizationId}:${userId}`, () =>
+    db.organizationMember.findUnique({
+      where: { organizationId_userId: { organizationId, userId } },
+      select: {
+        id: true,
+        organizationId: true,
+        role: true,
+        userId: true,
+        organization: {
+          select: { permissionMode: true, teacherCanCreateCourse: true },
+        },
+      },
+    }),
+  );
+}
+
 export async function requireOrganizationMembership(input: {
   organizationId: string;
   userId: string;
 }) {
-  const membership = await db.organizationMember.findUnique({
-    where: {
-      organizationId_userId: {
-        organizationId: input.organizationId,
-        userId: input.userId,
-      },
-    },
-    select: {
-      id: true,
-      organizationId: true,
-      role: true,
-      userId: true,
-      organization: {
-        select: { permissionMode: true, teacherCanCreateCourse: true },
-      },
-    },
-  });
+  const membership = await findOrganizationMembership(
+    input.organizationId,
+    input.userId,
+  );
 
   if (!membership) return forbidden();
   return membership;
@@ -80,21 +88,10 @@ export async function requireContentAuthor(input: {
   createdByMembershipId?: string;
   action?: "edit" | "delete";
 }) {
-  const membership = await db.organizationMember.findUnique({
-    where: {
-      organizationId_userId: {
-        organizationId: input.organizationId,
-        userId: input.userId,
-      },
-    },
-    select: {
-      id: true,
-      organizationId: true,
-      role: true,
-      userId: true,
-      organization: { select: { permissionMode: true } },
-    },
-  });
+  const membership = await findOrganizationMembership(
+    input.organizationId,
+    input.userId,
+  );
 
   if (
     !membership ||
@@ -109,49 +106,63 @@ export async function requireContentAuthor(input: {
   return membership;
 }
 
-async function getCourseScope(courseId: string, userId: string) {
-  const course = await db.course.findUnique({
-    where: { id: courseId },
-    select: {
-      id: true,
-      organizationId: true,
-      ownerMembershipId: true,
-      owner: { select: { userId: true } },
-      collaborators: {
-        where: { role: "EDITOR", organizationMember: { userId } },
-        select: { id: true },
-        take: 1,
-      },
-      organization: {
-        select: {
-          permissionMode: true,
-          members: {
-            where: { userId },
-            select: { role: true },
-            take: 1,
-          },
+function courseScopeSelect(userId: string) {
+  return {
+    id: true,
+    organizationId: true,
+    ownerMembershipId: true,
+    owner: { select: { userId: true } },
+    collaborators: {
+      where: { role: "EDITOR", organizationMember: { userId } },
+      select: { id: true },
+      take: 1,
+    },
+    organization: {
+      select: {
+        permissionMode: true,
+        members: {
+          where: { userId },
+          select: { role: true },
+          take: 1,
         },
       },
-      cohorts: {
-        where: { staff: { some: { organizationMember: { userId } } } },
-        select: { id: true },
-        take: 1,
-      },
     },
-  });
+    cohorts: {
+      where: { staff: { some: { organizationMember: { userId } } } },
+      select: { id: true },
+      take: 1,
+    },
+  } satisfies Prisma.CourseSelect;
+}
+
+function toCourseScope(
+  course: Prisma.CourseGetPayload<{
+    select: ReturnType<typeof courseScopeSelect>;
+  }>,
+  userId: string,
+) {
+  return {
+    organizationRole: course.organization.members[0]?.role,
+    permissionMode: course.organization.permissionMode,
+    isCourseOwner: course.owner.userId === userId,
+    isCourseEditor: course.collaborators.length > 0,
+    isCohortStaff: course.cohorts.length > 0,
+  };
+}
+
+async function getCourseScope(courseId: string, userId: string) {
+  const course = await memoizeForRequest(
+    `courseScope:${courseId}:${userId}`,
+    () =>
+      db.course.findUnique({
+        where: { id: courseId },
+        select: courseScopeSelect(userId),
+      }),
+  );
 
   if (!course) throw new TRPCError({ code: "NOT_FOUND" });
 
-  return {
-    course,
-    scope: {
-      organizationRole: course.organization.members[0]?.role,
-      permissionMode: course.organization.permissionMode,
-      isCourseOwner: course.owner.userId === userId,
-      isCourseEditor: course.collaborators.length > 0,
-      isCohortStaff: course.cohorts.length > 0,
-    },
-  };
+  return { course, scope: toCourseScope(course, userId) };
 }
 
 export async function requireCoursePermission(input: {
@@ -190,24 +201,34 @@ export async function requireCohortPermission(input: {
   userId: string;
   permission?: CohortPermission;
 }) {
-  const cohort = await db.cohort.findUnique({
-    where: { id: input.cohortId },
-    select: { courseId: true, status: true, endsAt: true },
-  });
-  if (!cohort) throw new TRPCError({ code: "NOT_FOUND" });
+  // One round trip for the cohort, its course scope and the caller's exact
+  // staff assignment on this cohort.
+  const result = await memoizeForRequest(
+    `cohortScope:${input.cohortId}:${input.userId}`,
+    () =>
+      db.cohort.findUnique({
+        where: { id: input.cohortId },
+        select: {
+          id: true,
+          organizationId: true,
+          courseId: true,
+          status: true,
+          endsAt: true,
+          course: { select: courseScopeSelect(input.userId) },
+          staff: {
+            where: { organizationMember: { userId: input.userId } },
+            select: { id: true, role: true },
+            take: 1,
+          },
+        },
+      }),
+  );
+  if (!result) throw new TRPCError({ code: "NOT_FOUND" });
 
-  const [result, exactStaffAssignment] = await Promise.all([
-    getCourseScope(cohort.courseId, input.userId),
-    db.cohortStaff.findFirst({
-      where: {
-        cohortId: input.cohortId,
-        organizationMember: { userId: input.userId },
-      },
-      select: { id: true, role: true },
-    }),
-  ]);
+  const { course, staff, ...cohort } = result;
+  const exactStaffAssignment = staff[0];
   const courseCapabilities = getCourseCapabilities({
-    ...result.scope,
+    ...toCourseScope(course, input.userId),
     isCohortStaff: Boolean(exactStaffAssignment),
   });
   const capabilities = getCohortCapabilities({
@@ -230,7 +251,17 @@ export async function requireCohortPermission(input: {
   return { ...cohort, access: capabilities };
 }
 
-export async function requireCourseItemAccess(input: {
+export function requireCourseItemAccess(input: {
+  courseItemId: string;
+  userId: string;
+}) {
+  return memoizeForRequest(
+    `courseItemAccess:${input.courseItemId}:${input.userId}`,
+    () => loadCourseItemAccess(input),
+  );
+}
+
+async function loadCourseItemAccess(input: {
   courseItemId: string;
   userId: string;
 }) {
@@ -246,6 +277,7 @@ export async function requireCourseItemAccess(input: {
             select: {
               id: true,
               status: true,
+              progressionMode: true,
               owner: { select: { userId: true } },
               collaborators: {
                 where: {
@@ -284,6 +316,24 @@ export async function requireCourseItemAccess(input: {
                 select: { id: true },
                 take: 1,
               },
+              // Active cohort enrollment, folded in as a filtered count
+              // because `cohorts` is already selected for staff scope.
+              _count: {
+                select: {
+                  cohorts: {
+                    where: {
+                      status: { in: [...accessGrantingCohortStatuses] },
+                      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+                      enrollments: {
+                        some: {
+                          userId: input.userId,
+                          status: { in: [...activeEnrollmentStatuses] },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -294,46 +344,37 @@ export async function requireCourseItemAccess(input: {
   if (!item) throw new TRPCError({ code: "NOT_FOUND" });
 
   const course = item.module.course;
-  const cohortEnrollment = await db.cohortEnrollment.findFirst({
-    where: {
-      userId: input.userId,
-      status: { in: [...activeEnrollmentStatuses] },
-      cohort: {
-        courseId: course.id,
-        status: { in: [...accessGrantingCohortStatuses] },
-        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
-      },
-    },
-    select: { id: true },
-  });
-  const allowed = canAccessLearningContent({
+  const scope = {
     organizationRole: course.organization.members[0]?.role,
     permissionMode: course.organization.permissionMode,
     isCourseOwner: course.owner.userId === input.userId,
     isCourseEditor: course.collaborators.length > 0,
     isCohortStaff: course.cohorts.length > 0,
+  };
+  const allowed = canAccessLearningContent({
+    ...scope,
     hasActiveEnrollment:
-      course.enrollments.length > 0 || Boolean(cohortEnrollment),
+      course.enrollments.length > 0 || course._count.cohorts > 0,
     isCoursePublished: course.status === "PUBLISHED",
     isItemPublished: item.isPublished,
   });
 
   if (!allowed) return forbidden();
 
+  // Only sequential courses can lock modules: open courses never report
+  // LOCKED, and cohort staff get management access to the whole outline, so
+  // the outline is skipped for both. Learners reaching this point already have
+  // an active enrollment in the published course and a published item.
   if (
-    !canManageContent({
-      organizationRole: course.organization.members[0]?.role,
-      permissionMode: course.organization.permissionMode,
-      isCourseOwner: course.owner.userId === input.userId,
-      isCourseEditor: course.collaborators.length > 0,
-      isCohortStaff: course.cohorts.length > 0,
-    })
+    course.progressionMode === "SEQUENTIAL" &&
+    !canManageContent(scope) &&
+    !scope.isCohortStaff
   ) {
     const outline = await getCourseOutlineForUser(course.id, input.userId);
-    const courseModule = outline.modules.find((candidate) =>
+    const outlineModule = outline.modules.find((candidate) =>
       candidate.items.some((candidateItem) => candidateItem.id === item.id),
     );
-    if (!courseModule || courseModule.access === "LOCKED") return forbidden();
+    if (!outlineModule || outlineModule.access === "LOCKED") return forbidden();
   }
 
   return item;

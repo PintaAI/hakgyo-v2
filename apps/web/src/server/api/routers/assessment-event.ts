@@ -2,9 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { resolveAssessmentEntry } from "@hakgyo/shared";
 import { z } from "zod";
 
-import type { Prisma } from "../../../../generated/prisma/client";
+import { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { rankAssessmentEventAttempts } from "~/server/assessment-event-ranking";
+import {
+  countLatestAssessmentEventAttemptStatuses,
+  getAssessmentEventLeaderboard,
+} from "~/server/assessment-event-leaderboard";
 import { deleteAssessmentEventWithProgress } from "~/server/content-resource-deletion";
 import {
   activeEnrollmentStatuses,
@@ -45,6 +48,36 @@ const eventSummarySelect = {
   },
   _count: { select: { participants: true, attempts: true } },
 } satisfies Prisma.AssessmentEventSelect;
+const learnerAttemptSelect = {
+  id: true,
+  attemptNumber: true,
+  status: true,
+  score: true,
+  maxScore: true,
+  startedAt: true,
+  submittedAt: true,
+} satisfies Prisma.AssessmentAttemptSelect;
+const LEARNER_CLOSED_EVENT_LIMIT = 100;
+const LEARNER_LEADERBOARD_LIMIT = 50;
+const eventStatusOrder = ["DRAFT", "OPEN", "CLOSED", "CANCELLED"] as const;
+
+/** Mirrors `orderBy: [{ status: "asc" }, { closesAt: "asc" }, { createdAt: "desc" }]`. */
+function compareLearnerEvents(
+  left: { status: string; closesAt: Date | null; createdAt: Date },
+  right: { status: string; closesAt: Date | null; createdAt: Date },
+) {
+  const status =
+    eventStatusOrder.indexOf(left.status as (typeof eventStatusOrder)[number]) -
+    eventStatusOrder.indexOf(right.status as (typeof eventStatusOrder)[number]);
+  if (status) return status;
+  // PostgreSQL sorts NULLs last in ascending order.
+  if (left.closesAt?.getTime() !== right.closesAt?.getTime()) {
+    if (!left.closesAt) return 1;
+    if (!right.closesAt) return -1;
+    return left.closesAt.getTime() - right.closesAt.getTime();
+  }
+  return right.createdAt.getTime() - left.createdAt.getTime();
+}
 
 async function requireMembership(
   db: Prisma.TransactionClient | Prisma.DefaultPrismaClient,
@@ -76,20 +109,20 @@ async function requireEventManagement(
     },
   });
   if (!event) throw new TRPCError({ code: "NOT_FOUND" });
-  if (event.scope === "COHORT" && event.cohortId) {
-    await requireCohortPermission({
-      cohortId: event.cohortId,
-      permission: "assessment.review",
-      userId,
-    });
-  } else {
-    await requireCoursePermission({
-      courseId: event.courseId,
-      permission: "course.manage",
-      userId,
-    });
-  }
-  const membership = await requireMembership(db, event.organizationId, userId);
+  const [, membership] = await Promise.all([
+    event.scope === "COHORT" && event.cohortId
+      ? requireCohortPermission({
+          cohortId: event.cohortId,
+          permission: "assessment.review",
+          userId,
+        })
+      : requireCoursePermission({
+          courseId: event.courseId,
+          permission: "course.manage",
+          userId,
+        }),
+    requireMembership(db, event.organizationId, userId),
+  ]);
   return { event, membership };
 }
 
@@ -339,36 +372,47 @@ export const assessmentEventRouter = createTRPCRouter({
               message: "The selected assessment is no longer published",
             });
           }
-          const participants =
+          // Enroll every eligible learner in one statement instead of reading all enrollments
+          // into memory. `participantCount` is the number of distinct eligible learners, which
+          // matches the previous read-then-createMany(skipDuplicates) behaviour.
+          const statuses = Prisma.join([...activeEnrollmentStatuses]);
+          const eligible =
             event.scope === "COHORT" && event.cohortId
-              ? await tx.cohortEnrollment.findMany({
-                  where: {
-                    cohortId: event.cohortId,
-                    status: { in: [...activeEnrollmentStatuses] },
-                  },
-                  select: { userId: true },
-                })
-              : await tx.courseEnrollment.findMany({
-                  where: {
-                    courseId: event.courseId,
-                    status: { in: [...activeEnrollmentStatuses] },
-                    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-                  },
-                  select: { userId: true },
-                });
-          const userIds = [
-            ...new Set(participants.map(({ userId }) => userId)),
-          ];
-          if (userIds.length === 0) {
+              ? Prisma.sql`
+                  SELECT DISTINCT enrollment."userId"
+                  FROM "CohortEnrollment" AS enrollment
+                  WHERE enrollment."cohortId" = ${event.cohortId}
+                    AND enrollment."status"::text IN (${statuses})
+                `
+              : Prisma.sql`
+                  SELECT DISTINCT enrollment."userId"
+                  FROM "CourseEnrollment" AS enrollment
+                  WHERE enrollment."courseId" = ${event.courseId}
+                    AND enrollment."status"::text IN (${statuses})
+                    AND (
+                      enrollment."expiresAt" IS NULL
+                      OR enrollment."expiresAt" > ${now}::timestamp(3)
+                    )
+                `;
+          const [enrolled] = await tx.$queryRaw<
+            Array<{ participantCount: number }>
+          >`
+            WITH eligible AS (${eligible}),
+            inserted AS (
+              INSERT INTO "AssessmentEventParticipant" ("eventId", "userId")
+              SELECT ${event.id}, eligible."userId" FROM eligible
+              ON CONFLICT DO NOTHING
+              RETURNING 1
+            )
+            SELECT (SELECT COUNT(*) FROM eligible)::int AS "participantCount"
+          `;
+          const participantCount = Number(enrolled?.participantCount ?? 0);
+          if (participantCount === 0) {
             throw new TRPCError({
               code: "BAD_REQUEST",
               message: "The event has no eligible learners",
             });
           }
-          await tx.assessmentEventParticipant.createMany({
-            data: userIds.map((userId) => ({ eventId: event.id, userId })),
-            skipDuplicates: true,
-          });
           const updated = await tx.assessmentEvent.updateMany({
             where: { id: event.id, status: "DRAFT" },
             data: { status: "OPEN", openedAt: now },
@@ -379,10 +423,10 @@ export const assessmentEventRouter = createTRPCRouter({
               eventId: event.id,
               actorMembershipId: access.membership.id,
               action: "OPENED",
-              metadata: { participantCount: userIds.length },
+              metadata: { participantCount },
             },
           });
-          return { opened: true, participantCount: userIds.length };
+          return { opened: true, participantCount };
         },
         { isolationLevel: "Serializable" },
       );
@@ -525,12 +569,19 @@ export const assessmentEventRouter = createTRPCRouter({
             orderBy: { attemptNumber: "desc" },
           });
           if (current) return { ...current, courseId: event.courseId };
-          const eventAttemptCount = await tx.assessmentAttempt.count({
+          // One grouped count serves both the per-event limit and the item-wide attempt number
+          // (event attempts always use the event's course item).
+          const attemptGroups = await tx.assessmentAttempt.groupBy({
+            by: ["assessmentEventId"],
             where: {
-              assessmentEventId: event.id,
+              courseItemId: event.courseItemId,
               userId: ctx.actorUserId,
             },
+            _count: { _all: true },
           });
+          const eventAttemptCount =
+            attemptGroups.find((group) => group.assessmentEventId === event.id)
+              ?._count._all ?? 0;
           if (
             event.courseItem.assessment.maxAttempts !== null &&
             eventAttemptCount >= event.courseItem.assessment.maxAttempts
@@ -541,12 +592,10 @@ export const assessmentEventRouter = createTRPCRouter({
             });
           }
           const attemptNumber =
-            (await tx.assessmentAttempt.count({
-              where: {
-                courseItemId: event.courseItemId,
-                userId: ctx.actorUserId,
-              },
-            })) + 1;
+            attemptGroups.reduce(
+              (total, group) => total + group._count._all,
+              0,
+            ) + 1;
           const created = await tx.assessmentAttempt.create({
             data: {
               assessmentId: event.courseItem.assessment.id,
@@ -567,19 +616,104 @@ export const assessmentEventRouter = createTRPCRouter({
 
   listForLearner: protectedProcedure
     .input(z.object({ organizationId: id.optional() }).optional())
-    .query(({ ctx, input }) =>
-      ctx.db.assessmentEvent
-        .findMany({
+    .query(async ({ ctx, input }) => {
+      // Every draft/open event is returned; closed history is bounded to the most recent ones.
+      // The display order (status, closesAt, createdAt desc) is restored in memory.
+      const learnerEventWhere = (
+        status: Prisma.AssessmentEventWhereInput["status"],
+      ): Prisma.AssessmentEventWhereInput => ({
+        organizationId: input?.organizationId,
+        status,
+        participants: { some: { userId: ctx.actorUserId } },
+      });
+      const learnerEventSelect = {
+        ...eventSummarySelect,
+        participants: {
+          where: { userId: ctx.actorUserId },
+          select: { invalidatedAt: true, invalidationReason: true },
+        },
+        attempts: {
+          where: { userId: ctx.actorUserId },
+          orderBy: { attemptNumber: "desc" },
+          take: 1,
+          select: learnerAttemptSelect,
+        },
+      } satisfies Prisma.AssessmentEventSelect;
+      const [activeEvents, closedEvents, attemptCounts] = await Promise.all([
+        ctx.db.assessmentEvent.findMany({
+          where: learnerEventWhere({ in: ["DRAFT", "OPEN"] }),
+          select: learnerEventSelect,
+        }),
+        ctx.db.assessmentEvent.findMany({
+          where: learnerEventWhere("CLOSED"),
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: LEARNER_CLOSED_EVENT_LIMIT,
+          select: learnerEventSelect,
+        }),
+        ctx.db.assessmentAttempt.groupBy({
+          by: ["assessmentEventId"],
           where: {
             organizationId: input?.organizationId,
-            status: { not: "CANCELLED" },
+            userId: ctx.actorUserId,
+            assessmentEventId: { not: null },
+          },
+          _count: { _all: true },
+        }),
+      ]);
+      const attemptCountByEventId = new Map(
+        attemptCounts.map((group) => [
+          group.assessmentEventId,
+          group._count._all,
+        ]),
+      );
+      const now = new Date();
+      return [...activeEvents, ...closedEvents]
+        .sort(compareLearnerEvents)
+        .map(({ attempts, ...event }) => {
+          const latestAttempt = attempts[0];
+          const attemptCount = attemptCountByEventId.get(event.id) ?? 0;
+          const invalidated = Boolean(event.participants[0]?.invalidatedAt);
+          const available =
+            event.status === "OPEN" &&
+            Boolean(event.closesAt && event.closesAt > now);
+          return {
+            ...event,
+            attemptCount,
+            entry: resolveAssessmentEntry({
+              attemptStatus: latestAttempt?.status,
+              attemptsUsed: attemptCount,
+              maxAttempts: event.courseItem.assessment?.maxAttempts ?? null,
+              available,
+              invalidated,
+            }),
+            attempts: latestAttempt
+              ? [
+                  {
+                    ...latestAttempt,
+                    score:
+                      latestAttempt.status === "GRADED" && !invalidated
+                        ? latestAttempt.score
+                        : null,
+                    maxScore:
+                      latestAttempt.status === "GRADED" && !invalidated
+                        ? latestAttempt.maxScore
+                        : null,
+                  },
+                ]
+              : [],
+          };
+        });
+    }),
+
+  getForLearner: protectedProcedure
+    .input(z.object({ eventId: id }))
+    .query(async ({ ctx, input }) => {
+      const [event, attemptCount] = await Promise.all([
+        ctx.db.assessmentEvent.findFirst({
+          where: {
+            id: input.eventId,
             participants: { some: { userId: ctx.actorUserId } },
           },
-          orderBy: [
-            { status: "asc" },
-            { closesAt: "asc" },
-            { createdAt: "desc" },
-          ],
           select: {
             ...eventSummarySelect,
             participants: {
@@ -589,84 +723,15 @@ export const assessmentEventRouter = createTRPCRouter({
             attempts: {
               where: { userId: ctx.actorUserId },
               orderBy: { attemptNumber: "desc" },
-              select: {
-                id: true,
-                attemptNumber: true,
-                status: true,
-                score: true,
-                maxScore: true,
-                startedAt: true,
-                submittedAt: true,
-              },
+              take: 1,
+              select: learnerAttemptSelect,
             },
           },
-        })
-        .then((events) =>
-          events.map((event) => {
-            const latestAttempt = event.attempts[0];
-            const invalidated = Boolean(event.participants[0]?.invalidatedAt);
-            const available =
-              event.status === "OPEN" &&
-              Boolean(event.closesAt && event.closesAt > new Date());
-            return {
-              ...event,
-              attemptCount: event.attempts.length,
-              entry: resolveAssessmentEntry({
-                attemptStatus: latestAttempt?.status,
-                attemptsUsed: event.attempts.length,
-                maxAttempts: event.courseItem.assessment?.maxAttempts ?? null,
-                available,
-                invalidated,
-              }),
-              attempts: latestAttempt
-                ? [
-                    {
-                      ...latestAttempt,
-                      score:
-                        latestAttempt.status === "GRADED" && !invalidated
-                          ? latestAttempt.score
-                          : null,
-                      maxScore:
-                        latestAttempt.status === "GRADED" && !invalidated
-                          ? latestAttempt.maxScore
-                          : null,
-                    },
-                  ]
-                : [],
-            };
-          }),
-        ),
-    ),
-
-  getForLearner: protectedProcedure
-    .input(z.object({ eventId: id }))
-    .query(async ({ ctx, input }) => {
-      const event = await ctx.db.assessmentEvent.findFirst({
-        where: {
-          id: input.eventId,
-          participants: { some: { userId: ctx.actorUserId } },
-        },
-        select: {
-          ...eventSummarySelect,
-          participants: {
-            where: { userId: ctx.actorUserId },
-            select: { invalidatedAt: true, invalidationReason: true },
-          },
-          attempts: {
-            where: { userId: ctx.actorUserId },
-            orderBy: { attemptNumber: "desc" },
-            select: {
-              id: true,
-              attemptNumber: true,
-              status: true,
-              score: true,
-              maxScore: true,
-              startedAt: true,
-              submittedAt: true,
-            },
-          },
-        },
-      });
+        }),
+        ctx.db.assessmentAttempt.count({
+          where: { assessmentEventId: input.eventId, userId: ctx.actorUserId },
+        }),
+      ]);
       if (!event) throw new TRPCError({ code: "NOT_FOUND" });
       const latestAttempt = event.attempts[0];
       const participantInvalidated = Boolean(
@@ -677,14 +742,14 @@ export const assessmentEventRouter = createTRPCRouter({
         Boolean(event.closesAt && event.closesAt > new Date());
       const entry = resolveAssessmentEntry({
         attemptStatus: latestAttempt?.status,
-        attemptsUsed: event.attempts.length,
+        attemptsUsed: attemptCount,
         maxAttempts: event.courseItem.assessment?.maxAttempts ?? null,
         available,
         invalidated: participantInvalidated || event.status === "CANCELLED",
       });
       const learnerEvent = {
         ...event,
-        attemptCount: event.attempts.length,
+        attemptCount,
         entry,
         attempts: latestAttempt
           ? [
@@ -711,42 +776,13 @@ export const assessmentEventRouter = createTRPCRouter({
         (entry.state === "NOT_STARTED" || entry.state === "IN_PROGRESS")
       )
         return { ...learnerEvent, leaderboard: null };
-      const attempts = await ctx.db.assessmentAttempt.findMany({
-        where: { assessmentEventId: event.id },
-        select: {
-          id: true,
-          userId: true,
-          score: true,
-          status: true,
-          maxScore: true,
-          startedAt: true,
-          submittedAt: true,
-          user: { select: { name: true } },
-          assessmentEvent: {
-            select: {
-              participants: {
-                select: { userId: true, invalidatedAt: true },
-              },
-            },
-          },
-        },
+      // Top entries plus the learner's own row, ranked in SQL.
+      const leaderboard = await getAssessmentEventLeaderboard(ctx.db, {
+        eventId: event.id,
+        limit: LEARNER_LEADERBOARD_LIMIT,
+        userId: ctx.actorUserId,
       });
-      const invalidatedByUser = new Map(
-        attempts[0]?.assessmentEvent?.participants.map((participant) => [
-          participant.userId,
-          participant.invalidatedAt,
-        ]) ?? [],
-      );
-      return {
-        ...learnerEvent,
-        leaderboard: rankAssessmentEventAttempts(
-          attempts.map((attempt) => ({
-            ...attempt,
-            name: attempt.user.name,
-            invalidatedAt: invalidatedByUser.get(attempt.userId) ?? null,
-          })),
-        ),
-      };
+      return { ...learnerEvent, leaderboard };
     }),
 
   getManageable: protectedProcedure
@@ -788,95 +824,94 @@ export const assessmentEventRouter = createTRPCRouter({
             : {}),
         },
       };
-      const participantTotal = await ctx.db.assessmentEventParticipant.count({
-        where: participantWhere,
-      });
-      const event = await ctx.db.assessmentEvent.findUnique({
-        where: { id: input.eventId },
-        select: {
-          ...eventSummarySelect,
-          participants: {
-            where: participantWhere,
-            orderBy: [{ user: { name: "asc" } }, { userId: "asc" }],
-            skip: (input.page - 1) * 20,
-            take: 20,
+      const [participantTotal, event, leaderboard, latestStatusCounts] =
+        await Promise.all([
+          ctx.db.assessmentEventParticipant.count({ where: participantWhere }),
+          ctx.db.assessmentEvent.findUnique({
+            where: { id: input.eventId },
             select: {
-              userId: true,
-              invalidatedAt: true,
-              invalidationReason: true,
-              user: { select: { name: true, email: true } },
+              ...eventSummarySelect,
+              participants: {
+                where: participantWhere,
+                orderBy: [{ user: { name: "asc" } }, { userId: "asc" }],
+                skip: (input.page - 1) * 20,
+                take: 20,
+                select: {
+                  userId: true,
+                  invalidatedAt: true,
+                  invalidationReason: true,
+                  user: {
+                    select: {
+                      name: true,
+                      email: true,
+                      // Latest attempt in this event, only for the participants on this page.
+                      assessmentAttempts: {
+                        where: { assessmentEventId: input.eventId },
+                        orderBy: { attemptNumber: "desc" },
+                        take: 1,
+                        select: {
+                          id: true,
+                          userId: true,
+                          attemptNumber: true,
+                          status: true,
+                          score: true,
+                          maxScore: true,
+                          startedAt: true,
+                          submittedAt: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              audits: {
+                orderBy: { createdAt: "desc" },
+                take: 20,
+                select: {
+                  id: true,
+                  action: true,
+                  reason: true,
+                  metadata: true,
+                  createdAt: true,
+                  attemptId: true,
+                  actor: { select: { user: { select: { name: true } } } },
+                },
+              },
             },
-          },
-          attempts: {
-            orderBy: { attemptNumber: "asc" },
-            select: {
-              id: true,
-              userId: true,
-              attemptNumber: true,
-              status: true,
-              score: true,
-              maxScore: true,
-              startedAt: true,
-              submittedAt: true,
-            },
-          },
-          audits: {
-            orderBy: { createdAt: "desc" },
-            take: 20,
-            select: {
-              id: true,
-              action: true,
-              reason: true,
-              metadata: true,
-              createdAt: true,
-              attemptId: true,
-              actor: { select: { user: { select: { name: true } } } },
-            },
-          },
-        },
-      });
+          }),
+          getAssessmentEventLeaderboard(ctx.db, {
+            eventId: input.eventId,
+            limit: 20,
+          }),
+          countLatestAssessmentEventAttemptStatuses(ctx.db, input.eventId),
+        ]);
       if (!event) throw new TRPCError({ code: "NOT_FOUND" });
-      const allParticipants = await ctx.db.assessmentEventParticipant.findMany({
-        where: { eventId: event.id },
-        select: {
-          userId: true,
-          invalidatedAt: true,
-          user: { select: { name: true } },
-        },
-      });
-      const rankingParticipants = new Map(
-        allParticipants.map((p) => [p.userId, p]),
+      const participants = event.participants.map(
+        ({ user: { assessmentAttempts, ...user }, ...participant }) => ({
+          ...participant,
+          user,
+          attempt: assessmentAttempts[0] ?? null,
+        }),
       );
-      const leaderboard = rankAssessmentEventAttempts(
-        event.attempts.map((attempt) => ({
-          ...attempt,
-          name: rankingParticipants.get(attempt.userId)?.user.name ?? "Learner",
-          invalidatedAt:
-            rankingParticipants.get(attempt.userId)?.invalidatedAt ?? null,
-        })),
+      const learnersWithAttempts = [...latestStatusCounts.values()].reduce(
+        (total, count) => total + count,
+        0,
       );
-      const attemptsByUserId = new Map(
-        event.attempts.map((attempt) => [attempt.userId, attempt]),
-      );
-      const latestAttempts = [...attemptsByUserId.values()];
       return {
         ...event,
-        attempts: undefined,
-        leaderboard: leaderboard.slice(0, 20),
+        participants: participants.map(
+          ({ attempt: _attempt, ...participant }) => participant,
+        ),
+        leaderboard,
         participantTotal,
         pageCount: Math.ceil(participantTotal / 20),
         counts: {
-          notStarted: event._count.participants - latestAttempts.length,
-          inProgress: latestAttempts.filter((a) => a.status === "IN_PROGRESS")
-            .length,
-          inReview: latestAttempts.filter((a) => a.status === "IN_REVIEW")
-            .length,
-          graded: latestAttempts.filter((a) => a.status === "GRADED").length,
+          notStarted: event._count.participants - learnersWithAttempts,
+          inProgress: latestStatusCounts.get("IN_PROGRESS") ?? 0,
+          inReview: latestStatusCounts.get("IN_REVIEW") ?? 0,
+          graded: latestStatusCounts.get("GRADED") ?? 0,
         },
-        participantResults: event.participants.map((participant) => ({
-          ...participant,
-          attempt: attemptsByUserId.get(participant.userId) ?? null,
-        })),
+        participantResults: participants,
       };
     }),
 

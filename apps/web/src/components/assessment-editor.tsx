@@ -348,7 +348,6 @@ export function AssessmentEditor({
     { assessmentId: assessmentId ?? "" },
     { enabled: Boolean(assessmentId) },
   );
-  const organization = api.organization.get.useQuery({ organizationId });
   const createAssessment = api.assessment.create.useMutation();
   const createAssessmentItem = api.content.createAssessmentItem.useMutation();
   const updateAssessment = api.assessment.update.useMutation();
@@ -362,7 +361,9 @@ export function AssessmentEditor({
   const attachAsset = api.assessment.attachAsset.useMutation();
   const detachAsset = api.assessment.detachAsset.useMutation();
   const createdAssessmentIdRef = useRef<string | null>(null);
-  const canDelete = Boolean(organization.data) && !attachTo;
+  // Every page rendering the editor already verified organization membership on the server
+  // (the delete procedure re-checks authorship), so no client-side organization fetch is needed.
+  const canDelete = !attachTo;
   const sessionUserId = session?.user.id;
   const draftScope = useMemo(
     () =>

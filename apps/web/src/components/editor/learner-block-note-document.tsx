@@ -6,6 +6,7 @@ import "@blocknote/shadcn/style.css";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 
+import { loadAssetDownloadUrl } from "~/components/asset-download-url";
 import { api } from "~/trpc/react";
 
 import { AssetUploadProvider } from "./asset-upload-context";
@@ -37,11 +38,10 @@ export function LearnerBlockNoteDocument({
     initialContent: content,
     resolveFileUrl: async (url) => {
       if (!url.startsWith(assetUrlPrefix)) return url;
-      const result = await utils.client.storage.createDownloadUrl.mutate({
-        assetId: url.slice(assetUrlPrefix.length),
-        disposition: "inline",
-      });
-      return result.downloadUrl;
+      return loadAssetDownloadUrl(
+        utils.client,
+        url.slice(assetUrlPrefix.length),
+      );
     },
     schema: hakgyoBlockNoteSchema,
     trailingBlock: false,

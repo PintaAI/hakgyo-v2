@@ -10,11 +10,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useAssetDownloadUrl } from "~/components/asset-download-url";
 import {
   assetAudioBlockType,
   assetImageBlockType,
 } from "~/lib/blocknote/block-catalog";
-import { api } from "~/trpc/react";
 
 import { useEditorAssetUpload } from "../asset-upload-context";
 import { CustomBlockToolbar } from "./custom-block-toolbar";
@@ -40,35 +40,13 @@ export function AssetUrl({
   assetId: string;
   children: (url: string | null, loading: boolean) => React.ReactNode;
 }) {
-  const utils = api.useUtils();
-  const [result, setResult] = useState<{
-    assetId: string;
-    url: string | null;
-  } | null>(null);
+  const { url, failed, loading } = useAssetDownloadUrl(assetId);
 
   useEffect(() => {
-    let active = true;
-    if (!assetId) return;
-    void utils.client.storage.createDownloadUrl
-      .mutate({ assetId, disposition: "inline" })
-      .then(({ downloadUrl }) => {
-        if (active) setResult({ assetId, url: downloadUrl });
-      })
-      .catch(() => {
-        if (active) {
-          setResult({ assetId, url: null });
-          toast.error("Media gagal dimuat.");
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [assetId, utils.client]);
+    if (failed) toast.error("Media gagal dimuat.");
+  }, [assetId, failed]);
 
-  return children(
-    result?.assetId === assetId ? result.url : null,
-    result?.assetId !== assetId,
-  );
+  return children(url, loading);
 }
 
 function MediaPicker({

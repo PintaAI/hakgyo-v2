@@ -96,13 +96,16 @@ function publicBrand(organization: {
 
 export async function getOrganizationLanding(input: OwnerInput) {
   await requireLandingOwner(input);
-  const organization = await input.db.organization.findUniqueOrThrow({
-    where: { id: input.organizationId },
-    select: organizationBrandSelect,
-  });
-  const landing = await input.db.organizationLandingPage.findUnique({
-    where: { organizationId: input.organizationId },
-  });
+  const [organization, landing, courses] = await Promise.all([
+    input.db.organization.findUniqueOrThrow({
+      where: { id: input.organizationId },
+      select: organizationBrandSelect,
+    }),
+    input.db.organizationLandingPage.findUnique({
+      where: { organizationId: input.organizationId },
+    }),
+    getLandingCourses(input.db, input.organizationId),
+  ]);
   return {
     organization: publicBrand(organization),
     config: landing
@@ -110,7 +113,7 @@ export async function getOrganizationLanding(input: OwnerInput) {
       : createDefaultOrganizationLandingConfig(organization.name),
     publishedAt: landing?.publishedAt ?? null,
     updatedAt: landing?.updatedAt ?? null,
-    courses: await getLandingCourses(input.db, input.organizationId),
+    courses,
   };
 }
 

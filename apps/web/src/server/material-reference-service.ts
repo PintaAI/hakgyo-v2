@@ -6,7 +6,7 @@ import {
   removeInvalidMaterialReferences,
 } from "~/lib/blocknote/resource-references";
 import {
-  getLearnerPdfBooks,
+  getLearnerPdfBooksForSources,
   sanitizePdfPageBlocks,
 } from "~/server/pdf-book/service";
 
@@ -129,80 +129,134 @@ export async function assertPublishedMaterialReferences(
   }
 }
 
-export async function getLearnerMaterialReferences(
+type ReferenceSource = {
+  content: unknown;
+  moduleId: string;
+  organizationId: string;
+};
+
+/**
+ * Learner view of the resources embedded in several materials. Vocabulary sets, assessments and PDF
+ * book pages are loaded with one query each for all materials, then split per material (same
+ * organization, placed in the material's module). A query is skipped when no material embeds
+ * that resource kind.
+ */
+export async function getLearnerMaterialReferencesForSources(
   db: DatabaseClient,
-  input: {
-    content: unknown;
-    moduleId: string;
-    organizationId: string;
-  },
+  sources: readonly ReferenceSource[],
 ) {
-  const references = collectMaterialReferenceIds(input.content);
+  const references = sources.map((source) =>
+    collectMaterialReferenceIds(source.content),
+  );
+  const vocabularySetIds = [
+    ...new Set(references.flatMap((reference) => reference.vocabularySetIds)),
+  ];
+  const assessmentIds = [
+    ...new Set(references.flatMap((reference) => reference.assessmentIds)),
+  ];
+  const moduleIds = [...new Set(sources.map((source) => source.moduleId))];
+  const organizationIds = [
+    ...new Set(sources.map((source) => source.organizationId)),
+  ];
   const [vocabularySets, assessments, pdfBooks] = await Promise.all([
-    db.vocabularySet.findMany({
-      where: {
-        id: { in: references.vocabularySetIds },
-        organizationId: input.organizationId,
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        entries: {
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    vocabularySetIds.length === 0
+      ? []
+      : db.vocabularySet.findMany({
+          where: {
+            id: { in: vocabularySetIds },
+            organizationId: { in: organizationIds },
+          },
           select: {
             id: true,
-            term: true,
-            definition: true,
-            examples: true,
-            audioAsset: { select: { id: true, fileName: true } },
-            imageAsset: { select: { id: true, fileName: true } },
+            organizationId: true,
+            title: true,
+            description: true,
+            entries: {
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+              select: {
+                id: true,
+                term: true,
+                definition: true,
+                examples: true,
+                audioAsset: { select: { id: true, fileName: true } },
+                imageAsset: { select: { id: true, fileName: true } },
+              },
+            },
+            courseItems: {
+              where: { moduleId: { in: moduleIds }, isPublished: true },
+              select: { id: true, moduleId: true },
+            },
           },
-        },
-        courseItems: {
-          where: { moduleId: input.moduleId, isPublished: true },
-          select: { id: true },
-          take: 1,
-        },
-      },
-    }),
-    db.assessment.findMany({
-      where: {
-        id: { in: references.assessmentIds },
-        organizationId: input.organizationId,
-        status: "PUBLISHED",
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        _count: { select: { questions: true } },
-        courseItems: {
-          where: { moduleId: input.moduleId, isPublished: true },
-          select: { id: true },
-          take: 1,
-        },
-      },
-    }),
-    getLearnerPdfBooks(db, input),
+        }),
+    assessmentIds.length === 0
+      ? []
+      : db.assessment.findMany({
+          where: {
+            id: { in: assessmentIds },
+            organizationId: { in: organizationIds },
+            status: "PUBLISHED",
+          },
+          select: {
+            id: true,
+            organizationId: true,
+            title: true,
+            description: true,
+            _count: { select: { questions: true } },
+            courseItems: {
+              where: { moduleId: { in: moduleIds }, isPublished: true },
+              select: { id: true, moduleId: true },
+            },
+          },
+        }),
+    getLearnerPdfBooksForSources(db, sources),
   ]);
 
-  return {
-    pdfBooks,
-    vocabularySets: vocabularySets.flatMap(({ courseItems, ...set }) =>
-      courseItems[0] ? [{ ...set, courseItemId: courseItems[0].id }] : [],
-    ),
-    assessments: assessments.flatMap(
-      ({ _count, courseItems, ...assessment }) =>
-        courseItems[0]
-          ? [
-              {
-                ...assessment,
-                questionCount: _count.questions,
-                courseItemId: courseItems[0].id,
-              },
-            ]
-          : [],
-    ),
-  };
+  return sources.map((source, index) => {
+    const reference = references[index]!;
+    const setIds = new Set(reference.vocabularySetIds);
+    const referencedAssessmentIds = new Set(reference.assessmentIds);
+    return {
+      pdfBooks: pdfBooks[index]!,
+      vocabularySets: vocabularySets.flatMap(
+        ({ courseItems, organizationId, ...set }) => {
+          const courseItem = courseItems.find(
+            (candidate) => candidate.moduleId === source.moduleId,
+          );
+          return setIds.has(set.id) &&
+            organizationId === source.organizationId &&
+            courseItem
+            ? [{ ...set, courseItemId: courseItem.id }]
+            : [];
+        },
+      ),
+      assessments: assessments.flatMap(
+        ({ _count, courseItems, organizationId, ...assessment }) => {
+          const courseItem = courseItems.find(
+            (candidate) => candidate.moduleId === source.moduleId,
+          );
+          return referencedAssessmentIds.has(assessment.id) &&
+            organizationId === source.organizationId &&
+            courseItem
+            ? [
+                {
+                  ...assessment,
+                  questionCount: _count.questions,
+                  courseItemId: courseItem.id,
+                },
+              ]
+            : [];
+        },
+      ),
+    };
+  });
+}
+
+export async function getLearnerMaterialReferences(
+  db: DatabaseClient,
+  input: ReferenceSource,
+) {
+  const [references] = await getLearnerMaterialReferencesForSources(db, [
+    input,
+  ]);
+  return references!;
 }

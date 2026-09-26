@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { collectPdfPageRanges, formatPdfPageRange } from "@hakgyo/shared";
+import { useEffect, useState, type FormEvent } from "react";
+import { formatPdfPageRange, type PdfPageRange } from "@hakgyo/shared";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   DndContext,
   KeyboardSensor,
@@ -79,9 +78,12 @@ import { api, type RouterOutputs } from "~/trpc/react";
 type Course = RouterOutputs["course"]["get"];
 type CourseModule = Course["modules"][number];
 type CourseItem = CourseModule["items"][number];
-type Material = RouterOutputs["content"]["listMaterials"][number];
-type Assessment = RouterOutputs["assessment"]["list"][number];
-type VocabularySet = RouterOutputs["content"]["listVocabularySets"][number];
+/** Library resources only need an id and title to be picked and labelled. */
+type ResourceOption = { id: string; title: string };
+type Material = ResourceOption;
+type Assessment = ResourceOption;
+type VocabularySet = ResourceOption;
+type PdfPageRangesByMaterial = Partial<Record<string, PdfPageRange[]>>;
 type ItemType = CourseItem["type"];
 
 const itemMeta = {
@@ -131,12 +133,11 @@ function resourceTitle(
 /** "PDF · Hal. 24–31" for lessons built from PDF book pages. */
 function pdfLessonLabel(
   item: CourseItem,
-  materials: Material[],
+  pdfPageRanges: PdfPageRangesByMaterial,
   pageOffsets: ReadonlyMap<string, number>,
 ) {
-  if (item.type !== "MATERIAL") return null;
-  const material = materials.find(({ id }) => id === item.materialId);
-  const ranges = collectPdfPageRanges(material?.content);
+  if (item.type !== "MATERIAL" || !item.materialId) return null;
+  const ranges = pdfPageRanges[item.materialId] ?? [];
   const first = ranges[0];
   if (!first) return null;
   const label = formatPdfPageRange(
@@ -178,20 +179,34 @@ function getErrorMessage(error: unknown) {
 }
 
 export function KurikulumEditor({
-  course,
+  initialCourse,
   organizationSlug,
   materials,
   assessments,
   vocabularySets,
 }: {
-  course: Course;
+  initialCourse: Course;
   organizationSlug: string;
   materials: Material[];
   assessments: Assessment[];
   vocabularySets: VocabularySet[];
 }) {
-  const router = useRouter();
   const utils = api.useUtils();
+  // Seeded from the server render; mutations refresh this query instead of
+  // re-rendering the whole route.
+  const { data: course = initialCourse } = api.course.get.useQuery(
+    { courseId: initialCourse.id },
+    { initialData: initialCourse },
+  );
+  // `initialData` is ignored once the query is cached, so a fresh server render (e.g. returning
+  // from creating an item) must overwrite the cached course explicitly.
+  useEffect(() => {
+    utils.course.get.setData({ courseId: initialCourse.id }, initialCourse);
+  }, [initialCourse, utils]);
+  const pdfPageRangesQuery = api.content.listCoursePdfPageRanges.useQuery({
+    courseId: initialCourse.id,
+  });
+  const pdfPageRanges: PdfPageRangesByMaterial = pdfPageRangesQuery.data ?? {};
   const [moduleDialog, setModuleDialog] = useState<{
     open: boolean;
     module?: CourseModule;
@@ -240,13 +255,23 @@ export function KurikulumEditor({
     organizationSlug,
   };
 
-  async function refreshCourse() {
+  async function refreshCourse({
+    publishesAssessments = false,
+  }: { publishesAssessments?: boolean } = {}) {
     await Promise.all([
       utils.course.get.invalidate({ courseId: course.id }),
       utils.course.getWorkspaceOverview.invalidate(workspaceQueryInput),
-      utils.assessment.invalidate(),
+      utils.content.listCoursePdfPageRanges.invalidate({
+        courseId: course.id,
+      }),
+      // Publishing an item also publishes its draft assessment.
+      ...(publishesAssessments
+        ? [
+            utils.assessment.get.invalidate(),
+            utils.assessment.list.invalidate(),
+          ]
+        : []),
     ]);
-    router.refresh();
   }
 
   async function changeProgressionMode(nextMode: Course["progressionMode"]) {
@@ -262,7 +287,6 @@ export function KurikulumEditor({
         utils.course.getWorkspaceOverview.invalidate(workspaceQueryInput),
         utils.learning.getCourseOutline.invalidate({ courseId: course.id }),
       ]);
-      router.refresh();
       toast.success(
         nextMode === "OPEN"
           ? "Semua bab sekarang terbuka."
@@ -345,7 +369,7 @@ export function KurikulumEditor({
   async function togglePublished(item: CourseItem, checked: boolean) {
     try {
       await updateItem.mutateAsync({ itemId: item.id, isPublished: checked });
-      await refreshCourse();
+      await refreshCourse({ publishesAssessments: checked });
       toast.success(checked ? "Item published." : "Item dijadikan draf.");
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -518,6 +542,7 @@ export function KurikulumEditor({
                   isItemUpdatePending={updateItem.isPending}
                   isReordering={isReordering}
                   materials={materials}
+                  pdfPageRanges={pdfPageRanges}
                   pageOffsets={pageOffsets}
                   assessments={assessments}
                   courseId={course.id}
@@ -558,7 +583,7 @@ export function KurikulumEditor({
         courseId={course.id}
         state={moduleDialog}
         onClose={() => setModuleDialog({ open: false })}
-        onSaved={refreshCourse}
+        onSaved={() => refreshCourse()}
       />
       <ItemDialog
         key={itemModule?.id ?? "no-module"}
@@ -570,7 +595,7 @@ export function KurikulumEditor({
         organizationSlug={organizationSlug}
         vocabularySets={vocabularySets}
         onClose={() => setItemModule(null)}
-        onSaved={refreshCourse}
+        onSaved={() => refreshCourse({ publishesAssessments: true })}
       />
       <AlertDialog
         open={Boolean(deleteTarget)}
@@ -613,6 +638,7 @@ function SortableModuleCard({
   isReordering,
   isItemUpdatePending,
   materials,
+  pdfPageRanges,
   pageOffsets,
   assessments,
   organizationSlug,
@@ -629,6 +655,7 @@ function SortableModuleCard({
   isReordering: boolean;
   isItemUpdatePending: boolean;
   materials: Material[];
+  pdfPageRanges: PdfPageRangesByMaterial;
   pageOffsets: ReadonlyMap<string, number>;
   assessments: Assessment[];
   organizationSlug: string;
@@ -653,7 +680,7 @@ function SortableModuleCard({
   });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const hasPdfLesson = module.items.some((item) =>
-    Boolean(pdfLessonLabel(item, materials, pageOffsets)),
+    Boolean(pdfLessonLabel(item, pdfPageRanges, pageOffsets)),
   );
   const hasPractice = module.items.some(
     (item) => item.type === "VOCABULARY_SET" || item.type === "ASSESSMENT",
@@ -733,7 +760,7 @@ function SortableModuleCard({
                   resourceTitle(item, materials, assessments, vocabularySets) ??
                   "Resource tidak tersedia"
                 }
-                pdfLabel={pdfLessonLabel(item, materials, pageOffsets)}
+                pdfLabel={pdfLessonLabel(item, pdfPageRanges, pageOffsets)}
                 onTogglePublished={onTogglePublished}
                 onDeleteItem={() => onDeleteItem(item)}
               />

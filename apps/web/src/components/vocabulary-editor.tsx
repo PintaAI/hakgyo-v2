@@ -42,6 +42,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
+import { useAssetDownloadUrl } from "~/components/asset-download-url";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -54,7 +55,7 @@ import {
   resourcePickerQuery,
 } from "~/lib/resource-picker-callback";
 
-type VocabularySet = RouterOutputs["content"]["listVocabularySets"][number];
+type VocabularySet = RouterOutputs["content"]["getVocabularySet"];
 type VocabularyEntry = VocabularySet["entries"][number];
 
 type EntryFields = {
@@ -123,74 +124,32 @@ function useOnDraftChange<T>(
 }
 
 function AudioPlayer({ assetId }: { assetId: string }) {
-  const utils = api.useUtils();
-  const [result, setResult] = useState<{
-    assetId: string;
-    url: string | null;
-    failed: boolean;
-  } | null>(null);
+  const { url, failed } = useAssetDownloadUrl(assetId);
 
-  useEffect(() => {
-    let active = true;
-    void utils.client.storage.createDownloadUrl
-      .mutate({ assetId, disposition: "inline" })
-      .then(({ downloadUrl }) => {
-        if (active) setResult({ assetId, url: downloadUrl, failed: false });
-      })
-      .catch(() => {
-        if (active) setResult({ assetId, url: null, failed: true });
-      });
-    return () => {
-      active = false;
-    };
-  }, [assetId, utils.client]);
-
-  if (result?.assetId === assetId && result.failed) {
+  if (failed) {
     return <p className="text-destructive text-xs">Audio gagal dimuat.</p>;
   }
-  if (result?.assetId !== assetId || !result.url) {
+  if (!url) {
     return (
       <span className="text-muted-foreground inline-flex items-center gap-2 text-xs">
         <LoaderCircleIcon className="size-3.5 animate-spin" /> Memuat audio
       </span>
     );
   }
-  return (
-    <audio className="h-9 w-full" controls preload="none" src={result.url} />
-  );
+  return <audio className="h-9 w-full" controls preload="none" src={url} />;
 }
 
 function AssetImage({ assetId, alt }: { assetId: string; alt: string }) {
-  const utils = api.useUtils();
-  const [result, setResult] = useState<{
-    assetId: string;
-    url: string | null;
-    failed: boolean;
-  } | null>(null);
+  const { url, failed } = useAssetDownloadUrl(assetId);
 
-  useEffect(() => {
-    let active = true;
-    void utils.client.storage.createDownloadUrl
-      .mutate({ assetId, disposition: "inline" })
-      .then(({ downloadUrl }) => {
-        if (active) setResult({ assetId, url: downloadUrl, failed: false });
-      })
-      .catch(() => {
-        if (active) setResult({ assetId, url: null, failed: true });
-      });
-    return () => {
-      active = false;
-    };
-  }, [assetId, utils.client]);
-
-  if (result?.assetId === assetId && result.failed) {
+  if (failed) {
     return (
       <span className="bg-muted text-destructive flex size-14 items-center justify-center rounded-md text-center text-[10px]">
         Gagal dimuat
       </span>
     );
   }
-  if (result?.assetId !== assetId || !result.url) {
+  if (!url) {
     return (
       <span className="bg-muted text-muted-foreground flex size-14 items-center justify-center rounded-md">
         <LoaderCircleIcon className="size-4 animate-spin" />
@@ -202,7 +161,7 @@ function AssetImage({ assetId, alt }: { assetId: string; alt: string }) {
       alt={alt}
       className="size-14 rounded-md object-cover"
       height={56}
-      src={result.url}
+      src={url}
       unoptimized
       width={56}
     />
@@ -231,11 +190,10 @@ export function VocabularyEditor({
 }) {
   const router = useRouter();
   const utils = api.useUtils();
-  const vocabularySets = api.content.listVocabularySets.useQuery(
-    { organizationId },
+  const vocabularySetQuery = api.content.getVocabularySet.useQuery(
+    { organizationId, vocabularySetId: vocabularySetId ?? "" },
     { enabled: Boolean(vocabularySetId) },
   );
-  const organization = api.organization.get.useQuery({ organizationId });
   const createSet = api.content.createVocabularySet.useMutation();
   const createSetItem = api.content.createVocabularySetItem.useMutation();
   const updateSet = api.content.updateVocabularySet.useMutation();
@@ -251,13 +209,20 @@ export function VocabularyEditor({
     entryId: string;
     kind: "audio" | "image";
   } | null>(null);
-  const canDelete = Boolean(organization.data) && !attachTo;
-  const vocabularySet = vocabularySets.data?.find(
-    (set) => set.id === vocabularySetId,
-  );
+  // The pages rendering this editor already require organization membership.
+  const canDelete = !attachTo;
+  const vocabularySet = vocabularySetId ? vocabularySetQuery.data : undefined;
 
   async function refreshVocabulary() {
-    await utils.content.listVocabularySets.invalidate({ organizationId });
+    await Promise.all([
+      utils.content.listVocabularySets.invalidate({ organizationId }),
+      vocabularySetId
+        ? utils.content.getVocabularySet.invalidate({
+            organizationId,
+            vocabularySetId,
+          })
+        : undefined,
+    ]);
   }
 
   async function uploadEntryAsset(
@@ -327,7 +292,7 @@ export function VocabularyEditor({
     }
   }
 
-  if (vocabularySetId && vocabularySets.isPending) {
+  if (vocabularySetId && vocabularySetQuery.isPending) {
     return (
       <div className="text-muted-foreground flex min-h-96 items-center justify-center text-sm">
         <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
@@ -336,13 +301,13 @@ export function VocabularyEditor({
     );
   }
 
-  if (vocabularySetId && (vocabularySets.error || !vocabularySet)) {
+  if (vocabularySetId && (vocabularySetQuery.error || !vocabularySet)) {
     return (
       <div className="flex min-h-96 flex-col items-center justify-center gap-3 text-center">
         <p className="text-destructive text-sm">
-          {vocabularySets.error?.message ?? "Set kosakata gagal dimuat."}
+          {vocabularySetQuery.error?.message ?? "Set kosakata gagal dimuat."}
         </p>
-        <Button variant="outline" onClick={() => vocabularySets.refetch()}>
+        <Button variant="outline" onClick={() => vocabularySetQuery.refetch()}>
           Coba lagi
         </Button>
       </div>
@@ -579,9 +544,7 @@ function VocabularySetForm({
       setExpandedEntryId(null);
       setClosingEntryId(entryId);
       setTimeout(() => {
-        setClosingEntryId((current) =>
-          current === entryId ? null : current,
-        );
+        setClosingEntryId((current) => (current === entryId ? null : current));
       }, 300);
     } else {
       setClosingEntryId(null);
@@ -770,7 +733,7 @@ function VocabularySetForm({
         />
         <textarea
           aria-label="Deskripsi set kosakata"
-          className="text-muted-foreground placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:text-foreground field-sizing-content -mx-2 max-h-48 w-full resize-none rounded-md bg-transparent px-2 py-1 text-sm transition-colors outline-none"
+          className="text-muted-foreground placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:text-foreground -mx-2 field-sizing-content max-h-48 w-full resize-none rounded-md bg-transparent px-2 py-1 text-sm transition-colors outline-none"
           maxLength={10000}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Tambahkan deskripsi singkat (opsional)…"
@@ -820,10 +783,7 @@ function VocabularySetForm({
                 visibleEntries.slice(0, Math.ceil(visibleEntries.length / 2)),
                 visibleEntries.slice(Math.ceil(visibleEntries.length / 2)),
               ].map((columnEntries, columnIndex) => (
-                <ol
-                  className="grid items-start gap-2"
-                  key={columnIndex}
-                >
+                <ol className="grid items-start gap-2" key={columnIndex}>
                   {columnEntries.map((entry) => (
                     <li key={entry.id}>
                       <EntryRow
@@ -953,11 +913,7 @@ function QuickAddForm({
         placeholder="Definisi — tekan Enter untuk menambah"
         value={definition}
       />
-      <Button
-        aria-label="Tambah entri"
-        disabled={!canSubmit}
-        type="submit"
-      >
+      <Button aria-label="Tambah entri" disabled={!canSubmit} type="submit">
         {busy ? (
           <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
         ) : (
@@ -1010,16 +966,14 @@ function EntryRow({
     <article
       className={cn(
         "group bg-card scroll-mt-32 rounded-xl border transition-[background-color,border-color,box-shadow] duration-300",
-        expanded
-          ? "border-primary/40 shadow-sm"
-          : "hover:border-foreground/20",
+        expanded ? "border-primary/40 shadow-sm" : "hover:border-foreground/20",
         highlighted && "border-primary/50 bg-primary/[0.06]",
       )}
     >
       <div className="flex items-center gap-1 pr-1.5">
         <button
           aria-expanded={expanded}
-          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-l-xl px-3 py-2.5 text-left outline-none focus-visible:ring-ring/50 focus-visible:ring-3"
+          className="focus-visible:ring-ring/50 flex min-w-0 flex-1 items-center gap-2.5 rounded-l-xl px-3 py-2.5 text-left outline-none focus-visible:ring-3"
           onClick={onToggle}
           type="button"
         >

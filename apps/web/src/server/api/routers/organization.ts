@@ -422,8 +422,10 @@ export const organizationRouter = createTRPCRouter({
 
       try {
         const invite = await ctx.db.$transaction(async (tx) => {
-          const user = await tx.user.findFirst({
-            where: { email: { equals: email, mode: "insensitive" } },
+          // Better Auth stores emails lowercased, matching normalizeInviteEmail,
+          // so the unique index can serve an exact lookup.
+          const user = await tx.user.findUnique({
+            where: { email },
             select: {
               organizationMemberships: {
                 where: { organizationId: input.organizationId },
@@ -907,7 +909,7 @@ export const organizationRouter = createTRPCRouter({
             }
           : {}),
       };
-      const [items, total, ownerCount] = await Promise.all([
+      const [items, roleCounts] = await Promise.all([
         db.organizationMember.findMany({
           where,
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
@@ -927,15 +929,24 @@ export const organizationRouter = createTRPCRouter({
             },
           },
         }),
+        // One grouped count yields both the filtered total and the owner
+        // count (which ignores the role filter).
         input.includeTotal
-          ? db.organizationMember.count({ where })
-          : Promise.resolve(undefined),
-        input.includeTotal
-          ? db.organizationMember.count({
-              where: { ...where, role: "OWNER" },
+          ? db.organizationMember.groupBy({
+              by: ["role"],
+              where: { ...where, role: undefined },
+              _count: { _all: true },
             })
           : Promise.resolve(undefined),
       ]);
+      const countFor = (role: string) =>
+        roleCounts?.find((group) => group.role === role)?._count._all ?? 0;
+      const total = roleCounts
+        ? input.role
+          ? countFor(input.role)
+          : roleCounts.reduce((sum, group) => sum + group._count._all, 0)
+        : undefined;
+      const ownerCount = roleCounts ? countFor("OWNER") : undefined;
       return { ...pageResult(items, input.limit, total), ownerCount };
     }),
 

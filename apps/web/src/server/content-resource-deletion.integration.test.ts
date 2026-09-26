@@ -268,6 +268,25 @@ test("deletes a material, every placement, and all related learner progress", ()
     expect(
       await tx.userActivityEvent.count({ where: { idempotencyKey: activityKey } }),
     ).toBe(0);
+
+    const remaining = await tx.userActivityEvent.aggregate({
+      where: { userId: member.userId },
+      _count: { _all: true },
+      _sum: { xpAwarded: true },
+      _max: { activityDate: true },
+    });
+    const summary = await tx.userGamification.findUnique({
+      where: { userId: member.userId },
+    });
+    expect(summary).toMatchObject({
+      completedActivities: remaining._count._all,
+      lastActivityDate: remaining._max.activityDate,
+      totalXp: remaining._sum.xpAwarded ?? 0,
+    });
+    const achievements = await tx.userAchievement.findMany({
+      where: { userId: member.userId, code: "FIRST_ACTIVITY" },
+    });
+    expect(achievements.length).toBe(remaining._count._all > 0 ? 1 : 0);
   }));
 
 test("deletes a course placement and its progress without deleting the library resource", () =>

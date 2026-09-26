@@ -49,16 +49,9 @@ async function requireManagedCohort(
   userId: string,
   permission: CohortPermission,
 ) {
-  const access = await requireCohortPermission({
-    cohortId,
-    userId,
-    permission,
-  });
-  const cohort = await db.cohort.findUniqueOrThrow({
-    where: { id: cohortId },
-    select: { id: true, courseId: true, organizationId: true },
-  });
-  return { ...cohort, access: access.access };
+  const { id, courseId, organizationId, access } =
+    await requireCohortPermission({ cohortId, userId, permission });
+  return { id, courseId, organizationId, access };
 }
 
 export const cohortRouter = createTRPCRouter({

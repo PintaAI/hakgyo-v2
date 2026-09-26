@@ -57,22 +57,60 @@ async function uniqueSlug(
   excludeCourseId?: string,
 ) {
   const base = slugBase(title);
-  let candidate = base;
-  let suffix = 2;
-  while (
-    await db.course.findFirst({
-      where: {
-        organizationId,
-        slug: candidate,
-        ...(excludeCourseId ? { id: { not: excludeCourseId } } : {}),
-      },
-      select: { id: true },
-    })
-  ) {
-    candidate = `${base.slice(0, 100 - String(suffix).length - 1)}-${suffix}`;
-    suffix += 1;
-  }
-  return candidate;
+  const candidateFor = (suffix: number) =>
+    suffix < 2
+      ? base
+      : `${base.slice(0, 100 - String(suffix).length - 1)}-${suffix}`;
+  // slugBase caps the base at 82 chars, so every suffixed candidate keeps the
+  // full base as a prefix: one query finds all collisions.
+  const taken = new Set(
+    (
+      await db.course.findMany({
+        where: {
+          organizationId,
+          slug: { startsWith: base },
+          ...(excludeCourseId ? { id: { not: excludeCourseId } } : {}),
+        },
+        select: { slug: true },
+      })
+    ).map(({ slug }) => slug),
+  );
+  let suffix = 1;
+  while (taken.has(candidateFor(suffix))) suffix += 1;
+  return candidateFor(suffix);
+}
+
+type OrganizationMember = Awaited<
+  ReturnType<typeof requireOrganizationMembership>
+>;
+
+/** Courses a member may list: everything, except for ADVANCED-mode teachers. */
+function visibleCoursesWhere(member: OrganizationMember) {
+  return member.organization.permissionMode === "ADVANCED" &&
+    member.role === "TEACHER"
+    ? {
+        OR: [
+          { ownerMembershipId: member.id },
+          {
+            cohorts: {
+              some: {
+                staff: {
+                  some: { organizationMemberId: member.id },
+                },
+              },
+            },
+          },
+          {
+            collaborators: {
+              some: {
+                organizationMemberId: member.id,
+                role: "EDITOR" as const,
+              },
+            },
+          },
+        ],
+      }
+    : {};
 }
 
 export const courseRouter = createTRPCRouter({
@@ -171,28 +209,7 @@ export const courseRouter = createTRPCRouter({
       const courses = await db.course.findMany({
         where: {
           organizationId: input.organizationId,
-          ...(member.organization.permissionMode === "ADVANCED" &&
-          member.role === "TEACHER"
-            ? {
-                OR: [
-                  { ownerMembershipId: member.id },
-                  {
-                    cohorts: {
-                      some: {
-                        staff: {
-                          some: { organizationMemberId: member.id },
-                        },
-                      },
-                    },
-                  },
-                  {
-                    collaborators: {
-                      some: { organizationMemberId: member.id, role: "EDITOR" },
-                    },
-                  },
-                ],
-              }
-            : {}),
+          ...visibleCoursesWhere(member),
         },
         orderBy: { createdAt: "desc" },
         include: {
@@ -241,6 +258,29 @@ export const courseRouter = createTRPCRouter({
                     ? ("COHORT_STAFF" as const)
                     : ("VIEWER" as const),
         };
+      });
+    }),
+  /** Most recently updated courses, for navigation shortcuts. */
+  listRecent: protectedProcedure
+    .input(
+      z.object({
+        organizationId: id,
+        take: z.number().int().min(1).max(20).default(3),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const member = await requireOrganizationMembership({
+        organizationId: input.organizationId,
+        userId: ctx.actorUserId,
+      });
+      return db.course.findMany({
+        where: {
+          organizationId: input.organizationId,
+          ...visibleCoursesWhere(member),
+        },
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        take: input.take,
+        select: { id: true, title: true, thumbnailUrl: true },
       });
     }),
   get: protectedProcedure

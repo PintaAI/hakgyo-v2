@@ -22,9 +22,13 @@ export default async function PdfImportPage({
   params: Promise<{ organizationId: string; courseId: string }>;
 }) {
   const { organizationId: organizationSlug, courseId } = await params;
+  // Start the course lookup alongside the membership check; its errors are
+  // surfaced only after the membership check so redirects keep precedence.
+  const coursePromise = api.course.get({ courseId });
+  coursePromise.catch(() => undefined);
   const membership =
     await requireOrganizationMembershipBySlug(organizationSlug);
-  const course = await api.course.get({ courseId });
+  const course = await coursePromise;
 
   if (
     course.organizationId !== membership.organizationId ||

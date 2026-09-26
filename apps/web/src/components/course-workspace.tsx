@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useDeferredValue,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -103,7 +98,11 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Textarea } from "~/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import {
   courseThumbnailContentTypes,
@@ -111,6 +110,7 @@ import {
   MAX_COURSE_THUMBNAIL_SIZE,
   type CourseThumbnailContentType,
 } from "~/lib/course-thumbnail";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type CourseView =
@@ -337,7 +337,7 @@ export function CourseWorkspace({
     learners: overview?.stats.activeLearnerCount,
   };
   const [learnerSearch, setLearnerSearch] = useState("");
-  const deferredLearnerSearch = useDeferredValue(
+  const debouncedLearnerSearch = useDebouncedValue(
     learnerSearch.trim().toLowerCase(),
   );
   const [cohortSearch, setCohortSearch] = useState("");
@@ -374,7 +374,7 @@ export function CourseWorkspace({
   const learners = api.enrollment.listCourseEnrollments.useInfiniteQuery(
     {
       courseId: course.id,
-      search: deferredLearnerSearch || undefined,
+      search: debouncedLearnerSearch || undefined,
     },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -1587,11 +1587,13 @@ function LearnersSection({
                       </span>
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(enrollmentStatus).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
+                      {Object.entries(enrollmentStatus).map(
+                        ([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

@@ -1,9 +1,9 @@
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
-  calculateStreak,
   getLocalCalendarWindow,
+  summarizeStreakRuns,
 } from "~/server/gamification/logic";
-import { hasPassedAssessment } from "~/server/learning/sequential-access";
+import { loadStreakRuns } from "~/server/gamification/streak";
 
 export const gamificationRouter = createTRPCRouter({
   getMySummary: protectedProcedure.query(async ({ ctx }) => {
@@ -25,115 +25,106 @@ export const gamificationRouter = createTRPCRouter({
     const [
       achievements,
       recentActivity,
-      streakActivities,
+      streakRuns,
       weeklyActivities,
       vocabularyMastered,
       assessmentAttempts,
-      progressedModules,
+      [{ count: modulesMastered }],
     ] = await Promise.all([
-        ctx.db.userAchievement.findMany({
-          where: { userId: ctx.actorUserId },
-          orderBy: { earnedAt: "desc" },
-          select: { code: true, earnedAt: true },
-        }),
-        ctx.db.userActivityEvent.findMany({
-          where: { userId: ctx.actorUserId },
-          orderBy: { occurredAt: "desc" },
-          take: 20,
-          select: {
-            action: true,
-            occurredAt: true,
-            xpAwarded: true,
-          },
-        }),
-        ctx.db.userActivityEvent.findMany({
-          where: { userId: ctx.actorUserId, contributesToStreak: true },
-          distinct: ["activityDate"],
-          select: { activityDate: true },
-        }),
-        ctx.db.userActivityEvent.findMany({
-          where: {
-            userId: ctx.actorUserId,
-            activityDate: { gte: calendar.start, lt: calendar.end },
-          },
-          select: {
-            activityDate: true,
-            contributesToStreak: true,
-            xpAwarded: true,
-          },
-        }),
-        ctx.db.vocabularyProgress.count({
-          where: { userId: ctx.actorUserId, masteredAt: { not: null } },
-        }),
-        ctx.db.assessmentAttempt.count({
-          where: { userId: ctx.actorUserId },
-        }),
-        ctx.db.courseModule.findMany({
-          where: {
-            items: {
-              some: {
-                isPublished: true,
-                OR: [
-                  {
-                    progress: {
-                      some: {
-                        userId: ctx.actorUserId,
-                        status: "COMPLETED",
-                      },
-                    },
-                  },
-                  {
-                    assessment: {
-                      attempts: {
-                        some: {
-                          userId: ctx.actorUserId,
-                          status: "GRADED",
-                        },
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-          },
-          select: {
-            items: {
-              where: { isPublished: true },
-              select: {
-                type: true,
-                progress: {
-                  where: {
-                    userId: ctx.actorUserId,
-                    status: "COMPLETED",
-                  },
-                  select: { id: true },
-                  take: 1,
-                },
-                assessment: {
-                  select: {
-                    passingScore: true,
-                    attempts: {
-                      where: {
-                        userId: ctx.actorUserId,
-                        status: "GRADED",
-                      },
-                      select: { status: true, score: true, maxScore: true },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        }),
-      ]);
+      ctx.db.userAchievement.findMany({
+        where: { userId: ctx.actorUserId },
+        orderBy: { earnedAt: "desc" },
+        select: { code: true, earnedAt: true },
+      }),
+      ctx.db.userActivityEvent.findMany({
+        where: { userId: ctx.actorUserId },
+        orderBy: { occurredAt: "desc" },
+        take: 20,
+        select: {
+          action: true,
+          occurredAt: true,
+          xpAwarded: true,
+        },
+      }),
+      loadStreakRuns(ctx.db, ctx.actorUserId),
+      ctx.db.userActivityEvent.findMany({
+        where: {
+          userId: ctx.actorUserId,
+          activityDate: { gte: calendar.start, lt: calendar.end },
+        },
+        select: {
+          activityDate: true,
+          contributesToStreak: true,
+          xpAwarded: true,
+        },
+      }),
+      ctx.db.vocabularyProgress.count({
+        where: { userId: ctx.actorUserId, masteredAt: { not: null } },
+      }),
+      ctx.db.assessmentAttempt.count({
+        where: { userId: ctx.actorUserId },
+      }),
+      // Modules with at least one published item where every published item
+      // is complete: materials/vocabulary by COMPLETED progress, assessments
+      // by a passing GRADED attempt (same rule as hasPassedAssessment).
+      // Only modules the learner has touched can qualify.
+      ctx.db.$queryRaw<[{ count: number }]>`
+        SELECT COUNT(*)::integer AS count
+        FROM (
+          SELECT item."moduleId"
+          FROM "CourseItem" AS item
+          WHERE item."isPublished" = true
+            AND item."moduleId" IN (
+              SELECT touched."moduleId"
+              FROM "CourseItem" AS touched
+              JOIN "ContentProgress" AS progress
+                ON progress."courseItemId" = touched.id
+              WHERE touched."isPublished" = true
+                AND progress."userId" = ${ctx.actorUserId}
+                AND progress.status = 'COMPLETED'
+              UNION
+              SELECT touched."moduleId"
+              FROM "CourseItem" AS touched
+              JOIN "AssessmentAttempt" AS attempt
+                ON attempt."assessmentId" = touched."assessmentId"
+              WHERE touched."isPublished" = true
+                AND attempt."userId" = ${ctx.actorUserId}
+                AND attempt.status = 'GRADED'
+            )
+          GROUP BY item."moduleId"
+          HAVING bool_and(
+            CASE
+              WHEN item.type = 'ASSESSMENT' THEN EXISTS (
+                SELECT 1
+                FROM "AssessmentAttempt" AS attempt
+                JOIN "Assessment" AS assessment
+                  ON assessment.id = attempt."assessmentId"
+                WHERE attempt."assessmentId" = item."assessmentId"
+                  AND attempt."userId" = ${ctx.actorUserId}
+                  AND attempt.status = 'GRADED'
+                  AND attempt.score IS NOT NULL
+                  AND attempt."maxScore" IS NOT NULL
+                  AND attempt."maxScore" > 0
+                  AND (
+                    assessment."passingScore" IS NULL
+                    OR (attempt.score::double precision / attempt."maxScore") * 100
+                      >= assessment."passingScore"
+                  )
+              )
+              ELSE EXISTS (
+                SELECT 1
+                FROM "ContentProgress" AS progress
+                WHERE progress."courseItemId" = item.id
+                  AND progress."userId" = ${ctx.actorUserId}
+                  AND progress.status = 'COMPLETED'
+              )
+            END
+          )
+        ) AS mastered
+      `,
+    ]);
 
-    const currentStreak = calculateStreak(
-      streakActivities.map((activity) => activity.activityDate),
-      {
-        now: new Date(`${calendar.today}T12:00:00.000Z`),
-        timeZone: "UTC",
-      },
-    ).currentStreak;
+    const { currentStreak } = summarizeStreakRuns(streakRuns, calendar.today);
     const activeDates = weeklyActivities
       .filter((activity) => activity.contributesToStreak)
       .map((activity) => activity.activityDate)
@@ -144,22 +135,6 @@ export const gamificationRouter = createTRPCRouter({
       (total, activity) => total + activity.xpAwarded,
       0,
     );
-    const modulesMastered = progressedModules.filter(
-      (module) =>
-        module.items.length > 0 &&
-        module.items.every((item) =>
-          item.type === "ASSESSMENT"
-            ? Boolean(
-                item.assessment &&
-                  hasPassedAssessment(
-                    item.assessment.attempts,
-                    item.assessment.passingScore,
-                  ),
-              )
-            : item.progress.length > 0,
-        ),
-    ).length;
-
     return {
       achievements,
       recentActivity,

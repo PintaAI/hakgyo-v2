@@ -22,6 +22,14 @@ export type AssessmentEventLeaderboardEntry = {
   submittedAt: Date;
 };
 
+/**
+ * Ordinal (code unit) comparison so the final tie-break matches the SQL leaderboard, which orders
+ * user ids with `COLLATE "C"` (see `~/server/assessment-event-leaderboard`).
+ */
+export function compareUserIds(left: string, right: string) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 export function rankAssessmentEventAttempts(
   attempts: RankableAssessmentEventAttempt[],
 ): AssessmentEventLeaderboardEntry[] {
@@ -61,7 +69,7 @@ export function rankAssessmentEventAttempts(
         right.score - left.score ||
         left.completionTimeMs - right.completionTimeMs ||
         left.submittedAt.getTime() - right.submittedAt.getTime() ||
-        left.userId.localeCompare(right.userId),
+        compareUserIds(left.userId, right.userId),
     );
 
   const bestByUser = new Map<string, (typeof rankedAttempts)[number]>();
@@ -77,7 +85,7 @@ export function rankAssessmentEventAttempts(
         right.score - left.score ||
         left.completionTimeMs - right.completionTimeMs ||
         left.submittedAt.getTime() - right.submittedAt.getTime() ||
-        left.userId.localeCompare(right.userId),
+        compareUserIds(left.userId, right.userId),
     )
     .map((attempt, index) => ({ rank: index + 1, ...attempt }));
 }

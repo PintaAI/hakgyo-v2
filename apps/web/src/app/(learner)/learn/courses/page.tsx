@@ -19,6 +19,7 @@ import { Progress } from "~/components/ui/progress";
 import { cn } from "~/lib/utils";
 import { requireSession } from "~/server/auth/dal";
 import { api } from "~/trpc/server";
+import { getMyCourses } from "../learner-data";
 
 export const metadata: Metadata = { title: "Dashboard belajar" };
 
@@ -47,38 +48,35 @@ function StatCard({
 }
 
 export default async function LearningCoursesPage() {
-  const [session, courses] = await Promise.all([
+  const [session, courses, progress] = await Promise.all([
     requireSession(),
-    api.learning.listMyCourses(),
+    getMyCourses(),
+    api.learning.listMyCourseProgress(),
   ]);
-  const courseData = await Promise.all(
-    courses.map(async (course) => ({
-      ...course,
-      outline: await api.learning.getCourseOutline({ courseId: course.id }),
-    })),
-  );
   const displayName = session.user.name.trim().split(/\s+/).at(0) ?? "Pelajar";
-  const summaries = courseData.map((course) => {
-    const items = course.outline.modules.flatMap((module) => module.items);
-    const completed = items.filter((item) => item.isCompleted).length;
-    const nextModule = course.outline.modules.find(
-      (module) =>
-        module.access !== "LOCKED" &&
-        module.items.some((item) => !item.isCompleted),
-    );
-    const nextItem = nextModule?.items.find((item) => !item.isCompleted);
-    const percent = items.length
-      ? Math.round((completed / items.length) * 100)
-      : 0;
-    return { ...course, items, completed, nextItem, nextModule, percent };
+  const progressByCourse = new Map(
+    progress.map((entry) => [entry.courseId, entry]),
+  );
+  const summaries = courses.map((course) => {
+    const courseProgress = progressByCourse.get(course.id);
+    const completed = courseProgress?.completedCount ?? 0;
+    const total = courseProgress?.totalCount ?? 0;
+    const percent = total ? Math.round((completed / total) * 100) : 0;
+    return {
+      ...course,
+      completed,
+      total,
+      next: courseProgress?.next ?? null,
+      percent,
+    };
   });
-  const active = summaries.find((course) => course.nextItem) ?? summaries[0];
+  const active = summaries.find((course) => course.next) ?? summaries[0];
   const totalCompleted = summaries.reduce(
     (sum, course) => sum + course.completed,
     0,
   );
   const totalActivities = summaries.reduce(
-    (sum, course) => sum + course.items.length,
+    (sum, course) => sum + course.total,
     0,
   );
 
@@ -169,7 +167,7 @@ export default async function LearningCoursesPage() {
       </section>
 
       {active ? (
-        <section className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
+        <section className="bg-foreground text-background relative overflow-hidden rounded-lg px-5 py-6 sm:px-7 sm:py-8">
           {active.thumbnailUrl ? (
             <Image
               src={active.thumbnailUrl}
@@ -186,29 +184,29 @@ export default async function LearningCoursesPage() {
           <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
           <div className="relative grid gap-8 md:grid-cols-[1fr_14rem] md:items-end">
             <div className="min-w-0">
-              <span className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+              <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
                 Lanjutkan belajar · {active.organization.name}
               </span>
               <h2 className="mt-4 max-w-3xl font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
                 {active.title}
               </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                {active.nextItem
-                  ? `${active.nextModule?.title} · ${active.nextItem.title}`
+              <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
+                {active.next
+                  ? `${active.next.moduleTitle} · ${active.next.title}`
                   : "Semua aktivitas pada course ini telah diselesaikan."}
               </p>
               <Link
                 href={
-                  active.nextItem
-                    ? `/learn/${active.id}/items/${active.nextItem.id}`
+                  active.next
+                    ? `/learn/${active.id}/items/${active.next.courseItemId}`
                     : `/learn/${active.id}`
                 }
                 className={cn(
                   buttonVariants(),
-                  "mt-6 bg-background text-foreground hover:bg-background",
+                  "bg-background text-foreground hover:bg-background mt-6",
                 )}
               >
-                {active.nextItem ? "Lanjutkan aktivitas" : "Lihat course"}
+                {active.next ? "Lanjutkan aktivitas" : "Lihat course"}
                 <ArrowRightIcon />
               </Link>
             </div>
@@ -217,14 +215,16 @@ export default async function LearningCoursesPage() {
                 <span className="font-[family-name:var(--font-hanken-grotesk)] text-4xl font-medium tabular-nums">
                   {active.percent}%
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {active.completed}/{active.items.length}
+                <span className="text-muted-foreground text-xs">
+                  {active.completed}/{active.total}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">Progress course</p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Progress course
+              </p>
               <Progress
                 value={active.percent}
-                className="mt-4 [&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-background/20"
+                className="[&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:bg-background/20 mt-4 [&_[data-slot=progress-track]]:h-1.5"
               />
             </div>
           </div>
@@ -271,7 +271,7 @@ export default async function LearningCoursesPage() {
                   </span>
                   <span className="text-muted-foreground mt-1 block truncate text-xs">
                     {course.organization.name} · {course.completed} dari{" "}
-                    {course.items.length} aktivitas
+                    {course.total} aktivitas
                   </span>
                   <Progress
                     value={course.percent}

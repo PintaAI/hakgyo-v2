@@ -94,6 +94,7 @@ model Session {
 
   @@unique([token])
   @@index([userId])
+  @@index([createdAt])
   @@map("session")
 }
 
@@ -168,6 +169,8 @@ model Notification {
   createdAt      DateTime      @default(now())
 
   @@index([userId, readAt, createdAt])
+  @@index([userId, createdAt])
+  @@index([organizationId])
   @@map("notification")
 }
 
@@ -566,6 +569,7 @@ model LearnerSidebarSeen {
 
   @@id([userId, organizationId, indicatorKey])
   @@index([userId, organizationId, seenAt])
+  @@index([organizationId])
   @@map("learnerSidebarSeen")
 }
 
@@ -692,6 +696,8 @@ model Cohort {
   @@unique([id, courseId])
   @@unique([id, organizationId])
   @@index([courseId, status])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, updatedAt])
 }
 
 model ZoomConnection {
@@ -736,6 +742,7 @@ model CohortMeeting {
   @@index([cohortId, startsAt])
   @@index([createdByMembershipId])
   @@index([status, startsAt])
+  @@index([organizationId, status, startsAt])
 }
 
 model CohortStaff {
@@ -766,7 +773,6 @@ model CourseModule {
 
   @@unique([courseId, position])
   @@unique([id, organizationId])
-  @@index([courseId])
 }
 
 model CourseItem {
@@ -815,7 +821,7 @@ model Material {
   assets                 MaterialAsset[]
 
   @@unique([id, organizationId])
-  @@index([organizationId])
+  @@index([organizationId, updatedAt])
   @@index([createdByMembershipId])
 }
 
@@ -864,6 +870,7 @@ model Assessment {
 
   @@unique([id, organizationId])
   @@index([organizationId, status])
+  @@index([organizationId, updatedAt])
   @@index([createdByMembershipId])
 }
 
@@ -882,7 +889,6 @@ model AssessmentQuestion {
   answers      AssessmentAnswer[]
 
   @@unique([assessmentId, position])
-  @@index([assessmentId])
 }
 
 model AssessmentOption {
@@ -897,7 +903,6 @@ model AssessmentOption {
   selections AssessmentAnswerSelection[]
 
   @@unique([questionId, position])
-  @@index([questionId])
 }
 
 model VocabularySet {
@@ -915,7 +920,7 @@ model VocabularySet {
   materialRequirements  MaterialRequirement[]
 
   @@unique([id, organizationId])
-  @@index([organizationId])
+  @@index([organizationId, updatedAt])
   @@index([createdByMembershipId])
 }
 
@@ -937,6 +942,7 @@ model VocabularyEntry {
   audioAsset       Asset?                      @relation("VocabularyEntryAudio", fields: [audioAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
   imageAsset       Asset?                      @relation("VocabularyEntryImage", fields: [imageAssetId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
+  @@index([vocabularySetId, createdAt, id])
   @@index([audioAssetId])
   @@index([imageAssetId])
 }
@@ -1023,7 +1029,7 @@ model UserActivityEvent {
   organization        Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([userId, occurredAt])
-  @@index([userId, activityDate])
+  @@index([userId, contributesToStreak, activityDate])
   @@index([userId, action, occurredAt])
   @@index([organizationId, occurredAt])
 }
@@ -1079,9 +1085,12 @@ model AssessmentAttempt {
   @@unique([courseItemId, userId, attemptNumber])
   @@unique([id, organizationId])
   @@index([assessmentEventId, userId, attemptNumber])
-  @@index([assessmentId])
+  @@index([assessmentId, userId])
   @@index([cohortId, status])
   @@index([userId, status])
+  @@index([userId, startedAt])
+  @@index([organizationId, status, submittedAt])
+  @@index([organizationId, startedAt])
   @@index([assessmentEventId, status])
 }
 
@@ -1313,6 +1322,7 @@ model VocabularyPracticeAttempt {
 
   @@unique([userId, sessionId, entryId])
   @@index([userId, entryId, createdAt])
+  @@index([entryId])
   @@index([sourceCourseItemId])
 }
 

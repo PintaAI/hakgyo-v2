@@ -49,7 +49,6 @@ export function LearnerCourseItem({
   item: CourseItem;
 }) {
   const router = useRouter();
-  const utils = api.useUtils();
   const markProgress = api.learning.markContentProgress.useMutation();
   const { resolvedTheme } = useTheme();
   const [cardIndex, setCardIndex] = useState(0);
@@ -83,12 +82,9 @@ export function LearnerCourseItem({
   const completeItem = async () => {
     try {
       await markProgress.mutateAsync({ courseItemId, status: "COMPLETED" });
-      await Promise.all([
-        utils.learning.getCourseItem.invalidate({ courseItemId }),
-        utils.learning.getCourseOutline.invalidate({ courseId }),
-        utils.learning.listMyCourses.invalidate(),
-      ]);
       toast.success("Aktivitas selesai. Progress kamu sudah disimpan.");
+      // Learner pages render from RSC props (no client queries to invalidate);
+      // refresh drops router-cached payloads that still show the item open.
       router.push(`/learn/${courseId}`);
       router.refresh();
     } catch (error) {
@@ -155,29 +151,29 @@ export function LearnerCourseItem({
         />
       ) : vocabulary ? (
         <div className="space-y-6">
-          <header className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
+          <header className="bg-foreground text-background relative overflow-hidden rounded-lg px-5 py-6 sm:px-7 sm:py-8">
             <div className="pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
             <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
             <div className="relative">
-              <Badge className="border-white/15 bg-background/10 text-white">
+              <Badge className="bg-background/10 border-white/15 text-white">
                 <LanguagesIcon /> Studio kosakata
               </Badge>
               <h1 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-5xl">
                 {vocabulary.title}
               </h1>
               {vocabulary.description ? (
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
                   {vocabulary.description}
                 </p>
               ) : null}
               <div className="mt-6 max-w-md">
-                <div className="mb-2 flex justify-between text-xs text-muted-foreground">
+                <div className="text-muted-foreground mb-2 flex justify-between text-xs">
                   <span>{reviewed.size} kata dipelajari</span>
                   <span>{reviewPercent}%</span>
                 </div>
                 <Progress
                   value={reviewPercent}
-                  className="[&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-background/20"
+                  className="[&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:bg-background/20 [&_[data-slot=progress-track]]:h-1.5"
                 />
               </div>
             </div>

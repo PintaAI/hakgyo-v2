@@ -1,5 +1,4 @@
 import {
-  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -17,6 +16,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { Prisma } from "../../../../generated/prisma/client";
 import { hasImageSignature } from "~/lib/image-signature";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -24,9 +24,9 @@ import {
   requireCoursePermission,
   requireOrganizationPermission,
 } from "~/server/authorization";
+import { chunk, createId, settleWithConcurrency } from "~/server/batch";
 import { db } from "~/server/db";
-import { syncMaterialPdfPageAssets } from "~/server/pdf-book/service";
-import { r2, r2Bucket } from "~/server/r2";
+import { deleteR2Objects, r2, r2Bucket } from "~/server/r2";
 
 const id = z.string().min(1);
 const PAGE_URL_TTL_SECONDS = 60 * 60;
@@ -66,16 +66,13 @@ async function signedPageUrl(objectKey: string) {
 }
 
 async function removeObjects(keys: string[]) {
-  await Promise.all(
-    keys.map((key) =>
-      r2
-        .send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }))
-        .catch((error) =>
-          console.error("Failed to remove PDF book object", error),
-        ),
-    ),
-  );
+  await deleteR2Objects(keys, "Failed to remove PDF book object");
 }
+
+// Parallel R2 round trips while confirming an upload batch.
+const UPLOAD_CHECK_CONCURRENCY = 8;
+// Rows per createMany statement when importing a whole book.
+const IMPORT_INSERT_BATCH_SIZE = 1000;
 
 async function assertUploadedImage(
   key: string,
@@ -337,49 +334,49 @@ export const pdfBookRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST" });
       }
 
+      const assets: Prisma.AssetCreateManyInput[] = [];
       const prepare = async (
         pageNumber: number,
         kind: "page" | "thumb",
         file: z.infer<typeof imageFile>,
       ) => {
         const objectKey = `${pageKeyPrefix(book.organizationId, book.id, pageNumber)}${kind}-${crypto.randomUUID()}${extensions[file.contentType]}`;
-        const [asset, uploadUrl] = await Promise.all([
-          db.asset.create({
-            data: {
-              organizationId: book.organizationId,
-              uploadedByUserId: ctx.actorUserId,
-              objectKey,
-              fileName: `${book.fileName} · ${pageNumber}${kind === "thumb" ? " (thumbnail)" : ""}${extensions[file.contentType]}`,
-              contentType: file.contentType,
-              size: file.size,
-            },
-            select: { id: true },
+        const assetId = createId();
+        assets.push({
+          id: assetId,
+          organizationId: book.organizationId,
+          uploadedByUserId: ctx.actorUserId,
+          objectKey,
+          fileName: `${book.fileName} · ${pageNumber}${kind === "thumb" ? " (thumbnail)" : ""}${extensions[file.contentType]}`,
+          contentType: file.contentType,
+          size: file.size,
+        });
+        const uploadUrl = await getSignedUrl(
+          r2,
+          new PutObjectCommand({
+            Bucket: r2Bucket,
+            Key: objectKey,
+            ContentType: file.contentType,
           }),
-          getSignedUrl(
-            r2,
-            new PutObjectCommand({
-              Bucket: r2Bucket,
-              Key: objectKey,
-              ContentType: file.contentType,
-            }),
-            { expiresIn: UPLOAD_URL_TTL_SECONDS },
-          ),
-        ]);
+          { expiresIn: UPLOAD_URL_TTL_SECONDS },
+        );
         return {
-          assetId: asset.id,
+          assetId,
           uploadUrl,
           // Only Content-Type: the bucket CORS policy allows no other headers.
           headers: { "Content-Type": file.contentType },
         };
       };
 
-      return Promise.all(
+      const prepared = await Promise.all(
         input.pages.map(async (page) => ({
           pageNumber: page.pageNumber,
           image: await prepare(page.pageNumber, "page", page.image),
           thumbnail: await prepare(page.pageNumber, "thumb", page.thumbnail),
         })),
       );
+      await db.asset.createMany({ data: assets });
+      return prepared;
     }),
 
   confirmUploads: protectedProcedure
@@ -438,33 +435,68 @@ export const pdfBookRouter = createTRPCRouter({
         ).map((asset) => [asset.id, asset]),
       );
 
-      for (const page of input.pages) {
+      // Checks run concurrently, but results are applied as if the pages were
+      // confirmed one by one: everything before the first failing file is
+      // saved (a page needs both of its files) and that failure is rethrown.
+      const files = input.pages.flatMap((page) => {
         const prefix = pageKeyPrefix(
           book.organizationId,
           book.id,
           page.pageNumber,
         );
-        for (const assetId of [page.assetId, page.thumbnailAssetId]) {
+        return [page.assetId, page.thumbnailAssetId].map((assetId) => ({
+          assetId,
+          prefix,
+        }));
+      });
+      const checks = await settleWithConcurrency(
+        files,
+        UPLOAD_CHECK_CONCURRENCY,
+        async ({ assetId, prefix }) => {
           const asset = assets.get(assetId);
           if (!asset?.objectKey.startsWith(prefix)) {
             throw new TRPCError({ code: "BAD_REQUEST" });
           }
-          const etag = await assertUploadedImage(
+          return assertUploadedImage(
             asset.objectKey,
             asset.size,
             asset.contentType,
           );
-          await db.asset.update({
-            where: { id: asset.id },
-            data: { confirmedAt: new Date(), etag },
-          });
-        }
-        await db.pdfBookPage.upsert({
-          where: {
-            bookId_pageNumber: { bookId: book.id, pageNumber: page.pageNumber },
-          },
-          update: {},
-          create: {
+        },
+      );
+      const failedIndex = checks.findIndex(
+        (check) => check.status === "rejected",
+      );
+      const confirmedCount = failedIndex === -1 ? files.length : failedIndex;
+
+      const confirmed = files
+        .slice(0, confirmedCount)
+        .map(({ assetId }, index) => ({
+          assetId,
+          etag: (checks[index] as PromiseFulfilledResult<string | null>).value,
+        }));
+      if (confirmed.length) {
+        const confirmedAt = new Date().toISOString();
+        await db.$executeRaw`
+          UPDATE "Asset" AS asset
+          SET
+            "confirmedAt" = ${confirmedAt}::timestamp,
+            "etag" = confirmed.etag,
+            "updatedAt" = ${confirmedAt}::timestamp
+          FROM (VALUES ${Prisma.join(
+            confirmed.map(
+              ({ assetId, etag }) => Prisma.sql`(${assetId}, ${etag}::text)`,
+            ),
+          )}) AS confirmed(id, etag)
+          WHERE asset."id" = confirmed.id
+        `;
+      }
+
+      const savedPages = input.pages.slice(0, Math.floor(confirmedCount / 2));
+      if (savedPages.length) {
+        // Existing pages are left untouched, like an upsert with no update.
+        await db.pdfBookPage.createMany({
+          data: savedPages.map((page) => ({
             bookId: book.id,
             organizationId: book.organizationId,
             pageNumber: page.pageNumber,
@@ -475,8 +507,12 @@ export const pdfBookRouter = createTRPCRouter({
             text: page.text?.trim()
               ? page.text.slice(0, MAX_PDF_PAGE_TEXT_LENGTH)
               : null,
-          },
+          })),
+          skipDuplicates: true,
         });
+      }
+      if (failedIndex !== -1) {
+        throw (checks[failedIndex] as PromiseRejectedResult).reason;
       }
 
       const uploadedPages = await db.pdfBookPage.count({
@@ -616,36 +652,55 @@ export const pdfBookRouter = createTRPCRouter({
 
       return db.$transaction(
         async (tx) => {
-          let nextModulePosition =
-            ((
-              await tx.courseModule.aggregate({
-                where: { courseId: course.id },
-                _max: { position: true },
-              })
-            )._max.position ?? -1) + 1;
-          let lessonCount = 0;
-          let createdModules = 0;
-
-          for (const entry of input.modules) {
-            const courseModule = entry.moduleId
-              ? { id: entry.moduleId }
-              : await tx.courseModule.create({
-                  data: {
-                    courseId: course.id,
-                    organizationId: course.organizationId,
-                    title: entry.title,
-                    position: nextModulePosition++,
-                  },
-                  select: { id: true },
-                });
-            if (!entry.moduleId) createdModules += 1;
-            let nextItemPosition =
-              ((
-                await tx.courseItem.aggregate({
-                  where: { moduleId: courseModule.id },
+          const [lastModule, lastItems, bookPages] = await Promise.all([
+            tx.courseModule.aggregate({
+              where: { courseId: course.id },
+              _max: { position: true },
+            }),
+            existingModuleIds.length
+              ? tx.courseItem.groupBy({
+                  by: ["moduleId"],
+                  where: { moduleId: { in: existingModuleIds } },
                   _max: { position: true },
                 })
-              )._max.position ?? -1) + 1;
+              : [],
+            // Every lesson links the page images it shows (see
+            // syncMaterialPdfPageAssets), so load the book's pages once.
+            tx.pdfBookPage.findMany({
+              where: {
+                bookId: book.id,
+                organizationId: course.organizationId,
+                book: { status: "READY" },
+              },
+              select: { pageNumber: true, assetId: true },
+            }),
+          ]);
+          let nextModulePosition = (lastModule._max.position ?? -1) + 1;
+          const nextItemPositions = new Map(
+            lastItems.map((item) => [
+              item.moduleId,
+              (item._max.position ?? -1) + 1,
+            ]),
+          );
+
+          const modules: Prisma.CourseModuleCreateManyInput[] = [];
+          const materials: Prisma.MaterialCreateManyInput[] = [];
+          const materialAssets: Prisma.MaterialAssetCreateManyInput[] = [];
+          const items: Prisma.CourseItemCreateManyInput[] = [];
+
+          for (const entry of input.modules) {
+            let moduleId = entry.moduleId;
+            if (!moduleId) {
+              moduleId = createId();
+              modules.push({
+                id: moduleId,
+                courseId: course.id,
+                organizationId: course.organizationId,
+                title: entry.title,
+                position: nextModulePosition++,
+              });
+            }
+            let nextItemPosition = nextItemPositions.get(moduleId) ?? 0;
 
             for (const lesson of entry.lessons) {
               const content = [
@@ -662,34 +717,51 @@ export const pdfBookRouter = createTRPCRouter({
                 // vocabulary, quiz, or note blocks below the book pages.
                 { type: "paragraph", content: [], children: [] },
               ];
-              const material = await tx.material.create({
-                data: {
-                  organizationId: course.organizationId,
-                  createdByMembershipId: member.id,
-                  title: lesson.title,
-                  content,
-                },
-                select: { id: true },
-              });
-              await syncMaterialPdfPageAssets(tx, {
-                materialId: material.id,
+              const materialId = createId();
+              materials.push({
+                id: materialId,
                 organizationId: course.organizationId,
+                createdByMembershipId: member.id,
+                title: lesson.title,
                 content,
               });
-              await tx.courseItem.create({
-                data: {
-                  moduleId: courseModule.id,
-                  organizationId: course.organizationId,
-                  type: "MATERIAL",
-                  materialId: material.id,
-                  isPublished: false,
-                  position: nextItemPosition++,
-                },
+              for (const page of bookPages) {
+                if (
+                  page.pageNumber >= lesson.startPage &&
+                  page.pageNumber <= lesson.endPage
+                ) {
+                  materialAssets.push({
+                    materialId,
+                    assetId: page.assetId,
+                    organizationId: course.organizationId,
+                  });
+                }
+              }
+              items.push({
+                moduleId,
+                organizationId: course.organizationId,
+                type: "MATERIAL",
+                materialId,
+                isPublished: false,
+                position: nextItemPosition++,
               });
-              lessonCount += 1;
             }
+            nextItemPositions.set(moduleId, nextItemPosition);
           }
-          return { lessonCount, createdModules };
+
+          for (const data of chunk(modules, IMPORT_INSERT_BATCH_SIZE)) {
+            await tx.courseModule.createMany({ data });
+          }
+          for (const data of chunk(materials, IMPORT_INSERT_BATCH_SIZE)) {
+            await tx.material.createMany({ data });
+          }
+          for (const data of chunk(materialAssets, IMPORT_INSERT_BATCH_SIZE)) {
+            await tx.materialAsset.createMany({ data, skipDuplicates: true });
+          }
+          for (const data of chunk(items, IMPORT_INSERT_BATCH_SIZE)) {
+            await tx.courseItem.createMany({ data });
+          }
+          return { lessonCount: items.length, createdModules: modules.length };
         },
         { timeout: 60_000 },
       );

@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-const cohortFindUnique = mock(() => Promise.resolve({ courseId: "course-1" }));
 const courseFindUnique = mock(() =>
   Promise.resolve({
     id: "course-1",
@@ -20,6 +19,16 @@ const cohortStaffFindFirst = mock(() =>
     null as { id: string; role: "INSTRUCTOR" | "ASSISTANT" } | null,
   ),
 );
+// requireCohortPermission loads the cohort, its course scope and the exact
+// staff assignment in one query; compose that payload from the mocks above.
+const cohortFindUnique = mock(async () => {
+  const staffAssignment = await cohortStaffFindFirst();
+  return {
+    courseId: "course-1",
+    course: await courseFindUnique(),
+    staff: staffAssignment ? [staffAssignment] : [],
+  };
+});
 const organizationMemberFindUnique = mock(() =>
   Promise.resolve({
     id: "teacher-membership",

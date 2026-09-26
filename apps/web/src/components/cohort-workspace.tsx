@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useDeferredValue,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -68,7 +63,12 @@ import { DatePicker } from "~/components/ui/date-picker";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
@@ -85,6 +85,7 @@ import {
   formatZonedDateTimeInput,
   parseZonedDateTimeInput,
 } from "~/lib/zoned-date-time";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Cohort = RouterOutputs["cohort"]["get"];
@@ -272,13 +273,13 @@ export function CohortWorkspace({
   const root = `/workspace/${organizationSlug}/courses/${cohort.courseId}/cohorts/${cohort.id}`;
   const courseRoot = `/workspace/${organizationSlug}/courses/${cohort.courseId}`;
   const [learnerSearch, setLearnerSearch] = useState("");
-  const deferredLearnerSearch = useDeferredValue(
+  const debouncedLearnerSearch = useDebouncedValue(
     learnerSearch.trim().toLowerCase(),
   );
   const learners = api.enrollment.listCohortEnrollments.useInfiniteQuery(
     {
       cohortId: cohort.id,
-      search: deferredLearnerSearch || undefined,
+      search: debouncedLearnerSearch || undefined,
       includeTotal: true,
     },
     {
@@ -831,10 +832,11 @@ function Learners({
                     <TableCell className="text-right">
                       <Select
                         value={enrollment.status}
-                        disabled={mutation.isPending || removeEnrollment.isPending}
+                        disabled={
+                          mutation.isPending || removeEnrollment.isPending
+                        }
                         onValueChange={(value) => {
-                          if (value)
-                            void save(enrollment.user.email, value);
+                          if (value) void save(enrollment.user.email, value);
                         }}
                       >
                         <SelectTrigger

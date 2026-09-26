@@ -9,6 +9,9 @@ import { normalizeInviteEmail } from "~/server/organization/invites";
 
 type InviteDatabase = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
+/** Curriculum items shown in the invite preview. */
+const previewItemCount = 6;
+
 function maskEmail(email: string) {
   const [local = "", domain = ""] = email.split("@");
   return `${local.slice(0, 1)}***@${domain}`;
@@ -52,9 +55,13 @@ export async function resolveUnifiedInvite(
               select: {
                 id: true,
                 title: true,
+                _count: { select: { items: { where: { isPublished: true } } } },
+                // Only the first few items overall are previewed, so no
+                // module needs to contribute more than that.
                 items: {
                   where: { isPublished: true },
                   orderBy: { position: "asc" },
+                  take: previewItemCount,
                   select: {
                     id: true,
                     type: true,
@@ -148,8 +155,11 @@ export async function resolveUnifiedInvite(
         description: enrollmentInvite.course.description,
         thumbnailUrl: enrollmentInvite.course.thumbnailUrl,
         moduleCount: enrollmentInvite.course.modules.length,
-        itemCount: curriculumItems.length,
-        items: curriculumItems.slice(0, 6),
+        itemCount: enrollmentInvite.course.modules.reduce(
+          (total, module) => total + module._count.items,
+          0,
+        ),
+        items: curriculumItems.slice(0, previewItemCount),
       },
     };
     if (enrollmentInvite.cohort) {

@@ -158,6 +158,46 @@ export function calculateStreak(
   };
 }
 
+/** A run of consecutive UTC activity days, as returned by `loadStreakRuns`. */
+export type StreakRun = { startsOn: Date; endsOn: Date; length: number };
+
+/**
+ * `calculateStreak` (UTC day keys) computed from consecutive-day runs instead of every activity
+ * date, so the database only returns one row per run.
+ */
+export function summarizeStreakRuns(
+  runs: readonly StreakRun[],
+  today: string,
+): { currentStreak: number; longestStreak: number } {
+  const dayKey = (date: Date) => date.toISOString().slice(0, 10);
+  const yesterday = shiftDateKey(today, -1);
+  const runContaining = (key: string) =>
+    runs.find(
+      (run) => dayKey(run.startsOn) <= key && key <= dayKey(run.endsOn),
+    );
+  const anchor = runContaining(today)
+    ? today
+    : runContaining(yesterday)
+      ? yesterday
+      : null;
+  const anchorRun = anchor ? runContaining(anchor) : undefined;
+  const currentStreak =
+    anchor && anchorRun
+      ? Math.round(
+          (Date.parse(`${anchor}T00:00:00.000Z`) -
+            Date.parse(`${dayKey(anchorRun.startsOn)}T00:00:00.000Z`)) /
+            86_400_000,
+        ) + 1
+      : 0;
+  return {
+    currentStreak,
+    longestStreak: runs.reduce(
+      (longest, run) => Math.max(longest, run.length),
+      0,
+    ),
+  };
+}
+
 export function findNewAchievements(
   snapshot: GamificationSnapshot,
   rules: readonly AchievementRule[],

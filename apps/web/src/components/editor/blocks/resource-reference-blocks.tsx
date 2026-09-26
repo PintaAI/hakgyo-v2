@@ -23,7 +23,10 @@ import {
 } from "~/lib/blocknote/block-catalog";
 import { cn } from "~/lib/utils";
 
-import { useResourceReferences } from "../resource-reference-context";
+import {
+  useResourceReferences,
+  useVocabularyReference,
+} from "../resource-reference-context";
 import { AssetUrl } from "./asset-media-block";
 import { CustomBlockToolbar } from "./custom-block-toolbar";
 
@@ -137,7 +140,7 @@ function ResourcePicker({
         ) : filtered.length ? (
           filtered.map((resource) => (
             <button
-              className="hover:bg-muted flex w-full items-center justify-between gap-3 rounded-lg border bg-background p-3 text-left transition bg-background"
+              className="hover:bg-muted bg-background bg-background flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left transition"
               key={resource.id}
               onClick={() => onSelect(resource.id)}
               type="button"
@@ -187,8 +190,8 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
       const references = useResourceReferences();
       const [changing, setChanging] = useState(false);
       const [query, setQuery] = useState("");
-      const resource = references?.vocabularySets.find(
-        (set) => set.id === block.props.vocabularySetId,
+      const { resource, isLoading: isResourceLoading } = useVocabularyReference(
+        block.props.vocabularySetId,
       );
       const entries = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase();
@@ -344,7 +347,7 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
                 ) : null}
               </div>
             </section>
-          ) : references?.isLoading ? (
+          ) : isResourceLoading ? (
             <p className="text-muted-foreground flex items-center gap-2 rounded-xl border p-5 text-sm">
               <LoaderCircleIcon className="size-4 animate-spin" /> Memuat
               vocabulary set

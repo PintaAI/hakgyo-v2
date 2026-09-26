@@ -6,6 +6,7 @@ import { cache } from "react";
 
 import { createCaller, type AppRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
+import { getSession } from "~/server/better-auth/server";
 import { createQueryClient } from "./query-client";
 
 /**
@@ -18,6 +19,7 @@ const createContext = cache(async () => {
 
   return createTRPCContext({
     headers: heads,
+    authSession: await getSession(),
   });
 });
 

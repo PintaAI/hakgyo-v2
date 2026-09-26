@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   BanIcon,
   CheckCircle2Icon,
@@ -129,14 +129,26 @@ export function AssessmentEventManager({
     toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60_000)),
   );
   const input = { courseId, cohortId, page: eventPage };
-  const events = api.assessmentEvent.listManageable.useQuery(input, { refetchInterval: 30_000 });
+  // The event list sits behind the results dialog, so only one of the two polls at a time.
+  const events = api.assessmentEvent.listManageable.useQuery(input, { refetchInterval: selectedEventId ? false : 30_000 });
   const assessmentItems = api.assessmentEvent.listAssessmentItems.useQuery({
     courseId,
     cohortId,
   });
+  // Query the participant search after typing pauses instead of on every keystroke.
+  const [appliedParticipantSearch, setAppliedParticipantSearch] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAppliedParticipantSearch(participantSearch.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [participantSearch]);
   const detail = api.assessmentEvent.getManageable.useQuery(
-    { eventId: selectedEventId ?? "", page: participantPage, search: participantSearch, status: participantStatus },
-    { enabled: Boolean(selectedEventId), refetchInterval: 30_000 },
+    { eventId: selectedEventId ?? "", page: participantPage, search: appliedParticipantSearch || undefined, status: participantStatus },
+    {
+      enabled: Boolean(selectedEventId),
+      refetchInterval: 30_000,
+      // Keep showing the same event while a new page/filter loads (keeps the search input mounted).
+      placeholderData: (previous) => previous?.id === selectedEventId ? previous : undefined,
+    },
   );
   const create = api.assessmentEvent.create.useMutation();
   const open = api.assessmentEvent.open.useMutation();
@@ -168,10 +180,10 @@ export function AssessmentEventManager({
   );
 
   async function refresh(eventId?: string) {
-    await events.refetch();
-    if (eventId) {
-      await utils.assessmentEvent.getManageable.invalidate({ eventId });
-    }
+    await Promise.all([
+      events.refetch(),
+      eventId ? utils.assessmentEvent.getManageable.invalidate({ eventId }) : null,
+    ]);
   }
 
   async function createEvent(event: FormEvent) {
@@ -347,7 +359,7 @@ export function AssessmentEventManager({
               onClose={() => closeEvent(event.id)}
               onCancel={() => cancelEvent(event.id)}
               onDelete={() => removeEvent(event.id)}
-              onSelect={() => { setSelectedEventId(event.id); setParticipantPage(1); setParticipantSearch(""); setParticipantStatus(undefined); }}
+              onSelect={() => { setSelectedEventId(event.id); setParticipantPage(1); setParticipantSearch(""); setAppliedParticipantSearch(""); setParticipantStatus(undefined); }}
             />
           ))}
         </div>
