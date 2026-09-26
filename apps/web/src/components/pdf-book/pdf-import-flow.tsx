@@ -1,19 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   analyzeTableOfContents,
   formatPdfPageRange,
   MAX_PDF_BLOCK_PAGES,
+  MAX_PDF_TOC_EXTRACTION_PAGES,
   type TableOfContentsEntry,
 } from "@hakgyo/shared";
 import {
   AlertTriangleIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
-  BookOpenTextIcon,
   CheckIcon,
   ClipboardPasteIcon,
   LoaderCircleIcon,
@@ -826,8 +826,8 @@ function MapStep({
                 Cara tercepat: pakai daftar isi buku
               </span>
               <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
-                Semua bab dibuat sekaligus dari daftar isi. Hakgyo bisa
-                mengambilnya langsung dari PDF Anda.
+                Pilih halaman daftar isi, lalu AI membaca judul bab dan nomor
+                halamannya untuk Anda periksa.
               </span>
             </span>
           </button>
@@ -977,8 +977,11 @@ function TableOfContentsDialog({
   onApply: (entries: TableOfContentsEntry[]) => void;
 }) {
   const [text, setText] = useState("");
-  const utils = api.useUtils();
-  const [finding, setFinding] = useState(false);
+  const [tocSelection, setTocSelection] = useState<PdfPageSelection | null>(
+    null,
+  );
+  const extractionSession = useRef(0);
+  const extractToc = api.pdfBook.extractTableOfContents.useMutation();
   const { entries, skipped } = useMemo(
     () =>
       analyzeTableOfContents(text, {
@@ -988,62 +991,121 @@ function TableOfContentsDialog({
     [book.pageCount, book.pageOffset, text],
   );
   const usable = entries.filter((entry) => !entry.error);
+  const missingPageCount = skipped.filter((line) =>
+    line.text.endsWith("— ?"),
+  ).length;
   const thumbnails = new Map(book.pages.map((page) => [page.pageNumber, page]));
+  const selectedCount = tocSelection
+    ? tocSelection.endPage - tocSelection.startPage + 1
+    : 0;
+  const selectedPagesReady =
+    tocSelection !== null &&
+    selectedCount <= MAX_PDF_TOC_EXTRACTION_PAGES &&
+    Array.from(
+      { length: selectedCount },
+      (_, index) => tocSelection.startPage + index,
+    ).every((pageNumber) => thumbnails.has(pageNumber));
 
-  async function takeFromBook() {
-    setFinding(true);
+  async function readSelectedPages() {
+    if (!tocSelection || !selectedPagesReady) return;
+    const session = ++extractionSession.current;
     try {
-      const found = await utils.pdfBook.findTableOfContents.fetch({
+      const found = await extractToc.mutateAsync({
         organizationId,
         bookId: book.id,
+        pageNumbers: Array.from(
+          { length: selectedCount },
+          (_, index) => tocSelection.startPage + index,
+        ),
       });
-      if (found.text) {
-        setText(found.text);
-        toast.success(
-          "Daftar isi ditemukan di buku. Periksa hasilnya di bawah.",
+      if (session !== extractionSession.current) return;
+      if (found.entries.length) {
+        const extractedText = found.entries
+          .map((entry) =>
+            entry.startPage === null
+              ? `${entry.title} — ?`
+              : `${entry.title} — ${entry.startPage}${entry.endPage === null ? "" : `-${entry.endPage}`}`,
+          )
+          .join("\n");
+        setText((current) =>
+          [current.trim(), extractedText].filter(Boolean).join("\n"),
         );
+        toast.success("Daftar isi terbaca. Periksa judul dan halamannya.");
       } else {
-        toast.info(
-          "Halaman daftar isi tidak ditemukan. Salin dan tempel secara manual.",
-        );
+        toast.info("AI tidak menemukan daftar isi di halaman pilihan.");
       }
-    } catch {
-      toast.error("Gagal membaca daftar isi dari buku.");
-    } finally {
-      setFinding(false);
+    } catch (error) {
+      if (session !== extractionSession.current) return;
+      toast.error(
+        error instanceof Error ? error.message : "Gagal membaca daftar isi.",
+      );
     }
   }
 
+  function changeOpen(nextOpen: boolean) {
+    if (!nextOpen) extractionSession.current += 1;
+    onOpenChange(nextOpen);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Buat bab dari daftar isi</DialogTitle>
           <DialogDescription>
-            Setiap baris menjadi satu bab. Tulis nomor halaman yang tercetak di
-            buku di akhir baris.
+            Pilih halaman daftar isi untuk dibaca AI, lalu periksa hasilnya.
+            Anda juga bisa menulis atau menempel daftar isi sendiri.
           </DialogDescription>
         </DialogHeader>
         <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto md:grid-cols-2">
           <div className="space-y-2">
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="text-sm font-medium">Pilih halaman daftar isi</p>
+              <p className="text-muted-foreground text-xs">
+                Klik halaman pertama lalu halaman terakhir. Maksimal{" "}
+                {MAX_PDF_TOC_EXTRACTION_PAGES} halaman per bacaan. Hasil bacaan
+                berikutnya ditambahkan di bawah.
+              </p>
+              <div className="max-h-48 overflow-y-auto p-1">
+                <PdfPageGrid
+                  pageCount={book.pageCount}
+                  pages={book.pages}
+                  pageOffset={book.pageOffset}
+                  selection={tocSelection}
+                  onSelect={setTocSelection}
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-muted-foreground text-xs" aria-live="polite">
+                  {tocSelection
+                    ? `PDF ${tocSelection.startPage}${selectedCount > 1 ? `–${tocSelection.endPage}` : ""} · ${selectedCount} halaman`
+                    : "Belum ada halaman dipilih"}
+                  {selectedCount > MAX_PDF_TOC_EXTRACTION_PAGES
+                    ? ` · Maksimal ${MAX_PDF_TOC_EXTRACTION_PAGES} halaman`
+                    : tocSelection && !selectedPagesReady
+                      ? " · Tunggu halaman selesai diproses"
+                      : ""}
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!selectedPagesReady || extractToc.isPending}
+                  onClick={() => void readSelectedPages()}
+                >
+                  {extractToc.isPending ? (
+                    <LoaderCircleIcon
+                      className="animate-spin"
+                      data-icon="inline-start"
+                    />
+                  ) : (
+                    <SparklesIcon data-icon="inline-start" />
+                  )}
+                  Baca dengan AI
+                </Button>
+              </div>
+            </div>
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="toc-text">Daftar isi</Label>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={finding}
-                onClick={() => void takeFromBook()}
-              >
-                {finding ? (
-                  <LoaderCircleIcon
-                    className="animate-spin"
-                    data-icon="inline-start"
-                  />
-                ) : (
-                  <BookOpenTextIcon data-icon="inline-start" />
-                )}
-                Ambil dari buku
-              </Button>
             </div>
             <Textarea
               id="toc-text"
@@ -1052,6 +1114,7 @@ function TableOfContentsDialog({
                 "Contoh:\nBab 1 Salam ......... 1\nBab 2 Keluarga ...... 13\nBab 3 Makanan — 21-30"
               }
               value={text}
+              disabled={extractToc.isPending}
               onChange={(event) => setText(event.target.value)}
             />
             <p className="text-muted-foreground text-xs leading-relaxed">
@@ -1059,6 +1122,12 @@ function TableOfContentsDialog({
               berikutnya. Sub-bab seperti 1.1 atau 1.2 otomatis digabung ke bab
               di atasnya.
             </p>
+            {missingPageCount > 0 ? (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                {missingPageCount} bab belum punya nomor halaman. Ganti tanda ?
+                dengan nomor cetak, atau hapus barisnya.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-3">
@@ -1148,15 +1217,19 @@ function TableOfContentsDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => changeOpen(false)}>
             Batal
           </Button>
           <Button
-            disabled={usable.length === 0}
+            disabled={
+              usable.length === 0 ||
+              missingPageCount > 0 ||
+              extractToc.isPending
+            }
             onClick={() => {
               onApply(usable);
               setText("");
-              onOpenChange(false);
+              changeOpen(false);
             }}
           >
             Buat {usable.length} bab

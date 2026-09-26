@@ -9,6 +9,7 @@ import {
   MAX_PDF_BOOK_PAGES,
   MAX_PDF_PAGE_IMAGE_BYTES,
   MAX_PDF_PAGE_TEXT_LENGTH,
+  MAX_PDF_TOC_EXTRACTION_PAGES,
   PDF_PAGE_UPLOAD_BATCH_SIZE,
   PDF_PAGES_BLOCK_TYPE,
   pdfPageRangeError,
@@ -18,6 +19,8 @@ import { z } from "zod";
 
 import { Prisma } from "../../../../generated/prisma/client";
 import { hasImageSignature } from "~/lib/image-signature";
+import { extractTableOfContentsFromPages } from "~/server/ai/pdf-table-of-contents";
+import { aiExtractionError } from "~/server/ai/image-input";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   requireContentAuthor,
@@ -245,6 +248,102 @@ export const pdfBookRouter = createTRPCRouter({
         text: picked.map((page) => page.text).join("\n"),
         pageNumbers: picked.map((page) => page.pageNumber),
       };
+    }),
+
+  /** Reads author-selected contents pages; the result is reviewed before saving. */
+  extractTableOfContents: protectedProcedure
+    .input(
+      z.object({
+        organizationId: id,
+        bookId: id,
+        pageNumbers: z
+          .array(z.number().int().positive())
+          .min(1)
+          .max(MAX_PDF_TOC_EXTRACTION_PAGES)
+          .refine((pages) => new Set(pages).size === pages.length),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { book } = await requireBook(
+        input.organizationId,
+        input.bookId,
+        ctx.actorUserId,
+      );
+      if (input.pageNumbers.some((page) => page > book.pageCount)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Halaman di luar buku.",
+        });
+      }
+      const pages = await db.pdfBookPage.findMany({
+        where: { bookId: book.id, pageNumber: { in: input.pageNumbers } },
+        orderBy: { pageNumber: "asc" },
+        select: {
+          pageNumber: true,
+          asset: { select: { objectKey: true, contentType: true } },
+        },
+      });
+      if (pages.length !== input.pageNumbers.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Tunggu hingga semua halaman pilihan selesai diproses.",
+        });
+      }
+      if (
+        pages.some(
+          (page) =>
+            !pageImageContentTypes.some(
+              (contentType) => contentType === page.asset.contentType,
+            ),
+        )
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Format gambar halaman tidak didukung.",
+        });
+      }
+
+      let images: Array<{
+        pageNumber: number;
+        imageBase64: string;
+        mediaType: string;
+      }>;
+      try {
+        images = await Promise.all(
+          pages.map(async (page) => {
+            const object = await r2.send(
+              new GetObjectCommand({
+                Bucket: r2Bucket,
+                Key: page.asset.objectKey,
+              }),
+            );
+            const bytes = await object.Body?.transformToByteArray();
+            if (!bytes) throw new Error("PDF page image is empty");
+            return {
+              pageNumber: page.pageNumber,
+              imageBase64: Buffer.from(bytes).toString("base64"),
+              mediaType: page.asset.contentType,
+            };
+          }),
+        );
+      } catch (cause) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Gambar halaman gagal dibaca. Silakan coba lagi.",
+          cause,
+        });
+      }
+
+      try {
+        return {
+          entries: await extractTableOfContentsFromPages({
+            bookTitle: book.title,
+            pages: images,
+          }),
+        };
+      } catch (error) {
+        throw aiExtractionError(error);
+      }
     }),
 
   create: protectedProcedure

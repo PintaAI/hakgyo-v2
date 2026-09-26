@@ -5,6 +5,7 @@ export const MAX_PDF_BLOCK_PAGES = 30;
 export const MAX_PDF_PAGE_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_PDF_PAGE_TEXT_LENGTH = 20_000;
 export const PDF_PAGE_UPLOAD_BATCH_SIZE = 6;
+export const MAX_PDF_TOC_EXTRACTION_PAGES = 4;
 
 export type PdfPageRange = {
   bookId: string;
