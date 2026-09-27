@@ -45,7 +45,7 @@ export default function AuthScreen() {
     const normalizedEmail = email.trim();
 
     if (!normalizedEmail || !password) {
-      setError("Enter your email address and password.");
+      setError("Masukkan alamat email dan kata sandi kamu.");
       return;
     }
 
@@ -59,13 +59,13 @@ export default function AuthScreen() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Unable to sign in.");
+        setError(result.error.message || "Tidak dapat masuk.");
         return;
       }
 
       router.replace(postSignInPath);
     } catch (cause) {
-      setError(errorMessage(cause, "Unable to sign in."));
+      setError(errorMessage(cause, "Tidak dapat masuk."));
     } finally {
       setPendingMethod(null);
     }
@@ -82,13 +82,13 @@ export default function AuthScreen() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Google sign-in failed.");
+        setError(result.error.message || "Gagal masuk dengan Google.");
         return;
       }
 
       router.replace(postSignInPath);
     } catch (cause) {
-      setError(errorMessage(cause, "Google sign-in failed."));
+      setError(errorMessage(cause, "Gagal masuk dengan Google."));
     } finally {
       setPendingMethod(null);
     }
@@ -96,7 +96,7 @@ export default function AuthScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Sign in" }} />
+      <Stack.Screen options={{ title: "Masuk" }} />
       <ScrollView
         className="flex-1 bg-background"
         contentContainerClassName="gap-5 px-5 pb-10 pt-5"
@@ -104,13 +104,13 @@ export default function AuthScreen() {
       >
         <View className="gap-2">
           <Text className="text-xs font-semibold uppercase tracking-[2px] text-muted-foreground">
-            Hakgyo account
+            Akun Hakgyo
           </Text>
           <Text className="text-3xl font-black tracking-tight text-foreground">
-            Sign in to continue
+            Masuk untuk melanjutkan
           </Text>
           <Text className="text-sm leading-5 text-muted-foreground">
-            Access your classes, cohorts, and assessments from one place.
+            Akses kelas, Group belajar, dan tugas kamu dari satu tempat.
           </Text>
         </View>
 
@@ -122,7 +122,7 @@ export default function AuthScreen() {
             editable={!isPending}
             keyboardType="email-address"
             onChangeText={setEmail}
-            placeholder="Email address"
+            placeholder="Alamat email"
             placeholderTextColor={colors.mutedForeground}
             returnKeyType="next"
             textContentType="emailAddress"
@@ -135,7 +135,7 @@ export default function AuthScreen() {
             editable={!isPending}
             onChangeText={setPassword}
             onSubmitEditing={() => void handleEmailSignIn()}
-            placeholder="Password"
+            placeholder="Kata sandi"
             placeholderTextColor={colors.mutedForeground}
             returnKeyType="go"
             secureTextEntry
@@ -161,7 +161,7 @@ export default function AuthScreen() {
             {pendingMethod === "email" ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
-              <Text className="font-bold text-primary-foreground">Sign in</Text>
+              <Text className="font-bold text-primary-foreground">Masuk</Text>
             )}
           </Pressable>
           <Pressable
@@ -174,7 +174,7 @@ export default function AuthScreen() {
               <ActivityIndicator />
             ) : (
               <Text className="font-bold text-foreground">
-                Continue with Google
+                Lanjutkan dengan Google
               </Text>
             )}
           </Pressable>
@@ -182,11 +182,11 @@ export default function AuthScreen() {
 
         <View className="items-center gap-2">
           <Link className="font-bold text-primary" href="/(onboarding)/start">
-            New to Hakgyo? Get started
+            Baru di Hakgyo? Mulai sekarang
           </Link>
           {Platform.OS === "android" ? (
             <Pressable onPress={() => router.back()}>
-              <Text className="text-sm text-muted-foreground">Close</Text>
+              <Text className="text-sm text-muted-foreground">Tutup</Text>
             </Pressable>
           ) : null}
         </View>

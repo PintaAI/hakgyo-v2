@@ -103,7 +103,7 @@ function SidebarActionRow({
                   className="text-[10px] font-bold"
                   style={{ color: colors.destructiveForeground }}
                 >
-                  New
+                  Baru
                 </Text>
               </View>
             ) : null}
@@ -197,15 +197,14 @@ export function MainSidebarContent({
             className="text-xs font-semibold"
             style={{ color: colors.foreground }}
           >
-            {mainSidebarUnreadCount} new{" "}
-            {mainSidebarUnreadCount === 1 ? "update" : "updates"}
+            {mainSidebarUnreadCount} pembaruan baru
           </Text>
           <Pressable accessibilityRole="button" onPress={markMainSidebarSeen}>
             <Text
               className="text-xs font-bold"
               style={{ color: colors.primary }}
             >
-              Catch up
+              Lihat semua
             </Text>
           </Pressable>
         </View>
@@ -213,7 +212,7 @@ export function MainSidebarContent({
 
       {upcomingEvents.length > 0 ? (
         <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
-          <SectionHeader label="Up next" count={upcomingEvents.length} />
+          <SectionHeader label="Berikutnya" count={upcomingEvents.length} />
           <View style={{ gap: 1 }}>
             {upcomingEvents.map((event) => {
               const attempt = event.attempts[0];
@@ -226,7 +225,7 @@ export function MainSidebarContent({
                   icon="timer"
                   title={event.title}
                   detail={`${assessmentSourceBadge(event)} · ${event.course.title}${event.closesAt ? ` · ${closesLabel(event.closesAt, now)}` : ""}`}
-                  badge={urgent ? "Due" : undefined}
+                  badge={urgent ? "Tenggat" : undefined}
                   unread={indicator("ASSESSMENT", event.id)?.unread ?? false}
                   onPress={() => {
                     markEntitySeen("ASSESSMENT", event.id);
@@ -260,7 +259,7 @@ export function MainSidebarContent({
 
       {upcomingMeetings.length > 0 ? (
         <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
-          <SectionHeader label="Live classes" count={upcomingMeetings.length} />
+          <SectionHeader label="Kelas live" count={upcomingMeetings.length} />
           <View style={{ gap: 1 }}>
             {upcomingMeetings.map(({ cohort, meeting }) => {
               const state = meetingState(meeting, now);
@@ -285,7 +284,7 @@ export function MainSidebarContent({
 
       {gradedAttempts.length > 0 ? (
         <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
-          <SectionHeader label="Results" count={gradedAttempts.length} />
+          <SectionHeader label="Hasil" count={gradedAttempts.length} />
           <View style={{ gap: 1 }}>
             {gradedAttempts.map((attempt) => {
               const presentation = assessmentAttemptPresentation(attempt);
@@ -321,10 +320,7 @@ export function MainSidebarContent({
 
       {dashboard.data?.courses.length ? (
         <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
-          <SectionHeader
-            label="Courses"
-            count={dashboard.data.courses.length}
-          />
+          <SectionHeader label="Course" count={dashboard.data.courses.length} />
           <View style={{ gap: 1 }}>
             {dashboard.data.courses.map((course) => (
               <CourseCard
@@ -351,7 +347,7 @@ export function MainSidebarContent({
       !dashboard.isPending ? (
         <View className="rounded-2xl px-3 py-4" style={{ marginBottom: 10 }}>
           <Text className="text-sm" style={{ color: colors.mutedForeground }}>
-            Upcoming assessments, live classes, and results will appear here.
+            Tugas, kelas live, dan hasil yang akan datang muncul di sini.
           </Text>
         </View>
       ) : null}

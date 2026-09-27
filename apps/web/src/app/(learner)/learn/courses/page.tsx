@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
 import { Card, CardHeader, CardTitle } from "~/components/ui/card";
@@ -40,7 +41,7 @@ function StatCard({
         </span>
         <Icon className="text-muted-foreground size-4" />
       </span>
-      <span className="font-[family-name:var(--font-hanken-grotesk)] text-4xl font-medium tracking-tight tabular-nums">
+      <span className="font-heading text-4xl font-medium tracking-tight tabular-nums">
         {value}
       </span>
     </div>
@@ -87,35 +88,27 @@ export default async function LearningCoursesPage() {
           <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
             Ruang belajar
           </p>
-          <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
+          <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
             Selamat datang, {displayName}
           </h1>
           <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-            Course, aktivitas, dan progress belajar Anda akan tersedia di sini.
+            Course, aktivitas, dan progress belajar kamu akan tersedia di sini.
           </p>
         </header>
-        <Card className="rounded-lg">
-          <div className="m-4 rounded-md border border-dashed px-4 py-14 text-center">
-            <CompassIcon className="text-muted-foreground mx-auto size-6" />
-            <h2 className="mt-3 font-[family-name:var(--font-hanken-grotesk)] text-base font-medium">
-              Belum ada course
-            </h2>
-            <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-xs leading-relaxed">
-              Jelajahi katalog dan pilih course pertama untuk mulai membangun
-              progress belajar.
-            </p>
+        <EmptyState
+          icon={CompassIcon}
+          title="Belum ada course"
+          description="Jelajahi katalog dan pilih course pertama untuk mulai membangun progress belajar."
+          action={
             <Link
               href="/catalog"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "mt-4",
-              )}
+              className={buttonVariants({ className: "mt-4" })}
             >
               Jelajahi katalog
-              <ArrowUpRightIcon />
+              <ArrowUpRightIcon data-icon="inline-end" />
             </Link>
-          </div>
-        </Card>
+          }
+        />
       </div>
     );
   }
@@ -127,11 +120,11 @@ export default async function LearningCoursesPage() {
           <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
             Ruang belajar
           </p>
-          <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
+          <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
             Selamat datang, {displayName}
           </h1>
           <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-            Lanjutkan aktivitas berikutnya dan pantau perkembangan belajar Anda.
+            Lanjutkan aktivitas berikutnya dan pantau perkembangan belajar kamu.
           </p>
         </div>
         <Link
@@ -167,7 +160,7 @@ export default async function LearningCoursesPage() {
       </section>
 
       {active ? (
-        <section className="bg-foreground text-background relative overflow-hidden rounded-lg px-5 py-6 sm:px-7 sm:py-8">
+        <section className="relative overflow-hidden rounded-lg bg-neutral-950 px-5 py-6 text-white sm:px-7 sm:py-8">
           {active.thumbnailUrl ? (
             <Image
               src={active.thumbnailUrl}
@@ -184,13 +177,13 @@ export default async function LearningCoursesPage() {
           <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
           <div className="relative grid gap-8 md:grid-cols-[1fr_14rem] md:items-end">
             <div className="min-w-0">
-              <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
+              <span className="text-[11px] font-semibold tracking-[0.18em] text-white/70 uppercase">
                 Lanjutkan belajar · {active.organization.name}
               </span>
-              <h2 className="mt-4 max-w-3xl font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
+              <h2 className="font-heading mt-4 max-w-3xl text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
                 {active.title}
               </h2>
-              <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/70">
                 {active.next
                   ? `${active.next.moduleTitle} · ${active.next.title}`
                   : "Semua aktivitas pada course ini telah diselesaikan."}
@@ -203,7 +196,7 @@ export default async function LearningCoursesPage() {
                 }
                 className={cn(
                   buttonVariants(),
-                  "bg-background text-foreground hover:bg-background mt-6",
+                  "mt-6 bg-white text-neutral-950 hover:bg-white/90",
                 )}
               >
                 {active.next ? "Lanjutkan aktivitas" : "Lihat course"}
@@ -212,19 +205,17 @@ export default async function LearningCoursesPage() {
             </div>
             <div className="border-l border-white/15 pl-5">
               <div className="flex items-end justify-between gap-3">
-                <span className="font-[family-name:var(--font-hanken-grotesk)] text-4xl font-medium tabular-nums">
+                <span className="font-heading text-4xl font-medium tabular-nums">
                   {active.percent}%
                 </span>
-                <span className="text-muted-foreground text-xs">
+                <span className="text-xs text-white/70">
                   {active.completed}/{active.total}
                 </span>
               </div>
-              <p className="text-muted-foreground mt-1 text-xs">
-                Progress course
-              </p>
+              <p className="mt-1 text-xs text-white/70">Progress course</p>
               <Progress
                 value={active.percent}
-                className="[&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:bg-background/20 mt-4 [&_[data-slot=progress-track]]:h-1.5"
+                className="mt-4 [&_[data-slot=progress-indicator]]:bg-white [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-white/20"
               />
             </div>
           </div>
@@ -233,7 +224,7 @@ export default async function LearningCoursesPage() {
 
       <Card className="gap-0 rounded-lg py-0">
         <CardHeader className="border-b py-4">
-          <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+          <CardTitle className="font-heading text-lg font-medium">
             Course saya
           </CardTitle>
         </CardHeader>

@@ -134,7 +134,7 @@ export function CohortInvites({
           <p className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
             Akses langsung
           </p>
-          <h2 className="mt-1 font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
+          <h2 className="font-heading mt-1 text-2xl font-medium tracking-tight">
             Invite {cohortName}
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -183,7 +183,7 @@ export function CohortInvites({
             <span className="bg-muted mx-auto flex size-12 items-center justify-center rounded-full">
               <MailPlusIcon className="text-muted-foreground size-5" />
             </span>
-            <h3 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+            <h3 className="font-heading mt-4 text-lg font-medium">
               Belum ada link invite
             </h3>
             <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">

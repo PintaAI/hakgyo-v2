@@ -204,11 +204,11 @@ function CourseItemContent({
     <>
       {/* Sidebar trigger replaces the back chevron: the drawer carries the
           course contents, so learners navigate without leaving the screen. */}
-      <SidebarToolbarButton accessibilityLabel="Open course contents" />
+      <SidebarToolbarButton accessibilityLabel="Buka daftar isi course" />
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon={toolbarIcons.home}
-          accessibilityLabel="Go to Today"
+          accessibilityLabel="Buka Hari Ini"
           onPress={() => router.replace("/(home)/(tabs)/home")}
         />
       </Stack.Toolbar>
@@ -232,23 +232,21 @@ function CourseItemContent({
       {loading ? (
         <View className="flex-1 items-center justify-center gap-3 bg-background">
           <ActivityIndicator color={colors.primary} />
-          <Text className="text-sm text-muted-foreground">
-            Loading material…
-          </Text>
+          <Text className="text-sm text-muted-foreground">Memuat materi…</Text>
         </View>
       ) : itemQuery.isError || !item ? (
         <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
           <Text className="text-xl font-black text-foreground">
-            Material unavailable
+            Materi tidak tersedia
           </Text>
           <Text className="text-center text-sm leading-5 text-muted-foreground">
-            This activity is unavailable or you no longer have access.
+            Aktivitas ini tidak tersedia atau kamu tidak lagi memiliki akses.
           </Text>
           <Pressable
             className="rounded-full border border-border px-5 py-3"
             onPress={() => router.back()}
           >
-            <Text className="font-bold text-foreground">Go back</Text>
+            <Text className="font-bold text-foreground">Kembali</Text>
           </Pressable>
         </View>
       ) : item.assessment ? (
@@ -261,7 +259,7 @@ function CourseItemContent({
             <StudyGlass>
               <View className="gap-2">
                 <Text className="text-xs font-black uppercase tracking-[2px] text-muted-foreground">
-                  Assessment · {assessment.questions.length} questions
+                  Tugas · {assessment.questions.length} soal
                 </Text>
                 <Text
                   adjustsFontSizeToFit
@@ -281,7 +279,7 @@ function CourseItemContent({
               assessment.eligibleCohorts.length > 1 ? (
                 <View className="gap-2 border-t border-border pt-4">
                   <Text className="text-sm font-bold text-foreground">
-                    Choose study group
+                    Pilih Group belajar
                   </Text>
                   {assessment.eligibleCohorts.map((cohort) => (
                     <Pressable
@@ -298,16 +296,16 @@ function CourseItemContent({
               ) : null}
               <Text className="text-sm leading-6 text-muted-foreground">
                 {assessment.timeLimitMinutes != null
-                  ? `${assessment.timeLimitMinutes} minutes`
-                  : "No time limit"}{" "}
+                  ? `${assessment.timeLimitMinutes} menit`
+                  : "Tanpa batas waktu"}{" "}
                 ·{" "}
                 {assessment.maxAttempts == null
-                  ? "Unlimited attempts"
-                  : `${assessment.maxAttempts} attempts allowed`}
+                  ? "Percobaan tanpa batas"
+                  : `Maks. ${assessment.maxAttempts} percobaan`}
                 {latestAttempt
                   ? `\n${assessmentAttemptPresentation(latestAttempt).detail}${latestAttempt.status === "GRADED" && latestAttempt.score !== null && latestAttempt.maxScore !== null ? ` · ${latestAttempt.score}/${latestAttempt.maxScore}` : ""}`
                   : ""}
-                {"\n"}Move freely between questions. Submit when you’re ready.
+                {"\n"}Bebas berpindah antarsoal. Kirim jika sudah siap.
               </Text>
               {assessmentEntry.canStart ||
               assessmentEntry.canReattempt ||
@@ -324,12 +322,12 @@ function CourseItemContent({
                   onPress={() => void beginAssessment()}
                 >
                   {startAssessment.isPending
-                    ? "Starting…"
+                    ? "Memulai…"
                     : assessmentEntry.destination === "ATTEMPT"
-                      ? "Resume assessment"
+                      ? "Lanjutkan tugas"
                       : assessmentEntry.canReattempt
-                        ? "Re-attempt assessment"
-                        : "Start assessment"}
+                        ? "Kerjakan ulang tugas"
+                        : "Mulai tugas"}
                 </StudyAction>
               ) : null}
               {latestAttempt && latestAttempt.status !== "IN_PROGRESS" ? (
@@ -348,8 +346,8 @@ function CourseItemContent({
                   }
                 >
                   {latestAttempt.status === "GRADED"
-                    ? "Review result"
-                    : "View submission"}
+                    ? "Lihat hasil"
+                    : "Lihat jawaban"}
                 </StudyAction>
               ) : null}
               {startAssessment.isError ? (
@@ -371,7 +369,7 @@ function CourseItemContent({
         ) : (
           <View className="flex-1 items-center justify-center bg-background px-6">
             <Text className="text-center text-sm text-destructive">
-              Assessment unavailable.
+              Tugas tidak tersedia.
             </Text>
           </View>
         )
@@ -384,7 +382,7 @@ function CourseItemContent({
       ) : !material ? (
         <View className="flex-1 items-center justify-center bg-background px-6">
           <Text className="text-center text-sm text-muted-foreground">
-            This activity is not available in the mobile app yet.
+            Aktivitas ini belum tersedia di aplikasi mobile.
           </Text>
         </View>
       ) : (
@@ -444,7 +442,7 @@ function CourseItemContent({
             }}
           />
           <View className="mt-8">
-            <StudyAction onPress={openLearningSheet}>Continue</StudyAction>
+            <StudyAction onPress={openLearningSheet}>Lanjutkan</StudyAction>
           </View>
         </ScrollView>
       )}

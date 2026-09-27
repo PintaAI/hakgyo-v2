@@ -87,16 +87,17 @@ export function AssessmentIntroduction({
       );
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Assessment belum dapat dimulai.",
+        error instanceof Error ? error.message : "Tugas belum dapat dimulai.",
       );
     }
   };
 
   return (
     <div className="mx-auto max-w-4xl">
-      <p className="text-muted-foreground mb-3 text-sm">{assessment.context.label} · {assessment.context.courseTitle} · {assessment.context.moduleTitle}</p>
+      <p className="text-muted-foreground mb-3 text-sm">
+        {assessment.context.label} · {assessment.context.courseTitle} ·{" "}
+        {assessment.context.moduleTitle}
+      </p>
       <Link
         href={`/learn/${courseId}`}
         className={cn(
@@ -112,9 +113,9 @@ export function AssessmentIntroduction({
             <ClipboardCheckIcon className="size-6" />
           </span>
           <Badge variant="secondary" className="mt-6">
-            Assessment
+            Tugas
           </Badge>
-          <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-5xl">
+          <h1 className="font-heading mt-3 max-w-2xl text-3xl font-medium tracking-tight sm:text-5xl">
             {assessment.title}
           </h1>
           {assessment.description ? (
@@ -176,7 +177,7 @@ export function AssessmentIntroduction({
                 </SelectContent>
               </Select>
               <p className="text-muted-foreground text-xs">
-                Hasil assessment akan dicatat untuk group yang dipilih.
+                Hasil tugas akan dicatat untuk group yang dipilih.
               </p>
             </div>
           ) : assessment.eligibleCohorts.length === 1 ? (
@@ -188,7 +189,7 @@ export function AssessmentIntroduction({
                 </span>
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
-                Hasil assessment akan dicatat untuk group ini.
+                Hasil tugas akan dicatat untuk group ini.
               </p>
             </div>
           ) : assessment.eligibleCohorts.length === 0 ? (
@@ -202,8 +203,8 @@ export function AssessmentIntroduction({
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-muted-foreground max-w-md text-sm">
-              Jawaban disimpan saat kamu mengirim assessment. Pastikan koneksi
-              tetap aktif.
+              Jawaban disimpan saat kamu mengirim tugas. Pastikan koneksi tetap
+              aktif.
             </p>
             <Button
               onClick={startAssessment}
@@ -241,7 +242,17 @@ export function AssessmentAttempt({
   serverTime: Date;
 }) {
   const utils = api.useUtils();
-  const attemptQuery = api.assessment.getMyAttempt.useQuery({ attemptId: initialAttempt.id }, { initialData: initialAttempt, refetchInterval: query => query.state.data?.status === "IN_REVIEW" || query.state.data?.status === "SUBMITTED" ? 15_000 : false });
+  const attemptQuery = api.assessment.getMyAttempt.useQuery(
+    { attemptId: initialAttempt.id },
+    {
+      initialData: initialAttempt,
+      refetchInterval: (query) =>
+        query.state.data?.status === "IN_REVIEW" ||
+        query.state.data?.status === "SUBMITTED"
+          ? 15_000
+          : false,
+    },
+  );
   const attempt = attemptQuery.data;
   // Poll only while the result can still change: pending review, or a graded quick assessment
   // whose answers are revealed once its event closes.
@@ -399,7 +410,10 @@ export function AssessmentAttempt({
       const result = await submit.mutateAsync({ attemptId: attempt.id });
       await Promise.all([
         utils.assessment.getMyAttempt.invalidate({ attemptId: attempt.id }),
-        utils.assessment.getForCourseItem.invalidate({ courseItemId, attemptId: attempt.id }),
+        utils.assessment.getForCourseItem.invalidate({
+          courseItemId,
+          attemptId: attempt.id,
+        }),
         utils.assessment.listMyAttemptHistory.invalidate(),
         utils.learning.getCourseOutline.invalidate({ courseId }),
       ]);
@@ -408,7 +422,7 @@ export function AssessmentAttempt({
           ? "Waktu habis. Jawaban yang tersimpan telah dikirim untuk dinilai."
           : result.status === "IN_REVIEW"
             ? "Jawaban dikirim untuk diperiksa."
-            : "Assessment berhasil dinilai.",
+            : "Tugas berhasil dinilai.",
       );
     } catch (error) {
       toast.error(
@@ -495,10 +509,10 @@ export function AssessmentAttempt({
             className={cn(
               "mx-auto flex size-14 items-center justify-center rounded-md",
               attempt.status === "IN_REVIEW"
-                ? "bg-amber-100 text-amber-700 dark:bg-amber-950"
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
                 : passed
                   ? "bg-foreground text-background"
-                  : "bg-red-100 text-red-700 dark:bg-red-950",
+                  : "bg-destructive/10 text-destructive",
             )}
           >
             {attempt.status === "IN_REVIEW" ? (
@@ -517,8 +531,10 @@ export function AssessmentAttempt({
             ) : null}
           </div>
           <p className="mt-3 font-semibold">{attempt.context.title}</p>
-          <p className="text-muted-foreground mt-1 text-sm">{attempt.context.course.title} · {attempt.context.moduleTitle}</p>
-          <h1 className="mt-3 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight">
+          <p className="text-muted-foreground mt-1 text-sm">
+            {attempt.context.course.title} · {attempt.context.moduleTitle}
+          </p>
+          <h1 className="font-heading mt-3 text-3xl font-medium tracking-tight">
             {eventEndedIncomplete
               ? "Attempt tidak selesai"
               : attempt.status === "IN_REVIEW"
@@ -545,10 +561,26 @@ export function AssessmentAttempt({
               />
             </div>
           ) : null}
-          {attempt.status === "GRADED" ? <div className="mt-6 space-y-3 text-left">{attempt.answers.map(answer => "feedback" in answer && answer.feedback ? <div key={answer.id} className="bg-muted/40 rounded-md p-4"><p className="mb-2 text-sm font-semibold">Feedback pengajar · Soal {assessment.questions.findIndex(q => q.id === answer.questionId) + 1}</p><RichAssessmentContent value={answer.feedback} /></div> : null)}</div> : null}
+          {attempt.status === "GRADED" ? (
+            <div className="mt-6 space-y-3 text-left">
+              {attempt.answers.map((answer) =>
+                "feedback" in answer && answer.feedback ? (
+                  <div key={answer.id} className="bg-muted/40 rounded-md p-4">
+                    <p className="mb-2 text-sm font-semibold">
+                      Feedback pengajar · Soal{" "}
+                      {assessment.questions.findIndex(
+                        (q) => q.id === answer.questionId,
+                      ) + 1}
+                    </p>
+                    <RichAssessmentContent value={answer.feedback} />
+                  </div>
+                ) : null,
+              )}
+            </div>
+          ) : null}
           {assessment.answersRevealed ? (
             <div className="mt-8 space-y-4 text-left">
-              <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
+              <h2 className="font-heading text-xl font-medium">
                 Review jawaban
               </h2>
               {assessment.questions.map((entry, index) => {
@@ -654,7 +686,7 @@ export function AssessmentAttempt({
         <Link
           href={`/learn/${courseId}/items/${courseItemId}`}
           className={buttonVariants({ variant: "ghost", size: "icon" })}
-          aria-label="Keluar dari assessment"
+          aria-label="Keluar dari tugas"
         >
           <ArrowLeftIcon />
         </Link>
@@ -677,7 +709,7 @@ export function AssessmentAttempt({
             className={cn(
               "flex items-center gap-2 rounded-xl border px-3 py-2 font-mono text-sm font-semibold",
               secondsLeft < 60 &&
-                "border-red-300 bg-red-50 text-red-700 dark:bg-red-950",
+                "border-destructive/40 bg-destructive/10 text-destructive",
             )}
           >
             <Clock3Icon className="size-4" /> {minutes}:

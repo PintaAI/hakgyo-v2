@@ -169,6 +169,28 @@ async function createFixture(options: { courseStatus?: string } = {}) {
       });
       return { materialId, itemId };
     },
+    async assessment(isPublished: boolean) {
+      const assessmentId = id();
+      const itemId = id();
+      await insert("Assessment", {
+        id: assessmentId,
+        organizationId,
+        createdByMembershipId: memberId,
+        title: "Quiz",
+        updatedAt: now,
+      });
+      await insert("CourseItem", {
+        id: itemId,
+        moduleId,
+        organizationId,
+        type: "ASSESSMENT",
+        position: position++,
+        assessmentId,
+        isPublished,
+        updatedAt: now,
+      });
+      return { assessmentId, itemId };
+    },
     async asset() {
       const assetId = id();
       assetIds.push(assetId);
@@ -187,6 +209,9 @@ async function createFixture(options: { courseStatus?: string } = {}) {
       await run(`DELETE FROM "ContentProgress" WHERE "userId" = $1`, [userId]);
       await run(`DELETE FROM "CourseEnrollment" WHERE "userId" = $1`, [userId]);
       await run(`DELETE FROM "CourseItem" WHERE "organizationId" = $1`, [
+        organizationId,
+      ]);
+      await run(`DELETE FROM "Assessment" WHERE "organizationId" = $1`, [
         organizationId,
       ]);
       await run(`DELETE FROM "MaterialAsset" WHERE "organizationId" = $1`, [
@@ -537,6 +562,104 @@ describe.skipIf(!enabled)("mobile sync change log", () => {
         conn.release();
       }
       expect(await countAll()).toBe(total);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  test("assessment edits emit for visible placements; there is no assessment publish state", async () => {
+    const fixture = await createFixture();
+    try {
+      const { courseId } = fixture;
+      const visible = await fixture.assessment(true);
+      const hidden = await fixture.assessment(false);
+      const content = {
+        kind: "content",
+        entityType: "assessment",
+        entityId: visible.assessmentId,
+      };
+      const structure = { ...content, kind: "structure" };
+
+      expect(
+        await emitted("course", courseId, () =>
+          run(`UPDATE "Assessment" SET "description" = 'x' WHERE "id" = $1`, [
+            visible.assessmentId,
+          ]),
+        ),
+      ).toEqual([content]);
+      for (const column of ["title", "passingScore"]) {
+        expect(
+          await emitted("course", courseId, () =>
+            run(
+              `UPDATE "Assessment" SET "${column}" = ${
+                column === "title" ? "'Renamed'" : "80"
+              } WHERE "id" = $1`,
+              [visible.assessmentId],
+            ),
+          ),
+        ).toEqual([content, structure]);
+      }
+      // Hidden placement: nothing.
+      expect(
+        await emitted("course", courseId, () =>
+          run(`UPDATE "Assessment" SET "title" = 'Hidden' WHERE "id" = $1`, [
+            hidden.assessmentId,
+          ]),
+        ),
+      ).toEqual([]);
+
+      // Questions and options follow the assessment.
+      const questionId = id();
+      expect(
+        await emitted("course", courseId, () =>
+          insert("AssessmentQuestion", {
+            id: questionId,
+            assessmentId: visible.assessmentId,
+            type: "SINGLE_CHOICE",
+            prompt: "[]",
+            position: 0,
+            updatedAt: new Date(),
+          }),
+        ),
+      ).toEqual([content]);
+      expect(
+        await emitted("course", courseId, () =>
+          insert("AssessmentOption", {
+            id: id(),
+            questionId,
+            content: "[]",
+            position: 0,
+            updatedAt: new Date(),
+          }),
+        ),
+      ).toEqual([content]);
+      expect(
+        await emitted("course", courseId, () =>
+          insert("AssessmentQuestion", {
+            id: id(),
+            assessmentId: hidden.assessmentId,
+            type: "WRITTEN",
+            prompt: "[]",
+            position: 0,
+            updatedAt: new Date(),
+          }),
+        ),
+      ).toEqual([]);
+
+      // Linked assets reach learners through the visible assessment.
+      const assetId = await fixture.asset();
+      await insert("AssessmentAsset", {
+        assessmentId: visible.assessmentId,
+        assetId,
+        organizationId: fixture.organizationId,
+      });
+      expect(
+        await emitted("course", courseId, () =>
+          run(`UPDATE "Asset" SET "fileName" = 'renamed.png' WHERE "id" = $1`, [
+            assetId,
+          ]),
+        ),
+      ).toEqual([{ kind: "content", entityType: "asset", entityId: assetId }]);
     } finally {
       await fixture.cleanup();
     }

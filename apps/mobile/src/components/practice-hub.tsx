@@ -76,9 +76,9 @@ type Tool = {
 const tools: Tool[] = [
   {
     key: "cards",
-    title: "Cards",
-    subtitle: "Flip & recall",
-    sourceLabel: "Kosa-kata",
+    title: "Kartu",
+    subtitle: "Balik & ingat",
+    sourceLabel: "Kosakata",
     icon: "rectangle.stack.fill",
     fallback: "Aa",
     resource: "VOCABULARY_SET",
@@ -87,7 +87,7 @@ const tools: Tool[] = [
   {
     key: "assessment",
     title: "Quiz",
-    subtitle: "Test yourself",
+    subtitle: "Uji dirimu",
     sourceLabel: "Tugas",
     icon: "checkmark.circle.fill",
     fallback: "✓",
@@ -96,9 +96,9 @@ const tools: Tool[] = [
   },
   {
     key: "word-fall",
-    title: "Word Fall",
-    subtitle: "Type before impact",
-    sourceLabel: "Kosa-kata",
+    title: "Hujan Kata",
+    subtitle: "Ketik sebelum jatuh",
+    sourceLabel: "Kosakata",
     icon: "arrow.down.circle.fill",
     fallback: "↓",
     resource: "VOCABULARY_SET",
@@ -106,9 +106,9 @@ const tools: Tool[] = [
   },
   {
     key: "sentences",
-    title: "Sentences",
-    subtitle: "Build meaning",
-    sourceLabel: "Kosa-kata",
+    title: "Kalimat",
+    subtitle: "Bangun makna",
+    sourceLabel: "Kosakata",
     icon: "text.word.spacing",
     fallback: "↔",
     resource: "VOCABULARY_SET",
@@ -116,9 +116,9 @@ const tools: Tool[] = [
   },
   {
     key: "match",
-    title: "Match",
-    subtitle: "Connect the pairs",
-    sourceLabel: "Kosa-kata",
+    title: "Cocokkan",
+    subtitle: "Hubungkan pasangannya",
+    sourceLabel: "Kosakata",
     icon: "square.grid.2x2.fill",
     fallback: "⊞",
     resource: "VOCABULARY_SET",
@@ -143,7 +143,7 @@ const hangeulTools: Tool[] = [
     key: "syllable-forge",
     title: "Susun 한글",
     subtitle: "Susun suku kata Hangeul",
-    sourceLabel: "Hangeul",
+    sourceLabel: "한글",
     unavailableLabel: "한글",
     icon: "character.book.closed.fill",
     fallback: "글",
@@ -155,7 +155,7 @@ const hangeulTools: Tool[] = [
     key: "word-builder",
     title: "Susun kata",
     subtitle: "Susun kata dari suku kata",
-    sourceLabel: "Hangeul",
+    sourceLabel: "한글",
     unavailableLabel: "한글",
     icon: "text.word.spacing",
     fallback: "가나",
@@ -236,7 +236,7 @@ function GameTile({
   // The badge turns primary when the tile is selected.
   const badgeLabel = tool.available
     ? tool.sourceLabel
-    : (tool.unavailableLabel ?? "Soon");
+    : (tool.unavailableLabel ?? "Segera");
   const disabled = !tool.available || !!tool.disabledHint;
   const badge = (
     <View
@@ -369,7 +369,7 @@ function AssessmentQueue({ events, now }: { events: Event[]; now: number }) {
         {events.map((event, index) => (
           <Pressable
             key={event.id}
-            accessibilityHint={`Opens ${event.title}`}
+            accessibilityHint={`Membuka ${event.title}`}
             accessibilityRole="button"
             className={`flex-row items-center gap-3 py-3.5 active:opacity-70 ${index === events.length - 1 ? "" : "border-b border-primary/20"}`}
             onPress={() => openEvent(event)}
@@ -480,9 +480,9 @@ function LibraryRow({
 type StatusFilter = "all" | "todo" | "done";
 
 const statusFilters: { key: StatusFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "todo", label: "To practice" },
-  { key: "done", label: "Practiced" },
+  { key: "all", label: "Semua" },
+  { key: "todo", label: "Belum dilatih" },
+  { key: "done", label: "Sudah dilatih" },
 ];
 
 // Global practice library in course-learning-footer DNA: footer header
@@ -565,7 +565,7 @@ export function ResourceLibrary({
   const activeFilter = statusFilters.find((option) => option.key === status)!;
 
   if (courses.length === 0) {
-    return <Empty>Join a course to unlock practice.</Empty>;
+    return <Empty>Ikuti course untuk membuka latihan.</Empty>;
   }
 
   return (
@@ -619,14 +619,12 @@ export function ResourceLibrary({
                 numberOfLines={1}
                 style={{ color: colors.mutedForeground }}
               >
-                {filter === "ASSESSMENT"
-                  ? "Search quizzes…"
-                  : "Search vocabulary sets…"}
+                {filter === "ASSESSMENT" ? "Cari quiz…" : "Cari set kosakata…"}
               </Text>
             </View>
           ) : null}
           <TextInput
-            accessibilityLabel="Search practice"
+            accessibilityLabel="Cari latihan"
             autoCapitalize="none"
             autoCorrect={false}
             onChangeText={setQuery}
@@ -647,7 +645,7 @@ export function ResourceLibrary({
           />
           {query.length > 0 ? (
             <Pressable
-              accessibilityLabel="Clear search"
+              accessibilityLabel="Hapus pencarian"
               accessibilityRole="button"
               onPress={() => setQuery("")}
               className="rounded-full active:opacity-75"
@@ -673,7 +671,7 @@ export function ResourceLibrary({
           ) : null}
         </GlassBox>
         <Pressable
-          accessibilityLabel={`Filter: ${activeFilter.label}. Activate to change.`}
+          accessibilityLabel={`Filter: ${activeFilter.label}. Ketuk untuk mengubah.`}
           accessibilityRole="button"
           className="active:opacity-70"
           onPress={() => {
@@ -717,7 +715,7 @@ export function ResourceLibrary({
               <Text
                 className={`text-xs font-bold ${courseFilter === null ? "text-primary-foreground" : "text-foreground"}`}
               >
-                All courses
+                Semua course
               </Text>
             </View>
           </Pressable>
@@ -749,19 +747,19 @@ export function ResourceLibrary({
       {missingOutlineCount === courses.length ? (
         <View className="gap-3 py-4">
           <Text accessibilityRole="alert" className="text-sm text-destructive">
-            We couldn’t load your practice materials.
+            Bahan latihan kamu tidak dapat dimuat.
           </Text>
           <Action secondary onPress={onRetry}>
-            Try again
+            Coba lagi
           </Action>
         </View>
       ) : visible.length === 0 ? (
         <Empty>
           {normalized
-            ? "No practice matches your search."
+            ? "Tidak ada latihan yang cocok dengan pencarian."
             : status === "done"
-              ? "Nothing practiced yet."
-              : "Nothing left to practice."}
+              ? "Belum ada yang dilatih."
+              : "Tidak ada lagi yang perlu dilatih."}
         </Empty>
       ) : (
         <View>
@@ -836,7 +834,7 @@ export function PracticeHub(props: HubProps) {
               ? {
                   ...candidate,
                   disabledHint:
-                    "Quiz needs a class assessment and can't practice this set",
+                    "Quiz membutuhkan tugas kelas dan tidak bisa memakai set ini",
                 }
               : candidate,
           )
@@ -891,7 +889,7 @@ export function PracticeHub(props: HubProps) {
   return (
     <>
       <View className="gap-3 pt-1">
-        <Eyebrow>Hangeul Mastery</Eyebrow>
+        <Eyebrow>Penguasaan Hangeul</Eyebrow>
         <GamePicker
           tools={hangeulTools}
           onSelect={(key) => {
@@ -924,8 +922,8 @@ export function PracticeHub(props: HubProps) {
               <View className="flex-row items-center gap-2 p-4">
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Open ${activeSource.title ?? "vocabulary set"} details`}
-                  accessibilityHint="Opens the vocabulary set detail screen"
+                  accessibilityLabel={`Buka detail ${activeSource.title ?? "set kosakata"}`}
+                  accessibilityHint="Membuka layar detail set kosakata"
                   className="min-w-0 flex-1 active:opacity-70"
                   onPress={() =>
                     router.push({
@@ -939,26 +937,26 @@ export function PracticeHub(props: HubProps) {
                 >
                   <View className="gap-0.5">
                     <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-                      Practicing
+                      Sedang dilatih
                     </Text>
                     <Text
                       className="text-[15px] font-bold text-foreground"
                       numberOfLines={1}
                     >
-                      {activeSource.title ?? "Selected vocabulary set"}
+                      {activeSource.title ?? "Set kosakata terpilih"}
                     </Text>
                     <Text
                       className="text-xs text-muted-foreground"
                       numberOfLines={1}
                     >
-                      Tap to view set · Choose a game to start
+                      Ketuk untuk melihat set · Pilih game untuk mulai
                     </Text>
                   </View>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Clear selected vocabulary set"
-                  accessibilityHint="Shows all vocabulary sets again"
+                  accessibilityLabel="Hapus pilihan set kosakata"
+                  accessibilityHint="Menampilkan semua set kosakata lagi"
                   className="size-8 items-center justify-center rounded-full active:opacity-60"
                   onPress={() => setSourceDismissed(true)}
                 >
@@ -981,7 +979,7 @@ export function PracticeHub(props: HubProps) {
             </GlassBox>
           ) : null}
           <View className="gap-3 pt-1">
-            <Eyebrow>Choose a game</Eyebrow>
+            <Eyebrow>Pilih game</Eyebrow>
             <GamePicker
               tools={displayTools}
               onSelect={handleSelect}
@@ -989,8 +987,8 @@ export function PracticeHub(props: HubProps) {
             />
             {activeSource ? (
               <Text className="text-xs leading-4 text-muted-foreground">
-                Quiz runs on class assessments, not vocabulary sets. Tap × above
-                to browse all sets and quizzes.
+                Quiz memakai tugas kelas, bukan set kosakata. Ketuk × di atas
+                untuk melihat semua set dan quiz.
               </Text>
             ) : null}
           </View>

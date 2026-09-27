@@ -262,7 +262,6 @@ export async function getAssessmentSample(
         select: {
           id: true,
           title: true,
-          status: true,
         },
       },
     },
@@ -272,9 +271,7 @@ export async function getAssessmentSample(
   const assessmentIds = [
     ...new Set(
       placementMetadata.flatMap((placement) =>
-        placement.assessment?.status === "PUBLISHED"
-          ? [placement.assessment.id]
-          : [],
+        placement.assessment ? [placement.assessment.id] : [],
       ),
     ),
   ];
@@ -296,7 +293,7 @@ export async function getAssessmentSample(
     const assessment = placement.assessment;
     const source = placementById.get(placement.id);
     if (
-      assessment?.status !== "PUBLISHED" ||
+      !assessment ||
       !assessmentsWithQuestions.has(assessment.id) ||
       !source ||
       seenAssessments.has(assessment.id)
@@ -442,7 +439,6 @@ export const practiceRouter = createTRPCRouter({
             id: input.questionId,
             type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
             assessment: {
-              status: "PUBLISHED",
               courseItems: {
                 some: {
                   id: input.sourceCourseItemId,

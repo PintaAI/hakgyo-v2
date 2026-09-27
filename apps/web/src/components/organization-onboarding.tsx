@@ -8,7 +8,6 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Hanken_Grotesk, Inter } from "next/font/google";
 import {
   ArrowRightIcon,
   BookOpenIcon,
@@ -27,16 +26,6 @@ import {
   readOnboardingState,
 } from "~/lib/onboarding";
 import { api } from "~/trpc/react";
-
-const hanken = Hanken_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-hanken-grotesk",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 function invitationToken(value: string) {
   const trimmed = value.trim();
@@ -127,13 +116,7 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
   }
 
   return (
-    <main
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        "bg-background min-h-screen p-4 font-[family-name:var(--font-inter)] md:p-6 lg:p-8",
-      )}
-    >
+    <main className="bg-background min-h-screen p-4 md:p-6 lg:p-8">
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex items-center justify-between gap-4">
           <Link
@@ -148,7 +131,10 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
           <button
             type="button"
             onClick={continueAsLearner}
-            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-muted-foreground")}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "text-muted-foreground",
+            )}
           >
             Lewati untuk sekarang
           </button>
@@ -158,12 +144,13 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
           <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
             Pilih perjalanan Anda
           </p>
-          <h1 className="mt-3 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
+          <h1 className="font-heading mt-3 text-3xl font-medium tracking-tight sm:text-4xl">
             Mengajar, bergabung, atau mulai belajar.
           </h1>
           <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-            Hakgyo memisahkan workspace organization dari ruang belajar. Pilih jalur yang sesuai
-            sekarang; Anda tetap dapat membuat organization lain nanti.
+            Hakgyo memisahkan workspace organization dari ruang belajar. Pilih
+            jalur yang sesuai sekarang; Anda tetap dapat membuat organization
+            lain nanti.
           </p>
         </section>
 
@@ -175,12 +162,13 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
             <p className="text-muted-foreground mt-6 text-xs font-semibold tracking-[0.14em] uppercase">
               Untuk pendiri
             </p>
-            <h2 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+            <h2 className="font-heading mt-2 text-lg font-medium">
               Buat organization
             </h2>
             <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Siapkan workspace, atur course sebagai Public atau Private, dan kelola teacher,
-              cohort, serta learner. Anda otomatis menjadi owner.
+              Siapkan workspace, atur course sebagai Public atau Private, dan
+              kelola teacher, cohort, serta learner. Anda otomatis menjadi
+              owner.
             </p>
             <Link
               href="/organizations/new"
@@ -198,11 +186,12 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
             <p className="text-muted-foreground mt-6 text-xs font-semibold tracking-[0.14em] uppercase">
               Untuk staff
             </p>
-            <h2 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+            <h2 className="font-heading mt-2 text-lg font-medium">
               Pakai invitation
             </h2>
             <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Masukkan link atau token dari owner/admin untuk menerima role Teacher atau Admin.
+              Masukkan link atau token dari owner/admin untuk menerima role
+              Teacher atau Admin.
             </p>
             <form onSubmit={openInvitation} className="mt-6 grid gap-2">
               <Input
@@ -227,11 +216,12 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
             <p className="text-muted-foreground mt-6 text-xs font-semibold tracking-[0.14em] uppercase">
               Untuk learner
             </p>
-            <h2 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+            <h2 className="font-heading mt-2 text-lg font-medium">
               Jelajahi course
             </h2>
             <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Tidak perlu organization untuk mengikuti course dan melanjutkan progres belajar.
+              Tidak perlu organization untuk mengikuti course dan melanjutkan
+              progres belajar.
             </p>
             <Button
               type="button"
@@ -247,8 +237,8 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
 
         {organizations.error ? (
           <p className="text-destructive mt-6 text-center text-sm">
-            Organization belum dapat diperiksa. Anda tetap dapat memilih salah satu jalur di
-            atas.
+            Organization belum dapat diperiksa. Anda tetap dapat memilih salah
+            satu jalur di atas.
           </p>
         ) : null}
       </div>

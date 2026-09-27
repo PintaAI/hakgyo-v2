@@ -274,12 +274,10 @@ describe.skipIf(!enabled)("mobile sync compose ≙ online procedures", () => {
 
     const assessment = (
       name: string,
-      status: "PUBLISHED" | "DRAFT",
       extra: { passingScore?: number | null; timeLimitMinutes?: number } = {},
-    ) => createAssessment(name, status, extra);
+    ) => createAssessment(name, extra);
     const createAssessment = async (
       name: string,
-      status: "PUBLISHED" | "DRAFT",
       extra: { passingScore?: number | null; timeLimitMinutes?: number },
     ) => {
       await db.assessment.create({
@@ -289,8 +287,6 @@ describe.skipIf(!enabled)("mobile sync compose ≙ online procedures", () => {
           createdByMembershipId: ownerMembershipId,
           title: `Assessment ${name}`,
           description: "Check your understanding",
-          status,
-          publishedAt: status === "PUBLISHED" ? now : null,
           instructions: [{ type: "paragraph", content: "Answer all." }],
           passingScore: extra.passingScore ?? 70,
           maxAttempts: 3,
@@ -322,9 +318,10 @@ describe.skipIf(!enabled)("mobile sync compose ≙ online procedures", () => {
         ),
       });
     };
-    await assessment("quiz", "PUBLISHED", { timeLimitMinutes: 15 });
-    await assessment("final", "PUBLISHED", { passingScore: null });
-    await assessment("draft", "DRAFT");
+    await assessment("quiz", { timeLimitMinutes: 15 });
+    await assessment("final", { passingScore: null });
+    // Never placed in the course.
+    await assessment("draft");
 
     const material = (
       name: string,
@@ -395,7 +392,7 @@ describe.skipIf(!enabled)("mobile sync compose ≙ online procedures", () => {
           type: "assessmentReference",
           props: { assessmentId: fixtureId("final") },
         },
-        // Draft: never resolves.
+        // Not placed in the course: never resolves.
         {
           type: "assessmentReference",
           props: { assessmentId: fixtureId("draft") },

@@ -56,8 +56,8 @@ export function OrganizationSwitcherTrigger({
 
   const trigger = (
     <Pressable
-      accessibilityHint="Shows your available organizations"
-      accessibilityLabel={`Current organization: ${activeBrand.name}`}
+      accessibilityHint="Menampilkan organisasi yang tersedia"
+      accessibilityLabel={`Organisasi saat ini: ${activeBrand.name}`}
       accessibilityRole="button"
       className={
         compact
@@ -144,10 +144,10 @@ export function OrganizationSwitcherContent({
       {Platform.OS !== "ios" ? (
         <View className="flex-row items-center justify-between gap-4">
           <Text className="text-xl font-black text-foreground">
-            Choose organization
+            Pilih organisasi
           </Text>
           <Pressable
-            accessibilityLabel="Close organization switcher"
+            accessibilityLabel="Tutup pemilih organisasi"
             accessibilityRole="button"
             className="rounded-full px-3 py-2 active:opacity-60"
             onPress={onClose}
@@ -158,7 +158,7 @@ export function OrganizationSwitcherContent({
       ) : null}
       <View className="h-5 justify-center">
         <ActivityIndicator
-          accessibilityLabel="Updating organizations"
+          accessibilityLabel="Memperbarui organisasi"
           animating={isRefreshingOrganizations}
           color={colors.primary}
           size="small"
@@ -197,7 +197,7 @@ export function OrganizationSwitcherContent({
                 {organization.name}
               </Text>
               <Text className="text-xs text-muted-foreground">
-                {organization.isThemed ? "Organization theme" : "Hakgyo theme"}
+                {organization.isThemed ? "Tema organisasi" : "Tema Hakgyo"}
               </Text>
             </View>
             {selected ? (
@@ -213,7 +213,7 @@ export function OrganizationSwitcherContent({
       })}
       {availableOrganizations.length === 0 ? (
         <Text className="py-5 text-center text-sm text-muted-foreground">
-          No active organization enrollments yet.
+          Belum ada organisasi aktif yang kamu ikuti.
         </Text>
       ) : null}
     </ScrollView>

@@ -26,7 +26,7 @@ export type CohortMilestoneGroup = {
 };
 
 function milestoneTypeLabel(type: CohortMilestone["type"]) {
-  if (type === "VOCABULARY_SET") return "Kosa-kata";
+  if (type === "VOCABULARY_SET") return "Kosakata";
   if (type === "ASSESSMENT") return "Tugas";
   return "Materi";
 }
@@ -38,7 +38,7 @@ function milestoneStatus(milestone: CohortMilestone) {
     milestone.score !== null &&
     milestone.maxScore !== null
   ) {
-    parts.push(`Score ${milestone.score}/${milestone.maxScore}`);
+    parts.push(`Skor ${milestone.score}/${milestone.maxScore}`);
   }
   if (milestone.completedAt) {
     parts.push(dayLabel(new Date(milestone.completedAt)));
@@ -74,7 +74,7 @@ export function CohortMilestoneTimeline({
               },
             })
           }
-          accessibilityHint={`Open completed ${milestoneTypeLabel(milestone.type).toLowerCase()}`}
+          accessibilityHint={`Buka ${milestoneTypeLabel(milestone.type).toLowerCase()} yang sudah selesai`}
         />
       ))}
     </View>

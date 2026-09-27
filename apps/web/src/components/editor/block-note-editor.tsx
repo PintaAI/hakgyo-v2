@@ -295,7 +295,7 @@ export function BlockNoteEditor({
     },
     {
       title: "Culture & Information",
-      subtext: "Artikel budaya bilingual dengan foto dan self assessment.",
+      subtext: "Artikel budaya bilingual dengan foto dan penilaian diri.",
       aliases: ["culture", "budaya", "문화", "정보", "information"],
       group: "Blok Hakgyo",
       icon: <Building2Icon className="size-4" />,
@@ -307,7 +307,7 @@ export function BlockNoteEditor({
     ...(resourceLibrary
       ? [
           {
-            title: "Vocabulary set",
+            title: "Set kosakata",
             subtext:
               "Tampilkan kosakata live dari library dan tautkan latihan hafalan.",
             aliases: ["vocabulary", "vocab", "kosakata", "어휘"],
@@ -319,9 +319,16 @@ export function BlockNoteEditor({
               }),
           },
           {
-            title: "Assessment",
-            subtext: "Tampilkan ringkasan assessment live dan tombol mulai.",
-            aliases: ["assessment", "quiz", "test", "ujian", "penilaian"],
+            title: "Tugas",
+            subtext: "Tampilkan ringkasan tugas live dan tombol mulai.",
+            aliases: [
+              "tugas",
+              "assessment",
+              "quiz",
+              "test",
+              "ujian",
+              "penilaian",
+            ],
             group: "Blok Hakgyo",
             icon: <ClipboardCheckIcon className="size-4" />,
             onItemClick: () =>
@@ -364,7 +371,7 @@ export function BlockNoteEditor({
     ...(uploadAsset
       ? [
           {
-            title: "Audio assessment",
+            title: "Audio tugas",
             subtext: "Unggah dan putar audio dari asset storage.",
             aliases: ["audio", "sound", "listening", "suara"],
             group: "Media Hakgyo",

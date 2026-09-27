@@ -77,7 +77,9 @@ export function useVocabularyProgressReporter({
         });
       } catch (cause) {
         const nextError =
-          cause instanceof Error ? cause : new Error("Could not save locally");
+          cause instanceof Error
+            ? cause
+            : new Error("Tidak dapat menyimpan di perangkat");
         if (reactive) setError(nextError);
         throw nextError;
       } finally {

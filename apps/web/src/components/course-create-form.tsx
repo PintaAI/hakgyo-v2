@@ -19,7 +19,6 @@ import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
-
 function getErrorMessage(error: unknown) {
   if (
     typeof error === "object" &&
@@ -93,7 +92,7 @@ export function CourseCreateForm({
         <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
           Course baru
         </p>
-        <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
+        <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
           Apa yang ingin Anda ajarkan?
         </h1>
         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
@@ -182,9 +181,7 @@ export function CourseCreateForm({
         </form>
 
         <aside className="bg-card ring-foreground/10 h-fit rounded-lg p-5 ring-1">
-          <p className="font-[family-name:var(--font-hanken-grotesk)] font-medium">
-            Setelah course dibuat
-          </p>
+          <p className="font-heading font-medium">Setelah course dibuat</p>
           <ol className="text-muted-foreground mt-5 space-y-5 text-sm">
             {[
               "Susun bab dan materi",
@@ -202,8 +199,8 @@ export function CourseCreateForm({
           <div className="mt-6 flex items-start gap-2.5 border-t pt-5 text-xs leading-relaxed">
             <CheckIcon className="text-foreground mt-0.5 size-4 shrink-0" />
             <p className="text-muted-foreground">
-              Course disimpan sebagai draf. Peserta belum dapat melihatnya
-              sampai Anda menerbitkannya.
+              Course dibuat dalam keadaan belum dipublikasikan. Peserta belum
+              dapat melihatnya sampai Anda mempublikasikannya.
             </p>
           </div>
         </aside>

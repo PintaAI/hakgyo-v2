@@ -42,26 +42,26 @@ type AttemptIdentity = {
 
 export function assessmentAttemptPresentation(attempt?: AttemptResult) {
   if (!attempt) {
-    return { detail: "Open", action: "Start assessment" } as const;
+    return { detail: "Terbuka", action: "Mulai tugas" } as const;
   }
 
   if (attempt.status === "IN_PROGRESS") {
-    return { detail: "In progress", action: "Resume assessment" } as const;
+    return { detail: "Sedang dikerjakan", action: "Lanjutkan tugas" } as const;
   }
 
   if (attempt.status === "IN_REVIEW") {
-    return { detail: "Awaiting review", action: "View submission" } as const;
+    return { detail: "Menunggu review", action: "Lihat jawaban" } as const;
   }
 
   if (attempt.status === "SUBMITTED") {
-    return { detail: "Submitted", action: "View submission" } as const;
+    return { detail: "Terkirim", action: "Lihat jawaban" } as const;
   }
 
   const result =
     attempt.score !== null && attempt.maxScore !== null
       ? ` · ${attempt.score} / ${attempt.maxScore}`
       : "";
-  return { detail: `Reviewed${result}`, action: "View result" } as const;
+  return { detail: `Sudah direview${result}`, action: "Lihat hasil" } as const;
 }
 
 export function assessmentResultPolicy(

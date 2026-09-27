@@ -45,7 +45,7 @@ export function NativeContentRenderer({
         (emptyState ?? (
           <View className="rounded-xl border border-dashed border-border p-6">
             <Text className="text-center text-sm text-muted-foreground">
-              No content yet.
+              Belum ada konten.
             </Text>
           </View>
         ))

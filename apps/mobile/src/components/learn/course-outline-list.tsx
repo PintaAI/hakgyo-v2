@@ -15,7 +15,7 @@ import { LearningItemRow } from "./learning-item-row";
 const itemLabels = {
   MATERIAL: "Materi",
   ASSESSMENT: "Tugas",
-  VOCABULARY_SET: "Kosa-kata",
+  VOCABULARY_SET: "Kosakata",
 } as const;
 
 export function CourseOutlineList({
@@ -70,10 +70,10 @@ export function CourseOutlineList({
       {showHeader ? (
         <View className="flex-row items-center justify-between gap-4">
           <Text className="text-xl font-bold text-foreground">
-            Course materials
+            Materi course
           </Text>
           <Text className="text-xs font-semibold text-muted-foreground">
-            {course.modules.length} modules
+            {course.modules.length} bab
           </Text>
         </View>
       ) : null}
@@ -81,10 +81,10 @@ export function CourseOutlineList({
       {course.modules.length === 0 ? (
         <View className="items-center border-y border-border px-6 py-10">
           <Text className="text-base font-bold text-foreground">
-            No materials yet
+            Belum ada materi
           </Text>
           <Text className="mt-2 text-center text-sm leading-5 text-muted-foreground">
-            Published modules will appear here.
+            Bab yang dipublikasikan akan muncul di sini.
           </Text>
         </View>
       ) : (
@@ -121,7 +121,7 @@ export function CourseOutlineList({
                   </Text>
                   {locked ? (
                     <Text className="text-xs leading-5 text-muted-foreground">
-                      Complete the previous modules to unlock.
+                      Selesaikan bab sebelumnya untuk membuka.
                     </Text>
                   ) : null}
                   {module.description ? (
@@ -139,23 +139,23 @@ export function CourseOutlineList({
                   {unread ? (
                     <View className="rounded-full bg-destructive px-1.5 py-0.5">
                       <Text className="text-[10px] font-bold text-destructive-foreground">
-                        New
+                        Baru
                       </Text>
                     </View>
                   ) : null}
                   <Text className="text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground">
                     {module.isCompleted
-                      ? "Completed"
+                      ? "Selesai"
                       : locked
-                        ? "Locked"
-                        : `${module.items.filter((item) => item.isCompleted).length}/${module.items.length} done`}
+                        ? "Terkunci"
+                        : `${module.items.filter((item) => item.isCompleted).length}/${module.items.length} selesai`}
                   </Text>
                 </View>
               </View>
 
               {module.items.length === 0 ? (
                 <Text className="py-5 pl-12 text-sm text-muted-foreground">
-                  No activities in this module.
+                  Belum ada aktivitas di bab ini.
                 </Text>
               ) : (
                 <View className="relative ml-3 mt-6">
@@ -176,13 +176,13 @@ export function CourseOutlineList({
                     const isCurrent = item.id === currentItemId;
                     const isNext = !currentItemId && item.id === resumeItem?.id;
                     const status = locked
-                      ? "Locked"
+                      ? "Terkunci"
                       : (assessmentState?.detail ??
                         (item.isCompleted
-                          ? "Completed"
+                          ? "Selesai"
                           : isNext
-                            ? "Up next"
-                            : "Ready"));
+                            ? "Berikutnya"
+                            : "Siap"));
 
                     return (
                       <LearningItemRow

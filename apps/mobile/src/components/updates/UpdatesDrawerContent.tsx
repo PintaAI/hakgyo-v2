@@ -146,14 +146,14 @@ export function UpdatesDrawerContent({
       courseModule?.title ??
       event?.title ??
       meeting?.title ??
-      "Learning update";
+      "Pembaruan belajar";
     const detail = courseModule
-      ? `${course?.title ?? "Course"} · ${courseModule.items.length} ${courseModule.items.length === 1 ? "activity" : "activities"}`
+      ? `${course?.title ?? "Course"} · ${courseModule.items.length} aktivitas`
       : event
-        ? `${event.course.title} · Assessment`
+        ? `${event.course.title} · Tugas`
         : meeting && cohort
           ? `${cohort.name} · ${dateLabel(meeting.startsAt)}`
-          : "Open to view details";
+          : "Buka untuk melihat detail";
     const icon =
       item.kind === "MODULE"
         ? "book.pages.fill"
@@ -163,7 +163,7 @@ export function UpdatesDrawerContent({
 
     return (
       <Pressable
-        accessibilityHint="Opens this update"
+        accessibilityHint="Membuka pembaruan ini"
         accessibilityRole="button"
         className="overflow-hidden rounded-xl px-2.5 py-2"
         key={item.key}
@@ -201,7 +201,7 @@ export function UpdatesDrawerContent({
                     className="text-[10px] font-bold"
                     style={{ color: colors.destructiveForeground }}
                   >
-                    New
+                    Baru
                   </Text>
                 </View>
               ) : null}
@@ -278,14 +278,14 @@ export function UpdatesDrawerContent({
             numberOfLines={1}
             style={{ color: colors.foreground }}
           >
-            Updates
+            Pembaruan
           </Text>
           <Text
             className="text-xs font-semibold uppercase tracking-[2px]"
             numberOfLines={1}
             style={{ color: colors.mutedForeground }}
           >
-            Learn
+            Belajar
           </Text>
         </View>
         {unreadCount > 0 ? (
@@ -299,12 +299,12 @@ export function UpdatesDrawerContent({
               className="text-xs font-bold"
               style={{ color: colors.primary }}
             >
-              Mark read
+              Tandai dibaca
             </Text>
           </Pressable>
         ) : null}
         <Pressable
-          accessibilityLabel="Close updates"
+          accessibilityLabel="Tutup pembaruan"
           accessibilityRole="button"
           className="size-9 items-center justify-center rounded-full"
           onPress={onClose}
@@ -330,19 +330,19 @@ export function UpdatesDrawerContent({
               className="text-base font-bold"
               style={{ color: colors.foreground }}
             >
-              No updates yet
+              Belum ada pembaruan
             </Text>
             <Text
               className="mt-2 text-center text-sm leading-5"
               style={{ color: colors.mutedForeground }}
             >
-              New modules, assessments, and class meetings will appear here.
+              Bab, tugas, dan pertemuan kelas baru akan muncul di sini.
             </Text>
           </View>
         ) : (
           <>
-            {renderSection("New", newItems)}
-            {renderSection("Recent", recentItems)}
+            {renderSection("Baru", newItems)}
+            {renderSection("Sebelumnya", recentItems)}
           </>
         )}
       </ScrollView>

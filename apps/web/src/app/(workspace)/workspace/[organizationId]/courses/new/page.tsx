@@ -1,19 +1,7 @@
-import { Hanken_Grotesk, Inter } from "next/font/google";
 import { redirect } from "next/navigation";
 
 import { CourseCreateForm } from "~/components/course-create-form";
-import { cn } from "~/lib/utils";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
-
-const hanken = Hanken_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-hanken-grotesk",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export default async function NewCoursePage({
   params,
@@ -38,13 +26,7 @@ export default async function NewCoursePage({
   }
 
   return (
-    <div
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        "w-full font-[family-name:var(--font-inter)]",
-      )}
-    >
+    <div className="w-full">
       <CourseCreateForm
         organizationId={membership.organizationId}
         organizationSlug={organizationSlug}

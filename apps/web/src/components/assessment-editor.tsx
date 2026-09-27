@@ -12,6 +12,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangleIcon,
@@ -21,7 +22,10 @@ import {
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
   ClipboardCheckIcon,
+  CopyIcon,
+  EyeOffIcon,
   FileQuestionIcon,
+  LockIcon,
   ListIcon,
   LoaderCircleIcon,
   PlusIcon,
@@ -58,7 +62,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
+import { Button, buttonVariants } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -101,7 +105,6 @@ import {
   MAX_ASSESSMENT_OPTIONS,
   MIN_ASSESSMENT_OPTIONS,
 } from "~/lib/assessment-options";
-import { getAssessmentPublishValidationError } from "~/lib/assessment-publication";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { authClient } from "~/server/better-auth/client";
 import {
@@ -110,9 +113,9 @@ import {
 } from "~/lib/resource-picker-callback";
 
 type Assessment = RouterOutputs["assessment"]["get"];
+type AssessmentLiveStatus = Assessment["live"];
 type Question = Assessment["questions"][number];
 type QuestionType = Question["type"];
-type Status = Assessment["status"];
 type UpdatedOption = RouterOutputs["assessment"]["updateOption"];
 type UpdatedQuestion = RouterOutputs["assessment"]["updateQuestion"];
 type QuestionFields = {
@@ -120,12 +123,6 @@ type QuestionFields = {
   prompt: BlockNoteDocument;
   explanation: BlockNoteDocument | null;
   points: number;
-};
-
-const assessmentStatusLabels: Record<Status, string> = {
-  DRAFT: "Draft",
-  PUBLISHED: "Published",
-  ARCHIVED: "Archived",
 };
 
 const questionTypeLabels: Record<QuestionType, string> = {
@@ -148,7 +145,6 @@ function toAssessmentDraftPayload(
   return {
     title: assessment.title,
     description: assessment.description,
-    status: assessment.status,
     editorSchemaVersion: assessment.editorSchemaVersion,
     instructions: assessment.instructions ?? undefined,
     passingScore: assessment.passingScore,
@@ -334,6 +330,149 @@ function optionalInteger(value: string, minimum: number, maximum?: number) {
   return parsed;
 }
 
+function assessmentFieldsOf(assessment: Assessment): AssessmentFields {
+  // Normalized the same way the form state is initialized, so an untouched
+  // field never looks changed.
+  const instructions = toBlockNoteDocument(
+    assessment.instructions,
+  ) as BlockNoteDocument;
+  return {
+    title: assessment.title,
+    description: assessment.description,
+    instructions: hasBlockNoteContent(instructions) ? instructions : null,
+    passingScore: assessment.passingScore,
+    maxAttempts: assessment.maxAttempts,
+    timeLimitMinutes: assessment.timeLimitMinutes,
+    shuffleQuestions: assessment.shuffleQuestions,
+    shuffleOptions: assessment.shuffleOptions,
+  };
+}
+
+/** Fields of `next` that differ from `saved` (instructions compared as JSON). */
+function changedAssessmentFields(
+  saved: AssessmentFields,
+  next: AssessmentFields,
+): Partial<AssessmentFields> {
+  const changes: Partial<AssessmentFields> = {};
+  for (const key of Object.keys(next) as (keyof AssessmentFields)[]) {
+    const same =
+      key === "instructions"
+        ? JSON.stringify(saved.instructions) ===
+          JSON.stringify(next.instructions)
+        : saved[key] === next[key];
+    if (!same) Object.assign(changes, { [key]: next[key] });
+  }
+  return changes;
+}
+
+function LiveAssessmentBanner({
+  live,
+  organizationSlug,
+  duplicating,
+  onDuplicate,
+}: {
+  live: AssessmentLiveStatus;
+  organizationSlug: string;
+  duplicating: boolean;
+  onDuplicate: () => Promise<void>;
+}) {
+  const courseHref = (courseId: string) =>
+    `/workspace/${organizationSlug}/courses/${courseId}`;
+  return (
+    <section
+      aria-label="Tugas sedang tayang"
+      className="grid gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+    >
+      <div className="flex items-start gap-2">
+        <LockIcon className="mt-0.5 size-4 shrink-0" />
+        <div className="grid gap-1">
+          <p className="text-sm font-semibold">
+            Tugas ini sedang tayang dan hanya bisa dibaca
+          </p>
+          <p className="text-xs leading-relaxed">
+            Learner sedang bisa mengerjakannya, jadi soal dan pengaturan
+            dikunci. Sembunyikan item di kurikulum, atau buat duplikat untuk
+            diubah tanpa mengganggu learner.
+          </p>
+        </div>
+      </div>
+      <ul className="grid gap-1.5 text-xs">
+        {live.placements.map((placement) => (
+          <li
+            key={placement.courseItemId}
+            className="flex flex-wrap items-center gap-x-2 gap-y-1"
+          >
+            <Link
+              href={courseHref(placement.courseId)}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              {placement.courseTitle}
+            </Link>
+            <span aria-hidden="true">›</span>
+            <Link
+              href={`${courseHref(placement.courseId)}/kurikulum#course-item-${placement.courseItemId}`}
+              className="underline-offset-4 hover:underline"
+            >
+              {placement.moduleTitle}
+            </Link>
+            <Link
+              href={`${courseHref(placement.courseId)}/kurikulum#course-item-${placement.courseItemId}`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "xs" }),
+                "ml-auto bg-transparent",
+              )}
+            >
+              <EyeOffIcon data-icon="inline-start" />
+              Sembunyikan di kurikulum
+            </Link>
+          </li>
+        ))}
+        {live.openEvents.map((event) => (
+          <li
+            key={event.eventId}
+            className="flex flex-wrap items-center gap-x-2 gap-y-1"
+          >
+            <Link
+              href={courseHref(event.courseId)}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              {event.courseTitle}
+            </Link>
+            <span aria-hidden="true">›</span>
+            <Link
+              href={`${courseHref(event.courseId)}?view=tryouts`}
+              className="underline-offset-4 hover:underline"
+            >
+              {event.title}
+            </Link>
+            <Badge variant="outline" className="border-current/30">
+              Event sedang dibuka
+            </Badge>
+          </li>
+        ))}
+      </ul>
+      <div>
+        <Button
+          disabled={duplicating}
+          onClick={() => void onDuplicate()}
+          size="sm"
+          type="button"
+        >
+          {duplicating ? (
+            <LoaderCircleIcon
+              className="animate-spin"
+              data-icon="inline-start"
+            />
+          ) : (
+            <CopyIcon data-icon="inline-start" />
+          )}
+          Duplikat untuk diubah
+        </Button>
+      </div>
+    </section>
+  );
+}
+
 export function AssessmentEditor({
   organizationId,
   organizationSlug,
@@ -377,7 +516,12 @@ export function AssessmentEditor({
     api.assessmentImport.extractQuestionsFromImage.useMutation();
   const createImportedQuestions =
     api.assessmentImport.createQuestions.useMutation();
+  const duplicateAssessment = api.assessment.duplicate.useMutation();
   const createdAssessmentIdRef = useRef<string | null>(null);
+  // A live assessment (visible in a published course, or running as an open
+  // event) is read-only; authors hide the item or edit a duplicate instead.
+  const live = assessment.data?.live;
+  const readOnly = Boolean(live?.isLive);
   // Every page rendering the editor already verified organization membership on the server
   // (the delete procedure re-checks authorship), so no client-side organization fetch is needed.
   const canDelete = !attachTo;
@@ -397,23 +541,24 @@ export function AssessmentEditor({
     ]);
   }
 
-  const assetStorage: EditorAssetStorageOptions | undefined = assessmentId
-    ? {
-        organizationId,
-        onAttach: async (assetId) => {
-          await attachAsset.mutateAsync({ assessmentId, assetId });
-        },
-        onDetach: async (assetId) => {
-          await detachAsset.mutateAsync({ assessmentId, assetId });
-        },
-      }
-    : undefined;
+  const assetStorage: EditorAssetStorageOptions | undefined =
+    assessmentId && !readOnly
+      ? {
+          organizationId,
+          onAttach: async (assetId) => {
+            await attachAsset.mutateAsync({ assessmentId, assetId });
+          },
+          onDetach: async (assetId) => {
+            await detachAsset.mutateAsync({ assessmentId, assetId });
+          },
+        }
+      : undefined;
 
   if (assessmentId && assessment.isPending) {
     return (
       <div className="text-muted-foreground flex min-h-96 items-center justify-center text-sm">
         <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-        Memuat assessment
+        Memuat tugas
       </div>
     );
   }
@@ -422,7 +567,7 @@ export function AssessmentEditor({
     return (
       <div className="flex min-h-96 flex-col items-center justify-center gap-3 text-center">
         <p className="text-destructive text-sm">
-          {assessment.error?.message ?? "Assessment gagal dimuat."}
+          {assessment.error?.message ?? "Tugas gagal dimuat."}
         </p>
         <Button variant="outline" onClick={() => assessment.refetch()}>
           Coba lagi
@@ -435,11 +580,38 @@ export function AssessmentEditor({
     <AssessmentEditorForm
       key={assessment.data?.id ?? "new-assessment"}
       assessment={assessment.data}
+      readOnly={readOnly}
+      liveBanner={
+        live?.isLive ? (
+          <LiveAssessmentBanner
+            live={live}
+            organizationSlug={organizationSlug}
+            duplicating={duplicateAssessment.isPending}
+            onDuplicate={async () => {
+              if (!assessmentId) return;
+              try {
+                const copy = await duplicateAssessment.mutateAsync({
+                  assessmentId,
+                });
+                await utils.assessment.list.invalidate({ organizationId });
+                toast.success(
+                  "Salinan dibuat di library. Salinan belum dipakai di course mana pun.",
+                );
+                router.push(
+                  `/workspace/${organizationSlug}/library/assessments/${copy.assessmentId}`,
+                );
+              } catch (error) {
+                toast.error(errorMessage(error));
+              }
+            }}
+          />
+        ) : null
+      }
       draftScope={draftScope}
       contextLabel={
-        attachTo ? `Assessment untuk ${attachTo.moduleTitle}` : undefined
+        attachTo ? `Tugas untuk ${attachTo.moduleTitle}` : undefined
       }
-      canDelete={canDelete}
+      canDelete={canDelete && !readOnly}
       isDeleting={deleteAssessment.isPending}
       onBack={() => {
         if (attachTo) {
@@ -532,7 +704,7 @@ export function AssessmentEditor({
         try {
           await deleteAssessment.mutateAsync({ assessmentId });
           await utils.assessment.list.invalidate({ organizationId });
-          toast.success("Assessment dihapus.");
+          toast.success("Tugas dihapus.");
           router.replace(`/workspace/${organizationSlug}/library/assessments`);
         } catch (error) {
           toast.error(errorMessage(error));
@@ -560,14 +732,16 @@ export function AssessmentEditor({
           toast.error(errorMessage(error));
         }
       }}
-      onSave={async (value) => {
+      onSave={async (changes, value) => {
         const targetAssessmentId =
           assessmentId ?? createdAssessmentIdRef.current;
         try {
           if (targetAssessmentId) {
+            // Only the changed fields, so a stale form never overwrites
+            // settings saved elsewhere.
             const updated = await updateAssessment.mutateAsync({
               assessmentId: targetAssessmentId,
-              ...value,
+              ...changes,
               editorSchemaVersion: 1,
             });
             utils.assessment.get.setData(
@@ -608,8 +782,8 @@ export function AssessmentEditor({
           await utils.assessment.list.invalidate({ organizationId });
           toast.success(
             attachTo
-              ? `Assessment ditambahkan ke ${attachTo.moduleTitle}. Tambahkan soal pertama Anda.`
-              : "Assessment dibuat. Tambahkan soal pertama Anda.",
+              ? `Tugas ditambahkan ke ${attachTo.moduleTitle}. Tambahkan soal pertama Anda.`
+              : "Tugas dibuat. Tambahkan soal pertama Anda.",
           );
           router.replace(
             attachTo
@@ -683,7 +857,6 @@ export function AssessmentEditor({
 type AssessmentFields = {
   title: string;
   description: string | null;
-  status: Status;
   instructions: BlockNoteDocument | null;
   passingScore: number | null;
   maxAttempts: number | null;
@@ -709,6 +882,8 @@ type AssessmentDraft = Omit<
 
 function AssessmentEditorForm({
   assessment,
+  readOnly,
+  liveBanner,
   draftScope,
   canDelete,
   contextLabel,
@@ -729,6 +904,9 @@ function AssessmentEditorForm({
   onToggleCorrect,
 }: {
   assessment?: Assessment;
+  /** Live assessments cannot be edited; nothing may autosave. */
+  readOnly: boolean;
+  liveBanner: ReactNode;
   draftScope?: ContentDbScope;
   canDelete: boolean;
   contextLabel?: string;
@@ -744,7 +922,11 @@ function AssessmentEditorForm({
   onExtractImage: (
     image: PreparedImportImage,
   ) => Promise<ExtractedAssessmentQuestion[]>;
-  onSave: (value: AssessmentFields) => Promise<void>;
+  /** `changes` holds only the fields that differ from the last saved values. */
+  onSave: (
+    changes: Partial<AssessmentFields>,
+    value: AssessmentFields,
+  ) => Promise<void>;
   onSaveImportedQuestions: (
     questions: ImportedAssessmentQuestion[],
   ) => Promise<boolean>;
@@ -764,7 +946,6 @@ function AssessmentEditorForm({
 }) {
   const [title, setTitle] = useState(assessment?.title ?? "");
   const [description, setDescription] = useState(assessment?.description ?? "");
-  const [status, setStatus] = useState<Status>(assessment?.status ?? "DRAFT");
   const { resolvedTheme } = useTheme();
   const editorTheme = resolvedTheme === "dark" ? "dark" : "light";
   const [instructions, setInstructions] = useState<BlockNoteDocument>(
@@ -1120,11 +1301,14 @@ function AssessmentEditorForm({
   // pastes into inputs and the rich-text editors keep their own behaviour.
   const startImageImport = imageImport.start;
   const startImageImportRef = useRef(startImageImport);
+  const readOnlyRef = useRef(readOnly);
   useEffect(() => {
     startImageImportRef.current = startImageImport;
+    readOnlyRef.current = readOnly;
   });
   useEffect(() => {
     function handlePaste(event: globalThis.ClipboardEvent) {
+      if (readOnlyRef.current) return;
       const target = event.target as HTMLElement | null;
       if (
         target?.closest("input, textarea, select, [contenteditable='true']")
@@ -1141,7 +1325,7 @@ function AssessmentEditorForm({
   }, []);
 
   function handleImportDrop(event: DragEvent<HTMLElement>) {
-    if (!event.dataTransfer.types.includes("Files")) return;
+    if (readOnly || !event.dataTransfer.types.includes("Files")) return;
     event.preventDefault();
     setImportDragActive(false);
     const file = firstImageFile(event.dataTransfer.files);
@@ -1171,15 +1355,21 @@ function AssessmentEditorForm({
       );
   };
 
+  // Last values known to be on the server; the autosave sends only the
+  // fields that differ from these.
+  const savedFieldsRef = useRef<AssessmentFields | null>(
+    assessment ? assessmentFieldsOf(assessment) : null,
+  );
   const {
     cancel: cancelSettingsSave,
     flush: flushSettingsSave,
     schedule: scheduleSettingsSave,
     status: settingsSaveStatus,
   } = useDebouncedAutosave<AssessmentDraft>(async (draft) => {
+    if (readOnly) return;
     const normalizedTitle = draft.title.trim();
     if (!normalizedTitle) {
-      toast.error("Judul assessment wajib diisi.");
+      toast.error("Judul tugas wajib diisi.");
       throw new Error("Assessment title is required");
     }
     const parsedPassingScore = optionalInteger(draft.passingScore, 0, 100);
@@ -1193,24 +1383,9 @@ function AssessmentEditorForm({
       toast.error("Nilai pengaturan angka belum valid.");
       throw new Error("Assessment numeric settings are invalid");
     }
-    if (draft.status === "PUBLISHED") {
-      if (!assessment) {
-        toast.error(
-          "Buat assessment sebagai draft terlebih dahulu, lalu tambahkan soal sebelum publish.",
-        );
-        throw new Error("Assessment must be created before publishing");
-      }
-      const validationError =
-        getAssessmentPublishValidationError(displayQuestions);
-      if (validationError) {
-        toast.error(validationError);
-        throw new Error(validationError);
-      }
-    }
-    await onSave({
+    const value: AssessmentFields = {
       title: normalizedTitle,
       description: draft.description.trim() || null,
-      status: draft.status,
       instructions: hasBlockNoteContent(draft.instructions)
         ? draft.instructions
         : null,
@@ -1219,7 +1394,12 @@ function AssessmentEditorForm({
       timeLimitMinutes: parsedTimeLimit,
       shuffleQuestions: draft.shuffleQuestions,
       shuffleOptions: draft.shuffleOptions,
-    });
+    };
+    const saved = savedFieldsRef.current;
+    const changes = saved ? changedAssessmentFields(saved, value) : value;
+    if (saved && Object.keys(changes).length === 0) return;
+    await onSave(changes, value);
+    savedFieldsRef.current = value;
   });
 
   useEffect(
@@ -1290,7 +1470,9 @@ function AssessmentEditorForm({
   const loadedDraftKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!assessment || !draftScope) return;
+    // A live assessment cannot be saved, so a local draft is left untouched
+    // until it can be applied (after the item is hidden).
+    if (!assessment || !draftScope || readOnly) return;
     const draftKey = createDraftKey(draftScope, "assessment", assessment.id);
     if (loadedDraftKeyRef.current === draftKey) return;
     loadedDraftKeyRef.current = draftKey;
@@ -1313,7 +1495,6 @@ function AssessmentEditorForm({
         settingsTouchedRef.current = true;
         setTitle(draft.payload.title);
         setDescription(draft.payload.description ?? "");
-        setStatus(draft.payload.status);
         setInstructions(
           toBlockNoteDocument(draft.payload.instructions) as BlockNoteDocument,
         );
@@ -1330,27 +1511,26 @@ function AssessmentEditorForm({
       })
       .catch(() => {
         if (!cancelled) {
-          toast.error("Cadangan lokal assessment tidak dapat dibuka.");
+          toast.error("Cadangan lokal tugas tidak dapat dibuka.");
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [assessment, draftScope]);
+  }, [assessment, draftScope, readOnly]);
 
   useEffect(() => {
     if (skipInitialSettingsSave.current) {
       skipInitialSettingsSave.current = false;
       return;
     }
-    if (!settingsTouchedRef.current) return;
+    if (!settingsTouchedRef.current || readOnly) return;
 
     queueDraftUpdate((current) => ({
       ...current,
       title,
       description: description.trim() || null,
-      status,
       instructions: hasBlockNoteContent(instructions)
         ? instructions
         : undefined,
@@ -1369,7 +1549,6 @@ function AssessmentEditorForm({
       passingScore,
       shuffleOptions,
       shuffleQuestions,
-      status,
       timeLimitMinutes,
       title,
     });
@@ -1379,9 +1558,9 @@ function AssessmentEditorForm({
     maxAttempts,
     passingScore,
     queueDraftUpdate,
+    readOnly,
     shuffleOptions,
     shuffleQuestions,
-    status,
     scheduleSettingsSave,
     timeLimitMinutes,
     title,
@@ -1413,8 +1592,7 @@ function AssessmentEditorForm({
             <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
               <ClipboardCheckIcon className="size-3.5 shrink-0" />
               <span className="truncate">
-                {contextLabel ??
-                  (assessment ? "Assessment" : "Assessment baru")}
+                {contextLabel ?? (assessment ? "Tugas" : "Tugas baru")}
               </span>
             </p>
             <p
@@ -1453,7 +1631,7 @@ function AssessmentEditorForm({
               render={
                 <Button
                   type="button"
-                  aria-label="Hapus assessment"
+                  aria-label="Hapus tugas"
                   variant="destructive"
                   size="icon"
                 />
@@ -1463,7 +1641,7 @@ function AssessmentEditorForm({
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Hapus assessment ini?</AlertDialogTitle>
+                <AlertDialogTitle>Hapus tugas ini?</AlertDialogTitle>
                 <AlertDialogDescription>
                   Tindakan ini permanen. Semua soal, penempatan di course,
                   event, jawaban, hasil, dan progres siswa akan ikut dihapus.
@@ -1490,9 +1668,12 @@ function AssessmentEditorForm({
         ) : null}
       </header>
 
+      {liveBanner}
+
       <div className="grid gap-1">
         <input
-          aria-label="Judul assessment"
+          aria-label="Judul tugas"
+          readOnly={readOnly}
           autoFocus={!assessment}
           className="font-heading placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 -mx-2 w-full min-w-0 rounded-md bg-transparent px-2 py-1 text-3xl font-semibold tracking-tight transition-colors outline-none"
           maxLength={200}
@@ -1500,18 +1681,19 @@ function AssessmentEditorForm({
             settingsTouchedRef.current = true;
             setTitle(event.target.value);
           }}
-          placeholder="Assessment tanpa judul"
+          placeholder="Tugas tanpa judul"
           value={title}
         />
         <textarea
-          aria-label="Deskripsi assessment"
+          aria-label="Deskripsi tugas"
+          readOnly={readOnly}
           className="text-muted-foreground placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:text-foreground -mx-2 field-sizing-content max-h-48 w-full resize-none rounded-md bg-transparent px-2 py-1 text-sm transition-colors outline-none"
           maxLength={10000}
           onChange={(event) => {
             settingsTouchedRef.current = true;
             setDescription(event.target.value);
           }}
-          placeholder="Jelaskan tujuan assessment ini kepada siswa (opsional)…"
+          placeholder="Jelaskan tujuan tugas ini kepada siswa (opsional)…"
           rows={1}
           value={description}
         />
@@ -1523,8 +1705,9 @@ function AssessmentEditorForm({
         </Label>
         <div className="bg-muted/20 overflow-hidden rounded-lg border">
           <DynamicBlockNoteEditor
+            editable={!readOnly}
             initialContent={instructions}
-            key={`assessment-instructions:${recoveredDraft?.updatedAt ?? "server"}`}
+            key={`assessment-instructions:${recoveredDraft?.updatedAt ?? "server"}:${readOnly ? "ro" : "rw"}`}
             onChange={(value) => {
               settingsTouchedRef.current = true;
               setInstructions(value);
@@ -1535,9 +1718,11 @@ function AssessmentEditorForm({
             assetStorage={assetStorage}
           />
         </div>
-        <p className="text-muted-foreground text-xs">
-          Gunakan menu / untuk menambahkan gambar atau audio.
-        </p>
+        {!readOnly ? (
+          <p className="text-muted-foreground text-xs">
+            Gunakan menu / untuk menambahkan gambar atau audio.
+          </p>
+        ) : null}
       </div>
 
       {assessment ? (
@@ -1557,7 +1742,9 @@ function AssessmentEditorForm({
               }
             }}
             onDragOver={(event) => {
-              if (!event.dataTransfer.types.includes("Files")) return;
+              if (readOnly || !event.dataTransfer.types.includes("Files")) {
+                return;
+              }
               event.preventDefault();
               setImportDragActive(true);
             }}
@@ -1565,7 +1752,7 @@ function AssessmentEditorForm({
           >
             <div className="flex items-center gap-2">
               <Button
-                disabled={questionBusy}
+                disabled={questionBusy || readOnly}
                 onClick={addQuestion}
                 type="button"
               >
@@ -1581,6 +1768,7 @@ function AssessmentEditorForm({
               </Button>
               <AiImportButton
                 busy={imageImport.busy}
+                disabled={readOnly}
                 onSelect={imageImport.start}
                 title="Impor soal dari gambar dengan AI"
               />
@@ -1691,6 +1879,7 @@ function AssessmentEditorForm({
                       onToggle={() => toggleQuestion(question.id)}
                       onToggleCorrect={onToggleCorrect}
                       question={question}
+                      readOnly={readOnly}
                       recoverOnMount={Boolean(recoveredDraft)}
                       renderForm={
                         expandedQuestionIds.has(question.id) ||
@@ -1702,19 +1891,21 @@ function AssessmentEditorForm({
                   </li>
                 ))}
               </ol>
-              <button
-                className="text-muted-foreground hover:border-foreground/30 hover:text-foreground flex items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-sm transition-colors disabled:pointer-events-none disabled:opacity-50"
-                disabled={questionBusy}
-                onClick={addQuestion}
-                type="button"
-              >
-                {questionBusy ? (
-                  <LoaderCircleIcon className="size-4 animate-spin" />
-                ) : (
-                  <PlusIcon className="size-4" />
-                )}
-                Tambah soal berikutnya
-              </button>
+              {readOnly ? null : (
+                <button
+                  className="text-muted-foreground hover:border-foreground/30 hover:text-foreground flex items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-sm transition-colors disabled:pointer-events-none disabled:opacity-50"
+                  disabled={questionBusy}
+                  onClick={addQuestion}
+                  type="button"
+                >
+                  {questionBusy ? (
+                    <LoaderCircleIcon className="size-4 animate-spin" />
+                  ) : (
+                    <PlusIcon className="size-4" />
+                  )}
+                  Tambah soal berikutnya
+                </button>
+              )}
             </>
           ) : (
             <div className="bg-muted/20 rounded-xl border border-dashed px-6 py-12 text-center">
@@ -1732,57 +1923,27 @@ function AssessmentEditorForm({
           <ClipboardCheckIcon className="text-muted-foreground/60 mx-auto mb-3 size-7" />
           <p className="text-sm font-medium">Mulai dengan judul</p>
           <p className="text-muted-foreground mt-1 text-sm">
-            Isi judul di atas — assessment dibuat otomatis, lalu Anda bisa
-            langsung menambahkan soal.
+            Isi judul di atas — tugas dibuat otomatis, lalu Anda bisa langsung
+            menambahkan soal.
           </p>
         </div>
       )}
 
       <EditorSidebar
-        title="Pengaturan assessment"
+        title="Pengaturan tugas"
         description="Aturan dan navigasi soal"
       >
         <div className="grid gap-5 p-4">
-          <div className="grid gap-2">
-            <Label htmlFor="assessment-status">Status</Label>
-            <Select
-              disabled={!assessment}
-              value={status}
-              onValueChange={(value) => {
-                if (
-                  value === "DRAFT" ||
-                  value === "PUBLISHED" ||
-                  value === "ARCHIVED"
-                ) {
-                  settingsTouchedRef.current = true;
-                  setStatus(value);
-                }
-              }}
-            >
-              <SelectTrigger className="w-full" id="assessment-status">
-                <SelectValue>{assessmentStatusLabels[status]}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="PUBLISHED">Published</SelectItem>
-                <SelectItem value="ARCHIVED">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-            {!assessment ? (
-              <p className="text-muted-foreground text-xs">
-                Assessment baru disimpan sebagai draft. Tambahkan soal lalu
-                publish dari halaman edit.
-              </p>
-            ) : status === "PUBLISHED" && !displayQuestions.length ? (
-              <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
-                Tambahkan soal sebelum memasang assessment ke course.
-              </p>
-            ) : null}
-          </div>
+          {readOnly ? (
+            <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
+              <LockIcon className="mt-0.5 size-3.5 shrink-0" />
+              Pengaturan terkunci selama tugas sedang tayang.
+            </p>
+          ) : null}
 
           <div className="grid gap-4 border-t pt-5">
             <NumberField
+              disabled={readOnly}
               id="assessment-passing-score"
               label="Nilai lulus (%)"
               max={100}
@@ -1795,6 +1956,7 @@ function AssessmentEditorForm({
               value={passingScore}
             />
             <NumberField
+              disabled={readOnly}
               id="assessment-max-attempts"
               label="Maksimal percobaan"
               min={1}
@@ -1806,6 +1968,7 @@ function AssessmentEditorForm({
               value={maxAttempts}
             />
             <NumberField
+              disabled={readOnly}
               id="assessment-time-limit"
               label="Batas waktu (menit)"
               min={1}
@@ -1820,6 +1983,7 @@ function AssessmentEditorForm({
 
           <div className="grid gap-4 border-t pt-5">
             <ToggleField
+              disabled={readOnly}
               checked={shuffleQuestions}
               description="Acak urutan soal untuk setiap attempt."
               label="Acak soal"
@@ -1829,6 +1993,7 @@ function AssessmentEditorForm({
               }}
             />
             <ToggleField
+              disabled={readOnly}
               checked={shuffleOptions}
               description="Acak urutan opsi untuk setiap attempt."
               label="Acak opsi"
@@ -1905,6 +2070,7 @@ function QuestionNavigator({
 }
 
 function NumberField({
+  disabled = false,
   id,
   label,
   max,
@@ -1913,6 +2079,7 @@ function NumberField({
   placeholder,
   value,
 }: {
+  disabled?: boolean;
   id: string;
   label: string;
   max?: number;
@@ -1925,6 +2092,7 @@ function NumberField({
     <div className="grid gap-2">
       <Label htmlFor={id}>{label}</Label>
       <Input
+        disabled={disabled}
         id={id}
         inputMode="numeric"
         max={max}
@@ -1939,11 +2107,13 @@ function NumberField({
 }
 
 function ToggleField({
+  disabled = false,
   checked,
   description,
   label,
   onCheckedChange,
 }: {
+  disabled?: boolean;
   checked: boolean;
   description: string;
   label: string;
@@ -1955,7 +2125,11 @@ function ToggleField({
         <p className="text-sm font-medium">{label}</p>
         <p className="text-muted-foreground text-xs">{description}</p>
       </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      <Switch
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+      />
     </div>
   );
 }
@@ -1997,6 +2171,7 @@ type QuestionRowProps = {
     checked: boolean,
   ) => Promise<void>;
   question: Question;
+  readOnly: boolean;
   recoverOnMount: boolean;
   renderForm: boolean;
   theme: "light" | "dark";
@@ -2022,6 +2197,7 @@ const QuestionRow = memo(function QuestionRow({
   onToggle,
   onToggleCorrect,
   question,
+  readOnly,
   recoverOnMount,
   renderForm,
   theme,
@@ -2086,24 +2262,26 @@ const QuestionRow = memo(function QuestionRow({
             </span>
           ) : null}
         </button>
-        <DeleteQuestionAlert
-          busy={busy}
-          onDelete={() => onDeleteQuestion(question.id)}
-          trigger={
-            <Button
-              aria-label={`Hapus soal ${index + 1}`}
-              className={cn(
-                "mt-0.5 shrink-0 transition-opacity duration-200 sm:opacity-0 sm:focus-visible:opacity-100",
-                !hoverActionsFrozen &&
-                  "sm:group-hover:opacity-100 sm:group-hover:delay-200",
-              )}
-              disabled={busy}
-              size="icon-xs"
-              type="button"
-              variant="ghost"
-            />
-          }
-        />
+        {readOnly ? null : (
+          <DeleteQuestionAlert
+            busy={busy}
+            onDelete={() => onDeleteQuestion(question.id)}
+            trigger={
+              <Button
+                aria-label={`Hapus soal ${index + 1}`}
+                className={cn(
+                  "mt-0.5 shrink-0 transition-opacity duration-200 sm:opacity-0 sm:focus-visible:opacity-100",
+                  !hoverActionsFrozen &&
+                    "sm:group-hover:opacity-100 sm:group-hover:delay-200",
+                )}
+                disabled={busy}
+                size="icon-xs"
+                type="button"
+                variant="ghost"
+              />
+            }
+          />
+        )}
       </div>
       <div
         className={cn(
@@ -2131,6 +2309,7 @@ const QuestionRow = memo(function QuestionRow({
               onSaveOption={onSaveOption}
               onToggleCorrect={onToggleCorrect}
               question={question}
+              readOnly={readOnly}
               recoverOnMount={recoverOnMount}
               theme={theme}
               assetStorage={assetStorage}
@@ -2158,6 +2337,7 @@ function areQuestionRowPropsEqual(
     previous.onDraftChange === next.onDraftChange &&
     previous.onDraftOptionChange === next.onDraftOptionChange &&
     previous.question === next.question &&
+    previous.readOnly === next.readOnly &&
     previous.recoverOnMount === next.recoverOnMount &&
     previous.renderForm === next.renderForm &&
     previous.theme === next.theme
@@ -2226,6 +2406,7 @@ type QuestionEditorProps = {
     checked: boolean,
   ) => Promise<void>;
   question: Question;
+  readOnly: boolean;
   recoverOnMount: boolean;
   theme: "light" | "dark";
   assetStorage?: EditorAssetStorageOptions;
@@ -2244,6 +2425,7 @@ function QuestionEditor({
   onSaveOption,
   onToggleCorrect,
   question,
+  readOnly,
   recoverOnMount,
   theme,
   assetStorage,
@@ -2306,7 +2488,7 @@ function QuestionEditor({
       skipInitialQuestionSave.current = false;
       return;
     }
-    if (!questionTouchedRef.current) return;
+    if (!questionTouchedRef.current || readOnly) return;
 
     const parsedPoints = Number(points);
     onDraftChange(question.id, {
@@ -2326,6 +2508,7 @@ function QuestionEditor({
     prompt,
     question.id,
     question.points,
+    readOnly,
     scheduleQuestionSave,
     type,
   ]);
@@ -2338,7 +2521,8 @@ function QuestionEditor({
         </Label>
         <div className="bg-muted/20 overflow-hidden rounded-lg border">
           <DynamicBlockNoteEditor
-            autoFocus={autoFocusPrompt}
+            autoFocus={autoFocusPrompt && !readOnly}
+            editable={!readOnly}
             initialContent={toBlockNoteDocument(question.prompt)}
             onChange={(value) => {
               questionTouchedRef.current = true;
@@ -2360,6 +2544,7 @@ function QuestionEditor({
             Tipe soal
           </Label>
           <Select
+            disabled={readOnly}
             value={type}
             onValueChange={(value) => {
               if (
@@ -2393,6 +2578,7 @@ function QuestionEditor({
             Poin
           </Label>
           <Input
+            disabled={readOnly}
             id={`question-points-${question.id}`}
             min={1}
             onChange={(event) => {
@@ -2410,6 +2596,7 @@ function QuestionEditor({
         </Label>
         <div className="bg-muted/20 overflow-hidden rounded-lg border">
           <DynamicBlockNoteEditor
+            editable={!readOnly}
             initialContent={toBlockNoteDocument(question.explanation)}
             onChange={(value) => {
               questionTouchedRef.current = true;
@@ -2449,7 +2636,7 @@ function QuestionEditor({
                     : "Opsi tersimpan hanya untuk menjaga data saat tipe berubah."}
               </p>
             </div>
-            {type !== "WRITTEN" ? (
+            {type !== "WRITTEN" && !readOnly ? (
               <Button
                 disabled={
                   busy || question.options.length >= MAX_ASSESSMENT_OPTIONS
@@ -2492,6 +2679,7 @@ function QuestionEditor({
                   onSave={(content) => onSaveOption(option.id, content)}
                   option={option}
                   questionId={question.id}
+                  readOnly={readOnly}
                   recoverOnMount={recoverOnMount}
                   theme={theme}
                   assetStorage={assetStorage}
@@ -2511,51 +2699,55 @@ function QuestionEditor({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-        <p className="flex items-center gap-1.5 text-xs" role="status">
-          {questionSaveStatus === "pending" ||
-          questionSaveStatus === "saving" ? (
-            <>
-              <LoaderCircleIcon className="text-muted-foreground size-3.5 animate-spin" />
-              <span className="text-muted-foreground">Menyimpan…</span>
-            </>
-          ) : questionSaveStatus === "error" ? (
-            <>
-              <AlertTriangleIcon className="text-destructive size-3.5" />
-              <span className="text-destructive">Gagal menyimpan</span>
-            </>
-          ) : questionSaveStatus === "saved" ? (
-            <>
-              <CheckCircle2Icon className="text-muted-foreground size-3.5" />
-              <span className="text-muted-foreground">Tersimpan</span>
-            </>
-          ) : (
-            <>
-              <CheckCircle2Icon className="text-muted-foreground size-3.5" />
-              <span className="text-muted-foreground">Belum ada perubahan</span>
-            </>
-          )}
-        </p>
-        <DeleteQuestionAlert
-          busy={busy}
-          onDelete={async () => {
-            cancelQuestionSave();
-            await onDeleteQuestion(question.id);
-          }}
-          trigger={
-            <Button
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              disabled={busy}
-              size="sm"
-              type="button"
-              variant="ghost"
-            />
-          }
-        >
-          <Trash2Icon data-icon="inline-start" />
-          Hapus soal
-        </DeleteQuestionAlert>
-      </div>
+      {readOnly ? null : (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+          <p className="flex items-center gap-1.5 text-xs" role="status">
+            {questionSaveStatus === "pending" ||
+            questionSaveStatus === "saving" ? (
+              <>
+                <LoaderCircleIcon className="text-muted-foreground size-3.5 animate-spin" />
+                <span className="text-muted-foreground">Menyimpan…</span>
+              </>
+            ) : questionSaveStatus === "error" ? (
+              <>
+                <AlertTriangleIcon className="text-destructive size-3.5" />
+                <span className="text-destructive">Gagal menyimpan</span>
+              </>
+            ) : questionSaveStatus === "saved" ? (
+              <>
+                <CheckCircle2Icon className="text-muted-foreground size-3.5" />
+                <span className="text-muted-foreground">Tersimpan</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2Icon className="text-muted-foreground size-3.5" />
+                <span className="text-muted-foreground">
+                  Belum ada perubahan
+                </span>
+              </>
+            )}
+          </p>
+          <DeleteQuestionAlert
+            busy={busy}
+            onDelete={async () => {
+              cancelQuestionSave();
+              await onDeleteQuestion(question.id);
+            }}
+            trigger={
+              <Button
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={busy}
+                size="sm"
+                type="button"
+                variant="ghost"
+              />
+            }
+          >
+            <Trash2Icon data-icon="inline-start" />
+            Hapus soal
+          </DeleteQuestionAlert>
+        </div>
+      )}
     </div>
   );
 }
@@ -2576,6 +2768,7 @@ type OptionRowProps = {
   onToggleCorrect: (checked: boolean) => Promise<void>;
   option: Question["options"][number];
   questionId: string;
+  readOnly: boolean;
   recoverOnMount: boolean;
   theme: "light" | "dark";
   assetStorage?: EditorAssetStorageOptions;
@@ -2593,6 +2786,7 @@ const OptionRow = memo(function OptionRow({
   onToggleCorrect,
   option,
   questionId,
+  readOnly,
   recoverOnMount,
   theme,
   assetStorage,
@@ -2637,7 +2831,7 @@ const OptionRow = memo(function OptionRow({
       skipInitialOptionSave.current = false;
       return;
     }
-    if (!contentTouchedRef.current) return;
+    if (!contentTouchedRef.current || readOnly) return;
 
     onDraftChange(questionId, option.id, content);
     scheduleOptionSave(content);
@@ -2647,6 +2841,7 @@ const OptionRow = memo(function OptionRow({
     onDraftChange,
     option.id,
     questionId,
+    readOnly,
     recoverOnMount,
     scheduleOptionSave,
   ]);
@@ -2672,7 +2867,7 @@ const OptionRow = memo(function OptionRow({
   }, [editing, flushOptionSave]);
 
   const beginEditing = () => {
-    if (busy) return;
+    if (busy || readOnly) return;
     skipInitialOptionSave.current = true;
     setEditing(true);
   };
@@ -2682,7 +2877,7 @@ const OptionRow = memo(function OptionRow({
       <Checkbox
         aria-label={`Tandai opsi ${index + 1} sebagai jawaban benar`}
         checked={option.isCorrect}
-        disabled={busy || correctAnswerBusy}
+        disabled={busy || correctAnswerBusy || readOnly}
         onCheckedChange={(checked) => void onToggleCorrect(checked === true)}
       />
       <span className="text-foreground w-6 shrink-0 text-center text-lg leading-none font-semibold">
@@ -2693,11 +2888,11 @@ const OptionRow = memo(function OptionRow({
         ref={editorAreaRef}
       >
         <div
-          aria-disabled={!editing && busy ? true : undefined}
+          aria-disabled={!editing && (busy || readOnly) ? true : undefined}
           aria-label={!editing ? `Edit opsi ${index + 1}` : undefined}
           aria-readonly={!editing ? "true" : undefined}
           className={
-            editing
+            editing || readOnly
               ? undefined
               : "focus-visible:ring-ring cursor-text focus-visible:ring-2 focus-visible:outline-hidden"
           }
@@ -2720,7 +2915,7 @@ const OptionRow = memo(function OptionRow({
                 }
           }
           role={!editing ? "textbox" : undefined}
-          tabIndex={!editing && !busy ? 0 : undefined}
+          tabIndex={!editing && !busy && !readOnly ? 0 : undefined}
         >
           <DynamicBlockNoteEditor
             autoFocus={editing}
@@ -2748,7 +2943,7 @@ const OptionRow = memo(function OptionRow({
           render={
             <Button
               aria-label={`Hapus opsi ${index + 1}`}
-              disabled={busy || !canDelete}
+              disabled={busy || !canDelete || readOnly}
               size="icon-sm"
               type="button"
               variant="ghost"
@@ -2797,6 +2992,7 @@ function areOptionRowPropsEqual(
     previous.onDraftChange === next.onDraftChange &&
     previous.option === next.option &&
     previous.questionId === next.questionId &&
+    previous.readOnly === next.readOnly &&
     previous.recoverOnMount === next.recoverOnMount &&
     previous.theme === next.theme
   );

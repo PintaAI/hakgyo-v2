@@ -143,15 +143,9 @@ describe("getActiveBrandContext", () => {
     expect(fake.findCohort).not.toHaveBeenCalled();
   });
 
-  test("does not reveal missing, archived, or unpublished courses to non-members", async () => {
+  test("does not reveal missing or unpublished courses to non-members", async () => {
     for (const course of [
       null,
-      {
-        status: "ARCHIVED",
-        organization: organization("archived"),
-        enrollments: [],
-        cohorts: [],
-      },
       {
         status: "DRAFT",
         organization: organization("draft"),

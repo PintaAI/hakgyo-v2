@@ -32,7 +32,6 @@ export const learnerAssessmentItemSelect = {
       timeLimitMinutes: true,
       shuffleQuestions: true,
       shuffleOptions: true,
-      status: true,
       questions: {
         orderBy: { position: "asc" },
         select: {
@@ -169,8 +168,8 @@ export function shapeLearnerAssessment(input: {
         attempt?.assessmentEvent?.type === "TRYOUT"
           ? "Tryout"
           : attempt?.assessmentEvent
-            ? "Asesmen on-demand"
-            : "Asesmen bab",
+            ? "Tugas on-demand"
+            : "Tugas bab",
       title: attempt?.assessmentEvent?.title ?? item.assessment.title,
       courseTitle: item.module.course.title,
       moduleTitle: item.module.title,
@@ -205,8 +204,8 @@ export type LearnerAssessment = ReturnType<typeof shapeLearnerAssessment>;
 
 /**
  * `getForCourseItem({ courseItemId })` (no attempt) for many items in four queries. The caller
- * must already have authorized every item for `userId`. Items whose assessment is not published
- * are omitted (the procedure throws NOT_FOUND for them).
+ * must already have authorized every item for `userId`. Items without an assessment are omitted
+ * (the procedure throws NOT_FOUND for them).
  */
 export async function getLearnerAssessmentsForCourseItems(
   db: DatabaseClient,
@@ -231,9 +230,7 @@ export async function getLearnerAssessmentsForCourseItems(
     }),
   ]);
   const published = items.flatMap((item) =>
-    item.assessment?.status === "PUBLISHED"
-      ? [{ ...item, assessment: item.assessment }]
-      : [],
+    item.assessment ? [{ ...item, assessment: item.assessment }] : [],
   );
   const courseIds = [...new Set(published.map((item) => item.module.courseId))];
   const eligibleEnrollments = courseIds.length

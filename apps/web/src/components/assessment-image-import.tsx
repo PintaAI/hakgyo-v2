@@ -175,7 +175,7 @@ export function useAssessmentImageImport({
           ),
         )
       }
-      reviewDescription="Periksa soal, opsi, dan kunci jawaban hasil bacaan AI, lalu tambahkan ke assessment."
+      reviewDescription="Periksa soal, opsi, dan kunci jawaban hasil bacaan AI, lalu tambahkan ke tugas."
       saveDisabled={!selectedRows.length || invalidCount > 0}
       saveLabel={`Tambah ${selectedRows.length} soal`}
       scanningDescription="AI sedang memindai gambar dan menyusun soal."

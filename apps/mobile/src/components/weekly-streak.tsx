@@ -30,11 +30,11 @@ export function WeeklyStreak({
         <View className="gap-3">
           <View className="flex-row items-center justify-between gap-3">
             <Text className="text-sm font-bold text-foreground">
-              {data.summary.currentStreak} day streak
+              Streak {data.summary.currentStreak} hari
             </Text>
             <View className="rounded-full bg-primary/10 px-2.5 py-1">
               <Text className="text-xs font-bold text-primary">
-                {data.weeklyActivity.xp.toLocaleString()} XP this week
+                {data.weeklyActivity.xp.toLocaleString("id-ID")} XP minggu ini
               </Text>
             </View>
           </View>

@@ -582,7 +582,7 @@ export function VocabularyMatchScreen({
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.View hidesSharedBackground>
           <View
-            accessibilityLabel={`${progress} of ${session.wordCount} matched, score ${score}, streak ${streak}`}
+            accessibilityLabel={`${progress} dari ${session.wordCount} cocok, skor ${score}, streak ${streak}`}
             style={styles.headerStats}
           >
             <Text
@@ -605,10 +605,10 @@ export function VocabularyMatchScreen({
       <View style={styles.instructionRow}>
         <Text style={[styles.instruction, { color: colors.mutedForeground }]}>
           {saveError
-            ? "Could not save that match. Connect and try it again."
+            ? "Pasangan itu gagal disimpan. Sambungkan internet lalu coba lagi."
             : saving
-              ? "Saving match…"
-              : "Pull a chain from word to meaning"}
+              ? "Menyimpan pasangan…"
+              : "Tarik rantai dari kata ke artinya"}
         </Text>
       </View>
 
@@ -648,7 +648,7 @@ export function VocabularyMatchScreen({
             const ropeColor = termRopeColors[index] ?? colors.primary;
             return (
               <Pressable
-                accessibilityLabel={`${word.term}, drag to its meaning`}
+                accessibilityLabel={`${word.term}, seret ke artinya`}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: matched, selected }}
                 disabled={matched || phase !== "running"}
@@ -705,7 +705,7 @@ export function VocabularyMatchScreen({
             const ropeColor = termRopeColors[termIndex] ?? colors.primary;
             return (
               <Pressable
-                accessibilityLabel={`Meaning: ${word.definition}`}
+                accessibilityLabel={`Arti: ${word.definition}`}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: matched }}
                 disabled={matched || phase !== "running"}
@@ -752,11 +752,11 @@ export function VocabularyMatchScreen({
       </GestureDetector>
 
       <GameStartModal
-        detail="Connect each word to its meaning. Drag from the left, or tap one card on each side."
+        detail="Hubungkan setiap kata dengan artinya. Seret dari kiri, atau ketuk satu kartu di setiap sisi."
         gameKey="match"
         onPrimary={resetGame}
         onSecondary={exit}
-        title="Vocabulary Match"
+        title="Cocokkan Kata"
         visible={phase === "ready"}
       />
       <GameModal
@@ -770,7 +770,7 @@ export function VocabularyMatchScreen({
                     { color: colors.mutedForeground },
                   ]}
                 >
-                  Review
+                  Ulas kembali
                 </Text>
                 {reviewWords.slice(0, 4).map((word) => (
                   <Text
@@ -789,16 +789,16 @@ export function VocabularyMatchScreen({
             />
           </View>
         }
-        detail={`Final score ${score} · ${session.wordCount} words matched`}
-        eyebrow="Vocabulary match"
+        detail={`Skor akhir ${score} · ${session.wordCount} kata dicocokkan`}
+        eyebrow="Cocokkan kata"
         gameKey="match"
         onPrimary={resetGame}
         onSecondary={exit}
-        primaryLabel="Play again"
+        primaryLabel="Main lagi"
         primaryDisabled={saving}
-        secondaryLabel="Exit"
+        secondaryLabel="Keluar"
         secondaryDisabled={saving}
-        title="Round complete"
+        title="Ronde selesai"
         visible={phase === "complete"}
       />
     </View>

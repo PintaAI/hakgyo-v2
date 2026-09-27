@@ -186,12 +186,10 @@ async function importLesson(input: {
       title: `Latihan ${lesson.number}: ${lesson.title}`,
       description:
         "Latihan pilihan ganda yang dibuat dari kosakata terverifikasi pada bab ini.",
-      status: published && lesson.assessment.length ? "PUBLISHED" : "DRAFT",
       instructions: textDocument("Pilih satu arti yang paling tepat."),
       passingScore: 70,
       maxAttempts: 3,
       editorSchemaVersion: 2,
-      publishedAt: published && lesson.assessment.length ? new Date() : null,
     },
     create: {
       id: `${key}-assessment`,
@@ -200,12 +198,10 @@ async function importLesson(input: {
       title: `Latihan ${lesson.number}: ${lesson.title}`,
       description:
         "Latihan pilihan ganda yang dibuat dari kosakata terverifikasi pada bab ini.",
-      status: published && lesson.assessment.length ? "PUBLISHED" : "DRAFT",
       instructions: textDocument("Pilih satu arti yang paling tepat."),
       passingScore: 70,
       maxAttempts: 3,
       editorSchemaVersion: 2,
-      publishedAt: published && lesson.assessment.length ? new Date() : null,
     },
   });
 

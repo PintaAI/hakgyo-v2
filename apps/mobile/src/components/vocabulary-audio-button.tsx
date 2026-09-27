@@ -34,9 +34,7 @@ function PlayableButton({
 
   return (
     <Pressable
-      accessibilityLabel={
-        status.playing ? "Pause pronunciation" : "Play pronunciation"
-      }
+      accessibilityLabel={status.playing ? "Jeda pelafalan" : "Putar pelafalan"}
       accessibilityRole="button"
       className="size-11 items-center justify-center rounded-full border border-border bg-background active:opacity-60"
       onPress={() => {
@@ -102,7 +100,7 @@ export function VocabularyAudioButton({
 
   return (
     <Pressable
-      accessibilityLabel="Play pronunciation"
+      accessibilityLabel="Putar pelafalan"
       accessibilityRole="button"
       accessibilityState={{ busy: resolving }}
       className="size-11 items-center justify-center rounded-full border border-border bg-background active:opacity-60"

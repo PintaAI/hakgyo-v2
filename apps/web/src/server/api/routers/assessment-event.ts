@@ -5,6 +5,7 @@ import { z } from "zod";
 import { after } from "next/server";
 
 import { Prisma } from "../../../../generated/prisma/client";
+import { assertAssessmentComplete } from "~/server/course/readiness-service";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   autoSubmitEventAttempts,
@@ -287,7 +288,7 @@ export const assessmentEventRouter = createTRPCRouter({
           type: "ASSESSMENT",
           isPublished: true,
           module: { courseId: input.courseId },
-          assessment: { status: "PUBLISHED", questions: { some: {} } },
+          assessment: { questions: { some: {} } },
         },
         orderBy: [{ module: { position: "asc" } }, { position: "asc" }],
         select: {
@@ -408,16 +409,17 @@ export const assessmentEventRouter = createTRPCRouter({
           type: "ASSESSMENT",
           isPublished: true,
           module: { courseId: input.courseId },
-          assessment: { status: "PUBLISHED", questions: { some: {} } },
         },
-        select: { id: true, organizationId: true },
+        select: { id: true, organizationId: true, assessmentId: true },
       });
-      if (item?.organizationId !== organizationId) {
+      if (item?.organizationId !== organizationId || !item.assessmentId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Select a published assessment from this course",
+          message: "Select a visible assessment from this course",
         });
       }
+      // Tryouts/exams need a complete assessment (questions, options, answer key).
+      await assertAssessmentComplete(ctx.db, item.assessmentId);
       const membership = await requireMembership(
         ctx.db,
         item.organizationId,
@@ -468,7 +470,7 @@ export const assessmentEventRouter = createTRPCRouter({
               courseItem: {
                 select: {
                   isPublished: true,
-                  assessment: { select: { status: true } },
+                  assessmentId: true,
                 },
               },
             },
@@ -483,15 +485,13 @@ export const assessmentEventRouter = createTRPCRouter({
               message: "The event close time must be in the future",
             });
           }
-          if (
-            !event.courseItem.isPublished ||
-            event.courseItem.assessment?.status !== "PUBLISHED"
-          ) {
+          if (!event.courseItem.isPublished || !event.courseItem.assessmentId) {
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message: "The selected assessment is no longer published",
+              message: "The selected assessment is no longer visible",
             });
           }
+          await assertAssessmentComplete(tx, event.courseItem.assessmentId);
           // Enroll every eligible learner in one statement instead of reading all enrollments
           // into memory. `participantCount` is the number of distinct eligible learners, which
           // matches the previous read-then-createMany(skipDuplicates) behaviour.
@@ -697,7 +697,6 @@ export const assessmentEventRouter = createTRPCRouter({
                     assessment: {
                       select: {
                         id: true,
-                        status: true,
                         maxAttempts: true,
                       },
                     },
@@ -716,10 +715,7 @@ export const assessmentEventRouter = createTRPCRouter({
                 message: "This assessment event is no longer open",
               });
             }
-            if (
-              !event.courseItem.isPublished ||
-              event.courseItem.assessment?.status !== "PUBLISHED"
-            ) {
+            if (!event.courseItem.isPublished || !event.courseItem.assessment) {
               throw new TRPCError({
                 code: "PRECONDITION_FAILED",
                 message: "The assessment is no longer available",

@@ -54,7 +54,7 @@ export const Sidebar = memo(function Sidebar({
     return (
       <SidebarShell
         onOpenProfile={onOpenProfile}
-        subtitle={courseOrgName ?? "Contents"}
+        subtitle={courseOrgName ?? "Daftar isi"}
         thumbnailFallbackLabel={courseInitial}
         thumbnailUrl={courseThumbnail}
         title={courseTitle}

@@ -14,7 +14,7 @@ function UnsupportedBlock({ block }: { block: ContentBlock }) {
   return (
     <View className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3">
       <Text className="text-sm text-muted-foreground">
-        This content type is not available on mobile yet.
+        Jenis konten ini belum tersedia di aplikasi mobile.
       </Text>
     </View>
   );

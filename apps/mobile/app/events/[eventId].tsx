@@ -68,16 +68,16 @@ export default function AssessmentEventScreen() {
   }
 
   const primaryAction = event?.entry.canStart
-    ? "Start timed assessment"
+    ? "Mulai tugas berwaktu"
     : event?.entry.canReattempt
-      ? "Re-attempt assessment"
+      ? "Kerjakan ulang tugas"
       : null;
 
   return (
     <>
       <Stack.Screen options={{ headerBackButtonDisplayMode: "minimal" }} />
       <StudyScreen
-        title={event?.title ?? "Assessment event"}
+        title={event?.title ?? "Event tugas"}
         refreshing={query.isRefetching}
         onRefresh={() => void query.refetch()}
       >
@@ -90,14 +90,14 @@ export default function AssessmentEventScreen() {
         {event?.entry.destination === "ATTEMPT" ? (
           <StudyGlass>
             <Text className="text-lg font-black text-foreground">
-              Resuming your assessment…
+              Melanjutkan tugas kamu…
             </Text>
           </StudyGlass>
         ) : event ? (
           <>
             <StudyGlass>
               <Text className="text-xs font-black uppercase tracking-[1.5px] text-primary">
-                {event.type === "TRYOUT" ? "Tryout" : "Quick assessment"} ·{" "}
+                {event.type === "TRYOUT" ? "Tryout" : "Tugas cepat"} ·{" "}
                 {event.cohort?.name ?? event.course.title}
               </Text>
               <Text className="text-2xl font-black leading-8 text-foreground">
@@ -110,21 +110,21 @@ export default function AssessmentEventScreen() {
               ) : null}
 
               <Text className="text-sm leading-6 text-muted-foreground">
-                {assessment?._count.questions ?? 0} questions ·{" "}
-                {event.durationMinutes} minutes
+                {assessment?._count.questions ?? 0} soal ·{" "}
+                {event.durationMinutes} menit
                 {assessment?.passingScore != null
-                  ? ` · ${assessment.passingScore}% to pass`
+                  ? ` · lulus ${assessment.passingScore}%`
                   : ""}
-                {event.closesAt ? `\nCloses ${dateLabel(event.closesAt)}` : ""}
+                {event.closesAt ? `\nDitutup ${dateLabel(event.closesAt)}` : ""}
                 {assessment?.maxAttempts != null
-                  ? `\n${event.attemptCount} of ${assessment.maxAttempts} attempts used`
-                  : `\n${event.attemptCount} attempts used · unlimited`}
+                  ? `\n${event.attemptCount} dari ${assessment.maxAttempts} percobaan terpakai`
+                  : `\n${event.attemptCount} percobaan terpakai · tanpa batas`}
               </Text>
 
               {invalidated ? (
                 <Text className="text-sm text-destructive">
                   {event.participants[0]?.invalidationReason ??
-                    "Participation is unavailable. Contact your course team."}
+                    "Partisipasi tidak tersedia. Hubungi tim course kamu."}
                 </Text>
               ) : null}
 
@@ -144,23 +144,23 @@ export default function AssessmentEventScreen() {
                   disabled={start.isPending}
                   onPress={() => void begin()}
                 >
-                  {start.isPending ? "Starting…" : primaryAction}
+                  {start.isPending ? "Memulai…" : primaryAction}
                 </StudyAction>
               ) : null}
 
               {attempt && attempt.status !== "IN_PROGRESS" ? (
                 <StudyAction secondary onPress={() => openAttempt(attempt.id)}>
                   {attempt.status === "GRADED"
-                    ? "Review result"
-                    : "View submission"}
+                    ? "Lihat hasil"
+                    : "Lihat jawaban"}
                 </StudyAction>
               ) : null}
 
               {!primaryAction && !attempt && !invalidated ? (
                 <Text className="text-sm font-semibold text-muted-foreground">
                   {event.status === "CANCELLED"
-                    ? "This event was cancelled."
-                    : "This event is not open for attempts."}
+                    ? "Event ini dibatalkan."
+                    : "Event ini belum dibuka untuk dikerjakan."}
                 </Text>
               ) : null}
 
@@ -180,8 +180,8 @@ export default function AssessmentEventScreen() {
                   Leaderboard
                 </Text>
                 <Text className="text-sm text-muted-foreground">
-                  Your best reviewed attempt counts. Ties are decided by
-                  completion time.
+                  Percobaan terbaik yang sudah direview yang dihitung. Nilai
+                  seri ditentukan oleh waktu penyelesaian.
                 </Text>
                 {event.leaderboard.length ? (
                   event.leaderboard.map((entry) => (
@@ -193,17 +193,17 @@ export default function AssessmentEventScreen() {
                   ))
                 ) : (
                   <Text className="text-sm text-muted-foreground">
-                    No reviewed results are available yet.
+                    Belum ada hasil yang sudah direview.
                   </Text>
                 )}
               </StudyGlass>
             ) : attempt ? (
               <StudyGlass>
                 <Text className="text-lg font-black text-foreground">
-                  Leaderboard pending
+                  Leaderboard belum tersedia
                 </Text>
                 <Text className="text-sm text-muted-foreground">
-                  Rankings appear after results are reviewed.
+                  Peringkat muncul setelah hasil direview.
                 </Text>
               </StudyGlass>
             ) : null}

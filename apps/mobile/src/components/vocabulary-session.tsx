@@ -255,7 +255,7 @@ export function VocabularySession({
     } catch {
       setFeedback({ correct, saved: false });
       setSessionError(
-        "Your answer couldn’t be saved on this device. Try again.",
+        "Jawaban kamu tidak dapat disimpan di perangkat ini. Coba lagi.",
       );
     }
   }
@@ -328,7 +328,7 @@ export function VocabularySession({
       setRevealSaved(true);
     } catch {
       setSessionError(
-        "This reveal couldn’t be saved on this device. Try again before continuing.",
+        "Jawaban yang dibuka tidak dapat disimpan di perangkat ini. Coba lagi sebelum melanjutkan.",
       );
     }
   }
@@ -470,7 +470,7 @@ export function VocabularySession({
       <View className="min-h-64 items-center justify-center gap-3">
         <ActivityIndicator color={colors.primary} />
         <Text className="text-sm text-muted-foreground">
-          Loading your saved practice…
+          Memuat latihan kamu yang tersimpan…
         </Text>
       </View>
     );
@@ -487,18 +487,18 @@ export function VocabularySession({
   }
 
   if (!usableWords.length) {
-    return <Empty>This set has no words ready for practice.</Empty>;
+    return <Empty>Set ini belum memiliki kata yang siap dilatih.</Empty>;
   }
 
   const showStart =
     !roundActive && !evidence?.practiced && readyWords.length > 0;
   const showFinish = Boolean(evidence?.practiced) && !roundActive;
   const finishTitle = evidence?.mastered
-    ? "Vocabulary mastered"
-    : "Practice complete";
+    ? "Kosakata dikuasai"
+    : "Latihan selesai";
   const finishDetail = evidence?.mastered
-    ? "Every word has been recalled successfully. Your answers are saved on this device and synced at the round checkpoint."
-    : `You practiced every word once. ${masteredCount} of ${usableWords.length} are mastered, and you can review them again later.`;
+    ? "Semua kata berhasil diingat. Jawaban kamu tersimpan di perangkat ini dan disinkronkan di akhir ronde."
+    : `Kamu sudah melatih setiap kata sekali. ${masteredCount} dari ${usableWords.length} kata sudah dikuasai, dan kamu bisa mengulanginya nanti.`;
 
   function exitGame() {
     void onComplete().catch(() => undefined);
@@ -508,10 +508,10 @@ export function VocabularySession({
   const visibleCount = roundActive ? queue.length : readyWords.length;
   const visibleIndex = roundActive ? index : 0;
   const idleHint = showFinish
-    ? "Your answers are saved. Refresh to load the remaining words."
+    ? "Jawaban kamu tersimpan. Muat ulang untuk memuat kata yang tersisa."
     : isStudyMode
-      ? "Say or type the definition, peel the corner to reveal, or swipe up to skip."
-      : "Say or type the Korean word, peel the corner to reveal, or swipe up to skip.";
+      ? "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."
+      : "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati.";
 
   return (
     <View className="min-h-0 flex-1">
@@ -529,7 +529,7 @@ export function VocabularySession({
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.View hidesSharedBackground>
           <View
-            accessibilityLabel={`Word ${visibleCount === 0 ? 0 : visibleIndex + 1} of ${visibleCount}, ${practicedCount} of ${usableWords.length} practiced`}
+            accessibilityLabel={`Kata ${visibleCount === 0 ? 0 : visibleIndex + 1} dari ${visibleCount}, ${practicedCount} dari ${usableWords.length} sudah dilatih`}
             className="flex-row items-center gap-3"
           >
             <Text className="text-[13px] font-bold tabular-nums text-foreground">
@@ -542,7 +542,7 @@ export function VocabularySession({
         </Stack.Toolbar.View>
         <Stack.Toolbar.Button
           accessibilityLabel={
-            keyboardVisible ? "Hide keyboard" : "Show keyboard"
+            keyboardVisible ? "Sembunyikan keyboard" : "Tampilkan keyboard"
           }
           disabled={
             !keyboardVisible &&
@@ -561,7 +561,9 @@ export function VocabularySession({
       >
         <Stack.Toolbar.Button
           accessibilityLabel={
-            handsFree ? "Stop hands-free practice" : "Start hands-free practice"
+            handsFree
+              ? "Hentikan latihan tanpa sentuh"
+              : "Mulai latihan tanpa sentuh"
           }
           disabled={(!handsFree && !!feedback) || revealed || busy}
           icon={handsFree ? toolbarIcons.stop : toolbarIcons.mic}
@@ -574,8 +576,8 @@ export function VocabularySession({
             ref={answerInputRef}
             accessibilityLabel={
               isStudyMode
-                ? `Definition for ${currentWord?.term ?? "current word"}`
-                : `Korean word for ${currentWord?.definition ?? "current word"}`
+                ? `Arti dari ${currentWord?.term ?? "kata ini"}`
+                : `Kata Korea untuk ${currentWord?.definition ?? "kata ini"}`
             }
             autoCapitalize="none"
             autoCorrect={false}
@@ -602,12 +604,12 @@ export function VocabularySession({
             onSubmitEditing={handleInputSubmit}
             placeholder={
               revealed
-                ? "Ready for the next word?"
+                ? "Siap untuk kata berikutnya?"
                 : listening
-                  ? "Listening…"
+                  ? "Mendengarkan…"
                   : isStudyMode
-                    ? "Type the definition"
-                    : "Type the Korean word"
+                    ? "Ketik artinya"
+                    : "Ketik kata Koreanya"
             }
             placeholderTextColor={colors.mutedForeground}
             returnKeyType={revealed || feedback?.saved ? "next" : "done"}
@@ -628,9 +630,9 @@ export function VocabularySession({
           accessibilityLabel={
             feedback || revealed
               ? index + 1 < queue.length
-                ? "Next word"
-                : "Finish round"
-              : "Check answer"
+                ? "Kata berikutnya"
+                : "Selesaikan ronde"
+              : "Periksa jawaban"
           }
           disabled={
             feedback || revealed
@@ -651,31 +653,31 @@ export function VocabularySession({
             ? idleHint
             : isStudyMode
               ? moving
-                ? "Bringing up the next card…"
+                ? "Menyiapkan kartu berikutnya…"
                 : listening
-                  ? "Listening for Indonesian… tap mic to stop."
+                  ? "Mendengarkan bahasa Indonesia… ketuk mikrofon untuk berhenti."
                   : revealed
-                    ? "Answer revealed. Swipe up or tap Next."
+                    ? "Jawaban ditampilkan. Geser ke atas atau ketuk Lanjut."
                     : feedback
                       ? feedback.correct
-                        ? "Correct and saved. Swipe up or tap Next."
-                        : "Saved for review. Swipe up or tap Next."
-                      : "Say or type the definition, peel the corner to reveal, or swipe up to skip."
+                        ? "Benar dan tersimpan. Geser ke atas atau ketuk Lanjut."
+                        : "Disimpan untuk diulang. Geser ke atas atau ketuk Lanjut."
+                      : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."
               : moving
-                ? "Bringing up the next card…"
+                ? "Menyiapkan kartu berikutnya…"
                 : listening
-                  ? "Listening for Korean… tap mic to stop."
+                  ? "Mendengarkan bahasa Korea… ketuk mikrofon untuk berhenti."
                   : revealed
-                    ? "Answer revealed. Swipe up or tap Next."
+                    ? "Jawaban ditampilkan. Geser ke atas atau ketuk Lanjut."
                     : feedback
                       ? !feedback.saved
                         ? feedback.correct
-                          ? "Correct — saving…"
-                          : "We’ll review this again — saving…"
+                          ? "Benar — menyimpan…"
+                          : "Kita ulang kata ini nanti — menyimpan…"
                         : feedback.correct
-                          ? "Correct and saved. Swipe up or tap Next."
-                          : "Saved for an earlier review. Swipe up or tap Next."
-                      : "Say or type the Korean word, peel the corner to reveal, or swipe up to skip."}
+                          ? "Benar dan tersimpan. Geser ke atas atau ketuk Lanjut."
+                          : "Disimpan untuk diulang lebih cepat. Geser ke atas atau ketuk Lanjut."
+                      : "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."}
         </Text>
         {speech.errorMessage && !feedback && !revealed ? (
           <Text
@@ -697,14 +699,15 @@ export function VocabularySession({
             <Text className="text-3xl">🌱</Text>
             <View className="items-center gap-2">
               <Text className="text-xl font-black text-foreground">
-                Great work for now
+                Kerja bagus untuk sekarang
               </Text>
               <Text className="text-center text-sm leading-6 text-muted-foreground">
-                Your answers are saved. Refresh to load the remaining words.
+                Jawaban kamu tersimpan. Muat ulang untuk memuat kata yang
+                tersisa.
               </Text>
             </View>
             <Action secondary onPress={() => void progressQuery.refetch()}>
-              Check again
+              Periksa lagi
             </Action>
           </View>
         ) : (
@@ -740,11 +743,11 @@ export function VocabularySession({
                 else if (revealed) void saveReveal();
               }}
             >
-              {revealed ? "Retry saving reveal" : "Retry saving answer"}
+              {revealed ? "Coba simpan lagi" : "Coba simpan jawaban lagi"}
             </Action>
           ) : currentWord ? (
             <Action secondary onPress={restartWord}>
-              Try again
+              Coba lagi
             </Action>
           ) : null}
         </View>
@@ -756,10 +759,10 @@ export function VocabularySession({
             <View className="flex-row items-start justify-between gap-5">
               <View className="min-w-0 flex-1 gap-0.5">
                 <Text className="text-[11px] font-bold uppercase tracking-[1.4px] text-primary">
-                  Set progress
+                  Progres set
                 </Text>
                 <Text className="text-xl font-black tracking-tight text-foreground">
-                  {practicedCount} practiced
+                  {practicedCount} dilatih
                 </Text>
               </View>
               <Text className="text-2xl font-black tabular-nums text-foreground">
@@ -778,20 +781,20 @@ export function VocabularySession({
             </View>
             <View className="flex-row items-center justify-between gap-4">
               <Text className="text-sm text-muted-foreground">
-                {usableWords.length} total words
+                {usableWords.length} kata total
               </Text>
               <Text className="text-sm font-semibold text-primary">
-                {readyWords.length} ready now
+                {readyWords.length} siap sekarang
               </Text>
             </View>
           </View>
         }
-        detail="Mastery reviews stay available without blocking your course."
+        detail="Pengulangan penguasaan tetap tersedia tanpa menghambat course kamu."
         gameKey="cards"
         onPrimary={beginRound}
         onSecondary={exit}
-        primaryLabel={`Start practice · ${readyWords.length} words`}
-        title="Cards"
+        primaryLabel={`Mulai latihan · ${readyWords.length} kata`}
+        title="Kartu"
         visible={showStart}
       />
       <GameModal
@@ -805,16 +808,16 @@ export function VocabularySession({
           ) : undefined
         }
         detail={finishDetail}
-        eyebrow="Cards"
+        eyebrow="Kartu"
         gameKey="cards"
         onPrimary={reviewDueWords.length ? beginRound : () => void exitGame()}
         onSecondary={reviewDueWords.length ? exit : undefined}
         primaryLabel={
           reviewDueWords.length
-            ? `Review again · ${reviewDueWords.length} words`
-            : "Back to practice"
+            ? `Ulangi lagi · ${reviewDueWords.length} kata`
+            : "Kembali ke latihan"
         }
-        secondaryLabel={reviewDueWords.length ? "Exit" : undefined}
+        secondaryLabel={reviewDueWords.length ? "Keluar" : undefined}
         title={finishTitle}
         visible={showFinish}
       />

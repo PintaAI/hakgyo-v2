@@ -99,8 +99,8 @@ export function assessmentSourceBadge(event: {
   scope?: string | null;
 }) {
   if (event.type === "TRYOUT") return "Tryout";
-  if (event.scope === "COHORT") return "Cohort assessment";
-  return "Assessment";
+  if (event.scope === "COHORT") return "Tugas Group belajar";
+  return "Tugas";
 }
 
 export async function openExternalLink(
@@ -110,8 +110,8 @@ export async function openExternalLink(
   const url = safeExternalUrl(value, kind);
   if (!url) {
     Alert.alert(
-      "Link unavailable",
-      "Ask your course contact for an updated link.",
+      "Link tidak tersedia",
+      "Minta link terbaru kepada kontak course kamu.",
     );
     return;
   }
@@ -119,8 +119,8 @@ export async function openExternalLink(
     await Linking.openURL(url);
   } catch {
     Alert.alert(
-      "Couldn’t open the link",
-      "Check that the app or a browser is available, then try again.",
+      "Link tidak dapat dibuka",
+      "Pastikan aplikasinya atau browser tersedia, lalu coba lagi.",
     );
   }
 }
@@ -131,8 +131,8 @@ export async function openMeetingOnWeb(courseId: string) {
     await Linking.openURL(url);
   } catch {
     Alert.alert(
-      "Couldn’t open the link",
-      "Check that a browser is available, then try again.",
+      "Link tidak dapat dibuka",
+      "Pastikan browser tersedia, lalu coba lagi.",
     );
   }
 }
@@ -158,22 +158,22 @@ function eventSummary(events: CohortEvent[]) {
 
 export function closesLabel(closesAt: Date, now: number) {
   const diff = closesAt.getTime() - now;
-  if (diff <= 0) return `closed ${dateLabel(closesAt)}`;
+  if (diff <= 0) return `ditutup ${dateLabel(closesAt)}`;
   const hours = Math.floor(diff / 3_600_000);
-  if (hours < 24) return `closes in ${Math.max(hours, 1)}h`;
+  if (hours < 24) return `ditutup dalam ${Math.max(hours, 1)} jam`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `closes in ${days}d`;
-  return `closes ${dateLabel(closesAt)}`;
+  if (days < 7) return `ditutup dalam ${days} hari`;
+  return `ditutup ${dateLabel(closesAt)}`;
 }
 
 function dueLabel(closesAt: Date, now: number) {
   const diff = closesAt.getTime() - now;
   if (diff <= 0) return null;
   const hours = Math.floor(diff / 3_600_000);
-  if (hours < 24) return `Due in ${Math.max(hours, 1)}h`;
+  if (hours < 24) return `Tenggat ${Math.max(hours, 1)} jam lagi`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `Due in ${days}d`;
-  return `Due ${dayLabel(closesAt)}`;
+  if (days < 7) return `Tenggat ${days} hari lagi`;
+  return `Tenggat ${dayLabel(closesAt)}`;
 }
 
 // One corner family for the whole card: card-level surfaces share
@@ -506,10 +506,10 @@ export function CohortCard({
   const nextTypeLabel = !nextOutlineItem
     ? null
     : nextOutlineItem.type === "VOCABULARY_SET"
-      ? "Vocabulary"
+      ? "Kosakata"
       : nextOutlineItem.type === "ASSESSMENT"
-        ? "Assessment"
-        : "Lesson";
+        ? "Tugas"
+        : "Materi";
   const { colors, colorScheme } = useAppTheme();
   const glassTint = withOpacity(
     colors.primary,
@@ -578,14 +578,14 @@ export function CohortCard({
     );
     hero = {
       kind: "class",
-      eyebrow: nextState === "live" ? "Live now" : "Starting soon",
+      eyebrow: nextState === "live" ? "Sedang live" : "Segera dimulai",
       live: nextState === "live",
       title: next.title,
       meta:
         nextState === "live"
-          ? `Ends ${timeLabel(endsAt)} · ${next.durationMinutes} min`
-          : `Starts ${timeLabel(next.startsAt)} · ${next.durationMinutes} min`,
-      pill: joinUrl ? "Join" : "Details",
+          ? `Berakhir ${timeLabel(endsAt)} · ${next.durationMinutes} menit`
+          : `Mulai ${timeLabel(next.startsAt)} · ${next.durationMinutes} menit`,
+      pill: joinUrl ? "Gabung" : "Detail",
       pillIcon: joinUrl ? zoomBrandIcon : undefined,
       onPress: () => {
         markEntitySeen("MEETING", next.id);
@@ -600,16 +600,16 @@ export function CohortCard({
         assessmentSourceBadge(featured),
       title: featured.title,
       meta: `${assessmentSourceBadge(featured)} · ${assessmentAttemptPresentation(featuredAttempt).detail}`,
-      pill: featuredAttempt ? "Resume" : "Start",
+      pill: featuredAttempt ? "Lanjutkan" : "Mulai",
       onPress: openFeaturedAssessment,
     };
   } else if (nextOutlineItem && nextTypeLabel && openNextItem) {
     hero = {
       kind: "learning",
-      eyebrow: completedCount > 0 ? "Continue learning" : "Start learning",
+      eyebrow: completedCount > 0 ? "Lanjutkan belajar" : "Mulai belajar",
       title: nextOutlineItem.title,
       meta: `${nextTypeLabel} · ${nextOutlineItem.moduleTitle}`,
-      pill: completedCount > 0 ? "Continue" : "Start",
+      pill: completedCount > 0 ? "Lanjutkan" : "Mulai",
       onPress: openNextItem,
     };
   } else if (
@@ -621,9 +621,9 @@ export function CohortCard({
   ) {
     hero = {
       kind: "caught-up",
-      eyebrow: "All caught up",
-      title: "Nothing due right now",
-      meta: "New classes and activities will appear here",
+      eyebrow: "Semua beres",
+      title: "Tidak ada tenggat saat ini",
+      meta: "Kelas dan aktivitas baru akan muncul di sini",
     };
   }
 
@@ -638,8 +638,8 @@ export function CohortCard({
       fallback: "◷",
       title: next.title,
       detail: joinUrl
-        ? `${dateLabel(next.startsAt)} · ${next.durationMinutes} min · Tap to join`
-        : `${dateLabel(next.startsAt)} · ${next.durationMinutes} min · Details on web`,
+        ? `${dateLabel(next.startsAt)} · ${next.durationMinutes} menit · Ketuk untuk bergabung`
+        : `${dateLabel(next.startsAt)} · ${next.durationMinutes} menit · Detail di web`,
       onPress: () => {
         markEntitySeen("MEETING", next.id);
         openMeeting(next, cohort.course.id);
@@ -671,8 +671,8 @@ export function CohortCard({
       key: "more-assessments",
       icon: "tray.full",
       fallback: "+",
-      title: `${remaining} more in Practice`,
-      detail: `${open.length} open overall`,
+      title: `${remaining} lagi di Latihan`,
+      detail: `${open.length} terbuka secara keseluruhan`,
       onPress: () => router.navigate("/(home)/(tabs)/assessments"),
     });
   }
@@ -746,7 +746,7 @@ export function CohortCard({
                     transition={0}
                   />
                 }
-                label="Group"
+                label="Grup"
                 onPress={() =>
                   cohort.whatsappGroupUrl &&
                   void openExternalLink(cohort.whatsappGroupUrl, "whatsapp")
@@ -777,7 +777,7 @@ export function CohortCard({
 
         {plateRows.length > 0 ? (
           <View className="gap-2">
-            <Eyebrow>On your plate</Eyebrow>
+            <Eyebrow>Perlu dikerjakan</Eyebrow>
             <View>
               {plateRows.map((row, index) => (
                 <PlateRowView

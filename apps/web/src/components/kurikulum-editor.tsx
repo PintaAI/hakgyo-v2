@@ -51,6 +51,15 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import {
+  ReadinessBadge,
+  ReadinessSummaryChip,
+  courseItemAnchorId,
+  coursePublicationLabels,
+  summarizeReadiness,
+  type CourseItemHref,
+  type ItemReadiness,
+} from "~/components/course-readiness";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import {
@@ -71,8 +80,16 @@ import {
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
-import { defaultCourseItemPublished } from "~/lib/course-item-publication";
+import {
+  defaultCourseItemPublished,
+  knownNotReadyReason,
+} from "~/lib/course-item-publication";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Course = RouterOutputs["course"]["get"];
@@ -81,7 +98,8 @@ type CourseItem = CourseModule["items"][number];
 /** Library resources only need an id and title to be picked and labelled. */
 type ResourceOption = { id: string; title: string };
 type Material = ResourceOption;
-type Assessment = ResourceOption;
+/** `questionCount` lets the add-item dialog tell an empty assessment apart. */
+type Assessment = ResourceOption & { questionCount?: number };
 type VocabularySet = ResourceOption;
 type PdfPageRangesByMaterial = Partial<Record<string, PdfPageRange[]>>;
 type ItemType = CourseItem["type"];
@@ -207,6 +225,17 @@ export function KurikulumEditor({
     courseId: initialCourse.id,
   });
   const pdfPageRanges: PdfPageRangesByMaterial = pdfPageRangesQuery.data ?? {};
+  const readinessQuery = api.content.getCurriculumReadiness.useQuery({
+    courseId: initialCourse.id,
+  });
+  const readinessByItem = new Map(
+    (readinessQuery.data?.items ?? []).map((item) => [item.courseItemId, item]),
+  );
+  const [hideBlocked, setHideBlocked] = useState<{
+    kind: "hide" | "delete";
+    name: string;
+    dependents: string[];
+  } | null>(null);
   const [moduleDialog, setModuleDialog] = useState<{
     open: boolean;
     module?: CourseModule;
@@ -215,6 +244,13 @@ export function KurikulumEditor({
   const [progressionMode, setProgressionMode] = useState(
     course.progressionMode,
   );
+  const [progressionSource, setProgressionSource] = useState(
+    course.progressionMode,
+  );
+  if (course.progressionMode !== progressionSource) {
+    setProgressionSource(course.progressionMode);
+    setProgressionMode(course.progressionMode);
+  }
   const [modules, setModules] = useState(course.modules);
   const [modulesSource, setModulesSource] = useState(course.modules);
   const [deleteTarget, setDeleteTarget] = useState<
@@ -264,7 +300,9 @@ export function KurikulumEditor({
       utils.content.listCoursePdfPageRanges.invalidate({
         courseId: course.id,
       }),
-      // Publishing an item also publishes its draft assessment.
+      utils.content.getCurriculumReadiness.invalidate({ courseId: course.id }),
+      // Showing or hiding an item changes whether its assessment is live
+      // (and therefore editable).
       ...(publishesAssessments
         ? [
             utils.assessment.get.invalidate(),
@@ -366,14 +404,90 @@ export function KurikulumEditor({
     await refreshCourse();
   }
 
+  /** Titles of every item, for naming dependents. */
+  function itemName(courseItemId: string) {
+    for (const courseModule of modules) {
+      const item = courseModule.items.find(({ id }) => id === courseItemId);
+      if (item) {
+        return (
+          resourceTitle(item, materials, assessments, vocabularySets) ??
+          readinessByItem.get(courseItemId)?.title ??
+          "Resource tidak tersedia"
+        );
+      }
+    }
+    return readinessByItem.get(courseItemId)?.title ?? "item";
+  }
+
+  /**
+   * Visible, ready lessons that would break if `item` were hidden or removed:
+   * the same checks the server runs, surfaced before the request. Another
+   * visible placement of the same resource in the module keeps them working.
+   */
+  function blockingDependents(item: CourseItem) {
+    const readiness = readinessByItem.get(item.id);
+    if (!readiness?.dependents.length) return [];
+    const courseModule = modules.find(({ id }) => id === readiness.moduleId);
+    const resourceId = itemResourceId(item);
+    const hasOtherVisiblePlacement = courseModule?.items.some(
+      (candidate) =>
+        candidate.id !== item.id &&
+        candidate.isPublished &&
+        candidate.type === item.type &&
+        itemResourceId(candidate) === resourceId,
+    );
+    if (hasOtherVisiblePlacement) return [];
+    return readiness.dependents.filter((dependentId) => {
+      const dependent = readinessByItem.get(dependentId);
+      return dependent?.isPublished && dependent.ready;
+    });
+  }
+
   async function togglePublished(item: CourseItem, checked: boolean) {
+    if (!checked) {
+      const dependents = blockingDependents(item);
+      if (dependents.length) {
+        setHideBlocked({
+          kind: "hide",
+          name: itemName(item.id),
+          dependents: dependents.map(itemName),
+        });
+        return;
+      }
+    }
     try {
       await updateItem.mutateAsync({ itemId: item.id, isPublished: checked });
-      await refreshCourse({ publishesAssessments: checked });
-      toast.success(checked ? "Item published." : "Item dijadikan draf.");
+      await refreshCourse({ publishesAssessments: true });
+      toast.success(
+        checked
+          ? course.status === "PUBLISHED"
+            ? "Item ditampilkan untuk learner."
+            : "Item akan tampil setelah course dipublikasikan."
+          : "Item disembunyikan dari learner.",
+      );
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      // Readiness may have changed since it was loaded; refresh the badges.
+      void utils.content.getCurriculumReadiness.invalidate({
+        courseId: course.id,
+      });
+      toast.error(getErrorMessage(error), { duration: 8000 });
     }
+  }
+
+  function requestDeleteItem(item: CourseItem) {
+    const name =
+      resourceTitle(item, materials, assessments, vocabularySets) ??
+      "Resource tidak tersedia";
+    const dependents = item.isPublished ? blockingDependents(item) : [];
+    if (dependents.length) {
+      setHideBlocked({
+        kind: "delete",
+        name,
+        dependents: dependents.map(itemName),
+      });
+      return;
+    }
+    setDeleteTarget({ kind: "item", id: item.id, name });
   }
 
   async function confirmDelete() {
@@ -387,9 +501,12 @@ export function KurikulumEditor({
         toast.success("Item dihapus dari kurikulum.");
       }
       setDeleteTarget(null);
-      await refreshCourse();
+      await refreshCourse({ publishesAssessments: true });
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      void utils.content.getCurriculumReadiness.invalidate({
+        courseId: course.id,
+      });
+      toast.error(getErrorMessage(error), { duration: 8000 });
     }
   }
 
@@ -408,9 +525,16 @@ export function KurikulumEditor({
           <ArrowLeftIcon data-icon="inline-start" />
           Workspace course
         </Link>
-        <Badge variant={course.status === "PUBLISHED" ? "default" : "outline"}>
-          {course.status === "PUBLISHED" ? "Course terbit" : "Course draf"}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          {readinessQuery.data ? (
+            <ReadinessSummaryChip summary={readinessQuery.data.summary} />
+          ) : null}
+          <Badge
+            variant={course.status === "PUBLISHED" ? "default" : "outline"}
+          >
+            {coursePublicationLabels[course.status]}
+          </Badge>
+        </div>
       </div>
 
       <header className="border-foreground/10 grid gap-6 border-b pb-7 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -418,12 +542,12 @@ export function KurikulumEditor({
           <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
             Pembuat kurikulum
           </p>
-          <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
+          <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
             {course.title}
           </h1>
           <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
             Susun alur belajar menjadi bab, lalu buat atau hubungkan materi,
-            assessment, dan vocabulary tanpa perlu membuka library.
+            tugas, dan kosakata tanpa perlu membuka library.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -482,18 +606,26 @@ export function KurikulumEditor({
         />
       </section>
 
+      {course.status !== "PUBLISHED" && itemCount > 0 ? (
+        <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-3 text-xs leading-relaxed">
+          Course belum dipublikasikan, jadi belum ada item yang terlihat oleh
+          learner. Item yang ditampilkan akan tayang setelah course
+          dipublikasikan dari workspace course.
+        </p>
+      ) : null}
+
       {modules.length === 0 ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col items-center rounded-xl border border-dashed px-5 py-12 text-center">
             <span className="bg-muted flex size-12 items-center justify-center rounded-full">
               <Layers3Icon className="text-muted-foreground size-5" />
             </span>
-            <h2 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
+            <h2 className="font-heading mt-4 text-xl font-medium">
               Mulai dari nol
             </h2>
             <p className="text-muted-foreground mt-2 max-w-xs text-sm leading-relaxed">
-              Buat bab, lalu susun materi, kosakata, dan assessment dengan
-              editor Hakgyo.
+              Buat bab, lalu susun materi, kosakata, dan tugas dengan editor
+              Hakgyo.
             </p>
             <Button
               className="mt-5"
@@ -507,7 +639,7 @@ export function KurikulumEditor({
             <span className="bg-muted flex size-12 items-center justify-center rounded-full">
               <FileStackIcon className="text-muted-foreground size-5" />
             </span>
-            <h2 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
+            <h2 className="font-heading mt-4 text-xl font-medium">
               Impor dari buku PDF
             </h2>
             <p className="text-muted-foreground mt-2 max-w-xs text-sm leading-relaxed">
@@ -548,20 +680,9 @@ export function KurikulumEditor({
                   courseId={course.id}
                   organizationSlug={organizationSlug}
                   vocabularySets={vocabularySets}
+                  readinessByItem={readinessByItem}
                   onAddItem={() => setItemModule(module)}
-                  onDeleteItem={(item) =>
-                    setDeleteTarget({
-                      kind: "item",
-                      id: item.id,
-                      name:
-                        resourceTitle(
-                          item,
-                          materials,
-                          assessments,
-                          vocabularySets,
-                        ) ?? "Resource tidak tersedia",
-                    })
-                  }
+                  onDeleteItem={requestDeleteItem}
                   onDeleteModule={() =>
                     setDeleteTarget({
                       kind: "module",
@@ -591,6 +712,13 @@ export function KurikulumEditor({
         courseId={course.id}
         courseStatus={course.status}
         materials={materials}
+        moduleReadiness={
+          itemModule
+            ? (readinessQuery.data?.items ?? []).filter(
+                (item) => item.moduleId === itemModule.id,
+              )
+            : []
+        }
         module={itemModule}
         organizationSlug={organizationSlug}
         vocabularySets={vocabularySets}
@@ -627,9 +755,53 @@ export function KurikulumEditor({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog
+        open={Boolean(hideBlocked)}
+        onOpenChange={(open) => !open && setHideBlocked(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <CircleOffIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {hideBlocked?.kind === "delete"
+                ? "Item belum bisa dihapus"
+                : "Item belum bisa disembunyikan"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              “{hideBlocked?.name}” dipakai oleh materi yang sedang ditampilkan
+              di bab ini. Sembunyikan materi berikut terlebih dahulu, atau lepas
+              rujukannya dari materi tersebut:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="grid gap-1 text-sm">
+            {hideBlocked?.dependents.map((dependent, index) => (
+              <li key={`${dependent}:${index}`} className="flex gap-2">
+                <FileTextIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                <span className="min-w-0">{dependent}</span>
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Mengerti</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+function itemResourceId(item: CourseItem) {
+  return item.type === "MATERIAL"
+    ? item.materialId
+    : item.type === "ASSESSMENT"
+      ? item.assessmentId
+      : item.vocabularySetId;
+}
+
+const itemAnchorHref: CourseItemHref = (courseItemId) =>
+  `#${courseItemAnchorId(courseItemId)}`;
 
 function SortableModuleCard({
   module,
@@ -643,12 +815,14 @@ function SortableModuleCard({
   assessments,
   organizationSlug,
   vocabularySets,
+  readinessByItem,
   onAddItem,
   onDeleteItem,
   onDeleteModule,
   onEditModule,
   onTogglePublished,
 }: {
+  readinessByItem: ReadonlyMap<string, ItemReadiness>;
   module: CourseModule;
   moduleIndex: number;
   courseId: string;
@@ -685,6 +859,10 @@ function SortableModuleCard({
   const hasPractice = module.items.some(
     (item) => item.type === "VOCABULARY_SET" || item.type === "ASSESSMENT",
   );
+  const moduleReadiness = module.items.flatMap((item) => {
+    const readiness = readinessByItem.get(item.id);
+    return readiness ? [readiness] : [];
+  });
 
   return (
     <li
@@ -711,10 +889,13 @@ function SortableModuleCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
-              {module.title}
-            </h2>
+            <h2 className="font-heading text-lg font-medium">{module.title}</h2>
             <Badge variant="secondary">{module.items.length} item</Badge>
+            {moduleReadiness.length ? (
+              <ReadinessSummaryChip
+                summary={summarizeReadiness(moduleReadiness)}
+              />
+            ) : null}
           </div>
           {module.description ? (
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
@@ -761,6 +942,7 @@ function SortableModuleCard({
                   "Resource tidak tersedia"
                 }
                 pdfLabel={pdfLessonLabel(item, pdfPageRanges, pageOffsets)}
+                readiness={readinessByItem.get(item.id)}
                 onTogglePublished={onTogglePublished}
                 onDeleteItem={() => onDeleteItem(item)}
               />
@@ -774,7 +956,7 @@ function SortableModuleCard({
       )}
       {hasPdfLesson && !hasPractice ? (
         <div className="flex flex-wrap items-center gap-2 border-t bg-amber-500/5 px-4 py-2.5 text-xs sm:px-5">
-          <LightbulbIcon className="size-3.5 shrink-0 text-amber-600" />
+          <LightbulbIcon className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <span className="text-muted-foreground flex-1">
             Tambahkan kosakata atau kuis agar siswa bisa berlatih setelah
             membaca halaman PDF bab ini.
@@ -803,10 +985,12 @@ function SortableItemRow({
   href,
   title,
   pdfLabel,
+  readiness,
   onTogglePublished,
   onDeleteItem,
 }: {
   pdfLabel: string | null;
+  readiness: ItemReadiness | undefined;
   item: CourseItem;
   moduleId: string;
   isPending: boolean;
@@ -831,13 +1015,20 @@ function SortableItemRow({
   const style = { transform: CSS.Transform.toString(transform), transition };
   const meta = itemMeta[item.type];
   const Icon = pdfLabel ? FileStackIcon : meta.icon;
+  // A hidden item that is not ready cannot be shown; a visible one that is
+  // not ready (legacy data) can still be hidden.
+  const showBlockedReason =
+    readiness && !readiness.ready && !item.isPublished
+      ? "Item ini belum siap ditampilkan. Lihat “Belum siap” untuk detail dan perbaikannya."
+      : null;
 
   return (
     <li
+      id={courseItemAnchorId(item.id)}
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group flex items-center gap-3 px-4 py-3 sm:px-5",
+        "group target:bg-muted/60 flex scroll-mt-24 items-center gap-3 px-4 py-3 sm:px-5",
         isDragging && "bg-background z-10 shadow-lg",
       )}
     >
@@ -872,30 +1063,19 @@ function SortableItemRow({
         </span>
       </Link>
       <div className="flex shrink-0 items-center gap-1">
-        <div className="mr-1 hidden items-center gap-2 sm:flex">
-          <Label
-            htmlFor={`published-${item.id}`}
-            className="text-muted-foreground text-xs font-normal"
-          >
-            {item.isPublished ? "Published" : "Draf"}
-          </Label>
-          <Switch
-            id={`published-${item.id}`}
-            checked={item.isPublished}
-            disabled={isPending}
-            onCheckedChange={(checked) => onTogglePublished(item, checked)}
+        {readiness ? (
+          <ReadinessBadge
+            readiness={readiness}
+            itemHref={itemAnchorHref}
+            className="mr-1 max-w-56"
           />
-        </div>
-        <Button
-          aria-label={item.isPublished ? "Jadikan item draf" : "Publish item"}
-          disabled={isPending}
-          size="icon-sm"
-          variant="ghost"
-          className="sm:hidden"
-          onClick={() => onTogglePublished(item, !item.isPublished)}
-        >
-          {item.isPublished ? <CheckCircle2Icon /> : <CircleOffIcon />}
-        </Button>
+        ) : null}
+        <VisibilitySwitch
+          item={item}
+          isPending={isPending}
+          blockedReason={showBlockedReason}
+          onTogglePublished={onTogglePublished}
+        />
         <Button
           aria-label="Hapus item"
           size="icon-sm"
@@ -906,6 +1086,64 @@ function SortableItemRow({
         </Button>
       </div>
     </li>
+  );
+}
+
+function VisibilitySwitch({
+  item,
+  isPending,
+  blockedReason,
+  onTogglePublished,
+}: {
+  item: CourseItem;
+  isPending: boolean;
+  blockedReason: string | null;
+  onTogglePublished: (item: CourseItem, checked: boolean) => void;
+}) {
+  const label = item.isPublished ? "Sembunyikan item" : "Tampilkan item";
+  const disabled = isPending || Boolean(blockedReason);
+  const controls = (
+    <>
+      <div className="mr-1 hidden items-center gap-2 sm:flex">
+        <Label
+          htmlFor={`published-${item.id}`}
+          className="text-muted-foreground text-xs font-normal"
+        >
+          Tampil
+        </Label>
+        <Switch
+          id={`published-${item.id}`}
+          aria-label={label}
+          checked={item.isPublished}
+          disabled={disabled}
+          onCheckedChange={(checked) => onTogglePublished(item, checked)}
+        />
+      </div>
+      <Button
+        aria-label={label}
+        disabled={disabled}
+        size="icon-sm"
+        variant="ghost"
+        className="sm:hidden"
+        onClick={() => onTogglePublished(item, !item.isPublished)}
+      >
+        {item.isPublished ? <CheckCircle2Icon /> : <CircleOffIcon />}
+      </Button>
+    </>
+  );
+  if (!blockedReason) return controls;
+  // Disabled controls do not emit pointer events; the wrapper carries the
+  // explanation.
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={<span className="inline-flex items-center" tabIndex={0} />}
+        aria-label={blockedReason}
+      >
+        {controls}
+      </TooltipTrigger>
+      <TooltipContent>{blockedReason}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -921,7 +1159,7 @@ function SummaryStat({
       <span className="text-muted-foreground block text-[10px] font-semibold tracking-[0.12em] uppercase">
         {label}
       </span>
-      <span className="mt-1 block truncate font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium sm:text-2xl">
+      <span className="font-heading mt-1 block truncate text-xl font-medium sm:text-2xl">
         {value}
       </span>
     </div>
@@ -1043,10 +1281,12 @@ function ItemDialog({
   vocabularySets,
   courseId,
   courseStatus,
+  moduleReadiness,
   organizationSlug,
   onClose,
   onSaved,
 }: {
+  moduleReadiness: ItemReadiness[];
   module: CourseModule | null;
   materials: Material[];
   assessments: Assessment[];
@@ -1061,6 +1301,35 @@ function ItemDialog({
   const [resourceId, setResourceId] = useState("");
   const publishByDefault = defaultCourseItemPublished(courseStatus);
   const [isPublished, setIsPublished] = useState(publishByDefault);
+  const readinessById = new Map(
+    moduleReadiness.map((item) => [item.courseItemId, item]),
+  );
+  function notReadyReasonFor(candidateId: string) {
+    return knownNotReadyReason({
+      type,
+      questionCount:
+        type === "ASSESSMENT"
+          ? assessments.find((resource) => resource.id === candidateId)
+              ?.questionCount
+          : undefined,
+      placementsInModule: (module?.items ?? [])
+        .filter(
+          (item) => item.type === type && itemResourceId(item) === candidateId,
+        )
+        .flatMap((item) => {
+          const readiness = readinessById.get(item.id);
+          return readiness ? [readiness] : [];
+        }),
+    });
+  }
+  const notReadyReason = resourceId ? notReadyReasonFor(resourceId) : null;
+
+  function selectResource(nextResourceId: string) {
+    setResourceId(nextResourceId);
+    // Re-derive the default for the picked resource (hidden when not ready).
+    const reason = notReadyReasonFor(nextResourceId);
+    setIsPublished(defaultCourseItemPublished(courseStatus, reason));
+  }
   const createItem = api.content.createItem.useMutation();
   const resources =
     type === "MATERIAL"
@@ -1089,6 +1358,7 @@ function ItemDialog({
   function changeType(nextType: ItemType) {
     setType(nextType);
     setResourceId("");
+    setIsPublished(publishByDefault);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -1103,7 +1373,7 @@ function ItemDialog({
     try {
       await createItem.mutateAsync({
         moduleId: module.id,
-        isPublished,
+        isPublished: isPublished && !notReadyReason,
         relation,
       });
       close();
@@ -1128,7 +1398,7 @@ function ItemDialog({
     type === "MATERIAL"
       ? "Buat materi"
       : type === "VOCABULARY_SET"
-        ? "Buat set kosa kata"
+        ? "Buat set kosakata"
         : "Buat tugas";
 
   return (
@@ -1206,7 +1476,7 @@ function ItemDialog({
                 value={resourceId || "NONE"}
                 disabled={resources.length === 0}
                 onValueChange={(value) => {
-                  if (value && value !== "NONE") setResourceId(value);
+                  if (value && value !== "NONE") selectResource(value);
                 }}
               >
                 <SelectTrigger id="item-resource" className="h-10 w-full">
@@ -1236,16 +1506,26 @@ function ItemDialog({
             </div>
             <div className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3">
               <div>
-                <Label htmlFor="item-published">Langsung publish</Label>
-                <p className="text-muted-foreground mt-0.5 text-xs">
-                  {publishByDefault
-                    ? "Aktif secara default karena course sudah published."
-                    : "Berlaku saat memilih resource yang sudah ada."}
+                <Label htmlFor="item-published">Langsung tampilkan</Label>
+                <p
+                  className={cn(
+                    "mt-0.5 text-xs",
+                    notReadyReason
+                      ? "text-amber-700 dark:text-amber-400"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {notReadyReason
+                    ? `${notReadyReason} Item ditambahkan dalam keadaan tersembunyi; tampilkan setelah lengkap.`
+                    : courseStatus === "PUBLISHED"
+                      ? "Item langsung terlihat oleh learner. Item yang belum siap tetap disembunyikan."
+                      : "Item akan terlihat oleh learner setelah course dipublikasikan."}
                 </p>
               </div>
               <Switch
                 id="item-published"
-                checked={isPublished}
+                checked={isPublished && !notReadyReason}
+                disabled={Boolean(notReadyReason)}
                 onCheckedChange={setIsPublished}
               />
             </div>

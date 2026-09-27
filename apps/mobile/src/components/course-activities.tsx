@@ -37,8 +37,8 @@ export function CourseActivities({
       {query.data && visible.length === 0 ? (
         <Empty>
           {nextOnly
-            ? "No unlocked activities to continue."
-            : "No practice activities published yet."}
+            ? "Belum ada aktivitas terbuka untuk dilanjutkan."
+            : "Belum ada aktivitas latihan yang dipublikasikan."}
         </Empty>
       ) : null}
       {visible.map((item) => (
@@ -46,7 +46,7 @@ export function CourseActivities({
           key={item.id}
           title={item.title}
           disabled={!item.available}
-          detail={`${item.isCompleted ? "Completed · " : ""}${item.type === "VOCABULARY_SET" ? "Vocabulary" : item.type === "ASSESSMENT" ? "Assessment" : "Lesson"} · ${item.module}`}
+          detail={`${item.isCompleted ? "Selesai · " : ""}${item.type === "VOCABULARY_SET" ? "Kosakata" : item.type === "ASSESSMENT" ? "Tugas" : "Materi"} · ${item.module}`}
           onPress={() => {
             if (
               item.type === "ASSESSMENT" &&

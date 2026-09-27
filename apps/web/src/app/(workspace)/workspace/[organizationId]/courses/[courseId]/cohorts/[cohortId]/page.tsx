@@ -1,20 +1,8 @@
-import { Hanken_Grotesk, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 
 import { CohortWorkspace } from "~/components/cohort-workspace";
-import { cn } from "~/lib/utils";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
 import { api, HydrateClient } from "~/trpc/server";
-
-const hanken = Hanken_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-hanken-grotesk",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export default async function CohortPage({
   params,
@@ -66,13 +54,7 @@ export default async function CohortPage({
   ]);
 
   return (
-    <div
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        "w-full font-[family-name:var(--font-inter)]",
-      )}
-    >
+    <div className="w-full">
       <HydrateClient>
         <CohortWorkspace
           initialCohort={cohort}

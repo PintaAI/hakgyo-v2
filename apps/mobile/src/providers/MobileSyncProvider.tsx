@@ -15,6 +15,10 @@ import {
 
 import { apiUrl } from "../config";
 import { authClient, getAuthCookie } from "../lib/auth-client";
+import {
+  applyVocabularyReward,
+  localDateKey,
+} from "../lib/optimistic-gamification";
 import { api } from "../lib/trpc";
 import {
   createMobileSyncEngine,
@@ -35,12 +39,14 @@ import {
   type SyncDataContextValue,
 } from "../sync/hooks";
 import { indexScope } from "../sync/query-keys";
-import { sqliteMobileSyncStore } from "../sync/store";
+import { sqliteMobileSyncStore, type LocalDataStats } from "../sync/store";
 import type {
   AssessmentSyncAnswer,
+  BundleTiming,
   LearnerIndex,
   MobileSyncEngineState,
   MobileSyncTransport,
+  ResyncReport,
   SyncCheckpointResult,
   SyncUpdateResult,
   UpgradeRequired,
@@ -91,9 +97,8 @@ type MobileSyncActionsValue = {
   }) => Promise<void>;
   /** Warms the lesson's (and the next lesson's) media into the asset cache. */
   prefetchLesson: (courseId: string, courseItemId: string) => void;
-  clearLocalDataAndResync: (
-    organizationId?: string,
-  ) => Promise<SyncCheckpointResult>;
+  clearLocalDataAndResync: (organizationId?: string) => Promise<ResyncReport>;
+  getLocalDataStats: () => Promise<LocalDataStats>;
 };
 
 type MobileSyncContextValue = MobileSyncStatusValue & MobileSyncActionsValue;
@@ -127,6 +132,9 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
   const [engine, setEngine] = useState<MobileSyncEngine | null>(null);
   const engineRef = useRef<MobileSyncEngine | null>(null);
   const practicedSetIds = useRef(new Set<string>());
+  // Attempts already counted in the optimistic streak/XP (re-records and
+  // retries reuse the attempt id).
+  const rewardedAttemptIds = useRef(new Set<string>());
   const fileStore = useMemo(
     () => (userId ? createDeviceAssetFileStore(userId) : null),
     [userId],
@@ -198,6 +206,7 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     setPendingCount(0);
     setDeadLetterCount(0);
     practicedSetIds.current.clear();
+    rewardedAttemptIds.current.clear();
     if (previous) void previous.dispose();
 
     if (isSessionPending) return;
@@ -315,7 +324,10 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       if (!current) return { state: "queued", reason: "unavailable" } as const;
       setIsSyncing(true);
       try {
-        const result = await current.checkForUpdates(organizationId);
+        // User-initiated: always check the server, even within the poll throttle.
+        const result = await current.checkForUpdates(organizationId, {
+          manual: true,
+        });
         if ("result" in result) await applyCheckpointResults(result);
         if (result.state !== "queued") setSyncError(null);
         return result;
@@ -330,37 +342,70 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
   );
 
   const clearLocalDataAndResync = useCallback(
-    async (organizationId?: string) => {
+    async (organizationId?: string): Promise<ResyncReport> => {
       const current = engineRef.current;
-      if (!current || !userId) throw new Error("Mobile sync is not ready.");
+      if (!current || !userId)
+        throw new Error("Sinkronisasi mobile belum siap.");
       setIsSyncing(true);
+      const bundles: BundleTiming[] = [];
+      const stopTiming = current.onBundleTiming((timing) => {
+        bundles.push(timing);
+      });
       try {
+        const startedAt = Date.now();
         const flush = await current.checkpoint(organizationId);
         if (
           flush.state !== "synced" ||
           (await sqliteMobileSyncStore.countOperations(userId))
         ) {
           throw new Error(
-            "Sync pending progress before clearing local data. Try again online.",
+            "Sinkronkan progres yang tertunda sebelum menghapus data lokal. Coba lagi saat online.",
           );
         }
+        const flushedAt = Date.now();
         await current.clearLocalCache();
         await assetCache?.clear();
         await Image.clearDiskCache();
         await Image.clearMemoryCache();
-        const result = await current.checkpoint(organizationId);
-        if (result.state !== "synced") {
+        const clearedAt = Date.now();
+        // Fetch every bundle right away (no background jitter) so the report
+        // measures how fast the device repopulates.
+        const refreshed = await current.refresh(organizationId, {
+          force: true,
+          immediateBundles: true,
+        });
+        if (refreshed.state === "queued") {
           throw new Error(
-            "Local data cleared, but resync failed. Try syncing again online.",
+            "Data lokal sudah dihapus, tetapi sinkronisasi ulang gagal. Coba sinkronkan lagi saat online.",
           );
         }
-        return result;
+        const indexedAt = Date.now();
+        await current.whenBundlesIdle();
+        const finishedAt = Date.now();
+        const report: ResyncReport = {
+          startedAt,
+          totalMs: finishedAt - startedAt,
+          flushMs: flushedAt - startedAt,
+          clearMs: clearedAt - flushedAt,
+          indexMs: indexedAt - clearedAt,
+          bundlesMs: finishedAt - indexedAt,
+          bundles,
+          stats: await current.getLocalDataStats(),
+        };
+        return report;
       } finally {
+        stopTiming();
         setIsSyncing(false);
       }
     },
     [assetCache, userId],
   );
+
+  const getLocalDataStats = useCallback(async () => {
+    const current = engineRef.current;
+    if (!current) throw new Error("Sinkronisasi mobile belum siap.");
+    return current.getLocalDataStats();
+  }, []);
 
   const prefetchLesson = useCallback(
     (courseId: string, courseItemId: string) => {
@@ -377,9 +422,25 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     () => ({
       recordVocabularyAttempt: async (input) => {
         const current = engineRef.current;
-        if (!current) throw new Error("Mobile sync is not ready");
+        if (!current) throw new Error("Sinkronisasi mobile belum siap.");
         practicedSetIds.current.add(input.attempt.vocabularySetId);
         await current.recordVocabularyAttempt(input);
+        // Optimistic: correct answers earn XP and a streak day on the server;
+        // show them now instead of after the round checkpoint.
+        const { attemptId, result } = input.attempt;
+        if (
+          result === "CORRECT" &&
+          !rewardedAttemptIds.current.has(attemptId)
+        ) {
+          rewardedAttemptIds.current.add(attemptId);
+          const todayKey = localDateKey(new Date(), input.timeZone);
+          await current
+            .patchGamification(
+              indexScope(activeOrganizationIdRef.current),
+              (gamification) => applyVocabularyReward(gamification, todayKey),
+            )
+            .catch(() => undefined);
+        }
       },
       finishVocabularySession: async (organizationId) => {
         const practiced = [...practicedSetIds.current];
@@ -467,11 +528,13 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       },
       prefetchLesson,
       clearLocalDataAndResync,
+      getLocalDataStats,
     }),
     [
       applyCheckpointResults,
       checkpoint,
       clearLocalDataAndResync,
+      getLocalDataStats,
       localData,
       prefetchLesson,
       queryClient,

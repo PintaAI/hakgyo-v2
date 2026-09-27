@@ -78,7 +78,7 @@ export function ForcedUpdateGate({ minProtocol }: { minProtocol: number }) {
           message:
             cause instanceof Error
               ? cause.message
-              : "The update could not be downloaded.",
+              : "Pembaruan tidak dapat diunduh.",
         });
       }
     };
@@ -111,21 +111,22 @@ export function ForcedUpdateGate({ minProtocol }: { minProtocol: number }) {
           accessibilityRole="header"
           className="text-center text-2xl font-black tracking-tight text-foreground"
         >
-          Update required
+          Pembaruan diperlukan
         </Text>
         <Text className="text-center text-sm leading-5 text-muted-foreground">
           {busy
             ? phase.kind === "checking"
-              ? "Checking for an update…"
+              ? "Memeriksa pembaruan…"
               : phase.kind === "downloading"
-                ? "Downloading the update…"
-                : "Restarting to apply the update…"
+                ? "Mengunduh pembaruan…"
+                : "Memulai ulang untuk menerapkan pembaruan…"
             : phase.kind === "error"
               ? phase.message
-              : "This version of Hakgyo can no longer sync with the server. Install the latest version to continue learning."}
+              : "Versi Hakgyo ini tidak dapat lagi disinkronkan dengan server. Pasang versi terbaru untuk melanjutkan belajar."}
         </Text>
         <Text className="text-center text-xs text-muted-foreground">
-          Your saved progress stays on this device and syncs after the update.
+          Progres kamu tetap tersimpan di perangkat ini dan akan disinkronkan
+          setelah pembaruan.
         </Text>
       </View>
 
@@ -140,15 +141,13 @@ export function ForcedUpdateGate({ minProtocol }: { minProtocol: number }) {
               onPress={openStore}
             >
               <Text className="font-bold text-primary-foreground">
-                {Platform.OS === "ios"
-                  ? "Open the App Store"
-                  : "Open Google Play"}
+                {Platform.OS === "ios" ? "Buka App Store" : "Buka Google Play"}
               </Text>
             </Pressable>
           ) : (
             <Text className="text-center text-sm text-muted-foreground">
-              Install the latest Hakgyo build from{" "}
-              {Platform.OS === "ios" ? "the App Store" : "Google Play"}.
+              Pasang versi Hakgyo terbaru dari{" "}
+              {Platform.OS === "ios" ? "App Store" : "Google Play"}.
             </Text>
           )}
           <Pressable
@@ -157,7 +156,7 @@ export function ForcedUpdateGate({ minProtocol }: { minProtocol: number }) {
             onPress={() => setAttempt((value) => value + 1)}
           >
             <Text className="font-bold text-foreground">
-              Check for an update again
+              Periksa pembaruan lagi
             </Text>
           </Pressable>
         </View>

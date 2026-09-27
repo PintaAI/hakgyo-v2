@@ -6,6 +6,7 @@ import { extractAssessmentQuestionsFromImage } from "~/server/ai/assessment-extr
 import { aiExtractionError, aiImageInputFields } from "~/server/ai/image-input";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { requireContentAuthor } from "~/server/authorization";
+import { assertAssessmentNotLive } from "~/server/assessment/live-status";
 import {
   MAX_ASSESSMENT_OPTIONS,
   MIN_ASSESSMENT_OPTIONS,
@@ -96,6 +97,7 @@ export const assessmentImportRouter = createTRPCRouter({
         input.assessmentId,
         ctx.actorUserId,
       );
+      await assertAssessmentNotLive(ctx.db, input.assessmentId);
       try {
         return {
           questions: await extractAssessmentQuestionsFromImage({
@@ -121,6 +123,7 @@ export const assessmentImportRouter = createTRPCRouter({
         input.assessmentId,
         ctx.actorUserId,
       );
+      await assertAssessmentNotLive(ctx.db, input.assessmentId);
       // Lock the assessment so concurrent creates cannot compute the same
       // next position, then append the questions in reviewed order.
       const created = await ctx.db.$transaction(async (tx) => {

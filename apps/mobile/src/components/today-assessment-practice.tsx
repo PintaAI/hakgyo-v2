@@ -76,7 +76,7 @@ export function TodayAssessmentPractice({
     (answer) => answer.correct,
   ).length;
   const openQuestions = useQuestionNavigator({
-    title: "Today’s assessment",
+    title: "Tugas hari ini",
     current: index,
     statuses,
     onSelect: (next) => {
@@ -139,27 +139,27 @@ export function TodayAssessmentPractice({
     <View className="gap-4">
       {!pool.hasAvailableContent ? (
         <Empty>
-          Assessment practice appears when an unlocked course has published
-          choice questions.
+          Latihan tugas muncul jika course yang terbuka memiliki soal pilihan
+          yang dipublikasikan.
         </Empty>
       ) : finished ? (
         <StudyGlass>
           <Text className="text-2xl font-black text-foreground">
-            {score} of {questions.length} correct
+            {score} dari {questions.length} benar
           </Text>
           <Text className="text-sm leading-5 text-muted-foreground">
-            Practice complete. Your grades, attempts, course progress, and XP
-            were not changed.
+            Latihan selesai. Nilai, percobaan, progres course, dan XP kamu tidak
+            berubah.
           </Text>
           <StudyAction secondary onPress={openQuestions}>
-            Review questions
+            Tinjau soal
           </StudyAction>
-          <StudyAction onPress={newSample}>Get another random set</StudyAction>
+          <StudyAction onPress={newSample}>Ambil set acak lainnya</StudyAction>
         </StudyGlass>
       ) : question ? (
         <>
           <Text className="text-lg font-bold tracking-tight text-foreground">
-            Today’s assessment
+            Tugas hari ini
           </Text>
           <Text
             className="text-xs font-bold uppercase tracking-[1.2px] text-muted-foreground"
@@ -181,8 +181,8 @@ export function TodayAssessmentPractice({
           </AssessmentQuestion>
           <Text className="text-sm font-bold text-foreground">
             {question.type === "MULTIPLE_CHOICE"
-              ? "Select every correct answer, then check"
-              : "Tap an answer to check it"}
+              ? "Pilih semua jawaban yang benar, lalu periksa"
+              : "Ketuk jawaban untuk memeriksanya"}
           </Text>
           <View className="gap-3">
             {question.options.map((option, optionIndex) => (
@@ -216,14 +216,14 @@ export function TodayAssessmentPractice({
                   />
                 ) : (
                   <Text className="text-sm text-muted-foreground">
-                    The correct answer is marked above.
+                    Jawaban yang benar ditandai di atas.
                   </Text>
                 )}
               </AssessmentFeedback>
               <StudyAction onPress={nextQuestion}>
                 {answered === questions.length
-                  ? "See practice result"
-                  : "Next unanswered →"}
+                  ? "Lihat hasil latihan"
+                  : "Soal belum dijawab berikutnya →"}
               </StudyAction>
             </>
           ) : null}
@@ -245,10 +245,10 @@ export function TodayAssessmentPractice({
               onPress={() => void checkAnswer(selected)}
             >
               {grade.isPending
-                ? "Checking your answer…"
+                ? "Memeriksa jawaban kamu…"
                 : grade.isError
-                  ? "Retry checking answer"
-                  : "Check answer"}
+                  ? "Coba periksa lagi"
+                  : "Periksa jawaban"}
             </StudyAction>
           ) : null}
         </>

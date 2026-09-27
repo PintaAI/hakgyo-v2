@@ -7,7 +7,7 @@ export type WeeklyProgressDay = {
   weekday: string;
 };
 
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
 function shiftDateKey(dateKey: string, days: number) {
   const [year, month, day] = dateKey.split("-").map(Number);

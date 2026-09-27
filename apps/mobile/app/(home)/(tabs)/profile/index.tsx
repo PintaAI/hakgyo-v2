@@ -3,11 +3,15 @@ import Constants from "expo-constants";
 import { router } from "expo-router";
 import * as Updates from "expo-updates";
 import { useUpdates } from "expo-updates";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Text } from "react-native";
 
 import { AppSegmentedControl } from "../../../../src/components/app-segmented-control";
 import { DoodleBackground } from "../../../../src/components/doodle-background";
+import {
+  formatDuration,
+  LocalDataReport,
+} from "../../../../src/components/local-data-report";
 import { StudyScreen } from "../../../../src/components/learning-ui";
 import {
   MilestoneTrail,
@@ -23,6 +27,9 @@ import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
+import { useSyncIndex } from "../../../../src/sync/hooks";
+import type { LocalDataStats } from "../../../../src/sync/store";
+import type { ResyncReport } from "../../../../src/sync/types";
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 const UPDATE_CHANNEL = Updates.channel ?? "unpublished";
@@ -49,10 +56,33 @@ export default function ProfileTab() {
     upgradeRequired,
     syncNow,
     clearLocalDataAndResync,
+    getLocalDataStats,
   } = useMobileSync();
   const [isResetting, setIsResetting] = useState(false);
+  const [localStats, setLocalStats] = useState<LocalDataStats | null>(null);
+  const [resyncReport, setResyncReport] = useState<ResyncReport | null>(null);
+  const syncIndex = useSyncIndex(activeOrganizationId);
+  const courseTitles = useMemo(
+    () =>
+      Object.fromEntries(
+        (syncIndex.data?.courses ?? []).map((course) => [
+          course.id,
+          course.title,
+        ]),
+      ),
+    [syncIndex.data],
+  );
+  const refreshLocalStats = useCallback(() => {
+    if (!__DEV__) return;
+    void getLocalDataStats()
+      .then(setLocalStats)
+      .catch(() => undefined);
+  }, [getLocalDataStats]);
+  useEffect(() => {
+    if (!isSyncing) refreshLocalStats();
+  }, [isSyncing, refreshLocalStats]);
   const progress = api.gamification.getMySummary.useQuery();
-  const displayName = session?.user.name || "Hakgyo learner";
+  const displayName = session?.user.name || "Pelajar Hakgyo";
   const initials = displayName
     .trim()
     .split(/\s+/)
@@ -67,19 +97,19 @@ export default function ProfileTab() {
     try {
       if (__DEV__ || !Updates.isEnabled) {
         Alert.alert(
-          "Updates",
-          "Over-the-air updates only work in standalone builds. You are running in development mode.",
+          "Pembaruan",
+          "Pembaruan over-the-air hanya berfungsi di build standalone. Kamu sedang menjalankan mode pengembangan.",
         );
         return;
       }
       if (isUpdatePending) {
         Alert.alert(
-          "Update ready",
-          "A downloaded update is waiting. Restart now to apply it?",
+          "Pembaruan siap",
+          "Pembaruan yang sudah diunduh sedang menunggu. Mulai ulang sekarang untuk menerapkannya?",
           [
-            { text: "Later", style: "cancel" },
+            { text: "Nanti", style: "cancel" },
             {
-              text: "Restart",
+              text: "Mulai ulang",
               onPress: () => void Updates.reloadAsync(),
             },
           ],
@@ -89,35 +119,41 @@ export default function ProfileTab() {
       const result = await Updates.checkForUpdateAsync();
       if (!result.isAvailable) {
         Alert.alert(
-          "Up to date",
-          `You are on the latest ${UPDATE_CHANNEL} update (v${APP_VERSION}).`,
+          "Sudah terbaru",
+          `Kamu sudah memakai pembaruan ${UPDATE_CHANNEL} terbaru (v${APP_VERSION}).`,
         );
         return;
       }
-      Alert.alert("Update available", "Download it and restart the app now?", [
-        { text: "Later", style: "cancel" },
-        {
-          text: "Download & restart",
-          onPress: () =>
-            void (async () => {
-              try {
-                await Updates.fetchUpdateAsync();
-                await Updates.reloadAsync();
-              } catch (cause) {
-                Alert.alert(
-                  "Update failed",
-                  cause instanceof Error
-                    ? cause.message
-                    : "Could not download the update.",
-                );
-              }
-            })(),
-        },
-      ]);
+      Alert.alert(
+        "Pembaruan tersedia",
+        "Unduh dan mulai ulang aplikasi sekarang?",
+        [
+          { text: "Nanti", style: "cancel" },
+          {
+            text: "Unduh & mulai ulang",
+            onPress: () =>
+              void (async () => {
+                try {
+                  await Updates.fetchUpdateAsync();
+                  await Updates.reloadAsync();
+                } catch (cause) {
+                  Alert.alert(
+                    "Pembaruan gagal",
+                    cause instanceof Error
+                      ? cause.message
+                      : "Pembaruan tidak dapat diunduh.",
+                  );
+                }
+              })(),
+          },
+        ],
+      );
     } catch (cause) {
       Alert.alert(
-        "Update check failed",
-        cause instanceof Error ? cause.message : "Could not check for updates.",
+        "Gagal memeriksa pembaruan",
+        cause instanceof Error
+          ? cause.message
+          : "Tidak dapat memeriksa pembaruan.",
       );
     } finally {
       setIsCheckingUpdates(false);
@@ -132,7 +168,7 @@ export default function ProfileTab() {
       const result = await authClient.signOut();
 
       if (result.error) {
-        setError(result.error.message || "Unable to sign out.");
+        setError(result.error.message || "Tidak dapat keluar.");
         return;
       }
 
@@ -140,7 +176,7 @@ export default function ProfileTab() {
       queryClient.clear();
       router.replace("/");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to sign out.");
+      setError(cause instanceof Error ? cause.message : "Tidak dapat keluar.");
     } finally {
       setIsSigningOut(false);
     }
@@ -164,7 +200,7 @@ export default function ProfileTab() {
           Profil
         </Text>
         <AppSegmentedControl
-          values={["Profile", "Settings"]}
+          values={["Profil", "Pengaturan"]}
           selectedIndex={segment}
           onIndexChange={setSegment}
         />
@@ -175,7 +211,7 @@ export default function ProfileTab() {
               displayName={displayName}
               initials={initials}
               image={session?.user.image}
-              email={session?.user.email ?? "Not signed in"}
+              email={session?.user.email ?? "Belum masuk"}
               stats={progress.data?.profileStats}
               isPending={progress.isPending}
             />
@@ -193,16 +229,16 @@ export default function ProfileTab() {
           </>
         ) : (
           <>
-            <SettingsSection title="Account">
+            <SettingsSection title="Akun">
               <SettingsRow
-                label="Account details"
-                detail={session?.user.email ?? "Not signed in"}
+                label="Detail akun"
+                detail={session?.user.email ?? "Belum masuk"}
                 symbol="person.crop.circle"
                 fallback="?"
                 onPress={() => router.push("/(home)/(tabs)/profile/account")}
               />
               <SettingsRow
-                label="Sign out"
+                label="Keluar"
                 symbol="arrow.right"
                 fallback="→"
                 destructive
@@ -210,9 +246,9 @@ export default function ProfileTab() {
               />
             </SettingsSection>
 
-            <SettingsSection title="Appearance">
+            <SettingsSection title="Tampilan">
               <SettingsRow
-                label="Organization"
+                label="Organisasi"
                 detail={activeBrand.name}
                 symbol="square.grid.2x2"
                 fallback="#"
@@ -220,21 +256,21 @@ export default function ProfileTab() {
               />
             </SettingsSection>
 
-            <SettingsSection title="Notifications">
+            <SettingsSection title="Notifikasi">
               <SettingsRow
-                label="Reminders and alerts"
-                detail="System settings"
+                label="Pengingat dan peringatan"
+                detail="Pengaturan sistem"
                 symbol="speaker.fill"
                 fallback="♪"
                 onPress={() => void Linking.openSettings()}
               />
             </SettingsSection>
 
-            <SettingsSection title="Updates">
+            <SettingsSection title="Pembaruan">
               {upgradeRequired ? (
                 <SettingsRow
-                  label="Update required"
-                  detail={`The server needs sync protocol ${upgradeRequired.minProtocol}. Progress stays on this device until you update.`}
+                  label="Pembaruan diperlukan"
+                  detail={`Server membutuhkan protokol sinkronisasi ${upgradeRequired.minProtocol}. Progres tetap tersimpan di perangkat ini sampai kamu memperbarui aplikasi.`}
                   symbol="exclamationmark.triangle.fill"
                   fallback="!"
                   destructive
@@ -242,27 +278,27 @@ export default function ProfileTab() {
                 />
               ) : null}
               <SettingsRow
-                label="Sync lessons and progress"
+                label="Sinkronkan materi dan progres"
                 detail={
                   isSyncing
-                    ? "Syncing…"
+                    ? "Menyinkronkan…"
                     : pendingCount
-                      ? `${pendingCount} change${pendingCount === 1 ? "" : "s"} waiting to sync`
+                      ? `${pendingCount} perubahan menunggu sinkronisasi`
                       : deadLetterCount
-                        ? `${deadLetterCount} change${deadLetterCount === 1 ? "" : "s"} could not be synced`
-                        : "Up to date"
+                        ? `${deadLetterCount} perubahan gagal disinkronkan`
+                        : "Sudah terbaru"
                 }
                 symbol="arrow.triangle.2.circlepath"
                 fallback="↻"
                 onPress={() => void syncNow(activeOrganizationId ?? undefined)}
               />
               <SettingsRow
-                label="Check for updates"
+                label="Periksa pembaruan"
                 detail={
                   isCheckingUpdates
-                    ? "Checking…"
+                    ? "Memeriksa…"
                     : isUpdatePending
-                      ? "Restart to apply"
+                      ? "Mulai ulang untuk menerapkan"
                       : `v${APP_VERSION}`
                 }
                 symbol="checkmark"
@@ -270,7 +306,7 @@ export default function ProfileTab() {
                 onPress={() => void handleCheckForUpdates()}
               />
               <SettingsRow
-                label={`App version ${APP_VERSION}`}
+                label={`Versi aplikasi ${APP_VERSION}`}
                 detail={
                   CURRENT_UPDATE_ID
                     ? `${UPDATE_CHANNEL} · ${CURRENT_UPDATE_ID.slice(0, 8)}`
@@ -280,57 +316,59 @@ export default function ProfileTab() {
                 fallback="i"
                 onPress={() =>
                   Alert.alert(
-                    "App version",
+                    "Versi aplikasi",
                     CURRENT_UPDATE_ID
-                      ? `v${APP_VERSION} (${UPDATE_CHANNEL})\nUpdate: ${CURRENT_UPDATE_ID}`
-                      : `v${APP_VERSION} (${UPDATE_CHANNEL})\nEmbedded build, no OTA update applied yet.`,
+                      ? `v${APP_VERSION} (${UPDATE_CHANNEL})\nPembaruan: ${CURRENT_UPDATE_ID}`
+                      : `v${APP_VERSION} (${UPDATE_CHANNEL})\nBuild bawaan, belum ada pembaruan OTA yang diterapkan.`,
                   )
                 }
               />
             </SettingsSection>
 
             {__DEV__ ? (
-              <SettingsSection title="Development">
+              <SettingsSection title="Pengembangan">
                 <SettingsRow
-                  label="Clear local data & resync"
+                  label="Hapus data lokal & sinkronkan ulang"
                   detail={
                     isResetting
-                      ? "Clearing and syncing…"
-                      : "Refresh cached learning data and images"
+                      ? "Menghapus dan menyinkronkan…"
+                      : "Muat ulang data belajar dan gambar yang tersimpan"
                   }
                   symbol="arrow.clockwise"
                   fallback="↻"
                   onPress={() => {
                     if (isResetting || isSyncing) return;
                     Alert.alert(
-                      "Clear local data?",
-                      "Pending progress will sync first. Local cached learning data and images will then be downloaded again.",
+                      "Hapus data lokal?",
+                      "Progres yang tertunda akan disinkronkan terlebih dahulu. Setelah itu, data belajar dan gambar akan diunduh ulang.",
                       [
-                        { text: "Cancel", style: "cancel" },
+                        { text: "Batal", style: "cancel" },
                         {
-                          text: "Clear & resync",
+                          text: "Hapus & sinkronkan ulang",
                           onPress: () => {
                             setIsResetting(true);
                             void clearLocalDataAndResync(
                               activeOrganizationId ?? undefined,
                             )
-                              .then(async () => {
+                              .then(async (report) => {
+                                setResyncReport(report);
+                                setLocalStats(report.stats);
                                 await Promise.all([
                                   refreshOrganizations(),
                                   progress.refetch(),
                                   refetchSession(),
                                 ]);
                                 Alert.alert(
-                                  "Resync complete",
-                                  "Local data has been refreshed.",
+                                  "Sinkronisasi ulang selesai",
+                                  `Data dimuat ulang dalam ${formatDuration(report.totalMs)}. Lihat rinciannya di bawah.`,
                                 );
                               })
                               .catch((cause: unknown) => {
                                 Alert.alert(
-                                  "Unable to resync",
+                                  "Tidak dapat menyinkronkan ulang",
                                   cause instanceof Error
                                     ? cause.message
-                                    : "Please try again online.",
+                                    : "Coba lagi saat online.",
                                 );
                               })
                               .finally(() => setIsResetting(false));
@@ -340,18 +378,24 @@ export default function ProfileTab() {
                     );
                   }}
                 />
+                <LocalDataReport
+                  stats={localStats}
+                  report={resyncReport}
+                  courseTitles={courseTitles}
+                  isSyncing={isResetting}
+                />
               </SettingsSection>
             ) : null}
 
-            <SettingsSection title="Support">
+            <SettingsSection title="Bantuan">
               <SettingsRow
-                label="Send feedback"
+                label="Kirim masukan"
                 symbol="paperplane.fill"
                 fallback="✈"
                 onPress={() =>
                   Alert.alert(
-                    "Support",
-                    "A support contact is not configured yet. Please reach out to your organization administrator.",
+                    "Bantuan",
+                    "Kontak bantuan belum diatur. Silakan hubungi admin organisasi kamu.",
                   )
                 }
               />
@@ -362,7 +406,7 @@ export default function ProfileTab() {
                 accessibilityLiveRegion="polite"
                 className="text-center text-sm font-semibold text-muted-foreground"
               >
-                {error ?? "Signing out…"}
+                {error ?? "Sedang keluar…"}
               </Text>
             ) : null}
           </>

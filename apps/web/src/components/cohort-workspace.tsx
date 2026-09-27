@@ -42,6 +42,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
+import { EmptyState } from "~/components/ui/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { ReviewQueue } from "~/components/review-queue";
 import {
@@ -102,18 +103,19 @@ type CohortView =
   | "settings";
 
 const views = [
-  { value: "overview", label: "Overview", icon: LayoutDashboardIcon },
+  { value: "overview", label: "Ringkasan", icon: LayoutDashboardIcon },
   { value: "learners", label: "Siswa", icon: UsersIcon },
   { value: "staff", label: "Staff", icon: UserRoundCogIcon },
-  { value: "meetings", label: "Meetings", icon: VideoIcon },
-  { value: "assessments", label: "Assessment events", icon: ClipboardListIcon },
+  { value: "meetings", label: "Pertemuan", icon: VideoIcon },
+  { value: "assessments", label: "Event tugas", icon: ClipboardListIcon },
   { value: "reviews", label: "Hasil & review", icon: ClipboardCheckIcon },
   { value: "settings", label: "Pengaturan", icon: Settings2Icon },
 ] satisfies Array<{ value: CohortView; label: string; icon: LucideIcon }>;
 
 const validViews = new Set<CohortView>(views.map(({ value }) => value));
 const statusLabels = {
-  DRAFT: "Draf",
+  // Cohort DRAFT: being set up, not visible to learners yet.
+  DRAFT: "Persiapan",
   OPEN: "Dibuka",
   IN_PROGRESS: "Berjalan",
   COMPLETED: "Selesai",
@@ -183,31 +185,6 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="rounded-md border border-dashed px-5 py-12 text-center">
-      <Icon className="text-muted-foreground mx-auto size-6" />
-      <h3 className="mt-3 font-[family-name:var(--font-hanken-grotesk)] text-base font-medium">
-        {title}
-      </h3>
-      <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-xs leading-relaxed">
-        {description}
-      </p>
-      {action}
-    </div>
-  );
-}
-
 function LoadingRows({ error }: { error?: { message: string } | null }) {
   if (error) {
     return (
@@ -231,7 +208,7 @@ function Stat({ label, value }: { label: string; value: number | string }) {
       <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase sm:text-xs">
         {label}
       </span>
-      <span className="mt-1 font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight tabular-nums sm:text-3xl">
+      <span className="font-heading mt-1 text-2xl font-medium tracking-tight tabular-nums sm:text-3xl">
         {value}
       </span>
     </div>
@@ -352,7 +329,7 @@ export function CohortWorkspace({
                 {statusLabels[cohort.status]}
               </Badge>
             </div>
-            <h1 className="text-foreground mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
+            <h1 className="text-foreground font-heading mt-4 text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
               {cohort.name}
             </h1>
             <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
@@ -517,7 +494,7 @@ function Overview({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
         <Card className="gap-0 rounded-lg py-0">
           <CardHeader className="border-b py-4">
-            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
+            <CardTitle className="font-heading text-lg">
               Detail Group belajar
             </CardTitle>
             <CardDescription>
@@ -581,9 +558,7 @@ function Overview({
         </Card>
         <Card className="gap-0 rounded-lg py-0">
           <CardHeader className="border-b py-4">
-            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
-              Operasi
-            </CardTitle>
+            <CardTitle className="font-heading text-lg">Operasi</CardTitle>
             <CardDescription>
               Kelola bagian Group belajar tanpa berpindah halaman.
             </CardDescription>
@@ -622,9 +597,7 @@ function Overview({
       </div>
       <Card className="gap-0 rounded-lg py-0">
         <CardHeader className="border-b py-4">
-          <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
-            Aksi cepat
-          </CardTitle>
+          <CardTitle className="font-heading text-lg">Aksi cepat</CardTitle>
           <CardDescription>
             Akses tindakan yang paling sering digunakan untuk Group belajar ini.
           </CardDescription>
@@ -751,6 +724,7 @@ function Learners({
         <Card>
           <CardContent>
             <EmptyState
+              size="sm"
               icon={UsersIcon}
               title="Belum ada siswa"
               description="Tambahkan akun Hakgyo menggunakan alamat email."
@@ -876,6 +850,7 @@ function Learners({
           ) : (
             <CardContent>
               <EmptyState
+                size="sm"
                 icon={SearchIcon}
                 title="Siswa tidak ditemukan"
                 description="Coba nama atau email yang berbeda."
@@ -1073,6 +1048,7 @@ function Staff({ canManage, cohort }: { canManage: boolean; cohort: Cohort }) {
         <Card>
           <CardContent>
             <EmptyState
+              size="sm"
               icon={UserRoundCogIcon}
               title="Belum ada staff"
               description="Tambahkan organization member menggunakan email."
@@ -1324,6 +1300,7 @@ function Meetings({
         <Card>
           <CardContent>
             <EmptyState
+              size="sm"
               icon={VideoIcon}
               title="Belum ada meeting"
               description={
@@ -1587,42 +1564,85 @@ function Settings({
 }) {
   const router = useRouter();
   const utils = api.useUtils();
-  const [name, setName] = useState(cohort.name);
-  const [description, setDescription] = useState(cohort.description ?? "");
-  const [status, setStatus] = useState(cohort.status);
-  const [capacity, setCapacity] = useState(
-    cohort.capacity ? String(cohort.capacity) : "",
+  const loaded = cohortSettingsValues(cohort);
+  const [name, setName] = useState(loaded.name);
+  const [description, setDescription] = useState(loaded.description);
+  const [status, setStatus] = useState(loaded.status);
+  const [capacity, setCapacity] = useState(loaded.capacity);
+  const [price, setPrice] = useState(loaded.price);
+  const [startsAt, setStartsAt] = useState(loaded.startsAt);
+  const [endsAt, setEndsAt] = useState(loaded.endsAt);
+  const [whatsapp, setWhatsapp] = useState(loaded.whatsapp);
+  const [enrollmentMode, setEnrollmentMode] = useState<string>(
+    loaded.enrollmentMode,
   );
-  const [price, setPrice] = useState(
-    cohort.price === null ? "" : String(cohort.price),
-  );
-  const [startsAt, setStartsAt] = useState(toDateInput(cohort.startsAt));
-  const [endsAt, setEndsAt] = useState(toDateInput(cohort.endsAt));
-  const [whatsapp, setWhatsapp] = useState(cohort.whatsappGroupUrl ?? "");
-  const [enrollmentMode, setEnrollmentMode] = useState(
-    cohort.enrollmentMode ?? "INHERIT",
-  );
+  // The values the form was loaded from. When the cohort changes underneath
+  // (another tab, a refetch), re-sync only the fields that changed on the
+  // server so unrelated unsaved edits are kept.
+  const [source, setSource] = useState(loaded);
+  if (
+    (Object.keys(loaded) as (keyof typeof loaded)[]).some(
+      (key) => loaded[key] !== source[key],
+    )
+  ) {
+    setSource(loaded);
+    if (loaded.name !== source.name) setName(loaded.name);
+    if (loaded.description !== source.description) {
+      setDescription(loaded.description);
+    }
+    if (loaded.status !== source.status) setStatus(loaded.status);
+    if (loaded.capacity !== source.capacity) setCapacity(loaded.capacity);
+    if (loaded.price !== source.price) setPrice(loaded.price);
+    if (loaded.startsAt !== source.startsAt) setStartsAt(loaded.startsAt);
+    if (loaded.endsAt !== source.endsAt) setEndsAt(loaded.endsAt);
+    if (loaded.whatsapp !== source.whatsapp) setWhatsapp(loaded.whatsapp);
+    if (loaded.enrollmentMode !== source.enrollmentMode) {
+      setEnrollmentMode(loaded.enrollmentMode);
+    }
+  }
   const [deleteOpen, setDeleteOpen] = useState(false);
   const update = api.cohort.update.useMutation();
   const remove = api.cohort.delete.useMutation();
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Send only the fields changed in this form (compared with the values it
+    // was loaded from), so saving never reverts changes made elsewhere.
+    const changes = {
+      ...(name.trim() !== source.name.trim() ? { name: name.trim() } : {}),
+      ...(description.trim() !== source.description.trim()
+        ? { description: description.trim() || null }
+        : {}),
+      ...(status !== source.status ? { status } : {}),
+      ...(capacity !== source.capacity
+        ? { capacity: capacity ? Number(capacity) : null }
+        : {}),
+      ...(price !== source.price
+        ? { price: price ? Number(price) : null }
+        : {}),
+      ...(startsAt !== source.startsAt
+        ? { startsAt: startsAt ? new Date(`${startsAt}T00:00:00`) : null }
+        : {}),
+      ...(endsAt !== source.endsAt
+        ? { endsAt: endsAt ? new Date(`${endsAt}T23:59:59`) : null }
+        : {}),
+      ...(whatsapp.trim() !== source.whatsapp.trim()
+        ? { whatsappGroupUrl: whatsapp.trim() || null }
+        : {}),
+      ...(enrollmentMode !== source.enrollmentMode
+        ? {
+            enrollmentMode:
+              enrollmentMode === "INHERIT"
+                ? null
+                : (enrollmentMode as "OPEN" | "INVITE_ONLY"),
+          }
+        : {}),
+    };
+    if (Object.keys(changes).length === 0) {
+      toast.info("Tidak ada perubahan untuk disimpan.");
+      return;
+    }
     try {
-      await update.mutateAsync({
-        cohortId: cohort.id,
-        name: name.trim(),
-        description: description.trim() || null,
-        status,
-        capacity: capacity ? Number(capacity) : null,
-        price: price ? Number(price) : null,
-        startsAt: startsAt ? new Date(`${startsAt}T00:00:00`) : null,
-        endsAt: endsAt ? new Date(`${endsAt}T23:59:59`) : null,
-        whatsappGroupUrl: whatsapp.trim() || null,
-        enrollmentMode:
-          enrollmentMode === "INHERIT"
-            ? null
-            : (enrollmentMode as "OPEN" | "INVITE_ONLY"),
-      });
+      await update.mutateAsync({ cohortId: cohort.id, ...changes });
       await utils.cohort.get.invalidate({ cohortId: cohort.id });
       toast.success("Group belajar diperbarui.");
     } catch (cause) {
@@ -1649,7 +1669,7 @@ function Settings({
       <form onSubmit={submit} className="space-y-4">
         <Card className="gap-0 rounded-lg py-0">
           <CardHeader className="border-b py-4">
-            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
+            <CardTitle className="font-heading text-lg">
               Informasi umum
             </CardTitle>
             <CardDescription>
@@ -1683,7 +1703,7 @@ function Settings({
 
         <Card className="gap-0 rounded-lg py-0">
           <CardHeader className="border-b py-4">
-            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
+            <CardTitle className="font-heading text-lg">
               Status & akses
             </CardTitle>
             <CardDescription>
@@ -1738,7 +1758,7 @@ function Settings({
 
         <Card className="gap-0 rounded-lg py-0">
           <CardHeader className="border-b py-4">
-            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg">
+            <CardTitle className="font-heading text-lg">
               Jadwal & tautan
             </CardTitle>
             <CardDescription>
@@ -1792,7 +1812,7 @@ function Settings({
       {canDelete ? (
         <Card className="border-destructive/20 gap-0 rounded-lg py-0">
           <CardHeader className="border-b py-4">
-            <CardTitle className="text-destructive font-[family-name:var(--font-hanken-grotesk)] text-lg">
+            <CardTitle className="text-destructive font-heading text-lg">
               Zona berbahaya
             </CardTitle>
             <CardDescription>
@@ -1856,7 +1876,7 @@ function SectionHeading({
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
+        <h2 className="font-heading text-2xl font-medium tracking-tight">
           {title}
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">{description}</p>
@@ -1903,6 +1923,21 @@ function FieldSelect({
     </div>
   );
 }
+/** Editable cohort settings as form values (strings for inputs). */
+function cohortSettingsValues(cohort: Cohort) {
+  return {
+    name: cohort.name,
+    description: cohort.description ?? "",
+    status: cohort.status,
+    capacity: cohort.capacity ? String(cohort.capacity) : "",
+    price: cohort.price === null ? "" : String(cohort.price),
+    startsAt: toDateInput(cohort.startsAt),
+    endsAt: toDateInput(cohort.endsAt),
+    whatsapp: cohort.whatsappGroupUrl ?? "",
+    enrollmentMode: (cohort.enrollmentMode ?? "INHERIT") as string,
+  };
+}
+
 function toDateInput(value: Date | null) {
   return value
     ? new Date(value.getTime() - value.getTimezoneOffset() * 60000)

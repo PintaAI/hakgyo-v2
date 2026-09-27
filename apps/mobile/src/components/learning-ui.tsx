@@ -348,7 +348,7 @@ export function Row({
       </View>
       {onPress ? (
         <Text className="text-lg text-muted-foreground">
-          {disabled ? "Locked" : "›"}
+          {disabled ? "Terkunci" : "›"}
         </Text>
       ) : null}
     </Pressable>
@@ -371,12 +371,12 @@ export function QueryState({
           {error.message}
         </Text>
         <Action secondary onPress={retry}>
-          Try again
+          Coba lagi
         </Action>
       </View>
     );
   return pending ? (
-    <ActivityIndicator accessibilityLabel="Loading" className="py-8" />
+    <ActivityIndicator accessibilityLabel="Memuat" className="py-8" />
   ) : null;
 }
 

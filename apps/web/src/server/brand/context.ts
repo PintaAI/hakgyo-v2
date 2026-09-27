@@ -148,7 +148,7 @@ export async function getActiveBrandContext({
       },
     });
 
-    if (!cohort || cohort.course.status === "ARCHIVED") {
+    if (!cohort) {
       return resolveBrandContext({ organization: null, source: "default" });
     }
 
@@ -220,7 +220,7 @@ export async function getActiveBrandContext({
       },
     });
 
-    if (!course || course.status === "ARCHIVED") {
+    if (!course) {
       return resolveBrandContext({ organization: null, source: "default" });
     }
 

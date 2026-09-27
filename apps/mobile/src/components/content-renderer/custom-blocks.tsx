@@ -62,7 +62,11 @@ function CustomAssetAudio({ block }: BlockRendererProps) {
 function CustomAssetImage({ block }: BlockRendererProps) {
   return (
     <ContentImage
-      accessibilityLabel={stringProp(block.props, "fileName", "Learning image")}
+      accessibilityLabel={stringProp(
+        block.props,
+        "fileName",
+        "Gambar pembelajaran",
+      )}
       caption={stringProp(block.props, "caption")}
       source={assetSource(stringProp(block.props, "assetId"))}
     />
@@ -104,7 +108,7 @@ function VocabularyReference({ block }: BlockRendererProps) {
     return (
       <View className="rounded-xl border border-dashed border-border p-5">
         <Text className="text-sm text-muted-foreground">
-          Vocabulary set unavailable.
+          Set kosakata tidak tersedia.
         </Text>
       </View>
     );
@@ -114,7 +118,7 @@ function VocabularyReference({ block }: BlockRendererProps) {
     <View className="overflow-hidden rounded-xl border border-border bg-card">
       <View className="gap-2 border-b border-border bg-muted/40 p-5">
         <Text className="text-xs font-black uppercase tracking-[1.5px] text-primary">
-          Vocabulary
+          Kosakata
         </Text>
         <Text className="text-2xl font-black text-foreground">
           {resource.title}
@@ -125,16 +129,16 @@ function VocabularyReference({ block }: BlockRendererProps) {
           </Text>
         ) : null}
         <Text className="text-xs font-bold text-muted-foreground">
-          {resource.entries.length} words
+          {resource.entries.length} kata
         </Text>
       </View>
       <View className="gap-3 p-4">
         {resource.entries.length > 8 ? (
           <TextInput
-            accessibilityLabel="Search vocabulary"
+            accessibilityLabel="Cari kosakata"
             className="rounded-xl border border-border bg-background px-4 py-3 text-foreground"
             onChangeText={setQuery}
-            placeholder="Search words or meanings…"
+            placeholder="Cari kata atau arti…"
             placeholderTextColor={colors.mutedForeground}
             value={query}
           />
@@ -145,7 +149,7 @@ function VocabularyReference({ block }: BlockRendererProps) {
             key={entry.id}
           >
             <Pressable
-              accessibilityLabel={`View details for ${entry.term}`}
+              accessibilityLabel={`Lihat detail ${entry.term}`}
               accessibilityRole="button"
               className="gap-3 active:opacity-60"
               onPress={() => {
@@ -204,8 +208,8 @@ function VocabularyReference({ block }: BlockRendererProps) {
         {!entries.length ? (
           <Text className="py-5 text-center text-sm text-muted-foreground">
             {resource.entries.length
-              ? "No matching vocabulary."
-              : "This set has no vocabulary yet."}
+              ? "Tidak ada kosakata yang cocok."
+              : "Set ini belum memiliki kosakata."}
           </Text>
         ) : null}
         <Pressable
@@ -235,7 +239,7 @@ function AssessmentReference({ block }: BlockRendererProps) {
     return (
       <View className="rounded-xl border border-dashed border-border p-5">
         <Text className="text-sm text-muted-foreground">
-          Assessment unavailable.
+          Tugas tidak tersedia.
         </Text>
       </View>
     );
@@ -270,7 +274,7 @@ function AssessmentReference({ block }: BlockRendererProps) {
         <Text
           className={`font-black ${resource.courseItemId ? "text-primary-foreground" : "text-muted-foreground"}`}
         >
-          {resource.courseItemId ? "Start assessment →" : "Not available"}
+          {resource.courseItemId ? "Mulai tugas →" : "Tidak tersedia"}
         </Text>
       </Pressable>
     </View>
@@ -278,10 +282,10 @@ function AssessmentReference({ block }: BlockRendererProps) {
 }
 
 const calloutTones = {
-  info: { accent: "#0284c7", label: "Note" },
-  tip: { accent: "#d97706", label: "Study tip" },
-  warning: { accent: "#e11d48", label: "Attention" },
-  success: { accent: "#059669", label: "Key point" },
+  info: { accent: "#0284c7", label: "Catatan" },
+  tip: { accent: "#d97706", label: "Tips belajar" },
+  warning: { accent: "#e11d48", label: "Perhatian" },
+  success: { accent: "#059669", label: "Poin penting" },
 } as const;
 
 function Callout({ block }: BlockRendererProps) {
@@ -358,7 +362,7 @@ function LessonPage({ block }: BlockRendererProps) {
             accessibilityLabel={stringProp(
               block.props,
               "fileName",
-              "Lesson context",
+              "Konteks materi",
             )}
             source={assetSource(assetId)}
           />
@@ -367,7 +371,7 @@ function LessonPage({ block }: BlockRendererProps) {
 
       <View className="gap-3">
         <View className="rounded-xl bg-muted/60 p-4">
-          <SectionLabel>Example question</SectionLabel>
+          <SectionLabel>Contoh pertanyaan</SectionLabel>
           <Text className="mt-2 text-base font-bold leading-6 text-foreground">
             {stringProp(block.props, "question")}
           </Text>
@@ -376,7 +380,7 @@ function LessonPage({ block }: BlockRendererProps) {
           className="rounded-xl border-l-4 bg-muted/60 p-4"
           style={{ borderLeftColor: accent }}
         >
-          <SectionLabel>Example answer</SectionLabel>
+          <SectionLabel>Contoh jawaban</SectionLabel>
           <Text className="mt-2 text-base leading-6 text-foreground">
             {stringProp(block.props, "answer")}
           </Text>
@@ -384,7 +388,7 @@ function LessonPage({ block }: BlockRendererProps) {
       </View>
 
       <View className="gap-3">
-        <SectionLabel>Lesson focus</SectionLabel>
+        <SectionLabel>Fokus materi</SectionLabel>
         {focusCards.map((card, index) => (
           <View className="rounded-xl bg-muted/50 p-4" key={index}>
             <AccentDot accent={accent} label={card.label} />
@@ -456,12 +460,12 @@ function Grammar({ block }: BlockRendererProps) {
 
       {rules.length ? (
         <View className="gap-2">
-          <SectionLabel>Grammar rules</SectionLabel>
+          <SectionLabel>Aturan tata bahasa</SectionLabel>
           {rules.map((rule, index) => (
             <View className="rounded-xl border border-border p-4" key={index}>
               <View className="flex-row gap-3">
                 <Text className="w-20 text-sm text-muted-foreground">
-                  {stringProp(block.props, "ruleColumnOne", "Condition")}
+                  {stringProp(block.props, "ruleColumnOne", "Kondisi")}
                 </Text>
                 <Text className="min-w-0 flex-1 text-sm font-bold text-foreground">
                   {rule.condition}
@@ -469,7 +473,7 @@ function Grammar({ block }: BlockRendererProps) {
               </View>
               <View className="mt-2 flex-row gap-3">
                 <Text className="w-20 text-sm text-muted-foreground">
-                  {stringProp(block.props, "ruleColumnTwo", "Form")}
+                  {stringProp(block.props, "ruleColumnTwo", "Bentuk")}
                 </Text>
                 <Text
                   className="min-w-0 flex-1 text-sm font-black"
@@ -480,7 +484,7 @@ function Grammar({ block }: BlockRendererProps) {
               </View>
               <View className="mt-2 flex-row gap-3">
                 <Text className="w-20 text-sm text-muted-foreground">
-                  {stringProp(block.props, "ruleColumnThree", "Example")}
+                  {stringProp(block.props, "ruleColumnThree", "Contoh")}
                 </Text>
                 <Text className="min-w-0 flex-1 text-sm text-foreground">
                   {rule.example}
@@ -516,7 +520,7 @@ function Grammar({ block }: BlockRendererProps) {
         <View className="gap-2 rounded-xl bg-muted p-4">
           <AccentDot
             accent={accent}
-            label={stringProp(block.props, "tipTitle", "Tip")}
+            label={stringProp(block.props, "tipTitle", "Tips")}
           />
           <Text className="text-sm leading-6 text-foreground">
             {stringProp(block.props, "tipKo")}
@@ -692,7 +696,7 @@ function CultureMediaGroup({
           key={image.id}
         >
           <ContentImage
-            accessibilityLabel={image.alt || image.fileName || "Culture image"}
+            accessibilityLabel={image.alt || image.fileName || "Gambar budaya"}
             aspect={image.aspect}
             caption={image.caption}
             fit={image.fit}
@@ -932,7 +936,7 @@ function Conversation({ block }: BlockRendererProps) {
           accessibilityLabel={stringProp(
             block.props,
             "fileName",
-            "Conversation context",
+            "Konteks percakapan",
           )}
           source={assetSource(contextAssetId)}
         />
@@ -990,7 +994,7 @@ function Conversation({ block }: BlockRendererProps) {
         <View className="gap-2 rounded-xl bg-muted p-4">
           <AccentDot
             accent={accent}
-            label={stringProp(block.props, "tipTitle", "Tip")}
+            label={stringProp(block.props, "tipTitle", "Tips")}
           />
           <Text className="text-sm leading-6 text-foreground">
             {stringProp(block.props, "tipBody")}
@@ -1002,7 +1006,7 @@ function Conversation({ block }: BlockRendererProps) {
       ) : null}
 
       <View className="gap-4 border-t border-border pt-6">
-        <AccentDot accent={accent} label="Speaking practice" />
+        <AccentDot accent={accent} label="Latihan berbicara" />
         <View>
           <Text className="text-base font-bold leading-6 text-foreground">
             {stringProp(block.props, "practicePromptKo")}
@@ -1016,13 +1020,13 @@ function Conversation({ block }: BlockRendererProps) {
             accessibilityLabel={stringProp(
               block.props,
               "practiceFileName",
-              "Speaking practice",
+              "Latihan berbicara",
             )}
             source={assetSource(practiceAssetId)}
           />
         ) : null}
         <View className="gap-3 rounded-xl bg-muted/55 p-4">
-          <SectionLabel>Provided expressions</SectionLabel>
+          <SectionLabel>Ungkapan yang disediakan</SectionLabel>
           {expressions.map((expression, index) => (
             <View key={index}>
               <Text className="text-sm font-bold text-foreground">

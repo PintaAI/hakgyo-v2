@@ -12,8 +12,8 @@ import {
 describe("learner assessment state", () => {
   test("distinguishes work in progress, review, and a reviewed result", () => {
     expect(assessmentAttemptPresentation()).toEqual({
-      detail: "Open",
-      action: "Start assessment",
+      detail: "Terbuka",
+      action: "Mulai tugas",
     });
 
     expect(
@@ -22,7 +22,7 @@ describe("learner assessment state", () => {
         score: null,
         maxScore: null,
       }),
-    ).toEqual({ detail: "In progress", action: "Resume assessment" });
+    ).toEqual({ detail: "Sedang dikerjakan", action: "Lanjutkan tugas" });
 
     expect(
       assessmentAttemptPresentation({
@@ -30,7 +30,7 @@ describe("learner assessment state", () => {
         score: null,
         maxScore: null,
       }),
-    ).toEqual({ detail: "Awaiting review", action: "View submission" });
+    ).toEqual({ detail: "Menunggu review", action: "Lihat jawaban" });
 
     expect(
       assessmentAttemptPresentation({
@@ -38,7 +38,7 @@ describe("learner assessment state", () => {
         score: 8,
         maxScore: 10,
       }),
-    ).toEqual({ detail: "Reviewed · 8 / 10", action: "View result" });
+    ).toEqual({ detail: "Sudah direview · 8 / 10", action: "Lihat hasil" });
   });
 
   test("selects the newest built-in attempt without mixing in event attempts", () => {

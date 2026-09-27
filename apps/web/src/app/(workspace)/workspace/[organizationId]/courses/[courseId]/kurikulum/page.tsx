@@ -1,20 +1,8 @@
-import { Hanken_Grotesk, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 
 import { KurikulumEditor } from "~/components/kurikulum-editor";
-import { cn } from "~/lib/utils";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
 import { api, HydrateClient } from "~/trpc/server";
-
-const hanken = Hanken_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-hanken-grotesk",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export default async function KurikulumPage({
   params,
@@ -44,22 +32,20 @@ export default async function KurikulumPage({
     notFound();
   }
   void api.content.listCoursePdfPageRanges.prefetch({ courseId });
+  void api.content.getCurriculumReadiness.prefetch({ courseId });
   const toOption = ({ id, title }: { id: string; title: string }) => ({
     id,
     title,
   });
 
   return (
-    <div
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        "w-full font-[family-name:var(--font-inter)]",
-      )}
-    >
+    <div className="w-full">
       <HydrateClient>
         <KurikulumEditor
-          assessments={assessments.map(toOption)}
+          assessments={assessments.map((assessment) => ({
+            ...toOption(assessment),
+            questionCount: assessment._count.questions,
+          }))}
           initialCourse={course}
           materials={materials.map(toOption)}
           organizationSlug={organizationSlug}

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import {
@@ -70,20 +71,17 @@ export function LearnerAssessmentEvents({
       <div className="mx-auto w-full max-w-6xl space-y-8">
         <header>
           <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-            Assessment events
+            Event tugas
           </p>
-          <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
-            Quick assessment & tryout
+          <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
+            Tugas cepat & tryout
           </h1>
         </header>
-        <div className="rounded-lg border border-dashed px-5 py-16 text-center">
-          <TrophyIcon className="text-muted-foreground mx-auto size-7" />
-          <h2 className="mt-3 font-medium">Belum ada event untuk kamu</h2>
-          <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-            Event akan tampil setelah pengajar membukanya untuk cohort atau
-            course kamu.
-          </p>
-        </div>
+        <EmptyState
+          icon={TrophyIcon}
+          title="Belum ada event untuk kamu"
+          description="Event akan tampil setelah pengajar membukanya untuk Group belajar atau course kamu."
+        />
       </div>
     );
   }
@@ -92,10 +90,10 @@ export function LearnerAssessmentEvents({
     <div className="mx-auto w-full max-w-6xl space-y-8">
       <header>
         <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-          Assessment events
+          Event tugas
         </p>
-        <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
-          Quick assessment & tryout
+        <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
+          Tugas cepat & tryout
         </h1>
         <p className="text-muted-foreground mt-3 max-w-2xl text-sm">
           Kerjakan event aktif dan lihat leaderboard setelah event ditutup.
@@ -126,9 +124,7 @@ export function LearnerAssessmentEvents({
                         {event.status === "OPEN" ? "Dibuka" : "Selesai"}
                       </Badge>
                       <Badge variant="secondary">
-                        {event.type === "TRYOUT"
-                          ? "Tryout"
-                          : "Quick assessment"}
+                        {event.type === "TRYOUT" ? "Tryout" : "Tugas cepat"}
                       </Badge>
                     </div>
                     <CardTitle>{event.title}</CardTitle>
@@ -220,38 +216,38 @@ export function LearnerAssessmentEvent({
       >
         <ArrowLeftIcon /> Semua event
       </Link>
-      <section className="relative overflow-hidden rounded-lg bg-[#171915] px-6 py-8 text-[#f5f3e9] sm:px-9 sm:py-11">
-        <div className="pointer-events-none absolute top-0 right-0 size-56 translate-x-16 -translate-y-20 rounded-full border border-white/15" />
+      <section className="bg-foreground text-background relative overflow-hidden rounded-lg px-6 py-8 sm:px-9 sm:py-11">
+        <div className="pointer-events-none absolute top-0 right-0 size-56 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
         <div className="relative">
           <div className="flex flex-wrap gap-2">
-            <Badge className="border-white/20 bg-white/10 text-white">
-              {event.type === "TRYOUT" ? "Tryout" : "Quick assessment"}
+            <Badge className="border-background/20 bg-background/10 text-background">
+              {event.type === "TRYOUT" ? "Tryout" : "Tugas cepat"}
             </Badge>
-            <Badge className="border-white/20 bg-white/10 text-white">
+            <Badge className="border-background/20 bg-background/10 text-background">
               {event.scope === "COHORT"
                 ? event.cohort?.name
                 : event.course.title}
             </Badge>
           </div>
-          <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-5xl">
+          <h1 className="font-heading mt-4 max-w-3xl text-3xl font-medium tracking-tight sm:text-5xl">
             {event.title}
           </h1>
-          <p className="mt-3 text-sm text-white/65">
+          <p className="text-background/70 mt-3 text-sm">
             {event.courseItem.assessment?.title} · {event.durationMinutes} menit
           </p>
-          <p className="mt-1 text-sm text-white/65">
+          <p className="text-background/70 mt-1 text-sm">
             {event.courseItem.assessment?._count.questions ?? 0} soal · Nilai
             lulus {event.courseItem.assessment?.passingScore ?? 0}% · Attempt{" "}
             {event.attemptCount}/
             {event.courseItem.assessment?.maxAttempts ?? "∞"}
           </p>
           {event.closesAt ? (
-            <p className="mt-1 text-sm text-white/65">
+            <p className="text-background/70 mt-1 text-sm">
               Ditutup {dateTimeFormatter.format(event.closesAt)}
             </p>
           ) : null}
           {participant?.invalidatedAt ? (
-            <div className="mt-7 rounded-md border border-red-300/30 bg-red-400/10 p-4 text-sm">
+            <div className="border-destructive/40 bg-destructive/10 mt-7 rounded-md border p-4 text-sm">
               Attempt kamu dinyatakan tidak valid.{" "}
               {participant.invalidationReason}
             </div>
@@ -259,7 +255,7 @@ export function LearnerAssessmentEvent({
             <div className="mt-7 flex flex-wrap gap-3">
               {event.entry.canStart || event.entry.canReattempt ? (
                 <Button
-                  className="bg-[#f5f3e9] text-[#171915] hover:bg-white"
+                  className="bg-background text-foreground hover:bg-background/90"
                   size="lg"
                   disabled={start.isPending}
                   onClick={startAttempt}
@@ -294,7 +290,7 @@ export function LearnerAssessmentEvent({
               Lihat hasil <ArrowRightIcon />
             </Link>
           ) : (
-            <p className="mt-7 text-sm text-white/70">
+            <p className="text-background/70 mt-7 text-sm">
               Event telah ditutup. Tidak ada attempt yang tercatat.
             </p>
           )}

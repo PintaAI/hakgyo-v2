@@ -15,7 +15,7 @@ const dashboardCourseLimit = 4;
 const activityLabels = {
   MATERIAL_COMPLETED: "Menyelesaikan materi",
   ASSESSMENT_SUBMITTED: "Mengumpulkan tugas",
-  ASSESSMENT_PASSED: "Lulus assessment",
+  ASSESSMENT_PASSED: "Lulus tugas",
   VOCABULARY_REVIEWED: "Meninjau kosakata",
 } as const;
 

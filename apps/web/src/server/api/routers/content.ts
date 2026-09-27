@@ -14,16 +14,21 @@ import {
   deleteMaterialWithProgress,
   deleteVocabularySetWithProgress,
 } from "~/server/content-resource-deletion";
+import { sanitizeMaterialContent } from "~/server/material-reference-service";
 import {
-  assertPublishedMaterialReferences,
-  sanitizeMaterialContent,
-} from "~/server/material-reference-service";
+  assertMaterialChangeKeepsReadiness,
+  assertPlacementsRemovable,
+  assertReadinessChange,
+  getCourseReadiness,
+  NEW_ITEM_ID,
+  readinessChanges,
+} from "~/server/course/readiness-service";
+import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import {
   extractVocabularyFromImage,
   type ExtractedVocabularyEntry,
 } from "~/server/ai/vocabulary-extraction";
 import { syncMaterialPdfPageAssets } from "~/server/pdf-book/service";
-import { getAssessmentPublishValidationError } from "~/lib/assessment-publication";
 
 const id = z.string().min(1);
 const vocabularyPreviewEntryCount = 3;
@@ -111,45 +116,14 @@ async function reorder(
   });
 }
 
-// Publishing a course item also publishes its draft assessment, so the
-// assessment must pass the same checks as publishing from the editor.
-async function getDraftAssessmentToPublish(assessmentId: string) {
-  const assessment = await db.assessment.findUnique({
-    where: { id: assessmentId },
-    select: {
-      status: true,
-      questions: {
-        orderBy: { position: "asc" },
-        select: {
-          type: true,
-          prompt: true,
-          options: {
-            orderBy: { position: "asc" },
-            select: { content: true, isCorrect: true },
-          },
-        },
-      },
-    },
-  });
-  if (!assessment) throw new TRPCError({ code: "NOT_FOUND" });
-  if (assessment.status !== "DRAFT") return null;
-  const validationError = getAssessmentPublishValidationError(
-    assessment.questions,
-  );
-  if (validationError)
-    throw new TRPCError({ code: "BAD_REQUEST", message: validationError });
-  return assessmentId;
-}
-
-async function publishDraftAssessment(
-  tx: Prisma.TransactionClient,
-  assessmentId: string | null,
-) {
-  if (!assessmentId) return;
-  await tx.assessment.updateMany({
-    where: { id: assessmentId, status: "DRAFT" },
-    data: { status: "PUBLISHED", publishedAt: new Date() },
-  });
+function relationResourceIds(relation: z.infer<typeof itemRelation>) {
+  return {
+    type: relation.type,
+    materialId: relation.type === "MATERIAL" ? relation.materialId : null,
+    assessmentId: relation.type === "ASSESSMENT" ? relation.assessmentId : null,
+    vocabularySetId:
+      relation.type === "VOCABULARY_SET" ? relation.vocabularySetId : null,
+  };
 }
 
 async function requireContentOrganization(
@@ -200,6 +174,21 @@ async function requireVocabularyAsset(
 }
 
 export const contentRouter = createTRPCRouter({
+  /**
+   * Per-item readiness for the curriculum editor: state LIVE / HIDDEN /
+   * HIDDEN_COURSE_UNPUBLISHED / NOT_READY, reasons (with fix links) and the
+   * lessons depending on each item, plus a course summary.
+   */
+  getCurriculumReadiness: protectedProcedure
+    .input(z.object({ courseId: id }))
+    .query(async ({ ctx, input }) => {
+      await requireCoursePermission({
+        courseId: input.courseId,
+        permission: "course.view",
+        userId: ctx.actorUserId,
+      });
+      return getCourseReadiness(db, input.courseId);
+    }),
   createModule: protectedProcedure
     .input(
       z.object({
@@ -340,24 +329,25 @@ export const contentRouter = createTRPCRouter({
         ctx.actorUserId,
         resource.createdByMembershipId,
       );
-      if (input.isPublished && input.relation.type === "MATERIAL") {
-        const material = await db.material.findUnique({
-          where: { id: input.relation.materialId },
-          select: { content: true },
-        });
-        if (!material) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertPublishedMaterialReferences(db, {
-          content: material.content,
-          moduleId: input.moduleId,
-          organizationId: courseModule.organizationId,
+      // A visible item must be ready (complete assessment, lesson dependencies
+      // visible in this module).
+      if (input.isPublished) {
+        await assertReadinessChange(db, {
+          courseId: courseModule.courseId,
+          moduleIds: [input.moduleId],
+          change: readinessChanges.addItem({
+            id: NEW_ITEM_ID,
+            moduleId: input.moduleId,
+            position: Number.MAX_SAFE_INTEGER,
+            isPublished: true,
+            ...relationResourceIds(input.relation),
+          }),
+          mustBeReady: [NEW_ITEM_ID],
+          blockedMessage: (titles) =>
+            `Item belum bisa ditambahkan karena lesson ${titles} akan menjadi tidak lengkap.`,
         });
       }
-      const assessmentToPublish =
-        input.isPublished && input.relation.type === "ASSESSMENT"
-          ? await getDraftAssessmentToPublish(input.relation.assessmentId)
-          : null;
       return db.$transaction(async (tx) => {
-        await publishDraftAssessment(tx, assessmentToPublish);
         const aggregate = await tx.courseItem.aggregate({
           where: { moduleId: input.moduleId },
           _max: { position: true },
@@ -388,8 +378,6 @@ export const contentRouter = createTRPCRouter({
           organizationId: true,
           moduleId: true,
           isPublished: true,
-          materialId: true,
-          assessmentId: true,
           module: { select: { courseId: true } },
         },
       });
@@ -438,61 +426,43 @@ export const contentRouter = createTRPCRouter({
           resource.createdByMembershipId,
         );
       }
+      const nextPublished = input.isPublished ?? item.isPublished;
+      // Readiness: an item being shown (or re-pointed while visible) must be
+      // ready, and hiding or re-pointing it must not break a visible lesson
+      // in the module that requires or embeds it.
       if (
-        (input.isPublished ?? item.isPublished) &&
-        (input.relation || input.isPublished === true)
+        nextPublished !== item.isPublished ||
+        (input.relation && (nextPublished || item.isPublished))
       ) {
-        const materialId =
-          input.relation?.type === "MATERIAL"
-            ? input.relation.materialId
-            : input.relation
-              ? null
-              : item.materialId;
-        // Only load the (potentially large) material document when it is checked.
-        const content = materialId
-          ? (
-              await db.material.findUnique({
-                where: { id: materialId },
-                select: { content: true },
-              })
-            )?.content
-          : null;
-        if (materialId && content) {
-          await assertPublishedMaterialReferences(db, {
-            content,
-            moduleId: item.moduleId,
-            organizationId: item.organizationId,
-          });
-        }
-      }
-      const nextAssessmentId =
-        input.relation?.type === "ASSESSMENT"
-          ? input.relation.assessmentId
-          : input.relation
-            ? null
-            : item.assessmentId;
-      const assessmentToPublish =
-        (input.isPublished ?? item.isPublished) &&
-        (input.relation || input.isPublished === true) &&
-        nextAssessmentId
-          ? await getDraftAssessmentToPublish(nextAssessmentId)
-          : null;
-      return db.$transaction(async (tx) => {
-        await publishDraftAssessment(tx, assessmentToPublish);
-        return tx.courseItem.update({
-          where: { id: input.itemId },
-          data: {
-            isPublished: input.isPublished,
-            ...(input.relation
-              ? {
-                  materialId: null,
-                  assessmentId: null,
-                  vocabularySetId: null,
-                  ...input.relation,
-                }
-              : {}),
-          },
+        const becomesVisible =
+          nextPublished && (!item.isPublished || Boolean(input.relation));
+        await assertReadinessChange(db, {
+          courseId: item.module.courseId,
+          moduleIds: [item.moduleId],
+          change: readinessChanges.replaceItem(input.itemId, {
+            isPublished: nextPublished,
+            ...(input.relation ? relationResourceIds(input.relation) : {}),
+          }),
+          mustBeReady: becomesVisible ? [input.itemId] : [],
+          blockedMessage: (titles) =>
+            input.relation
+              ? `Item ini tidak bisa diganti karena lesson ${titles} yang sedang ditampilkan memakainya sebagai syarat penyelesaian atau sisipan. Sembunyikan lesson tersebut atau hapus rujukannya terlebih dahulu.`
+              : `Item ini tidak bisa disembunyikan karena lesson ${titles} yang sedang ditampilkan memakainya sebagai syarat penyelesaian atau sisipan. Sembunyikan lesson tersebut atau hapus rujukannya terlebih dahulu.`,
         });
+      }
+      return db.courseItem.update({
+        where: { id: input.itemId },
+        data: {
+          isPublished: input.isPublished,
+          ...(input.relation
+            ? {
+                materialId: null,
+                assessmentId: null,
+                vocabularySetId: null,
+                ...input.relation,
+              }
+            : {}),
+        },
       });
     }),
   deleteItem: protectedProcedure
@@ -508,6 +478,7 @@ export const contentRouter = createTRPCRouter({
         permission: "content.manage",
         userId: ctx.actorUserId,
       });
+      await assertPlacementsRemovable(db, [input.itemId], "delete");
       const removed = await db.$transaction((tx) =>
         deleteCourseItemsWithProgress(tx, [input.itemId]),
       );
@@ -707,10 +678,31 @@ export const contentRouter = createTRPCRouter({
         materialData.content,
       );
       if (isPublished) {
-        await assertPublishedMaterialReferences(db, {
-          content,
-          moduleId,
-          organizationId: courseModule.organizationId,
+        const newMaterialId = "__new_material__";
+        await assertReadinessChange(db, {
+          courseId: courseModule.courseId,
+          moduleIds: [moduleId],
+          change: readinessChanges.addItem(
+            {
+              id: NEW_ITEM_ID,
+              moduleId,
+              position: Number.MAX_SAFE_INTEGER,
+              type: "MATERIAL",
+              isPublished: true,
+              materialId: newMaterialId,
+              assessmentId: null,
+              vocabularySetId: null,
+            },
+            {
+              id: newMaterialId,
+              title: materialData.title,
+              requirements: [],
+              embeds: collectMaterialReferenceIds(content),
+            },
+          ),
+          mustBeReady: [NEW_ITEM_ID],
+          blockedMessage: (titles) =>
+            `Materi belum bisa ditambahkan karena lesson ${titles} akan menjadi tidak lengkap.`,
         });
       }
 
@@ -848,7 +840,6 @@ export const contentRouter = createTRPCRouter({
             timeLimitMinutes: input.timeLimitMinutes,
             shuffleQuestions: input.shuffleQuestions,
             shuffleOptions: input.shuffleOptions,
-            status: "DRAFT",
           },
         });
         const item = await tx.courseItem.create({
@@ -880,13 +871,7 @@ export const contentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const material = await db.material.findFirst({
         where: { id: input.materialId, organizationId: input.organizationId },
-        select: {
-          createdByMembershipId: true,
-          courseItems: {
-            where: { isPublished: true },
-            select: { moduleId: true },
-          },
-        },
+        select: { createdByMembershipId: true },
       });
       if (!material) throw new TRPCError({ code: "NOT_FOUND" });
       await requireOwnedContent(
@@ -900,18 +885,11 @@ export const contentRouter = createTRPCRouter({
           ? undefined
           : await sanitizeMaterialContent(db, organizationId, data.content);
       if (content !== undefined) {
-        const moduleIds = new Set(
-          material.courseItems.map(({ moduleId }) => moduleId),
-        );
-        await Promise.all(
-          [...moduleIds].map((moduleId) =>
-            assertPublishedMaterialReferences(db, {
-              content,
-              moduleId,
-              organizationId,
-            }),
-          ),
-        );
+        const embeds = collectMaterialReferenceIds(content);
+        await assertMaterialChangeKeepsReadiness(db, materialId, (current) => ({
+          ...current,
+          embeds,
+        }));
       }
       const result = await db.$transaction(async (tx) => {
         const updated = await tx.material.updateMany({
@@ -1054,6 +1032,27 @@ export const contentRouter = createTRPCRouter({
         input.organizationId,
         ctx.actorUserId,
         resource.createdByMembershipId,
+      );
+      await assertMaterialChangeKeepsReadiness(
+        db,
+        input.materialId,
+        (current) => ({
+          ...current,
+          requirements: [
+            ...current.requirements,
+            {
+              type: input.relation.type,
+              assessmentId:
+                input.relation.type === "ASSESSMENT"
+                  ? input.relation.assessmentId
+                  : null,
+              vocabularySetId:
+                input.relation.type === "VOCABULARY_SET"
+                  ? input.relation.vocabularySetId
+                  : null,
+            },
+          ],
+        }),
       );
       return db.$transaction(async (tx) => {
         const a = await tx.materialRequirement.aggregate({
@@ -1328,6 +1327,16 @@ export const contentRouter = createTRPCRouter({
         ctx.actorUserId,
         vocabularySet.createdByMembershipId,
         "delete",
+      );
+      const placements = await db.courseItem.findMany({
+        where: { vocabularySetId: input.vocabularySetId },
+        select: { id: true },
+      });
+      await assertPlacementsRemovable(
+        db,
+        placements.map(({ id }) => id),
+        "delete",
+        "Kosakata ini",
       );
       const removed = await db.$transaction((tx) =>
         deleteVocabularySetWithProgress(tx, input.vocabularySetId),

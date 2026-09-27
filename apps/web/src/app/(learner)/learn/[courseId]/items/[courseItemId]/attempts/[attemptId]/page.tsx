@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { AssessmentAttempt } from "~/components/learner-assessment";
 import { api } from "~/trpc/server";
 
-export const metadata: Metadata = { title: "Kerjakan assessment" };
+export const metadata: Metadata = { title: "Kerjakan tugas" };
 
 export default async function AttemptPage({
   params,

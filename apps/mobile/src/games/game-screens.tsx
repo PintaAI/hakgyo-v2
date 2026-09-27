@@ -14,7 +14,7 @@ export function GameBackToolbar({
   return (
     <Stack.Toolbar placement="left">
       <Stack.Toolbar.Button
-        accessibilityLabel="Back to Practice"
+        accessibilityLabel="Kembali ke Latihan"
         disabled={disabled}
         icon={toolbarIcons.back}
         onPress={onPress}

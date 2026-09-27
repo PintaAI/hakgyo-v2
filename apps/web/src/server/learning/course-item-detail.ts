@@ -110,7 +110,6 @@ function courseItemDetailSelect(userId: string) {
         id: true,
         title: true,
         description: true,
-        status: true,
       },
     },
     progress: {

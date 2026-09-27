@@ -16,6 +16,7 @@ import { cn } from "~/lib/utils";
 
 import { PdfBookUploader } from "./pdf-book-uploader";
 import { usePdfBookUpload } from "./use-pdf-book-upload";
+import { useDialogs } from "~/components/ui/use-dialogs";
 
 export type PdfBookSummary = RouterOutputs["pdfBook"]["list"][number];
 
@@ -44,6 +45,7 @@ export function PdfBookLibrary({
   const [showUpload, setShowUpload] = useState(false);
   const utils = api.useUtils();
   const deleteBook = api.pdfBook.delete.useMutation();
+  const { confirm, dialogs } = useDialogs();
 
   const list = books.data ?? [];
   const uploading =
@@ -51,13 +53,13 @@ export function PdfBookLibrary({
   const doneBookId = upload.state.phase === "done" ? upload.state.bookId : "";
 
   async function remove(book: PdfBookSummary) {
-    if (
-      !window.confirm(
-        `Hapus buku “${book.title}”? Semua gambar halamannya ikut terhapus.`,
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: `Hapus buku “${book.title}”?`,
+      description: "Semua gambar halamannya ikut terhapus.",
+      confirmLabel: "Hapus buku",
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteBook.mutateAsync({ organizationId, bookId: book.id });
       await utils.pdfBook.list.invalidate({ organizationId });
@@ -126,6 +128,7 @@ export function PdfBookLibrary({
 
   return (
     <div className="space-y-3">
+      {dialogs}
       <ul className="grid gap-2 sm:grid-cols-2">
         {list.map((book) => {
           const ready = book.status === "READY";

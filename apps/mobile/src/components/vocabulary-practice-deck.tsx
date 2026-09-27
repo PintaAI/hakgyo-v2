@@ -742,13 +742,13 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
               <Text style={{ color: colors.primary, fontSize: 28 }}>✓</Text>
             </View>
             <Text className="text-center text-2xl font-black text-foreground">
-              Round complete
+              Ronde selesai
             </Text>
             <Text
               accessibilityLiveRegion="polite"
               className="text-center text-sm text-muted-foreground"
             >
-              You’ve reached the end of this mix.
+              Kamu sudah sampai di akhir campuran ini.
             </Text>
           </Animated.View>
         </View>
@@ -1071,7 +1071,7 @@ function CardContent({
               letterSpacing: 1.2,
             }}
           >
-            {correct ? "✓  CORRECT" : "LET’S REMEMBER THIS"}
+            {correct ? "✓  BENAR" : "AYO INGAT INI"}
           </Text>
         ) : null}
         <Text
@@ -1106,16 +1106,18 @@ function CardContent({
         accessible={canReveal}
         accessibilityRole={canReveal ? "button" : undefined}
         accessibilityLabel={
-          canReveal ? `${card.prompt}. Reveal answer` : undefined
+          canReveal ? `${card.prompt}. Tampilkan jawaban` : undefined
         }
         accessibilityHint={
           canReveal
-            ? "Shows the answer without earning XP or changing your streak."
+            ? "Menampilkan jawaban tanpa menambah XP atau mengubah streak kamu."
             : undefined
         }
         onAccessibilityTap={canReveal ? onReveal : undefined}
         accessibilityActions={
-          canReveal ? [{ name: "activate", label: "Reveal answer" }] : undefined
+          canReveal
+            ? [{ name: "activate", label: "Tampilkan jawaban" }]
+            : undefined
         }
         onAccessibilityAction={(event) => {
           if (canReveal && event.nativeEvent.actionName === "activate")

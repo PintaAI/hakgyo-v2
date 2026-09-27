@@ -298,7 +298,7 @@ export function shapeCourseBundle(course: CourseBundleSource) {
     const vocabularyPlacements = new Map<string, string>();
     const assessmentPlacements = new Map<
       string,
-      { courseItemId: string; status: string; passingScore: number | null }
+      { courseItemId: string; passingScore: number | null }
     >();
     for (const item of courseModule.items) {
       if (
@@ -310,7 +310,6 @@ export function shapeCourseBundle(course: CourseBundleSource) {
       if (item.assessment && !assessmentPlacements.has(item.assessment.id)) {
         assessmentPlacements.set(item.assessment.id, {
           courseItemId: item.id,
-          status: item.assessment.status,
           passingScore: item.assessment.passingScore,
         });
       }
@@ -338,7 +337,7 @@ export function shapeCourseBundle(course: CourseBundleSource) {
           }),
         };
       }
-      if (item.assessment?.status === "PUBLISHED") {
+      if (item.assessment) {
         const assessment = item.assessment;
         assessments[assessment.id] ??= {
           id: assessment.id,
@@ -350,7 +349,6 @@ export function shapeCourseBundle(course: CourseBundleSource) {
           timeLimitMinutes: assessment.timeLimitMinutes,
           shuffleQuestions: assessment.shuffleQuestions,
           shuffleOptions: assessment.shuffleOptions,
-          status: assessment.status,
           questionCount: assessment.questions.length,
           questions: assessment.questions.map((question) => ({
             id: question.id,
@@ -418,9 +416,7 @@ export function shapeCourseBundle(course: CourseBundleSource) {
           }),
           assessmentIds: references.assessmentIds.flatMap((id) => {
             const placed = assessmentPlacements.get(id);
-            return placed?.status === "PUBLISHED"
-              ? [{ id, courseItemId: placed.courseItemId }]
-              : [];
+            return placed ? [{ id, courseItemId: placed.courseItemId }] : [];
           }),
           pdfBookIds: [],
         },

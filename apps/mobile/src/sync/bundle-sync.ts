@@ -17,6 +17,7 @@ import type {
   BundleFetchInput,
   BundleFetchResult,
   BundleSyncProgress,
+  BundleTiming,
   MobileSyncTransport,
   UpgradeRequired,
 } from "./types";
@@ -50,6 +51,7 @@ export type BundleSyncOptions = {
   now?: () => number;
   onProgress?: (progress: BundleSyncProgress) => void;
   onUpgradeRequired?: (upgrade: UpgradeRequired) => void;
+  onBundleTiming?: (timing: BundleTiming) => void;
 };
 
 type Job = {
@@ -198,14 +200,18 @@ export function createBundleSync(options: BundleSyncOptions) {
     }
   }
 
-  async function applyResult(job: Job, result: BundleFetchResult) {
+  /** Applies a fetch result; returns the stored size (0 when nothing was stored). */
+  async function applyResult(
+    job: Job,
+    result: BundleFetchResult,
+  ): Promise<number> {
     if (result.status === "upgrade-required") {
       stopped = true;
       for (const [courseId, pending] of jobs) {
         if (!pending.running) jobs.delete(courseId);
       }
       options.onUpgradeRequired?.({ minProtocol: result.minProtocol });
-      return;
+      return 0;
     }
     const checkedAt = now();
     if (result.status === "not-modified") {
@@ -214,7 +220,7 @@ export function createBundleSync(options: BundleSyncOptions) {
         await store.touchBundleChecked(userId, job.courseId, checkedAt);
         metaByCourse.set(job.courseId, { ...meta, updatedAt: checkedAt });
       }
-      return;
+      return 0;
     }
     const { bundle } = result;
     if (bundle.schema !== BUNDLE_SCHEMA) {
@@ -246,6 +252,7 @@ export function createBundleSync(options: BundleSyncOptions) {
     indexStructure(job.courseId, bundle.structure);
     publishBundle(meta, bundle);
     publishItemCourseMap();
+    return meta.bytes;
   }
 
   async function run(job: Job) {
@@ -261,11 +268,29 @@ export function createBundleSync(options: BundleSyncOptions) {
             ? (meta.etag ?? bundleEtag(job.courseId, meta.revision))
             : null,
       };
+      const fetchStartedAt = now();
       const result = await fetchBundle(input);
-      await applyResult(job, result);
+      const fetchedAt = now();
+      const bytes = await applyResult(job, result);
       jobs.delete(job.courseId);
-      if (result.status !== "upgrade-required") completed += 1;
+      if (result.status !== "upgrade-required") {
+        completed += 1;
+        options.onBundleTiming?.({
+          courseId: job.courseId,
+          status: result.status === "ok" ? "downloaded" : "not-modified",
+          bytes,
+          fetchMs: fetchedAt - fetchStartedAt,
+          saveMs: now() - fetchedAt,
+        });
+      }
     } catch (error) {
+      options.onBundleTiming?.({
+        courseId: job.courseId,
+        status: "failed",
+        bytes: 0,
+        fetchMs: 0,
+        saveMs: 0,
+      });
       job.attempts += 1;
       if (error instanceof BundleSchemaError || job.attempts >= maxAttempts) {
         jobs.delete(job.courseId);

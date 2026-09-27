@@ -13,6 +13,7 @@ import {
 } from "~/server/authorization";
 import { getCourseWorkspaceOverview } from "~/server/course/workspace-overview";
 import { withCourseCounts } from "~/server/course/counts";
+import { assertCoursePublishable } from "~/server/course/readiness-service";
 import { organizationBrandSelect } from "~/server/brand/context";
 import { db } from "~/server/db";
 
@@ -36,7 +37,7 @@ const fields = z.object({
     .transform((v) => v.toUpperCase())
     .optional(),
   enrollmentMode: z.enum(["OPEN", "INVITE_ONLY"]).nullable().optional(),
-  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
+  status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
   progressionMode: z.enum(["OPEN", "SEQUENTIAL"]).optional(),
 });
 
@@ -485,6 +486,17 @@ export const courseRouter = createTRPCRouter({
       const inputData = { ...input };
       delete inputData.slug;
       const { courseId, ...dataWithoutCourseId } = inputData;
+      // Publishing makes every visible item live, so each must be ready.
+      // Unpublishing is always allowed.
+      if (inputData.status === "PUBLISHED") {
+        const current = await db.course.findUniqueOrThrow({
+          where: { id: courseId },
+          select: { status: true },
+        });
+        if (current.status !== "PUBLISHED") {
+          await assertCoursePublishable(db, courseId);
+        }
+      }
       const data = inputData.title
         ? {
             ...dataWithoutCourseId,

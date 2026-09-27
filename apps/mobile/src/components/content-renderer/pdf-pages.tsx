@@ -115,7 +115,7 @@ export function PdfPages({ block }: BlockRendererProps) {
     return (
       <View className="rounded-xl border border-dashed border-border p-5">
         <Text className="text-sm text-muted-foreground">
-          PDF pages unavailable. Connect to the internet to download them.
+          Halaman PDF tidak tersedia. Sambungkan ke internet untuk mengunduhnya.
         </Text>
       </View>
     );
@@ -150,7 +150,7 @@ export function PdfPages({ block }: BlockRendererProps) {
           accessibilityLiveRegion="polite"
           className="text-xs font-semibold text-muted-foreground"
         >
-          Page {formatPdfPageLabel(current.pageNumber, book.pageOffset)} ·{" "}
+          Halaman {formatPdfPageLabel(current.pageNumber, book.pageOffset)} ·{" "}
           {index + 1}/{pages.length}
         </Text>
       </View>
@@ -184,7 +184,7 @@ export function PdfPages({ block }: BlockRendererProps) {
                 page={item}
                 width={width}
                 height={height}
-                label={`Page ${formatPdfPageLabel(item.pageNumber, book.pageOffset)} of ${book.title}`}
+                label={`Halaman ${formatPdfPageLabel(item.pageNumber, book.pageOffset)} dari ${book.title}`}
                 resolveAssetUrl={resolveAssetUrl}
                 onPress={() => setZoomIndex(itemIndex)}
               />
@@ -196,12 +196,14 @@ export function PdfPages({ block }: BlockRendererProps) {
       <View className="flex-row items-center gap-3">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Previous page"
+          accessibilityLabel="Halaman sebelumnya"
           disabled={index === 0}
           onPress={() => goTo(index - 1)}
           className="rounded-lg border border-border px-4 py-2.5 disabled:opacity-40"
         >
-          <Text className="text-sm font-semibold text-foreground">‹ Prev</Text>
+          <Text className="text-sm font-semibold text-foreground">
+            ‹ Sebelumnya
+          </Text>
         </Pressable>
         <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <View
@@ -211,16 +213,18 @@ export function PdfPages({ block }: BlockRendererProps) {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Next page"
+          accessibilityLabel="Halaman berikutnya"
           disabled={finished}
           onPress={() => goTo(index + 1)}
           className="rounded-lg border border-border px-4 py-2.5 disabled:opacity-40"
         >
-          <Text className="text-sm font-semibold text-foreground">Next ›</Text>
+          <Text className="text-sm font-semibold text-foreground">
+            Berikutnya ›
+          </Text>
         </Pressable>
       </View>
       <Text className="text-center text-xs text-muted-foreground">
-        Swipe to turn pages · tap a page to zoom
+        Geser untuk membalik halaman · ketuk halaman untuk memperbesar
       </Text>
 
       <PdfZoomViewer
@@ -260,7 +264,7 @@ function PdfPageImage({
       {url ? (
         <Pressable
           accessibilityRole="imagebutton"
-          accessibilityLabel={`Zoom ${label}`}
+          accessibilityLabel={`Perbesar ${label}`}
           onPress={onPress}
           style={{ width: "100%", height: "100%" }}
         >
@@ -282,7 +286,7 @@ function PdfPageImage({
           className="items-center gap-2 px-6"
         >
           <Text className="text-center text-sm text-neutral-700">
-            Page unavailable. Tap to retry.
+            Halaman tidak tersedia. Ketuk untuk mencoba lagi.
           </Text>
         </Pressable>
       ) : (
@@ -320,7 +324,7 @@ function PdfZoomViewer({
           <View className="flex-row items-center justify-between gap-3 px-5 py-3">
             <Text className="text-sm text-white">
               {page
-                ? `Page ${formatPdfPageLabel(page.pageNumber, pageOffset)} · ${(index ?? 0) + 1}/${pages.length}`
+                ? `Halaman ${formatPdfPageLabel(page.pageNumber, pageOffset)} · ${(index ?? 0) + 1}/${pages.length}`
                 : ""}
             </Text>
             <Pressable
@@ -328,14 +332,14 @@ function PdfZoomViewer({
               onPress={onClose}
               className="rounded-lg px-4 py-3"
             >
-              <Text className="font-bold text-white">Close</Text>
+              <Text className="font-bold text-white">Tutup</Text>
             </Pressable>
           </View>
           {page ? (
             <ZoomablePage
               key={page.assetId}
               page={page}
-              label={`Page ${formatPdfPageLabel(page.pageNumber, pageOffset)}`}
+              label={`Halaman ${formatPdfPageLabel(page.pageNumber, pageOffset)}`}
               resolveAssetUrl={resolveAssetUrl}
             />
           ) : null}
@@ -346,7 +350,7 @@ function PdfZoomViewer({
               onPress={() => index && onIndexChange(index - 1)}
               className="rounded-lg bg-white/15 px-5 py-3 disabled:opacity-40"
             >
-              <Text className="text-white">‹ Previous</Text>
+              <Text className="text-white">‹ Sebelumnya</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -354,7 +358,7 @@ function PdfZoomViewer({
               onPress={() => index !== null && onIndexChange(index + 1)}
               className="rounded-lg bg-white/15 px-5 py-3 disabled:opacity-40"
             >
-              <Text className="text-white">Next ›</Text>
+              <Text className="text-white">Berikutnya ›</Text>
             </Pressable>
           </View>
         </SafeAreaView>

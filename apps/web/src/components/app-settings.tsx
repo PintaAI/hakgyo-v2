@@ -65,6 +65,14 @@ import {
 } from "~/lib/organization-theme";
 import { cn } from "~/lib/utils";
 
+const fontLabels = {
+  geist: "Geist · Modern sans",
+  inter: "Inter · UI sans",
+  poppins: "Poppins · Geometric sans",
+  merriweather: "Merriweather · Reading serif",
+  jetbrains: "JetBrains Mono · Monospace",
+};
+
 const STORAGE_KEY = "hakgyo-app-settings-v2";
 
 type Preferences = {
@@ -391,7 +399,7 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
             collapsible="none"
           >
             <SidebarHeader className="border-b px-4 py-4">
-              <p className="font-heading text-base font-semibold">Settings</p>
+              <p className="font-heading text-base font-semibold">Pengaturan</p>
             </SidebarHeader>
             <SidebarContent>
               <SidebarGroup>
@@ -689,6 +697,7 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
                 </div>
                 <Select
                   value={effectivePreferences.font}
+                  items={fontLabels}
                   onValueChange={(value) => {
                     if (value) updatePreference("font", value);
                   }}

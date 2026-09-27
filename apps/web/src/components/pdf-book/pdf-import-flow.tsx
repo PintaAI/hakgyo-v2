@@ -194,7 +194,7 @@ export function PdfImportFlow({
         utils.content.listMaterials.invalidate({ organizationId }),
       ]);
       toast.success(
-        `${result.lessonCount} materi PDF dibuat sebagai draf. Tambahkan kosakata atau kuis di setiap bab.`,
+        `${result.lessonCount} materi PDF dibuat dalam keadaan disembunyikan. Tambahkan kosakata atau kuis di setiap bab.`,
       );
       router.push(curriculumHref);
       router.refresh();
@@ -226,12 +226,12 @@ export function PdfImportFlow({
           <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
             Impor dari buku PDF
           </p>
-          <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight">
+          <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight">
             Ubah buku Anda menjadi materi kurikulum
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-            Halaman buku ditampilkan apa adanya. Setelah itu, tambahkan kosakata
-            dan kuis Hakgyo di setiap bab agar siswa bisa berlatih.
+            Halaman buku ditampilkan apa adanya. Setelah itu, tambahkan kosa
+            kata dan kuis Hakgyo di setiap bab agar siswa bisa berlatih.
           </p>
         </div>
         <ol className="flex flex-wrap items-center gap-2 text-sm">
@@ -406,9 +406,9 @@ export function PdfImportFlow({
             })}
           </div>
           <p className="text-muted-foreground text-sm">
-            Semua materi dibuat sebagai <strong>draf</strong>, jadi belum
-            terlihat oleh siswa. Anda bisa menambahkan kosakata, kuis, atau
-            catatan di setiap materi sebelum mempublikasikannya.
+            Semua materi dibuat dalam keadaan <strong>disembunyikan</strong>,
+            jadi belum terlihat oleh siswa. Anda bisa menambahkan kosakata,
+            kuis, atau catatan di setiap materi sebelum menampilkannya.
           </p>
           {book.data.status !== "READY" ? (
             <p className="text-sm text-amber-700 dark:text-amber-400">
@@ -500,7 +500,7 @@ function PageOneStep({
   return (
     <section className="max-w-4xl space-y-5">
       <div className="bg-card space-y-2 rounded-xl border p-5">
-        <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
+        <h2 className="font-heading text-xl font-medium">
           Di halaman mana nomor <span className="text-primary">1</span> buku
           Anda?
         </h2>

@@ -5,7 +5,7 @@ export default function HomeLoading() {
     <div className="grid min-h-svh place-items-center p-8">
       <LoaderCircleIcon
         className="text-muted-foreground size-6 animate-spin"
-        aria-label="Loading"
+        aria-label="Memuat"
       />
     </div>
   );

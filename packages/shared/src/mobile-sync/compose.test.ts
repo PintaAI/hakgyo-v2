@@ -172,7 +172,6 @@ function bundle(
           timeLimitMinutes: 10,
           shuffleQuestions: true,
           shuffleOptions: false,
-          status: "PUBLISHED",
           questionCount: 1,
           questions: [
             {
@@ -489,7 +488,6 @@ describe("composeCourseItem", () => {
       id: "assessment-1",
       title: "Quiz",
       description: null,
-      status: "PUBLISHED",
       _count: { questions: 1 },
     });
     expect(composeCourseItem(bundle(), emptyState, "missing")).toBeNull();
@@ -535,11 +533,11 @@ describe("composeLearnerAssessment", () => {
     expect(assessment).not.toHaveProperty("questionCount");
   });
 
-  test("omits unpublished assessments and non-assessment items", () => {
-    const draft = bundle();
-    draft.content.assessments["assessment-1"]!.status = "DRAFT";
+  test("omits missing assessments and non-assessment items", () => {
+    const missing = bundle();
+    delete missing.content.assessments["assessment-1"];
     expect(
-      composeLearnerAssessment(draft, emptyState, "item-assessment"),
+      composeLearnerAssessment(missing, emptyState, "item-assessment"),
     ).toBeNull();
     expect(
       composeLearnerAssessment(bundle(), emptyState, "item-material"),

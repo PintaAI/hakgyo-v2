@@ -11,6 +11,8 @@ import {
   SearchIcon,
 } from "lucide-react";
 
+import { PageHeader } from "~/components/ui/page-header";
+import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -40,28 +42,21 @@ export function VocabularyLibrary({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div className="space-y-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <LibraryIcon className="size-4" />
-            Bahan ajar
-          </div>
-          <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            Kosakata
-          </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            Buat kumpulan kata dengan definisi dan contoh untuk pelajaran dan
-            persyaratan course.
-          </p>
-        </div>
-        <Link
-          href={`/workspace/${organizationSlug}/library/vocabulary/new`}
-          className={buttonVariants()}
-        >
-          <PlusIcon data-icon="inline-start" />
-          Set kosakata baru
-        </Link>
-      </div>
+      <PageHeader
+        icon={LibraryIcon}
+        eyebrow="Bahan ajar"
+        title="Kosakata"
+        description="Buat kumpulan kata dengan definisi dan contoh untuk pelajaran dan persyaratan course."
+        actions={
+          <Link
+            href={`/workspace/${organizationSlug}/library/vocabulary/new`}
+            className={buttonVariants()}
+          >
+            <PlusIcon data-icon="inline-start" />
+            Set kosakata baru
+          </Link>
+        }
+      />
 
       <div className="relative max-w-md">
         <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
@@ -137,30 +132,30 @@ export function VocabularyLibrary({
           ))}
         </div>
       ) : (
-        <div className="bg-muted/20 flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
-          <div className="bg-background mb-4 flex size-12 items-center justify-center rounded-xl border shadow-sm">
-            <LanguagesIcon className="size-5" />
-          </div>
-          <h2 className="font-heading font-semibold">
-            {debouncedSearch
+        <EmptyState
+          icon={LanguagesIcon}
+          title={
+            debouncedSearch
               ? "Kosakata tidak ditemukan"
-              : "Buat set kosakata pertama Anda"}
-          </h2>
-          <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-            {debouncedSearch
+              : "Buat set kosakata pertama Anda"
+          }
+          description={
+            debouncedSearch
               ? "Coba judul set, istilah, atau definisi yang berbeda."
-              : "Kelompokkan istilah terkait menjadi satu set yang dapat dipakai ulang lintas course."}
-          </p>
-          {!debouncedSearch && (
-            <Link
-              href={`/workspace/${organizationSlug}/library/vocabulary/new`}
-              className={buttonVariants({ className: "mt-4" })}
-            >
-              <PlusIcon data-icon="inline-start" />
-              Set kosakata baru
-            </Link>
-          )}
-        </div>
+              : "Kelompokkan istilah terkait menjadi satu set yang dapat dipakai ulang lintas course."
+          }
+          action={
+            debouncedSearch ? null : (
+              <Link
+                href={`/workspace/${organizationSlug}/library/vocabulary/new`}
+                className={buttonVariants({ className: "mt-4" })}
+              >
+                <PlusIcon data-icon="inline-start" />
+                Set kosakata baru
+              </Link>
+            )
+          }
+        />
       )}
     </div>
   );

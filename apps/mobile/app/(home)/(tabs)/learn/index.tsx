@@ -216,7 +216,7 @@ export default function LearnTab() {
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon={toolbarIcons.notifications}
-          accessibilityLabel="Open learning updates"
+          accessibilityLabel="Buka pembaruan belajar"
           onPress={openUpdates}
         >
           {unreadCount > 0 ? (

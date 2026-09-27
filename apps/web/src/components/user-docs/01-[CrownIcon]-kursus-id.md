@@ -59,7 +59,7 @@ Pertanyaan pilihan dapat dinilai otomatis. Jawaban tertulis masuk ke antrean pem
 | Jenis konten        | Cara selesai                                                |
 | ------------------- | ----------------------------------------------------------- |
 | Materi Pembelajaran | Peserta didik menandai selesai dan seluruh syarat terpenuhi |
-| Kumpulan Kosakata   | Peserta didik menandai progress sebagai selesai             |
+| Kumpulan Kosakata  | Peserta didik menandai progress sebagai selesai             |
 | Tugas               | Pengerjaan dinilai dan mencapai nilai kelulusan             |
 
 ## Pustaka Konten dan Item Kursus

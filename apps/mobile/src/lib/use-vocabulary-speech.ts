@@ -191,16 +191,16 @@ export function useVocabularySpeech({
       setRecoverableError(retryable);
       setErrorMessage(
         throttled
-          ? "Speech recognition is temporarily rate-limited. Wait a moment, then try again."
+          ? "Pengenalan suara sedang dibatasi sementara. Tunggu sebentar, lalu coba lagi."
           : serviceError && !retryable
-            ? "Speech recognition needs a short break. Tap the mic to try again."
+            ? "Pengenalan suara perlu jeda sebentar. Ketuk mikrofon untuk mencoba lagi."
             : nativeError === "not-allowed"
-              ? "Microphone or speech permission was denied. You can still type your answer."
+              ? "Izin mikrofon atau pengenalan suara ditolak. Kamu tetap bisa mengetik jawaban."
               : silenceError
-                ? "We didn’t hear anything. Try again or type instead."
+                ? "Tidak ada suara yang terdengar. Coba lagi atau ketik saja."
                 : nativeError === "language-not-supported"
-                  ? "This language isn’t supported on this device. Typing still works."
-                  : "Speech didn’t work. Try again or type instead.",
+                  ? "Bahasa ini tidak didukung di perangkat ini. Kamu tetap bisa mengetik."
+                  : "Pengenalan suara gagal. Coba lagi atau ketik saja.",
       );
     },
   );
@@ -241,7 +241,7 @@ export function useVocabularySpeech({
       if (!permission.granted) {
         setRecoverableError(false);
         setErrorMessage(
-          "Microphone or speech permission was denied. You can still type your answer.",
+          "Izin mikrofon atau pengenalan suara ditolak. Kamu tetap bisa mengetik jawaban.",
         );
         setStatus("idle");
         return;
@@ -249,7 +249,7 @@ export function useVocabularySpeech({
       if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
         setRecoverableError(false);
         setErrorMessage(
-          "Speech recognition isn’t available on this device. Typing still works.",
+          "Pengenalan suara tidak tersedia di perangkat ini. Kamu tetap bisa mengetik.",
         );
         setStatus("idle");
         return;
@@ -270,8 +270,8 @@ export function useVocabularySpeech({
         setRecoverableError(retryable);
         setErrorMessage(
           retryable
-            ? "Speech recognition is still finishing. Retrying…"
-            : "Speech recognition needs a short break. Tap the mic to try again.",
+            ? "Pengenalan suara masih diproses. Mencoba lagi…"
+            : "Pengenalan suara perlu jeda sebentar. Ketuk mikrofon untuk mencoba lagi.",
         );
         setStatus("idle");
         return;
@@ -298,7 +298,9 @@ export function useVocabularySpeech({
     } catch {
       if (generation !== startGeneration.current) return;
       setRecoverableError(false);
-      setErrorMessage("Speech didn’t start. Try again or type instead.");
+      setErrorMessage(
+        "Pengenalan suara tidak dimulai. Coba lagi atau ketik saja.",
+      );
       setStatus("idle");
     }
   }, []);

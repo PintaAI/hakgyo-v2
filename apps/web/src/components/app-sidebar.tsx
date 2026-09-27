@@ -249,7 +249,7 @@ export function AppSidebar({
       ],
     },
     {
-      title: "Reviews",
+      title: "Review",
       href: `${workspaceRoot}/reviews`,
       icon: ClipboardCheckIcon,
     },
@@ -270,7 +270,7 @@ export function AppSidebar({
       icon: UsersIcon,
     },
     {
-      title: "Settings",
+      title: "Pengaturan",
       href: `${workspaceRoot}/settings/general`,
       match: `${workspaceRoot}/settings`,
       icon: Settings2Icon,
@@ -487,23 +487,23 @@ export function AppSidebar({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                tooltip="Buka Area Belajar"
+                tooltip="Buka area belajar"
                 render={
                   <Link href="/learn/courses" onClick={closeMobileSidebar} />
                 }
               >
                 <GraduationCapIcon />
-                <span>Buka Area Belajar</span>
+                <span>Buka area belajar</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 isActive={pathname === "/docs" || pathname.startsWith("/docs/")}
-                tooltip="Panduan Aplikasi"
+                tooltip="Panduan aplikasi"
                 render={<Link href="/docs" onClick={closeMobileSidebar} />}
               >
                 <BookMarkedIcon />
-                <span>Panduan Aplikasi</span>
+                <span>Panduan aplikasi</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -587,13 +587,13 @@ export function DocsAppSidebar({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                tooltip="Buka Area Belajar"
+                tooltip="Buka area belajar"
                 render={
                   <Link href="/learn/courses" onClick={closeMobileSidebar} />
                 }
               >
                 <GraduationCapIcon />
-                <span>Buka Area Belajar</span>
+                <span>Buka area belajar</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

@@ -46,8 +46,8 @@ export function ProfileHero({
   const { activeBrand, colors } = useAppTheme();
   const counters = [
     {
-      label: "Vocab",
-      accessibilityLabel: "Vocabulary mastered",
+      label: "Kosakata",
+      accessibilityLabel: "Kosakata dikuasai",
       value: stats?.vocabularyMastered,
     },
     {
@@ -56,8 +56,8 @@ export function ProfileHero({
       value: stats?.totalXp,
     },
     {
-      label: "Attempts",
-      accessibilityLabel: "Assessment attempts",
+      label: "Percobaan",
+      accessibilityLabel: "Percobaan tugas",
       value: stats?.assessmentAttempts,
     },
   ];
@@ -148,20 +148,20 @@ export function RecentActivity({
     <View className="gap-4">
       <View className="flex-row items-center justify-between gap-4">
         <Text className="text-xl font-bold text-foreground">
-          Recent activity
+          Aktivitas terbaru
         </Text>
         <Text className="text-xs font-semibold text-muted-foreground">
-          {weekXp > 0 ? `+${weekXp} XP this week` : "No XP this week"}
+          {weekXp > 0 ? `+${weekXp} XP minggu ini` : "Belum ada XP minggu ini"}
         </Text>
       </View>
 
       {activities.length === 0 ? (
         <View className="items-center border-y border-border px-6 py-10">
           <Text className="text-base font-bold text-foreground">
-            No activity yet
+            Belum ada aktivitas
           </Text>
           <Text className="mt-2 text-center text-sm leading-5 text-muted-foreground">
-            Finish a lesson or practice to see activity here.
+            Selesaikan materi atau latihan untuk melihat aktivitas di sini.
           </Text>
         </View>
       ) : (
@@ -172,7 +172,7 @@ export function RecentActivity({
               className={`flex-row items-center gap-3 py-2.5 ${index > 0 ? "border-t border-border" : ""}`}
             >
               <View
-                accessibilityLabel={`Plus ${activity.xpAwarded} XP`}
+                accessibilityLabel={`Tambah ${activity.xpAwarded} XP`}
                 className="rounded-full bg-primary/10 px-2.5 py-1"
               >
                 <Text className="text-[11px] font-black tabular-nums text-primary">
@@ -205,7 +205,9 @@ export function RecentActivity({
           onPress={() => setExpanded((current) => !current)}
         >
           <Text className="text-sm font-bold text-primary">
-            {expanded ? "Show less" : `Show all ${activities.length}`}
+            {expanded
+              ? "Tampilkan lebih sedikit"
+              : `Tampilkan semua (${activities.length})`}
           </Text>
         </Pressable>
       ) : null}
@@ -235,19 +237,19 @@ export function MilestoneTrail({
   return (
     <View className="gap-5">
       <View className="flex-row items-center justify-between gap-4">
-        <Text className="text-xl font-bold text-foreground">Milestones</Text>
+        <Text className="text-xl font-bold text-foreground">Pencapaian</Text>
         <Text className="text-xs font-semibold text-muted-foreground">
-          {achievements.length} earned
+          {achievements.length} diraih
         </Text>
       </View>
 
       {achievements.length === 0 ? (
         <View className="items-center border-y border-border px-6 py-10">
           <Text className="text-base font-bold text-foreground">
-            No milestones yet
+            Belum ada pencapaian
           </Text>
           <Text className="mt-2 text-center text-sm leading-5 text-muted-foreground">
-            Complete your first learning activity to earn a milestone.
+            Selesaikan aktivitas belajar pertamamu untuk meraih pencapaian.
           </Text>
         </View>
       ) : (

@@ -69,7 +69,7 @@ const steps = [
     title: "Dampingi prosesnya.",
     description:
       "Tinjau jawaban tugas dan ikuti perkembangan peserta. Beri perhatian pada langkah belajar berikutnya.",
-    tag: "ASSESSMENT & REVIEW",
+    tag: "TUGAS & REVIEW",
     icon: ClipboardCheckIcon,
   },
 ];
@@ -80,7 +80,7 @@ const questions = [
   ],
   [
     "Apa saja yang bisa dimasukkan ke dalam course?",
-    "Anda dapat menyusun bab berisi materi, set kosakata, dan tugas atau assessment. Editor materi mendukung konten pembelajaran, termasuk blok percakapan dan pelafalan untuk pembelajaran bahasa.",
+    "Anda dapat menyusun bab berisi materi, set kosakata, dan tugas. Editor materi mendukung konten pembelajaran, termasuk blok percakapan dan pelafalan untuk pembelajaran bahasa.",
   ],
   [
     "Apakah peserta bisa belajar sesuai urutannya?",

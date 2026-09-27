@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { LearnerAssessmentEvent } from "~/components/learner-assessment-events";
 import { api } from "~/trpc/server";
 
-export const metadata: Metadata = { title: "Assessment event" };
+export const metadata: Metadata = { title: "Event tugas" };
 
 export default async function AssessmentEventPage({
   params,

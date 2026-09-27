@@ -30,10 +30,7 @@ function question(id: string): Assessment["questions"][number] {
   } as unknown as Assessment["questions"][number];
 }
 
-function assessment(
-  id: string,
-  status: "PUBLISHED" | "DRAFT" = "PUBLISHED",
-): Assessment {
+function assessment(id: string): Assessment {
   return {
     id,
     title: `Assessment ${id}`,
@@ -44,7 +41,6 @@ function assessment(
     timeLimitMinutes: null,
     shuffleQuestions: false,
     shuffleOptions: false,
-    status,
     questions: [question(`${id}-q1`)],
   };
 }
@@ -135,13 +131,13 @@ function material(
 }
 
 const publishedAssessment = assessment("assess-pub");
-const draftAssessment = assessment("assess-draft", "DRAFT");
+const module2Assessment = assessment("assess-m2");
 const setA = vocabularySet("set-a");
 const setB = vocabularySet("set-b");
 
-// Module 1 places set-a and the published assessment. Module 2 places set-b
-// and the draft assessment. Materials in each module embed both sets and
-// both assessments; only same-module, published placements may resolve.
+// Module 1 places set-a and assess-pub. Module 2 places set-b and assess-m2.
+// Materials in each module embed both sets and both assessments; only
+// same-module placements may resolve.
 const course: CourseBundleSource = {
   id: "course-1",
   organizationId: ORG,
@@ -166,7 +162,7 @@ const course: CourseBundleSource = {
                 vocabularySetId: "set-a",
               }),
               ...embeddedContent({
-                assessmentId: "assess-draft",
+                assessmentId: "assess-m2",
                 vocabularySetId: "set-b",
               }),
             ],
@@ -225,13 +221,13 @@ const course: CourseBundleSource = {
           material: material(
             "material-2",
             embeddedContent({
-              assessmentId: "assess-draft",
+              assessmentId: "assess-m2",
               vocabularySetId: "set-b",
             }),
           ),
         }),
         item("item-m2-set", 1, { vocabularySet: setB }),
-        item("item-m2-assess", 2, { assessment: draftAssessment }),
+        item("item-m2-assess", 2, { assessment: module2Assessment }),
       ],
     },
   ],
@@ -281,7 +277,7 @@ describe("loadCourseBundle", () => {
       { id: "assess-pub-q1-b", content: "B", position: 1 },
     ]);
     expect(bundle.revision).toBe("42");
-    expect(bundle.schema).toBe(1);
+    expect(bundle.schema).toBe(2);
   });
 
   test("only loads published items and confirmed assets", async () => {
@@ -304,14 +300,19 @@ describe("loadCourseBundle", () => {
     });
   });
 
-  test("keeps draft assessments out of the content while listing their placement", async () => {
+  test("includes every placed assessment in the content", async () => {
     const { db } = fakeDb({ course });
     const bundle = await loadCourseBundle(db, "course-1", "1");
-    expect(Object.keys(bundle.content.assessments)).toEqual(["assess-pub"]);
+    expect(Object.keys(bundle.content.assessments)).toEqual([
+      "assess-pub",
+      "assess-m2",
+    ]);
     expect(bundle.content.assessments["assess-pub"]).toMatchObject({
-      status: "PUBLISHED",
       questionCount: 1,
     });
+    expect(bundle.content.assessments["assess-pub"]).not.toHaveProperty(
+      "status",
+    );
     const module2 = bundle.structure.modules[1]!;
     expect(module2.items.map((entry) => entry.id)).toEqual([
       "item-m2-material",
@@ -319,9 +320,9 @@ describe("loadCourseBundle", () => {
       "item-m2-assess",
     ]);
     expect(module2.items[2]).toMatchObject({
-      assessmentId: "assess-draft",
+      assessmentId: "assess-m2",
       assessmentPassingScore: 70,
-      title: "Assessment assess-draft",
+      title: "Assessment assess-m2",
     });
   });
 
@@ -364,11 +365,11 @@ describe("loadCourseBundle", () => {
         },
       ],
     });
-    // Module 2 embeds a set placed in its module (resolves) and a draft
-    // assessment placed in its module (does not).
+    // Module 2 embeds a set and an assessment placed in its module (both
+    // resolve).
     expect(bundle.content.placements["item-m2-material"]?.embedded).toEqual({
       vocabularySetIds: [{ id: "set-b", courseItemId: "item-m2-set" }],
-      assessmentIds: [],
+      assessmentIds: [{ id: "assess-m2", courseItemId: "item-m2-assess" }],
       pdfBookIds: [],
     });
   });

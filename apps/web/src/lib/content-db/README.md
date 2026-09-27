@@ -70,6 +70,13 @@ Throw `ContentSyncConflictError` when a conditional server update reports a
 revision conflict. The draft becomes `conflict` and the operation becomes
 blocked instead of retrying indefinitely.
 
+Permanent server rejections are blocked immediately too: a tRPC
+`PRECONDITION_FAILED` (e.g. "Assessment ini sedang tayang …") or `BAD_REQUEST`
+(e.g. an edit that would break a visible lesson), or a thrown
+`ContentSyncRejectedError`. The draft becomes `rejected`, the message is kept in
+the operation's `lastError`, and `summary.rejected` lists the messages so the UI
+can show them to the author.
+
 ## Lifecycle and safety
 
 - Call `clearUser(userId)` during logout before closing the singleton.

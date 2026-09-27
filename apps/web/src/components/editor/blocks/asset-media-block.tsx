@@ -223,7 +223,7 @@ export const assetImageBlock = createReactBlockSpec(
                     alt={
                       block.props.caption ||
                       block.props.fileName ||
-                      "Gambar assessment"
+                      "Gambar tugas"
                     }
                     className="mx-auto max-h-[32rem] max-w-full rounded-lg object-contain"
                     src={url}

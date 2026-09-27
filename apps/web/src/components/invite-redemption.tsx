@@ -52,7 +52,7 @@ function InviteBrand() {
         <BookOpenIcon className="size-4" />
       </span>
       <span className="leading-tight">
-        <span className="block font-[family-name:var(--font-hanken-grotesk)] text-base font-medium tracking-tight">
+        <span className="font-heading block text-base font-medium tracking-tight">
           Hakgyo
         </span>
         <span className="text-muted-foreground block text-xs">
@@ -95,7 +95,7 @@ export function InviteRedemption({ token }: { token: string }) {
               <span className="bg-muted mx-auto grid size-10 place-items-center rounded-lg">
                 <KeyRoundIcon className="text-muted-foreground size-5" />
               </span>
-              <h1 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
+              <h1 className="font-heading mt-4 text-2xl font-medium tracking-tight">
                 Undangan tidak ditemukan
               </h1>
               <p className="text-muted-foreground mx-auto mt-2 max-w-sm text-sm leading-relaxed">
@@ -117,7 +117,7 @@ export function InviteRedemption({ token }: { token: string }) {
         : data.course.title;
   const description =
     data.type === "ORGANIZATION"
-      ? `Bergabung sebagai ${data.role === "ADMIN" ? "Admin" : "Teacher"}`
+      ? `Bergabung sebagai ${data.role === "ADMIN" ? "Admin" : "Pengajar"}`
       : data.type === "COHORT"
         ? `Group belajar untuk ${data.course.title}`
         : "Akses langsung ke course";
@@ -141,7 +141,7 @@ export function InviteRedemption({ token }: { token: string }) {
         result.type === "ORGANIZATION"
           ? `Berhasil bergabung ke ${result.organization.name}.`
           : result.type === "COHORT"
-            ? "Berhasil bergabung ke cohort."
+            ? "Berhasil bergabung ke Group belajar."
             : "Course berhasil ditambahkan ke ruang belajar.",
       );
 
@@ -184,7 +184,7 @@ export function InviteRedemption({ token }: { token: string }) {
         <InviteBrand />
 
         <div className="grid items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.75fr)]">
-          <section className="relative flex min-h-[18rem] items-end overflow-hidden rounded-xl bg-foreground p-4 text-background sm:min-h-[28rem] sm:p-8">
+          <section className="relative flex min-h-[18rem] items-end overflow-hidden rounded-xl bg-neutral-950 p-4 text-white sm:min-h-[28rem] sm:p-8">
             {thumbnailUrl ? (
               <Image
                 src={thumbnailUrl}
@@ -200,16 +200,16 @@ export function InviteRedemption({ token }: { token: string }) {
             <div className="pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
             <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
             <div className="relative max-w-2xl">
-              <Badge className="border-background/20 bg-background/10 text-background">
+              <Badge className="border-white/20 bg-white/10 text-white">
                 {typeLabels[data.type]}
               </Badge>
-              <p className="mt-4 text-[10px] font-semibold tracking-[0.18em] text-muted-foreground uppercase sm:mt-6 sm:text-[11px]">
+              <p className="mt-4 text-[10px] font-semibold tracking-[0.18em] text-white/70 uppercase sm:mt-6 sm:text-[11px]">
                 {data.organization.name}
               </p>
-              <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-2xl leading-tight font-medium tracking-tight sm:mt-3 sm:text-5xl">
+              <h1 className="font-heading mt-2 text-2xl leading-tight font-medium tracking-tight sm:mt-3 sm:text-5xl">
                 {title}
               </h1>
-              <p className="mt-3 flex items-center gap-2 text-xs leading-relaxed text-muted-foreground sm:mt-4 sm:text-sm">
+              <p className="mt-3 flex items-center gap-2 text-xs leading-relaxed text-white/70 sm:mt-4 sm:text-sm">
                 {data.type === "ORGANIZATION" ? (
                   <Building2Icon className="size-4" data-icon="inline-start" />
                 ) : data.type === "COHORT" ? (
@@ -220,7 +220,7 @@ export function InviteRedemption({ token }: { token: string }) {
                 {description}
               </p>
               {data.type !== "ORGANIZATION" && data.course.description ? (
-                <p className="mt-3 line-clamp-2 max-w-xl text-xs leading-relaxed text-muted-foreground sm:mt-4 sm:line-clamp-3 sm:text-sm">
+                <p className="mt-3 line-clamp-2 max-w-xl text-xs leading-relaxed text-white/70 sm:mt-4 sm:line-clamp-3 sm:text-sm">
                   {data.course.description}
                 </p>
               ) : null}
@@ -237,7 +237,7 @@ export function InviteRedemption({ token }: { token: string }) {
                     <CheckCircle2Icon className="size-4" />
                   )}
                 </span>
-                <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium tracking-tight sm:text-xl">
+                <CardTitle className="font-heading text-lg font-medium tracking-tight sm:text-xl">
                   {unavailable
                     ? "Undangan tidak berlaku"
                     : session.data?.user
@@ -359,7 +359,7 @@ export function InviteRedemption({ token }: { token: string }) {
                   <Layers3Icon className="size-4" />
                 </span>
                 <div>
-                  <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium tracking-tight">
+                  <CardTitle className="font-heading text-lg font-medium tracking-tight">
                     List materi Tersedia!
                   </CardTitle>
                   <p className="text-muted-foreground mt-0.5 text-xs">

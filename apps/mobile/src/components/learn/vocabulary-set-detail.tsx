@@ -91,7 +91,7 @@ function WordGridCard({
   return (
     <View className="gap-2 rounded-[20px] border border-border bg-card p-4">
       <Pressable
-        accessibilityLabel={`View details for ${entry.term}`}
+        accessibilityLabel={`Lihat detail ${entry.term}`}
         accessibilityRole="button"
         className="gap-2 active:opacity-60"
         onPress={onOpen}
@@ -186,7 +186,7 @@ export function VocabularySetDetail({
           className={`flex-row items-center gap-3 py-3 ${index === total - 1 ? "" : "border-b border-border/60"}`}
         >
           <Pressable
-            accessibilityLabel={`View details for ${entry.term}`}
+            accessibilityLabel={`Lihat detail ${entry.term}`}
             accessibilityRole="button"
             className="min-w-0 flex-1 flex-row items-center gap-3 active:opacity-60"
             onPress={() => openEntry(entry)}
@@ -234,7 +234,7 @@ export function VocabularySetDetail({
       keyExtractor={(entry) => entry.id}
       ListEmptyComponent={
         <Text className="text-sm text-muted-foreground">
-          No words in this set yet.
+          Set ini belum memiliki kata.
         </Text>
       }
       ListFooterComponent={
@@ -249,7 +249,7 @@ export function VocabularySetDetail({
                 })
               }
             >
-              Continue
+              Lanjutkan
             </StudyAction>
           </View>
         ) : null
@@ -259,7 +259,7 @@ export function VocabularySetDetail({
           <StudyGlass>
             <View className="gap-2">
               <Text className="text-xs font-black uppercase tracking-[2px] text-muted-foreground">
-                Vocabulary · {total} {total === 1 ? "word" : "words"}
+                Kosakata · {total} kata
               </Text>
               <Text
                 adjustsFontSizeToFit
@@ -293,16 +293,16 @@ export function VocabularySetDetail({
                 router.push("/(home)/(tabs)/assessments");
               }}
             >
-              Start practice
+              Mulai latihan
             </StudyAction>
           </StudyGlass>
 
           {total > 0 ? (
             <View className="flex-row items-center justify-between gap-3">
-              <Eyebrow>{`Words (${total})`}</Eyebrow>
+              <Eyebrow>{`Kata (${total})`}</Eyebrow>
               <View className="flex-row items-center rounded-full bg-muted p-1">
                 <Pressable
-                  accessibilityLabel="List view"
+                  accessibilityLabel="Tampilan daftar"
                   accessibilityRole="button"
                   className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "list" ? "bg-background" : ""}`}
                   onPress={() => setViewMode("list")}
@@ -320,7 +320,7 @@ export function VocabularySetDetail({
                   />
                 </Pressable>
                 <Pressable
-                  accessibilityLabel="Grid view"
+                  accessibilityLabel="Tampilan kisi"
                   accessibilityRole="button"
                   className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "grid" ? "bg-background" : ""}`}
                   onPress={() => setViewMode("grid")}

@@ -1015,6 +1015,10 @@ describe("mobile sync engine index and bundles", () => {
     const result = await engine.checkForUpdates();
     expect(result.state).toBe("refreshed");
     expect(manifestCalls).toBe(2);
+
+    // A manual sync (pull-to-refresh) ignores the throttle.
+    await engine.checkForUpdates(undefined, { manual: true });
+    expect(manifestCalls).toBe(3);
     await engine.dispose();
   });
 
@@ -1087,7 +1091,7 @@ describe("mobile sync engine index and bundles", () => {
       courseItemId: "item-1",
     });
     await expect(engine.clearLocalCache()).rejects.toThrow(
-      "Pending learning progress must sync before clearing local data.",
+      "Progres belajar yang tertunda harus disinkronkan sebelum data lokal dihapus.",
     );
     expect(await store.countOperations("user-1")).toBe(1);
     await engine.dispose();

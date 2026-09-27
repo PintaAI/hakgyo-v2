@@ -427,7 +427,6 @@ export function composeCourseItem(
           id: assessment.id,
           title: assessment.title,
           description: assessment.description,
-          status: assessment.status,
           _count: { questions: assessment.questionCount },
         }
       : null,
@@ -464,7 +463,7 @@ export function composeCourseItem(
       ),
       assessments: placement.embedded.assessmentIds.flatMap((reference) => {
         const embedded = bundle.content.assessments[reference.id];
-        return embedded && embedded.status === "PUBLISHED"
+        return embedded
           ? [
               {
                 id: embedded.id,
@@ -500,7 +499,7 @@ export function composeLearnerAssessment(
   if (!found || !assessmentId) return null;
   const { module, item } = found;
   const assessment = bundle.content.assessments[assessmentId];
-  if (!assessment || assessment.status !== "PUBLISHED") return null;
+  if (!assessment) return null;
   const attempts = standaloneAttemptsFor(state, item);
   const eligibleCohorts: LearnerEligibleCohort[] =
     state.eligibleCohortsByCourse[bundle.courseId] ?? [];
@@ -514,7 +513,6 @@ export function composeLearnerAssessment(
     maxAttempts: assessment.maxAttempts,
     shuffleQuestions: assessment.shuffleQuestions,
     shuffleOptions: assessment.shuffleOptions,
-    status: assessment.status,
     context: {
       label: "Asesmen bab",
       title: assessment.title,

@@ -33,7 +33,7 @@ export function safeExternalUrl(value: string, kind: "zoom" | "whatsapp") {
 }
 
 export function dateLabel(date: Date) {
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString("id-ID", {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -43,23 +43,23 @@ export function dateLabel(date: Date) {
 }
 
 export function dayLabel(date: Date) {
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString("id-ID", {
     month: "short",
     day: "numeric",
   });
 }
 
 export function timeLabel(date: Date) {
-  return date.toLocaleTimeString(undefined, {
+  return date.toLocaleTimeString("id-ID", {
     hour: "numeric",
     minute: "2-digit",
   });
 }
 
 export function achievementLabel(code: string) {
-  if (code === "FIRST_ACTIVITY") return "First step";
+  if (code === "FIRST_ACTIVITY") return "Langkah pertama";
   const [kind, count] = code.split("_");
-  if (kind === "STREAK") return `${count}-day streak`;
-  if (kind === "XP") return `${count} XP earned`;
+  if (kind === "STREAK") return `Streak ${count} hari`;
+  if (kind === "XP") return `${count} XP diraih`;
   return code.replaceAll("_", " ").toLowerCase();
 }

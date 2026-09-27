@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, BookOpenIcon } from "lucide-react";
 
 import { buttonVariants } from "~/components/ui/button";
+import { EmptyState } from "~/components/ui/empty-state";
+import { PageHeader } from "~/components/ui/page-header";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
   title: "Katalog course | Hakgyo",
-  description: "Jelajahi semua course terbit yang tersedia di Hakgyo.",
+  description: "Jelajahi semua course yang dipublikasikan di Hakgyo.",
 };
 
 const pageSize = 24;
@@ -43,25 +45,23 @@ export default async function CatalogPage({
 
   return (
     <section>
-      <div className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Katalog course</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Jelajahi semua course terbit yang tersedia di Hakgyo.
+      <PageHeader
+        className="mb-6"
+        title="Katalog course"
+        description="Jelajahi semua course yang dipublikasikan di Hakgyo."
+        actions={
+          <p className="text-muted-foreground text-sm">
+            Menampilkan {courses.length} course
           </p>
-        </div>
-        <p className="text-muted-foreground shrink-0 text-sm">
-          Menampilkan {courses.length} course
-        </p>
-      </div>
+        }
+      />
 
       {courses.length === 0 ? (
-        <div className="bg-card rounded-xl border p-10 text-center">
-          <h2 className="font-semibold">Belum ada course tersedia</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Course yang diterbitkan akan muncul di sini.
-          </p>
-        </div>
+        <EmptyState
+          icon={BookOpenIcon}
+          title="Belum ada course tersedia"
+          description="Course yang dipublikasikan akan muncul di sini."
+        />
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (

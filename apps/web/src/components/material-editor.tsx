@@ -704,6 +704,10 @@ function MaterialEditorForm({
               <Label htmlFor="requirement-policy">Kebijakan penyelesaian</Label>
               <Select
                 value={requirementPolicy}
+                items={{
+                  ALL: "Penuhi semua requirement",
+                  ANY: "Penuhi salah satu requirement",
+                }}
                 onValueChange={(value) => {
                   if (value === "ALL" || value === "ANY") {
                     setRequirementPolicy(value);

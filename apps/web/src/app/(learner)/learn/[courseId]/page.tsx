@@ -13,6 +13,7 @@ import {
   SmartphoneIcon,
 } from "lucide-react";
 
+import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
 import { Progress } from "~/components/ui/progress";
@@ -58,21 +59,21 @@ export default async function LearningCoursePage({
         <ArrowLeftIcon /> Dashboard
       </Link>
 
-      <section className="relative overflow-hidden rounded-lg bg-foreground px-5 py-6 text-background sm:px-7 sm:py-8">
+      <section className="bg-foreground text-background relative overflow-hidden rounded-lg px-5 py-6 sm:px-7 sm:py-8">
         <div className="pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
         <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
         <div className="relative grid gap-8 md:grid-cols-[1fr_15rem] md:items-end">
           <div>
-            <span className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+            <span className="text-background/70 text-[11px] font-semibold tracking-[0.18em] uppercase">
               <RouteIcon className="mr-1.5 inline size-3.5" />
               {course.progressionMode === "SEQUENTIAL"
                 ? "Belajar berurutan"
                 : "Akses terbuka"}
             </span>
-            <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
+            <h1 className="font-heading mt-4 max-w-3xl text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
               {course.title}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            <p className="text-background/70 mt-3 max-w-2xl text-sm leading-relaxed">
               {completed === allItems.length && allItems.length
                 ? "Hebat, semua aktivitas di course ini sudah kamu selesaikan."
                 : "Bangun pemahaman sedikit demi sedikit. Progress kamu tersimpan otomatis."}
@@ -100,23 +101,23 @@ export default async function LearningCoursePage({
               </a>
             </div>
           </div>
-          <div className="border-l border-background/15 pl-5">
+          <div className="border-background/15 border-l pl-5">
             <div className="flex items-end justify-between">
               <div>
                 <span className="text-3xl font-semibold tabular-nums">
                   {percent}%
                 </span>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-background/70 mt-1 text-xs">
                   Progress keseluruhan
                 </p>
               </div>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-background/70 text-xs">
                 {completed}/{allItems.length}
               </span>
             </div>
             <Progress
               value={percent}
-              className="mt-4 [&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-background/20"
+              className="[&_[data-slot=progress-indicator]]:bg-background [&_[data-slot=progress-track]]:bg-background/20 mt-4 [&_[data-slot=progress-track]]:h-1.5"
             />
           </div>
         </div>
@@ -125,9 +126,7 @@ export default async function LearningCoursePage({
       <section className="space-y-4">
         <div>
           <p className="text-muted-foreground text-sm">Jalur belajar</p>
-          <h2 className="mt-1 font-[family-name:var(--font-hanken-grotesk)] text-xl font-medium">
-            Isi course
-          </h2>
+          <h2 className="font-heading mt-1 text-xl font-medium">Isi course</h2>
         </div>
         {course.modules.length ? (
           <div className="space-y-4">
@@ -201,7 +200,7 @@ export default async function LearningCoursePage({
                                 {item.type === "MATERIAL"
                                   ? "Materi"
                                   : item.type === "ASSESSMENT"
-                                    ? "Assessment"
+                                    ? "Tugas"
                                     : "Latihan kosakata"}
                               </span>
                             </span>
@@ -236,7 +235,7 @@ export default async function LearningCoursePage({
                     ) : (
                       <div className="text-muted-foreground flex items-center gap-2 px-6 py-4 text-sm">
                         <CircleIcon className="size-3" /> Belum ada aktivitas di
-                        modul ini.
+                        bab ini.
                       </div>
                     )}
                   </div>
@@ -245,9 +244,11 @@ export default async function LearningCoursePage({
             })}
           </div>
         ) : (
-          <div className="text-muted-foreground rounded-md border border-dashed p-10 text-center">
-            Course ini belum memiliki modul belajar.
-          </div>
+          <EmptyState
+            icon={RouteIcon}
+            title="Belum ada bab"
+            description="Course ini belum memiliki bab belajar."
+          />
         )}
       </section>
     </div>

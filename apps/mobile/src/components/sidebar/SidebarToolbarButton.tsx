@@ -10,7 +10,7 @@ import { useAppTheme } from "../../providers/AppThemeProvider";
 import { toolbarIcons } from "../../theme/toolbar-icons";
 
 export function SidebarToolbarButton({
-  accessibilityLabel = "Open menu",
+  accessibilityLabel = "Buka menu",
 }: {
   accessibilityLabel?: string;
 }) {

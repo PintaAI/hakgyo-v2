@@ -16,7 +16,7 @@ export const SYNC_PROTOCOL = 2;
 /** Oldest protocol the server still accepts; older clients must update. */
 export const MIN_SYNC_PROTOCOL = 2;
 /** Bumped when the course bundle shape changes; clients refetch bundles. */
-export const BUNDLE_SCHEMA = 1;
+export const BUNDLE_SCHEMA = 2;
 /** Bumped when the learner index shape changes; clients refetch the index. */
 export const INDEX_SCHEMA = 1;
 
@@ -35,9 +35,8 @@ export interface JsonArray extends Array<JsonValue> {}
 export type JsonValue =
   string | number | boolean | JsonObject | JsonArray | null;
 
-export type CourseStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+export type CourseStatus = "DRAFT" | "PUBLISHED";
 export type CourseProgressionMode = "OPEN" | "SEQUENTIAL";
-export type AssessmentStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 export type AssessmentQuestionType =
   "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "WRITTEN";
 export type AssessmentAttemptStatus =
@@ -284,7 +283,6 @@ export type BundleAssessment = {
   timeLimitMinutes: number | null;
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
-  status: AssessmentStatus;
   questionCount: number;
   questions: BundleAssessmentQuestion[];
 };

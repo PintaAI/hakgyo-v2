@@ -9,7 +9,7 @@ const learningItemTypeMeta = {
     softClass: "bg-primary/10",
   },
   VOCABULARY_SET: {
-    label: "Kosa-kata",
+    label: "Kosakata",
     textClass: "text-emerald-600 dark:text-emerald-400",
     dotClass: "bg-emerald-500",
     borderClass: "border-emerald-500/40",

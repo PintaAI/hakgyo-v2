@@ -1,19 +1,6 @@
-import { Hanken_Grotesk, Inter } from "next/font/google";
-
 import { CoursesLibrary } from "~/components/courses-library";
-import { cn } from "~/lib/utils";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
 import { api } from "~/trpc/server";
-
-const hanken = Hanken_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-hanken-grotesk",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export default async function CoursesPage({
   params,
@@ -28,13 +15,7 @@ export default async function CoursesPage({
   });
 
   return (
-    <div
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        "w-full font-[family-name:var(--font-inter)]",
-      )}
-    >
+    <div className="w-full">
       <CoursesLibrary
         courses={courses}
         canCreate={

@@ -30,9 +30,9 @@ export function AssessmentQuestion({
         <View className="gap-2 border-b border-border/70 pb-4">
           <View className="flex-row items-center justify-between gap-3">
             <Text className="font-bold text-foreground">
-              Question {(current as number) + 1} of {total}
+              Soal {(current as number) + 1} dari {total}
             </Text>
-            <Text className="text-sm font-bold text-primary">Questions ▦</Text>
+            <Text className="text-sm font-bold text-primary">Soal ▦</Text>
           </View>
           <View
             accessibilityRole="progressbar"
@@ -47,8 +47,8 @@ export function AssessmentQuestion({
             />
           </View>
           <Text className="text-xs text-muted-foreground">
-            {answered} answered · {(total as number) - (answered as number)}{" "}
-            remaining
+            {answered} dijawab · {(total as number) - (answered as number)}{" "}
+            tersisa
           </Text>
         </View>
       ) : null}
@@ -67,8 +67,8 @@ export function AssessmentQuestion({
     <StudyGlass isInteractive={!disabled}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Questions. ${answered} of ${total} answered. Current question ${(current as number) + 1}.`}
-        accessibilityHint="Open the question list to jump to any question"
+        accessibilityLabel={`Soal. ${answered} dari ${total} dijawab. Soal saat ini ${(current as number) + 1}.`}
+        accessibilityHint="Buka daftar soal untuk berpindah ke soal mana pun"
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={onOpen}
@@ -101,10 +101,10 @@ export function AssessmentOption({
   const label =
     correct === true
       ? selected
-        ? "Your answer · Correct"
-        : "Correct answer"
+        ? "Jawaban kamu · Benar"
+        : "Jawaban benar"
       : wrong
-        ? "Your answer · Incorrect"
+        ? "Jawaban kamu · Salah"
         : undefined;
   const content = (
     <StudyGlass
@@ -168,7 +168,7 @@ export function AssessmentFeedback({
         accessibilityLiveRegion="polite"
         className={`text-2xl font-black ${correct ? "text-primary" : "text-destructive"}`}
       >
-        {correct ? "You got it." : "Almost."}
+        {correct ? "Tepat sekali." : "Hampir."}
       </Text>
       {children}
     </StudyGlass>

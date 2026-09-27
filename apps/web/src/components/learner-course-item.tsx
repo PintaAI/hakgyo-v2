@@ -155,19 +155,19 @@ export function LearnerCourseItem({
             <div className="pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
             <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
             <div className="relative">
-              <Badge className="bg-background/10 border-white/15 text-white">
+              <Badge className="border-background/20 bg-background/10 text-background">
                 <LanguagesIcon /> Studio kosakata
               </Badge>
-              <h1 className="mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-5xl">
+              <h1 className="font-heading mt-4 text-3xl font-medium tracking-tight sm:text-5xl">
                 {vocabulary.title}
               </h1>
               {vocabulary.description ? (
-                <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
+                <p className="text-background/70 mt-3 max-w-2xl text-sm leading-relaxed">
                   {vocabulary.description}
                 </p>
               ) : null}
               <div className="mt-6 max-w-md">
-                <div className="text-muted-foreground mb-2 flex justify-between text-xs">
+                <div className="text-background/70 mb-2 flex justify-between text-xs">
                   <span>{reviewed.size} kata dipelajari</span>
                   <span>{reviewPercent}%</span>
                 </div>

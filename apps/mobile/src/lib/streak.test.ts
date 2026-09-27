@@ -17,13 +17,13 @@ describe("weekly streak days", () => {
         active,
       })),
     ).toEqual([
-      { weekday: "Mon", dateKey: "2026-09-14", active: true },
-      { weekday: "Tue", dateKey: "2026-09-15", active: false },
-      { weekday: "Wed", dateKey: "2026-09-16", active: true },
-      { weekday: "Thu", dateKey: "2026-09-17", active: false },
-      { weekday: "Fri", dateKey: "2026-09-18", active: false },
-      { weekday: "Sat", dateKey: "2026-09-19", active: false },
-      { weekday: "Sun", dateKey: "2026-09-20", active: false },
+      { weekday: "Sen", dateKey: "2026-09-14", active: true },
+      { weekday: "Sel", dateKey: "2026-09-15", active: false },
+      { weekday: "Rab", dateKey: "2026-09-16", active: true },
+      { weekday: "Kam", dateKey: "2026-09-17", active: false },
+      { weekday: "Jum", dateKey: "2026-09-18", active: false },
+      { weekday: "Sab", dateKey: "2026-09-19", active: false },
+      { weekday: "Min", dateKey: "2026-09-20", active: false },
     ]);
     expect(days.map(({ today, future }) => ({ today, future }))).toEqual([
       { today: false, future: false },
@@ -48,7 +48,7 @@ describe("weekly streak days", () => {
       active: true,
       dateKey: "2026-01-01",
       today: true,
-      weekday: "Thu",
+      weekday: "Kam",
     });
   });
 });

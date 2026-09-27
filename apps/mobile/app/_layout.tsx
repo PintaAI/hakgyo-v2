@@ -279,7 +279,7 @@ function RootNavigator() {
                   headerBackVisible: false,
                   headerShadowVisible: false,
                   headerStyle: { backgroundColor: "transparent" },
-                  title: "Choose organization",
+                  title: "Pilih organisasi",
                   contentStyle: { backgroundColor: "transparent" },
                   presentation: "formSheet",
                   sheetAllowedDetents: [0.55, 0.9],

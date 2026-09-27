@@ -1,7 +1,7 @@
 import { MIN_ASSESSMENT_OPTIONS } from "~/lib/assessment-options";
 import { hasBlockNoteContent } from "~/lib/blocknote/document";
 
-type PublishableQuestion = {
+export type PublishableQuestion = {
   type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "WRITTEN";
   prompt: unknown;
   options: Array<{ content: unknown; isCorrect: boolean }>;
@@ -11,7 +11,7 @@ export function getAssessmentPublishValidationError(
   questions: PublishableQuestion[],
 ) {
   if (questions.length === 0) {
-    return "Tambahkan setidaknya satu soal sebelum memublikasikan assessment.";
+    return "Tambahkan setidaknya satu soal.";
   }
 
   for (const [index, question] of questions.entries()) {

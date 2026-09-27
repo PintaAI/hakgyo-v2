@@ -262,6 +262,70 @@ describe("ContentLocalStore", () => {
     expect(operations[0]?.attemptCount).toBe(1);
   });
 
+  test("blocks live-assessment and readiness rejections permanently", async () => {
+    const store = createStore();
+    const draft = await store.saveDraft({
+      ...scope,
+      entityType: "material",
+      entityId: "material-1",
+      payload: materialPayload(),
+      editorSchemaVersion: 1,
+    });
+    await store.enqueueOperation({
+      ...scope,
+      draftKey: draft.key,
+      mutation: "content.updateMaterial",
+      input: {
+        organizationId: scope.organizationId,
+        materialId: "material-1",
+        title: "Live title",
+      },
+    });
+    const message =
+      "Tugas ini sedang tayang di Course › Bab 1. Sembunyikan item atau duplikat tugas untuk mengubahnya.";
+
+    const summary = await processContentSyncQueue(store, scope, () => {
+      throw Object.assign(new Error(message), {
+        data: { code: "PRECONDITION_FAILED" },
+      });
+    });
+
+    expect(summary.rejected).toHaveLength(1);
+    expect(summary.rejected[0]).toMatchObject({
+      message,
+      draftKey: draft.key,
+    });
+    expect(await store.getDraft(scope, "material", "material-1")).toMatchObject(
+      { syncStatus: "rejected" },
+    );
+    const operations = await store.listOperations(scope);
+    expect(operations[0]?.status).toBe("blocked");
+    expect(operations[0]?.lastError).toBe(message);
+  });
+
+  test("keeps retrying transient failures", async () => {
+    const store = createStore();
+    await store.enqueueOperation({
+      ...scope,
+      mutation: "content.updateMaterial",
+      input: {
+        organizationId: scope.organizationId,
+        materialId: "material-1",
+        title: "Offline title",
+      },
+    });
+
+    const summary = await processContentSyncQueue(store, scope, () => {
+      throw Object.assign(new Error("fetch failed"), {
+        data: { code: "INTERNAL_SERVER_ERROR" },
+      });
+    });
+
+    expect(summary.rejected).toHaveLength(0);
+    const operations = await store.listOperations(scope);
+    expect(operations[0]?.status).toBe("queued");
+  });
+
   test("clears every organization belonging to a user", async () => {
     const store = createStore();
     await Promise.all(

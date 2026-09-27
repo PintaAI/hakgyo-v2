@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { Hanken_Grotesk, Inter } from "next/font/google";
 
 import { LearnerBreadcrumb } from "~/components/learner-breadcrumb";
 import { LearnerSidebar } from "~/components/learner-sidebar";
@@ -10,19 +9,8 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "~/components/ui/sidebar";
-import { cn } from "~/lib/utils";
 import { requireSession } from "~/server/auth/dal";
 import { getMyCourses } from "./learner-data";
-
-const hanken = Hanken_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-hanken-grotesk",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export default async function LearnerLayout({
   children,
@@ -38,14 +26,7 @@ export default async function LearnerLayout({
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (
-    <SidebarProvider
-      defaultOpen={defaultOpen}
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        "font-[family-name:var(--font-inter)]",
-      )}
-    >
+    <SidebarProvider defaultOpen={defaultOpen}>
       <LearnerSidebar courses={courses} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear">

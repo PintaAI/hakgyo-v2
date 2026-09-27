@@ -388,7 +388,9 @@ function CultureImage({
               size="sm"
               className="text-xs"
             >
-              <span className="flex flex-1 text-left">Ratio: {image.aspect}</span>
+              <span className="flex flex-1 text-left">
+                Ratio: {image.aspect}
+              </span>
             </SelectTrigger>
             <SelectContent>
               {cultureImageAspects.map((aspect) => (
@@ -731,7 +733,7 @@ export const cultureBlock = createReactBlockSpec(
                     }
                     type="checkbox"
                   />
-                  Assessment
+                  Penilaian diri
                 </label>
                 <CustomBlockToolbar
                   block={block}

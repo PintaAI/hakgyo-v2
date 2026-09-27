@@ -106,7 +106,7 @@ export function CourseLearningFooter({
         setIssue({
           kind: "error",
           message:
-            "Open the course contents to see what is still required before continuing.",
+            "Buka daftar isi course untuk melihat apa yang masih perlu diselesaikan sebelum melanjutkan.",
         });
       return;
     }
@@ -119,12 +119,12 @@ export function CourseLearningFooter({
         readCourseOutline(queryClient, courseId, activeOrganizationId) ??
         outline.data;
       if (!before)
-        throw new Error("Course data is not available on this device.");
+        throw new Error("Data course tidak tersedia di perangkat ini.");
       baseline.current ??= before;
       const current = getLearningPath(before, courseItemId);
       if (!current)
         throw new Error(
-          "This activity is no longer available. Check the course contents for your next step.",
+          "Aktivitas ini tidak lagi tersedia. Cek daftar isi course untuk langkah berikutnya.",
         );
       if (!current.item.isCompleted) {
         if (completionMode === "assessment") {
@@ -140,7 +140,7 @@ export function CourseLearningFooter({
           setIssue({
             kind: "error",
             message:
-              "Completion is saved on this device and will sync when you are online.",
+              "Penyelesaian tersimpan di perangkat ini dan akan disinkronkan saat kamu online.",
           });
           return;
         }
@@ -154,14 +154,14 @@ export function CourseLearningFooter({
         );
         if (!after) {
           throw new Error(
-            "Completion synced, but the updated course did not load.",
+            "Penyelesaian sudah disinkronkan, tetapi course terbaru gagal dimuat.",
           );
         }
         if (!mounted.current) return;
         const next = getLearningPath(after, courseItemId);
         if (!next?.item.isCompleted)
           throw new Error(
-            "Complete the required activities in this material, then try again.",
+            "Selesaikan aktivitas wajib di materi ini, lalu coba lagi.",
           );
         const celebration = getLearningMilestone(
           baseline.current,
@@ -176,7 +176,7 @@ export function CourseLearningFooter({
           setIssue({
             kind: "error",
             message:
-              "Your progress is saved. Open the course contents to see what is still required.",
+              "Progres kamu tersimpan. Buka daftar isi course untuk melihat apa yang masih perlu diselesaikan.",
           });
         return;
       }
@@ -194,10 +194,10 @@ export function CourseLearningFooter({
           : {
               kind: "error",
               message: saved.current
-                ? "Your progress was saved, but the next activity did not load. Tap continue to try again."
+                ? "Progres kamu tersimpan, tetapi aktivitas berikutnya gagal dimuat. Ketuk lanjutkan untuk mencoba lagi."
                 : cause instanceof Error
                   ? cause.message
-                  : "We couldn’t save your progress. Check your connection and try again.",
+                  : "Progres kamu gagal disimpan. Periksa koneksi lalu coba lagi.",
             },
       );
     } finally {
@@ -212,16 +212,16 @@ export function CourseLearningFooter({
         <View className="gap-1.5">
           <Text className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
             {path
-              ? `Module ${path.moduleIndex + 1} · Activity ${path.itemIndex + 1} of ${path.module.items.length}`
-              : "Your learning path"}
+              ? `Bab ${path.moduleIndex + 1} · Aktivitas ${path.itemIndex + 1} dari ${path.module.items.length}`
+              : "Jalur belajar kamu"}
           </Text>
           <Text className="text-[28px] font-black leading-8 tracking-tight text-foreground">
-            {path?.item.isCompleted ? "Nice work" : "Ready to move on?"}
+            {path?.item.isCompleted ? "Kerja bagus" : "Siap lanjut?"}
           </Text>
           <Text className="text-sm leading-5 text-muted-foreground">
             {path
-              ? `${path.completedCount} of ${path.module.items.length} activities complete in ${path.module.title}`
-              : "Keep your momentum, one activity at a time."}
+              ? `${path.completedCount} dari ${path.module.items.length} aktivitas selesai di ${path.module.title}`
+              : "Jaga semangatmu, satu aktivitas demi satu aktivitas."}
           </Text>
         </View>
         {path ? (
@@ -248,7 +248,7 @@ export function CourseLearningFooter({
           <View className="min-w-0 flex-1 gap-1">
             <View className="flex-row items-center gap-2">
               <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-                Up next
+                Berikutnya
               </Text>
               <View className="flex-row items-center gap-1.5">
                 <View
@@ -277,7 +277,7 @@ export function CourseLearningFooter({
         </View>
       ) : path && !path.courseCompleted ? (
         <Text className="border-t border-border pt-5 text-sm leading-5 text-muted-foreground">
-          Finish this step to reveal the next activity.
+          Selesaikan langkah ini untuk membuka aktivitas berikutnya.
         </Text>
       ) : null}
       {issue?.kind === "requirements" || assessmentIncomplete ? (
@@ -287,26 +287,26 @@ export function CourseLearningFooter({
         >
           <View className="gap-1.5">
             <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-              Before you continue
+              Sebelum melanjutkan
             </Text>
             <Text className="text-base font-black text-foreground">
               {assessmentIncomplete
-                ? "Complete this assessment first"
-                : "One quick step left"}
+                ? "Selesaikan tugas ini dulu"
+                : "Tinggal satu langkah lagi"}
             </Text>
             <Text className="text-sm leading-5 text-muted-foreground">
               {assessmentIncomplete
-                ? "Pass the assessment, or wait for your teacher’s review if it is still being graded."
+                ? "Lulus tugas ini, atau tunggu review dari pengajar jika masih dinilai."
                 : requirementActions.length
-                  ? "Complete the practice below to lock in what you learned. Your lesson progress is safe."
-                  : "Complete the required practice in this lesson, then come back and continue."}
+                  ? "Selesaikan latihan di bawah untuk memantapkan yang sudah kamu pelajari. Progres materi kamu aman."
+                  : "Selesaikan latihan wajib di materi ini, lalu kembali dan lanjutkan."}
             </Text>
           </View>
           {requirementActions.map((action) => (
             <Pressable
               key={action.id}
               accessibilityRole="button"
-              accessibilityHint={`Opens the required ${action.type === "VOCABULARY_SET" ? "vocabulary practice" : "assessment"}`}
+              accessibilityHint={`Membuka ${action.type === "VOCABULARY_SET" ? "latihan kosakata" : "tugas"} yang wajib`}
               className="min-h-12 items-center justify-center rounded-full bg-primary px-5 py-3 active:opacity-80"
               onPress={() => {
                 setIssue(undefined);
@@ -314,7 +314,7 @@ export function CourseLearningFooter({
               }}
             >
               <Text className="text-center font-bold text-primary-foreground">
-                {action.type === "VOCABULARY_SET" ? "Practice" : "Open"}{" "}
+                {action.type === "VOCABULARY_SET" ? "Latih" : "Buka"}{" "}
                 {action.title} →
               </Text>
             </Pressable>
@@ -329,14 +329,14 @@ export function CourseLearningFooter({
             onPress={() => void continueLearning()}
           >
             {busy
-              ? "Saving your progress…"
+              ? "Menyimpan progres kamu…"
               : path?.courseCompleted && !path.nextItem
-                ? "Finish course"
+                ? "Selesaikan course"
                 : path?.item.isCompleted || completionMode === "assessment"
-                  ? "Continue learning →"
+                  ? "Lanjutkan belajar →"
                   : finishingModule
-                    ? "Complete module →"
-                    : "Complete & continue →"}
+                    ? "Selesaikan bab →"
+                    : "Selesai & lanjutkan →"}
           </StudyAction>
         ) : null}
         {onReadAgain ? (
@@ -347,7 +347,7 @@ export function CourseLearningFooter({
             disabled={busy}
           >
             <Text className="font-semibold text-muted-foreground">
-              ↑ Read again
+              ↑ Baca lagi
             </Text>
           </Pressable>
         ) : null}
@@ -359,7 +359,7 @@ export function CourseLearningFooter({
         >
           {issue?.kind === "error"
             ? issue.message
-            : "We couldn’t load your learning path. Tap continue to try again."}
+            : "Jalur belajar kamu gagal dimuat. Ketuk lanjutkan untuk mencoba lagi."}
         </Text>
       ) : null}
     </View>
@@ -371,13 +371,15 @@ export function CourseLearningFooter({
     <View className="gap-6">
       <View className="items-center gap-2">
         <Text className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-          {milestone.courseCompleted ? "Course complete" : "Module complete"}
+          {milestone.courseCompleted ? "Course selesai" : "Bab selesai"}
         </Text>
         <Text
           accessibilityRole="header"
           className="text-center text-[28px] font-black leading-8 tracking-tight text-foreground"
         >
-          {milestone.courseCompleted ? "You did it" : "Keep the momentum"}
+          {milestone.courseCompleted
+            ? "Kamu berhasil"
+            : "Pertahankan semangatmu"}
         </Text>
         <Text className="text-center text-sm leading-5 text-muted-foreground">
           You completed {milestone.moduleTitle}.
@@ -387,7 +389,7 @@ export function CourseLearningFooter({
       {milestone.unlockedModuleTitle || milestone.nextItem ? (
         <View className="gap-1 border-t border-border pt-5">
           <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-            {milestone.unlockedModuleTitle ? "Unlocked" : "Up next"}
+            {milestone.unlockedModuleTitle ? "Terbuka" : "Berikutnya"}
           </Text>
           <Text className="text-base font-bold leading-6 text-foreground">
             {milestone.unlockedModuleTitle ?? milestone.nextItem?.title}
@@ -397,7 +399,7 @@ export function CourseLearningFooter({
 
       <View className="gap-2">
         <StudyAction onPress={() => navigate(milestone.nextItem)}>
-          {milestone.nextItem ? "Continue learning →" : "View course progress"}
+          {milestone.nextItem ? "Lanjutkan belajar →" : "Lihat progres course"}
         </StudyAction>
         {milestone.nextItem ? (
           <Pressable
@@ -406,7 +408,7 @@ export function CourseLearningFooter({
             onPress={() => navigate()}
           >
             <Text className="font-semibold text-muted-foreground">
-              Back to course
+              Kembali ke course
             </Text>
           </Pressable>
         ) : null}

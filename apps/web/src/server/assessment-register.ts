@@ -143,10 +143,10 @@ export function assessmentContext(attempt: {
     kind,
     label:
       kind === "CHAPTER"
-        ? "Asesmen bab"
+        ? "Tugas bab"
         : kind === "TRYOUT"
           ? "Tryout"
-          : "Asesmen on-demand",
+          : "Tugas on-demand",
     title: event?.title ?? attempt.assessment.title,
     course: attempt.courseItem.module.course,
     moduleTitle: attempt.courseItem.module.title,

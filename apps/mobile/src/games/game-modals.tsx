@@ -1,7 +1,14 @@
 import { Image } from "expo-image";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import type { ReactNode } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CourseLearningFooter } from "../components/learn/course-learning-footer";
@@ -136,7 +143,7 @@ function GameModalContent({
           >
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel="Tutup"
               hitSlop={2}
               onPress={onSecondary}
               style={styles.closeButton}
@@ -178,7 +185,7 @@ function GameModalContent({
         </StudyAction>
         {tertiaryLabel && onTertiary ? (
           <Pressable
-              accessibilityLabel={`${tertiaryLabel}${tertiaryDetail ? `, ${tertiaryDetail}` : ""}`}
+            accessibilityLabel={`${tertiaryLabel}${tertiaryDetail ? `, ${tertiaryDetail}` : ""}`}
             accessibilityRole="button"
             onPress={onTertiary}
             style={({ pressed }) => [
@@ -250,7 +257,7 @@ export function GameModal(props: GameModalProps) {
   const {
     gameKey,
     visible,
-    eyebrow = "Practice session",
+    eyebrow = "Sesi latihan",
     title,
     detail,
     hero,
@@ -364,7 +371,7 @@ export function GameStartModal({
   onPrimary,
   onDismiss,
   onSecondary,
-  primaryLabel = "Start",
+  primaryLabel = "Mulai",
   primaryDisabled = false,
   tertiaryLabel,
   tertiaryDetail,
@@ -391,7 +398,7 @@ export function GameStartModal({
     <GameModal
       content={content}
       detail={detail}
-      eyebrow="Practice game"
+      eyebrow="Game latihan"
       gameKey={gameKey}
       hero={hero ?? <GameStartHero gameKey={gameKey} />}
       onDismiss={onDismiss}

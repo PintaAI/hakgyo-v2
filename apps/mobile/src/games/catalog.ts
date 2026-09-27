@@ -1,23 +1,23 @@
 export const gameCatalog = {
   cards: {
-    title: "Cards",
+    title: "Kartu",
     icon: "Aa",
-    description: "Flip through the set and recall each word.",
+    description: "Balik kartu dan ingat setiap kata.",
   },
   "word-fall": {
-    title: "Word Fall",
+    title: "Hujan Kata",
     icon: "↓",
-    description: "Type each word before it reaches your ship.",
+    description: "Ketik setiap kata sebelum mengenai kapalmu.",
   },
   sentences: {
-    title: "Sentences",
+    title: "Kalimat",
     icon: "↔",
-    description: "Build meaning, one sentence at a time.",
+    description: "Bangun makna, satu kalimat demi satu kalimat.",
   },
   match: {
-    title: "Vocabulary Match",
+    title: "Cocokkan Kata",
     icon: "⌁",
-    description: "Connect each word to its meaning.",
+    description: "Hubungkan setiap kata dengan artinya.",
   },
   "syllable-forge": {
     title: "Susun 한글",

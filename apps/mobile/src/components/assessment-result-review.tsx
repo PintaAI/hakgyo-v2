@@ -74,10 +74,10 @@ export function AssessmentResultReview({
   if (!policy.showAnswerReview)
     return (
       <StudyGlass>
-        <Text className="font-bold text-foreground">Score-only tryout</Text>
+        <Text className="font-bold text-foreground">Tryout hanya skor</Text>
         <Text className="text-sm leading-5 text-muted-foreground">
-          Tryout results include your final score and leaderboard. Correct
-          answers and explanations are not published.
+          Hasil tryout berisi skor akhir dan leaderboard. Kunci jawaban dan
+          pembahasan tidak dipublikasikan.
         </Text>
       </StudyGlass>
     );
@@ -85,11 +85,11 @@ export function AssessmentResultReview({
     return (
       <StudyGlass>
         <Text className="font-bold text-foreground">
-          Answer review is not available yet
+          Review jawaban belum tersedia
         </Text>
         <Text className="text-sm leading-5 text-muted-foreground">
-          Correct answers and explanations become available after this on-demand
-          assessment closes.
+          Kunci jawaban dan pembahasan tersedia setelah tugas on-demand ini
+          ditutup.
         </Text>
       </StudyGlass>
     );
@@ -111,19 +111,19 @@ export function AssessmentResultReview({
   return (
     <View className="gap-4">
       <Text className="text-xl font-black text-foreground">
-        Review your answers
+        Review jawaban kamu
       </Text>
       <AssessmentQuestion
         detail={
           question.type === "WRITTEN"
             ? writtenScore !== null
               ? writtenScore + " / " + question.points + " pt"
-              : "Reviewed"
+              : "Sudah direview"
             : statuses[index] === "correct"
-              ? "Correct"
+              ? "Benar"
               : statuses[index] === "unanswered"
-                ? "Not answered"
-                : "Incorrect"
+                ? "Tidak dijawab"
+                : "Salah"
         }
         current={index}
         total={assessment.questions.length}
@@ -138,12 +138,12 @@ export function AssessmentResultReview({
       {question.type === "WRITTEN" ? (
         <StudyGlass>
           <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Your answer
+            Jawaban kamu
           </Text>
           <Text className="text-base leading-6 text-foreground">
             {typeof answer?.content === "string" && answer.content.trim()
               ? answer.content
-              : "Not answered"}
+              : "Tidak dijawab"}
           </Text>
         </StudyGlass>
       ) : (
@@ -165,7 +165,7 @@ export function AssessmentResultReview({
       {feedback ? (
         <StudyGlass>
           <Text className="text-xs font-bold uppercase tracking-wider text-primary">
-            Teacher feedback
+            Feedback pengajar
           </Text>
           <NativeContentRenderer
             content={feedback}
@@ -176,7 +176,7 @@ export function AssessmentResultReview({
       {question.explanation ? (
         <StudyGlass>
           <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Explanation
+            Pembahasan
           </Text>
           <NativeContentRenderer
             content={question.explanation}
@@ -191,7 +191,7 @@ export function AssessmentResultReview({
             disabled={index === 0}
             onPress={() => goToQuestion(index - 1)}
           >
-            Previous
+            Sebelumnya
           </StudyAction>
         </View>
         <View className="flex-1">
@@ -199,7 +199,7 @@ export function AssessmentResultReview({
             disabled={index === assessment.questions.length - 1}
             onPress={() => goToQuestion(index + 1)}
           >
-            Next →
+            Berikutnya →
           </StudyAction>
         </View>
       </View>

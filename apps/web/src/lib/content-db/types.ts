@@ -5,7 +5,12 @@ import type { AppRouter } from "~/server/api/root";
 type RouterInputs = inferRouterInputs<AppRouter>;
 
 export type ContentEntityType = "material" | "assessment" | "vocabularySet";
-export type DraftSyncStatus = "clean" | "dirty" | "syncing" | "conflict";
+/**
+ * `rejected`: the server refused the change for a reason retrying cannot fix
+ * (e.g. the assessment is live, or the edit would break a visible lesson).
+ */
+export type DraftSyncStatus =
+  "clean" | "dirty" | "syncing" | "conflict" | "rejected";
 export type SyncOperationStatus = "queued" | "processing" | "blocked";
 export type PendingAssetStatus = "pending" | "uploading" | "failed";
 
@@ -66,7 +71,6 @@ export type AssessmentQuestionDraft = LocalEntityIdentity & {
 export type AssessmentDraftPayload = {
   title: string;
   description?: string | null;
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   editorSchemaVersion: number;
   instructions?: RouterInputs["assessment"]["create"]["instructions"];
   passingScore?: number | null;

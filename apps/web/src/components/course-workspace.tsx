@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArchiveIcon,
   ArrowDownAZIcon,
   ArrowDownIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   ArrowUpIcon,
   CalendarDaysIcon,
+  ClipboardCheckIcon,
   CheckIcon,
   CircleHelpIcon,
   ClipboardIcon,
@@ -33,7 +33,6 @@ import {
   UserPlusIcon,
   UserRoundCheckIcon,
   UsersIcon,
-  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,6 +48,10 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { AssessmentEventManager } from "~/components/assessment-event-manager";
+import {
+  CoursePublicationControl,
+  coursePublicationLabels,
+} from "~/components/course-readiness";
 import { ReviewQueue } from "~/components/review-queue";
 import {
   Avatar,
@@ -59,6 +62,7 @@ import {
 } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
+import { EmptyState } from "~/components/ui/empty-state";
 import {
   Card,
   CardAction,
@@ -138,9 +142,14 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
 });
 
 const courseStatus = {
-  DRAFT: { label: "Draf", variant: "secondary" as const },
-  PUBLISHED: { label: "Published", variant: "default" as const },
-  ARCHIVED: { label: "Arsip", variant: "outline" as const },
+  DRAFT: {
+    label: coursePublicationLabels.DRAFT,
+    variant: "secondary" as const,
+  },
+  PUBLISHED: {
+    label: coursePublicationLabels.PUBLISHED,
+    variant: "default" as const,
+  },
 };
 
 const enrollmentStatus = {
@@ -162,7 +171,8 @@ const courseCurrencies = [
 ] as const;
 
 const cohortStatus = {
-  DRAFT: "Draf",
+  // Cohort DRAFT: set up but not visible to learners yet.
+  DRAFT: "Persiapan",
   OPEN: "Dibuka",
   IN_PROGRESS: "Berjalan",
   COMPLETED: "Selesai",
@@ -170,13 +180,13 @@ const cohortStatus = {
 } as const;
 
 const views = [
-  { value: "overview", label: "Overview", icon: LayoutDashboardIcon },
+  { value: "overview", label: "Ringkasan", icon: LayoutDashboardIcon },
   { value: "cohorts", label: "Group belajar", icon: CalendarDaysIcon },
   { value: "learners", label: "Siswa", icon: UsersIcon },
-  { value: "reviews", label: "Hasil & review", icon: UsersIcon },
+  { value: "reviews", label: "Hasil & review", icon: ClipboardCheckIcon },
   { value: "tryouts", label: "Tryout", icon: TrophyIcon },
   { value: "access", label: "Akses", icon: ShieldCheckIcon },
-  { value: "settings", label: "Settings", icon: Settings2Icon },
+  { value: "settings", label: "Pengaturan", icon: Settings2Icon },
 ] satisfies Array<{
   value: CourseView;
   label: string;
@@ -234,31 +244,6 @@ function LearnerAvatarStack({
   );
 }
 
-function SectionEmpty({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="rounded-md border border-dashed px-5 py-12 text-center">
-      <Icon className="text-muted-foreground mx-auto size-6" />
-      <h3 className="mt-3 font-[family-name:var(--font-hanken-grotesk)] text-base font-medium">
-        {title}
-      </h3>
-      <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-xs leading-relaxed">
-        {description}
-      </p>
-      {action}
-    </div>
-  );
-}
-
 function QueryState({ error }: { error?: { message: string } | null }) {
   if (error) {
     return (
@@ -282,7 +267,7 @@ function Stat({ label, value }: { label: string; value: number | string }) {
       <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase sm:text-xs">
         {label}
       </span>
-      <span className="mt-1 font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight tabular-nums sm:text-3xl">
+      <span className="font-heading mt-1 text-2xl font-medium tracking-tight tabular-nums sm:text-3xl">
         {value}
       </span>
     </div>
@@ -409,17 +394,23 @@ export function CourseWorkspace({
         utils.course.get.invalidate({ courseId: course.id }),
         refreshWorkspace(),
         utils.course.list.invalidate({ organizationId }),
+        utils.content.getCurriculumReadiness.invalidate({
+          courseId: course.id,
+        }),
+        // Publishing changes which assessments are live (read-only).
+        utils.assessment.get.invalidate(),
+        utils.assessment.list.invalidate(),
       ]);
       toast.success(
         status === "PUBLISHED"
-          ? "Course published."
-          : status === "ARCHIVED"
-            ? "Course dipindahkan ke arsip."
-            : "Course dikembalikan menjadi draf.",
+          ? "Course dipublikasikan."
+          : "Publikasi course dibatalkan. Semua item disembunyikan dari learner.",
       );
       router.refresh();
+      return true;
     } catch (error) {
       toast.error(getErrorMessage(error));
+      return false;
     }
   }
 
@@ -464,12 +455,12 @@ export function CourseWorkspace({
                 {courseStatus[course.status].label}
               </Badge>
             </div>
-            <h1 className="text-foreground mt-4 font-[family-name:var(--font-hanken-grotesk)] text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
+            <h1 className="text-foreground font-heading mt-4 text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
               {course.title}
             </h1>
             <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
               {course.description ??
-                "Belum ada deskripsi. Tambahkan konteks course melalui Settings."}
+                "Belum ada deskripsi. Tambahkan konteks course melalui Pengaturan."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -496,25 +487,14 @@ export function CourseWorkspace({
                 Lihat kurikulum
               </Link>
             )}
-            {canManageCourse && course.status === "PUBLISHED" ? (
-              <Button
-                disabled={updateCourse.isPending}
-                onClick={() => changeCourseStatus("DRAFT")}
-              >
-                Kembalikan ke draf
-              </Button>
-            ) : canManageCourse ? (
-              <Button
-                disabled={updateCourse.isPending}
-                onClick={() => changeCourseStatus("PUBLISHED")}
-              >
-                {updateCourse.isPending ? (
-                  <LoaderCircleIcon className="animate-spin" />
-                ) : (
-                  <CheckIcon />
-                )}
-                Publish
-              </Button>
+            {canManageCourse ? (
+              <CoursePublicationControl
+                courseId={course.id}
+                status={course.status}
+                curriculumHref={`${root}/kurikulum`}
+                pending={updateCourse.isPending}
+                onChangeStatus={changeCourseStatus}
+              />
             ) : null}
           </div>
         </div>
@@ -632,7 +612,6 @@ export function CourseWorkspace({
             course={course}
             coursesHref={`/workspace/${organizationSlug}/courses`}
             organizationId={organizationId}
-            onStatusChange={changeCourseStatus}
             onWorkspaceChange={refreshWorkspace}
           />
         </TabsContent>
@@ -661,7 +640,7 @@ function OverviewSection({
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="rounded-lg">
           <CardHeader>
-            <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+            <CardTitle className="font-heading text-lg font-medium">
               Akses course bersama
             </CardTitle>
             <CardDescription>
@@ -737,7 +716,7 @@ function OverviewSection({
         <Card className="rounded-lg">
           <CardHeader className="border-b">
             <div>
-              <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+              <CardTitle className="font-heading text-lg font-medium">
                 kurikulum
               </CardTitle>
               <CardDescription>
@@ -756,7 +735,8 @@ function OverviewSection({
           </CardHeader>
           {modules.length === 0 ? (
             <CardContent>
-              <SectionEmpty
+              <EmptyState
+                size="sm"
                 icon={Layers3Icon}
                 title="Kurikulum masih kosong"
                 description="Susun bab pertama, lalu hubungkan bahan ajar."
@@ -808,7 +788,7 @@ function OverviewSection({
         <div className="grid gap-4">
           <Card className="rounded-lg">
             <CardHeader>
-              <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+              <CardTitle className="font-heading text-lg font-medium">
                 Langkah berikutnya
               </CardTitle>
               <CardDescription>
@@ -956,7 +936,7 @@ function CohortsSection({
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
+          <h2 className="font-heading text-2xl font-medium tracking-tight">
             Group belajar
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -997,6 +977,7 @@ function CohortsSection({
         <div className="grid gap-2 sm:flex">
           <Select
             value={statusFilter}
+            items={{ ALL: "Semua status", ...cohortStatus }}
             onValueChange={(value) => {
               if (value) onStatusFilterChange(value);
             }}
@@ -1019,6 +1000,11 @@ function CohortsSection({
           </Select>
           <Select
             value={sort}
+            items={{
+              updatedAt: "Aktivitas terakhir",
+              createdAt: "Tanggal dibuat",
+              name: "Nama",
+            }}
             onValueChange={(value) => {
               if (value) onSortChange(value);
             }}
@@ -1050,6 +1036,7 @@ function CohortsSection({
           </Select>
           <Select
             value={sortDirection}
+            items={{ asc: "Naik", desc: "Turun" }}
             onValueChange={(value) => {
               if (value) onSortDirectionChange(value);
             }}
@@ -1067,10 +1054,10 @@ function CohortsSection({
             </SelectTrigger>
             <SelectContent align="end">
               <SelectItem value="asc">
-                <ArrowUpIcon /> Ascending
+                <ArrowUpIcon /> Naik
               </SelectItem>
               <SelectItem value="desc">
-                <ArrowDownIcon /> Descending
+                <ArrowDownIcon /> Turun
               </SelectItem>
             </SelectContent>
           </Select>
@@ -1081,7 +1068,8 @@ function CohortsSection({
       {!isPending && !error && data?.length === 0 ? (
         <Card className="rounded-lg">
           <CardContent>
-            <SectionEmpty
+            <EmptyState
+              size="sm"
               icon={hasActiveFilters ? SearchIcon : CalendarDaysIcon}
               title={
                 hasActiveFilters
@@ -1125,7 +1113,7 @@ function CohortsSection({
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate font-[family-name:var(--font-hanken-grotesk)] font-medium">
+                        <h3 className="font-heading truncate font-medium">
                           {cohort.name}
                         </h3>
                         <Badge variant="outline">
@@ -1194,7 +1182,7 @@ function CohortsSection({
               <DialogHeader>
                 <DialogTitle>Buat Group belajar</DialogTitle>
                 <DialogDescription>
-                  Buat kelompok belajar baru untuk kursus ini.
+                  Buat Group belajar baru untuk course ini.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-5 space-y-4">
@@ -1375,7 +1363,7 @@ function LearnersSection({
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
+          <h2 className="font-heading text-2xl font-medium tracking-tight">
             Siswa
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -1394,7 +1382,8 @@ function LearnersSection({
       {!isPending && !error && data?.length === 0 ? (
         <Card className="rounded-lg">
           <CardContent>
-            <SectionEmpty
+            <EmptyState
+              size="sm"
               icon={UserRoundCheckIcon}
               title="Belum ada siswa"
               description="Tambahkan akun Hakgyo dengan email atau bagikan invite agar siswa mendaftar sendiri."
@@ -1519,7 +1508,8 @@ function LearnersSection({
             </Table>
           ) : (
             <CardContent>
-              <SectionEmpty
+              <EmptyState
+                size="sm"
                 icon={SearchIcon}
                 title="Siswa tidak ditemukan"
                 description="Coba nama atau alamat email yang berbeda."
@@ -1772,7 +1762,7 @@ function InvitesSection({
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
+          <h2 className="font-heading text-2xl font-medium tracking-tight">
             Invites
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -1797,10 +1787,11 @@ function InvitesSection({
       {!isPending && !error && data?.length === 0 ? (
         <Card className="rounded-lg">
           <CardContent>
-            <SectionEmpty
+            <EmptyState
+              size="sm"
               icon={MailPlusIcon}
               title="Belum ada invite"
-              description="Buat link terbatas untuk mengundang peserta didik ke kursus atau Group belajar."
+              description="Buat link terbatas untuk mengundang peserta didik ke course atau Group belajar."
               action={
                 <Button
                   className="mt-4"
@@ -1846,7 +1837,7 @@ function InvitesSection({
                         {cohort?.name ??
                           (invite.cohortId
                             ? "Group belajar"
-                            : "Seluruh kursus")}
+                            : "Seluruh course")}
                       </span>
                       <span className="text-muted-foreground block text-xs">
                         oleh {invite.createdBy.user.name}
@@ -2131,7 +2122,7 @@ function AccessSection({
   return (
     <section className="space-y-6">
       <div className="max-w-2xl">
-        <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
+        <h2 className="font-heading text-2xl font-medium tracking-tight">
           Akses course
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -2229,7 +2220,7 @@ function AccessSection({
             <div className="bg-muted/35 border-t p-4">
               <Label htmlFor="new-course-editor">Tambah editor kurikulum</Label>
               <p className="text-muted-foreground mt-1 text-xs">
-                Editor dapat menyusun modul dan materi, tanpa akses ke siswa,
+                Editor dapat menyusun bab dan materi, tanpa akses ke siswa,
                 undangan, atau pengaturan course.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -2302,7 +2293,7 @@ function AccessSection({
                 <div>
                   <p className="font-medium">Editor kurikulum</p>
                   <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                    Hanya menyusun modul, materi, dan assessment di kurikulum.
+                    Hanya menyusun bab, materi, dan tugas di kurikulum.
                   </p>
                 </div>
               </div>
@@ -2405,35 +2396,67 @@ function FieldHelp({ content }: { content: string }) {
   );
 }
 
+/** Editable course settings as form values (strings for inputs). */
+function courseSettingsValues(course: Course) {
+  return {
+    title: course.title,
+    description: course.description ?? "",
+    price: String(course.price),
+    currency: course.currency,
+    enrollmentMode: course.enrollmentMode ?? "INHERIT",
+    progressionMode: course.progressionMode,
+  };
+}
+
 function SettingsSection({
   course,
   coursesHref,
   organizationId,
-  onStatusChange,
   onWorkspaceChange,
 }: {
   course: Course;
   coursesHref: string;
   organizationId: string;
-  onStatusChange: (status: Course["status"]) => Promise<void>;
   onWorkspaceChange: () => Promise<void>;
 }) {
   const router = useRouter();
   const utils = api.useUtils();
-  const [title, setTitle] = useState(course.title);
-  const [description, setDescription] = useState(course.description ?? "");
+  const loaded = courseSettingsValues(course);
+  const [title, setTitle] = useState(loaded.title);
+  const [description, setDescription] = useState(loaded.description);
   const [thumbnailUrl, setThumbnailUrl] = useState(course.thumbnailUrl);
-  const [price, setPrice] = useState(String(course.price));
-  const [currency, setCurrency] = useState(course.currency);
+  const [price, setPrice] = useState(loaded.price);
+  const [currency, setCurrency] = useState(loaded.currency);
   const selectedCurrency = courseCurrencies.find(
     (item) => item.code === currency,
   );
-  const [enrollmentMode, setEnrollmentMode] = useState(
-    course.enrollmentMode ?? "INHERIT",
-  );
+  const [enrollmentMode, setEnrollmentMode] = useState(loaded.enrollmentMode);
   const [progressionMode, setProgressionMode] = useState(
-    course.progressionMode,
+    loaded.progressionMode,
   );
+  // The values the form was loaded from. When the record changes underneath
+  // (another tab, the curriculum editor, a refetch), re-sync only the fields
+  // that changed on the server so unrelated unsaved edits are kept.
+  const [source, setSource] = useState(loaded);
+  if (
+    (Object.keys(loaded) as (keyof typeof loaded)[]).some(
+      (key) => loaded[key] !== source[key],
+    )
+  ) {
+    setSource(loaded);
+    if (loaded.title !== source.title) setTitle(loaded.title);
+    if (loaded.description !== source.description) {
+      setDescription(loaded.description);
+    }
+    if (loaded.price !== source.price) setPrice(loaded.price);
+    if (loaded.currency !== source.currency) setCurrency(loaded.currency);
+    if (loaded.enrollmentMode !== source.enrollmentMode) {
+      setEnrollmentMode(loaded.enrollmentMode);
+    }
+    if (loaded.progressionMode !== source.progressionMode) {
+      setProgressionMode(loaded.progressionMode);
+    }
+  }
   const [deleteOpen, setDeleteOpen] = useState(false);
   const updateCourse = api.course.update.useMutation();
   const createThumbnailUpload =
@@ -2536,19 +2559,38 @@ function SettingsSection({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Send only the fields changed in this form (compared with the values it
+    // was loaded from), so saving never reverts changes made elsewhere.
+    const nextTitle = title.trim();
+    const nextDescription = description.trim();
+    const nextCurrency = currency.trim().toUpperCase();
+    const changes = {
+      ...(nextTitle !== source.title ? { title: nextTitle } : {}),
+      ...(nextDescription !== source.description.trim()
+        ? { description: nextDescription || null }
+        : {}),
+      ...(Number(price) !== Number(source.price)
+        ? { price: Number(price) }
+        : {}),
+      ...(nextCurrency !== source.currency ? { currency: nextCurrency } : {}),
+      ...(enrollmentMode !== source.enrollmentMode
+        ? {
+            enrollmentMode:
+              enrollmentMode === "INHERIT"
+                ? null
+                : (enrollmentMode as "OPEN" | "INVITE_ONLY"),
+          }
+        : {}),
+      ...(progressionMode !== source.progressionMode
+        ? { progressionMode }
+        : {}),
+    };
+    if (Object.keys(changes).length === 0) {
+      toast.info("Tidak ada perubahan untuk disimpan.");
+      return;
+    }
     try {
-      await updateCourse.mutateAsync({
-        courseId: course.id,
-        title: title.trim(),
-        description: description.trim() || null,
-        price: Number(price),
-        currency: currency.trim().toUpperCase(),
-        enrollmentMode:
-          enrollmentMode === "INHERIT"
-            ? null
-            : (enrollmentMode as "OPEN" | "INVITE_ONLY"),
-        progressionMode,
-      });
+      await updateCourse.mutateAsync({ courseId: course.id, ...changes });
       await refreshCourse();
       toast.success("Pengaturan course disimpan.");
     } catch (cause) {
@@ -2571,7 +2613,7 @@ function SettingsSection({
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="font-[family-name:var(--font-hanken-grotesk)] text-2xl font-medium tracking-tight">
+        <h2 className="font-heading text-2xl font-medium tracking-tight">
           Settings
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -2775,32 +2817,6 @@ function SettingsSection({
         <div className="divide-border divide-y">
           <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">
             <div>
-              <p className="text-sm font-medium">
-                {course.status === "ARCHIVED"
-                  ? "Pulihkan course"
-                  : "Arsipkan course"}
-              </p>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                {course.status === "ARCHIVED"
-                  ? "Kembalikan course ke status draf untuk dikelola lagi."
-                  : "Sembunyikan course dari workflow aktif tanpa menghapus data."}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                onStatusChange(
-                  course.status === "ARCHIVED" ? "DRAFT" : "ARCHIVED",
-                )
-              }
-            >
-              <ArchiveIcon data-icon="inline-start" />
-              {course.status === "ARCHIVED" ? "Pulihkan" : "Arsipkan"}
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">
-            <div>
               <p className="text-sm font-medium">Hapus course</p>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 Penghapusan dapat ditolak bila course masih memiliki data
@@ -2827,7 +2843,7 @@ function SettingsSection({
             </AlertDialogMedia>
             <AlertDialogTitle>Hapus {course.title}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Action ini permanen. Gunakan archive bila course mungkin
+              Action ini permanen. Batalkan publikasi course bila course mungkin
               diperlukan kembali.
             </AlertDialogDescription>
           </AlertDialogHeader>

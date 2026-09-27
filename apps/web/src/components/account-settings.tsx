@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   KeyRoundIcon,
+  LoaderCircleIcon,
   MonitorSmartphoneIcon,
   ShieldAlertIcon,
   UserRoundIcon,
@@ -66,7 +67,7 @@ type UserSession = {
 type AccountSection = "profile" | "security" | "sessions" | "danger";
 
 const accountSections = [
-  { value: "profile", label: "Profile", icon: UserRoundIcon },
+  { value: "profile", label: "Profil", icon: UserRoundIcon },
   { value: "security", label: "Keamanan", icon: KeyRoundIcon },
   { value: "sessions", label: "Sesi", icon: MonitorSmartphoneIcon },
   { value: "danger", label: "Zona berbahaya", icon: ShieldAlertIcon },
@@ -158,7 +159,7 @@ export function AccountSettings({
     try {
       await updateProfile.mutateAsync({ name: trimmedName });
       await Promise.all([refetchSession(), utils.account.me.invalidate()]);
-      toast.success("Profile diperbarui.");
+      toast.success("Profil diperbarui.");
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -168,7 +169,7 @@ export function AccountSettings({
 
   async function uploadProfileImage(file: File) {
     if (file.size > MAX_PROFILE_IMAGE_SIZE) {
-      toast.error("Foto profile maksimal 5 MB.");
+      toast.error("Foto profil maksimal 5 MB.");
       return;
     }
     if (
@@ -198,7 +199,7 @@ export function AccountSettings({
       await confirmImageUpload.mutateAsync({ key: upload.key });
       uploadedKey = null;
       await Promise.all([refetchSession(), utils.account.me.invalidate()]);
-      toast.success("Foto profile diperbarui.");
+      toast.success("Foto profil diperbarui.");
     } catch (error) {
       if (uploadedKey) {
         try {
@@ -218,7 +219,7 @@ export function AccountSettings({
     try {
       await deleteProfileImage.mutateAsync();
       await Promise.all([refetchSession(), utils.account.me.invalidate()]);
-      toast.success("Foto profile dihapus.");
+      toast.success("Foto profil dihapus.");
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -361,9 +362,9 @@ export function AccountSettings({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="h-[min(44rem,calc(100svh-2rem))] overflow-hidden p-0 sm:max-w-4xl">
         <DialogHeader className="sr-only">
-          <DialogTitle>Profile dan akun</DialogTitle>
+          <DialogTitle>Profil dan akun</DialogTitle>
           <DialogDescription>
-            Kelola profile, metode masuk, sesi, dan akun Anda.
+            Kelola profil, metode masuk, sesi, dan akun Anda.
           </DialogDescription>
         </DialogHeader>
 
@@ -418,7 +419,7 @@ export function AccountSettings({
               {section === "profile" ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Profile</CardTitle>
+                    <CardTitle>Profil</CardTitle>
                     <CardDescription>
                       Email Anda adalah {email}. Perubahan email memerlukan alur
                       pengiriman email terverifikasi dan belum tersedia saat
@@ -427,11 +428,11 @@ export function AccountSettings({
                   </CardHeader>
                   <CardContent className="grid gap-6">
                     <div className="grid gap-2">
-                      <Label htmlFor="account-image">Foto profile</Label>
+                      <Label htmlFor="account-image">Foto profil</Label>
                       <ImageUpload
                         id="account-image"
                         value={session.user.image}
-                        alt="Foto profile"
+                        alt="Foto profil"
                         accept={profileImageContentTypes.join(",")}
                         helpText="JPEG, PNG, WebP, atau GIF. Maksimal 5 MB."
                         isPending={isBusy}
@@ -459,9 +460,15 @@ export function AccountSettings({
                         />
                       </div>
                       <Button className="w-fit" disabled={isBusy} type="submit">
+                        {pendingAction === "profile" ? (
+                          <LoaderCircleIcon
+                            className="animate-spin"
+                            data-icon="inline-start"
+                          />
+                        ) : null}
                         {pendingAction === "profile"
-                          ? "Menyimpan..."
-                          : "Simpan profile"}
+                          ? "Menyimpan…"
+                          : "Simpan profil"}
                       </Button>
                     </form>
                   </CardContent>
@@ -534,8 +541,14 @@ export function AccountSettings({
                           disabled={isBusy}
                           type="submit"
                         >
+                          {pendingAction === "password" ? (
+                            <LoaderCircleIcon
+                              className="animate-spin"
+                              data-icon="inline-start"
+                            />
+                          ) : null}
                           {pendingAction === "password"
-                            ? "Mengubah..."
+                            ? "Mengubah…"
                             : "Ubah kata sandi"}
                         </Button>
                       </form>
@@ -684,7 +697,7 @@ export function AccountSettings({
                   <CardHeader>
                     <CardTitle>Hapus akun</CardTitle>
                     <CardDescription>
-                      Menghapus permanen profile, enrollment, progres belajar,
+                      Menghapus permanen profil, enrollment, progres belajar,
                       attempt tugas, sesi, dan metode masuk Anda. Ini tidak
                       dapat dibatalkan.
                     </CardDescription>
@@ -741,8 +754,14 @@ export function AccountSettings({
                         type="submit"
                         variant="destructive"
                       >
+                        {pendingAction === "delete" ? (
+                          <LoaderCircleIcon
+                            className="animate-spin"
+                            data-icon="inline-start"
+                          />
+                        ) : null}
                         {pendingAction === "delete"
-                          ? "Menghapus..."
+                          ? "Menghapus…"
                           : "Hapus akun permanen"}
                       </Button>
                     </form>

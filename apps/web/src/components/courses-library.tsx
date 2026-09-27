@@ -15,6 +15,8 @@ import {
   XIcon,
 } from "lucide-react";
 
+import { PageHeader } from "~/components/ui/page-header";
+import { EmptyState } from "~/components/ui/empty-state";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -26,14 +28,13 @@ type Course = RouterOutputs["course"]["list"][number];
 type CourseFilter = "ALL" | Course["status"];
 
 const statusMeta = {
-  DRAFT: { label: "Draf", className: "border-border text-muted-foreground" },
-  PUBLISHED: {
-    label: "Published",
-    className: "border-foreground/70 text-foreground",
-  },
-  ARCHIVED: {
-    label: "Arsip",
+  DRAFT: {
+    label: "Belum dipublikasikan",
     className: "border-border text-muted-foreground",
+  },
+  PUBLISHED: {
+    label: "Dipublikasikan",
+    className: "border-foreground/70 text-foreground",
   },
 } as const;
 
@@ -75,7 +76,7 @@ function FilterStat({
           )}
         />
       </span>
-      <span className="font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight tabular-nums sm:text-4xl">
+      <span className="font-heading text-3xl font-medium tracking-tight tabular-nums sm:text-4xl">
         {count}
       </span>
     </button>
@@ -122,15 +123,14 @@ export function CoursesLibrary({
     ALL: courses.length,
     PUBLISHED: courses.filter((course) => course.status === "PUBLISHED").length,
     DRAFT: courses.filter((course) => course.status === "DRAFT").length,
-    ARCHIVED: courses.filter((course) => course.status === "ARCHIVED").length,
   };
 
   const accessLabels = {
-    MANAGER: "Manager",
-    COHORT_MANAGER: "Cohort invite manager",
+    MANAGER: "Pengelola",
+    COHORT_MANAGER: "Pengelola Group belajar",
     EDITOR: "Editor",
-    COHORT_STAFF: "Cohort staff",
-    VIEWER: "View only",
+    COHORT_STAFF: "Staf Group belajar",
+    VIEWER: "Hanya lihat",
   } as const;
   const visibleCourses = courses.filter((course) => {
     const matchesFilter = filter === "ALL" || course.status === filter;
@@ -140,65 +140,48 @@ export function CoursesLibrary({
   });
 
   return (
-    <div className="space-y-10">
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <div className="min-w-0">
-          <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-            Workspace · {organizationSlug}
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-hanken-grotesk)] text-3xl font-medium tracking-tight sm:text-4xl">
-            Courses
-          </h1>
-          <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
-            {role === "TEACHER"
-              ? "Temukan dan kelola course yang menjadi tanggung jawab Anda."
-              : "Kelola kurikulum, Group belajar, dan peserta dari satu tempat."}
-          </p>
-        </div>
-        {canCreate ? (
-          <Link href={`${root}/new`} className={buttonVariants()}>
-            <PlusIcon data-icon="inline-start" />
-            Buat course
-          </Link>
-        ) : null}
-      </header>
+    <div className="flex w-full flex-col gap-6">
+      <PageHeader
+        icon={BookOpenIcon}
+        eyebrow="Workspace"
+        title="Courses"
+        description={
+          role === "TEACHER"
+            ? "Temukan dan kelola course yang menjadi tanggung jawab Anda."
+            : "Kelola kurikulum, Group belajar, dan peserta dari satu tempat."
+        }
+        actions={
+          canCreate ? (
+            <Link href={`${root}/new`} className={buttonVariants()}>
+              <PlusIcon data-icon="inline-start" />
+              Course baru
+            </Link>
+          ) : null
+        }
+      />
 
       {courses.length === 0 ? (
-        <Card className="rounded-lg">
-          <CardContent>
-            <div className="rounded-md border border-dashed px-4 py-12 text-center">
-              <BookOpenIcon className="text-muted-foreground mx-auto size-6" />
-              <h2 className="mt-3 font-[family-name:var(--font-hanken-grotesk)] text-base font-medium">
-                Belum ada course
-              </h2>
-              <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-xs leading-relaxed">
-                Kursus menyatukan materi, Group belajar, dan peserta agar
-                semuanya mudah ditemukan.
-              </p>
-              {canCreate ? (
-                <Link
-                  href={`${root}/new`}
-                  className={buttonVariants({
-                    variant: "outline",
-                    size: "sm",
-                    className: "mt-4",
-                  })}
-                >
-                  <PlusIcon data-icon="inline-start" />
-                  Buat course pertama
-                </Link>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={BookOpenIcon}
+          title="Belum ada course"
+          description="Course menyatukan materi, Group belajar, dan peserta agar semuanya mudah ditemukan."
+          action={
+            canCreate ? (
+              <Link
+                href={`${root}/new`}
+                className={buttonVariants({ className: "mt-4" })}
+              >
+                <PlusIcon data-icon="inline-start" />
+                Course baru
+              </Link>
+            ) : null
+          }
+        />
       ) : (
         <>
           <section
             aria-label="Ringkasan course"
-            className={cn(
-              "grid grid-cols-2 gap-3 sm:gap-4",
-              counts.ARCHIVED > 0 ? "lg:grid-cols-4" : "lg:grid-cols-3",
-            )}
+            className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
           >
             <FilterStat
               active={filter === "ALL"}
@@ -211,30 +194,21 @@ export function CoursesLibrary({
               active={filter === "PUBLISHED"}
               count={counts.PUBLISHED}
               icon={BookCheckIcon}
-              label="Published"
+              label="Dipublikasikan"
               onClick={() => setFilter("PUBLISHED")}
             />
             <FilterStat
               active={filter === "DRAFT"}
               count={counts.DRAFT}
               icon={FilePenLineIcon}
-              label="Draf"
+              label="Belum dipublikasikan"
               onClick={() => setFilter("DRAFT")}
             />
-            {counts.ARCHIVED > 0 ? (
-              <FilterStat
-                active={filter === "ARCHIVED"}
-                count={counts.ARCHIVED}
-                icon={BookOpenIcon}
-                label="Arsip"
-                onClick={() => setFilter("ARCHIVED")}
-              />
-            ) : null}
           </section>
 
           <Card className="gap-0 rounded-lg py-0">
             <CardHeader className="gap-4 border-b py-4 sm:grid-cols-[1fr_auto] sm:items-center">
-              <CardTitle className="font-[family-name:var(--font-hanken-grotesk)] text-lg font-medium">
+              <CardTitle className="font-heading text-lg font-medium">
                 Daftar course
               </CardTitle>
               <div className="relative w-full sm:w-72">

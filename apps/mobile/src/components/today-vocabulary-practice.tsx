@@ -173,7 +173,9 @@ export function TodayVocabularyPractice({
     } catch (cause) {
       if (roundSessionId.current !== sessionId) return;
       setRecordError(
-        cause instanceof Error ? cause : new Error("Could not save locally"),
+        cause instanceof Error
+          ? cause
+          : new Error("Tidak dapat menyimpan di perangkat"),
       );
       setFeedback({ correct, saved: false });
     } finally {
@@ -212,7 +214,7 @@ export function TodayVocabularyPractice({
     setRevealed(true);
     setRevealSaved(false);
     setAnswer("");
-    // Keep the keyboard open: the input becomes "Ready for the next word?"
+    // Keep the keyboard open: the input becomes "Siap untuk kata berikutnya?"
     // with a Next return key, so the learner can advance without re-tapping.
     if (!handsFree) inputRef.current?.focus();
     void saveReveal();
@@ -240,7 +242,9 @@ export function TodayVocabularyPractice({
       if (roundSessionId.current === sessionId) setRevealSaved(true);
     } catch (cause) {
       setRecordError(
-        cause instanceof Error ? cause : new Error("Could not save locally"),
+        cause instanceof Error
+          ? cause
+          : new Error("Tidak dapat menyimpan di perangkat"),
       );
       // Keep the card blocked so the learner can retry this exact outcome.
     } finally {
@@ -405,13 +409,13 @@ export function TodayVocabularyPractice({
   return (
     <View className="gap-3" style={{ overflow: "visible", zIndex: 1 }}>
       {!pool.hasAvailableContent ? (
-        <Empty>No words to practice yet.</Empty>
+        <Empty>Belum ada kata untuk dilatih.</Empty>
       ) : round.length > 0 ? (
         <>
           <Text className="text-center text-xs font-bold uppercase tracking-[1.2px] text-muted-foreground">
             {card
               ? `${card.vocabularySetTitle} · ${card.courseTitle}`
-              : "Ready for another mix?"}
+              : "Siap untuk campuran berikutnya?"}
           </Text>
           <View className="items-center">
             <VocabularyModeSwitch
@@ -441,20 +445,20 @@ export function TodayVocabularyPractice({
             <View className="gap-3">
               <Text className="text-center text-xs text-muted-foreground">
                 {moving
-                  ? "Bringing up the next card…"
+                  ? "Menyiapkan kartu berikutnya…"
                   : listening
                     ? mode === "KR"
-                      ? "Listening for Korean… tap mic to stop."
-                      : "Listening for Indonesian… tap mic to stop."
+                      ? "Mendengarkan bahasa Korea… ketuk mikrofon untuk berhenti."
+                      : "Mendengarkan bahasa Indonesia… ketuk mikrofon untuk berhenti."
                     : revealed
-                      ? "Just studying · no XP or streak change. Swipe up or tap Next."
+                      ? "Hanya belajar · XP dan streak tidak berubah. Geser ke atas atau ketuk Lanjut."
                       : feedback
                         ? feedback.saved
-                          ? "Swipe up or tap Next when you’re ready."
-                          : "Saving your answer…"
+                          ? "Geser ke atas atau ketuk Lanjut jika sudah siap."
+                          : "Menyimpan jawaban kamu…"
                         : mode === "KR"
-                          ? "Say or type the Korean word, peel the corner to reveal, or swipe up to skip."
-                          : "Say or type the definition, peel the corner to reveal, or swipe up to skip."}
+                          ? "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."
+                          : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."}
               </Text>
               {speech.errorMessage && !feedback && !revealed ? (
                 <Text
@@ -469,7 +473,7 @@ export function TodayVocabularyPractice({
                   accessibilityRole="alert"
                   className="text-center text-sm text-destructive"
                 >
-                  Your answer could not be saved on this device. Try again.
+                  Jawaban kamu tidak dapat disimpan di perangkat ini. Coba lagi.
                 </Text>
               ) : null}
               <View className="flex-row items-center gap-2">
@@ -492,12 +496,12 @@ export function TodayVocabularyPractice({
                         style={{ color: colors.mutedForeground }}
                       >
                         {revealed
-                          ? "Ready for the next word?"
+                          ? "Siap untuk kata berikutnya?"
                           : listening
-                            ? "Listening…"
+                            ? "Mendengarkan…"
                             : mode === "KR"
-                              ? "Type the Korean word"
-                              : "Type the definition"}
+                              ? "Ketik kata Koreanya"
+                              : "Ketik artinya"}
                       </Text>
                     </View>
                   ) : null}
@@ -505,8 +509,8 @@ export function TodayVocabularyPractice({
                     ref={inputRef}
                     accessibilityLabel={
                       mode === "KR"
-                        ? `Korean word for ${card.definition}`
-                        : `Definition for ${card.term}`
+                        ? `Kata Korea untuk ${card.definition}`
+                        : `Arti dari ${card.term}`
                     }
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -539,8 +543,8 @@ export function TodayVocabularyPractice({
                     <Pressable
                       accessibilityLabel={
                         handsFree
-                          ? "Stop hands-free practice"
-                          : "Start hands-free practice"
+                          ? "Hentikan latihan tanpa sentuh"
+                          : "Mulai latihan tanpa sentuh"
                       }
                       accessibilityRole="button"
                       accessibilityState={{
@@ -591,10 +595,10 @@ export function TodayVocabularyPractice({
                     <Pressable
                       accessibilityLabel={
                         feedback && !feedback.saved
-                          ? "Retry saving answer"
+                          ? "Coba simpan jawaban lagi"
                           : revealed && !revealSaved
-                            ? "Retry saving reveal"
-                            : "Next word"
+                            ? "Coba simpan lagi"
+                            : "Kata berikutnya"
                       }
                       accessibilityRole="button"
                       accessibilityState={{
@@ -642,7 +646,7 @@ export function TodayVocabularyPractice({
                   ) : (
                     <Pressable
                       accessibilityLabel={
-                        mode === "KR" ? "Check Korean word" : "Check definition"
+                        mode === "KR" ? "Periksa kata Korea" : "Periksa arti"
                       }
                       accessibilityRole="button"
                       accessibilityState={{
@@ -687,7 +691,7 @@ export function TodayVocabularyPractice({
               </View>
             </View>
           ) : (
-            <Action onPress={newMix}>Next mix</Action>
+            <Action onPress={newMix}>Campuran berikutnya</Action>
           )}
         </>
       ) : null}

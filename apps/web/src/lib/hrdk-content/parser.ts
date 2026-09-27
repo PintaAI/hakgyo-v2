@@ -68,8 +68,7 @@ const sectionPatterns: Array<{
 const lessonHeadingPattern = /^(?:제\s*)?(\d{1,3})\s*과\s+(.{2,100})$/u;
 const chapterHeadingPattern =
   /^(?:C\s*H\s*A\s*P\s*T\s*E\s*R|LESSON|단원)\s*(\d{1,3})(?:\s+(.{2,100}))?$/iu;
-const chapterMarkerPattern =
-  /^(?:C\s*H\s*A\s*P\s*T\s*E\s*R|CHAPTER)$/iu;
+const chapterMarkerPattern = /^(?:C\s*H\s*A\s*P\s*T\s*E\s*R|CHAPTER)$/iu;
 const spacedChapterNumberPattern = /^((?:\d\s+)*\d{1,3})(?:\s+(.+))?$/u;
 const hangulPattern = /\p{Script=Hangul}/u;
 const latinPattern = /[A-Za-zÀ-ÿ]/u;
@@ -159,9 +158,7 @@ function isVocabularyPair(term: string, definition: string) {
   if (/^[•●▪◦·]/u.test(term) || /[‘’"\[\]{}]/u.test(term)) {
     return false;
   }
-  if (
-    /^(?:은\/는|이\/가|을\/를|와\/과|으로\/로|에|에서|도|의)$/u.test(term)
-  ) {
+  if (/^(?:은\/는|이\/가|을\/를|와\/과|으로\/로|에|에서|도|의)$/u.test(term)) {
     return false;
   }
   if (
@@ -179,9 +176,7 @@ function isVocabularyPair(term: string, definition: string) {
     return false;
   }
   if (
-    /(?:\b(?:a|an|the|to|of|for|with|from|one['’]s)|\/)$/i.test(
-      definition,
-    ) ||
+    /(?:\b(?:a|an|the|to|of|for|with|from|one['’]s)|\/)$/i.test(definition) ||
     /^(?:to provide\/receive|to receive free medical)$/i.test(definition) ||
     (definition.includes("(") && !definition.includes(")"))
   ) {
@@ -219,8 +214,7 @@ function extractVocabulary(sections: HrdkSection[]) {
     ({ kind, title }) => kind === "vocabulary" && /^어휘(?:\s|$)/u.test(title),
   )) {
     for (let lineIndex = 0; lineIndex < section.lines.length; lineIndex += 1) {
-      const cells = section.lines[lineIndex]!
-        .split("\t")
+      const cells = section.lines[lineIndex]!.split("\t")
         .map(cleanVocabularyCell)
         .filter(Boolean);
       const inlinePairs = cells
@@ -421,7 +415,7 @@ export function parseHrdkPages(
       issues.push({
         severity: "warning",
         code: "ASSESSMENT_NOT_GENERATED",
-        message: "Assessment membutuhkan minimal empat definisi kosakata unik.",
+        message: "Tugas membutuhkan minimal empat definisi kosakata unik.",
         lesson: lesson.number,
       });
     }

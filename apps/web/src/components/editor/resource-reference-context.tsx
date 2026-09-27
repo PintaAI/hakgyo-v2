@@ -33,7 +33,6 @@ export type AssessmentReferenceResource = {
   id: string;
   title: string;
   description: string | null;
-  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   questionCount: number;
   courseItemId?: string | null;
 };
@@ -128,7 +127,6 @@ export function ResourceReferenceProvider({
           id: assessment.id,
           title: assessment.title,
           description: assessment.description,
-          status: assessment.status,
           questionCount: assessment._count.questions,
         })) ?? [],
       refresh: async () => {

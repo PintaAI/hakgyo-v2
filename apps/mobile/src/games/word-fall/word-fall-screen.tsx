@@ -567,7 +567,7 @@ function LearningRecap({ items }: { items: readonly WordFallReviewItem[] }) {
   return (
     <View style={styles.recap}>
       <Text style={[styles.recapTitle, { color: colors.foreground }]}>
-        Review these words
+        Ulas kata-kata ini
       </Text>
       <ScrollView
         contentContainerStyle={styles.recapList}
@@ -596,7 +596,9 @@ function LearningRecap({ items }: { items: readonly WordFallReviewItem[] }) {
             </View>
             <Text style={[styles.recapReason, { color: colors.destructive }]}>
               {item.reasons
-                .map((reason) => (reason === "missed" ? "Missed" : "Mistyped"))
+                .map((reason) =>
+                  reason === "missed" ? "Terlewat" : "Salah ketik",
+                )
                 .join(" · ")}
             </Text>
           </View>
@@ -609,7 +611,7 @@ function LearningRecap({ items }: { items: readonly WordFallReviewItem[] }) {
 function levelDetail(level: number) {
   const fallSeconds = Math.round(fallDurationForLevel(level, 0.5) / 1000);
   const maxWords = maximumActiveWords(level);
-  return `~${fallSeconds}s per word · up to ${maxWords} at once`;
+  return `~${fallSeconds} dtk per kata · maks. ${maxWords} sekaligus`;
 }
 
 function LevelSelector({
@@ -623,7 +625,7 @@ function LevelSelector({
   return (
     <View style={styles.levelSelector}>
       <Text style={[styles.levelSelectorTitle, { color: colors.foreground }]}>
-        Starting level
+        Level awal
       </Text>
       <ScrollView
         nestedScrollEnabled
@@ -642,7 +644,7 @@ function LevelSelector({
           return (
             <Pressable
               key={option}
-              accessibilityLabel={`Start at level ${option}, ${levelDetail(option)}`}
+              accessibilityLabel={`Mulai dari level ${option}, ${levelDetail(option)}`}
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
               onPress={() => onSelect(option)}
@@ -698,14 +700,14 @@ function WordFallModeSelector({
     <View style={styles.modeSelector}>
       <View style={styles.modeSelectorCopy}>
         <Text style={[styles.modeSelectorTitle, { color: colors.foreground }]}>
-          Answer language
+          Bahasa jawaban
         </Text>
         <Text
           style={[styles.modeSelectorDetail, { color: colors.mutedForeground }]}
         >
           {mode === "ID"
-            ? "Indonesian: see Korean, type the meaning"
-            : "Korean: see Indonesian, type the word"}
+            ? "Indonesia: lihat kata Korea, ketik artinya"
+            : "Korea: lihat arti Indonesia, ketik katanya"}
         </Text>
       </View>
       <VocabularyModeSwitch mode={mode} onChange={onChange} />
@@ -749,7 +751,7 @@ const WordFallHeader = memo(function WordFallHeader({
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.View hidesSharedBackground>
           <View
-            accessibilityLabel={`${health} hearts, score ${score}, level ${level}, combo ${combo}`}
+            accessibilityLabel={`${health} nyawa, skor ${score}, level ${level}, combo ${combo}`}
             style={styles.headerStats}
           >
             <Text style={[styles.health, { color: colors.destructive }]}>
@@ -772,7 +774,7 @@ const WordFallHeader = memo(function WordFallHeader({
           </View>
         </Stack.Toolbar.View>
         <Stack.Toolbar.Button
-          accessibilityLabel="Pause game"
+          accessibilityLabel="Jeda game"
           disabled={phase !== "running"}
           icon={toolbarIcons.pause}
           onPress={onPause}
@@ -1467,7 +1469,7 @@ export function WordFallScreen({
       />
       <TextInput
         ref={inputRef}
-        accessibilityLabel={`Type the ${answerMode === "ID" ? "Indonesian meaning" : "Korean word"}`}
+        accessibilityLabel={`Ketik ${answerMode === "ID" ? "arti dalam bahasa Indonesia" : "kata Koreanya"}`}
         autoCapitalize="none"
         autoCorrect={false}
         caretHidden
@@ -1524,7 +1526,7 @@ export function WordFallScreen({
                     { color: powerUpColor("freeze", colors) },
                   ]}
                 >
-                  Frozen
+                  Beku
                 </Text>
               </View>
             ) : null}
@@ -1570,7 +1572,7 @@ export function WordFallScreen({
                     { color: powerUpColor("reveal", colors) },
                   ]}
                 >
-                  Revealing
+                  Membuka
                 </Text>
               </View>
             ) : null}
@@ -1602,7 +1604,7 @@ export function WordFallScreen({
         ))}
 
         <Animated.View
-          accessibilityLabel="Player"
+          accessibilityLabel="Pemain"
           style={[
             styles.player,
             {
@@ -1644,7 +1646,7 @@ export function WordFallScreen({
         ) : null}
         {revealCharges > 0 && phase === "running" ? (
           <Pressable
-            accessibilityLabel={`Activate reveal, ${revealCharges} charge${revealCharges === 1 ? "" : "s"} left`}
+            accessibilityLabel={`Aktifkan bantuan, sisa ${revealCharges}`}
             accessibilityRole="button"
             accessibilityState={{ disabled: revealed }}
             disabled={revealed}
@@ -1677,12 +1679,12 @@ export function WordFallScreen({
         content={
           <WordFallModeSelector mode={answerMode} onChange={setAnswerMode} />
         }
-        detail="Type the answer before each word reaches your ship. Correct letters reveal as you type."
+        detail="Ketik jawaban sebelum setiap kata mengenai kapalmu. Huruf yang benar akan terbuka saat kamu mengetik."
         gameKey="word-fall"
         onDismiss={focusInputAfterModalDismiss}
         onPrimary={resetGame}
         onSecondary={exit}
-        tertiaryLabel={showLevelPicker ? "Done selecting" : "Select level"}
+        tertiaryLabel={showLevelPicker ? "Selesai memilih" : "Pilih level"}
         tertiaryDetail={showLevelPicker ? undefined : `Level ${startLevel}`}
         onTertiary={() => setShowLevelPicker((current) => !current)}
         tertiaryContent={
@@ -1690,20 +1692,20 @@ export function WordFallScreen({
             <LevelSelector selected={startLevel} onSelect={setStartLevel} />
           ) : undefined
         }
-        title="Word Fall"
+        title="Hujan Kata"
         visible={phase === "ready"}
       />
       <GameModal
-        detail={`Score ${score} · Level ${level}`}
-        eyebrow="Word fall"
+        detail={`Skor ${score} · Level ${level}`}
+        eyebrow="Hujan kata"
         gameKey="word-fall"
         onDismiss={focusInputAfterModalDismiss}
         onPrimary={resumeGame}
         onSecondary={exit}
-        primaryLabel="Resume"
-        secondaryLabel="Exit"
+        primaryLabel="Lanjutkan"
+        secondaryLabel="Keluar"
         secondaryDisabled={pendingReportCount > 0}
-        title="Paused"
+        title="Dijeda"
         visible={phase === "paused"}
       />
       <GameModal
@@ -1722,19 +1724,19 @@ export function WordFallScreen({
         }
         detail={
           pendingReportCount > 0
-            ? `Final score ${score} · Syncing ${pendingReportCount} result${pendingReportCount === 1 ? "" : "s"}…`
-            : `Final score ${score} · Level ${level}`
+            ? `Skor akhir ${score} · Menyinkronkan ${pendingReportCount} hasil…`
+            : `Skor akhir ${score} · Level ${level}`
         }
-        eyebrow="Word fall"
+        eyebrow="Hujan kata"
         gameKey="word-fall"
         onDismiss={focusInputAfterModalDismiss}
         onPrimary={resetGame}
         onSecondary={exit}
-        primaryLabel="Play again"
+        primaryLabel="Main lagi"
         primaryDisabled={pendingReportCount > 0}
-        secondaryLabel="Exit"
+        secondaryLabel="Keluar"
         secondaryDisabled={pendingReportCount > 0}
-        title="Game over"
+        title="Game selesai"
         visible={phase === "gameover"}
       />
     </KeyboardAvoidingView>

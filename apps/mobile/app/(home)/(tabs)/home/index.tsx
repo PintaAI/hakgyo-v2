@@ -27,7 +27,7 @@ export default function HomeTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [scrollGesture] = useState(() => Gesture.Native());
 
-  const displayName = session?.user.name || "Hakgyo learner";
+  const displayName = session?.user.name || "Pelajar Hakgyo";
   const nameInitial = displayName.trim()[0]?.toUpperCase() ?? "H";
   const openOrganizationSwitcher = () =>
     router.push("/organization-switcher" as Href);
@@ -87,8 +87,8 @@ export default function HomeTab() {
           </View>
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel="Open profile"
-            accessibilityHint="Opens your profile tab"
+            accessibilityLabel="Buka profil"
+            accessibilityHint="Membuka tab profil kamu"
             className="min-w-0 flex-1 active:opacity-60"
             onPress={() => router.navigate("/(home)/(tabs)/profile")}
           >

@@ -63,13 +63,13 @@ export default function CourseDetailScreen() {
         <View className="flex-1 items-center justify-center gap-3 bg-background">
           <ActivityIndicator color={colors.primary} />
           <Text className="text-sm text-muted-foreground">
-            Opening your course…
+            Membuka course kamu…
           </Text>
         </View>
       ) : courseQuery.isPending && !course ? (
         <View className="flex-1 items-center justify-center gap-3 bg-background">
           <ActivityIndicator color={colors.primary} />
-          <Text className="text-sm text-muted-foreground">Loading course…</Text>
+          <Text className="text-sm text-muted-foreground">Memuat course…</Text>
         </View>
       ) : courseQuery.error || !course ? (
         <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
@@ -78,10 +78,11 @@ export default function CourseDetailScreen() {
           </View>
           <View className="items-center gap-2">
             <Text className="text-xl font-black text-foreground">
-              Course unavailable
+              Course tidak tersedia
             </Text>
             <Text className="text-center text-sm leading-5 text-muted-foreground">
-              Your access may have ended, or the course is no longer published.
+              Akses kamu mungkin sudah berakhir, atau course ini tidak lagi
+              dipublikasikan.
             </Text>
           </View>
           <View className="flex-row gap-3">
@@ -89,13 +90,15 @@ export default function CourseDetailScreen() {
               className="rounded-full border border-border px-5 py-3"
               onPress={goBack}
             >
-              <Text className="font-bold text-foreground">Go back</Text>
+              <Text className="font-bold text-foreground">Kembali</Text>
             </Pressable>
             <Pressable
               className="rounded-full bg-primary px-5 py-3"
               onPress={() => void courseQuery.refetch()}
             >
-              <Text className="font-bold text-primary-foreground">Retry</Text>
+              <Text className="font-bold text-primary-foreground">
+                Coba lagi
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -143,7 +146,7 @@ export default function CourseDetailScreen() {
                   </Text>
                 ) : null}
                 <Text className="mt-1 text-xs font-semibold text-muted-foreground">
-                  {completedCount} of {allItems.length} completed
+                  {completedCount} dari {allItems.length} selesai
                 </Text>
               </View>
             </View>
@@ -158,7 +161,7 @@ export default function CourseDetailScreen() {
           {resumeItem ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityHint={`Open ${resumeItem.title}`}
+              accessibilityHint={`Buka ${resumeItem.title}`}
               className="flex-row items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 active:opacity-80"
               onPress={() => {
                 if (
@@ -184,7 +187,7 @@ export default function CourseDetailScreen() {
             >
               <View className="min-w-0 flex-1 gap-0.5">
                 <Text className="text-[10px] font-bold uppercase tracking-[1.5px] text-primary">
-                  {completedCount ? "Continue learning" : "Start learning"}
+                  {completedCount ? "Lanjutkan belajar" : "Mulai belajar"}
                 </Text>
                 <Text
                   className="text-base font-black text-foreground"
@@ -198,11 +201,11 @@ export default function CourseDetailScreen() {
           ) : allItems.length > 0 && completedCount === allItems.length ? (
             <View className="gap-2 rounded-2xl border border-primary/30 bg-primary/10 p-5">
               <Text className="text-xl font-black text-foreground">
-                🏆 Course complete!
+                🏆 Course selesai!
               </Text>
               <Text className="text-sm leading-6 text-muted-foreground">
-                You did it. Every activity is complete — revisit any material
-                below whenever you want a refresher.
+                Kamu berhasil! Semua aktivitas sudah selesai — buka lagi materi
+                di bawah kapan pun kamu ingin mengulang.
               </Text>
             </View>
           ) : null}

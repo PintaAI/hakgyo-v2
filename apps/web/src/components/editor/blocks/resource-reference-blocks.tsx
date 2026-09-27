@@ -8,6 +8,7 @@ import {
   BookOpenCheckIcon,
   ClipboardCheckIcon,
   ExternalLinkIcon,
+  InfoIcon,
   LoaderCircleIcon,
   PlusIcon,
   SearchIcon,
@@ -46,6 +47,41 @@ function firstExample(value: unknown) {
     return typeof example === "string" ? example : null;
   }
   return null;
+}
+
+/**
+ * Authoring hint under an embedded resource: a lesson can only go live when
+ * every embedded vocabulary set / assessment is also a visible item in the
+ * lesson's module (and an embedded assessment is complete). The material
+ * editor is not tied to one module, so this states the rule instead of
+ * checking a specific placement; the curriculum editor shows the exact status.
+ */
+function EmbedReadinessHint({
+  resourceType,
+  questionCount,
+}: {
+  resourceType: ResourceType;
+  questionCount?: number;
+}) {
+  const message =
+    resourceType === "assessment" && questionCount === 0
+      ? "Tugas ini belum memiliki soal. Pelajaran yang menyisipkannya belum bisa tayang sampai soalnya lengkap."
+      : resourceType === "assessment"
+        ? "Agar pelajaran ini bisa tayang, tugas ini juga harus ditambahkan dan ditampilkan sebagai item di bab yang sama."
+        : "Agar pelajaran ini bisa tayang, set kosakata ini juga harus ditambahkan dan ditampilkan sebagai item di bab yang sama.";
+  return (
+    <p
+      className={cn(
+        "mt-2 flex items-start gap-1.5 text-xs leading-relaxed",
+        resourceType === "assessment" && questionCount === 0
+          ? "text-amber-700 dark:text-amber-400"
+          : "text-muted-foreground",
+      )}
+    >
+      <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+      {message}
+    </p>
+  );
 }
 
 function ResourcePicker({
@@ -121,13 +157,13 @@ function ResourcePicker({
       <div className="relative">
         <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         <Input
-          aria-label={`Cari ${resourceType === "vocabulary" ? "set kosakata" : "assessment"}`}
+          aria-label={`Cari ${resourceType === "vocabulary" ? "set kosakata" : "tugas"}`}
           className="pl-9"
           onChange={(event) => setQuery(event.target.value)}
           placeholder={
             resourceType === "vocabulary"
               ? "Cari set kosakata..."
-              : "Cari assessment..."
+              : "Cari tugas..."
           }
           value={query}
         />
@@ -153,8 +189,12 @@ function ResourcePicker({
                   {resource.description ?? "Tanpa deskripsi"}
                 </span>
               </span>
-              {"status" in resource ? (
-                <Badge variant="outline">{resource.status}</Badge>
+              {"questionCount" in resource ? (
+                resource.questionCount === 0 ? (
+                  <Badge variant="destructive">Belum ada soal</Badge>
+                ) : (
+                  <Badge variant="outline">{resource.questionCount} soal</Badge>
+                )
               ) : null}
             </button>
           ))
@@ -164,15 +204,18 @@ function ResourcePicker({
           </p>
         )}
       </div>
+      <p className="text-muted-foreground text-xs leading-relaxed">
+        Pelajaran hanya bisa tayang jika{" "}
+        {resourceType === "vocabulary" ? "set kosakata" : "tugas"} yang
+        disisipkan juga ditampilkan sebagai item di bab yang sama.
+      </p>
       <button
         className="text-primary inline-flex items-center gap-2 text-sm font-semibold hover:underline"
         onClick={createResource}
         type="button"
       >
         <PlusIcon className="size-4" />
-        {resourceType === "vocabulary"
-          ? "Tambah vocabulary set"
-          : "Tambah assessment"}
+        {resourceType === "vocabulary" ? "Tambah set kosakata" : "Tambah tugas"}
         <ExternalLinkIcon className="size-3.5" />
       </button>
     </div>
@@ -242,7 +285,7 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
               <header className="bg-primary/5 flex flex-col gap-4 border-b p-5 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-primary flex items-center gap-2 text-xs font-bold tracking-wider uppercase">
-                    <BookOpenCheckIcon className="size-4" /> Vocabulary
+                    <BookOpenCheckIcon className="size-4" /> Kosakata
                   </p>
                   <h3 className="font-heading mt-2 text-2xl font-semibold">
                     {resource.title}
@@ -345,16 +388,19 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
                     Hafalkan kosakata <ArrowRightIcon />
                   </a>
                 ) : null}
+                {editor.isEditable && references?.editable ? (
+                  <EmbedReadinessHint resourceType="vocabulary" />
+                ) : null}
               </div>
             </section>
           ) : isResourceLoading ? (
             <p className="text-muted-foreground flex items-center gap-2 rounded-xl border p-5 text-sm">
-              <LoaderCircleIcon className="size-4 animate-spin" /> Memuat
-              vocabulary set
+              <LoaderCircleIcon className="size-4 animate-spin" /> Memuat set
+              kosakata
             </p>
           ) : (
             <p className="text-destructive rounded-xl border border-dashed p-5 text-sm">
-              Vocabulary set tidak tersedia. Simpan materi untuk membersihkan
+              Set kosakata tidak tersedia. Simpan materi untuk membersihkan
               block ini.
             </p>
           )}
@@ -436,25 +482,36 @@ export const assessmentReferenceBlock = createReactBlockSpec(
                   className={cn(buttonVariants(), "shrink-0")}
                   href={assessmentHref}
                 >
-                  Mulai assessment <ArrowRightIcon />
+                  Mulai tugas <ArrowRightIcon />
                 </a>
               ) : editor.isEditable ? (
-                <Badge variant="outline">{resource.status ?? "Draft"}</Badge>
+                resource.questionCount === 0 ? (
+                  <Badge variant="destructive">Belum ada soal</Badge>
+                ) : (
+                  <Badge variant="outline">{resource.questionCount} soal</Badge>
+                )
               ) : (
                 <Badge variant="outline">Belum tersedia</Badge>
               )}
             </section>
           ) : references?.isLoading ? (
             <p className="text-muted-foreground flex items-center gap-2 rounded-xl border p-5 text-sm">
-              <LoaderCircleIcon className="size-4 animate-spin" /> Memuat
-              assessment
+              <LoaderCircleIcon className="size-4 animate-spin" /> Memuat tugas
             </p>
           ) : (
             <p className="text-destructive rounded-xl border border-dashed p-5 text-sm">
-              Assessment tidak tersedia. Simpan materi untuk membersihkan block
-              ini.
+              Tugas tidak tersedia. Simpan materi untuk membersihkan block ini.
             </p>
           )}
+          {resource &&
+          !changing &&
+          editor.isEditable &&
+          references?.editable ? (
+            <EmbedReadinessHint
+              resourceType="assessment"
+              questionCount={resource.questionCount}
+            />
+          ) : null}
         </div>
       );
     },

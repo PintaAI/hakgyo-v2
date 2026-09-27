@@ -171,7 +171,7 @@ function Table({ block }: BlockRendererProps) {
 function ImageBlock({ block }: BlockRendererProps) {
   return (
     <ContentImage
-      accessibilityLabel={stringProp(block.props, "name", "Lesson image")}
+      accessibilityLabel={stringProp(block.props, "name", "Gambar materi")}
       caption={stringProp(block.props, "caption")}
       source={stringProp(block.props, "url")}
     />
@@ -191,7 +191,7 @@ function AudioBlock({ block }: BlockRendererProps) {
 function FileBlock({ block }: BlockRendererProps) {
   return (
     <ContentFile
-      fileName={stringProp(block.props, "name", "Open file")}
+      fileName={stringProp(block.props, "name", "Buka file")}
       source={stringProp(block.props, "url")}
     />
   );

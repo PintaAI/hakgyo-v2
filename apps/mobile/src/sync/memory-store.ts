@@ -237,5 +237,30 @@ export function createMemoryStore(): MobileSyncStore & {
     },
     listDeadLetters: async (userId) => deadLettersFor(userId),
     countDeadLetters: async (userId) => deadLettersFor(userId).length,
+    getLocalDataStats: async (userId) => {
+      const owned = <T>(map: Map<string, T>) =>
+        [...map.entries()]
+          .filter(([mapKey]) => mapKey.startsWith(`${userId}:`))
+          .map(([, value]) => value);
+      const bundleRows = owned(bundles);
+      const indexRows = owned(indexes);
+      const queryRows = owned(queries);
+      return {
+        bundles: {
+          count: bundleRows.length,
+          bytes: bundleRows.reduce((sum, row) => sum + row.bytes, 0),
+        },
+        indexes: {
+          count: indexRows.length,
+          bytes: indexRows.reduce((sum, row) => sum + row.payload.length, 0),
+        },
+        queries: {
+          count: queryRows.length,
+          bytes: queryRows.reduce((sum, row) => sum + row.payload.length, 0),
+        },
+        operations: rowsFor(userId).length,
+        deadLetters: deadLettersFor(userId).length,
+      };
+    },
   };
 }

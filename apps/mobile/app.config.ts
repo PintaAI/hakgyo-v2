@@ -8,11 +8,11 @@ const variant =
   process.env.APP_VARIANT === "development" ? "development" : "production";
 const isDev = variant === "development";
 
-const bundleIdentifier = isDev
-  ? "com.rorez.hakgyo.dev"
-  : "com.rorez.hakgyo";
+const bundleIdentifier = isDev ? "com.rorez.hakgyo.dev" : "com.rorez.hakgyo";
 const androidPackage = isDev ? "com.rorez.hakgyo.dev" : "com.rorez.hakgyo";
-const appGroup = isDev ? "group.com.rorez.hakgyo.dev" : "group.com.rorez.hakgyo";
+const appGroup = isDev
+  ? "group.com.rorez.hakgyo.dev"
+  : "group.com.rorez.hakgyo";
 
 export default {
   expo: {
@@ -78,9 +78,9 @@ export default {
       [
         "expo-speech-recognition",
         {
-          microphonePermission: "Allow $(PRODUCT_NAME) to use the microphone.",
+          microphonePermission: "Izinkan $(PRODUCT_NAME) menggunakan mikrofon.",
           speechRecognitionPermission:
-            "Allow $(PRODUCT_NAME) to use speech recognition.",
+            "Izinkan $(PRODUCT_NAME) menggunakan pengenalan suara.",
         },
       ],
     ],

@@ -9,8 +9,8 @@ const FLAGS: Record<VocabularySpeechMode, string> = {
 };
 
 const LABELS: Record<VocabularySpeechMode, string> = {
-  KR: "Korean answer mode",
-  ID: "Indonesian answer mode",
+  KR: "Mode jawaban bahasa Korea",
+  ID: "Mode jawaban bahasa Indonesia",
 };
 
 export function VocabularyModeSwitch({
@@ -26,8 +26,8 @@ export function VocabularyModeSwitch({
   const next: VocabularySpeechMode = mode === "KR" ? "ID" : "KR";
   return (
     <Pressable
-      accessibilityLabel={`Switch to ${LABELS[next]}`}
-      accessibilityHint="Toggles the answering language between Korean and Indonesian"
+      accessibilityLabel={`Ganti ke ${LABELS[next]}`}
+      accessibilityHint="Mengganti bahasa jawaban antara Korea dan Indonesia"
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}

@@ -1,5 +1,5 @@
 export const courseSidebarConfig = {
-  sectionLabel: "Course contents",
-  viewCourseLabel: "View course ›",
-  backToMenuLabel: "‹ Back to menu",
+  sectionLabel: "Daftar isi course",
+  viewCourseLabel: "Lihat course ›",
+  backToMenuLabel: "‹ Kembali ke menu",
 } as const;

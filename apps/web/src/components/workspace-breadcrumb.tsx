@@ -17,8 +17,8 @@ const sectionLabels: Record<string, string> = {
   dashboard: "Dashboard",
   library: "Bahan ajar",
   members: "Anggota",
-  reviews: "Reviews",
-  settings: "Settings",
+  reviews: "Review",
+  settings: "Pengaturan",
 };
 
 export function WorkspaceBreadcrumb({

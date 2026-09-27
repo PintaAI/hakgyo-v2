@@ -87,7 +87,7 @@ export default function GameRoute() {
           headerBackButtonDisplayMode: "minimal",
           headerBackVisible: false,
           headerShown: true,
-          title: game?.title ?? "Games",
+          title: game?.title ?? "Game",
         }}
       />
       <GamePage>
@@ -97,7 +97,7 @@ export default function GameRoute() {
               {game.icon}
             </Text>
             <Text className="text-2xl font-bold text-foreground">
-              Coming soon
+              Segera hadir
             </Text>
             <Text className="text-base text-muted-foreground">
               {game.description}
@@ -105,10 +105,10 @@ export default function GameRoute() {
           </>
         ) : (
           <Empty>
-            {session ? "This game does not exist." : "Sign in to play."}
+            {session ? "Game ini tidak ditemukan." : "Masuk untuk bermain."}
           </Empty>
         )}
-        <Action onPress={leave}>Back to practice</Action>
+        <Action onPress={leave}>Kembali ke latihan</Action>
       </GamePage>
     </View>
   );
@@ -140,7 +140,7 @@ function VocabularyCardsRoute({
     })) ?? [];
 
   if (item.isPending && sourceCourseItemId && sessionReady) {
-    return <GameLoading title="Cards" />;
+    return <GameLoading title="Kartu" />;
   }
 
   if (
@@ -150,12 +150,12 @@ function VocabularyCardsRoute({
     words.length === 0
   ) {
     return (
-      <GameUnavailable title="Cards">
+      <GameUnavailable title="Kartu">
         {!sourceCourseItemId
-          ? "Choose a vocabulary set from Practice to play."
+          ? "Pilih set kosakata dari Latihan untuk bermain."
           : item.isError
-            ? "This vocabulary set could not be loaded."
-            : "This vocabulary set has no playable words."}
+            ? "Set kosakata ini tidak dapat dimuat."
+            : "Set kosakata ini belum memiliki kata yang bisa dimainkan."}
       </GameUnavailable>
     );
   }
@@ -167,7 +167,7 @@ function VocabularyCardsRoute({
       keyboardAvoiding
       scrollable={!roundActive}
       scrollGesture={scrollGesture}
-      title="Cards"
+      title="Kartu"
     >
       <VocabularySession
         key={`${sourceCourseItemId}:${vocabulary.id}`}
@@ -221,7 +221,7 @@ function GameUnavailable({
       />
       <GamePage>
         <Empty>{children}</Empty>
-        <Action onPress={leave}>Back to practice</Action>
+        <Action onPress={leave}>Kembali ke latihan</Action>
       </GamePage>
     </View>
   );
@@ -250,17 +250,17 @@ function VocabularyMatchRoute({
   });
 
   if (item.isPending && sourceCourseItemId && sessionReady) {
-    return <GameLoading title="Vocabulary Match" />;
+    return <GameLoading title="Cocokkan Kata" />;
   }
 
   if (!sourceCourseItemId || item.isError || words.length < 2) {
     return (
-      <GameUnavailable title="Vocabulary Match">
+      <GameUnavailable title="Cocokkan Kata">
         {!sourceCourseItemId
-          ? "Choose a vocabulary set from Practice to play."
+          ? "Pilih set kosakata dari Latihan untuk bermain."
           : item.isError
-            ? "This vocabulary set could not be loaded."
-            : "Add at least two playable words to this vocabulary set."}
+            ? "Set kosakata ini tidak dapat dimuat."
+            : "Tambahkan setidaknya dua kata yang bisa dimainkan ke set kosakata ini."}
       </GameUnavailable>
     );
   }
@@ -303,17 +303,17 @@ function WordFallRoute({
   });
 
   if (item.isPending && sourceCourseItemId && sessionReady) {
-    return <GameLoading title="Word Fall" />;
+    return <GameLoading title="Hujan Kata" />;
   }
 
   if (!sourceCourseItemId || item.isError || words.length === 0) {
     return (
-      <GameUnavailable title="Word Fall">
+      <GameUnavailable title="Hujan Kata">
         {!sourceCourseItemId
-          ? "Choose a vocabulary set from Practice to play."
+          ? "Pilih set kosakata dari Latihan untuk bermain."
           : item.isError
-            ? "This vocabulary set could not be loaded."
-            : "This vocabulary set has no playable words."}
+            ? "Set kosakata ini tidak dapat dimuat."
+            : "Set kosakata ini belum memiliki kata yang bisa dimainkan."}
       </GameUnavailable>
     );
   }

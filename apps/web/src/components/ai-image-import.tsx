@@ -295,11 +295,13 @@ export function AiImageImportDialog<Row>({
 
 export function AiImportButton({
   busy,
+  disabled = false,
   label = "Impor AI",
   onSelect,
   title,
 }: {
   busy: boolean;
+  disabled?: boolean;
   label?: string;
   onSelect: (file: File) => void;
   title: string;
@@ -321,7 +323,7 @@ export function AiImportButton({
       />
       <Button
         aria-label={title}
-        disabled={busy}
+        disabled={busy || disabled}
         onClick={() => inputRef.current?.click()}
         title={title}
         type="button"

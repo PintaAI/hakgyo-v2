@@ -33,7 +33,7 @@ export default function VocabularySetScreen() {
         options={{
           headerBackButtonDisplayMode: "minimal",
           headerShown: true,
-          title: vocabulary?.title ?? "Vocabulary",
+          title: vocabulary?.title ?? "Kosakata",
         }}
       />
       {vocabulary ? (
@@ -66,7 +66,7 @@ export default function VocabularySetScreen() {
             retry={() => void query.refetch()}
           />
           {!vocabularySetId || !sourceCourseItemId ? (
-            <Empty>Open a vocabulary set from a course or lesson.</Empty>
+            <Empty>Buka set kosakata dari course atau materi.</Empty>
           ) : null}
         </View>
       )}

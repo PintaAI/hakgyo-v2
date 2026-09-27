@@ -55,9 +55,9 @@ export default function VocabularyItemSheet() {
           pending={query.isPending}
           retry={() => void query.refetch()}
         />
-        {vocabulary && !entry ? <Empty>Word unavailable.</Empty> : null}
+        {vocabulary && !entry ? <Empty>Kata tidak tersedia.</Empty> : null}
         {!vocabularySetId || !sourceCourseItemId ? (
-          <Empty>Open a word from its vocabulary set.</Empty>
+          <Empty>Buka kata dari set kosakatanya.</Empty>
         ) : null}
       </View>
     );
@@ -118,7 +118,7 @@ export default function VocabularyItemSheet() {
 
       <View className="gap-1.5 border-t border-border pt-5">
         <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-          Meaning
+          Arti
         </Text>
         <Text className="text-base font-bold leading-6 text-foreground">
           {entry.definition}
@@ -128,7 +128,7 @@ export default function VocabularyItemSheet() {
       {examples.length > 0 ? (
         <View className="gap-2 border-t border-border pt-5">
           <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-            {examples.length === 1 ? "Example" : "Examples"}
+            Contoh
           </Text>
           {examples.map((example, exampleIndex) => (
             <Text
@@ -142,7 +142,7 @@ export default function VocabularyItemSheet() {
       ) : null}
 
       <StudyAction onPress={() => router.back()} secondary>
-        Back to words
+        Kembali ke daftar kata
       </StudyAction>
     </ScrollView>
   );

@@ -1,5 +1,3 @@
-import { TRPCError } from "@trpc/server";
-
 import type { Prisma } from "../../generated/prisma/client";
 import {
   collectMaterialReferenceIds,
@@ -49,84 +47,6 @@ export async function sanitizeMaterialContent(
     }),
   );
   return (cleaned.length ? cleaned : emptyDocument) as Prisma.InputJsonValue;
-}
-
-export async function assertPublishedMaterialReferences(
-  db: DatabaseClient,
-  input: {
-    content: unknown;
-    moduleId: string;
-    organizationId: string;
-  },
-) {
-  const references = collectMaterialReferenceIds(input.content);
-  if (!references.assessmentIds.length && !references.vocabularySetIds.length) {
-    return;
-  }
-
-  const [assessments, assessmentItems, vocabularySets, vocabularyItems] =
-    await Promise.all([
-      db.assessment.findMany({
-        where: {
-          id: { in: references.assessmentIds },
-          organizationId: input.organizationId,
-          status: "PUBLISHED",
-        },
-        select: { id: true },
-      }),
-      db.courseItem.findMany({
-        where: {
-          moduleId: input.moduleId,
-          organizationId: input.organizationId,
-          isPublished: true,
-          assessmentId: { in: references.assessmentIds },
-        },
-        select: { assessmentId: true },
-      }),
-      db.vocabularySet.findMany({
-        where: {
-          id: { in: references.vocabularySetIds },
-          organizationId: input.organizationId,
-        },
-        select: { id: true },
-      }),
-      db.courseItem.findMany({
-        where: {
-          moduleId: input.moduleId,
-          organizationId: input.organizationId,
-          isPublished: true,
-          vocabularySetId: { in: references.vocabularySetIds },
-        },
-        select: { vocabularySetId: true },
-      }),
-    ]);
-
-  const availableAssessments = new Set(assessments.map(({ id }) => id));
-  const attachedAssessments = new Set(
-    assessmentItems.flatMap(({ assessmentId }) =>
-      assessmentId ? [assessmentId] : [],
-    ),
-  );
-  const availableVocabulary = new Set(vocabularySets.map(({ id }) => id));
-  const attachedVocabulary = new Set(
-    vocabularyItems.flatMap(({ vocabularySetId }) =>
-      vocabularySetId ? [vocabularySetId] : [],
-    ),
-  );
-  const invalidAssessments = references.assessmentIds.filter(
-    (id) => !availableAssessments.has(id) || !attachedAssessments.has(id),
-  );
-  const invalidVocabulary = references.vocabularySetIds.filter(
-    (id) => !availableVocabulary.has(id) || !attachedVocabulary.has(id),
-  );
-
-  if (invalidAssessments.length || invalidVocabulary.length) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message:
-        "Publish gagal: setiap block vocabulary dan assessment harus merujuk ke item published dalam module yang sama; assessment juga harus berstatus Published.",
-    });
-  }
 }
 
 type ReferenceSource = {
@@ -194,7 +114,6 @@ export async function getLearnerMaterialReferencesForSources(
           where: {
             id: { in: assessmentIds },
             organizationId: { in: organizationIds },
-            status: "PUBLISHED",
           },
           select: {
             id: true,

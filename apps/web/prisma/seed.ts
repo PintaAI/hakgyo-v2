@@ -479,18 +479,16 @@ async function main() {
 
   const assessment = await db.assessment.upsert({
     where: { id: "seed-assessment-hangul" },
-    update: { status: "PUBLISHED", title: "Kuis Hangul Dasar" },
+    update: { title: "Kuis Hangul Dasar" },
     create: {
       id: "seed-assessment-hangul",
       organizationId: organization.id,
       createdByMembershipId: teacherMembership.id,
       title: "Kuis Hangul Dasar",
       description: "Cek pemahaman setelah materi pertama.",
-      status: "PUBLISHED",
       instructions: { text: "Pilih satu jawaban yang paling tepat." },
       passingScore: 70,
       maxAttempts: 3,
-      publishedAt: new Date("2026-08-01T00:00:00.000Z"),
     },
   });
 

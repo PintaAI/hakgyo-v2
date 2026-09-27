@@ -15,6 +15,7 @@ import { createLocalData } from "./local-data-impl";
 import { indexScope, syncQueryKeys } from "./query-keys";
 import type { MobileSyncDeadLetter, MobileSyncStore } from "./store";
 import type {
+  BundleTiming,
   LearnerIndex,
   LearnerStatePatch,
   MobileSyncCommitPatch,
@@ -213,6 +214,7 @@ export function createMobileSyncEngine({
   };
 
   const stateListeners = new Set<(state: MobileSyncEngineState) => void>();
+  const bundleTimingListeners = new Set<(timing: BundleTiming) => void>();
 
   function snapshot(): MobileSyncEngineState {
     return { ...state, bundles: { ...state.bundles } };
@@ -241,6 +243,9 @@ export function createMobileSyncEngine({
     ...bundleSyncOptions,
     onProgress: (progress) => publishState({ bundles: progress }),
     onUpgradeRequired: (upgrade) => publishState({ upgradeRequired: upgrade }),
+    onBundleTiming: (timing) => {
+      for (const listener of bundleTimingListeners) listener(timing);
+    },
   });
 
   function serialized<T>(work: () => Promise<T>) {
@@ -412,6 +417,28 @@ export function createMobileSyncEngine({
       await storeIndex(target, {
         ...entry,
         index: { ...entry.index, learner },
+        stale: true,
+      });
+    }
+  }
+
+  /** Optimistic gamification change (XP and streak from an offline attempt). */
+  async function patchGamification(
+    scope: string,
+    update: (
+      gamification: LearnerIndex["gamification"],
+    ) => LearnerIndex["gamification"],
+  ) {
+    // Gamification is per user, so every cached organization scope shows it.
+    const scopes = new Set([scope, ...indexes.keys()]);
+    for (const target of scopes) {
+      const entry = await loadIndex(target);
+      if (!entry) continue;
+      const gamification = update(entry.index.gamification);
+      if (gamification === entry.index.gamification) continue;
+      await storeIndex(target, {
+        ...entry,
+        index: { ...entry.index, gamification },
         stale: true,
       });
     }
@@ -835,6 +862,7 @@ export function createMobileSyncEngine({
   async function runRefresh(
     organizationId: string | undefined,
     force: boolean,
+    immediateBundles: boolean,
   ): Promise<SyncRefreshResult> {
     if (state.upgradeRequired)
       return { state: "queued", reason: "upgrade-required" };
@@ -901,7 +929,13 @@ export function createMobileSyncEngine({
           meta.schema !== manifest.bundleSchema ||
           meta.schema !== BUNDLE_SCHEMA ||
           current - meta.updatedAt >= bundleMaxAgeMs;
-        return outdated ? [{ courseId: course.courseId }] : [];
+        if (!outdated) return [];
+        // Immediate requests skip the background jitter (development resync).
+        return [
+          immediateBundles
+            ? { courseId: course.courseId, priority: "requested" as const }
+            : { courseId: course.courseId },
+        ];
       });
       if (requests.length) {
         changed = true;
@@ -926,17 +960,18 @@ export function createMobileSyncEngine({
 
   function refresh(
     organizationId?: string,
-    options: { force?: boolean } = {},
+    options: { force?: boolean; immediateBundles?: boolean } = {},
   ): Promise<SyncRefreshResult> {
     const scope = indexScope(organizationId);
     const active = activeRefreshes.get(scope);
     if (active) return active;
-    const promise = runRefresh(organizationId, options.force ?? false).finally(
-      () => {
-        if (activeRefreshes.get(scope) === promise)
-          activeRefreshes.delete(scope);
-      },
-    );
+    const promise = runRefresh(
+      organizationId,
+      options.force ?? false,
+      options.immediateBundles ?? false,
+    ).finally(() => {
+      if (activeRefreshes.get(scope) === promise) activeRefreshes.delete(scope);
+    });
     activeRefreshes.set(scope, promise);
     return promise;
   }
@@ -946,9 +981,13 @@ export function createMobileSyncEngine({
    * bundles. Without `force`, a refresh within `nextCheckAfterMs` of the last
    * one is skipped unless the index is stale.
    */
+  /**
+   * `manual` (pull-to-refresh, "Sync now") always asks the server for the
+   * manifest, ignoring the polling throttle; `force` also refetches the index.
+   */
   async function checkForUpdates(
     organizationId?: string,
-    options: { force?: boolean } = {},
+    options: { force?: boolean; manual?: boolean } = {},
   ): Promise<SyncUpdateResult> {
     await writeTail;
     if (pendingCount > 0) {
@@ -962,6 +1001,7 @@ export function createMobileSyncEngine({
     const local = indexes.get(scope) ?? (await loadIndex(scope));
     if (
       !options.force &&
+      !options.manual &&
       local &&
       !local.stale &&
       state.lastRefreshedAt !== null &&
@@ -969,7 +1009,7 @@ export function createMobileSyncEngine({
     ) {
       return { state: "current" };
     }
-    return refresh(organizationId, options);
+    return refresh(organizationId, { force: options.force });
   }
 
   // ---------------------------------------------------------------------------
@@ -988,7 +1028,7 @@ export function createMobileSyncEngine({
     await serialized(async () => {
       if (await store.countOperations(userId)) {
         throw new Error(
-          "Pending learning progress must sync before clearing local data.",
+          "Progres belajar yang tertunda harus disinkronkan sebelum data lokal dihapus.",
         );
       }
       flushPersistTimers();
@@ -1018,6 +1058,7 @@ export function createMobileSyncEngine({
     checkForUpdates,
     requestBundle,
     patchLearnerState,
+    patchGamification,
     /** In-memory or stored index for a scope (null before the first sync). */
     loadIndex: async (scope: string) => {
       const entry = await loadIndex(scope);
@@ -1027,6 +1068,14 @@ export function createMobileSyncEngine({
       bundles.courseIdForItem(courseItemId),
     getState: snapshot,
     subscribe,
+    /** Per-course bundle download timings (development diagnostics). */
+    onBundleTiming: (listener: (timing: BundleTiming) => void) => {
+      bundleTimingListeners.add(listener);
+      return () => {
+        bundleTimingListeners.delete(listener);
+      };
+    },
+    getLocalDataStats: () => store.getLocalDataStats(userId),
     whenBundlesIdle: () => bundles.whenIdle(),
     clearLocalCache,
     dispose,

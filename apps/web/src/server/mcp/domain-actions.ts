@@ -13,6 +13,7 @@ export const mcpDomainActions = {
   ],
   course: ["list", "get", "create", "update"],
   content: [
+    "getCurriculumReadiness",
     "createModule",
     "updateModule",
     "reorderModules",
@@ -64,7 +65,9 @@ export const mcpDomainActions = {
   assessment: [
     "list",
     "get",
+    "getLiveStatus",
     "create",
+    "duplicate",
     "update",
     "createQuestion",
     "updateQuestion",

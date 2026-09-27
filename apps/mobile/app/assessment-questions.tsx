@@ -9,10 +9,10 @@ import {
 import { useQuestionNavigatorSession } from "../src/providers/QuestionNavigatorProvider";
 
 const labels: Record<QuestionStatus, string> = {
-  unanswered: "Unanswered",
-  answered: "Answered",
-  correct: "Correct",
-  incorrect: "Incorrect",
+  unanswered: "Belum dijawab",
+  answered: "Sudah dijawab",
+  correct: "Benar",
+  incorrect: "Salah",
 };
 
 export default function AssessmentQuestionsScreen() {
@@ -40,10 +40,10 @@ export default function AssessmentQuestionsScreen() {
       if (selected) router.back();
       else
         setError(
-          "We couldn’t save your answers. Try again before switching questions.",
+          "Jawaban kamu belum tersimpan. Coba lagi sebelum pindah soal.",
         );
     } catch {
-      setError("Couldn’t open that question. Please try again.");
+      setError("Soal tidak dapat dibuka. Silakan coba lagi.");
     } finally {
       selecting.current = false;
       if (active.current) setBusy(false);
@@ -63,13 +63,13 @@ export default function AssessmentQuestionsScreen() {
       <Stack.Screen options={{ gestureEnabled: !busy }} />
       <View className="flex-row items-center justify-between gap-4">
         <View className="flex-1 gap-1">
-          <Text className="text-2xl font-black text-foreground">Questions</Text>
+          <Text className="text-2xl font-black text-foreground">Soal</Text>
           <Text className="text-sm text-muted-foreground">
-            {session?.title ?? "No active assessment"}
+            {session?.title ?? "Tidak ada tugas aktif"}
           </Text>
         </View>
         <StudyAction secondary disabled={busy} onPress={() => router.back()}>
-          Done
+          Selesai
         </StudyAction>
       </View>
       {session ? (
@@ -78,16 +78,16 @@ export default function AssessmentQuestionsScreen() {
             accessibilityLiveRegion="polite"
             className="text-sm text-muted-foreground"
           >
-            {answered} of {session.statuses.length} answered · Tap a question to
-            open it
+            {answered} dari {session.statuses.length} dijawab · Ketuk soal untuk
+            membukanya
           </Text>
           {next >= 0 ? (
             <StudyAction loading={busy} onPress={() => void select(next)}>
-              Next unanswered →
+              Soal belum dijawab berikutnya →
             </StudyAction>
           ) : (
             <Text className="font-bold text-primary">
-              All questions answered. You can still review them.
+              Semua soal sudah dijawab. Kamu masih bisa meninjaunya.
             </Text>
           )}
           {error ? (
@@ -103,7 +103,7 @@ export default function AssessmentQuestionsScreen() {
               <Pressable
                 key={index}
                 accessibilityRole="button"
-                accessibilityLabel={`Question ${index + 1}, ${labels[status]}${index === session.current ? ", current question" : ""}`}
+                accessibilityLabel={`Soal ${index + 1}, ${labels[status]}${index === session.current ? ", soal saat ini" : ""}`}
                 accessibilityState={{
                   selected: index === session.current,
                   disabled: busy,
@@ -126,7 +126,7 @@ export default function AssessmentQuestionsScreen() {
                 </Text>
                 {index === session.current ? (
                   <Text className="text-xs font-bold text-primary">
-                    Current
+                    Saat ini
                   </Text>
                 ) : null}
               </Pressable>
@@ -135,7 +135,7 @@ export default function AssessmentQuestionsScreen() {
         </>
       ) : (
         <Text className="text-muted-foreground">
-          Open an assessment to view its question list.
+          Buka tugas untuk melihat daftar soalnya.
         </Text>
       )}
     </ScrollView>

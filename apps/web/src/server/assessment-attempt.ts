@@ -49,7 +49,6 @@ export const gradableAttemptSelect = {
   startedAt: true,
   assessment: {
     select: {
-      status: true,
       timeLimitMinutes: true,
       passingScore: true,
       questions: {

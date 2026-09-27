@@ -15,10 +15,17 @@ import {
   UserRoundIcon,
 } from "lucide-react";
 
+import { PageHeader } from "~/components/ui/page-header";
+import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "~/components/ui/select";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
@@ -125,28 +132,21 @@ export function MaterialLibrary({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div className="space-y-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <LibraryIcon className="size-4" />
-            Bahan ajar
-          </div>
-          <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            Materi
-          </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            Susun pelajaran yang dapat dipakai ulang di BlockNote, lalu
-            tambahkan ke course mana pun di workspace ini.
-          </p>
-        </div>
-        <Link
-          href={`/workspace/${organizationSlug}/library/materials/new`}
-          className={buttonVariants()}
-        >
-          <PlusIcon data-icon="inline-start" />
-          Materi baru
-        </Link>
-      </div>
+      <PageHeader
+        icon={LibraryIcon}
+        eyebrow="Bahan ajar"
+        title="Materi"
+        description="Susun pelajaran yang dapat dipakai ulang di BlockNote, lalu tambahkan ke course mana pun di workspace ini."
+        actions={
+          <Link
+            href={`/workspace/${organizationSlug}/library/materials/new`}
+            className={buttonVariants()}
+          >
+            <PlusIcon data-icon="inline-start" />
+            Materi baru
+          </Link>
+        }
+      />
 
       {materials.isPending ? (
         <div className="text-muted-foreground flex min-h-64 items-center justify-center text-sm">
@@ -227,9 +227,7 @@ export function MaterialLibrary({
                   </span>
                 </SelectTrigger>
                 <SelectContent align="end">
-                  {(
-                    Object.keys(sortLabels) as Array<Sort>
-                  ).map((value) => (
+                  {(Object.keys(sortLabels) as Array<Sort>).map((value) => (
                     <SelectItem key={value} value={value}>
                       {sortLabels[value]}
                     </SelectItem>
@@ -264,23 +262,32 @@ export function MaterialLibrary({
                 ))}
               </div>
             ) : (
-              <div className="bg-muted/20 flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
-                <div className="bg-background mb-4 flex size-12 items-center justify-center rounded-xl border shadow-sm">
-                  <FileTextIcon className="size-5" />
-                </div>
-                <h2 className="font-heading font-semibold">
-                  {deferredSearch
+              <EmptyState
+                icon={FileTextIcon}
+                title={
+                  deferredSearch
                     ? "Materi tidak ditemukan"
                     : scope === "unused"
                       ? "Semua materi sudah digunakan"
-                      : "Belum ada materi di tampilan ini"}
-                </h2>
-                <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-                  {deferredSearch
+                      : "Belum ada materi di tampilan ini"
+                }
+                description={
+                  deferredSearch
                     ? "Coba judul atau deskripsi yang berbeda."
-                    : "Pilih tampilan lain atau buat materi baru untuk mulai menyusun bahan ajar."}
-                </p>
-              </div>
+                    : "Pilih tampilan lain atau buat materi baru untuk mulai menyusun bahan ajar."
+                }
+                action={
+                  !deferredSearch && allMaterials.length === 0 ? (
+                    <Link
+                      href={`/workspace/${organizationSlug}/library/materials/new`}
+                      className={buttonVariants({ className: "mt-4" })}
+                    >
+                      <PlusIcon data-icon="inline-start" />
+                      Materi baru
+                    </Link>
+                  ) : null
+                }
+              />
             )}
           </section>
         </div>

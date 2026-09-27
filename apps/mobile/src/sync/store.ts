@@ -54,6 +54,15 @@ export type StoredQuery = {
   updatedAt: number;
 };
 
+/** Row counts and payload sizes (characters ≈ bytes) of the local database. */
+export type LocalDataStats = {
+  bundles: { count: number; bytes: number };
+  indexes: { count: number; bytes: number };
+  queries: { count: number; bytes: number };
+  operations: number;
+  deadLetters: number;
+};
+
 export type MobileSyncStore = {
   initialize: () => Promise<void>;
   getMeta: (userId: string, key: string) => Promise<string | null>;
@@ -167,6 +176,7 @@ export type MobileSyncStore = {
   ) => Promise<void>;
   listDeadLetters: (userId: string) => Promise<MobileSyncDeadLetter[]>;
   countDeadLetters: (userId: string) => Promise<number>;
+  getLocalDataStats: (userId: string) => Promise<LocalDataStats>;
 };
 
 type OperationRow = { payload: string };
@@ -920,6 +930,40 @@ export function createMobileSyncStore(
         userId,
       );
       return row?.count ?? 0;
+    },
+
+    async getLocalDataStats(userId) {
+      await initialize();
+      const row = await (
+        await database()
+      ).getFirstAsync<{
+        bundleCount: number;
+        bundleBytes: number | null;
+        indexCount: number;
+        indexBytes: number | null;
+        queryCount: number;
+        queryBytes: number | null;
+        operations: number;
+        deadLetters: number;
+      }>(
+        `SELECT
+           (SELECT COUNT(*) FROM mobile_sync_course_bundle WHERE user_id = ?1) AS bundleCount,
+           (SELECT SUM(length(structure) + length(content)) FROM mobile_sync_course_bundle WHERE user_id = ?1) AS bundleBytes,
+           (SELECT COUNT(*) FROM mobile_sync_index WHERE user_id = ?1) AS indexCount,
+           (SELECT SUM(length(payload)) FROM mobile_sync_index WHERE user_id = ?1) AS indexBytes,
+           (SELECT COUNT(*) FROM mobile_sync_query WHERE user_id = ?1) AS queryCount,
+           (SELECT SUM(length(payload)) FROM mobile_sync_query WHERE user_id = ?1) AS queryBytes,
+           (SELECT COUNT(*) FROM mobile_sync_operation WHERE user_id = ?1) AS operations,
+           (SELECT COUNT(*) FROM mobile_sync_dead_letter_entry WHERE user_id = ?1) AS deadLetters`,
+        userId,
+      );
+      return {
+        bundles: { count: row?.bundleCount ?? 0, bytes: row?.bundleBytes ?? 0 },
+        indexes: { count: row?.indexCount ?? 0, bytes: row?.indexBytes ?? 0 },
+        queries: { count: row?.queryCount ?? 0, bytes: row?.queryBytes ?? 0 },
+        operations: row?.operations ?? 0,
+        deadLetters: row?.deadLetters ?? 0,
+      };
     },
   };
 }

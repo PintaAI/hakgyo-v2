@@ -7,5 +7,5 @@ export default async function AuthLayout({
   children: React.ReactNode;
 }) {
   await requireSession();
-  return <AppShell title="Settings">{children}</AppShell>;
+  return <AppShell title="Akun">{children}</AppShell>;
 }

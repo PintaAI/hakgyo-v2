@@ -12,15 +12,24 @@ import {
   SearchIcon,
 } from "lucide-react";
 
+import { PageHeader } from "~/components/ui/page-header";
+import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "~/components/ui/select";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Assessment = RouterOutputs["assessment"]["list"][number];
-type Status = Assessment["status"] | "ALL";
+// Assessments have no publish state; "live" = shown by a visible item of a
+// published course (then it is read-only in the editor).
+type Status = "ALL" | "LIVE" | "NOT_LIVE";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -31,15 +40,12 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
 
 const statusLabels: Record<Status, string> = {
   ALL: "Semua status",
-  DRAFT: "Draft",
-  PUBLISHED: "Published",
-  ARCHIVED: "Archived",
+  LIVE: "Tayang",
+  NOT_LIVE: "Tidak tayang",
 };
 
-function statusVariant(status: Assessment["status"]) {
-  if (status === "PUBLISHED") return "default" as const;
-  if (status === "ARCHIVED") return "outline" as const;
-  return "secondary" as const;
+function isLive(assessment: Assessment) {
+  return assessment._count.liveCourseItems > 0;
 }
 
 export function AssessmentLibrary({
@@ -58,38 +64,34 @@ export function AssessmentLibrary({
     const matchesSearch = `${assessment.title} ${assessment.description ?? ""}`
       .toLocaleLowerCase()
       .includes(deferredSearch);
-    return matchesSearch && (status === "ALL" || assessment.status === status);
+    return (
+      matchesSearch &&
+      (status === "ALL" || (status === "LIVE") === isLive(assessment))
+    );
   });
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div className="space-y-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <LibraryIcon className="size-4" />
-            Perpustakaan tugas
-          </div>
-          <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            Assessment
-          </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            Susun soal pilihan ganda dan jawaban tertulis yang dapat dipakai di
-            course mana pun di workspace ini.
-          </p>
-        </div>
-        <Link
-          href={`/workspace/${organizationSlug}/library/assessments/new`}
-          className={buttonVariants()}
-        >
-          <PlusIcon data-icon="inline-start" />
-          Assessment baru
-        </Link>
-      </div>
+      <PageHeader
+        icon={LibraryIcon}
+        eyebrow="Bahan ajar"
+        title="Tugas"
+        description="Susun soal pilihan ganda dan jawaban tertulis yang dapat dipakai di course mana pun di workspace ini."
+        actions={
+          <Link
+            href={`/workspace/${organizationSlug}/library/assessments/new`}
+            className={buttonVariants()}
+          >
+            <PlusIcon data-icon="inline-start" />
+            Tugas baru
+          </Link>
+        }
+      />
 
       {assessments.isPending ? (
         <div className="text-muted-foreground flex min-h-64 items-center justify-center text-sm">
           <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-          Memuat assessment
+          Memuat tugas
         </div>
       ) : assessments.error ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
@@ -106,7 +108,7 @@ export function AssessmentLibrary({
             <div className="relative min-w-0 flex-1">
               <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
               <Input
-                aria-label="Cari assessment"
+                aria-label="Cari tugas"
                 className="pl-8"
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Cari judul atau deskripsi"
@@ -119,7 +121,7 @@ export function AssessmentLibrary({
                 if (value) setStatus(value);
               }}
             >
-              <SelectTrigger aria-label="Filter status assessment">
+              <SelectTrigger aria-label="Filter status tugas">
                 <span className="flex flex-1 text-left">
                   {statusLabels[status]}
                 </span>
@@ -164,19 +166,30 @@ export function AssessmentLibrary({
               ))}
             </div>
           ) : (
-            <div className="bg-muted/20 flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
-              <div className="bg-background mb-4 flex size-12 items-center justify-center rounded-xl border shadow-sm">
-                <ClipboardCheckIcon className="size-5" />
-              </div>
-              <h2 className="font-heading font-semibold">
-                {deferredSearch || status !== "ALL"
-                  ? "Assessment tidak ditemukan"
-                  : "Belum ada assessment"}
-              </h2>
-              <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-                Buat assessment pertama untuk menambahkan evaluasi ke course.
-              </p>
-            </div>
+            <EmptyState
+              icon={ClipboardCheckIcon}
+              title={
+                deferredSearch || status !== "ALL"
+                  ? "Tugas tidak ditemukan"
+                  : "Belum ada tugas"
+              }
+              description={
+                deferredSearch || status !== "ALL"
+                  ? "Coba judul atau filter status yang berbeda."
+                  : "Buat tugas pertama untuk menambahkan evaluasi ke course."
+              }
+              action={
+                deferredSearch || status !== "ALL" ? null : (
+                  <Link
+                    href={`/workspace/${organizationSlug}/library/assessments/new`}
+                    className={buttonVariants({ className: "mt-4" })}
+                  >
+                    <PlusIcon data-icon="inline-start" />
+                    Tugas baru
+                  </Link>
+                )
+              }
+            />
           )}
         </section>
       )}
@@ -194,7 +207,7 @@ function AssessmentRow({
   return (
     <Link
       href={`/workspace/${organizationSlug}/library/assessments/${assessment.id}`}
-      className="bg-card ring-foreground/10 hover:bg-muted/30 group grid gap-4 rounded-xl p-4 ring-1 transition-colors sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      className="group bg-card focus-visible:ring-ring/50 hover:border-foreground/20 hover:bg-muted/20 grid gap-4 rounded-xl border p-4 transition-colors outline-none focus-visible:ring-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
     >
       <div className="flex min-w-0 items-start gap-3">
         <span className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg">
@@ -205,9 +218,18 @@ function AssessmentRow({
             <h2 className="font-heading truncate font-semibold">
               {assessment.title}
             </h2>
-            <Badge variant={statusVariant(assessment.status)}>
-              {statusLabels[assessment.status]}
-            </Badge>
+            {isLive(assessment) ? (
+              <Badge
+                variant="outline"
+                className="border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              >
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-emerald-500"
+                />
+                Tayang di {Math.max(assessment._count.liveCourses, 1)} course
+              </Badge>
+            ) : null}
           </div>
           <p className="text-muted-foreground line-clamp-2 text-sm">
             {assessment.description ?? "Belum ada deskripsi."}

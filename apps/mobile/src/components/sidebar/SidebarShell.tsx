@@ -35,9 +35,8 @@ export function SidebarShell({
   const { colorScheme, colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const progress = useDrawerProgress();
-  const displayName = session?.user.name || "Hakgyo learner";
-  const email =
-    session?.user.email || (isPending ? "Loading…" : "Not signed in");
+  const displayName = session?.user.name || "Pelajar Hakgyo";
+  const email = session?.user.email || (isPending ? "Memuat…" : "Belum masuk");
   const initials = displayName
     .trim()
     .split(/\s+/)
@@ -181,7 +180,7 @@ export function SidebarShell({
         }}
       >
         <Pressable
-          accessibilityLabel="Open profile"
+          accessibilityLabel="Buka profil"
           accessibilityRole="button"
           onPress={onOpenProfile}
           style={{ padding: 12, borderRadius: 24 }}

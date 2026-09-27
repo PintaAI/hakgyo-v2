@@ -90,13 +90,13 @@ export function LearnerSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={isActive(pathname, "/learn/assessments")}
-                  tooltip="Assessment events"
+                  tooltip="Event tugas"
                   render={
                     <Link href="/learn/assessments" onClick={closeMobile} />
                   }
                 >
                   <TrophyIcon />
-                  <span>Assessment events</span>
+                  <span>Event tugas</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

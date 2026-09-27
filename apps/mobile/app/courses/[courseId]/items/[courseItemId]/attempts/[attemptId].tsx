@@ -102,8 +102,8 @@ const AssessmentDeadline = memo(function AssessmentDeadline({
       }
     >
       {expired
-        ? "Time is up · submit your saved answers"
-        : `${Math.floor(Math.max(0, deadline - now) / 60_000)}:${String(Math.floor(Math.max(0, deadline - now) / 1000) % 60).padStart(2, "0")} remaining`}
+        ? "Waktu habis · kirim jawaban yang tersimpan"
+        : `${Math.floor(Math.max(0, deadline - now) / 60_000)}:${String(Math.floor(Math.max(0, deadline - now) / 1000) % 60).padStart(2, "0")} tersisa`}
     </Text>
   );
 });
@@ -212,7 +212,7 @@ function AssessmentAttemptContent({
         saved = restoreAssessmentDraft(saved, Storage.getItemSync(storageKey));
       } catch {
         setDraftError(
-          "The local draft could not be restored. Your last server-saved answers are shown.",
+          "Draf lokal tidak dapat dipulihkan. Jawaban terakhir yang tersimpan di server ditampilkan.",
         );
       }
     }
@@ -236,7 +236,9 @@ function AssessmentAttemptContent({
         setDraftError(undefined);
         setHasUnsavedAnswers(false);
       } catch {
-        setDraftError("Device draft unavailable. It will retry as you work.");
+        setDraftError(
+          "Draf di perangkat tidak tersedia. Akan dicoba lagi selama kamu mengerjakan.",
+        );
       }
     }, 250);
     return () => clearTimeout(timer);
@@ -281,7 +283,7 @@ function AssessmentAttemptContent({
   );
   const nextUnanswered = nextUnansweredQuestion(statuses, currentIndex);
   const openQuestions = useQuestionNavigator({
-    title: assessment.data?.title ?? "Assessment",
+    title: assessment.data?.title ?? "Tugas",
     current: currentIndex,
     statuses,
     onSelect: async (index) => {
@@ -320,7 +322,9 @@ function AssessmentAttemptContent({
         persistAssessmentDraft(storageKey, answers);
         setDraftError(undefined);
       } catch {
-        setDraftError("Device draft unavailable. It will retry as you work.");
+        setDraftError(
+          "Draf di perangkat tidak tersedia. Akan dicoba lagi selama kamu mengerjakan.",
+        );
         return false;
       }
     }
@@ -352,7 +356,7 @@ function AssessmentAttemptContent({
         ) {
           setSubmitError(
             failure?.message ??
-              "The assessment is saved on this device but was not accepted by the server.",
+              "Tugas tersimpan di perangkat ini, tetapi ditolak oleh server.",
           );
           return;
         }
@@ -371,8 +375,8 @@ function AssessmentAttemptContent({
         }
       } else {
         Alert.alert(
-          "Saved on this device",
-          "Your completed assessment is queued and will submit at the next online sync checkpoint.",
+          "Tersimpan di perangkat ini",
+          "Tugas kamu sudah masuk antrean dan akan terkirim saat sinkronisasi online berikutnya.",
         );
       }
       draftCompleted.current = true;
@@ -406,7 +410,7 @@ function AssessmentAttemptContent({
       setSubmitError(
         cause instanceof Error
           ? cause.message
-          : "The assessment could not be saved on this device.",
+          : "Tugas tidak dapat disimpan di perangkat ini.",
       );
     } finally {
       operationPending.current = false;
@@ -418,13 +422,13 @@ function AssessmentAttemptContent({
   const error = assessment.error ?? attempt.error;
   function confirmSubmit() {
     Alert.alert(
-      "Submit assessment?",
+      "Kirim tugas?",
       expired
-        ? "Time is up. Only answers already saved to the server can be graded."
-        : `${answeredCount} of ${assessment.data?.questions.length ?? 0} questions answered. Submission is final.`,
+        ? "Waktu habis. Hanya jawaban yang sudah tersimpan di server yang dapat dinilai."
+        : `${answeredCount} dari ${assessment.data?.questions.length ?? 0} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`,
       [
-        { text: "Keep reviewing", style: "cancel" },
-        { text: "Submit", onPress: () => void submit() },
+        { text: "Periksa lagi", style: "cancel" },
+        { text: "Kirim", onPress: () => void submit() },
       ],
     );
   }
@@ -451,7 +455,7 @@ function AssessmentAttemptContent({
     <>
       <Stack.Screen
         options={{
-          title: assessment.data?.title ?? "Assessment",
+          title: assessment.data?.title ?? "Tugas",
           headerBackButtonDisplayMode: "minimal",
         }}
       />
@@ -462,13 +466,13 @@ function AssessmentAttemptContent({
       ) : error || !assessment.data || !attempt.data ? (
         <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
           <Text className="text-center text-sm text-destructive">
-            {error?.message ?? "Assessment unavailable."}
+            {error?.message ?? "Tugas tidak tersedia."}
           </Text>
           <Pressable
             className="rounded-full border border-border px-5 py-3"
             onPress={() => router.back()}
           >
-            <Text className="font-bold text-foreground">Go back</Text>
+            <Text className="font-bold text-foreground">Kembali</Text>
           </Pressable>
         </View>
       ) : result ? (
@@ -484,8 +488,8 @@ function AssessmentAttemptContent({
             </View>
             <Text className="text-center text-2xl font-black text-foreground">
               {result.status === "IN_REVIEW"
-                ? "Awaiting review"
-                : "Assessment reviewed"}
+                ? "Menunggu review"
+                : "Tugas sudah direview"}
             </Text>
             {result.status === "GRADED" ? (
               <Text className="text-lg text-muted-foreground">
@@ -493,8 +497,8 @@ function AssessmentAttemptContent({
               </Text>
             ) : (
               <Text className="text-center text-sm leading-5 text-muted-foreground">
-                Your detailed result will appear here after the teacher finishes
-                reviewing it.
+                Hasil lengkap kamu akan muncul di sini setelah pengajar selesai
+                mereviewnya.
               </Text>
             )}
           </StudyGlass>
@@ -510,7 +514,7 @@ function AssessmentAttemptContent({
 
           {assessment.data.event ? (
             <StudyAction onPress={leaveResult}>
-              View score & leaderboard
+              Lihat skor & leaderboard
             </StudyAction>
           ) : null}
         </ScrollView>
@@ -540,15 +544,15 @@ function AssessmentAttemptContent({
           </AssessmentQuestion>
           <Text className="text-sm font-bold text-foreground">
             {question.type === "WRITTEN"
-              ? "Write your answer"
+              ? "Tulis jawaban kamu"
               : question.type === "MULTIPLE_CHOICE"
-                ? "Select every correct answer"
-                : "Choose one answer"}
+                ? "Pilih semua jawaban yang benar"
+                : "Pilih satu jawaban"}
           </Text>
           {question.type === "WRITTEN" ? (
             <StudyGlass>
               <TextInput
-                accessibilityLabel={`Answer to question ${currentIndex + 1}`}
+                accessibilityLabel={`Jawaban soal ${currentIndex + 1}`}
                 className="min-h-32 text-base text-foreground"
                 multiline
                 editable={!busy && !expired}
@@ -559,7 +563,7 @@ function AssessmentAttemptContent({
                   }));
                   setHasUnsavedAnswers(true);
                 }}
-                placeholder="Write your answer…"
+                placeholder="Tulis jawaban kamu…"
                 textAlignVertical="top"
                 value={answers[question.id]?.content ?? ""}
               />
@@ -586,9 +590,11 @@ function AssessmentAttemptContent({
             </View>
           )}
           <Text className="text-xs leading-5 text-muted-foreground">
-            You can change answers until you submit. Drafts save on this device
-            as you work.
-            {deadline !== null ? " The timer continues if you leave." : ""}
+            Kamu bisa mengubah jawaban sampai mengirimnya. Draf tersimpan di
+            perangkat ini selama kamu mengerjakan.
+            {deadline !== null
+              ? " Timer tetap berjalan meski kamu keluar."
+              : ""}
           </Text>
           {draftError ? (
             <Text
@@ -619,7 +625,7 @@ function AssessmentAttemptContent({
                         : void save(currentIndex - 1)
                     }
                   >
-                    Previous
+                    Sebelumnya
                   </StudyAction>
                 </View>
               ) : null}
@@ -639,8 +645,8 @@ function AssessmentAttemptContent({
                     }}
                   >
                     {currentIndex < assessment.data.questions.length - 1
-                      ? "Next →"
-                      : "Next unanswered →"}
+                      ? "Berikutnya →"
+                      : "Soal belum dijawab berikutnya →"}
                   </StudyAction>
                 </View>
               ) : null}
@@ -648,8 +654,8 @@ function AssessmentAttemptContent({
             {!expired ? (
               <Text className="text-center text-xs text-muted-foreground">
                 {hasUnsavedAnswers
-                  ? "Saving draft on this device…"
-                  : "Draft saved on this device"}
+                  ? "Menyimpan draf di perangkat ini…"
+                  : "Draf tersimpan di perangkat ini"}
               </Text>
             ) : null}
             {expired ||
@@ -661,10 +667,10 @@ function AssessmentAttemptContent({
                 onPress={confirmSubmit}
               >
                 {busy
-                  ? "Saving…"
+                  ? "Menyimpan…"
                   : answeredCount === assessment.data.questions.length
-                    ? "Submit assessment"
-                    : `Submit · ${answeredCount}/${assessment.data.questions.length} answered`}
+                    ? "Kirim tugas"
+                    : `Kirim · ${answeredCount}/${assessment.data.questions.length} dijawab`}
               </StudyAction>
             ) : null}
           </View>
@@ -672,7 +678,7 @@ function AssessmentAttemptContent({
       ) : (
         <View className="flex-1 items-center justify-center bg-background px-6">
           <Text className="text-muted-foreground">
-            This assessment has no questions.
+            Tugas ini belum memiliki soal.
           </Text>
         </View>
       )}

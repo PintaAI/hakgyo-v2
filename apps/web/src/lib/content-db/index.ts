@@ -11,9 +11,15 @@ export {
   createDraftKey,
 } from "./store";
 export { closeContentLocalStore, getContentLocalStore } from "./client";
-export { ContentSyncConflictError, processContentSyncQueue } from "./sync";
+export {
+  ContentSyncConflictError,
+  ContentSyncRejectedError,
+  isPermanentContentSyncRejection,
+  processContentSyncQueue,
+} from "./sync";
 export type {
   ContentMutationExecutor,
+  ContentSyncRejection,
   ContentSyncResult,
   ContentSyncSummary,
 } from "./sync";

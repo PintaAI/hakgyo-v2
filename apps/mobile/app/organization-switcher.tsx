@@ -12,7 +12,7 @@ export default function OrganizationSwitcherScreen() {
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
-            accessibilityLabel="Close organization switcher"
+            accessibilityLabel="Tutup pemilih organisasi"
             icon={toolbarIcons.close}
             onPress={close}
           />

@@ -13,14 +13,16 @@ export default async function Layout({
   await requireOrganizationRole(organizationSlug, organizationManagerRoles);
   const root = `/workspace/${organizationSlug}/settings`;
   return (
-    <Subnav
-      nav={[
-        { href: `${root}/general`, label: "Umum" },
-        { href: `${root}/integrations`, label: "Integrasi" },
-        { href: `${root}/mcp`, label: "MCP Server" },
-      ]}
-    >
-      <div className="mx-auto w-full max-w-4xl">{children}</div>
-    </Subnav>
+    <div className="mx-auto w-full max-w-4xl">
+      <Subnav
+        nav={[
+          { href: `${root}/general`, label: "Umum" },
+          { href: `${root}/integrations`, label: "Integrasi" },
+          { href: `${root}/mcp`, label: "MCP Server" },
+        ]}
+      >
+        {children}
+      </Subnav>
+    </div>
   );
 }

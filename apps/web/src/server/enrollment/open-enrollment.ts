@@ -1,5 +1,5 @@
 type OpenEnrollmentCourse = {
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  status: "DRAFT" | "PUBLISHED";
   price: number;
   enrollmentMode: "OPEN" | "INVITE_ONLY" | null;
   organization: { defaultEnrollmentMode: "OPEN" | "INVITE_ONLY" };

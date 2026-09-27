@@ -1,6 +1,8 @@
 import type { RouterInputs, RouterOutputs } from "@hakgyo/api";
 import type { CourseBundle, LearnerState } from "@hakgyo/shared/mobile-sync";
 
+import type { LocalDataStats } from "./store";
+
 // ---------------------------------------------------------------------------
 // Outbox operations
 // ---------------------------------------------------------------------------
@@ -78,6 +80,34 @@ export type BundleFetchResult =
       revision: string;
     }
   | { status: "upgrade-required"; minProtocol: number };
+
+/** Timing of one course bundle download (development diagnostics). */
+export type BundleTiming = {
+  courseId: string;
+  status: "downloaded" | "not-modified" | "failed";
+  /** Serialized size stored locally (0 unless downloaded). */
+  bytes: number;
+  /** Network request, including the server building the bundle. */
+  fetchMs: number;
+  /** Writing the bundle to SQLite and publishing it to the query cache. */
+  saveMs: number;
+};
+
+/** Development resync measurement: how long repopulating the device took. */
+export type ResyncReport = {
+  startedAt: number;
+  totalMs: number;
+  /** Sending queued progress before clearing. */
+  flushMs: number;
+  /** Deleting local data, cached files and images. */
+  clearMs: number;
+  /** getManifest + getIndex, including storing the index. */
+  indexMs: number;
+  /** From the first bundle request until every course bundle is stored. */
+  bundlesMs: number;
+  bundles: BundleTiming[];
+  stats: LocalDataStats;
+};
 
 export type MobileSyncTransport = {
   commit: (input: MobileSyncCommitInput) => Promise<MobileSyncCommitResult>;

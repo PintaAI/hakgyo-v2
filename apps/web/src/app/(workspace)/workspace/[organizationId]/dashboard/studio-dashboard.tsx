@@ -57,16 +57,21 @@ export type StudioDashboardData = {
   activity?: { id: string; title: string; detail: string }[];
 };
 
-const statusLabels: Record<string, string> = {
-  PUBLISHED: "Terbit",
-  DRAFT: "Draf",
-  ARCHIVED: "Arsip",
+const courseStatusLabels: Record<string, string> = {
+  PUBLISHED: "Dipublikasikan",
+  DRAFT: "Belum dipublikasikan",
+};
+const cohortStatusLabels: Record<string, string> = {
+  // Cohort DRAFT: being set up, not visible to learners yet.
+  DRAFT: "Persiapan",
   OPEN: "Dibuka",
   IN_PROGRESS: "Berjalan",
   COMPLETED: "Selesai",
   CANCELLED: "Dibatalkan",
 };
-function Status({ value }: { value: string }) {
+function Status({ value, kind }: { value: string; kind: "course" | "cohort" }) {
+  const statusLabels =
+    kind === "course" ? courseStatusLabels : cohortStatusLabels;
   return (
     <span
       className={cn(
@@ -176,7 +181,9 @@ function Groups({ data }: { data: StudioDashboardData }) {
                     {group.name}
                   </span>
                   <span className="text-muted-foreground mt-1 flex min-w-0 items-center gap-1.5 text-xs">
-                    <span className="min-w-0 truncate">{group.course.title}</span>
+                    <span className="min-w-0 truncate">
+                      {group.course.title}
+                    </span>
                     <span aria-hidden="true">·</span>
                     <span className="inline-flex shrink-0 items-center gap-1">
                       <Users className="size-3" />
@@ -184,7 +191,7 @@ function Groups({ data }: { data: StudioDashboardData }) {
                     </span>
                   </span>
                 </span>
-                <Status value={group.status} />
+                <Status kind="cohort" value={group.status} />
               </Link>
             </li>
           ))}
@@ -265,7 +272,10 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
               </Avatar>
               <span className="truncate">{data.name}</span>
             </span>
-            <span aria-hidden="true" className="text-muted-foreground font-normal">
+            <span
+              aria-hidden="true"
+              className="text-muted-foreground font-normal"
+            >
               ·
             </span>
             <span className="inline-flex min-w-0 items-center gap-2">
@@ -376,7 +386,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
                   </div>
                   <div className="p-6">
                     <div className="mb-3 flex items-center justify-between">
-                      <Status value={course.status} />
+                      <Status kind="course" value={course.status} />
                       <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-1" />
                     </div>
                     <h3 className="truncate text-base font-semibold">

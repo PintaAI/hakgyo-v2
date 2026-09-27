@@ -33,10 +33,10 @@ export function CourseCard({
       }));
   const initial = course.title.trim().charAt(0).toUpperCase() || "C";
   const modeLabel =
-    course.progressionMode === "SEQUENTIAL" ? "Sequential" : "Open";
+    course.progressionMode === "SEQUENTIAL" ? "Berurutan" : "Bebas";
   return (
     <Pressable
-      accessibilityHint="Opens the course details"
+      accessibilityHint="Membuka detail course"
       accessibilityRole="button"
       className="flex-row items-center gap-2.5 rounded-xl px-2.5 py-2"
       onPress={handlePress}

@@ -1,20 +1,8 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk, Inter } from "next/font/google";
 
 import { InviteRedemption } from "~/components/invite-redemption";
-import { cn } from "~/lib/utils";
 import { resolveUnifiedInvite } from "~/server/invites/unified";
 import { db } from "~/server/db";
-
-const hanken = Hanken_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-hanken-grotesk",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export async function generateMetadata({
   params,
@@ -71,13 +59,7 @@ export default async function InvitePage({
 }) {
   const { token } = await params;
   return (
-    <div
-      className={cn(
-        hanken.variable,
-        inter.variable,
-        "font-[family-name:var(--font-inter)]",
-      )}
-    >
+    <div>
       <InviteRedemption token={token} />
     </div>
   );

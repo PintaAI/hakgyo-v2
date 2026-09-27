@@ -25,7 +25,7 @@ export default function HomeTabLayout() {
         scrollEdgeEffects: Platform.OS === "ios" ? { top: "soft" } : undefined,
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Home" }} />
+      <Stack.Screen name="index" options={{ title: "Hari Ini" }} />
     </Stack>
   );
 }

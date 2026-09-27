@@ -120,7 +120,7 @@ export function ContentImage({
         ) : (
           <View className="flex-1 items-center justify-center px-5">
             <Text className="text-center text-sm text-muted-foreground">
-              Image unavailable
+              Gambar tidak tersedia
             </Text>
           </View>
         )}
@@ -168,7 +168,7 @@ function AudioPlayer({
     <View className="gap-3 rounded-xl border border-border bg-muted/40 p-4">
       <View className="flex-row items-center gap-3">
         <Pressable
-          accessibilityLabel={status.playing ? "Pause audio" : "Play audio"}
+          accessibilityLabel={status.playing ? "Jeda audio" : "Putar audio"}
           accessibilityRole="button"
           className="size-11 items-center justify-center rounded-full bg-primary"
           disabled={!status.isLoaded && !status.isBuffering}
@@ -206,7 +206,7 @@ function AudioPlayer({
         </Text>
       ) : null}
       {status.error ? (
-        <Text className="text-xs text-destructive">Audio unavailable</Text>
+        <Text className="text-xs text-destructive">Audio tidak tersedia</Text>
       ) : null}
     </View>
   );
@@ -235,7 +235,7 @@ export function ContentAudio({
     return (
       <View className="rounded-xl border border-dashed border-border p-5">
         <Text className="text-center text-sm text-muted-foreground">
-          Audio unavailable
+          Audio tidak tersedia
         </Text>
       </View>
     );
@@ -244,7 +244,7 @@ export function ContentAudio({
   if (activeUrl !== resolved.url) {
     return (
       <Pressable
-        accessibilityLabel={`Play ${fileName || "audio"}`}
+        accessibilityLabel={`Putar ${fileName || "audio"}`}
         accessibilityRole="button"
         className="flex-row items-center gap-3 rounded-xl border border-border bg-muted/40 p-4"
         onPress={() => setActiveUrl(resolved.url)}
@@ -297,10 +297,12 @@ export function ContentFile({
     >
       <View className="min-w-0 flex-1">
         <Text className="font-bold text-foreground" numberOfLines={2}>
-          {fileName || "Open file"}
+          {fileName || "Buka file"}
         </Text>
         <Text className="mt-1 text-xs text-muted-foreground">
-          {resolved.status === "loading" ? "Preparing…" : "Tap to open"}
+          {resolved.status === "loading"
+            ? "Menyiapkan…"
+            : "Ketuk untuk membuka"}
         </Text>
       </View>
       <Text className="text-lg text-muted-foreground">↗</Text>

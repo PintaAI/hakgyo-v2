@@ -50,7 +50,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "~/components/ui/select";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -64,16 +63,23 @@ const roleDetails: Record<
   OrganizationRole,
   { label: string; description: string }
 > = {
-  OWNER: { label: "Owner", description: "Kontrol penuh dan kepemilikan" },
+  OWNER: { label: "Pemilik", description: "Kontrol penuh dan kepemilikan" },
   ADMIN: {
     label: "Admin",
-    description: "Mengelola member dan operasional organization",
+    description: "Mengelola anggota dan operasional organisasi",
   },
   TEACHER: {
-    label: "Teacher",
-    description: "Mengelola course dan cohort sesuai mode akses",
+    label: "Pengajar",
+    description: "Mengelola course dan Group belajar sesuai mode akses",
   },
 };
+
+const inviteStatusLabels = {
+  PENDING: "Menunggu",
+  ACCEPTED: "Diterima",
+  REVOKED: "Dicabut",
+  EXPIRED: "Kedaluwarsa",
+} as const;
 
 function errorMessage(error: unknown) {
   if (
@@ -167,7 +173,7 @@ export function OrganizationMembers({
       form.reset();
       setNewRole("TEACHER");
       setAddOpen(false);
-      toast.success("Invitation dibuat. Bagikan link kepada penerima.");
+      toast.success("Undangan dibuat. Bagikan link kepada penerima.");
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -176,7 +182,7 @@ export function OrganizationMembers({
   async function copyInviteLink() {
     if (!inviteLink) return;
     await navigator.clipboard.writeText(inviteLink);
-    toast.success("Link invitation disalin.");
+    toast.success("Link undangan disalin.");
   }
 
   async function handleResendInvite(invite: OrganizationInvite) {
@@ -187,7 +193,7 @@ export function OrganizationMembers({
       });
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
       await utils.organization.listInvites.invalidate({ organizationId });
-      toast.success("Link invitation baru dibuat.");
+      toast.success("Link undangan baru dibuat.");
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -200,7 +206,7 @@ export function OrganizationMembers({
         inviteId: invite.id,
       });
       await utils.organization.listInvites.invalidate({ organizationId });
-      toast.success("Invitation dicabut.");
+      toast.success("Undangan dicabut.");
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -254,29 +260,30 @@ export function OrganizationMembers({
             Anggota
           </h1>
           <p className="text-muted-foreground max-w-2xl text-sm">
-            Berikan akses secara sengaja. Owner mengendalikan organisasi, admin
-            mengelola operasional, dan teacher mengelola ruang belajar mereka.
+            Berikan akses secara sengaja. Pemilik mengendalikan organisasi,
+            admin mengelola operasional, dan pengajar mengelola ruang belajar
+            mereka.
           </p>
         </div>
         <Button onClick={() => setAddOpen(true)}>
           <UserPlusIcon data-icon="inline-start" />
-          Invite member
+          Undang anggota
         </Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Card size="sm">
           <CardHeader>
-            <CardDescription>Total member</CardDescription>
+            <CardDescription>Total anggota</CardDescription>
             <CardTitle className="text-2xl">{membersTotal}</CardTitle>
           </CardHeader>
         </Card>
         <Card size="sm">
           <CardHeader>
-            <CardDescription>Owners</CardDescription>
+            <CardDescription>Pemilik</CardDescription>
             <CardTitle className="flex items-center gap-2 text-2xl">
               {owners}
-              <CrownIcon className="size-4 text-amber-600" />
+              <CrownIcon className="size-4 text-amber-600 dark:text-amber-400" />
             </CardTitle>
           </CardHeader>
         </Card>
@@ -292,7 +299,7 @@ export function OrganizationMembers({
 
       <Card className="gap-0 py-0">
         <CardHeader className="border-b py-4">
-          <CardTitle>Direktori member</CardTitle>
+          <CardTitle>Direktori anggota</CardTitle>
           <CardDescription>
             {membersTotal} orang dengan akses organisasi
           </CardDescription>
@@ -308,9 +315,9 @@ export function OrganizationMembers({
         </CardHeader>
         <CardContent className="p-0">
           {members.isPending ? (
-            <div className="text-muted-foreground flex min-h-56 items-center justify-center">
+            <div className="text-muted-foreground flex min-h-56 items-center justify-center text-sm">
               <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-              Memuat member
+              Memuat anggota
             </div>
           ) : members.error ? (
             <div className="flex min-h-56 flex-col items-center justify-center gap-3 p-6 text-center">
@@ -324,7 +331,7 @@ export function OrganizationMembers({
           ) : memberItems.length === 0 ? (
             <div className="flex min-h-56 flex-col items-center justify-center gap-2 p-6 text-center">
               <UsersIcon className="text-muted-foreground/60 size-8" />
-              <p className="font-medium">Member tidak ditemukan</p>
+              <p className="font-medium">Anggota tidak ditemukan</p>
               <p className="text-muted-foreground text-sm">
                 Coba nama, email, atau role yang berbeda.
               </p>
@@ -367,10 +374,9 @@ export function OrganizationMembers({
                           {member.user.email}
                         </p>
                         <p className="text-muted-foreground mt-1 text-xs">
-                          {member._count.ownedCourses} managed course ·{" "}
-                          {member._count.courseCollaborations} curriculum access
-                          · {member._count.cohortStaffMemberships} cohort
-                          assignment
+                          {member._count.ownedCourses} course dikelola ·{" "}
+                          {member._count.courseCollaborations} akses kurikulum ·{" "}
+                          {member._count.cohortStaffMemberships} Group belajar
                         </p>
                       </div>
                     </div>
@@ -385,17 +391,19 @@ export function OrganizationMembers({
                       }}
                     >
                       <SelectTrigger className="w-full sm:w-36">
-                        <SelectValue />
+                        <span className="flex flex-1 text-left">
+                          {roleDetails[member.role].label}
+                        </span>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem
                           value="OWNER"
                           disabled={currentRole !== "OWNER"}
                         >
-                          Owner
+                          Pemilik
                         </SelectItem>
                         <SelectItem value="ADMIN">Admin</SelectItem>
-                        <SelectItem value="TEACHER">Teacher</SelectItem>
+                        <SelectItem value="TEACHER">Pengajar</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -429,7 +437,7 @@ export function OrganizationMembers({
                 {members.isFetchingNextPage ? (
                   <LoaderCircleIcon className="animate-spin" />
                 ) : null}
-                Muat member berikutnya
+                Muat anggota berikutnya
               </Button>
             </div>
           ) : null}
@@ -438,7 +446,7 @@ export function OrganizationMembers({
 
       <Card className="gap-0 py-0">
         <CardHeader className="border-b py-4">
-          <CardTitle>Invitation</CardTitle>
+          <CardTitle>Undangan</CardTitle>
           <CardDescription>
             User baru dapat membuat akun dari link lalu otomatis mendapat role.
           </CardDescription>
@@ -447,7 +455,7 @@ export function OrganizationMembers({
           {invites.isPending ? (
             <div className="text-muted-foreground flex min-h-32 items-center justify-center text-sm">
               <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
-              Memuat invitation
+              Memuat undangan
             </div>
           ) : invites.error ? (
             <p className="text-destructive p-5 text-sm">
@@ -469,13 +477,13 @@ export function OrganizationMembers({
                           invite.status === "PENDING" ? "secondary" : "outline"
                         }
                       >
-                        {invite.status}
+                        {inviteStatusLabels[invite.status]}
                       </Badge>
                     </div>
                     <p className="text-muted-foreground mt-1 text-xs">
                       Oleh{" "}
                       {invite.invitedBy?.user.name ??
-                        "member yang telah dihapus"}{" "}
+                        "anggota yang telah dihapus"}{" "}
                       · berlaku sampai{" "}
                       {invite.expiresAt.toLocaleDateString("id-ID")}
                     </p>
@@ -520,14 +528,14 @@ export function OrganizationMembers({
                     {invites.isFetchingNextPage ? (
                       <LoaderCircleIcon className="animate-spin" />
                     ) : null}
-                    Muat invitation berikutnya
+                    Muat undangan berikutnya
                   </Button>
                 </div>
               ) : null}
             </div>
           ) : (
             <p className="text-muted-foreground p-6 text-center text-sm">
-              Belum ada invitation organization.
+              Belum ada undangan organisasi.
             </p>
           )}
         </CardContent>
@@ -537,10 +545,10 @@ export function OrganizationMembers({
         <DialogContent>
           <form onSubmit={handleAddMember} className="contents">
             <DialogHeader>
-              <DialogTitle>Invite member organisasi</DialogTitle>
+              <DialogTitle>Undang anggota organisasi</DialogTitle>
               <DialogDescription>
                 Penerima dapat login atau membuat akun, lalu role otomatis aktif
-                setelah invitation diterima.
+                setelah undangan diterima.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-2">
@@ -568,11 +576,13 @@ export function OrganizationMembers({
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <span className="flex flex-1 text-left">
+                      {roleDetails[newRole].label}
+                    </span>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="TEACHER">Teacher</SelectItem>
+                    <SelectItem value="TEACHER">Pengajar</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-muted-foreground text-xs">
@@ -594,7 +604,7 @@ export function OrganizationMembers({
                 ) : (
                   <UserPlusIcon />
                 )}
-                Buat invitation
+                Buat undangan
               </Button>
             </DialogFooter>
           </form>
@@ -609,13 +619,13 @@ export function OrganizationMembers({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Link invitation siap</DialogTitle>
+            <DialogTitle>Link undangan siap</DialogTitle>
             <DialogDescription>
               Demi keamanan, token hanya ditampilkan setelah create atau resend.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2 py-2">
-            <Label htmlFor="organization-invite-link">Link invitation</Label>
+            <Label htmlFor="organization-invite-link">Link undangan</Label>
             <Input
               id="organization-invite-link"
               value={inviteLink ?? ""}
@@ -666,7 +676,7 @@ export function OrganizationMembers({
               ) : (
                 <Trash2Icon />
               )}
-              Hapus member
+              Hapus anggota
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
