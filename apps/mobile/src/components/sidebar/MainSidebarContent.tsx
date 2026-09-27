@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 
+import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
 import { useSyncIndex } from "../../sync/hooks";
 import {
   countUnreadIndicators,
@@ -15,7 +16,7 @@ import {
   isStaleClosedOnDemandAssessment,
 } from "../../lib/assessment-state";
 import { dateLabel, meetingState } from "../../lib/study";
-import { CourseCard } from "../learn/course-card";
+import { CourseRow } from "../learn/course-card";
 import {
   assessmentSourceBadge,
   closesLabel,
@@ -186,6 +187,14 @@ export function MainSidebarContent({
     .filter((attempt) => attempt.status === "GRADED")
     .slice(0, 3);
 
+  const cohorts = dashboard.data?.cohorts ?? [];
+  // Cohort cards on Belajar already cover their course; only direct
+  // enrollments (Hangeul foundation, open or invited courses) need a row.
+  const cohortCourseIds = new Set(cohorts.map((cohort) => cohort.course.id));
+  const standaloneCourses = (dashboard.data?.courses ?? []).filter(
+    (course) => !cohortCourseIds.has(course.id),
+  );
+
   return (
     <>
       {mainSidebarUnreadCount > 0 ? (
@@ -318,13 +327,39 @@ export function MainSidebarContent({
         </View>
       ) : null}
 
-      {dashboard.data?.courses.length ? (
+      {cohorts.length ? (
         <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
-          <SectionHeader label="Course" count={dashboard.data.courses.length} />
+          <SectionHeader label="Semua kelas" count={cohorts.length} />
           <View style={{ gap: 1 }}>
-            {dashboard.data.courses.map((course) => (
-              <CourseCard
-                course={course}
+            {cohorts.map((cohort) => (
+              <CourseRow
+                accessibilityHint="Membuka kelas di tab Belajar"
+                key={cohort.id}
+                onPress={() =>
+                  onNavigate(() => {
+                    requestLearnCohortFocus(cohort.id);
+                    router.navigate("/(home)/(tabs)/learn");
+                  })
+                }
+                subtitle={cohort.name}
+                thumbnailUrl={cohort.course.thumbnailUrl}
+                title={cohort.course.title}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {standaloneCourses.length ? (
+        <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
+          <SectionHeader
+            label="Course mandiri"
+            count={standaloneCourses.length}
+          />
+          <View style={{ gap: 1 }}>
+            {standaloneCourses.map((course) => (
+              <CourseRow
+                accessibilityHint="Membuka detail course"
                 key={course.id}
                 onPress={() =>
                   onNavigate(() =>
@@ -334,6 +369,13 @@ export function MainSidebarContent({
                     }),
                   )
                 }
+                subtitle={`${course.organization.name} · ${
+                  course.progressionMode === "SEQUENTIAL"
+                    ? "Berurutan"
+                    : "Bebas"
+                }`}
+                thumbnailUrl={course.thumbnailUrl}
+                title={course.title}
               />
             ))}
           </View>
@@ -343,7 +385,8 @@ export function MainSidebarContent({
       {!upcomingEvents.length &&
       !upcomingMeetings.length &&
       !gradedAttempts.length &&
-      !dashboard.data?.courses.length &&
+      !cohorts.length &&
+      !standaloneCourses.length &&
       !dashboard.isPending ? (
         <View className="rounded-2xl px-3 py-4" style={{ marginBottom: 10 }}>
           <Text className="text-sm" style={{ color: colors.mutedForeground }}>

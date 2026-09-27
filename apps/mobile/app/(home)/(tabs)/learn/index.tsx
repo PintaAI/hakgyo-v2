@@ -22,6 +22,10 @@ import {
 import { DoodleBackground } from "../../../../src/components/doodle-background";
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { authClient } from "../../../../src/lib/auth-client";
+import {
+  completeLearnCohortFocus,
+  useLearnCohortFocus,
+} from "../../../../src/lib/learn-cohort-focus";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
@@ -33,6 +37,9 @@ import {
   useSyncIndex,
   type CourseOutline,
 } from "../../../../src/sync/hooks";
+
+// Lets the sidebar drawer finish closing so the slide to the cohort is seen.
+const FOCUS_SLIDE_DELAY_MS = 380;
 
 function CohortCarousel({
   cohorts,
@@ -92,19 +99,45 @@ function CohortCarousel({
     return () => cancelAnimationFrame(frame);
   }, [cohorts.length, pageWidth, savedIndex]);
 
+  const persistCohort = useCallback(
+    (cohortId: string) => {
+      setSavedCohortId(cohortId);
+      try {
+        Storage.setItemSync(storageKey, cohortId);
+      } catch {
+        // A scroll position is optional and can be restored on the next mount.
+      }
+    },
+    [storageKey],
+  );
+
   function savePosition(event: NativeSyntheticEvent<NativeScrollEvent>) {
     if (pageWidth <= 0) return;
     const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
     const cohort = cohorts[index];
-    if (!cohort) return;
-
-    setSavedCohortId(cohort.id);
-    try {
-      Storage.setItemSync(storageKey, cohort.id);
-    } catch {
-      // A scroll position is optional and can be restored on the next mount.
-    }
+    if (cohort) persistCohort(cohort.id);
   }
+
+  // A cohort picked in the sidebar slides into view with the native scroll
+  // animation, which also shows that the cards can be swiped.
+  const focus = useLearnCohortFocus();
+  useEffect(() => {
+    if (!focus || pageWidth <= 0) return;
+    const index = cohorts.findIndex(({ id }) => id === focus.cohortId);
+    if (index < 0) {
+      completeLearnCohortFocus(focus.id);
+      return;
+    }
+    const timer = setTimeout(() => {
+      listRef.current?.scrollToOffset({
+        offset: pageWidth * index,
+        animated: true,
+      });
+      persistCohort(focus.cohortId);
+      completeLearnCohortFocus(focus.id);
+    }, FOCUS_SLIDE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [cohorts, focus, pageWidth, persistCohort]);
 
   return (
     <View className="w-full" onLayout={measurePage}>
