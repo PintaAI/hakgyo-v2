@@ -207,12 +207,13 @@ export type SyncDataContextValue = {
 
 export const SyncDataContext = createContext<SyncDataContextValue | null>(null);
 
-export function useSyncData() {
-  const value = useContext(SyncDataContext);
-  if (!value) {
-    throw new Error("Sync hooks must be used within MobileSyncProvider");
-  }
-  return value;
+/**
+ * The signed-in user's local store, or null while nobody is signed in. Hooks
+ * keep their queries disabled without it, so screens that render before
+ * sign-in (root layout, auth redirects) report "pending" instead of crashing.
+ */
+function useLocalData() {
+  return useContext(SyncDataContext)?.localData ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -220,27 +221,31 @@ export function useSyncData() {
 // ---------------------------------------------------------------------------
 
 export function useSyncIndex(organizationId?: string | null) {
-  const { localData, isSyncing, syncError, syncNow } = useSyncData();
+  const sync = useContext(SyncDataContext);
+  const isSyncing = sync?.isSyncing ?? false;
+  const syncNow = sync?.syncNow;
   const scope = indexScope(organizationId);
   const query = useQuery({
     queryKey: syncQueryKeys.index(scope),
-    queryFn: () => localData.loadIndex(scope),
+    queryFn: () => sync!.localData.loadIndex(scope),
+    enabled: Boolean(sync),
     staleTime: Infinity,
     gcTime: Infinity,
   });
   const record = query.data ?? undefined;
   const data = record?.index;
   const refetch = useCallback(
-    () => syncNow(organizationId ?? undefined),
+    async () => syncNow?.(organizationId ?? undefined),
     [organizationId, syncNow],
   );
   const error = (query.error ??
-    (data === undefined ? syncError : null)) as Error | null;
+    (data === undefined ? (sync?.syncError ?? null) : null)) as Error | null;
   return {
     data,
     stale: record?.stale ?? false,
     /** True while loading from SQLite, or while the first sync runs. */
-    isPending: query.isPending || (data === undefined && isSyncing),
+    isPending:
+      Boolean(sync) && (query.isPending || (data === undefined && isSyncing)),
     isRefetching: isSyncing,
     isError: error !== null,
     error,
@@ -255,22 +260,22 @@ export function useSyncIndex(organizationId?: string | null) {
 const CONTENT_GC_TIME_MS = 5 * 60_000;
 
 function useBundleStructure(courseId: string | undefined, enabled = true) {
-  const { localData } = useSyncData();
+  const localData = useLocalData();
   return useQuery({
     queryKey: syncQueryKeys.bundleStructure(courseId ?? ""),
-    queryFn: () => localData.loadBundleStructure(courseId!),
-    enabled: enabled && Boolean(courseId),
+    queryFn: () => localData!.loadBundleStructure(courseId!),
+    enabled: enabled && Boolean(localData && courseId),
     staleTime: Infinity,
     gcTime: Infinity,
   });
 }
 
 function useBundleContent(courseId: string | undefined, enabled = true) {
-  const { localData } = useSyncData();
+  const localData = useLocalData();
   return useQuery({
     queryKey: syncQueryKeys.bundleContent(courseId ?? ""),
-    queryFn: () => localData.loadBundleContent(courseId!),
-    enabled: enabled && Boolean(courseId),
+    queryFn: () => localData!.loadBundleContent(courseId!),
+    enabled: enabled && Boolean(localData && courseId),
     staleTime: Infinity,
     gcTime: CONTENT_GC_TIME_MS,
   });
@@ -284,7 +289,7 @@ function useCourseIdForItem(
   courseId: string | undefined,
   courseItemId: string,
 ) {
-  const { localData } = useSyncData();
+  const localData = useLocalData();
   const map = useQuery({
     queryKey: syncQueryKeys.itemCourseMap(),
     // The engine pushes the full map with setQueryData; an empty map on a
@@ -296,8 +301,8 @@ function useCourseIdForItem(
   const mapped = map.data?.[courseItemId];
   const lookup = useQuery({
     queryKey: itemCourseKey(courseItemId),
-    queryFn: () => localData.courseIdForItem(courseItemId),
-    enabled: Boolean(courseItemId) && !courseId && !mapped,
+    queryFn: () => localData!.courseIdForItem(courseItemId),
+    enabled: Boolean(localData && courseItemId) && !courseId && !mapped,
     staleTime: Infinity,
   });
   const resolved = courseId || mapped || lookup.data || undefined;
@@ -311,9 +316,9 @@ function useCourseIdForItem(
 }
 
 function useRequestBundle(courseId: string | undefined, missing: boolean) {
-  const { localData } = useSyncData();
+  const localData = useLocalData();
   useEffect(() => {
-    if (missing && courseId) localData.requestBundle(courseId);
+    if (missing && courseId) localData?.requestBundle(courseId);
   }, [courseId, localData, missing]);
 }
 
@@ -369,7 +374,7 @@ function combineQueryData<TData>(
 
 /** Composes outlines for several courses (cohort cards, practice hub). */
 export function useCourseOutlines(courseIds: string[]) {
-  const { localData } = useSyncData();
+  const localData = useLocalData();
   const utils = api.useUtils();
   const { activeOrganizationId } = useAppTheme();
   const index = useSyncIndex(activeOrganizationId);
@@ -378,7 +383,8 @@ export function useCourseOutlines(courseIds: string[]) {
   const structures = useQueries({
     queries: ids.map((courseId) => ({
       queryKey: syncQueryKeys.bundleStructure(courseId),
-      queryFn: () => localData.loadBundleStructure(courseId),
+      queryFn: () => localData!.loadBundleStructure(courseId),
+      enabled: Boolean(localData),
       staleTime: Infinity,
       gcTime: Infinity,
     })),
@@ -411,7 +417,7 @@ export function useCourseOutlines(courseIds: string[]) {
   });
   useEffect(() => {
     for (const courseId of missingKey ? missingKey.split("|") : []) {
-      localData.requestBundle(courseId);
+      localData?.requestBundle(courseId);
     }
   }, [localData, missingKey]);
   const onlineData = onlines.data;
@@ -615,7 +621,7 @@ export function useVocabularyPractice(
  * attempt was started or graded on this device. Online otherwise.
  */
 export function useLearnerAttempt(attemptId: string, courseItemId: string) {
-  const { localData } = useSyncData();
+  const localData = useLocalData();
   const { activeOrganizationId } = useAppTheme();
   const index = useSyncIndex(activeOrganizationId);
   const enabled = Boolean(attemptId);
@@ -623,17 +629,17 @@ export function useLearnerAttempt(attemptId: string, courseItemId: string) {
   const savedAttempt = useQuery({
     queryKey: syncQueryKeys.query(attemptQueryKey(attemptId)),
     queryFn: () =>
-      localData.loadQuery<LearnerAttempt>(attemptQueryKey(attemptId)),
-    enabled: enabled && !resumable,
+      localData!.loadQuery<LearnerAttempt>(attemptQueryKey(attemptId)),
+    enabled: enabled && Boolean(localData) && !resumable,
     staleTime: Infinity,
   });
   const savedAssessment = useQuery({
     queryKey: syncQueryKeys.query(attemptAssessmentQueryKey(attemptId)),
     queryFn: () =>
-      localData.loadQuery<CourseItemAssessment>(
+      localData!.loadQuery<CourseItemAssessment>(
         attemptAssessmentQueryKey(attemptId),
       ),
-    enabled: enabled && !resumable,
+    enabled: enabled && Boolean(localData) && !resumable,
     staleTime: Infinity,
   });
   const localAttempt = resumable?.attempt ?? savedAttempt.data ?? undefined;

@@ -155,15 +155,17 @@ export function DrawerProvider({
     }),
     [colors.background],
   );
+  // Drawer content reads synced data, which does not exist while signed out.
   const renderDrawerContent = useCallback(
-    () => (
-      <Sidebar
-        onClose={close}
-        onNavigate={navigate}
-        onOpenProfile={openProfile}
-      />
-    ),
-    [close, navigate, openProfile],
+    () =>
+      enabled ? (
+        <Sidebar
+          onClose={close}
+          onNavigate={navigate}
+          onOpenProfile={openProfile}
+        />
+      ) : null,
+    [close, enabled, navigate, openProfile],
   );
   const updatesDrawerStyle = useMemo(
     () => ({
@@ -198,8 +200,11 @@ export function DrawerProvider({
     [colors.background],
   );
   const renderUpdatesContent = useCallback(
-    () => <UpdatesDrawerContent onClose={closeUpdates} onNavigate={navigate} />,
-    [closeUpdates, navigate],
+    () =>
+      enabled ? (
+        <UpdatesDrawerContent onClose={closeUpdates} onNavigate={navigate} />
+      ) : null,
+    [closeUpdates, enabled, navigate],
   );
 
   return (
