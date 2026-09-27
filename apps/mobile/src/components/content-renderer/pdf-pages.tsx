@@ -391,8 +391,10 @@ function ZoomablePage({
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
 
-  const clamp = (value: number, max: number) =>
-    Math.max(-max, Math.min(max, value));
+  const clamp = (value: number, max: number) => {
+    "worklet";
+    return Math.max(-max, Math.min(max, value));
+  };
   const pinch = Gesture.Pinch()
     .onStart(() => {
       startScale.value = scale.value;
