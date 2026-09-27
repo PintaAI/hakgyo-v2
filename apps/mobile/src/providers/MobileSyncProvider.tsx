@@ -1,6 +1,7 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as Network from "expo-network";
 import { Image } from "expo-image";
+import Storage from "expo-sqlite/kv-store";
 import * as Updates from "expo-updates";
 import {
   useCallback,
@@ -28,7 +29,10 @@ import {
 } from "../sync/engine";
 import { createAssetCache } from "../sync/asset-cache";
 import { createAssetResolver } from "../sync/asset-resolver";
-import { createDeviceAssetFileStore } from "../sync/asset-files";
+import {
+  clearAllDeviceAssetFiles,
+  createDeviceAssetFileStore,
+} from "../sync/asset-files";
 import { createBundleFetcher } from "../sync/bundle-sync";
 import {
   persistAttempt,
@@ -51,6 +55,23 @@ import type {
   SyncUpdateResult,
   UpgradeRequired,
 } from "../sync/types";
+
+/**
+ * Nothing learned on the device may outlive the session: without a signed-in
+ * user, drop the sync store (queued progress included), downloaded media,
+ * image caches, per-user key-value data and every cached query.
+ */
+async function clearSignedOutDeviceData(queryClient: QueryClient) {
+  await queryClient.cancelQueries();
+  queryClient.clear();
+  await Promise.allSettled([
+    sqliteMobileSyncStore.clearAllData(),
+    Promise.resolve().then(clearAllDeviceAssetFiles),
+    Storage.clearAsync(),
+    Image.clearDiskCache(),
+    Image.clearMemoryCache(),
+  ]);
+}
 
 // ---------------------------------------------------------------------------
 // Context
@@ -116,9 +137,18 @@ const MobileAssetResolverContext = createContext<
 export function MobileSyncProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const utils = api.useUtils();
-  const { data: session, isPending: isSessionPending } =
-    authClient.useSession();
+  const {
+    data: session,
+    error: sessionError,
+    isPending: isSessionPending,
+  } = authClient.useSession();
   const userId = session?.user.id;
+  // Only the server can end a session (a check without a user, or a 401). A
+  // failed check (offline, server down) still shows sign-in but keeps local
+  // data and queued progress. False while signed in, so a failed refresh
+  // that keeps the user never restarts the engine.
+  const signOutConfirmed =
+    !userId && (!sessionError || sessionError.status === 401);
   const [hydratedUserId, setHydratedUserId] = useState<string | null>();
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -207,12 +237,25 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     setDeadLetterCount(0);
     practicedSetIds.current.clear();
     rewardedAttemptIds.current.clear();
-    if (previous) void previous.dispose();
+    const disposing = previous?.dispose().catch(() => undefined);
 
     if (isSessionPending) return;
     if (!userId) {
-      setHydratedUserId(null);
-      return;
+      if (!signOutConfirmed) {
+        setHydratedUserId(null);
+        return;
+      }
+      // Let the old engine finish its writes, then wipe before the sign-in
+      // screen renders.
+      void Promise.resolve(disposing)
+        .then(() => clearSignedOutDeviceData(queryClient))
+        .catch(() => undefined)
+        .finally(() => {
+          if (active) setHydratedUserId(null);
+        });
+      return () => {
+        active = false;
+      };
     }
 
     const v2 = utils.client.mobileSyncV2;
@@ -270,7 +313,14 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       if (engineRef.current === next) engineRef.current = null;
       void next.dispose();
     };
-  }, [applyIndex, isSessionPending, queryClient, userId, utils.client]);
+  }, [
+    applyIndex,
+    isSessionPending,
+    queryClient,
+    signOutConfirmed,
+    userId,
+    utils.client,
+  ]);
 
   const localData = engine?.localData ?? null;
 

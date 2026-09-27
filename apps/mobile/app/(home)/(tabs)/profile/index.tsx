@@ -55,6 +55,7 @@ export default function ProfileTab() {
     deadLetterCount,
     upgradeRequired,
     syncNow,
+    checkpoint,
     clearLocalDataAndResync,
     getLocalDataStats,
   } = useMobileSync();
@@ -160,11 +161,37 @@ export default function ProfileTab() {
     }
   };
 
+  // Signing out wipes every local record (MobileSyncProvider), so upload
+  // queued progress first and ask before discarding what could not be sent.
+  const confirmDiscardPending = () =>
+    new Promise<boolean>((resolve) => {
+      Alert.alert(
+        "Progres belum tersinkron",
+        "Sebagian progres belajar belum terkirim ke server. Jika keluar sekarang, progres itu akan hilang.",
+        [
+          { text: "Batal", style: "cancel", onPress: () => resolve(false) },
+          {
+            text: "Tetap keluar",
+            style: "destructive",
+            onPress: () => resolve(true),
+          },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      );
+    });
+
   const handleSignOut = async () => {
     setError(null);
     setIsSigningOut(true);
 
     try {
+      if (pendingCount > 0) {
+        const flushed = await checkpoint(activeOrganizationId ?? undefined)
+          .then((sync) => sync.state === "synced")
+          .catch(() => false);
+        if (!flushed && !(await confirmDiscardPending())) return;
+      }
+
       const result = await authClient.signOut();
 
       if (result.error) {

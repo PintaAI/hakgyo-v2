@@ -193,6 +193,11 @@ export function createMemoryStore(): MobileSyncStore & {
         }
       }
     },
+    clearAllData: async () => {
+      for (const map of [meta, indexes, bundles, queries, operations])
+        map.clear();
+      deadLetters.length = 0;
+    },
     getOperation: async (userId, id) =>
       structuredClone(operations.get(key(userId, id))?.operation ?? null),
     putOperation: async (userId, operation) => {

@@ -119,4 +119,44 @@ describe("mobile sync SQLite store", () => {
     expect(insert).toBeDefined();
     expect(insert).not.toContain("ON CONFLICT");
   });
+
+  test("clears every user's rows, queued progress included", async () => {
+    const { createMobileSyncStore } = await import("./store");
+    const { database, statements } = fakeDatabase({
+      operationColumns: CURRENT_COLUMNS,
+      legacyDeadLetters: false,
+    });
+    const store = createMobileSyncStore(async () => database as never);
+
+    await store.clearAllData();
+
+    expect(statements.sort()).toEqual(
+      [
+        "mobile_sync_course_bundle",
+        "mobile_sync_dead_letter_entry",
+        "mobile_sync_index",
+        "mobile_sync_meta",
+        "mobile_sync_operation",
+        "mobile_sync_query",
+      ].map((table) => `DELETE FROM ${table}`),
+    );
+  });
+
+  test("memory store wipes operations, dead letters and cached data", async () => {
+    const { createMemoryStore } = await import("./memory-store");
+    const store = createMemoryStore();
+    await store.setMeta("user-1", "key", "value");
+    await store.setMeta("user-2", "key", "value");
+    await store.putOperation("user-1", {
+      id: "content:item-1",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-1",
+    });
+
+    await store.clearAllData();
+
+    expect(await store.getMeta("user-1", "key")).toBeNull();
+    expect(await store.getMeta("user-2", "key")).toBeNull();
+    expect(await store.countOperations("user-1")).toBe(0);
+  });
 });

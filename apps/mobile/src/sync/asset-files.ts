@@ -6,10 +6,18 @@ function safePathSegment(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
+const ASSET_ROOT = "hakgyo-assets";
+
+/** Deletes the downloaded media of every user on this device. */
+export function clearAllDeviceAssetFiles() {
+  const root = new Directory(Paths.document, ASSET_ROOT);
+  if (root.exists) root.delete();
+}
+
 export function createDeviceAssetFileStore(userId: string): AssetFileStore {
   const directory = new Directory(
     Paths.document,
-    "hakgyo-assets",
+    ASSET_ROOT,
     safePathSegment(userId),
   );
   let indexedFiles: Map<string, string> | undefined;

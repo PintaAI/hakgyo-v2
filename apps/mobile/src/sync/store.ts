@@ -127,6 +127,8 @@ export type MobileSyncStore = {
   clearQueries: (userId: string) => Promise<void>;
   /** Removes the user's index, bundles, queries and meta (never the outbox). */
   clearLocalData: (userId: string) => Promise<void>;
+  /** Removes every user's data, including queued progress and dead letters. */
+  clearAllData: () => Promise<void>;
   getOperation: (
     userId: string,
     id: string,
@@ -672,6 +674,23 @@ export function createMobileSyncStore(
             `DELETE FROM ${table} WHERE user_id = ?`,
             userId,
           );
+        }
+      });
+    },
+
+    async clearAllData() {
+      await initialize();
+      const db = await database();
+      await db.withExclusiveTransactionAsync(async (transaction) => {
+        for (const table of [
+          "mobile_sync_operation",
+          "mobile_sync_dead_letter_entry",
+          "mobile_sync_index",
+          "mobile_sync_course_bundle",
+          "mobile_sync_query",
+          "mobile_sync_meta",
+        ]) {
+          await transaction.runAsync(`DELETE FROM ${table}`);
         }
       });
     },
