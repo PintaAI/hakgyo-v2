@@ -11,6 +11,7 @@ import {
 } from "@hakgyo/shared/mobile-sync";
 
 import type { LocalBundleRecord } from "./local-data";
+import type { BundleNoticeInput, SyncNoticeUpdate } from "./notices";
 import { syncQueryKeys } from "./query-keys";
 import type { MobileSyncStore, StoredBundleMeta } from "./store";
 import type {
@@ -52,6 +53,14 @@ export type BundleSyncOptions = {
   onProgress?: (progress: BundleSyncProgress) => void;
   onUpgradeRequired?: (upgrade: UpgradeRequired) => void;
   onBundleTiming?: (timing: BundleTiming) => void;
+  /**
+   * Compares a downloaded bundle with the previous one; the result is saved
+   * in the same transaction as the bundle. A throw only skips the notices.
+   */
+  prepareNotices?: (
+    bundle: BundleNoticeInput,
+  ) => Promise<SyncNoticeUpdate | null>;
+  onNoticesRecorded?: () => void;
 };
 
 type Job = {
@@ -238,20 +247,36 @@ export function createBundleSync(options: BundleSyncOptions) {
       updatedAt: checkedAt,
       openedAt: metaByCourse.get(job.courseId)?.openedAt ?? null,
     };
-    await store.saveBundle(userId, {
-      courseId: job.courseId,
-      revision: result.revision,
-      schema: bundle.schema,
-      etag: result.etag,
-      structure: bundle.structure,
-      content: bundle.content,
-      bytes: meta.bytes,
-      updatedAt: checkedAt,
-    });
+    const notices = options.prepareNotices
+      ? await options
+          .prepareNotices({
+            courseId: job.courseId,
+            organizationId: bundle.organizationId ?? null,
+            revision: result.revision,
+            structure: bundle.structure,
+            content: bundle.content,
+          })
+          .catch(() => null)
+      : null;
+    await store.saveBundle(
+      userId,
+      {
+        courseId: job.courseId,
+        revision: result.revision,
+        schema: bundle.schema,
+        etag: result.etag,
+        structure: bundle.structure,
+        content: bundle.content,
+        bytes: meta.bytes,
+        updatedAt: checkedAt,
+      },
+      notices ?? undefined,
+    );
     metaByCourse.set(job.courseId, meta);
     indexStructure(job.courseId, bundle.structure);
     publishBundle(meta, bundle);
     publishItemCourseMap();
+    if (notices?.notices.length) options.onNoticesRecorded?.();
     return meta.bytes;
   }
 

@@ -17,6 +17,7 @@ import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
 import { Progress } from "~/components/ui/progress";
+import { appHandoffPath } from "~/lib/mobile-app";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/server";
 
@@ -90,15 +91,15 @@ export default async function LearningCoursePage({
                   Lanjut: {nextItem.title} <ArrowRightIcon />
                 </Link>
               ) : null}
-              <a
-                href={`hakgyo://courses/${encodeURIComponent(courseId)}`}
+              <Link
+                href={appHandoffPath(courseId)}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
                   "border-background/25 bg-background/5 text-background hover:bg-background/10 hover:text-background",
                 )}
               >
                 <SmartphoneIcon /> Buka di aplikasi
-              </a>
+              </Link>
             </div>
           </div>
           <div className="border-background/15 border-l pl-5">

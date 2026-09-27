@@ -1,4 +1,9 @@
 import { TRPCError } from "@trpc/server";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
 import { z } from "zod";
 
 import {
@@ -16,6 +21,19 @@ import { withCourseCounts } from "~/server/course/counts";
 import { assertCoursePublishable } from "~/server/course/readiness-service";
 import { organizationBrandSelect } from "~/server/brand/context";
 import { db } from "~/server/db";
+import { generateCourseThumbnail } from "~/server/ai/course-thumbnail";
+import {
+  createCourseThumbnailKey,
+  getCourseThumbnailPath,
+  getManagedCourseThumbnailKey,
+  MAX_COURSE_THUMBNAIL_SIZE,
+} from "~/lib/course-thumbnail";
+import {
+  getManagedOrganizationLogoKey,
+  parseOrganizationLogoKey,
+} from "~/lib/organization-logo";
+import { hasImageSignature } from "~/lib/image-signature";
+import { r2, r2Bucket } from "~/server/r2";
 
 const id = z.string().min(1);
 const fields = z.object({
@@ -116,6 +134,136 @@ function visibleCoursesWhere(member: OrganizationMember) {
 }
 
 export const courseRouter = createTRPCRouter({
+  generateThumbnail: protectedProcedure
+    .input(z.object({ courseId: id }))
+    .mutation(async ({ ctx, input }) => {
+      const access = await requireCoursePermission({
+        courseId: input.courseId,
+        permission: "course.manage",
+        userId: ctx.actorUserId,
+      });
+      const course = await db.course.findUniqueOrThrow({
+        where: { id: access.id },
+        select: {
+          title: true,
+          thumbnailUrl: true,
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              logoUrl: true,
+              theme: true,
+            },
+          },
+        },
+      });
+      const organization = course.organization;
+      const logoKey = getManagedOrganizationLogoKey(
+        organization.logoUrl,
+        organization.id,
+      );
+      const logoType =
+        logoKey &&
+        parseOrganizationLogoKey(logoKey, organization.id)?.contentType;
+      let logo: { bytes: Uint8Array; contentType: string } | undefined;
+      if (logoKey && logoType) {
+        const object = await r2.send(
+          new GetObjectCommand({ Bucket: r2Bucket, Key: logoKey }),
+        );
+        if (!object.Body)
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Ikon organisasi tidak dapat dibaca.",
+          });
+        logo = {
+          bytes: await object.Body.transformToByteArray(),
+          contentType: logoType,
+        };
+      }
+
+      let image: Buffer;
+      try {
+        image = await generateCourseThumbnail({
+          title: course.title,
+          organizationName: organization.name,
+          theme: organization.theme,
+          logo,
+        });
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "OPENAI_API_KEY_MISSING"
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "OPENAI_API_KEY belum dikonfigurasi di server.",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Thumbnail AI gagal dibuat. Silakan coba lagi.",
+          cause: error,
+        });
+      }
+      if (
+        image.length === 0 ||
+        image.length > MAX_COURSE_THUMBNAIL_SIZE ||
+        !hasImageSignature(image, "image/webp")
+      ) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Ukuran thumbnail AI tidak valid.",
+        });
+      }
+
+      const key = createCourseThumbnailKey(
+        input.courseId,
+        image.length,
+        "image/webp",
+      );
+      const thumbnailUrl = getCourseThumbnailPath(
+        input.courseId,
+        key.slice(key.lastIndexOf("/") + 1),
+      );
+      await r2.send(
+        new PutObjectCommand({
+          Bucket: r2Bucket,
+          Key: key,
+          Body: image,
+          ContentType: "image/webp",
+          CacheControl: "public, max-age=31536000, immutable",
+        }),
+      );
+      try {
+        const updated = await db.course.updateMany({
+          where: { id: input.courseId, thumbnailUrl: course.thumbnailUrl },
+          data: { thumbnailUrl },
+        });
+        if (updated.count !== 1) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Thumbnail course berubah. Silakan coba lagi.",
+          });
+        }
+      } catch (error) {
+        await r2
+          .send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }))
+          .catch(() => undefined);
+        throw error;
+      }
+      const oldKey = getManagedCourseThumbnailKey(
+        course.thumbnailUrl,
+        input.courseId,
+      );
+      if (oldKey) {
+        await r2
+          .send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: oldKey }))
+          .catch((error: unknown) => {
+            console.error("Failed to remove replaced course thumbnail", error);
+          });
+      }
+      return { thumbnailUrl };
+    }),
   listPublished: publicProcedure
     .input(
       z

@@ -20,10 +20,11 @@ export const metadata: Metadata = {
 export default async function AuthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirectTo?: string }>;
+  searchParams: Promise<{ redirectTo?: string; mode?: string }>;
 }) {
   const [query, requestHeaders] = await Promise.all([searchParams, headers()]);
   const { redirectTo } = query;
+  const initialMode = query.mode === "sign-up" ? "sign-up" : "sign-in";
 
   if (getSessionCookie(requestHeaders)) {
     const session = await getSession();
@@ -101,7 +102,7 @@ export default async function AuthPage({
                 Lanjutkan perjalanan belajarmu.
               </h1>
             </div>
-            <AuthPanel redirectTo={redirectTo} />
+            <AuthPanel redirectTo={redirectTo} initialMode={initialMode} />
             <p className="text-muted-foreground lg:text-primary-foreground/70 mt-6 text-center text-xs leading-5">
               Dengan melanjutkan, Anda menyetujui penggunaan akun untuk
               mengakses layanan Hakgyo.

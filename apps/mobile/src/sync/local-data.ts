@@ -4,6 +4,8 @@ import type {
   LearnerState,
 } from "@hakgyo/shared/mobile-sync";
 
+import type { SyncNotice } from "./notices";
+
 /**
  * Read-side contract between the sync engine/store (implementation) and the
  * screen hooks (consumers). The implementation lives in `local-data-impl.ts`
@@ -51,4 +53,7 @@ export type LocalData<TIndex> = {
   ): Promise<void>;
   /** Asks the engine to download/refresh a course bundle with top priority. */
   requestBundle(courseId: string): void;
+  /** Undismissed sync notices of every organization, newest first. */
+  loadNotices(): Promise<SyncNotice[]>;
+  dismissNotices(ids: string[]): Promise<void>;
 };

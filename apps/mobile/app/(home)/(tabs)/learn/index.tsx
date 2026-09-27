@@ -31,7 +31,7 @@ import { SidebarToolbarButton } from "../../../../src/components/sidebar/Sidebar
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
-import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
+import { useUpdatesBadgeCount } from "../../../../src/lib/sidebar-indicators";
 import {
   useCourseOutlines,
   useSyncIndex,
@@ -194,7 +194,7 @@ export default function LearnTab() {
   const { outlines } = useCourseOutlines(cohortCourseIds);
   const { isSyncing, syncNow } = useMobileSync();
   const { openUpdates } = useDrawer();
-  const { unreadCount } = useSidebarIndicators();
+  const unreadCount = useUpdatesBadgeCount();
   const [now, setNow] = useState(Date.now);
 
   useFocusEffect(

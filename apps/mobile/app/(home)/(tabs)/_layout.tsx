@@ -1,12 +1,12 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { Platform } from "react-native";
 
-import { useSidebarIndicators } from "../../../src/lib/sidebar-indicators";
+import { useUpdatesBadgeCount } from "../../../src/lib/sidebar-indicators";
 import { useAppTheme } from "../../../src/providers/AppThemeProvider";
 
 export default function HomeTabsLayout() {
   const { colors } = useAppTheme();
-  const { unreadCount } = useSidebarIndicators();
+  const unreadCount = useUpdatesBadgeCount();
 
   return (
     <NativeTabs

@@ -10,10 +10,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useMemo } from "react";
 
+import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { dateLabel } from "../../lib/study";
+import {
+  describeSyncNotice,
+  groupSyncNotices,
+  type SyncNoticeEntry,
+} from "../../lib/sync-notices";
 import { useAppTheme } from "../../providers/AppThemeProvider";
-import { useCourseOutlines, useSyncIndex } from "../../sync/hooks";
+import {
+  useCourseOutlines,
+  useSyncIndex,
+  useSyncNotices,
+} from "../../sync/hooks";
 import { openMeeting } from "../learn/cohort-card";
 
 type UpdatesDrawerContentProps = {
@@ -30,6 +40,8 @@ export function UpdatesDrawerContent({
   const { items, markAllSeen, markEntitySeen, unreadCount } =
     useSidebarIndicators();
   const index = useSyncIndex(activeOrganizationId);
+  const { notices, dismiss } = useSyncNotices(activeOrganizationId);
+  const noticeEntries = useMemo(() => groupSyncNotices(notices), [notices]);
   // Module updates deep-link into a module's first item, which needs the
   // composed outline of the courses that have unread module indicators.
   const moduleCourseIds = useMemo(
@@ -119,6 +131,183 @@ export function UpdatesDrawerContent({
       return;
     }
     onClose();
+  }
+
+  function dismissAllNotices() {
+    dismiss(noticeEntries.flatMap((entry) => entry.ids));
+  }
+
+  function openNotice(entry: SyncNoticeEntry) {
+    dismiss(entry.ids);
+    const notice = entry.notice;
+    onNavigate(() => {
+      switch (notice.kind) {
+        case "COHORT_ADDED":
+        case "MEETING_SCHEDULED":
+        case "MEETING_RESCHEDULED":
+        case "MEETING_CANCELLED":
+          requestLearnCohortFocus(notice.cohortId);
+          router.navigate("/(home)/(tabs)/learn");
+          return;
+        case "EVENT_OPENED":
+        case "EVENT_DEADLINE_CHANGED":
+        case "EVENT_CANCELLED":
+          router.push({
+            pathname: "/events/[eventId]",
+            params: { eventId: notice.eventId },
+          });
+          return;
+        case "ATTEMPT_GRADED":
+          router.push({
+            pathname:
+              "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+            params: {
+              courseId: notice.courseId,
+              courseItemId: notice.courseItemId,
+              attemptId: notice.attemptId,
+            },
+          });
+          return;
+        case "COURSE_CONTENT": {
+          // A single changed activity opens directly; anything more opens
+          // the course outline.
+          const changed = [...notice.itemsAdded, ...notice.itemsUpdated];
+          if (!notice.modulesAdded.length && changed.length === 1) {
+            router.push({
+              pathname: "/courses/[courseId]/items/[courseItemId]",
+              params: {
+                courseId: notice.courseId,
+                courseItemId: changed[0]!.id,
+              },
+            });
+            return;
+          }
+          router.push({
+            pathname: "/courses/[courseId]",
+            params: { courseId: notice.courseId },
+          });
+          return;
+        }
+        case "COURSE_ADDED":
+          router.push({
+            pathname: "/courses/[courseId]",
+            params: { courseId: notice.courseId },
+          });
+      }
+    });
+  }
+
+  function renderNotice(entry: SyncNoticeEntry) {
+    const { title, detail, icon } = describeSyncNotice(entry.notice);
+    return (
+      <View className="flex-row items-center" key={entry.key}>
+        <Pressable
+          accessibilityHint="Membuka pembaruan ini"
+          accessibilityRole="button"
+          className="min-w-0 flex-1 overflow-hidden rounded-xl py-2 pl-2.5 pr-1"
+          onPress={() => openNotice(entry)}
+        >
+          <View className="flex-row items-center gap-2.5">
+            <View
+              className="size-7 items-center justify-center rounded-full"
+              style={{ backgroundColor: colors.primary }}
+            >
+              <SymbolView
+                fallback={
+                  <Text
+                    style={{ color: colors.primaryForeground, fontSize: 14 }}
+                  >
+                    •
+                  </Text>
+                }
+                name={icon}
+                size={14}
+                tintColor={colors.primaryForeground}
+              />
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text
+                className="font-semibold"
+                numberOfLines={1}
+                style={{ color: colors.foreground, fontSize: 13 }}
+              >
+                {title}
+              </Text>
+              <Text
+                className="text-xs"
+                numberOfLines={2}
+                style={{ color: colors.mutedForeground }}
+              >
+                {detail}
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+        <Pressable
+          accessibilityLabel={`Tutup pemberitahuan ${title}`}
+          accessibilityRole="button"
+          className="size-9 items-center justify-center rounded-full"
+          hitSlop={4}
+          onPress={() => dismiss(entry.ids)}
+        >
+          <SymbolView
+            fallback={
+              <Text style={{ color: colors.mutedForeground, fontSize: 16 }}>
+                ×
+              </Text>
+            }
+            name="xmark"
+            size={12}
+            tintColor={colors.mutedForeground}
+          />
+        </Pressable>
+      </View>
+    );
+  }
+
+  function renderNotices() {
+    if (noticeEntries.length === 0) return null;
+    return (
+      <View
+        className="rounded-2xl px-1 py-2"
+        style={{ backgroundColor: colors.sidebarAccent, marginBottom: 10 }}
+      >
+        <View className="mb-1.5 flex-row items-center gap-2 px-2">
+          <Text
+            className="min-w-0 flex-1 text-xs font-semibold uppercase tracking-[1.6px]"
+            numberOfLines={1}
+            style={{ color: colors.mutedForeground }}
+          >
+            Baru disinkronkan
+          </Text>
+          <View
+            className="rounded-full px-1.5 py-0.5"
+            style={{ backgroundColor: colors.destructive }}
+          >
+            <Text
+              className="text-[10px] font-bold"
+              style={{ color: colors.destructiveForeground }}
+            >
+              {noticeEntries.length > 99 ? "99+" : noticeEntries.length}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityHint="Menutup semua pemberitahuan sinkronisasi"
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={dismissAllNotices}
+          >
+            <Text
+              className="text-xs font-bold"
+              style={{ color: colors.primary }}
+            >
+              Tutup semua
+            </Text>
+          </Pressable>
+        </View>
+        <View style={{ gap: 1 }}>{noticeEntries.map(renderNotice)}</View>
+      </View>
+    );
   }
 
   function renderUpdate(item: (typeof items)[number]) {
@@ -288,11 +477,14 @@ export function UpdatesDrawerContent({
             Belajar
           </Text>
         </View>
-        {unreadCount > 0 ? (
+        {unreadCount > 0 || noticeEntries.length > 0 ? (
           <Pressable
             accessibilityRole="button"
             className="rounded-xl px-2.5 py-2"
-            onPress={markAllSeen}
+            onPress={() => {
+              markAllSeen();
+              dismissAllNotices();
+            }}
             style={{ backgroundColor: colors.sidebarAccent }}
           >
             <Text
@@ -324,7 +516,8 @@ export function UpdatesDrawerContent({
         contentContainerStyle={{ paddingBottom: 12 }}
         showsVerticalScrollIndicator={false}
       >
-        {updateItems.length === 0 ? (
+        {renderNotices()}
+        {updateItems.length === 0 && noticeEntries.length === 0 ? (
           <View className="items-center border-y border-border px-6 py-10">
             <Text
               className="text-base font-bold"

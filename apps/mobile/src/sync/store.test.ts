@@ -136,10 +136,76 @@ describe("mobile sync SQLite store", () => {
         "mobile_sync_dead_letter_entry",
         "mobile_sync_index",
         "mobile_sync_meta",
+        "mobile_sync_notice",
+        "mobile_sync_notice_baseline",
         "mobile_sync_operation",
         "mobile_sync_query",
       ].map((table) => `DELETE FROM ${table}`),
     );
+  });
+
+  test("saves a bundle with its notices and baseline in one transaction", async () => {
+    const { createMobileSyncStore } = await import("./store");
+    const { database, statements } = fakeDatabase({
+      operationColumns: CURRENT_COLUMNS,
+      legacyDeadLetters: false,
+    });
+    let transactions = 0;
+    const transactional = {
+      ...database,
+      withExclusiveTransactionAsync: async (
+        task: (transaction: typeof database) => Promise<void>,
+      ) => {
+        transactions += 1;
+        const before = statements.length;
+        await task(database);
+        // Everything below ran inside the transaction.
+        statements.splice(before, 0, "BEGIN");
+        statements.push("COMMIT");
+      },
+    };
+    const store = createMobileSyncStore(async () => transactional as never);
+
+    await store.saveBundle(
+      "user-1",
+      {
+        courseId: "course-1",
+        revision: "2",
+        schema: 2,
+        etag: null,
+        structure: {} as never,
+        content: {} as never,
+        updatedAt: 1_000,
+      },
+      {
+        baselines: [{ key: "bundle:course-1", value: "{}" }],
+        notices: [
+          {
+            kind: "COURSE_ADDED",
+            id: "course:course-1@added",
+            group: "course:course-1",
+            organizationId: "org-1",
+            createdAt: 1_000,
+            courseId: "course-1",
+            courseTitle: "Korean 1",
+          },
+        ],
+      },
+    );
+
+    expect(transactions).toBe(1);
+    const summary = statements.map((statement) =>
+      statement.trim().split(/\s+/).slice(0, 3).join(" "),
+    );
+    expect(summary).toEqual([
+      "BEGIN",
+      "INSERT INTO mobile_sync_course_bundle",
+      "DELETE FROM mobile_sync_notice",
+      "INSERT INTO mobile_sync_notice",
+      "INSERT INTO mobile_sync_notice_baseline",
+      "DELETE FROM mobile_sync_notice",
+      "COMMIT",
+    ]);
   });
 
   test("memory store wipes operations, dead letters and cached data", async () => {

@@ -26,6 +26,7 @@ import {
   MailPlusIcon,
   PlusIcon,
   SearchIcon,
+  SparklesIcon,
   Settings2Icon,
   ShieldCheckIcon,
   Trash2Icon,
@@ -382,9 +383,25 @@ export function CourseWorkspace({
   );
 
   const updateCourse = api.course.update.useMutation();
+  const generateThumbnail = api.course.generateThumbnail.useMutation();
 
   async function refreshWorkspace() {
     await utils.course.getWorkspaceOverview.invalidate(workspaceInput);
+  }
+
+  async function createAiThumbnail() {
+    try {
+      await generateThumbnail.mutateAsync({ courseId: course.id });
+      await Promise.all([
+        refreshWorkspace(),
+        utils.course.get.invalidate({ courseId: course.id }),
+        utils.course.list.invalidate({ organizationId }),
+      ]);
+      router.refresh();
+      toast.success("Thumbnail course berhasil dibuat.");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
   }
 
   async function changeCourseStatus(status: Course["status"]) {
@@ -442,6 +459,28 @@ export function CourseWorkspace({
         <div className="bg-background/85 pointer-events-none absolute inset-0 backdrop-blur-[2px]" />
         <div className="border-border pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border" />
         <div className="border-border pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border" />
+        {canManageCourse ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={generateThumbnail.isPending}
+            onClick={() => void createAiThumbnail()}
+            className="bg-background/90 relative z-10 mb-5 ml-auto flex w-fit backdrop-blur"
+          >
+            {generateThumbnail.isPending ? (
+              <LoaderCircleIcon
+                className="animate-spin"
+                data-icon="inline-start"
+              />
+            ) : (
+              <SparklesIcon data-icon="inline-start" />
+            )}
+            {generateThumbnail.isPending
+              ? "Membuat thumbnail..."
+              : "Buat thumbnail dengan AI"}
+          </Button>
+        ) : null}
         <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl min-w-0">
             <div className="flex flex-wrap items-center gap-2">

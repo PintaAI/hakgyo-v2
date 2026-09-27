@@ -12,6 +12,19 @@ import {
 import { createBundleSync, type BundleSyncOptions } from "./bundle-sync";
 import type { LocalData, LocalIndexRecord } from "./local-data";
 import { createLocalData } from "./local-data-impl";
+import {
+  bundleNoticeBaseline,
+  diffBundleNotices,
+  diffIndexNotices,
+  indexNoticeBaseline,
+  noticeBaselineKeys,
+  parseNoticeBaseline,
+  type BundleNoticeBaseline,
+  type BundleNoticeInput,
+  type IndexNoticeBaseline,
+  type SyncNotice,
+  type SyncNoticeUpdate,
+} from "./notices";
 import { indexScope, syncQueryKeys } from "./query-keys";
 import type { MobileSyncDeadLetter, MobileSyncStore } from "./store";
 import type {
@@ -204,6 +217,12 @@ export function createMobileSyncEngine({
   const indexes = new Map<string, IndexEntry>();
   const indexLoads = new Map<string, Promise<IndexEntry | null>>();
   const persistTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  // Server indexes whose notices could not be recorded; retried by the next
+  // successful refresh (their baseline was not advanced).
+  const pendingIndexNotices = new Map<
+    string,
+    { index: LearnerIndex; previous: LearnerIndex | null }
+  >();
   let unsubscribe: (() => void) | undefined;
   const state: MobileSyncEngineState = {
     upgradeRequired: null,
@@ -246,6 +265,8 @@ export function createMobileSyncEngine({
     onBundleTiming: (timing) => {
       for (const listener of bundleTimingListeners) listener(timing);
     },
+    prepareNotices: prepareBundleNotices,
+    onNoticesRecorded: () => void publishNotices(),
   });
 
   function serialized<T>(work: () => Promise<T>) {
@@ -441,6 +462,92 @@ export function createMobileSyncEngine({
         index: { ...entry.index, gamification },
         stale: true,
       });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sync notices
+  // ---------------------------------------------------------------------------
+
+  async function publishNotices() {
+    try {
+      const notices = await store.listNotices(userId, now());
+      if (!disposed) queryClient.setQueryData(syncQueryKeys.notices(), notices);
+    } catch {
+      // The next write publishes again.
+    }
+  }
+
+  /**
+   * Compares a server index with the scope's baseline (the last server index
+   * recorded). The first index of a scope only records the baseline; before
+   * this feature existed, the previously stored index stands in for it.
+   */
+  async function recordIndexNotices(
+    scope: string,
+    index: LearnerIndex,
+    previous: LearnerIndex | null,
+  ) {
+    const key = noticeBaselineKeys.index(scope);
+    try {
+      const baseline =
+        parseNoticeBaseline<IndexNoticeBaseline>(
+          await store.loadNoticeBaseline(userId, key),
+        ) ?? (previous ? indexNoticeBaseline(previous) : null);
+      const update: SyncNoticeUpdate = {
+        baselines: [{ key, value: JSON.stringify(indexNoticeBaseline(index)) }],
+        notices: baseline ? diffIndexNotices(baseline, index, now()) : [],
+      };
+      await store.recordNotices(userId, update, now());
+      pendingIndexNotices.delete(scope);
+      if (update.notices.length) await publishNotices();
+    } catch {
+      pendingIndexNotices.set(scope, { index, previous });
+    }
+  }
+
+  /** Runs before a downloaded bundle is stored (see `BundleSyncOptions`). */
+  async function prepareBundleNotices(
+    bundle: BundleNoticeInput,
+  ): Promise<SyncNoticeUpdate> {
+    const key = noticeBaselineKeys.bundle(bundle.courseId);
+    const next = bundleNoticeBaseline(bundle);
+    let previous = parseNoticeBaseline<BundleNoticeBaseline>(
+      await store.loadNoticeBaseline(userId, key),
+    );
+    if (!previous) {
+      // Bundles stored before this feature existed stand in for a baseline.
+      const [structure, content] = await Promise.all([
+        store.loadBundleStructure(userId, bundle.courseId),
+        store.loadBundleContent(userId, bundle.courseId),
+      ]);
+      if (structure && content) {
+        previous = bundleNoticeBaseline({
+          revision: structure.revision,
+          structure: structure.data,
+          content: content.data,
+        });
+      }
+    }
+    const notice = previous
+      ? diffBundleNotices(previous, next, bundle, now())
+      : null;
+    return {
+      baselines: [{ key, value: JSON.stringify(next) }],
+      notices: notice ? [notice] : [],
+    };
+  }
+
+  async function dismissNotices(ids: string[]) {
+    if (!ids.length) return;
+    const dismissed = new Set(ids);
+    queryClient.setQueryData<SyncNotice[]>(syncQueryKeys.notices(), (current) =>
+      current?.filter((notice) => !dismissed.has(notice.id)),
+    );
+    try {
+      await store.dismissNotices(userId, ids, now());
+    } finally {
+      await publishNotices();
     }
   }
 
@@ -885,6 +992,7 @@ export function createMobileSyncEngine({
         return { state: "queued", reason: "upgrade-required" };
       }
       let changed = false;
+      let recordedScope: string | null = null;
       const checkAfterMs =
         Number.isFinite(manifest.checkAfterMs) && manifest.checkAfterMs > 0
           ? manifest.checkAfterMs
@@ -907,6 +1015,8 @@ export function createMobileSyncEngine({
         });
         if (result.status === "ok") {
           await applyIndex(scope, result.index);
+          await recordIndexNotices(scope, result.index, local?.index ?? null);
+          recordedScope = scope;
           changed = true;
         } else if (local) {
           await storeIndex(scope, {
@@ -946,6 +1056,11 @@ export function createMobileSyncEngine({
       if (removed.length) {
         bundles.forget(removed);
         changed = true;
+      }
+      // A pending entry always holds its scope's latest server index.
+      for (const [pendingScope, pending] of [...pendingIndexNotices]) {
+        if (pendingScope === recordedScope) continue;
+        await recordIndexNotices(pendingScope, pending.index, pending.previous);
       }
       publishState({ nextCheckAfterMs: checkAfterMs, lastRefreshedAt: now() });
       return changed ? { state: "refreshed" } : { state: "current" };
@@ -1076,6 +1191,9 @@ export function createMobileSyncEngine({
       };
     },
     getLocalDataStats: () => store.getLocalDataStats(userId),
+    /** Undismissed sync notices of every organization, newest first. */
+    listNotices: () => store.listNotices(userId, now()),
+    dismissNotices,
     whenBundlesIdle: () => bundles.whenIdle(),
     clearLocalCache,
     dispose,
