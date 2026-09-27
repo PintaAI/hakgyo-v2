@@ -10,9 +10,9 @@ export const gameCatalog = {
     description: "Ketik setiap kata sebelum mengenai kapalmu.",
   },
   sentences: {
-    title: "Kalimat",
+    title: "Susun makna",
     icon: "↔",
-    description: "Bangun makna, satu kalimat demi satu kalimat.",
+    description: "Susun kata menjadi contoh kalimat dari kosakata.",
   },
   match: {
     title: "Cocokkan Kata",

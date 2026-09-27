@@ -8,6 +8,8 @@ import { VocabularySession } from "../../src/components/vocabulary-session";
 import { gameCatalog, isGameKey } from "../../src/games/catalog";
 import { GameBackToolbar, GamePage } from "../../src/games/game-screens";
 import { HangeulScreen } from "../../src/games/hangeul/hangeul-screen";
+import { exampleSentences } from "../../src/games/sentence-builder/engine";
+import { SentenceBuilderScreen } from "../../src/games/sentence-builder/sentence-builder-screen";
 import { SyllableForgeScreen } from "../../src/games/syllable-forge/syllable-forge-screen";
 import { VocabularyMatchScreen } from "../../src/games/vocabulary-match/vocabulary-match-screen";
 import { WordFallScreen } from "../../src/games/word-fall/word-fall-screen";
@@ -62,6 +64,16 @@ export default function GameRoute() {
   if (key === "word-fall") {
     return (
       <WordFallRoute
+        courseId={courseIdParam}
+        sessionReady={Boolean(session)}
+        sourceCourseItemId={sourceCourseItemId}
+      />
+    );
+  }
+
+  if (key === "sentences") {
+    return (
+      <SentencesRoute
         courseId={courseIdParam}
         sessionReady={Boolean(session)}
         sourceCourseItemId={sourceCourseItemId}
@@ -324,6 +336,63 @@ function WordFallRoute({
       sourceCourseItemId={sourceCourseItemId}
       onAttempt={async (attempt, delivery) => {
         await reporter.report(attempt, delivery);
+      }}
+      onComplete={reporter.finishSession}
+      onExit={leave}
+      onSessionStart={reporter.startSession}
+      words={words}
+    />
+  );
+}
+
+function SentencesRoute({
+  courseId,
+  sourceCourseItemId,
+  sessionReady,
+}: {
+  courseId: string;
+  sourceCourseItemId: string;
+  sessionReady: boolean;
+}) {
+  const item = useCourseItem(courseId || undefined, sourceCourseItemId, {
+    enabled: sessionReady,
+  });
+  const vocabulary = item.data?.vocabularySet;
+  const effectiveCourseId = courseId || item.data?.module.courseId || "";
+  const words = vocabulary?.entries ?? [];
+  const reporter = useVocabularyProgressReporter({
+    gameKey: "sentences",
+    reactive: false,
+    sourceCourseItemId,
+    vocabularySetId: vocabulary?.id ?? "",
+  });
+
+  if (item.isPending && sourceCourseItemId && sessionReady) {
+    return <GameLoading title="Susun makna" />;
+  }
+
+  if (
+    !sourceCourseItemId ||
+    item.isError ||
+    !words.some((word) => exampleSentences(word.examples).length > 0)
+  ) {
+    return (
+      <GameUnavailable title="Susun makna">
+        {!sourceCourseItemId
+          ? "Pilih set kosakata dari Practice untuk bermain."
+          : item.isError
+            ? "Set kosakata ini tidak dapat dimuat."
+            : "Set kosakata ini belum punya contoh kalimat."}
+      </GameUnavailable>
+    );
+  }
+
+  return (
+    <SentenceBuilderScreen
+      courseId={effectiveCourseId}
+      sourceCourseItemId={sourceCourseItemId}
+      onAttempt={async (attempt) => {
+        await reporter.report(attempt);
       }}
       onComplete={reporter.finishSession}
       onExit={leave}

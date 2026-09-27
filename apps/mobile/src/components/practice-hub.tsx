@@ -106,13 +106,13 @@ const tools: Tool[] = [
   },
   {
     key: "sentences",
-    title: "Kalimat",
-    subtitle: "Bangun makna",
+    title: "Susun makna",
+    subtitle: "Susun contoh kalimat",
     sourceLabel: "Kosakata",
     icon: "text.word.spacing",
     fallback: "↔",
     resource: "VOCABULARY_SET",
-    available: false,
+    available: true,
   },
   {
     key: "match",
