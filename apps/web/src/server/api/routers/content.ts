@@ -28,6 +28,7 @@ import {
   extractVocabularyFromImage,
   type ExtractedVocabularyEntry,
 } from "~/server/ai/vocabulary-extraction";
+import { generateVocabularyExamples } from "~/server/ai/vocabulary-examples";
 import { syncMaterialPdfPageAssets } from "~/server/pdf-book/service";
 
 const id = z.string().min(1);
@@ -1450,6 +1451,53 @@ export const contentRouter = createTRPCRouter({
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
       return { deleted: true };
+    }),
+  generateVocabularyExamples: protectedProcedure
+    .input(
+      z.object({
+        organizationId: id,
+        entryId: id,
+        term: z.string().trim().min(1).max(500),
+        definition: z.string().trim().min(1).max(5000),
+        existingExamples: z.array(z.string().trim().min(1).max(5000)).max(20),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const entry = await db.vocabularyEntry.findFirst({
+        where: { id: input.entryId, organizationId: input.organizationId },
+        select: { vocabularySet: { select: { createdByMembershipId: true } } },
+      });
+      if (!entry) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireOwnedContent(
+        input.organizationId,
+        ctx.actorUserId,
+        entry.vocabularySet.createdByMembershipId,
+      );
+
+      try {
+        return {
+          examples: await generateVocabularyExamples({
+            term: input.term,
+            definition: input.definition,
+            existingExamples: input.existingExamples,
+          }),
+        };
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "OPENAI_API_KEY_MISSING"
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "OPENAI_API_KEY belum dikonfigurasi di server.",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "AI belum berhasil membuat contoh. Silakan coba lagi.",
+          cause: error,
+        });
+      }
     }),
   // Reads a screenshot of a vocabulary list. Nothing is written: the author
   // adjusts the result and saves it through `createVocabularyEntries`.

@@ -29,6 +29,7 @@ import {
   MessageSquareQuoteIcon,
   PlusIcon,
   SearchIcon,
+  SparklesIcon,
   Trash2Icon,
   UploadIcon,
   Volume2Icon,
@@ -1328,6 +1329,8 @@ function EntryForm({
   const [term, setTerm] = useState(entry.term);
   const [definition, setDefinition] = useState(entry.definition);
   const [examples, setExamples] = useState(examplesToText(entry.examples));
+  const generateExamples = api.content.generateVocabularyExamples.useMutation();
+  const draftVersionRef = useRef(0);
   const invalid = !term.trim() || !definition.trim();
   const {
     cancel: cancelEntrySave,
@@ -1363,6 +1366,28 @@ function EntryForm({
     })();
   }
 
+  async function handleGenerateExamples() {
+    if (invalid || generateExamples.isPending) return;
+    const version = draftVersionRef.current;
+    try {
+      const result = await generateExamples.mutateAsync({
+        organizationId: entry.organizationId,
+        entryId: entry.id,
+        term: term.trim(),
+        definition: definition.trim(),
+        existingExamples: parseExamples(examples).slice(0, 20),
+      });
+      // Keep edits made while the request was running.
+      if (draftVersionRef.current !== version) return;
+      const combined = [
+        ...new Set([...parseExamples(examples), ...result.examples]),
+      ];
+      setExamples(combined.join("\n"));
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
   return (
     <div className="grid gap-4 border-t p-3 sm:p-4" onPaste={handlePaste}>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -1377,7 +1402,10 @@ function EntryForm({
             className="font-heading h-9 font-semibold"
             id={`term-${entry.id}`}
             maxLength={500}
-            onChange={(event) => setTerm(event.target.value)}
+            onChange={(event) => {
+              draftVersionRef.current++;
+              setTerm(event.target.value);
+            }}
             value={term}
           />
         </div>
@@ -1392,23 +1420,50 @@ function EntryForm({
             className="h-9"
             id={`definition-${entry.id}`}
             maxLength={5000}
-            onChange={(event) => setDefinition(event.target.value)}
+            onChange={(event) => {
+              draftVersionRef.current++;
+              setDefinition(event.target.value);
+            }}
             value={definition}
           />
         </div>
       </div>
       <div className="grid gap-1.5">
-        <Label
-          className="text-muted-foreground text-[11px] tracking-wide uppercase"
-          htmlFor={`examples-${entry.id}`}
-        >
-          Contoh pemakaian
-        </Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label
+            className="text-muted-foreground text-[11px] tracking-wide uppercase"
+            htmlFor={`examples-${entry.id}`}
+          >
+            Contoh pemakaian
+          </Label>
+          <Button
+            disabled={invalid || generateExamples.isPending}
+            onClick={() => void handleGenerateExamples()}
+            size="xs"
+            type="button"
+            variant="outline"
+          >
+            {generateExamples.isPending ? (
+              <LoaderCircleIcon
+                className="size-3.5 animate-spin"
+                data-icon="inline-start"
+              />
+            ) : (
+              <SparklesIcon data-icon="inline-start" />
+            )}
+            {generateExamples.isPending
+              ? "Membuat contoh…"
+              : "Tambah 3–4 contoh dengan AI"}
+          </Button>
+        </div>
         <Textarea
           autoFocus={focusExamples}
           className="min-h-9 resize-y"
           id={`examples-${entry.id}`}
-          onChange={(event) => setExamples(event.target.value)}
+          onChange={(event) => {
+            draftVersionRef.current++;
+            setExamples(event.target.value);
+          }}
           placeholder="Satu contoh per baris"
           rows={1}
           value={examples}
