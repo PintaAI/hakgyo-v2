@@ -1,9 +1,9 @@
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
-import { useSyncIndex, type LearnerIndex } from "../sync/hooks";
+import { useSyncIndex, useSyncNotices, type LearnerIndex } from "../sync/hooks";
 import type { LocalIndexRecord } from "../sync/local-data";
 import { indexScope, syncQueryKeys } from "../sync/query-keys";
 import { api } from "./trpc";
@@ -11,6 +11,7 @@ import {
   countUnreadIndicators,
   type SidebarIndicatorKind,
 } from "./sidebar-indicator-count";
+import { countUpdatesBadge, groupSyncNotices } from "./sync-notices";
 
 export type { SidebarIndicatorKind } from "./sidebar-indicator-count";
 
@@ -99,4 +100,15 @@ export function useSidebarIndicators() {
     markSeen,
     unreadCount: countUnreadIndicators(items),
   };
+}
+
+/** Pembaruan bell badge: unread indicators and the sync notices they miss. */
+export function useUpdatesBadgeCount() {
+  const { activeOrganizationId } = useAppTheme();
+  const { items } = useSidebarIndicators();
+  const { notices } = useSyncNotices(activeOrganizationId);
+  return useMemo(
+    () => countUpdatesBadge(groupSyncNotices(notices), items),
+    [items, notices],
+  );
 }

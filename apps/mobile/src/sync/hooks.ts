@@ -750,3 +750,39 @@ export function lessonItemIds(
   if (index === -1) return [];
   return items.slice(index, index + 2).map((item) => item.id);
 }
+
+// ---------------------------------------------------------------------------
+// Sync notices
+// ---------------------------------------------------------------------------
+
+/**
+ * Undismissed sync notices of an organization (of every organization without
+ * one); notices whose organization is unknown show everywhere.
+ */
+export function useSyncNotices(organizationId?: string | null) {
+  const localData = useLocalData();
+  const query = useQuery({
+    queryKey: syncQueryKeys.notices(),
+    queryFn: () => localData!.loadNotices(),
+    enabled: Boolean(localData),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const notices = useMemo(
+    () =>
+      (query.data ?? []).filter(
+        (notice) =>
+          !organizationId ||
+          !notice.organizationId ||
+          notice.organizationId === organizationId,
+      ),
+    [organizationId, query.data],
+  );
+  const dismiss = useCallback(
+    (ids: string[]) => {
+      void localData?.dismissNotices(ids).catch(() => undefined);
+    },
+    [localData],
+  );
+  return { notices, dismiss };
+}

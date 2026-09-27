@@ -5,6 +5,12 @@ import type {
   BundleStructure,
 } from "@hakgyo/shared/mobile-sync";
 
+import {
+  MAX_SYNC_NOTICES,
+  SYNC_NOTICE_MAX_AGE_MS,
+  type SyncNotice,
+  type SyncNoticeUpdate,
+} from "./notices";
 import type { MobileSyncOperation } from "./types";
 
 const DATABASE_NAME = "hakgyo-sync.db";
@@ -100,6 +106,8 @@ export type MobileSyncStore = {
       bytes?: number;
       updatedAt?: number;
     },
+    /** Written in the same transaction as the bundle. */
+    notices?: SyncNoticeUpdate,
   ) => Promise<void>;
   /** Refreshes `updated_at` after the server confirmed the bundle unchanged. */
   touchBundleChecked: (
@@ -125,7 +133,10 @@ export type MobileSyncStore = {
   ) => Promise<void>;
   deleteQuery: (userId: string, queryKey: string) => Promise<void>;
   clearQueries: (userId: string) => Promise<void>;
-  /** Removes the user's index, bundles, queries and meta (never the outbox). */
+  /**
+   * Removes the user's index, bundles, queries and meta. The outbox, sync
+   * notices and their baselines stay.
+   */
   clearLocalData: (userId: string) => Promise<void>;
   /** Removes every user's data, including queued progress and dead letters. */
   clearAllData: () => Promise<void>;
@@ -179,6 +190,25 @@ export type MobileSyncStore = {
   listDeadLetters: (userId: string) => Promise<MobileSyncDeadLetter[]>;
   countDeadLetters: (userId: string) => Promise<number>;
   getLocalDataStats: (userId: string) => Promise<LocalDataStats>;
+
+  loadNoticeBaseline: (userId: string, key: string) => Promise<string | null>;
+  /**
+   * Atomically inserts notices and replaces baselines. A notice whose id
+   * exists (dismissed or not) is skipped; a new one replaces older notices of
+   * its group. Keeps the newest MAX_SYNC_NOTICES within SYNC_NOTICE_MAX_AGE_MS.
+   */
+  recordNotices: (
+    userId: string,
+    update: SyncNoticeUpdate,
+    recordedAt?: number,
+  ) => Promise<void>;
+  /** Notices not dismissed yet, newest first. */
+  listNotices: (userId: string, now?: number) => Promise<SyncNotice[]>;
+  dismissNotices: (
+    userId: string,
+    ids: string[],
+    dismissedAt?: number,
+  ) => Promise<void>;
 };
 
 type OperationRow = { payload: string };
@@ -210,6 +240,7 @@ type FailureRow = {
   failure_count: number;
   first_failed_at: number;
 };
+type NoticeRow = { payload: string };
 type DeadLetterRow = {
   payload: string;
   code: string;
@@ -314,6 +345,23 @@ export function createMobileSyncStore(
         updated_at INTEGER NOT NULL,
         PRIMARY KEY (user_id, query_key)
       );
+      CREATE TABLE IF NOT EXISTS mobile_sync_notice (
+        user_id TEXT NOT NULL,
+        id TEXT NOT NULL,
+        group_key TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        dismissed_at INTEGER,
+        PRIMARY KEY (user_id, id)
+      );
+      CREATE INDEX IF NOT EXISTS mobile_sync_notice_user_group
+        ON mobile_sync_notice(user_id, group_key);
+      CREATE TABLE IF NOT EXISTS mobile_sync_notice_baseline (
+        user_id TEXT NOT NULL,
+        key TEXT NOT NULL,
+        value TEXT NOT NULL,
+        PRIMARY KEY (user_id, key)
+      );
     `);
     // Installs created before the failure columns / keyed dead-letter list.
     const migrations: string[] = [];
@@ -352,6 +400,60 @@ export function createMobileSyncStore(
         transaction.execAsync(migrations.join("\n")),
       );
     }
+  }
+
+  /** Runs inside the caller's transaction. */
+  async function writeNotices(
+    db: SQLiteDatabase,
+    userId: string,
+    update: SyncNoticeUpdate,
+    recordedAt: number,
+  ) {
+    for (const notice of update.notices) {
+      const existing = await db.getFirstAsync<{ id: string }>(
+        "SELECT id FROM mobile_sync_notice WHERE user_id = ? AND id = ?",
+        userId,
+        notice.id,
+      );
+      if (existing) continue;
+      await db.runAsync(
+        "DELETE FROM mobile_sync_notice WHERE user_id = ? AND group_key = ?",
+        userId,
+        notice.group,
+      );
+      await db.runAsync(
+        `INSERT INTO mobile_sync_notice
+           (user_id, id, group_key, payload, created_at, dismissed_at)
+         VALUES (?, ?, ?, ?, ?, NULL)`,
+        userId,
+        notice.id,
+        notice.group,
+        JSON.stringify(notice),
+        notice.createdAt,
+      );
+    }
+    for (const baseline of update.baselines) {
+      await db.runAsync(
+        `INSERT INTO mobile_sync_notice_baseline (user_id, key, value)
+         VALUES (?, ?, ?)
+         ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value`,
+        userId,
+        baseline.key,
+        baseline.value,
+      );
+    }
+    if (!update.notices.length) return;
+    await db.runAsync(
+      `DELETE FROM mobile_sync_notice
+       WHERE user_id = ? AND (created_at < ? OR id NOT IN (
+         SELECT id FROM mobile_sync_notice
+         WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?
+       ))`,
+      userId,
+      recordedAt - SYNC_NOTICE_MAX_AGE_MS,
+      userId,
+      MAX_SYNC_NOTICES,
+    );
   }
 
   function initialize() {
@@ -518,14 +620,14 @@ export function createMobileSyncStore(
       }));
     },
 
-    async saveBundle(userId, bundle) {
+    async saveBundle(userId, bundle, notices) {
       await initialize();
       const structure = JSON.stringify(bundle.structure);
       const content = JSON.stringify(bundle.content);
-      await (
-        await database()
-      ).runAsync(
-        `INSERT INTO mobile_sync_course_bundle
+      const updatedAt = bundle.updatedAt ?? Date.now();
+      const write = (db: SQLiteDatabase) =>
+        db.runAsync(
+          `INSERT INTO mobile_sync_course_bundle
            (user_id, course_id, revision, schema, etag, structure, content,
             bytes, updated_at, opened_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
@@ -537,16 +639,25 @@ export function createMobileSyncStore(
            content = excluded.content,
            bytes = excluded.bytes,
            updated_at = excluded.updated_at`,
-        userId,
-        bundle.courseId,
-        bundle.revision,
-        bundle.schema,
-        bundle.etag,
-        structure,
-        content,
-        bundle.bytes ?? structure.length + content.length,
-        bundle.updatedAt ?? Date.now(),
-      );
+          userId,
+          bundle.courseId,
+          bundle.revision,
+          bundle.schema,
+          bundle.etag,
+          structure,
+          content,
+          bundle.bytes ?? structure.length + content.length,
+          updatedAt,
+        );
+      const db = await database();
+      if (!notices) {
+        await write(db);
+        return;
+      }
+      await db.withExclusiveTransactionAsync(async (transaction) => {
+        await write(transaction);
+        await writeNotices(transaction, userId, notices, updatedAt);
+      });
     },
 
     async touchBundleChecked(userId, courseId, checkedAt = Date.now()) {
@@ -689,6 +800,8 @@ export function createMobileSyncStore(
           "mobile_sync_course_bundle",
           "mobile_sync_query",
           "mobile_sync_meta",
+          "mobile_sync_notice",
+          "mobile_sync_notice_baseline",
         ]) {
           await transaction.runAsync(`DELETE FROM ${table}`);
         }
@@ -983,6 +1096,59 @@ export function createMobileSyncStore(
         operations: row?.operations ?? 0,
         deadLetters: row?.deadLetters ?? 0,
       };
+    },
+
+    async loadNoticeBaseline(userId, key) {
+      await initialize();
+      const row = await (
+        await database()
+      ).getFirstAsync<MetaRow>(
+        `SELECT value FROM mobile_sync_notice_baseline
+         WHERE user_id = ? AND key = ?`,
+        userId,
+        key,
+      );
+      return row?.value ?? null;
+    },
+
+    async recordNotices(userId, update, recordedAt = Date.now()) {
+      if (!update.notices.length && !update.baselines.length) return;
+      await initialize();
+      const db = await database();
+      await db.withExclusiveTransactionAsync((transaction) =>
+        writeNotices(transaction, userId, update, recordedAt),
+      );
+    },
+
+    async listNotices(userId, now = Date.now()) {
+      await initialize();
+      const rows = await (
+        await database()
+      ).getAllAsync<NoticeRow>(
+        `SELECT payload FROM mobile_sync_notice
+         WHERE user_id = ? AND dismissed_at IS NULL AND created_at >= ?
+         ORDER BY created_at DESC, rowid DESC`,
+        userId,
+        now - SYNC_NOTICE_MAX_AGE_MS,
+      );
+      return rows.map((row) => JSON.parse(row.payload) as SyncNotice);
+    },
+
+    async dismissNotices(userId, ids, dismissedAt = Date.now()) {
+      if (!ids.length) return;
+      await initialize();
+      const db = await database();
+      await db.withExclusiveTransactionAsync(async (transaction) => {
+        for (const id of ids) {
+          await transaction.runAsync(
+            `UPDATE mobile_sync_notice SET dismissed_at = ?
+             WHERE user_id = ? AND id = ? AND dismissed_at IS NULL`,
+            dismissedAt,
+            userId,
+            id,
+          );
+        }
+      });
     },
   };
 }

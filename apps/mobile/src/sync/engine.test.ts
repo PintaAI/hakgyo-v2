@@ -17,6 +17,7 @@ import {
   upgradeRequiredFromError,
 } from "./engine";
 import { createMemoryStore } from "./memory-store";
+import type { SyncNotice } from "./notices";
 import { syncQueryKeys } from "./query-keys";
 import type {
   LearnerIndex,
@@ -1095,5 +1096,319 @@ describe("mobile sync engine index and bundles", () => {
     );
     expect(await store.countOperations("user-1")).toBe(1);
     await engine.dispose();
+  });
+});
+
+describe("mobile sync notices", () => {
+  type ServerCourse = { courseId: string; organizationId: string };
+
+  function courseBundle(
+    { courseId, organizationId }: ServerCourse,
+    revision: string,
+    itemIds: string[],
+  ): CourseBundle {
+    const base = bundle(courseId, revision);
+    return {
+      ...base,
+      organizationId,
+      structure: {
+        ...base.structure,
+        modules: [
+          {
+            ...base.structure.modules[0]!,
+            items: itemIds.map((id, position) => ({
+              ...base.structure.modules[0]!.items[0]!,
+              id,
+              position,
+              title: `Lesson ${id}`,
+            })),
+          },
+        ],
+      },
+    };
+  }
+
+  /** A server with one index per organization and one bundle per course. */
+  function fakeServer() {
+    const courses: ServerCourse[] = [
+      { courseId: "course-a", organizationId: "org-a" },
+      { courseId: "course-b", organizationId: "org-b" },
+    ];
+    const enrolled = new Map([
+      ["org-a", ["course-a"]],
+      ["org-b", ["course-b"]],
+    ]);
+    const bundles = new Map(
+      courses.map((course) => [
+        course.courseId,
+        courseBundle(course, "1", [`${course.courseId}-1`]),
+      ]),
+    );
+    const tokens = new Map([
+      ["org-a", 1],
+      ["org-b", 1],
+    ]);
+    let failingDownloads = 0;
+    const indexFor = (organizationId: string) =>
+      index({
+        indexToken: `${organizationId}:${tokens.get(organizationId)}`,
+        organizationId,
+        courses: enrolled.get(organizationId)!.map((id) => ({
+          id,
+          title: `Course ${id}`,
+          organization: { id: organizationId },
+        })) as unknown as LearnerIndex["courses"],
+      });
+    const courseFor = (courseId: string) =>
+      courses.find((course) => course.courseId === courseId)!;
+    const server = {
+      enroll(organizationId: string, courseId: string) {
+        courses.push({ courseId, organizationId });
+        enrolled.get(organizationId)!.push(courseId);
+        bundles.set(
+          courseId,
+          courseBundle(courseFor(courseId), "1", [`${courseId}-1`]),
+        );
+        tokens.set(organizationId, tokens.get(organizationId)! + 1);
+      },
+      publishLessons(courseId: string, itemIds: string[]) {
+        const revision = String(Number(bundles.get(courseId)!.revision) + 1);
+        bundles.set(
+          courseId,
+          courseBundle(courseFor(courseId), revision, itemIds),
+        );
+      },
+      failDownloads(count: number) {
+        failingDownloads = count;
+      },
+      transport: {
+        getManifest: async ({ organizationId }) =>
+          manifest({
+            indexToken: indexFor(organizationId!).indexToken,
+            courses: enrolled.get(organizationId!)!.map((courseId) => ({
+              courseId,
+              organizationId: organizationId!,
+              revision: bundles.get(courseId)!.revision,
+            })),
+          }),
+        getIndex: async ({ organizationId }) => ({
+          status: "ok",
+          index: indexFor(organizationId!),
+        }),
+        fetchBundle: async ({ courseId }) => {
+          if (failingDownloads > 0) {
+            failingDownloads -= 1;
+            throw new Error("Network request failed");
+          }
+          const current = bundles.get(courseId)!;
+          return {
+            status: "ok",
+            bundle: current,
+            etag: null,
+            revision: current.revision,
+          };
+        },
+      } satisfies Partial<MobileSyncTransport>,
+    };
+    return server;
+  }
+
+  async function sync(
+    engine: ReturnType<typeof engineFor>["engine"],
+    organizationId: string,
+  ) {
+    const result = await engine.refresh(organizationId);
+    await engine.whenBundlesIdle();
+    return result;
+  }
+
+  const kinds = async (engine: ReturnType<typeof engineFor>["engine"]) =>
+    (await engine.listNotices()).map((notice) => [
+      notice.kind,
+      notice.organizationId,
+    ]);
+
+  test("the first sync of an organization only records the baseline", async () => {
+    const server = fakeServer();
+    const { engine, store } = engineFor({ transport: server.transport });
+    await engine.initialize();
+
+    await sync(engine, "org-a");
+    expect(await engine.listNotices()).toEqual([]);
+    expect(store.noticeBaselines.has("user-1:index:org-a")).toBe(true);
+    expect(store.noticeBaselines.has("user-1:bundle:course-a")).toBe(true);
+
+    server.enroll("org-a", "course-c");
+    server.publishLessons("course-a", ["course-a-1", "course-a-2"]);
+    await sync(engine, "org-a");
+    expect(await kinds(engine)).toEqual([
+      ["COURSE_CONTENT", "org-a"],
+      ["COURSE_ADDED", "org-a"],
+    ]);
+    // The new course's first bundle is a baseline, not "new content".
+    expect(
+      (await engine.listNotices()).some(
+        (notice) =>
+          notice.kind === "COURSE_CONTENT" && notice.courseId === "course-c",
+      ),
+    ).toBe(false);
+  });
+
+  test("syncing again, or through another scope, does not repeat a notice", async () => {
+    const server = fakeServer();
+    const { engine } = engineFor({ transport: server.transport });
+    await engine.initialize();
+    await sync(engine, "org-a");
+    server.publishLessons("course-a", ["course-a-1", "course-a-2"]);
+    await sync(engine, "org-a");
+    const [notice] = await engine.listNotices();
+    await engine.dismissNotices([notice!.id]);
+
+    // Forced: the index and every bundle are fetched again.
+    await engine.refresh("org-a", { force: true, immediateBundles: true });
+    await engine.whenBundlesIdle();
+    await engine.checkForUpdates("org-a", { manual: true });
+    expect(await engine.listNotices()).toEqual([]);
+  });
+
+  test("a failed notice write is retried without advancing the baseline", async () => {
+    const server = fakeServer();
+    const { engine, store } = engineFor({ transport: server.transport });
+    await engine.initialize();
+    await sync(engine, "org-a");
+
+    server.enroll("org-a", "course-c");
+    store.failNextNoticeWrite();
+    expect((await sync(engine, "org-a")).state).toBe("refreshed");
+    expect(await engine.listNotices()).toEqual([]);
+
+    // Same index token: the manifest check alone retries the notices.
+    expect((await sync(engine, "org-a")).state).toBe("current");
+    expect(await kinds(engine)).toEqual([["COURSE_ADDED", "org-a"]]);
+  });
+
+  test("a failed notice write with a bundle stores neither; the retry notifies once", async () => {
+    const server = fakeServer();
+    const { engine, store } = engineFor({ transport: server.transport });
+    await engine.initialize();
+    await sync(engine, "org-a");
+
+    server.publishLessons("course-a", ["course-a-1", "course-a-2"]);
+    store.failNextNoticeWrite();
+    await sync(engine, "org-a");
+    expect(store.bundles.get("user-1:course-a")?.revision).toBe("2");
+    expect(await kinds(engine)).toEqual([["COURSE_CONTENT", "org-a"]]);
+  });
+
+  test("failed downloads notify nothing until the bundle arrives", async () => {
+    const server = fakeServer();
+    const { engine, store } = engineFor({ transport: server.transport });
+    await engine.initialize();
+    await sync(engine, "org-a");
+
+    server.publishLessons("course-a", ["course-a-1", "course-a-2"]);
+    server.failDownloads(100);
+    await sync(engine, "org-a");
+    expect(store.bundles.get("user-1:course-a")?.revision).toBe("1");
+    expect(await engine.listNotices()).toEqual([]);
+    expect(
+      JSON.parse(store.noticeBaselines.get("user-1:bundle:course-a")!),
+    ).toMatchObject({ revision: "1" });
+
+    server.failDownloads(0);
+    await sync(engine, "org-a");
+    const notices = await engine.listNotices();
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({
+      kind: "COURSE_CONTENT",
+      courseId: "course-a",
+      itemsAdded: [
+        {
+          id: "course-a-2",
+          title: "Lesson course-a-2",
+          moduleId: "course-a-module",
+        },
+      ],
+    });
+  });
+
+  test("switching organizations compares each with its own baseline", async () => {
+    const server = fakeServer();
+    const { engine, store } = engineFor({ transport: server.transport });
+    await engine.initialize();
+    await sync(engine, "org-a");
+
+    // First visit to org-b: its courses are not "new".
+    await sync(engine, "org-b");
+    expect(await engine.listNotices()).toEqual([]);
+    // Its manifest does not list course-a, so the bundle was pruned.
+    expect(store.bundles.has("user-1:course-a")).toBe(false);
+
+    // Changes in org-a while the learner is in org-b.
+    server.enroll("org-a", "course-c");
+    server.publishLessons("course-a", ["course-a-1", "course-a-2"]);
+    await sync(engine, "org-b");
+    expect(await engine.listNotices()).toEqual([]);
+
+    // Back in org-a: the re-downloaded bundle is compared with the baseline
+    // kept through pruning.
+    await sync(engine, "org-a");
+    expect(await kinds(engine)).toEqual([
+      ["COURSE_CONTENT", "org-a"],
+      ["COURSE_ADDED", "org-a"],
+    ]);
+
+    // Pruned and unchanged: re-downloading it is not news.
+    await engine.dismissNotices(
+      (await engine.listNotices()).map((notice) => notice.id),
+    );
+    await sync(engine, "org-b");
+    await sync(engine, "org-a");
+    expect(await engine.listNotices()).toEqual([]);
+  });
+
+  test("dismissing updates the notice query at once and survives restarts", async () => {
+    const server = fakeServer();
+    const store = memoryStore();
+    const { engine, queryClient } = engineFor({
+      store,
+      transport: server.transport,
+    });
+    await engine.initialize();
+    await sync(engine, "org-a");
+    server.enroll("org-a", "course-c");
+    await sync(engine, "org-a");
+    const notices = await engine.listNotices();
+    expect(
+      queryClient.getQueryData<SyncNotice[]>(syncQueryKeys.notices()),
+    ).toEqual(notices);
+
+    const dismissing = engine.dismissNotices([notices[0]!.id]);
+    expect(
+      queryClient.getQueryData<SyncNotice[]>(syncQueryKeys.notices()),
+    ).toEqual([]);
+    await dismissing;
+
+    const restarted = engineFor({ store, transport: server.transport });
+    await restarted.engine.initialize();
+    expect(await restarted.engine.listNotices()).toEqual([]);
+    await restarted.engine.clearLocalCache();
+    await sync(restarted.engine, "org-a");
+    expect(await restarted.engine.listNotices()).toEqual([]);
+  });
+
+  test("clearing local data keeps baselines; signing out removes them", async () => {
+    const server = fakeServer();
+    const { engine, store } = engineFor({ transport: server.transport });
+    await engine.initialize();
+    await sync(engine, "org-a");
+    server.publishLessons("course-a", ["course-a-1", "course-a-2"]);
+    await engine.clearLocalCache();
+    await sync(engine, "org-a");
+    expect(await kinds(engine)).toEqual([["COURSE_CONTENT", "org-a"]]);
+
+    await store.clearAllData();
+    expect(store.noticeBaselines.size).toBe(0);
+    expect(await engine.listNotices()).toEqual([]);
   });
 });

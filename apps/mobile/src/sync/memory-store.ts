@@ -3,6 +3,12 @@ import type {
   BundleStructure,
 } from "@hakgyo/shared/mobile-sync";
 
+import {
+  MAX_SYNC_NOTICES,
+  SYNC_NOTICE_MAX_AGE_MS,
+  type SyncNotice,
+  type SyncNoticeUpdate,
+} from "./notices";
 import type {
   MobileSyncDeadLetter,
   MobileSyncStore,
@@ -25,6 +31,9 @@ export function createMemoryStore(): MobileSyncStore & {
   indexes: Map<string, StoredIndex>;
   queries: Map<string, StoredQuery>;
   meta: Map<string, string>;
+  noticeBaselines: Map<string, string>;
+  /** Fails the next notice write (bundle saves with notices included). */
+  failNextNoticeWrite: () => void;
 } {
   const meta = new Map<string, string>();
   const indexes = new Map<string, StoredIndex>();
@@ -44,6 +53,13 @@ export function createMemoryStore(): MobileSyncStore & {
     }
   >();
   const deadLetters: Array<MobileSyncDeadLetter & { userId: string }> = [];
+  const notices: Array<{
+    userId: string;
+    notice: SyncNotice;
+    dismissedAt: number | null;
+  }> = [];
+  const noticeBaselines = new Map<string, string>();
+  let failNoticeWrite = false;
   let sequence = 0;
   const key = (userId: string, id: string) => `${userId}:${id}`;
   const rowsFor = (userId: string) =>
@@ -84,6 +100,46 @@ export function createMemoryStore(): MobileSyncStore & {
     updatedAt: bundle.updatedAt,
     openedAt: bundle.openedAt,
   });
+  const writeNotices = (
+    userId: string,
+    update: SyncNoticeUpdate,
+    recordedAt: number,
+  ) => {
+    if (failNoticeWrite) {
+      failNoticeWrite = false;
+      throw new Error("Notice write failed");
+    }
+    for (const notice of update.notices) {
+      const owned = (row: (typeof notices)[number]) => row.userId === userId;
+      if (notices.some((row) => owned(row) && row.notice.id === notice.id))
+        continue;
+      for (let index = notices.length - 1; index >= 0; index -= 1) {
+        const row = notices[index]!;
+        if (owned(row) && row.notice.group === notice.group)
+          notices.splice(index, 1);
+      }
+      notices.push({
+        userId,
+        notice: structuredClone(notice),
+        dismissedAt: null,
+      });
+    }
+    for (const baseline of update.baselines) {
+      noticeBaselines.set(key(userId, baseline.key), baseline.value);
+    }
+    if (!update.notices.length) return;
+    const kept = notices
+      .filter((row) => row.userId === userId)
+      .filter(
+        (row) => row.notice.createdAt >= recordedAt - SYNC_NOTICE_MAX_AGE_MS,
+      )
+      .slice(-MAX_SYNC_NOTICES);
+    for (let index = notices.length - 1; index >= 0; index -= 1) {
+      const row = notices[index]!;
+      if (row.userId === userId && !kept.includes(row))
+        notices.splice(index, 1);
+    }
+  };
   const userBundles = (userId: string) =>
     [...bundles.entries()]
       .filter(([bundleKey]) => bundleKey.startsWith(`${userId}:`))
@@ -94,6 +150,10 @@ export function createMemoryStore(): MobileSyncStore & {
     indexes,
     queries,
     meta,
+    noticeBaselines,
+    failNextNoticeWrite: () => {
+      failNoticeWrite = true;
+    },
     initialize: async () => undefined,
     getMeta: async (userId, metaKey) => meta.get(key(userId, metaKey)) ?? null,
     setMeta: async (userId, metaKey, value) => {
@@ -135,7 +195,9 @@ export function createMemoryStore(): MobileSyncStore & {
         ...bundleMeta(bundle),
         data: structuredClone(bundle.data.structure),
       })),
-    saveBundle: async (userId, bundle) => {
+    saveBundle: async (userId, bundle, update) => {
+      // One transaction: a failed notice write stores nothing.
+      if (update) writeNotices(userId, update, bundle.updatedAt ?? Date.now());
       const existing = bundles.get(key(userId, bundle.courseId));
       bundles.set(key(userId, bundle.courseId), {
         courseId: bundle.courseId,
@@ -194,9 +256,17 @@ export function createMemoryStore(): MobileSyncStore & {
       }
     },
     clearAllData: async () => {
-      for (const map of [meta, indexes, bundles, queries, operations])
+      for (const map of [
+        meta,
+        indexes,
+        bundles,
+        queries,
+        operations,
+        noticeBaselines,
+      ])
         map.clear();
       deadLetters.length = 0;
+      notices.length = 0;
     },
     getOperation: async (userId, id) =>
       structuredClone(operations.get(key(userId, id))?.operation ?? null),
@@ -266,6 +336,29 @@ export function createMemoryStore(): MobileSyncStore & {
         operations: rowsFor(userId).length,
         deadLetters: deadLettersFor(userId).length,
       };
+    },
+    loadNoticeBaseline: async (userId, baselineKey) =>
+      noticeBaselines.get(key(userId, baselineKey)) ?? null,
+    recordNotices: async (userId, update, recordedAt = Date.now()) => {
+      if (!update.notices.length && !update.baselines.length) return;
+      writeNotices(userId, update, recordedAt);
+    },
+    listNotices: async (userId, now = Date.now()) =>
+      notices
+        .filter(
+          (row) =>
+            row.userId === userId &&
+            row.dismissedAt === null &&
+            row.notice.createdAt >= now - SYNC_NOTICE_MAX_AGE_MS,
+        )
+        .map((row) => structuredClone(row.notice))
+        .reverse(),
+    dismissNotices: async (userId, ids, dismissedAt = Date.now()) => {
+      const dismissed = new Set(ids);
+      for (const row of notices) {
+        if (row.userId === userId && dismissed.has(row.notice.id))
+          row.dismissedAt ??= dismissedAt;
+      }
     },
   };
 }

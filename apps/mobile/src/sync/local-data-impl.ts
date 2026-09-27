@@ -28,7 +28,12 @@ export function createLocalData({
   store: MobileSyncStore;
   engine: Pick<
     MobileSyncEngine,
-    "loadIndex" | "courseIdForItem" | "patchLearnerState" | "requestBundle"
+    | "loadIndex"
+    | "courseIdForItem"
+    | "patchLearnerState"
+    | "requestBundle"
+    | "listNotices"
+    | "dismissNotices"
   >;
 }): LocalData<LearnerIndex> {
   return {
@@ -76,5 +81,9 @@ export function createLocalData({
     patchLearnerState: (scope, patch) => engine.patchLearnerState(scope, patch),
 
     requestBundle: (courseId) => engine.requestBundle(courseId),
+
+    loadNotices: () => engine.listNotices(),
+
+    dismissNotices: (ids) => engine.dismissNotices(ids),
   };
 }
