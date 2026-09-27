@@ -9,14 +9,20 @@ import { getPostSignInPath } from "~/lib/access";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
 
-export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
+export function AuthPanel({
+  redirectTo,
+  initialMode = "sign-in",
+}: {
+  redirectTo?: string;
+  initialMode?: "sign-in" | "sign-up";
+}) {
   const postSignInPath = getPostSignInPath(redirectTo);
   const {
     data: session,
     isPending: sessionPending,
     refetch,
   } = authClient.useSession();
-  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [mode, setMode] = useState(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

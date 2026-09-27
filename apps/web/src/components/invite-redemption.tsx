@@ -22,6 +22,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
+import { appHandoffPath } from "~/lib/mobile-app";
 import { completeOnboarding } from "~/lib/onboarding";
 import { cn } from "~/lib/utils";
 import { authClient } from "~/server/better-auth/client";
@@ -70,6 +71,8 @@ export function InviteRedemption({ token }: { token: string }) {
   const accept = api.invite.accept.useMutation();
   const redirectPath = `/invite/${encodeURIComponent(token)}`;
   const authHref = `/auth?redirectTo=${encodeURIComponent(redirectPath)}`;
+  // Most invitees are new to Hakgyo, so start them on account creation.
+  const signUpHref = `${authHref}&mode=sign-up`;
 
   if (invite.isPending || session.isPending) {
     return (
@@ -145,24 +148,10 @@ export function InviteRedemption({ token }: { token: string }) {
             : "Course berhasil ditambahkan ke ruang belajar.",
       );
 
+      // Learning happens in the app, so learners are handed over to it
+      // instead of landing on the web course page.
       if (result.type !== "ORGANIZATION") {
-        const fallback = window.setTimeout(() => {
-          document.removeEventListener("visibilitychange", handleVisibility);
-          if (document.visibilityState === "visible") {
-            router.replace(result.destination);
-            router.refresh();
-          }
-        }, 1800);
-        function handleVisibility() {
-          if (document.visibilityState === "hidden") {
-            window.clearTimeout(fallback);
-            document.removeEventListener("visibilitychange", handleVisibility);
-          }
-        }
-        document.addEventListener("visibilitychange", handleVisibility);
-        window.location.assign(
-          `hakgyo://courses/${encodeURIComponent(result.courseId)}`,
-        );
+        router.replace(appHandoffPath(result.courseId));
         return;
       }
 
@@ -309,13 +298,15 @@ export function InviteRedemption({ token }: { token: string }) {
 
               {!unavailable && !session.data?.user ? (
                 <Link
-                  href={authHref}
+                  href={data.type === "ORGANIZATION" ? authHref : signUpHref}
                   className={cn(
                     buttonVariants({ size: "lg" }),
                     "order-2 h-11 w-full lg:order-3 lg:h-10",
                   )}
                 >
-                  Masuk atau buat akun
+                  {data.type === "ORGANIZATION"
+                    ? "Masuk atau buat akun"
+                    : "Buat akun atau masuk"}
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
               ) : null}
