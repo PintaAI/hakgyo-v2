@@ -103,3 +103,4 @@ bun --cwd apps/mobile run typecheck
 - After web changes, run `bun --cwd apps/web run typecheck` and `bun --cwd apps/web run lint` when applicable.
 - After shared or workspace configuration changes, run the corresponding root Turbo command.
 - Do not add generated files, local environment files, build output, or dependency directories to commits.
+- Land changes on `main` through pull requests. Linear history is required on `main`, so merge with squash or rebase rather than a merge commit.
