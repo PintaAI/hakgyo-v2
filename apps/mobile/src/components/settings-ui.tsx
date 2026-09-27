@@ -48,6 +48,7 @@ export function SettingsSection({
 
 export function SettingsRow({
   label,
+  subtitle,
   detail,
   symbol,
   fallback,
@@ -55,6 +56,9 @@ export function SettingsRow({
   destructive = false,
 }: {
   label: string;
+  /** Explanation under the label; use it for anything longer than a status. */
+  subtitle?: string;
+  /** Short status on the right; truncated so it never squeezes the label. */
   detail?: string;
   symbol: SymbolViewProps["name"];
   fallback: string;
@@ -85,19 +89,26 @@ export function SettingsRow({
             fallback={<Text style={{ color: accent }}>{fallback}</Text>}
           />
         </View>
-        <Text
-          className="shrink font-semibold"
-          style={{
-            color: destructive ? colors.destructive : colors.foreground,
-          }}
-        >
-          {label}
-        </Text>
+        <View className="min-w-0 flex-1">
+          <Text
+            className="font-semibold"
+            style={{
+              color: destructive ? colors.destructive : colors.foreground,
+            }}
+          >
+            {label}
+          </Text>
+          {subtitle ? (
+            <Text className="text-sm text-muted-foreground" numberOfLines={2}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
       </View>
-      <View className="ml-3 flex-row items-center gap-1.5">
+      <View className="ml-3 max-w-[45%] shrink flex-row items-center gap-1.5">
         {detail ? (
           <Text
-            className="text-right text-sm text-muted-foreground"
+            className="shrink text-right text-sm text-muted-foreground"
             numberOfLines={1}
           >
             {detail}
@@ -109,9 +120,7 @@ export function SettingsRow({
             size={13}
             weight="semibold"
             tintColor={colors.mutedForeground}
-            fallback={
-              <Text style={{ color: colors.mutedForeground }}>›</Text>
-            }
+            fallback={<Text style={{ color: colors.mutedForeground }}>›</Text>}
           />
         )}
       </View>
@@ -152,18 +161,13 @@ export function SettingsToggleRow({
             name={symbol}
             size={20}
             tintColor={colors.primary}
-            fallback={
-              <Text style={{ color: colors.primary }}>{fallback}</Text>
-            }
+            fallback={<Text style={{ color: colors.primary }}>{fallback}</Text>}
           />
         </View>
         <View className="min-w-0 flex-1">
           <Text className="font-semibold text-foreground">{label}</Text>
           {detail ? (
-            <Text
-              className="text-sm text-muted-foreground"
-              numberOfLines={2}
-            >
+            <Text className="text-sm text-muted-foreground" numberOfLines={2}>
               {detail}
             </Text>
           ) : null}

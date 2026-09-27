@@ -297,7 +297,7 @@ export default function ProfileTab() {
               {upgradeRequired ? (
                 <SettingsRow
                   label="Pembaruan diperlukan"
-                  detail={`Server membutuhkan protokol sinkronisasi ${upgradeRequired.minProtocol}. Progres tetap tersimpan di perangkat ini sampai kamu memperbarui aplikasi.`}
+                  subtitle={`Server membutuhkan protokol sinkronisasi ${upgradeRequired.minProtocol}. Progres tetap tersimpan di perangkat ini sampai kamu memperbarui aplikasi.`}
                   symbol="exclamationmark.triangle.fill"
                   fallback="!"
                   destructive
@@ -355,12 +355,9 @@ export default function ProfileTab() {
             {__DEV__ ? (
               <SettingsSection title="Pengembangan">
                 <SettingsRow
-                  label="Hapus data lokal & sinkronkan ulang"
-                  detail={
-                    isResetting
-                      ? "Menghapus dan menyinkronkan…"
-                      : "Muat ulang data belajar dan gambar yang tersimpan"
-                  }
+                  label="Sinkronkan ulang"
+                  subtitle="Hapus data lokal, lalu unduh ulang materi dan gambar"
+                  detail={isResetting ? "Memproses…" : undefined}
                   symbol="arrow.clockwise"
                   fallback="↻"
                   onPress={() => {
