@@ -10,7 +10,7 @@ The project is currently an early scaffold:
 - `packages/api`: type-only tRPC contract consumed by Expo.
 - `packages/shared`: reserved workspace package for other code shared between clients; it is currently empty.
 
-The web app currently includes GitHub OAuth and email/password configuration through Better Auth, a tRPC `post` router, and the starter `Post` model. Do not treat the starter post flow as the final Hakgyo domain model.
+The web app currently includes Google OAuth and email/password configuration through Better Auth, a tRPC `post` router, and the starter `Post` model. Do not treat the starter post flow as the final Hakgyo domain model.
 
 ## Repository Layout
 
