@@ -304,6 +304,48 @@ const sourceLabels = {
 export type LandingRevision =
   RouterOutputs["organizationLanding"]["revisions"][number];
 
+/**
+ * A live miniature of a revision: the sandboxed preview document rendered at
+ * four times the card width and scaled down, so it shows the desktop layout.
+ */
+function RevisionThumbnail({
+  organizationId,
+  revisionId,
+  label,
+  selected,
+  onSelect,
+}: {
+  organizationId: string;
+  revisionId: string;
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        "relative block aspect-[16/10] w-full overflow-hidden rounded-md border bg-white transition",
+        "hover:ring-primary/40 focus-visible:ring-ring/50 outline-none hover:ring-2 focus-visible:ring-3",
+        selected && "ring-primary ring-2",
+      )}
+    >
+      <iframe
+        src={`/api/organization-landing/draft/${encodeURIComponent(organizationId)}?preview=${encodeURIComponent(revisionId)}`}
+        title=""
+        aria-hidden
+        tabIndex={-1}
+        loading="lazy"
+        sandbox="allow-scripts"
+        className="pointer-events-none absolute top-0 left-0 h-[400%] w-[400%] origin-top-left scale-25"
+      />
+    </button>
+  );
+}
+
 export function LandingRevisionsPanel({
   organizationId,
   draft,
@@ -357,6 +399,13 @@ export function LandingRevisionsPanel({
                 previewing && "border-primary bg-primary/5",
               )}
             >
+              <RevisionThumbnail
+                organizationId={organizationId}
+                revisionId={revision.id}
+                label={`Lihat revisi ${formatTime(revision.createdAt)}`}
+                selected={previewing}
+                onSelect={() => onPreview(isDraft ? null : revision)}
+              />
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge variant="secondary">
                   {sourceLabels[revision.source]}
@@ -365,34 +414,30 @@ export function LandingRevisionsPanel({
                 {revision.id === draft.publishedRevisionId && (
                   <Badge>Live</Badge>
                 )}
+                {previewing && (
+                  <Badge variant="outline" className="text-primary">
+                    <EyeIcon />
+                    Sedang dilihat
+                  </Badge>
+                )}
               </div>
               {revision.summary && <p>{revision.summary}</p>}
               <p className="text-muted-foreground text-xs">
                 {formatTime(revision.createdAt)}
                 {revision.createdBy ? ` · ${revision.createdBy.name}` : ""}
               </p>
-              <div className="flex flex-wrap gap-2">
+              {!isDraft && (
                 <Button
-                  variant={previewing ? "secondary" : "outline"}
+                  variant="outline"
                   size="sm"
-                  aria-pressed={previewing}
-                  onClick={() => onPreview(isDraft ? null : revision)}
+                  className="justify-self-start"
+                  disabled={!canRestore || restoring}
+                  onClick={() => onRestore(revision.id)}
                 >
-                  <EyeIcon />
-                  {previewing ? "Sedang dilihat" : "Lihat"}
+                  <RotateCcwIcon />
+                  Pulihkan
                 </Button>
-                {!isDraft && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!canRestore || restoring}
-                    onClick={() => onRestore(revision.id)}
-                  >
-                    <RotateCcwIcon />
-                    Pulihkan
-                  </Button>
-                )}
-              </div>
+              )}
             </li>
           );
         })}
