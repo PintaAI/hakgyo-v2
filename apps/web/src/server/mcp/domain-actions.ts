@@ -1,3 +1,8 @@
+import type { inferRouterOutputs } from "@trpc/server";
+
+import { appCourseItemDeepLink } from "~/lib/mobile-app";
+import type { AppRouter } from "~/server/api/root";
+
 export const mcpDomainActions = {
   account: ["deletionBlockers", "updateProfile"],
   organization: [
@@ -73,11 +78,6 @@ export const mcpDomainActions = {
     "updateQuestion",
     "createOption",
     "updateOption",
-    "getForCourseItem",
-    "startAttempt",
-    "saveAnswers",
-    "submitAttempt",
-    "getMyAttempt",
     "listAttemptsNeedingReview",
     "reviewAttempt",
   ],
@@ -105,6 +105,66 @@ export function normalizeMcpProcedureInput(input: {
     if (typeof value === "string") normalized[field] = new Date(value);
   }
   return normalized;
+}
+
+type LearningOutputs = inferRouterOutputs<AppRouter>["learning"];
+
+/**
+ * Tugas are taken only in the mobile app, so learning results give every
+ * assessment item an `appUrl` deep link for the client to hand the learner.
+ */
+export function addAssessmentAppLinks(input: {
+  action: string;
+  domain: McpDomain;
+  result: unknown;
+}): unknown {
+  if (input.domain !== "learning" || !input.result) return input.result;
+
+  if (input.action === "getCourseOutline") {
+    const outline = input.result as LearningOutputs["getCourseOutline"];
+    return {
+      ...outline,
+      modules: outline.modules.map((module) => ({
+        ...module,
+        items: module.items.map((item) =>
+          item.type === "ASSESSMENT"
+            ? { ...item, appUrl: appCourseItemDeepLink(outline.id, item.id) }
+            : item,
+        ),
+      })),
+    };
+  }
+
+  if (input.action === "getCourseItem") {
+    const item = input.result as NonNullable<LearningOutputs["getCourseItem"]>;
+    const courseId = item.module.courseId;
+    return {
+      ...item,
+      ...(item.type === "ASSESSMENT" && {
+        appUrl: appCourseItemDeepLink(courseId, item.id),
+      }),
+      material: item.material && {
+        ...item.material,
+        requiredActivities: item.material.requiredActivities.map((activity) =>
+          activity.type === "ASSESSMENT"
+            ? {
+                ...activity,
+                appUrl: appCourseItemDeepLink(courseId, activity.courseItemId),
+              }
+            : activity,
+        ),
+      },
+      embeddedResources: {
+        ...item.embeddedResources,
+        assessments: item.embeddedResources.assessments.map((assessment) => ({
+          ...assessment,
+          appUrl: appCourseItemDeepLink(courseId, assessment.courseItemId),
+        })),
+      },
+    };
+  }
+
+  return input.result;
 }
 
 const privateResultFields = new Set([

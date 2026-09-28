@@ -1,5 +1,6 @@
 import { appRouter, createMcpCaller } from "~/server/api/root";
 import {
+  addAssessmentAppLinks,
   mcpDomainActions,
   normalizeMcpProcedureInput,
   type McpDomain,
@@ -81,5 +82,8 @@ export async function invokeMcpDomainAction(input: {
   const normalizedInput = normalizeMcpProcedureInput(input);
   const procedureInput =
     Object.keys(normalizedInput).length > 0 ? normalizedInput : undefined;
-  return procedure(procedureInput);
+  return addAssessmentAppLinks({
+    ...input,
+    result: await procedure(procedureInput),
+  });
 }

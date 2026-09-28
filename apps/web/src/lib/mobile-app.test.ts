@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   androidCourseIntent,
   appCourseDeepLink,
+  appCourseItemDeepLink,
   appHandoffPath,
   detectHandoffPlatform,
 } from "~/lib/mobile-app";
@@ -11,6 +12,9 @@ describe("mobile app links", () => {
   test("builds the handoff page and deep link for a course", () => {
     expect(appHandoffPath("course 1")).toBe("/open/courses/course%201");
     expect(appCourseDeepLink("course 1")).toBe("hakgyo://courses/course%201");
+    expect(appCourseItemDeepLink("c1", "item 1")).toBe(
+      "hakgyo://courses/c1/items/item%201",
+    );
   });
 
   test("builds an Android intent that falls back to the web", () => {
