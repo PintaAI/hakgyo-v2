@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   CheckIcon,
   ClipboardIcon,
+  EyeIcon,
   ImagePlusIcon,
   LoaderCircleIcon,
   RotateCcwIcon,
@@ -300,26 +301,32 @@ const sourceLabels = {
   RESTORE: "Pemulihan",
 } as const;
 
+export type LandingRevision =
+  RouterOutputs["organizationLanding"]["revisions"][number];
+
 export function LandingRevisionsPanel({
   organizationId,
   draft,
+  previewId,
   canRestore,
-  onRestored,
+  restoring,
+  clearing,
+  onPreview,
+  onRestore,
+  onClear,
 }: {
   organizationId: string;
   draft: LandingDraft;
+  previewId: string | null;
   canRestore: boolean;
-  onRestored: () => void;
+  restoring: boolean;
+  clearing: boolean;
+  onPreview: (revision: LandingRevision | null) => void;
+  onRestore: (revisionId: string) => void;
+  onClear: () => void;
 }) {
   const revisions = api.organizationLanding.revisions.useQuery({
     organizationId,
-  });
-  const restore = api.organizationLanding.restoreRevision.useMutation({
-    onSuccess: () => {
-      toast.success("Revisi dipulihkan sebagai draft.");
-      onRestored();
-    },
-    onError: (error) => toast.error(error.message),
   });
   if (revisions.isPending)
     return <LoaderCircleIcon className="size-4 animate-spin" />;
@@ -330,38 +337,82 @@ export function LandingRevisionsPanel({
         draft.
       </p>
     );
+  // The current draft and live revisions are kept when history is cleared.
+  const clearable = revisions.data.filter(
+    (revision) =>
+      revision.id !== draft.revisionId &&
+      revision.id !== draft.publishedRevisionId,
+  ).length;
   return (
-    <ul className="grid gap-3 text-sm">
-      {revisions.data.map((revision) => (
-        <li key={revision.id} className="grid gap-1.5 rounded-lg border p-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant="secondary">{sourceLabels[revision.source]}</Badge>
-            {revision.id === draft.revisionId && (
-              <Badge variant="outline">Draft saat ini</Badge>
-            )}
-            {revision.id === draft.publishedRevisionId && <Badge>Live</Badge>}
-          </div>
-          {revision.summary && <p>{revision.summary}</p>}
-          <p className="text-muted-foreground text-xs">
-            {formatTime(revision.createdAt)}
-            {revision.createdBy ? ` · ${revision.createdBy.name}` : ""}
-          </p>
-          {revision.id !== draft.revisionId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="justify-self-start"
-              disabled={!canRestore || restore.isPending}
-              onClick={() =>
-                restore.mutate({ organizationId, revisionId: revision.id })
-              }
+    <div className="grid gap-3 text-sm">
+      <ul className="grid gap-3">
+        {revisions.data.map((revision) => {
+          const isDraft = revision.id === draft.revisionId;
+          const previewing = isDraft ? !previewId : revision.id === previewId;
+          return (
+            <li
+              key={revision.id}
+              className={cn(
+                "grid gap-1.5 rounded-lg border p-3 transition-colors",
+                previewing && "border-primary bg-primary/5",
+              )}
             >
-              <RotateCcwIcon />
-              Pulihkan
-            </Button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="secondary">
+                  {sourceLabels[revision.source]}
+                </Badge>
+                {isDraft && <Badge variant="outline">Draft saat ini</Badge>}
+                {revision.id === draft.publishedRevisionId && (
+                  <Badge>Live</Badge>
+                )}
+              </div>
+              {revision.summary && <p>{revision.summary}</p>}
+              <p className="text-muted-foreground text-xs">
+                {formatTime(revision.createdAt)}
+                {revision.createdBy ? ` · ${revision.createdBy.name}` : ""}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={previewing ? "secondary" : "outline"}
+                  size="sm"
+                  aria-pressed={previewing}
+                  onClick={() => onPreview(isDraft ? null : revision)}
+                >
+                  <EyeIcon />
+                  {previewing ? "Sedang dilihat" : "Lihat"}
+                </Button>
+                {!isDraft && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canRestore || restoring}
+                    onClick={() => onRestore(revision.id)}
+                  >
+                    <RotateCcwIcon />
+                    Pulihkan
+                  </Button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {clearable > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive justify-self-start"
+          disabled={clearing}
+          onClick={onClear}
+        >
+          {clearing ? (
+            <LoaderCircleIcon className="animate-spin" />
+          ) : (
+            <Trash2Icon />
           )}
-        </li>
-      ))}
-    </ul>
+          Hapus riwayat ({clearable})
+        </Button>
+      )}
+    </div>
   );
 }

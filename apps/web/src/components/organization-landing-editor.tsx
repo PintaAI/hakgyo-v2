@@ -5,11 +5,14 @@ import Link from "next/link";
 import {
   ArrowLeftIcon,
   ExternalLinkIcon,
+  EyeIcon,
   EyeOffIcon,
   LoaderCircleIcon,
   MonitorIcon,
   RefreshCwIcon,
+  RotateCcwIcon,
   SmartphoneIcon,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -20,6 +23,7 @@ import {
   LandingCopyPanel,
   LandingImagesPanel,
   LandingRevisionsPanel,
+  type LandingRevision,
 } from "~/components/landing-editor-panels";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -89,6 +93,9 @@ function LandingEditor({
   const [narrowPreview, setNarrowPreview] = useState(false);
   const [tab, setTab] = useState("preview");
   const [activeField, setActiveField] = useState<string | null>(null);
+  // An earlier revision shown read-only on the canvas instead of the draft.
+  const [previewRevision, setPreviewRevision] =
+    useState<LandingRevision | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const status = api.organizationLanding.status.useQuery(
     { organizationId },
@@ -127,6 +134,22 @@ function LandingEditor({
       setEdits({});
       await reload();
       toast.success("Teks disimpan ke draft.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const restore = api.organizationLanding.restoreRevision.useMutation({
+    onSuccess: async () => {
+      setPreviewRevision(null);
+      await reload();
+      toast.success("Revisi dipulihkan sebagai draft.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const clearRevisions = api.organizationLanding.clearRevisions.useMutation({
+    onSuccess: async ({ deleted }) => {
+      setPreviewRevision(null);
+      await reload();
+      toast.success(`${deleted} revisi dihapus.`);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -213,6 +236,23 @@ function LandingEditor({
     return () => window.removeEventListener("message", receive);
   }, [changeCopy, isMobile, postToPreview]);
 
+  function showRevision(revision: LandingRevision | null) {
+    setPreviewRevision(revision);
+    // Phones need the preview tab; wider screens keep the history open beside it.
+    if (revision && isMobile) setTab("preview");
+  }
+
+  async function confirmClearRevisions() {
+    const confirmed = await confirm({
+      title: "Hapus riwayat revisi?",
+      description:
+        "Semua revisi lama dihapus permanen. Draft saat ini dan versi yang sedang live tetap disimpan.",
+      confirmLabel: "Hapus riwayat",
+      destructive: true,
+    });
+    if (confirmed) clearRevisions.mutate({ organizationId });
+  }
+
   async function confirmUnpublish() {
     const confirmed = await confirm({
       title: "Nonaktifkan landing page?",
@@ -226,7 +266,10 @@ function LandingEditor({
 
   const isLive = !!draft.publishedAt;
   const upToDate = isLive && draft.revisionId === draft.publishedRevisionId;
-  const previewSrc = `/api/organization-landing/draft/${encodeURIComponent(organizationId)}?edit=1&revision=${draft.revisionId ?? "starter"}`;
+  const previewBase = `/api/organization-landing/draft/${encodeURIComponent(organizationId)}`;
+  const previewSrc = previewRevision
+    ? `${previewBase}?preview=${encodeURIComponent(previewRevision.id)}`
+    : `${previewBase}?edit=1&revision=${draft.revisionId ?? "starter"}`;
   // Phones show one full-screen tab at a time; wider screens always show the
   // preview beside the panel, so "preview" falls back to the copy tab there.
   const view = !isMobile && tab === "preview" ? "copy" : tab;
@@ -364,17 +407,62 @@ function LandingEditor({
 
         <main
           className={cn(
-            "bg-muted/40 row-start-3 min-h-0 justify-center overflow-hidden md:col-start-1 md:row-span-4 md:row-start-1 md:flex md:p-4",
+            "bg-muted/40 row-start-3 min-h-0 flex-col items-center overflow-hidden md:col-start-1 md:row-span-4 md:row-start-1 md:flex md:gap-3 md:p-4",
             view === "preview" ? "flex" : "hidden",
           )}
         >
+          {previewRevision && (
+            <div className="bg-primary text-primary-foreground flex w-full flex-wrap items-center gap-2 px-3 py-2 text-sm md:rounded-lg">
+              <EyeIcon className="size-4 shrink-0" />
+              <p className="min-w-0 flex-1">
+                Melihat revisi {formatTime(previewRevision.createdAt)}
+                {previewRevision.summary && (
+                  <span className="hidden opacity-80 sm:inline">
+                    {" "}
+                    · {previewRevision.summary}
+                  </span>
+                )}
+              </p>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={dirty || busy || restore.isPending}
+                title={
+                  dirty ? "Simpan atau batalkan perubahan teks dulu" : undefined
+                }
+                onClick={() =>
+                  restore.mutate({
+                    organizationId,
+                    revisionId: previewRevision.id,
+                  })
+                }
+              >
+                <RotateCcwIcon />
+                Pulihkan
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label="Kembali ke draft"
+                className="hover:bg-primary-foreground/15 hover:text-primary-foreground"
+                onClick={() => setPreviewRevision(null)}
+              >
+                <XIcon />
+                <span className="hidden sm:inline">Kembali ke draft</span>
+              </Button>
+            </div>
+          )}
           <iframe
             ref={frame}
             src={previewSrc}
-            title="Pratinjau draft landing page"
+            title={
+              previewRevision
+                ? "Pratinjau revisi landing page"
+                : "Pratinjau draft landing page"
+            }
             sandbox="allow-scripts"
             className={cn(
-              "size-full bg-white transition-[width] md:rounded-lg md:border md:shadow-sm",
+              "min-h-0 w-full flex-1 bg-white transition-[width] md:rounded-lg md:border md:shadow-sm",
               narrowPreview && "md:w-[390px]",
             )}
           />
@@ -416,8 +504,15 @@ function LandingEditor({
             <LandingRevisionsPanel
               organizationId={organizationId}
               draft={draft}
+              previewId={previewRevision?.id ?? null}
               canRestore={!dirty && !busy}
-              onRestored={() => void reload()}
+              restoring={restore.isPending}
+              clearing={clearRevisions.isPending}
+              onPreview={showRevision}
+              onRestore={(revisionId) =>
+                restore.mutate({ organizationId, revisionId })
+              }
+              onClear={() => void confirmClearRevisions()}
             />
           </TabsContent>
         </div>
