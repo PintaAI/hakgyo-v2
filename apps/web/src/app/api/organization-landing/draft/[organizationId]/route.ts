@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
-import { auth } from "~/server/better-auth";
+import { getActiveSession } from "~/server/better-auth/active-user";
 import { db } from "~/server/db";
 import {
   landingDocumentResponse,
@@ -15,7 +15,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ organizationId: string }> },
 ) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await getActiveSession(request.headers);
   if (!session) return landingNotFoundResponse();
   const { organizationId } = await params;
   const query = new URL(request.url).searchParams;

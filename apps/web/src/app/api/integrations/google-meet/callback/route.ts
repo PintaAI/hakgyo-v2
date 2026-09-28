@@ -1,14 +1,17 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { env } from "~/env";
-import { auth } from "~/server/better-auth";
-import { requireOrganizationPermission } from "~/server/authorization";
+import { getActiveSession } from "~/server/better-auth/active-user";
 import { db } from "~/server/db";
 import {
   encryptGoogleToken,
   exchangeGoogleCode,
 } from "~/server/integrations/google-calendar";
+import {
+  findIntegrationManager,
+  integrationForbiddenResponse,
+  redirectToIntegrationSettings,
+} from "~/server/integrations/oauth-routes";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -19,27 +22,41 @@ export async function GET(request: Request) {
   const organizationId = cookieStore.get(
     "google_meet_oauth_organization",
   )?.value;
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await getActiveSession(request.headers);
   cookieStore.delete("google_meet_oauth_state");
   cookieStore.delete("google_meet_oauth_organization");
 
-  if (
-    !session?.user ||
-    !code ||
-    !state ||
-    state !== expectedState ||
-    !organizationId
-  ) {
+  if (!session?.user || !organizationId) {
     return new NextResponse("Invalid Google Meet OAuth callback", {
       status: 400,
     });
   }
-  const member = await requireOrganizationPermission({
+  const member = await findIntegrationManager({
     organizationId,
-    permission: "organization.manage",
     userId: session.user.id,
   });
-  const { tokens, user } = await exchangeGoogleCode(code);
+  if (!member) return integrationForbiddenResponse();
+  // The user declined on Google's consent screen.
+  if (url.searchParams.has("error")) {
+    return redirectToIntegrationSettings(organizationId, {
+      googleMeet: "cancelled",
+    });
+  }
+  if (!code || !state || state !== expectedState) {
+    return new NextResponse("Invalid Google Meet OAuth callback", {
+      status: 400,
+    });
+  }
+  let exchanged: Awaited<ReturnType<typeof exchangeGoogleCode>>;
+  try {
+    exchanged = await exchangeGoogleCode(code);
+  } catch (error) {
+    console.error("Google OAuth code exchange failed", error);
+    return new NextResponse("Could not connect Google Meet. Try again.", {
+      status: 502,
+    });
+  }
+  const { tokens, user } = exchanged;
   if (
     !tokens.scope
       ?.split(" ")
@@ -90,14 +107,7 @@ export async function GET(request: Request) {
     update: connection,
     create: { ...connection, organizationId },
   });
-  const organization = await db.organization.findUniqueOrThrow({
-    where: { id: organizationId },
-    select: { slug: true },
+  return redirectToIntegrationSettings(organizationId, {
+    googleMeet: "connected",
   });
-  return NextResponse.redirect(
-    new URL(
-      `/workspace/${encodeURIComponent(organization.slug)}/settings/integrations?googleMeet=connected`,
-      env.APP_URL,
-    ),
-  );
 }

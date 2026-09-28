@@ -1,10 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { env } from "~/env";
-import { auth } from "~/server/better-auth";
-import { requireOrganizationPermission } from "~/server/authorization";
+import { getActiveSession } from "~/server/better-auth/active-user";
 import { db } from "~/server/db";
+import {
+  findIntegrationManager,
+  integrationForbiddenResponse,
+  redirectToIntegrationSettings,
+} from "~/server/integrations/oauth-routes";
 import { encryptZoomToken, exchangeZoomCode } from "~/server/integrations/zoom";
 
 export async function GET(request: Request) {
@@ -14,26 +17,36 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
   const expectedState = cookieStore.get("zoom_oauth_state")?.value;
   const organizationId = cookieStore.get("zoom_oauth_organization")?.value;
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await getActiveSession(request.headers);
 
   cookieStore.delete("zoom_oauth_state");
   cookieStore.delete("zoom_oauth_organization");
 
-  if (
-    !session?.user ||
-    !code ||
-    !state ||
-    state !== expectedState ||
-    !organizationId
-  ) {
+  if (!session?.user || !organizationId) {
     return new NextResponse("Invalid Zoom OAuth callback", { status: 400 });
   }
-  const member = await requireOrganizationPermission({
+  const member = await findIntegrationManager({
     organizationId,
-    permission: "organization.manage",
     userId: session.user.id,
   });
-  const { tokens, user } = await exchangeZoomCode(code);
+  if (!member) return integrationForbiddenResponse();
+  // The user declined on Zoom's consent screen.
+  if (url.searchParams.has("error")) {
+    return redirectToIntegrationSettings(organizationId, { zoom: "cancelled" });
+  }
+  if (!code || !state || state !== expectedState) {
+    return new NextResponse("Invalid Zoom OAuth callback", { status: 400 });
+  }
+  let exchanged: Awaited<ReturnType<typeof exchangeZoomCode>>;
+  try {
+    exchanged = await exchangeZoomCode(code);
+  } catch (error) {
+    console.error("Zoom OAuth code exchange failed", error);
+    return new NextResponse("Could not connect Zoom. Try again.", {
+      status: 502,
+    });
+  }
+  const { tokens, user } = exchanged;
   const existingConnection = await db.zoomConnection.findUnique({
     where: { organizationId },
     select: { zoomUserId: true },
@@ -72,16 +85,5 @@ export async function GET(request: Request) {
       scope: tokens.scope,
     },
   });
-  const organization = await db.organization.findUniqueOrThrow({
-    where: { id: organizationId },
-    select: { slug: true },
-  });
-
-  const response = NextResponse.redirect(
-    new URL(
-      `/workspace/${encodeURIComponent(organization.slug)}/settings/integrations?zoom=connected`,
-      env.APP_URL,
-    ),
-  );
-  return response;
+  return redirectToIntegrationSettings(organizationId, { zoom: "connected" });
 }
