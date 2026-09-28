@@ -3,8 +3,6 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import {
-  CheckIcon,
-  ClipboardIcon,
   EyeIcon,
   ImagePlusIcon,
   LoaderCircleIcon,
@@ -14,6 +12,7 @@ import {
 import { toast } from "sonner";
 
 import { Badge } from "~/components/ui/badge";
+import { CopyButton } from "~/components/ui/copy-button";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
@@ -37,22 +36,6 @@ export function formatTime(value: Date) {
     dateStyle: "medium",
     timeStyle: "short",
   });
-}
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-  async function copy() {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    toast.success(`${label} disalin.`);
-    window.setTimeout(() => setCopied(false), 1800);
-  }
-  return (
-    <Button variant="outline" size="sm" onClick={() => void copy()}>
-      {copied ? <CheckIcon /> : <ClipboardIcon />}
-      {copied ? "Tersalin" : "Salin"}
-    </Button>
-  );
 }
 
 /** Human label for a copy key such as `hero.title` → "Hero · title". */

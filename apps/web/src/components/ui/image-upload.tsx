@@ -1,17 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type ReactNode,
-} from "react";
+import type { ReactNode } from "react";
 import { ImageIcon, LoaderCircleIcon, UploadIcon } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { useImageUpload } from "~/components/ui/use-image-upload";
 import { cn } from "~/lib/utils";
 
 type ImageUploadProps = {
@@ -51,52 +46,15 @@ function ImageUpload({
   placeholder,
   renderPreview,
 }: ImageUploadProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const previewUrlRef = useRef<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [action, setAction] = useState<"upload" | "remove" | null>(null);
+  const {
+    action,
+    imageUrl,
+    inputRef,
+    previewUrl,
+    remove: removeImage,
+    selectFile,
+  } = useImageUpload({ value, onUpload, onRemove });
   const busy = disabled || isPending || action !== null;
-
-  useEffect(() => {
-    return () => {
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    };
-  }, []);
-
-  async function selectFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    event.target.value = "";
-    if (!file) return;
-
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    const nextPreviewUrl = URL.createObjectURL(file);
-    previewUrlRef.current = nextPreviewUrl;
-    setPreviewUrl(nextPreviewUrl);
-    setAction("upload");
-
-    try {
-      await onUpload(file);
-    } finally {
-      if (previewUrlRef.current === nextPreviewUrl) {
-        URL.revokeObjectURL(nextPreviewUrl);
-        previewUrlRef.current = null;
-        setPreviewUrl(null);
-      }
-      setAction(null);
-    }
-  }
-
-  async function removeImage() {
-    if (!onRemove) return;
-    setAction("remove");
-    try {
-      await onRemove();
-    } finally {
-      setAction(null);
-    }
-  }
-
-  const imageUrl = previewUrl ?? value;
 
   return (
     <div

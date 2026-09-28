@@ -7,7 +7,7 @@ import type {
 import { env } from "~/env";
 import { appHandoffPath, mobileAppStoreLinks } from "~/lib/mobile-app";
 import { organizationPublicSlugSchema } from "~/lib/organization-landing";
-import { getPublicR2Url } from "~/lib/profile-image";
+import { getPublicR2Url } from "~/lib/managed-image";
 import type { db } from "~/server/db";
 import { organizationBrandSelect } from "~/server/brand/context";
 import { createDefaultLandingHtml } from "./default-template";

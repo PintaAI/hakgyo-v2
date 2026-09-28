@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import {
-  CheckIcon,
   CircleOffIcon,
-  ClipboardIcon,
   ExternalLinkIcon,
   KeyRoundIcon,
   LoaderCircleIcon,
@@ -26,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
+import { CopyButton } from "~/components/ui/copy-button";
 import { Button, buttonVariants } from "~/components/ui/button";
 import {
   Card,
@@ -36,24 +35,6 @@ import {
 } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    toast.success(`${label} disalin.`);
-    window.setTimeout(() => setCopied(false), 1800);
-  }
-
-  return (
-    <Button variant="outline" size="sm" onClick={() => void copy()}>
-      {copied ? <CheckIcon /> : <ClipboardIcon />}
-      {copied ? "Tersalin" : "Salin"}
-    </Button>
-  );
-}
 
 function formatDate(value: Date | null) {
   return value
@@ -121,7 +102,7 @@ export function McpServerSettings({ endpoint }: { endpoint: string }) {
               </div>
             </div>
             <Badge className="gap-1.5 bg-emerald-600 text-white">
-              <span className="size-1.5 rounded-full bg-background" /> Aktif
+              <span className="bg-background size-1.5 rounded-full" /> Aktif
             </Badge>
           </div>
         </CardHeader>

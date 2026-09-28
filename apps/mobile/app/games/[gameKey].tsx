@@ -1,5 +1,5 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 
@@ -63,31 +63,51 @@ export default function GameRoute() {
 
   if (key === "word-fall") {
     return (
-      <WordFallRoute
+      <VocabularyGameRoute
         courseId={courseIdParam}
         sessionReady={Boolean(session)}
         sourceCourseItemId={sourceCourseItemId}
-      />
+        gameKey="word-fall"
+        title="Hujan Kata"
+        isPlayable={(words) => words.length > 0}
+        unplayableMessage="Set kosakata ini belum memiliki kata yang bisa dimainkan."
+      >
+        {(game) => <WordFallScreen {...game} />}
+      </VocabularyGameRoute>
     );
   }
 
   if (key === "sentences") {
     return (
-      <SentencesRoute
+      <VocabularyGameRoute
         courseId={courseIdParam}
         sessionReady={Boolean(session)}
         sourceCourseItemId={sourceCourseItemId}
-      />
+        gameKey="sentences"
+        title="Susun makna"
+        isPlayable={(words) =>
+          words.some((word) => exampleSentences(word.examples).length > 0)
+        }
+        unplayableMessage="Set kosakata ini belum punya contoh kalimat."
+      >
+        {(game) => <SentenceBuilderScreen {...game} />}
+      </VocabularyGameRoute>
     );
   }
 
   if (key === "match") {
     return (
-      <VocabularyMatchRoute
+      <VocabularyGameRoute
         courseId={courseIdParam}
         sessionReady={Boolean(session)}
         sourceCourseItemId={sourceCourseItemId}
-      />
+        gameKey="match"
+        title="Cocokkan Kata"
+        isPlayable={(words) => words.length >= 2}
+        unplayableMessage="Tambahkan setidaknya dua kata yang bisa dimainkan ke set kosakata ini."
+      >
+        {(game) => <VocabularyMatchScreen {...game} />}
+      </VocabularyGameRoute>
     );
   }
 
@@ -239,165 +259,82 @@ function GameUnavailable({
   );
 }
 
-function VocabularyMatchRoute({
+type VocabularyWords = NonNullable<
+  NonNullable<ReturnType<typeof useCourseItem>["data"]>["vocabularySet"]
+>["entries"];
+
+/**
+ * Loads the vocabulary set behind a game and reports progress for it. Renders
+ * the game only once the set loads and `isPlayable` accepts its words.
+ */
+function VocabularyGameRoute({
+  children,
   courseId,
-  sourceCourseItemId,
+  gameKey,
+  isPlayable,
   sessionReady,
+  sourceCourseItemId,
+  title,
+  unplayableMessage,
 }: {
+  children: (game: {
+    courseId: string;
+    sourceCourseItemId: string;
+    words: VocabularyWords;
+    onAttempt: (
+      ...args: Parameters<
+        ReturnType<typeof useVocabularyProgressReporter>["report"]
+      >
+    ) => Promise<void>;
+    onComplete: () => unknown;
+    onExit: () => void;
+    onSessionStart: () => string;
+  }) => ReactNode;
   courseId: string;
-  sourceCourseItemId: string;
+  gameKey: string;
+  isPlayable: (words: VocabularyWords) => boolean;
   sessionReady: boolean;
+  sourceCourseItemId: string;
+  title: string;
+  unplayableMessage: string;
 }) {
   const item = useCourseItem(courseId || undefined, sourceCourseItemId, {
     enabled: sessionReady,
   });
   const vocabulary = item.data?.vocabularySet;
-  const effectiveCourseId = courseId || item.data?.module.courseId || "";
   const words = vocabulary?.entries ?? [];
   const reporter = useVocabularyProgressReporter({
-    gameKey: "match",
+    gameKey,
     reactive: false,
     sourceCourseItemId,
     vocabularySetId: vocabulary?.id ?? "",
   });
 
   if (item.isPending && sourceCourseItemId && sessionReady) {
-    return <GameLoading title="Cocokkan Kata" />;
+    return <GameLoading title={title} />;
   }
 
-  if (!sourceCourseItemId || item.isError || words.length < 2) {
+  if (!sourceCourseItemId || item.isError || !isPlayable(words)) {
     return (
-      <GameUnavailable title="Cocokkan Kata">
+      <GameUnavailable title={title}>
         {!sourceCourseItemId
           ? "Pilih set kosakata dari Latihan untuk bermain."
           : item.isError
             ? "Set kosakata ini tidak dapat dimuat."
-            : "Tambahkan setidaknya dua kata yang bisa dimainkan ke set kosakata ini."}
+            : unplayableMessage}
       </GameUnavailable>
     );
   }
 
-  return (
-    <VocabularyMatchScreen
-      courseId={effectiveCourseId}
-      sourceCourseItemId={sourceCourseItemId}
-      onAttempt={async (attempt) => {
-        await reporter.report(attempt);
-      }}
-      onComplete={reporter.finishSession}
-      onExit={leave}
-      onSessionStart={reporter.startSession}
-      words={words}
-    />
-  );
-}
-
-function WordFallRoute({
-  courseId,
-  sourceCourseItemId,
-  sessionReady,
-}: {
-  courseId: string;
-  sourceCourseItemId: string;
-  sessionReady: boolean;
-}) {
-  const item = useCourseItem(courseId || undefined, sourceCourseItemId, {
-    enabled: sessionReady,
-  });
-  const vocabulary = item.data?.vocabularySet;
-  const effectiveCourseId = courseId || item.data?.module.courseId || "";
-  const words = vocabulary?.entries ?? [];
-  const reporter = useVocabularyProgressReporter({
-    gameKey: "word-fall",
-    reactive: false,
+  return children({
+    courseId: courseId || item.data?.module.courseId || "",
     sourceCourseItemId,
-    vocabularySetId: vocabulary?.id ?? "",
+    words,
+    onAttempt: async (...args) => {
+      await reporter.report(...args);
+    },
+    onComplete: reporter.finishSession,
+    onExit: leave,
+    onSessionStart: reporter.startSession,
   });
-
-  if (item.isPending && sourceCourseItemId && sessionReady) {
-    return <GameLoading title="Hujan Kata" />;
-  }
-
-  if (!sourceCourseItemId || item.isError || words.length === 0) {
-    return (
-      <GameUnavailable title="Hujan Kata">
-        {!sourceCourseItemId
-          ? "Pilih set kosakata dari Latihan untuk bermain."
-          : item.isError
-            ? "Set kosakata ini tidak dapat dimuat."
-            : "Set kosakata ini belum memiliki kata yang bisa dimainkan."}
-      </GameUnavailable>
-    );
-  }
-
-  return (
-    <WordFallScreen
-      courseId={effectiveCourseId}
-      sourceCourseItemId={sourceCourseItemId}
-      onAttempt={async (attempt, delivery) => {
-        await reporter.report(attempt, delivery);
-      }}
-      onComplete={reporter.finishSession}
-      onExit={leave}
-      onSessionStart={reporter.startSession}
-      words={words}
-    />
-  );
-}
-
-function SentencesRoute({
-  courseId,
-  sourceCourseItemId,
-  sessionReady,
-}: {
-  courseId: string;
-  sourceCourseItemId: string;
-  sessionReady: boolean;
-}) {
-  const item = useCourseItem(courseId || undefined, sourceCourseItemId, {
-    enabled: sessionReady,
-  });
-  const vocabulary = item.data?.vocabularySet;
-  const effectiveCourseId = courseId || item.data?.module.courseId || "";
-  const words = vocabulary?.entries ?? [];
-  const reporter = useVocabularyProgressReporter({
-    gameKey: "sentences",
-    reactive: false,
-    sourceCourseItemId,
-    vocabularySetId: vocabulary?.id ?? "",
-  });
-
-  if (item.isPending && sourceCourseItemId && sessionReady) {
-    return <GameLoading title="Susun makna" />;
-  }
-
-  if (
-    !sourceCourseItemId ||
-    item.isError ||
-    !words.some((word) => exampleSentences(word.examples).length > 0)
-  ) {
-    return (
-      <GameUnavailable title="Susun makna">
-        {!sourceCourseItemId
-          ? "Pilih set kosakata dari Practice untuk bermain."
-          : item.isError
-            ? "Set kosakata ini tidak dapat dimuat."
-            : "Set kosakata ini belum punya contoh kalimat."}
-      </GameUnavailable>
-    );
-  }
-
-  return (
-    <SentenceBuilderScreen
-      courseId={effectiveCourseId}
-      sourceCourseItemId={sourceCourseItemId}
-      onAttempt={async (attempt) => {
-        await reporter.report(attempt);
-      }}
-      onComplete={reporter.finishSession}
-      onExit={leave}
-      onSessionStart={reporter.startSession}
-      words={words}
-    />
-  );
 }

@@ -4,26 +4,7 @@ import {
 } from "@tanstack/react-query";
 import SuperJSON from "superjson";
 
-const NON_RETRYABLE_CODES = new Set([
-  "BAD_REQUEST",
-  "UNAUTHORIZED",
-  "FORBIDDEN",
-  "NOT_FOUND",
-]);
-
-function shouldRetry(failureCount: number, error: unknown) {
-  const code =
-    typeof error === "object" &&
-    error !== null &&
-    "data" in error &&
-    typeof error.data === "object" &&
-    error.data !== null &&
-    "code" in error.data
-      ? error.data.code
-      : undefined;
-
-  return failureCount < 2 && !NON_RETRYABLE_CODES.has(String(code));
-}
+import { shouldRetryQuery } from "@hakgyo/shared";
 
 export const createQueryClient = () =>
   new QueryClient({
@@ -32,7 +13,7 @@ export const createQueryClient = () =>
         // With SSR, we usually want to set some default staleTime
         // above 0 to avoid refetching immediately on the client
         staleTime: 30 * 1000,
-        retry: shouldRetry,
+        retry: shouldRetryQuery,
       },
       dehydrate: {
         serializeData: SuperJSON.serialize,

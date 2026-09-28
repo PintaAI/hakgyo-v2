@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { userSearchWhere } from "~/server/api/user-search";
 import {
   activeEnrollmentStatuses,
   requireOrganizationMembership,
@@ -18,7 +19,7 @@ import { db } from "~/server/db";
 import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
 import { generateOrganizationTheme } from "~/server/ai/organization-theme";
 import { fetchStats } from "~/server/foundation/fetch-stats";
-import { pageInput, pageResult } from "~/server/api/pagination";
+import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 import {
   isTransientTransactionError,
   isUniqueConstraintError,
@@ -437,9 +438,7 @@ export const organizationRouter = createTRPCRouter({
         ctx.db.organizationInvite.findMany({
           where,
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
+          ...pageArgs(input),
           select: {
             id: true,
             email: true,
@@ -954,26 +953,7 @@ export const organizationRouter = createTRPCRouter({
         organizationId: input.organizationId,
         role: input.role,
         ...(input.search
-          ? {
-              user: {
-                is: {
-                  OR: [
-                    {
-                      name: {
-                        contains: input.search,
-                        mode: "insensitive" as const,
-                      },
-                    },
-                    {
-                      email: {
-                        contains: input.search,
-                        mode: "insensitive" as const,
-                      },
-                    },
-                  ],
-                },
-              },
-            }
+          ? { user: { is: userSearchWhere(input.search) } }
           : {}),
       };
       // One grouped count yields both the filtered total and the owner
@@ -988,9 +968,7 @@ export const organizationRouter = createTRPCRouter({
       const members = await db.organizationMember.findMany({
         where,
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        take: input.limit + 1,
-        cursor: input.cursor ? { id: input.cursor } : undefined,
-        skip: input.cursor ? 1 : undefined,
+        ...pageArgs(input),
         include: {
           user: {
             select: { id: true, name: true, email: true, image: true },

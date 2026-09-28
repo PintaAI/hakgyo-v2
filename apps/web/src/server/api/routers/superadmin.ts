@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import type { PrismaClient } from "../../../../generated/prisma/client";
 
 import { createTRPCRouter, superadminProcedure } from "~/server/api/trpc";
+import { userSearchWhere } from "~/server/api/user-search";
 import {
   deleteCourseTree,
   deleteOrganizationTree,
@@ -187,14 +188,7 @@ export const superadminRouter = createTRPCRouter({
 });
 
 async function listUsers(database: Database, input: z.infer<typeof pageInput>) {
-  const where = input.search
-    ? {
-        OR: [
-          { name: { contains: input.search, mode: "insensitive" as const } },
-          { email: { contains: input.search, mode: "insensitive" as const } },
-        ],
-      }
-    : undefined;
+  const where = input.search ? userSearchWhere(input.search) : undefined;
   const [users, total] = await Promise.all([
     database.user.findMany({
       where,
