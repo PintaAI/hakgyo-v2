@@ -3,34 +3,20 @@ import { describe, expect, test } from "bun:test";
 import type { Prisma } from "../../../generated/prisma/client";
 import {
   DEFAULT_COHORT_NAME,
-  syncDefaultCohortEnrollments,
+  upsertDefaultCohortEnrollment,
 } from "./default-cohort";
 
-const enrolledAt = new Date("2026-08-17T00:00:00.000Z");
 const expiresAt = new Date("2026-12-31T23:59:59.000Z");
 
-const mirrored = {
-  status: "ACTIVE",
-  source: "MANUAL",
-  enrolledAt,
-  completedAt: null,
-  expiresAt,
-};
-
-function directEnrollment(userId: string) {
-  return { userId, ...mirrored };
-}
-
 function createDatabase(input: {
-  direct: ReturnType<typeof directEnrollment>[];
   defaultCohort: { id: string } | null;
+  membershipExists: boolean;
 }) {
   let defaultCohort = input.defaultCohort;
   const calls = {
     cohortCreates: [] as unknown[],
     membershipCreates: [] as unknown[],
     membershipUpdates: [] as unknown[],
-    membershipDeletes: [] as unknown[],
   };
   const db = {
     course: {
@@ -46,37 +32,32 @@ function createDatabase(input: {
         return Promise.resolve({ count: 1 });
       },
     },
-    courseEnrollment: {
-      findMany: () => Promise.resolve(input.direct),
-    },
     cohortEnrollment: {
-      createMany: (args: { data: unknown[] }) => {
-        calls.membershipCreates.push(...args.data);
-        return Promise.resolve({ count: args.data.length });
+      createMany: (args: { data: unknown }) => {
+        calls.membershipCreates.push(args.data);
+        return Promise.resolve({ count: input.membershipExists ? 0 : 1 });
       },
       updateMany: (args: unknown) => {
         calls.membershipUpdates.push(args);
         return Promise.resolve({ count: 1 });
       },
-      deleteMany: (args: unknown) => {
-        calls.membershipDeletes.push(args);
-        return Promise.resolve({ count: 1 });
-      },
+      findUniqueOrThrow: () => Promise.resolve({ id: "membership-1" }),
     },
   } as unknown as Prisma.TransactionClient;
   return { db, calls };
 }
 
-describe("default cohort sync", () => {
-  test("creates the default cohort and mirrors a direct enrollment", async () => {
+describe("default cohort membership", () => {
+  test("creates the default cohort and joins a new learner", async () => {
     const { db, calls } = createDatabase({
-      direct: [directEnrollment("user-1")],
       defaultCohort: null,
+      membershipExists: false,
     });
 
-    await syncDefaultCohortEnrollments(db, {
+    await upsertDefaultCohortEnrollment(db, {
       courseId: "course-1",
-      userIds: ["user-1"],
+      userId: "user-1",
+      create: { status: "ACTIVE", source: "MANUAL", expiresAt },
     });
 
     expect(calls.cohortCreates).toEqual([
@@ -89,47 +70,52 @@ describe("default cohort sync", () => {
       },
     ]);
     expect(calls.membershipCreates).toEqual([
-      { cohortId: "default-cohort", userId: "user-1", ...mirrored },
-    ]);
-    expect(calls.membershipUpdates).toEqual([
       {
-        where: { cohortId: "default-cohort", userId: "user-1" },
-        data: mirrored,
+        cohortId: "default-cohort",
+        userId: "user-1",
+        status: "ACTIVE",
+        source: "MANUAL",
+        expiresAt,
       },
     ]);
-    expect(calls.membershipDeletes).toEqual([]);
+    expect(calls.membershipUpdates).toEqual([]);
   });
 
-  test("removes memberships no longer backed by a direct enrollment", async () => {
+  test("updates an existing membership with the update data", async () => {
     const { db, calls } = createDatabase({
-      direct: [directEnrollment("user-1")],
       defaultCohort: { id: "default-cohort" },
+      membershipExists: true,
     });
 
-    await syncDefaultCohortEnrollments(db, {
+    await upsertDefaultCohortEnrollment(db, {
       courseId: "course-1",
-      userIds: ["user-1", "user-2"],
+      userId: "user-1",
+      create: { status: "ACTIVE", source: "INVITE" },
+      update: { status: "COMPLETED" },
     });
 
     expect(calls.cohortCreates).toEqual([]);
-    expect(calls.membershipDeletes).toEqual([
-      { where: { cohortId: "default-cohort", userId: { in: ["user-2"] } } },
+    expect(calls.membershipUpdates).toEqual([
+      {
+        where: { cohortId: "default-cohort", userId: "user-1" },
+        data: { status: "COMPLETED" },
+      },
     ]);
   });
 
-  test("does not create a default cohort without direct enrollments", async () => {
-    const { db, calls } = createDatabase({ direct: [], defaultCohort: null });
+  test("leaves an existing membership alone when the update is empty", async () => {
+    const { db, calls } = createDatabase({
+      defaultCohort: { id: "default-cohort" },
+      membershipExists: true,
+    });
 
-    await syncDefaultCohortEnrollments(db, {
+    await upsertDefaultCohortEnrollment(db, {
       courseId: "course-1",
-      userIds: ["user-1"],
+      userId: "user-1",
+      create: { status: "ACTIVE", source: "FOUNDATION" },
+      update: {},
     });
 
-    expect(calls).toEqual({
-      cohortCreates: [],
-      membershipCreates: [],
-      membershipUpdates: [],
-      membershipDeletes: [],
-    });
+    expect(calls.membershipUpdates).toEqual([]);
   });
 });

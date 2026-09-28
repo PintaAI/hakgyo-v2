@@ -10,7 +10,7 @@ import {
 } from "~/lib/access";
 import { getSession } from "~/server/better-auth/server";
 import { db } from "~/server/db";
-import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
+import { courseAccessMembershipWhere } from "~/server/enrollment/cohort-access";
 import { getSuperadminUser } from "~/server/authorization/superadmin";
 
 export const requireSession = cache(async () => {
@@ -44,31 +44,16 @@ export const getSignedInDestination = cache(async (userId: string) => {
     return getWorkspaceFallback(membership.organization.slug, membership.role);
   }
 
-  // Driven from the user's own enrollments (userId-indexed) rather than
+  // Driven from the user's own memberships (userId-indexed) rather than
   // evaluating enrollment subqueries against every published course.
-  const [directEnrollment, cohortEnrollment] = await Promise.all([
-    db.courseEnrollment.findFirst({
-      where: {
-        userId,
-        status: { in: ["ACTIVE", "COMPLETED"] },
-        source: { not: "COHORT" },
-        course: { status: "PUBLISHED" },
-      },
-      select: { id: true },
-    }),
-    db.cohortEnrollment.findFirst({
-      where: {
-        userId,
-        status: { in: ["ACTIVE", "COMPLETED"] },
-        cohort: {
-          ...accessGrantingCohortWhere(now),
-          course: { status: "PUBLISHED" },
-        },
-      },
-      select: { id: true },
-    }),
-  ]);
-  const enrollment = directEnrollment ?? cohortEnrollment;
+  const access = courseAccessMembershipWhere(userId, now);
+  const enrollment = await db.cohortEnrollment.findFirst({
+    where: {
+      ...access,
+      cohort: { ...access.cohort, course: { status: "PUBLISHED" } },
+    },
+    select: { id: true },
+  });
 
   return enrollment ? "/learn/courses" : routeAccess.signedInFallbackPath;
 });

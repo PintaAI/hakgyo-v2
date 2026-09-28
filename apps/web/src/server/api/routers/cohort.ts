@@ -12,10 +12,6 @@ import {
 import { getOrganizationCohortScope } from "~/server/authorization/cohort-scope";
 import { Prisma } from "../../../../generated/prisma/client";
 import { db } from "~/server/db";
-import {
-  grantCohortCourseAccessForUsers,
-  reconcileCohortCourseAccess,
-} from "~/server/enrollment/cohort-access";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 import {
   createZoomMeeting,
@@ -400,7 +396,7 @@ export const cohortRouter = createTRPCRouter({
   update: protectedProcedure
     .input(cohortFields.partial().extend({ cohortId: id }))
     .mutation(async ({ ctx, input }) => {
-      const cohort = await requireCohortPermission({
+      await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "update",
         userId: ctx.actorUserId,
@@ -415,33 +411,16 @@ export const cohortRouter = createTRPCRouter({
           return updated;
         }
 
-        const enrollments = await tx.cohortEnrollment.findMany({
-          where: {
-            cohortId,
-            status: { in: ["ACTIVE", "COMPLETED"] },
-          },
-          select: { userId: true },
-        });
-        const userIds = enrollments.map(({ userId }) => userId);
+        // Invites only join a running group; course access itself follows
+        // the cohort status (see cohort-access.ts).
         const now = new Date();
-        const grantsAccess =
+        const live =
           (updated.status === "OPEN" || updated.status === "IN_PROGRESS") &&
           (updated.endsAt === null || updated.endsAt > now);
-        if (grantsAccess) {
-          await grantCohortCourseAccessForUsers(tx, {
-            courseId: cohort.courseId,
-            userIds,
-            now,
-          });
-        } else {
+        if (!live) {
           await tx.enrollmentInvite.updateMany({
             where: { cohortId, revokedAt: null },
-            data: { revokedAt: new Date() },
-          });
-          await reconcileCohortCourseAccess(tx, {
-            courseId: cohort.courseId,
-            userIds,
-            now,
+            data: { revokedAt: now },
           });
         }
         return updated;
@@ -450,24 +429,16 @@ export const cohortRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ cohortId: id }))
     .mutation(async ({ ctx, input }) => {
-      const cohort = await requireCohortPermission({
+      await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "delete",
         userId: ctx.actorUserId,
       });
       await ctx.db.$transaction(async (tx) => {
-        const enrollments = await tx.cohortEnrollment.findMany({
-          where: { cohortId: input.cohortId },
-          select: { userId: true },
-        });
         await tx.cohortEnrollment.deleteMany({
           where: { cohortId: input.cohortId },
         });
         await tx.cohort.delete({ where: { id: input.cohortId } });
-        await reconcileCohortCourseAccess(tx, {
-          courseId: cohort.courseId,
-          userIds: enrollments.map(({ userId }) => userId),
-        });
       });
       return { deleted: true };
     }),

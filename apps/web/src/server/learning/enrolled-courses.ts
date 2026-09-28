@@ -1,12 +1,10 @@
 import type { Prisma } from "../../../generated/prisma/client";
-import { activeEnrollmentStatuses } from "~/server/authorization";
-import { db } from "~/server/db";
-import { getActiveCohortCourseIds } from "~/server/learning/course-outline";
+import { getAccessibleCourseIds } from "~/server/learning/course-outline";
 
-// Published courses the learner can study right now: a live direct enrollment
-// or an active enrollment in a cohort that still grants access.
+// Published courses the learner can study right now through a cohort
+// membership that grants access.
 //
-// The candidate course ids are resolved from the learner's own enrollments
+// The candidate course ids are resolved from the learner's own memberships
 // first (userId-indexed), so the course query never has to evaluate
 // enrollment subqueries against every published course.
 export async function enrolledCourseWhere(input: {
@@ -14,21 +12,10 @@ export async function enrolledCourseWhere(input: {
   organizationId?: string;
   now?: Date;
 }): Promise<Prisma.CourseWhereInput> {
-  const now = input.now ?? new Date();
-  const [directEnrollments, cohortCourseIds] = await Promise.all([
-    db.courseEnrollment.findMany({
-      where: {
-        userId: input.userId,
-        status: { in: [...activeEnrollmentStatuses] },
-        source: { not: "COHORT" },
-        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-      },
-      select: { courseId: true },
-    }),
-    getActiveCohortCourseIds(input.userId, now),
-  ]);
-  const courseIds = new Set(cohortCourseIds);
-  for (const { courseId } of directEnrollments) courseIds.add(courseId);
+  const courseIds = await getAccessibleCourseIds(
+    input.userId,
+    input.now ?? new Date(),
+  );
   return {
     id: { in: [...courseIds] },
     organizationId: input.organizationId,

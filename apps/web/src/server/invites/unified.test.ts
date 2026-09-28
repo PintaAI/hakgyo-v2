@@ -67,13 +67,13 @@ function database(input: {
                       ],
                     },
                   ],
-                  _count: { enrollments: 12 },
                 },
                 cohort: input.enrollment.cohort ?? null,
               }
             : null,
         ),
     },
+    user: { count: () => Promise.resolve(12) },
   } as unknown as Prisma.DefaultPrismaClient;
 }
 

@@ -2,14 +2,13 @@ import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
 import {
-  activeEnrollmentStatuses,
   requireCohortPermission,
   requireContentAuthor,
   requireCourseItemAccess,
   requireCoursePermission,
 } from "~/server/authorization";
 import { assertAssessmentNotLive } from "~/server/assessment/live-status";
-import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
+import { courseAccessWhere } from "~/server/enrollment/cohort-access";
 
 type DatabaseClient = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
@@ -76,31 +75,7 @@ export async function requireInProgressAttemptAccess(
       module: {
         course: {
           status: "PUBLISHED",
-          OR: [
-            {
-              enrollments: {
-                some: {
-                  userId,
-                  status: { in: [...activeEnrollmentStatuses] },
-                  source: { not: "COHORT" },
-                  OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-                },
-              },
-            },
-            {
-              cohorts: {
-                some: {
-                  ...accessGrantingCohortWhere(now),
-                  enrollments: {
-                    some: {
-                      userId,
-                      status: { in: [...activeEnrollmentStatuses] },
-                    },
-                  },
-                },
-              },
-            },
-          ],
+          ...courseAccessWhere(userId, now),
         },
       },
     },

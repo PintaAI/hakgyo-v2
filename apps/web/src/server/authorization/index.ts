@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma } from "../../../generated/prisma/client";
 import { EnrollmentStatus } from "../../../generated/prisma/enums";
 import { db } from "~/server/db";
-import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
+import { courseAccessCohortWhere } from "~/server/enrollment/cohort-access";
 import { getCourseOutlineForUser } from "~/server/learning/course-outline";
 import { memoizeForRequest } from "~/server/request-cache";
 import {
@@ -311,30 +311,12 @@ async function loadCourseItemAccess(input: {
                 select: { id: true },
                 take: 1,
               },
-              enrollments: {
-                where: {
-                  userId: input.userId,
-                  status: { in: [...activeEnrollmentStatuses] },
-                  source: { not: "COHORT" },
-                  OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-                },
-                select: { id: true },
-                take: 1,
-              },
-              // Active cohort enrollment, folded in as a filtered count
-              // because `cohorts` is already selected for staff scope.
+              // Cohort membership granting access, folded in as a filtered
+              // count because `cohorts` is already selected for staff scope.
               _count: {
                 select: {
                   cohorts: {
-                    where: {
-                      ...accessGrantingCohortWhere(now),
-                      enrollments: {
-                        some: {
-                          userId: input.userId,
-                          status: { in: [...activeEnrollmentStatuses] },
-                        },
-                      },
-                    },
+                    where: courseAccessCohortWhere(input.userId, now),
                   },
                 },
               },
@@ -357,8 +339,7 @@ async function loadCourseItemAccess(input: {
   };
   const allowed = canAccessLearningContent({
     ...scope,
-    hasActiveEnrollment:
-      course.enrollments.length > 0 || course._count.cohorts > 0,
+    hasActiveEnrollment: course._count.cohorts > 0,
     isCoursePublished: course.status === "PUBLISHED",
     isItemPublished: item.isPublished,
   });

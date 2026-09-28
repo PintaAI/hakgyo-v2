@@ -191,7 +191,7 @@ Student dapat membuka learning content jika seluruh kondisi berikut terpenuhi:
 
 1. Course berstatus `PUBLISHED`.
 2. Course item berstatus published.
-3. Memiliki enrollment `ACTIVE` atau `COMPLETED` yang belum expired, atau cohort enrollment aktif.
+3. Memiliki keanggotaan cohort `ACTIVE` atau `COMPLETED` yang belum expired, di cohort berstatus `OPEN`, `IN_PROGRESS`, atau `COMPLETED` (termasuk cohort default belajar mandiri).
 4. Untuk mode `SEQUENTIAL`, module item tersebut sudah unlocked.
 
 Mode progression:
@@ -1036,7 +1036,7 @@ mutation({ cohortId: string; meetingId: string }): { deleted: true }
 ### `enrollment.enrollOpenCourse`
 
 ```ts
-mutation({ courseId: string }): CourseEnrollment
+mutation({ courseId: string }): CohortEnrollment
 ```
 
 - Auth: protected student/user.
@@ -1045,20 +1045,21 @@ mutation({ courseId: string }): CourseEnrollment
   `organization.defaultEnrollmentMode` bila override course bernilai `null`.
 - Hanya course gratis (`price === 0`) yang dapat didaftarkan karena payment belum
   tersedia. Course berbayar menghasilkan `PRECONDITION_FAILED`.
-- Enrollment baru langsung `ACTIVE` dengan source `OPEN`.
-- Idempotent untuk enrollment `ACTIVE`/`COMPLETED` yang masih berlaku.
-- Enrollment dengan source `COHORT` diubah menjadi `OPEN` ketika learner
-  mengambil open enrollment agar pembatalan cohort tidak mencabut akses mandiri.
-- Enrollment yang expired, pending, atau cancelled diaktifkan kembali sebagai
+- Learner masuk ke cohort default (belajar mandiri) course dengan status
+  `ACTIVE` dan source `OPEN`.
+- Idempotent untuk keanggotaan `ACTIVE`/`COMPLETED` yang masih berlaku.
+- Keanggotaan yang expired, pending, atau cancelled diaktifkan kembali sebagai
   `ACTIVE`, source `OPEN`, tanpa expiry.
 
 ### `enrollment.listCourseEnrollments`
 
 ```ts
-query({ courseId: string }): CourseEnrollmentWithUser[]
+query({ courseId: string }): CohortEnrollmentWithUser[]
 ```
 
 - Scope: pengelola course.
+- Berisi anggota cohort default (belajar mandiri). Siswa Group belajar ada di
+  `listCohortEnrollments`.
 
 ### `enrollment.listCohortEnrollments`
 
@@ -1076,15 +1077,15 @@ mutation({
   email: string;
   status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
   expiresAt?: Date | null;
-}): CourseEnrollment
+}): CohortEnrollment
 ```
 
 - Scope: pengelola course.
 - Email dinormalisasi ke lowercase dan harus cocok dengan akun Hakgyo yang sudah ada.
 - Akun yang tidak ditemukan menghasilkan `NOT_FOUND`.
-- Enrollment baru memakai source `MANUAL`.
+- Menulis keanggotaan cohort default; keanggotaan baru memakai source `MANUAL`.
 - `completedAt` diisi saat status `COMPLETED`.
-- Enrollment expired tidak memberi akses learning content.
+- Keanggotaan expired tidak memberi akses learning content.
 
 ### `enrollment.setCohortEnrollment`
 
@@ -1153,14 +1154,19 @@ mutation({ inviteId: string }): { id: string; revokedAt: Date }
 #### `enrollment.redeemInvite`
 
 ```ts
-mutation({ token: string }): CourseEnrollment | CohortEnrollment
+mutation({ token: string }): {
+  type: "COURSE" | "COHORT";
+  courseId: string;
+  cohortId: string | null;
+}
 ```
 
 - Auth: protected student/user.
 - Token panjang 20..200.
 - Memvalidasi expiry, revoked state, dan max uses.
 - Atomic/serializable; aman terhadap redeem bersamaan.
-- Membuat course enrollment aktif dan cohort enrollment bila invite cohort.
+- Invite cohort membuat keanggotaan aktif di cohort tersebut; invite course
+  membuat keanggotaan di cohort default (belajar mandiri).
 
 ---
 

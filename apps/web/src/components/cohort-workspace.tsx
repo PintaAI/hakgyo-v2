@@ -960,9 +960,9 @@ function Learners({
               Hapus {removing?.user.name} dari Group belajar?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Siswa akan dikeluarkan dari Group belajar ini. Akses course yang
-              berasal dari Group belajar juga akan dicabut jika siswa tidak
-              memiliki Group belajar aktif lain untuk course yang sama.
+              Siswa akan dikeluarkan dari Group belajar ini dan kehilangan akses
+              course yang berasal dari group ini. Akses lewat Group belajar lain
+              atau belajar mandiri pada course yang sama tetap berlaku.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

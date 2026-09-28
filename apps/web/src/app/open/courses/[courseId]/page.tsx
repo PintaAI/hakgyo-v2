@@ -6,6 +6,7 @@ import { env } from "~/env";
 import { appHandoffPath } from "~/lib/mobile-app";
 import { getSession } from "~/server/better-auth/server";
 import { db } from "~/server/db";
+import { courseAccessWhere } from "~/server/enrollment/cohort-access";
 
 export const metadata: Metadata = {
   title: "Lanjut di aplikasi Hakgyo",
@@ -31,12 +32,7 @@ export default async function OpenCoursePage({
   const [course, accounts] = userId
     ? await Promise.all([
         db.course.findFirst({
-          where: {
-            id: courseId,
-            enrollments: {
-              some: { userId, status: { in: ["ACTIVE", "COMPLETED"] } },
-            },
-          },
+          where: { id: courseId, ...courseAccessWhere(userId, new Date()) },
           select: {
             title: true,
             thumbnailUrl: true,

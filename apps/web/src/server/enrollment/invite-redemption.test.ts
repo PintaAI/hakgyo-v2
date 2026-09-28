@@ -113,15 +113,19 @@ describe("invite redemption", () => {
 
   test("does not consume a use when the learner is already enrolled", async () => {
     const { tx, getUseCount } = createTransaction();
-    const upserts: unknown[] = [];
+    const writes: unknown[] = [];
     Object.assign(tx, {
       $executeRaw: () => Promise.resolve(1),
-      courseEnrollment: {
-        findUnique: () =>
-          Promise.resolve({ id: "enrollment-1", status: "ACTIVE" }),
-        upsert: (args: unknown) => {
-          upserts.push(args);
-          return Promise.resolve({});
+      cohortEnrollment: {
+        findFirst: () =>
+          Promise.resolve({
+            id: "membership-1",
+            status: "ACTIVE",
+            expiresAt: null,
+          }),
+        createMany: (args: unknown) => {
+          writes.push(args);
+          return Promise.resolve({ count: 1 });
         },
       },
     });
@@ -137,40 +141,24 @@ describe("invite redemption", () => {
       cohortId: null,
     });
     expect(getUseCount()).toBe(0);
-    expect(upserts).toHaveLength(0);
+    expect(writes).toHaveLength(0);
   });
 
-  test("consumes a use and enrolls a new learner", async () => {
+  test("consumes a use and joins the course's default cohort", async () => {
     const { tx, getUseCount } = createTransaction();
-    const upserts: unknown[] = [];
     const memberships: unknown[] = [];
-    const enrollment = {
-      userId: "user-1",
-      status: "ACTIVE",
-      source: "INVITE",
-      enrolledAt: now,
-      completedAt: null,
-      expiresAt: null,
-    };
     Object.assign(tx, {
       $executeRaw: () => Promise.resolve(1),
-      courseEnrollment: {
-        findUnique: () => Promise.resolve(null),
-        findMany: () => Promise.resolve([enrollment]),
-        upsert: (args: unknown) => {
-          upserts.push(args);
-          return Promise.resolve({});
-        },
-      },
       cohort: {
         findUnique: () => Promise.resolve({ id: "default-cohort" }),
       },
       cohortEnrollment: {
-        createMany: (args: { data: unknown[] }) => {
-          memberships.push(...args.data);
+        findFirst: () => Promise.resolve(null),
+        createMany: (args: { data: unknown }) => {
+          memberships.push(args.data);
           return Promise.resolve({ count: 1 });
         },
-        updateMany: () => Promise.resolve({ count: 1 }),
+        findUniqueOrThrow: () => Promise.resolve({ id: "membership-1" }),
       },
     });
 
@@ -180,9 +168,15 @@ describe("invite redemption", () => {
       now,
     });
     expect(getUseCount()).toBe(1);
-    expect(upserts).toHaveLength(1);
     expect(memberships).toEqual([
-      { cohortId: "default-cohort", ...enrollment },
+      {
+        cohortId: "default-cohort",
+        userId: "user-1",
+        status: "ACTIVE",
+        source: "INVITE",
+        completedAt: null,
+        expiresAt: null,
+      },
     ]);
   });
 });

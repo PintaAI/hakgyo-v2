@@ -506,14 +506,6 @@ describe.skipIf(!enabled)("mobile sync compose ≙ online procedures", () => {
     });
     // Module 3 stays empty.
 
-    await db.courseEnrollment.create({
-      data: {
-        courseId: fixtureCourseId,
-        userId: SEED_STUDENT_ID,
-        status: "ACTIVE",
-        source: "OPEN",
-      },
-    });
     await db.cohort.create({
       data: {
         id: fixtureId("cohort"),
@@ -635,9 +627,6 @@ describe.skipIf(!enabled)("mobile sync compose ≙ online procedures", () => {
     });
     await db.cohortEnrollment.deleteMany({ where: { cohortId: inFixture } });
     await db.cohort.deleteMany({ where: { id: inFixture } });
-    await db.courseEnrollment.deleteMany({
-      where: { courseId: fixtureCourseId },
-    });
     await db.courseItem.deleteMany({ where: { id: inFixture } });
     await db.courseModule.deleteMany({ where: { id: inFixture } });
     await db.course.deleteMany({ where: { id: fixtureCourseId } });
@@ -687,20 +676,11 @@ describe.skipIf(!enabled)("mobile sync compose ≙ online procedures", () => {
 
   async function enrolledCourseIds() {
     const { db } = modules;
-    const [direct, cohorts] = await Promise.all([
-      db.courseEnrollment.findMany({
-        where: { userId: SEED_STUDENT_ID, status: "ACTIVE" },
-        select: { courseId: true },
-      }),
-      db.cohortEnrollment.findMany({
-        where: { userId: SEED_STUDENT_ID, status: "ACTIVE" },
-        select: { cohort: { select: { courseId: true } } },
-      }),
-    ]);
-    const ids = new Set([
-      ...direct.map((entry) => entry.courseId),
-      ...cohorts.map((entry) => entry.cohort.courseId),
-    ]);
+    const memberships = await db.cohortEnrollment.findMany({
+      where: { userId: SEED_STUDENT_ID, status: "ACTIVE" },
+      select: { cohort: { select: { courseId: true } } },
+    });
+    const ids = new Set(memberships.map((entry) => entry.cohort.courseId));
     const published = await db.course.findMany({
       where: { id: { in: [...ids] }, status: "PUBLISHED" },
       select: { id: true },

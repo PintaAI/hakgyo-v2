@@ -11,12 +11,11 @@ import { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userSearchWhere } from "~/server/api/user-search";
 import {
-  activeEnrollmentStatuses,
   requireOrganizationMembership,
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
-import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
+import { courseAccessWhere } from "~/server/enrollment/cohort-access";
 import { generateOrganizationTheme } from "~/server/ai/organization-theme";
 import { fetchStats } from "~/server/foundation/fetch-stats";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
@@ -261,31 +260,7 @@ export const organizationRouter = createTRPCRouter({
           where: {
             organizationId: input.organizationId,
             status: "PUBLISHED",
-            OR: [
-              {
-                enrollments: {
-                  some: {
-                    userId: ctx.actorUserId,
-                    status: { in: [...activeEnrollmentStatuses] },
-                    source: { not: "COHORT" },
-                    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-                  },
-                },
-              },
-              {
-                cohorts: {
-                  some: {
-                    ...accessGrantingCohortWhere(now),
-                    enrollments: {
-                      some: {
-                        userId: ctx.actorUserId,
-                        status: { in: [...activeEnrollmentStatuses] },
-                      },
-                    },
-                  },
-                },
-              },
-            ],
+            ...courseAccessWhere(ctx.actorUserId, now),
           },
           select: { id: true },
         });
@@ -328,31 +303,7 @@ export const organizationRouter = createTRPCRouter({
               courses: {
                 some: {
                   status: "PUBLISHED",
-                  OR: [
-                    {
-                      enrollments: {
-                        some: {
-                          userId: ctx.actorUserId,
-                          status: { in: [...activeEnrollmentStatuses] },
-                          source: { not: "COHORT" },
-                          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-                        },
-                      },
-                    },
-                    {
-                      cohorts: {
-                        some: {
-                          ...accessGrantingCohortWhere(now),
-                          enrollments: {
-                            some: {
-                              userId: ctx.actorUserId,
-                              status: { in: [...activeEnrollmentStatuses] },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  ],
+                  ...courseAccessWhere(ctx.actorUserId, now),
                 },
               },
             },
@@ -868,9 +819,9 @@ export const organizationRouter = createTRPCRouter({
           where: { ...organizationScope, defaultForCourseId: null },
           _count: { _all: true },
         }),
-        ctx.db.courseEnrollment.groupBy({
+        ctx.db.cohortEnrollment.groupBy({
           by: ["status"],
-          where: { course: organizationScope },
+          where: { cohort: organizationScope },
           _count: { _all: true },
         }),
       ]);

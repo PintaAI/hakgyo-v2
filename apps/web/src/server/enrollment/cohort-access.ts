@@ -1,103 +1,55 @@
 import type { Prisma } from "../../../generated/prisma/client";
-import { syncDefaultCohortEnrollments } from "~/server/enrollment/default-cohort";
 
-export const accessGrantingCohortStatuses = ["OPEN", "IN_PROGRESS"] as const;
+// Course access comes only from cohort memberships. Learners who study
+// without a class belong to the course's default self-paced cohort
+// (see default-cohort.ts).
+
+export const liveCohortStatuses = ["OPEN", "IN_PROGRESS"] as const;
 
 /**
- * Class cohorts whose memberships currently grant course access. Default
- * self-paced cohorts are excluded while direct course enrollments still
- * grant that access.
+ * Cohorts whose members may study the course: the default cohort, and class
+ * cohorts that are open, running or completed. Learners keep the material
+ * after their class ends; draft and cancelled cohorts grant nothing.
  */
-export function accessGrantingCohortWhere(now: Date) {
+export const courseAccessCohortStatuses = [
+  "OPEN",
+  "IN_PROGRESS",
+  "COMPLETED",
+] as const;
+
+const accessMembershipStatuses = ["ACTIVE", "COMPLETED"] as const;
+
+/** Class cohorts running now: schedules, meetings and attempt attribution. */
+export function liveClassCohortWhere(now: Date) {
   return {
     defaultForCourseId: null,
-    status: { in: [...accessGrantingCohortStatuses] },
+    status: { in: [...liveCohortStatuses] },
     OR: [{ endsAt: null }, { endsAt: { gt: now } }],
   } satisfies Prisma.CohortWhereInput;
 }
 
-export async function grantCohortCourseAccessForUsers(
-  tx: Prisma.TransactionClient,
-  input: { courseId: string; userIds: string[]; now?: Date },
-) {
-  const now = input.now ?? new Date();
-  const userIds = [...new Set(input.userIds)];
-  if (userIds.length === 0) return;
-
-  await tx.courseEnrollment.createMany({
-    data: userIds.map((userId) => ({
-      courseId: input.courseId,
-      userId,
-      status: "ACTIVE" as const,
-      source: "COHORT" as const,
-    })),
-    skipDuplicates: true,
-  });
-  await tx.courseEnrollment.updateMany({
-    where: {
-      courseId: input.courseId,
-      userId: { in: userIds },
-      OR: [
-        { source: "COHORT" },
-        { status: { in: ["PENDING", "CANCELLED"] } },
-        { expiresAt: { lte: now } },
-      ],
-    },
-    data: {
-      status: "ACTIVE",
-      source: "COHORT",
-      completedAt: null,
-      expiresAt: null,
-    },
-  });
-  // Lapsed direct enrollments taken over above no longer back a
-  // default cohort membership.
-  await syncDefaultCohortEnrollments(tx, { courseId: input.courseId, userIds });
+/** The learner's memberships that currently grant course access. */
+export function courseAccessMembershipWhere(userId: string, now: Date) {
+  return {
+    userId,
+    status: { in: [...accessMembershipStatuses] },
+    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    cohort: { status: { in: [...courseAccessCohortStatuses] } },
+  } satisfies Prisma.CohortEnrollmentWhereInput;
 }
 
-export async function reconcileCohortCourseAccess(
-  tx: Prisma.TransactionClient,
-  input: { courseId: string; userIds: string[]; now?: Date },
-) {
-  const now = input.now ?? new Date();
-  const userIds = [...new Set(input.userIds)];
-  if (userIds.length === 0) return;
-
-  const otherAccess = await tx.cohortEnrollment.findMany({
-    where: {
-      userId: { in: userIds },
-      status: { in: ["ACTIVE", "COMPLETED"] },
-      cohort: { courseId: input.courseId, ...accessGrantingCohortWhere(now) },
-    },
-    select: { userId: true },
-    distinct: ["userId"],
-  });
-  const usersWithOtherAccess = new Set(otherAccess.map(({ userId }) => userId));
-  const usersToRevoke = userIds.filter(
-    (userId) => !usersWithOtherAccess.has(userId),
-  );
-  if (usersToRevoke.length === 0) return;
-
-  await tx.courseEnrollment.updateMany({
-    where: {
-      courseId: input.courseId,
-      userId: { in: usersToRevoke },
-      source: "COHORT",
-    },
-    data: { status: "CANCELLED", completedAt: null },
-  });
+/** Cohorts through which the learner currently has course access. */
+export function courseAccessCohortWhere(userId: string, now: Date) {
+  const { cohort, ...membership } = courseAccessMembershipWhere(userId, now);
+  return {
+    ...cohort,
+    enrollments: { some: membership },
+  } satisfies Prisma.CohortWhereInput;
 }
 
-export async function removeCohortEnrollmentAndReconcile(
-  tx: Prisma.TransactionClient,
-  input: { cohortId: string; courseId: string; userId: string },
-) {
-  const removed = await tx.cohortEnrollment.deleteMany({
-    where: { cohortId: input.cohortId, userId: input.userId },
-  });
-  await reconcileCohortCourseAccess(tx, {
-    courseId: input.courseId,
-    userIds: [input.userId],
-  });
-  return removed;
+/** Course filter: the learner has a membership granting access to it. */
+export function courseAccessWhere(userId: string, now: Date) {
+  return {
+    cohorts: { some: courseAccessCohortWhere(userId, now) },
+  } satisfies Prisma.CourseWhereInput;
 }

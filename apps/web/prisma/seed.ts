@@ -4,7 +4,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { hashPassword } from "better-auth/crypto";
 
 import { PrismaClient } from "../generated/prisma/client";
-import { syncDefaultCohortEnrollments } from "../src/server/enrollment/default-cohort";
+import { upsertDefaultCohortEnrollment } from "../src/server/enrollment/default-cohort";
 import {
   HAKGYO_SYSTEM_ORGANIZATION_ID,
   HANGEUL_MASTERY_COURSE_ID,
@@ -199,19 +199,14 @@ async function main() {
     },
   });
 
-  await db.courseEnrollment.createMany({
-    data: [owner, teacher, student, systemOwner].map(({ id }) => ({
+  for (const { id } of [owner, teacher, student, systemOwner]) {
+    await upsertDefaultCohortEnrollment(db, {
       courseId: hangeulMasteryCourse.id,
       userId: id,
-      source: "FOUNDATION" as const,
-      status: "ACTIVE" as const,
-    })),
-    skipDuplicates: true,
-  });
-  await syncDefaultCohortEnrollments(db, {
-    courseId: hangeulMasteryCourse.id,
-    userIds: [owner, teacher, student, systemOwner].map(({ id }) => id),
-  });
+      create: { source: "FOUNDATION", status: "ACTIVE" },
+      update: {},
+    });
+  }
 
   const organization = await db.organization.upsert({
     where: { slug: "hakgyo-academy" },
@@ -618,30 +613,20 @@ async function main() {
     },
   });
 
-  await db.courseEnrollment.upsert({
-    where: { courseId_userId: { courseId: course.id, userId: student.id } },
-    update: { source: "OPEN", status: "ACTIVE" },
-    create: {
-      id: "seed-course-enrollment-student",
-      courseId: course.id,
-      userId: student.id,
-      source: "OPEN",
-      status: "ACTIVE",
-    },
-  });
-  await syncDefaultCohortEnrollments(db, {
+  await upsertDefaultCohortEnrollment(db, {
     courseId: course.id,
-    userIds: [student.id],
+    userId: student.id,
+    create: { source: "OPEN", status: "ACTIVE" },
   });
 
   await db.cohortEnrollment.upsert({
     where: { cohortId_userId: { cohortId: cohort.id, userId: student.id } },
-    update: { source: "COHORT", status: "ACTIVE" },
+    update: { source: "MANUAL", status: "ACTIVE" },
     create: {
       id: "seed-cohort-enrollment-student",
       cohortId: cohort.id,
       userId: student.id,
-      source: "COHORT",
+      source: "MANUAL",
       status: "ACTIVE",
     },
   });

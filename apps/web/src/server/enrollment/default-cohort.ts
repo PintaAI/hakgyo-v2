@@ -4,7 +4,7 @@ import type { Prisma } from "../../../generated/prisma/client";
 
 type DefaultCohortDb = Pick<
   Prisma.TransactionClient,
-  "course" | "cohort" | "courseEnrollment" | "cohortEnrollment"
+  "course" | "cohort" | "cohortEnrollment"
 >;
 
 export const DEFAULT_COHORT_NAME = "Belajar mandiri";
@@ -41,60 +41,38 @@ export async function ensureDefaultCohort(
   });
 }
 
+type DefaultMembershipData = Pick<
+  Prisma.CohortEnrollmentUncheckedCreateInput,
+  "status" | "source" | "completedAt" | "expiresAt"
+>;
+
 /**
- * Mirrors the learners' direct course enrollments into the course's default
- * cohort. Call after every write that can create, change or remove a direct
- * enrollment (any source except COHORT, which only shadows class cohort
- * memberships) so both records agree until access is read from cohorts alone.
+ * Creates or updates the learner's membership in the course's default
+ * cohort. `create` is used for a new membership and `update` (defaulting to
+ * `create`) for an existing one.
  */
-export async function syncDefaultCohortEnrollments(
+export async function upsertDefaultCohortEnrollment(
   db: DefaultCohortDb,
-  input: { courseId: string; userIds: string[] },
+  input: {
+    courseId: string;
+    userId: string;
+    create: DefaultMembershipData;
+    update?: Partial<DefaultMembershipData>;
+  },
 ) {
-  const userIds = [...new Set(input.userIds)];
-  if (userIds.length === 0) return;
-
-  const direct = await db.courseEnrollment.findMany({
-    where: {
-      courseId: input.courseId,
-      userId: { in: userIds },
-      source: { not: "COHORT" },
-    },
-    select: {
-      userId: true,
-      status: true,
-      source: true,
-      enrolledAt: true,
-      completedAt: true,
-      expiresAt: true,
-    },
-  });
-  const cohort =
-    direct.length > 0
-      ? await ensureDefaultCohort(db, input.courseId)
-      : await db.cohort.findUnique({
-          where: { defaultForCourseId: input.courseId },
-          select: { id: true },
-        });
-  if (!cohort) return;
-
-  const directUserIds = new Set(direct.map(({ userId }) => userId));
-  const removed = userIds.filter((userId) => !directUserIds.has(userId));
-  if (removed.length > 0) {
-    await db.cohortEnrollment.deleteMany({
-      where: { cohortId: cohort.id, userId: { in: removed } },
-    });
-  }
-  // createMany + updateMany instead of upsert so concurrent syncs of the same
+  const cohort = await ensureDefaultCohort(db, input.courseId);
+  const where = { cohortId: cohort.id, userId: input.userId };
+  // createMany + updateMany instead of upsert so concurrent joins of the same
   // learner cannot fail on the (cohortId, userId) unique constraint.
-  await db.cohortEnrollment.createMany({
-    data: direct.map((enrollment) => ({ cohortId: cohort.id, ...enrollment })),
+  const created = await db.cohortEnrollment.createMany({
+    data: { ...where, ...input.create },
     skipDuplicates: true,
   });
-  for (const { userId, ...enrollment } of direct) {
-    await db.cohortEnrollment.updateMany({
-      where: { cohortId: cohort.id, userId },
-      data: enrollment,
-    });
+  const update = input.update ?? input.create;
+  if (created.count === 0 && Object.keys(update).length > 0) {
+    await db.cohortEnrollment.updateMany({ where, data: update });
   }
+  return db.cohortEnrollment.findUniqueOrThrow({
+    where: { cohortId_userId: where },
+  });
 }

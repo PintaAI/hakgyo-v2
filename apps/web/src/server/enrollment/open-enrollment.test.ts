@@ -65,15 +65,6 @@ describe("open enrollment transitions", () => {
     ).toBeNull();
   });
 
-  test("converts a cohort entitlement into independent open access", () => {
-    expect(
-      getOpenEnrollmentUpdate(
-        { status: "COMPLETED", source: "COHORT", expiresAt: null },
-        now,
-      ),
-    ).toEqual({ source: "OPEN", expiresAt: null });
-  });
-
   test("reactivates expired, pending, and cancelled enrollments", () => {
     const expected = {
       status: "ACTIVE",
@@ -100,7 +91,7 @@ describe("open enrollment transitions", () => {
     ).toEqual(expected);
     expect(
       getOpenEnrollmentUpdate(
-        { status: "CANCELLED", source: "COHORT", expiresAt: null },
+        { status: "CANCELLED", source: "OPEN", expiresAt: null },
         now,
       ),
     ).toEqual(expected);

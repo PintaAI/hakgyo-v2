@@ -1392,7 +1392,9 @@ function LearnersSection({
         onWorkspaceChange(),
       ]);
       setRemoving(null);
-      toast.success(`Siswa ${enrollment.user.name} dihapus dari course.`);
+      toast.success(
+        `Siswa ${enrollment.user.name} dihapus dari belajar mandiri.`,
+      );
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -1406,7 +1408,8 @@ function LearnersSection({
             Siswa
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Pantau entitlement dan status belajar seluruh siswa.
+            Siswa yang belajar mandiri tanpa Group belajar. Siswa Group belajar
+            dikelola di halaman group masing-masing.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1444,7 +1447,7 @@ function LearnersSection({
         <Card className="rounded-lg">
           <CardHeader className="gap-4 border-b sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
-              <CardTitle>Enrollment course</CardTitle>
+              <CardTitle>Belajar mandiri</CardTitle>
               <CardDescription>{data.length} siswa terdaftar</CardDescription>
             </div>
             <div className="relative w-full sm:w-64">
@@ -1672,11 +1675,12 @@ function LearnersSection({
               <Trash2Icon />
             </AlertDialogMedia>
             <AlertDialogTitle>
-              Hapus {removing?.user.name} dari course?
+              Hapus {removing?.user.name} dari belajar mandiri?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Siswa akan kehilangan akses ke course ini. Status enrollment lama
-              tidak dapat dipulihkan.
+              Akses belajar mandiri siswa ke course ini dicabut. Jika siswa
+              masih terdaftar di Group belajar course ini, aksesnya tetap
+              berlaku lewat group tersebut. Status lama tidak dapat dipulihkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
