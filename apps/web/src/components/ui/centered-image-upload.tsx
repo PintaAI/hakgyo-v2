@@ -1,17 +1,17 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type ReactNode,
-} from "react";
+import type { ReactNode } from "react";
 import Image from "next/image";
-import { ImageIcon, LoaderCircleIcon, Trash2Icon, UploadIcon } from "lucide-react";
+import {
+  ImageIcon,
+  LoaderCircleIcon,
+  Trash2Icon,
+  UploadIcon,
+} from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { useImageUpload } from "~/components/ui/use-image-upload";
 import { cn } from "~/lib/utils";
 
 type CenteredImageUploadProps = {
@@ -41,52 +41,9 @@ function CenteredImageUpload({
   uploadLabel = "Unggah gambar",
   replaceLabel = "Ganti gambar",
 }: CenteredImageUploadProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const previewUrlRef = useRef<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [action, setAction] = useState<"upload" | "remove" | null>(null);
+  const { action, imageUrl, inputRef, previewUrl, remove, selectFile } =
+    useImageUpload({ value, onUpload, onRemove });
   const disabled = busy || action !== null;
-
-  useEffect(() => {
-    return () => {
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    };
-  }, []);
-
-  async function selectFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    event.target.value = "";
-    if (!file) return;
-
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    const nextPreviewUrl = URL.createObjectURL(file);
-    previewUrlRef.current = nextPreviewUrl;
-    setPreviewUrl(nextPreviewUrl);
-    setAction("upload");
-
-    try {
-      await onUpload(file);
-    } finally {
-      if (previewUrlRef.current === nextPreviewUrl) {
-        URL.revokeObjectURL(nextPreviewUrl);
-        previewUrlRef.current = null;
-        setPreviewUrl(null);
-      }
-      setAction(null);
-    }
-  }
-
-  async function remove() {
-    if (!onRemove) return;
-    setAction("remove");
-    try {
-      await onRemove();
-    } finally {
-      setAction(null);
-    }
-  }
-
-  const imageUrl = previewUrl ?? value;
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -121,7 +78,7 @@ function CenteredImageUpload({
             disabled={disabled}
             onClick={() => void remove()}
             aria-label="Hapus gambar"
-            className="bg-destructive text-white absolute -top-2 -right-2 size-7 rounded-full shadow-md hover:bg-destructive/90 dark:bg-destructive dark:hover:bg-destructive/90 [&_svg]:text-white"
+            className="bg-destructive hover:bg-destructive/90 dark:bg-destructive dark:hover:bg-destructive/90 absolute -top-2 -right-2 size-7 rounded-full text-white shadow-md [&_svg]:text-white"
           >
             {action === "remove" ? (
               <LoaderCircleIcon className="size-3.5 animate-spin" />

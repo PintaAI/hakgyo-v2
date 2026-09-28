@@ -1,7 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import type { Prisma } from "../../../../generated/prisma/client";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { userSearchWhere } from "~/server/api/user-search";
 import {
   requireCohortPermission,
   requireCoursePermission,
@@ -13,7 +15,7 @@ import {
 import { withTransactionRetry } from "~/server/db-retry";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
 import { removeCohortEnrollmentAndReconcile } from "~/server/enrollment/cohort-access";
-import { pageInput, pageResult } from "~/server/api/pagination";
+import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 
 const id = z.string().min(1);
 const enrollmentStatus = z.enum([
@@ -40,6 +42,32 @@ function enrollmentTotals(
       : statusCounts.reduce((sum, group) => sum + group._count._all, 0),
     activeTotal: countFor("ACTIVE"),
   };
+}
+
+/** Cohort invites need `invites.manage` on the cohort; course invites need `course.manage`. */
+async function requireInviteManager(
+  database: Pick<Prisma.TransactionClient, "enrollmentInvite">,
+  inviteId: string,
+  userId: string,
+) {
+  const invite = await database.enrollmentInvite.findUnique({
+    where: { id: inviteId },
+    select: { courseId: true, cohortId: true },
+  });
+  if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
+  if (invite.cohortId) {
+    await requireCohortPermission({
+      cohortId: invite.cohortId,
+      permission: "invites.manage",
+      userId,
+    });
+  } else {
+    await requireCoursePermission({
+      courseId: invite.courseId,
+      permission: "course.manage",
+      userId,
+    });
+  }
 }
 
 export const enrollmentRouter = createTRPCRouter({
@@ -135,9 +163,7 @@ export const enrollmentRouter = createTRPCRouter({
         ctx.db.enrollmentInvite.findMany({
           where,
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
+          ...pageArgs(input),
           select: {
             id: true,
             cohortId: true,
@@ -223,35 +249,14 @@ export const enrollmentRouter = createTRPCRouter({
         courseId: input.courseId,
         status: input.status,
         ...(input.search
-          ? {
-              user: {
-                is: {
-                  OR: [
-                    {
-                      name: {
-                        contains: input.search,
-                        mode: "insensitive" as const,
-                      },
-                    },
-                    {
-                      email: {
-                        contains: input.search,
-                        mode: "insensitive" as const,
-                      },
-                    },
-                  ],
-                },
-              },
-            }
+          ? { user: { is: userSearchWhere(input.search) } }
           : {}),
       };
       const [items, statusCounts] = await Promise.all([
         ctx.db.courseEnrollment.findMany({
           where,
           orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
+          ...pageArgs(input),
           include: {
             user: {
               select: { id: true, name: true, email: true, image: true },
@@ -291,35 +296,14 @@ export const enrollmentRouter = createTRPCRouter({
         cohortId: input.cohortId,
         status: input.status,
         ...(input.search
-          ? {
-              user: {
-                is: {
-                  OR: [
-                    {
-                      name: {
-                        contains: input.search,
-                        mode: "insensitive" as const,
-                      },
-                    },
-                    {
-                      email: {
-                        contains: input.search,
-                        mode: "insensitive" as const,
-                      },
-                    },
-                  ],
-                },
-              },
-            }
+          ? { user: { is: userSearchWhere(input.search) } }
           : {}),
       };
       const [items, statusCounts] = await Promise.all([
         ctx.db.cohortEnrollment.findMany({
           where,
           orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
+          ...pageArgs(input),
           include: {
             user: {
               select: { id: true, name: true, email: true, image: true },
@@ -588,24 +572,7 @@ export const enrollmentRouter = createTRPCRouter({
   revokeInvite: protectedProcedure
     .input(z.object({ inviteId: id }))
     .mutation(async ({ ctx, input }) => {
-      const invite = await ctx.db.enrollmentInvite.findUnique({
-        where: { id: input.inviteId },
-        select: { courseId: true, cohortId: true },
-      });
-      if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
-      if (invite.cohortId) {
-        await requireCohortPermission({
-          cohortId: invite.cohortId,
-          permission: "invites.manage",
-          userId: ctx.actorUserId,
-        });
-      } else {
-        await requireCoursePermission({
-          courseId: invite.courseId,
-          permission: "course.manage",
-          userId: ctx.actorUserId,
-        });
-      }
+      await requireInviteManager(ctx.db, input.inviteId, ctx.actorUserId);
       return ctx.db.enrollmentInvite.update({
         where: { id: input.inviteId },
         data: { revokedAt: new Date() },
@@ -616,24 +583,7 @@ export const enrollmentRouter = createTRPCRouter({
   deleteInvite: protectedProcedure
     .input(z.object({ inviteId: id }))
     .mutation(async ({ ctx, input }) => {
-      const invite = await ctx.db.enrollmentInvite.findUnique({
-        where: { id: input.inviteId },
-        select: { courseId: true, cohortId: true },
-      });
-      if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
-      if (invite.cohortId) {
-        await requireCohortPermission({
-          cohortId: invite.cohortId,
-          permission: "invites.manage",
-          userId: ctx.actorUserId,
-        });
-      } else {
-        await requireCoursePermission({
-          courseId: invite.courseId,
-          permission: "course.manage",
-          userId: ctx.actorUserId,
-        });
-      }
+      await requireInviteManager(ctx.db, input.inviteId, ctx.actorUserId);
       return ctx.db.enrollmentInvite.delete({
         where: { id: input.inviteId },
         select: { id: true },

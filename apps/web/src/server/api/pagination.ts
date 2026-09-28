@@ -19,3 +19,12 @@ export function pageResult<T extends { id: string }>(
     ...(total === undefined ? {} : { total }),
   };
 }
+
+/** Prisma `take`/`cursor`/`skip` for `pageResult`: one extra row detects a next page. */
+export function pageArgs(input: { limit: number; cursor?: string }) {
+  return {
+    take: input.limit + 1,
+    cursor: input.cursor ? { id: input.cursor } : undefined,
+    skip: input.cursor ? 1 : undefined,
+  };
+}

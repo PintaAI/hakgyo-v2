@@ -1,30 +1,12 @@
 import { Stack } from "expo-router";
-import { Platform } from "react-native";
 
-import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+import { useTabStackScreenOptions } from "../../../../src/navigation/tab-stack-options";
 
 export default function HomeTabLayout() {
-  const { colors } = useAppTheme();
+  const screenOptions = useTabStackScreenOptions();
 
   return (
-    <Stack
-      screenOptions={{
-        contentStyle: { backgroundColor: colors.background },
-        // iOS 26+ supplies the native Liquid Glass header; older iOS versions
-        // progressively ignore scrollEdgeEffects and keep the same fallback.
-        headerShown: Platform.OS === "ios",
-        headerStyle: {
-          backgroundColor:
-            Platform.OS === "ios" ? "transparent" : colors.background,
-        },
-        headerTintColor: colors.foreground,
-        // No native large title: the greeting is rendered as a custom
-        // in-content title instead (the native size can't scale down).
-        headerLargeTitle: false,
-        headerTransparent: Platform.OS === "ios",
-        scrollEdgeEffects: Platform.OS === "ios" ? { top: "soft" } : undefined,
-      }}
-    >
+    <Stack screenOptions={screenOptions}>
       <Stack.Screen name="index" options={{ title: "Hari Ini" }} />
     </Stack>
   );

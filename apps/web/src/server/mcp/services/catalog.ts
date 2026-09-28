@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
+import { pageArgs } from "~/server/api/pagination";
 import { db } from "~/server/db";
 
 export async function listMcpCatalog(input: {
@@ -12,9 +13,7 @@ export async function listMcpCatalog(input: {
       status: "PUBLISHED",
       organizationId: input.organizationId,
     },
-    take: input.limit + 1,
-    cursor: input.cursor ? { id: input.cursor } : undefined,
-    skip: input.cursor ? 1 : undefined,
+    ...pageArgs(input),
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: {
       id: true,
