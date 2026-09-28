@@ -72,6 +72,21 @@ export function groupSyncNotices(notices: SyncNotice[]): SyncNoticeEntry[] {
   return entries;
 }
 
+/** Deep-link only when the changed item still exists in the latest outline. */
+export function contentNoticeItemId(
+  notice: CourseContentNotice,
+  outline?: { modules: Array<{ items: Array<{ id: string }> }> },
+): string | null {
+  const changed = [...notice.itemsAdded, ...notice.itemsUpdated];
+  if (notice.modulesAdded.length || changed.length !== 1) return null;
+  const id = changed[0]!.id;
+  return outline?.modules.some((module) =>
+    module.items.some((item) => item.id === id),
+  )
+    ? id
+    : null;
+}
+
 /**
  * Whether an unread Pembaruan indicator already stands for the notice, so
  * the bell does not count the same news twice.

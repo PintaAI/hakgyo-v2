@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import type { SyncNotice } from "../sync/notices";
 import {
+  contentNoticeItemId,
   countUpdatesBadge,
   describeSyncNotice,
   groupSyncNotices,
@@ -82,6 +83,29 @@ describe("groupSyncNotices", () => {
     expect(describeSyncNotice(entries[1]!.notice).detail).toBe(
       "1 bab baru · 1 aktivitas baru · 1 aktivitas diperbarui",
     );
+  });
+});
+
+describe("contentNoticeItemId", () => {
+  test("falls back to the course after a changed item was removed", () => {
+    const notice = groupSyncNotices([
+      content("2", 1, {
+        itemsUpdated: [{ id: "i1", title: "Salam", moduleId: "m1" }],
+      }),
+    ])[0]!.notice;
+    if (notice.kind !== "COURSE_CONTENT") throw new Error("Expected content");
+
+    expect(
+      contentNoticeItemId(notice, {
+        modules: [{ items: [{ id: "i2" }] }],
+      }),
+    ).toBeNull();
+    expect(contentNoticeItemId(notice)).toBeNull();
+    expect(
+      contentNoticeItemId(notice, {
+        modules: [{ items: [{ id: "i1" }] }],
+      }),
+    ).toBe("i1");
   });
 });
 

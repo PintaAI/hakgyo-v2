@@ -14,6 +14,7 @@ import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { dateLabel } from "../../lib/study";
 import {
+  contentNoticeItemId,
   describeSyncNotice,
   groupSyncNotices,
   type SyncNoticeEntry,
@@ -42,16 +43,20 @@ export function UpdatesDrawerContent({
   const index = useSyncIndex(activeOrganizationId);
   const { notices, dismiss } = useSyncNotices(activeOrganizationId);
   const noticeEntries = useMemo(() => groupSyncNotices(notices), [notices]);
-  // Module updates deep-link into a module's first item, which needs the
-  // composed outline of the courses that have unread module indicators.
-  const moduleCourseIds = useMemo(
-    () =>
-      items
+  // Validate notice destinations against the current outline, because an
+  // item mentioned by an older revision may have since been removed.
+  const outlineCourseIds = useMemo(
+    () => [
+      ...items
         .filter((item) => item.kind === "MODULE")
         .map((item) => item.courseId),
-    [items],
+      ...noticeEntries
+        .filter((entry) => entry.notice.kind === "COURSE_CONTENT")
+        .map((entry) => entry.notice.courseId),
+    ],
+    [items, noticeEntries],
   );
-  const { outlines } = useCourseOutlines(moduleCourseIds);
+  const { outlines } = useCourseOutlines(outlineCourseIds);
   const dashboard = {
     data: index.data ? { ...index.data, outlines } : undefined,
   };
@@ -171,13 +176,13 @@ export function UpdatesDrawerContent({
         case "COURSE_CONTENT": {
           // A single changed activity opens directly; anything more opens
           // the course outline.
-          const changed = [...notice.itemsAdded, ...notice.itemsUpdated];
-          if (!notice.modulesAdded.length && changed.length === 1) {
+          const itemId = contentNoticeItemId(notice, outlines[notice.courseId]);
+          if (itemId) {
             router.push({
               pathname: "/courses/[courseId]/items/[courseItemId]",
               params: {
                 courseId: notice.courseId,
-                courseItemId: changed[0]!.id,
+                courseItemId: itemId,
               },
             });
             return;
