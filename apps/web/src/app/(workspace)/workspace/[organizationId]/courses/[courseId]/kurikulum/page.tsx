@@ -44,7 +44,10 @@ export default async function KurikulumPage({
         <KurikulumEditor
           assessments={assessments.map((assessment) => ({
             ...toOption(assessment),
+            description: assessment.description,
             questionCount: assessment._count.questions,
+            timeLimitMinutes: assessment.timeLimitMinutes,
+            updatedAt: assessment.updatedAt,
           }))}
           initialCourse={course}
           materials={materials.map(toOption)}

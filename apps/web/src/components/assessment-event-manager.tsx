@@ -41,7 +41,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useDialogs } from "~/components/ui/use-dialogs";
@@ -55,6 +54,10 @@ import {
 } from "~/components/ui/table";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { AssessmentReviewDetail } from "~/components/review-queue";
+import {
+  AssessmentPicker,
+  type AssessmentPickerOption,
+} from "~/components/assessment-picker";
 
 type EventSummary =
   RouterOutputs["assessmentEvent"]["listManageable"]["items"][number];
@@ -187,11 +190,16 @@ export function AssessmentEventManager({
     (item) => item.id === courseItemId,
   );
 
-  const assessmentSelectItems = useMemo(
+  const assessmentOptions = useMemo<AssessmentPickerOption[]>(
     () =>
       assessmentItems.data?.map((item) => ({
-        value: item.id,
-        label: `${item.module.title} · ${item.assessment?.title ?? "Tugas"}`,
+        id: item.id,
+        title: item.assessment?.title ?? "Tugas",
+        description: item.assessment?.description,
+        questionCount: item.assessment?._count.questions,
+        timeLimitMinutes: item.assessment?.timeLimitMinutes,
+        updatedAt: item.assessment?.updatedAt,
+        group: item.module.title,
       })) ?? [],
     [assessmentItems.data],
   );
@@ -479,22 +487,16 @@ export function AssessmentEventManager({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="event-assessment">Tugas</Label>
-                <Select
-                  items={assessmentSelectItems}
+                <AssessmentPicker
+                  id="event-assessment"
+                  options={assessmentOptions}
                   value={courseItemId}
-                  onValueChange={(value) => setCourseItemId(value ?? null)}
-                >
-                  <SelectTrigger id="event-assessment" className="w-full">
-                    <SelectValue placeholder="Pilih tugas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assessmentItems.data?.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.module.title} · {item.assessment?.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onValueChange={setCourseItemId}
+                  loading={assessmentItems.isPending}
+                  emptyLabel="Belum ada tugas yang siap di course ini"
+                  description="Hanya tugas yang tampil di kurikulum dan sudah memiliki soal."
+                  defaultSortLabel="Urutan kurikulum"
+                />
                 {selectedItem ? (
                   <p className="text-muted-foreground text-xs">
                     {selectedItem.assessment?._count.questions} soal
