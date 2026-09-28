@@ -1,97 +1,51 @@
 import { describe, expect, test } from "bun:test";
 
-import type { Prisma } from "../../../generated/prisma/client";
 import {
-  reconcileCohortCourseAccess,
-  removeCohortEnrollmentAndReconcile,
+  courseAccessMembershipWhere,
+  courseAccessWhere,
+  liveClassCohortWhere,
 } from "./cohort-access";
 
+const now = new Date("2026-08-17T00:00:00.000Z");
+
 describe("cohort-derived course access", () => {
-  test("cancels access when no other active cohort grants it", async () => {
-    const updates: unknown[] = [];
-    const tx = {
-      cohortEnrollment: {
-        findMany: () => Promise.resolve([]),
-      },
-      courseEnrollment: {
-        updateMany: (input: unknown) => {
-          updates.push(input);
-          return Promise.resolve({ count: 1 });
-        },
-      },
-    } as unknown as Prisma.TransactionClient;
-
-    await reconcileCohortCourseAccess(tx, {
-      courseId: "course-1",
-      userIds: ["user-1"],
-    });
-
-    expect(updates).toEqual([
-      {
-        where: {
-          courseId: "course-1",
-          userId: { in: ["user-1"] },
-          source: "COHORT",
-        },
-        data: { status: "CANCELLED", completedAt: null },
-      },
-    ]);
-  });
-
-  test("keeps access while another active cohort grants it", async () => {
-    let updateCount = 0;
-    const tx = {
-      cohortEnrollment: {
-        findMany: () => Promise.resolve([{ userId: "user-1" }]),
-      },
-      courseEnrollment: {
-        updateMany: () => {
-          updateCount += 1;
-          return Promise.resolve({ count: 1 });
-        },
-      },
-    } as unknown as Prisma.TransactionClient;
-
-    await reconcileCohortCourseAccess(tx, {
-      courseId: "course-1",
-      userIds: ["user-1"],
-    });
-
-    expect(updateCount).toBe(0);
-  });
-
-  test("removes the cohort enrollment before reconciling course access", async () => {
-    const calls: string[] = [];
-    const tx = {
-      cohortEnrollment: {
-        deleteMany: () => {
-          calls.push("delete-cohort-enrollment");
-          return Promise.resolve({ count: 1 });
-        },
-        findMany: () => {
-          calls.push("check-other-cohort-access");
-          return Promise.resolve([]);
-        },
-      },
-      courseEnrollment: {
-        updateMany: () => {
-          calls.push("revoke-cohort-course-access");
-          return Promise.resolve({ count: 1 });
-        },
-      },
-    } as unknown as Prisma.TransactionClient;
-
-    const result = await removeCohortEnrollmentAndReconcile(tx, {
-      cohortId: "cohort-1",
-      courseId: "course-1",
+  test("grants access through unexpired memberships of non-draft cohorts", () => {
+    expect(courseAccessMembershipWhere("user-1", now)).toEqual({
       userId: "user-1",
+      status: { in: ["ACTIVE", "COMPLETED"] },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      cohort: { status: { in: ["OPEN", "IN_PROGRESS", "COMPLETED"] } },
     });
+  });
 
-    expect(result).toEqual({ count: 1 });
-    expect(calls).toEqual([
-      "delete-cohort-enrollment",
-      "check-other-cohort-access",
-      "revoke-cohort-course-access",
-    ]);
+  test("keeps access after a class cohort ends", () => {
+    const where = courseAccessMembershipWhere("user-1", now);
+    expect(where.cohort).not.toHaveProperty("endsAt");
+    expect(where.cohort).not.toHaveProperty("OR");
+  });
+
+  test("filters courses by a membership granting access", () => {
+    expect(courseAccessWhere("user-1", now)).toEqual({
+      cohorts: {
+        some: {
+          status: { in: ["OPEN", "IN_PROGRESS", "COMPLETED"] },
+          enrollments: {
+            some: {
+              userId: "user-1",
+              status: { in: ["ACTIVE", "COMPLETED"] },
+              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            },
+          },
+        },
+      },
+    });
+  });
+
+  test("limits live class views to running class cohorts", () => {
+    expect(liveClassCohortWhere(now)).toEqual({
+      defaultForCourseId: null,
+      status: { in: ["OPEN", "IN_PROGRESS"] },
+      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+    });
   });
 });

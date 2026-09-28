@@ -12,9 +12,9 @@ type ExistingEnrollment = {
 };
 
 type OpenEnrollmentUpdate = {
-  status?: "ACTIVE";
+  status: "ACTIVE";
   source: "OPEN";
-  completedAt?: null;
+  completedAt: null;
   expiresAt: null;
 };
 
@@ -39,11 +39,7 @@ export function getOpenEnrollmentUpdate(
     (enrollment.status === "ACTIVE" || enrollment.status === "COMPLETED") &&
     (enrollment.expiresAt === null || enrollment.expiresAt > now);
 
-  if (hasCurrentAccess) {
-    return enrollment.source === "COHORT"
-      ? { source: "OPEN", expiresAt: null }
-      : null;
-  }
+  if (hasCurrentAccess) return null;
 
   return {
     status: "ACTIVE",

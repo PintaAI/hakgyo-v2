@@ -363,31 +363,36 @@ erDiagram
 
 ### CourseEnrollment
 
-Hak akses user ke sebuah course. Dipakai untuk enrollment langsung, invite,
-manual, purchase di masa depan, atau akses yang berasal dari cohort.
+Tabel lama yang tidak lagi dibaca maupun ditulis. Akses course sekarang hanya
+berasal dari `CohortEnrollment`; tabel ini akan dihapus pada migration
+berikutnya.
 
 ### CohortEnrollment
 
-Keanggotaan user pada cohort tertentu. Saat user masuk cohort, service layer
-harus memastikan user juga mempunyai `CourseEnrollment` aktif untuk course
-induknya.
+Keanggotaan user pada cohort tertentu, dan satu-satunya sumber akses course.
+Keanggotaan memberi akses jika statusnya `ACTIVE` atau `COMPLETED`, `expiresAt`
+kosong atau belum lewat, dan cohort berstatus `OPEN`, `IN_PROGRESS`, atau
+`COMPLETED`. Siswa tetap bisa membuka materi setelah Group belajar selesai;
+cohort `DRAFT` dan `CANCELLED` tidak memberi akses. Filter ini ada di
+`src/server/enrollment/cohort-access.ts` (`courseAccessMembershipWhere`,
+`courseAccessWhere`). Tampilan yang hanya berlaku selama kelas berjalan, seperti
+jadwal, meeting, dan atribusi attempt, memakai `liveClassCohortWhere`.
 
 ### Cohort default (belajar mandiri)
 
 Setiap course dapat memiliki satu cohort sistem dengan `defaultForCourseId`
-berisi `courseId`. Cohort ini dibuat saat pertama dipakai dan menampung learner
-yang belajar tanpa kelas. Setiap `CourseEnrollment` langsung (semua source
-selain `COHORT`) dicerminkan sebagai `CohortEnrollment` di cohort default
-melalui `syncDefaultCohortEnrollments`, termasuk status, source dan
-`expiresAt`.
+berisi `courseId`. Cohort ini dibuat saat pertama dipakai
+(`ensureDefaultCohort`) dan menampung siswa yang belajar tanpa kelas: join dari
+katalog, invite course, siswa yang ditambahkan manual dari halaman course, dan
+course Hangeul Mastery saat pendaftaran akun. Semua jalur ini menulis lewat
+`upsertDefaultCohortEnrollment`.
 
-Ini tahap transisi menuju keanggotaan cohort sebagai satu-satunya sumber akses.
-Untuk sementara akses masih dibaca dari `CourseEnrollment`, sehingga cohort
-default disembunyikan dari daftar cohort, hitungan, dan pemeriksaan akses
-cohort (`accessGrantingCohortWhere`), dan `requireCohortPermission` menolaknya.
+Cohort default tidak muncul di daftar dan hitungan cohort, dan
+`requireCohortPermission` menolaknya; siswanya dikelola dari halaman Siswa pada
+course.
 
-Kedua tabel memiliki constraint unik agar user tidak terdaftar dua kali pada
-course atau cohort yang sama.
+Tabel keanggotaan memiliki constraint unik agar user tidak terdaftar dua kali
+pada cohort yang sama.
 
 ### EnrollmentInvite
 
@@ -538,8 +543,8 @@ divalidasi, seperti status, score, position, ownership, dan timestamp.
 ```text
 1. User menerima invite atau mendaftar ke cohort.
 2. Sistem membuat CohortEnrollment.
-3. Sistem membuat atau mengaktifkan CourseEnrollment untuk course induk.
-4. User mendapat akses ke CourseItem yang sudah published.
+3. User mendapat akses ke CourseItem yang sudah published, juga setelah cohort
+   selesai.
 5. Aktivitas user dicatat di ContentProgress dan AssessmentAttempt.
 ```
 

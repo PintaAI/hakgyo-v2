@@ -2,7 +2,10 @@ import { parseOrganizationTheme } from "@hakgyo/shared";
 
 import { activeEnrollmentStatuses } from "~/server/authorization";
 import type { db } from "~/server/db";
-import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
+import {
+  courseAccessCohortWhere,
+  courseAccessMembershipWhere,
+} from "~/server/enrollment/cohort-access";
 
 export const organizationBrandSelect = {
   id: true,
@@ -86,10 +89,7 @@ export function resolveBrandContext({
 type BrandDatabase = Pick<typeof db, "cohort" | "course">;
 type BrandListDatabase = Pick<
   typeof db,
-  | "organization"
-  | "organizationMember"
-  | "courseEnrollment"
-  | "cohortEnrollment"
+  "organization" | "organizationMember" | "cohortEnrollment"
 >;
 
 type GetActiveBrandContextInput = {
@@ -193,26 +193,8 @@ export async function getActiveBrandContext({
             },
           },
         },
-        enrollments: {
-          where: {
-            userId,
-            status: { in: [...activeEnrollmentStatuses] },
-            source: { not: "COHORT" },
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-          select: { id: true },
-          take: 1,
-        },
         cohorts: {
-          where: {
-            ...accessGrantingCohortWhere(now),
-            enrollments: {
-              some: {
-                userId,
-                status: { in: [...activeEnrollmentStatuses] },
-              },
-            },
-          },
+          where: courseAccessCohortWhere(userId, now),
           select: { id: true },
           take: 1,
         },
@@ -225,9 +207,7 @@ export async function getActiveBrandContext({
 
     const isOrganizationMember =
       actorUserId !== null && course.organization.members.length > 0;
-    const hasEnrollment =
-      actorUserId !== null &&
-      (course.enrollments.length > 0 || course.cohorts.length > 0);
+    const hasEnrollment = actorUserId !== null && course.cohorts.length > 0;
     const isPublished = course.status === "PUBLISHED";
 
     if (
@@ -259,39 +239,23 @@ export async function listAvailableBrandContexts({
   // Driven from the user's own memberships and enrollments (userId-indexed)
   // instead of evaluating membership/enrollment subqueries for every
   // organization.
-  const [memberships, courseEnrollments, cohortEnrollments] = await Promise.all(
-    [
-      database.organizationMember.findMany({
-        where: { userId: actorUserId },
-        select: { organizationId: true },
-      }),
-      database.courseEnrollment.findMany({
-        where: {
-          userId: actorUserId,
-          status: { in: [...activeEnrollmentStatuses] },
-          source: { not: "COHORT" },
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          course: { status: "PUBLISHED" },
-        },
-        select: { course: { select: { organizationId: true } } },
-      }),
-      database.cohortEnrollment.findMany({
-        where: {
-          userId: actorUserId,
-          status: { in: [...activeEnrollmentStatuses] },
-          cohort: {
-            ...accessGrantingCohortWhere(now),
-            course: { status: "PUBLISHED" },
-          },
-        },
-        select: { cohort: { select: { organizationId: true } } },
-      }),
-    ],
-  );
+  const access = courseAccessMembershipWhere(actorUserId, now);
+  const [memberships, cohortEnrollments] = await Promise.all([
+    database.organizationMember.findMany({
+      where: { userId: actorUserId },
+      select: { organizationId: true },
+    }),
+    database.cohortEnrollment.findMany({
+      where: {
+        ...access,
+        cohort: { ...access.cohort, course: { status: "PUBLISHED" } },
+      },
+      select: { cohort: { select: { organizationId: true } } },
+    }),
+  ]);
   const organizationIds = [
     ...new Set([
       ...memberships.map(({ organizationId }) => organizationId),
-      ...courseEnrollments.map(({ course }) => course.organizationId),
       ...cohortEnrollments.map(({ cohort }) => cohort.organizationId),
     ]),
   ];

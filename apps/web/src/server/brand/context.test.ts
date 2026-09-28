@@ -299,13 +299,12 @@ describe("listAvailableBrandContexts", () => {
         organizationMember: {
           findMany: () => Promise.resolve([{ organizationId: "first" }]),
         },
-        courseEnrollment: {
-          findMany: () =>
-            Promise.resolve([{ course: { organizationId: "second" } }]),
-        },
         cohortEnrollment: {
           findMany: () =>
-            Promise.resolve([{ cohort: { organizationId: "first" } }]),
+            Promise.resolve([
+              { cohort: { organizationId: "second" } },
+              { cohort: { organizationId: "first" } },
+            ]),
         },
       } as never,
       actorUserId: "learner-in-two-organizations",

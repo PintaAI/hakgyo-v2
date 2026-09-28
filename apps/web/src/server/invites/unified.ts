@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
+import { courseAccessCohortStatuses } from "~/server/enrollment/cohort-access";
 import {
   hashOrganizationInviteToken,
   organizationInviteStatus,
@@ -68,16 +69,6 @@ export async function resolveUnifiedInvite(
                     material: { select: { title: true } },
                     assessment: { select: { title: true } },
                     vocabularySet: { select: { title: true } },
-                  },
-                },
-              },
-            },
-            _count: {
-              select: {
-                enrollments: {
-                  where: {
-                    status: { in: ["ACTIVE", "COMPLETED"] },
-                    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
                   },
                 },
               },
@@ -176,11 +167,26 @@ export async function resolveUnifiedInvite(
         joinedCount: enrollmentInvite.cohort._count.enrollments,
       };
     }
+    // Distinct learners with course access, who may be in several cohorts.
+    const joinedCount = await db.user.count({
+      where: {
+        cohortEnrollments: {
+          some: {
+            status: { in: ["ACTIVE", "COMPLETED"] },
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            cohort: {
+              courseId: enrollmentInvite.course.id,
+              status: { in: [...courseAccessCohortStatuses] },
+            },
+          },
+        },
+      },
+    });
     return {
       ...base,
       type: "COURSE" as const,
       cohort: null,
-      joinedCount: enrollmentInvite.course._count.enrollments,
+      joinedCount,
     };
   }
 

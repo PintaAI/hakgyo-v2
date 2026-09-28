@@ -147,9 +147,14 @@ async function getManagerOverview(input: {
               },
             })
           : Promise.resolve(0),
+      // Distinct learners, who may belong to several cohorts of the course.
       activeLearnerCount: () =>
-        db.courseEnrollment.count({
-          where: { courseId: input.courseId, status: "ACTIVE" },
+        db.user.count({
+          where: {
+            cohortEnrollments: {
+              some: { status: "ACTIVE", cohort: { courseId: input.courseId } },
+            },
+          },
         }),
       activeInviteCount: () =>
         db.enrollmentInvite.count({

@@ -1,10 +1,9 @@
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
-import { EnrollmentStatus } from "../../../generated/prisma/enums";
 import { canManageContent } from "~/server/authorization/permissions";
 import { db } from "~/server/db";
-import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
+import { courseAccessMembershipWhere } from "~/server/enrollment/cohort-access";
 import { memoizeForRequest } from "~/server/request-cache";
 import {
   evaluateOpenModules,
@@ -12,30 +11,25 @@ import {
   hasPassedAssessment,
 } from "@hakgyo/shared/learning/sequential-access";
 
-const activeEnrollmentStatuses = [
-  EnrollmentStatus.ACTIVE,
-  EnrollmentStatus.COMPLETED,
-] as const;
-
 type OutlineOptions = { managementAccess?: boolean };
 
 /**
- * Ids of courses the user can learn through an active enrollment in a cohort
- * that still grants access. Driven from the user's cohort enrollments, so it
- * never aggregates cohorts or enrollments of other users.
+ * Ids of courses the user can learn through a cohort membership that grants
+ * access. Driven from the user's own memberships, so it never aggregates
+ * cohorts or enrollments of other users.
  */
-export async function getActiveCohortCourseIds(
+export async function getAccessibleCourseIds(
   userId: string,
   now: Date,
   courseIds?: string[],
 ) {
+  const access = courseAccessMembershipWhere(userId, now);
   const enrollments = await db.cohortEnrollment.findMany({
     where: {
-      userId,
-      status: { in: [...activeEnrollmentStatuses] },
+      ...access,
       cohort: {
+        ...access.cohort,
         ...(courseIds ? { courseId: { in: courseIds } } : {}),
-        ...accessGrantingCohortWhere(now),
       },
     },
     select: { cohort: { select: { courseId: true } } },
@@ -43,7 +37,7 @@ export async function getActiveCohortCourseIds(
   return new Set(enrollments.map(({ cohort }) => cohort.courseId));
 }
 
-function courseOutlineSelect(userId: string, now: Date) {
+function courseOutlineSelect(userId: string) {
   return {
     id: true,
     title: true,
@@ -75,16 +69,6 @@ function courseOutlineSelect(userId: string, now: Date) {
     },
     cohorts: {
       where: { staff: { some: { organizationMember: { userId } } } },
-      select: { id: true },
-      take: 1,
-    },
-    enrollments: {
-      where: {
-        userId,
-        status: { in: [...activeEnrollmentStatuses] },
-        source: { not: "COHORT" },
-        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-      },
       select: { id: true },
       take: 1,
     },
@@ -180,7 +164,7 @@ function buildCourseOutline(
   course: CourseOutlineRecord,
   userId: string,
   passEvidence: Map<string, PassEvidence[]>,
-  cohortCourseIds: Set<string>,
+  accessibleCourseIds: Set<string>,
   options: OutlineOptions,
 ) {
   const scope = {
@@ -192,8 +176,7 @@ function buildCourseOutline(
   };
   const canManage = canManageContent(scope) || scope.isCohortStaff;
   const managementAccess = canManage && options.managementAccess !== false;
-  const hasEnrollment =
-    course.enrollments.length > 0 || cohortCourseIds.has(course.id);
+  const hasEnrollment = accessibleCourseIds.has(course.id);
 
   if (!canManage && (course.status !== "PUBLISHED" || !hasEnrollment)) {
     return null;
@@ -266,13 +249,13 @@ export function getCourseOutlineForUser(
     `courseOutline:${courseId}:${userId}:${managementAccess}`,
     async () => {
       const now = new Date();
-      const [course, passEvidence, cohortCourseIds] = await Promise.all([
+      const [course, passEvidence, accessibleCourseIds] = await Promise.all([
         db.course.findUnique({
           where: { id: courseId },
-          select: courseOutlineSelect(userId, now),
+          select: courseOutlineSelect(userId),
         }),
         loadPassEvidence(userId, { id: courseId }),
-        getActiveCohortCourseIds(userId, now, [courseId]),
+        getAccessibleCourseIds(userId, now, [courseId]),
       ]);
 
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
@@ -280,7 +263,7 @@ export function getCourseOutlineForUser(
         course,
         userId,
         passEvidence,
-        cohortCourseIds,
+        accessibleCourseIds,
         options,
       );
       if (!outline) throw new TRPCError({ code: "FORBIDDEN" });
@@ -299,10 +282,10 @@ function loadOutlineInputs(
     db.course.findMany({
       where: courseWhere,
       orderBy,
-      select: courseOutlineSelect(userId, now),
+      select: courseOutlineSelect(userId),
     }),
     loadPassEvidence(userId, courseWhere),
-    getActiveCohortCourseIds(userId, now),
+    getAccessibleCourseIds(userId, now),
   ]);
 }
 
@@ -318,7 +301,7 @@ export async function getCourseOutlinesForUser(
     orderBy?: Prisma.CourseOrderByWithRelationInput;
   } = {},
 ): Promise<CourseOutline[]> {
-  const [courses, passEvidence, cohortCourseIds] = await loadOutlineInputs(
+  const [courses, passEvidence, accessibleCourseIds] = await loadOutlineInputs(
     courseWhere,
     userId,
     options.orderBy,
@@ -330,7 +313,7 @@ export async function getCourseOutlinesForUser(
         course,
         userId,
         passEvidence,
-        cohortCourseIds,
+        accessibleCourseIds,
         options,
       ),
     )
@@ -347,7 +330,7 @@ export async function getCourseOutlineViewsForUser(
   userId: string,
   options: { orderBy?: Prisma.CourseOrderByWithRelationInput } = {},
 ): Promise<Array<{ outline: CourseOutline; learnerOutline: CourseOutline }>> {
-  const [courses, passEvidence, cohortCourseIds] = await loadOutlineInputs(
+  const [courses, passEvidence, accessibleCourseIds] = await loadOutlineInputs(
     courseWhere,
     userId,
     options.orderBy,
@@ -358,14 +341,14 @@ export async function getCourseOutlineViewsForUser(
       course,
       userId,
       passEvidence,
-      cohortCourseIds,
+      accessibleCourseIds,
       {},
     );
     const learnerOutline = buildCourseOutline(
       course,
       userId,
       passEvidence,
-      cohortCourseIds,
+      accessibleCourseIds,
       { managementAccess: false },
     );
     return outline && learnerOutline ? [{ outline, learnerOutline }] : [];

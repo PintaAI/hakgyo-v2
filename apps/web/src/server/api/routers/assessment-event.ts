@@ -26,6 +26,7 @@ import {
   isUniqueConstraintError,
   withTransactionRetry,
 } from "~/server/db-retry";
+import { courseAccessCohortStatuses } from "~/server/enrollment/cohort-access";
 
 const id = z.string().min(1);
 const reason = z.string().trim().min(3).max(1000);
@@ -498,6 +499,9 @@ export const assessmentEventRouter = createTRPCRouter({
           // into memory. `participantCount` is the number of distinct eligible learners, which
           // matches the previous read-then-createMany(skipDuplicates) behaviour.
           const statuses = Prisma.join([...activeEnrollmentStatuses]);
+          const courseAccessStatuses = Prisma.join([
+            ...courseAccessCohortStatuses,
+          ]);
           const eligible =
             event.scope === "COHORT" && event.cohortId
               ? Prisma.sql`
@@ -508,8 +512,10 @@ export const assessmentEventRouter = createTRPCRouter({
                 `
               : Prisma.sql`
                   SELECT DISTINCT enrollment."userId"
-                  FROM "CourseEnrollment" AS enrollment
-                  WHERE enrollment."courseId" = ${event.courseId}
+                  FROM "CohortEnrollment" AS enrollment
+                  JOIN "Cohort" AS cohort ON cohort."id" = enrollment."cohortId"
+                  WHERE cohort."courseId" = ${event.courseId}
+                    AND cohort."status"::text IN (${courseAccessStatuses})
                     AND enrollment."status"::text IN (${statuses})
                     AND (
                       enrollment."expiresAt" IS NULL

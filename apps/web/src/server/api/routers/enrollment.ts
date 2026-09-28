@@ -14,8 +14,7 @@ import {
 } from "~/server/enrollment/open-enrollment";
 import { withTransactionRetry } from "~/server/db-retry";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
-import { removeCohortEnrollmentAndReconcile } from "~/server/enrollment/cohort-access";
-import { syncDefaultCohortEnrollments } from "~/server/enrollment/default-cohort";
+import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 
 const id = z.string().min(1);
@@ -104,42 +103,27 @@ export const enrollmentRouter = createTRPCRouter({
       }
 
       return ctx.db.$transaction(async (tx) => {
-        const existing = await tx.courseEnrollment.findUnique({
+        const existing = await tx.cohortEnrollment.findFirst({
           where: {
-            courseId_userId: {
-              courseId: input.courseId,
-              userId: ctx.actorUserId,
-            },
+            userId: ctx.actorUserId,
+            cohort: { defaultForCourseId: input.courseId },
           },
         });
         const update = getOpenEnrollmentUpdate(existing, new Date());
         if (!update && existing) return existing;
 
-        const enrollment = await tx.courseEnrollment.upsert({
-          where: {
-            courseId_userId: {
-              courseId: input.courseId,
-              userId: ctx.actorUserId,
-            },
-          },
-          create: {
-            courseId: input.courseId,
-            userId: ctx.actorUserId,
-            status: "ACTIVE",
-            source: "OPEN",
-          },
-          update: update ?? {
-            status: "ACTIVE",
-            source: "OPEN",
-            completedAt: null,
-            expiresAt: null,
-          },
-        });
-        await syncDefaultCohortEnrollments(tx, {
+        const joined = {
+          status: "ACTIVE",
+          source: "OPEN",
+          completedAt: null,
+          expiresAt: null,
+        } as const;
+        return upsertDefaultCohortEnrollment(tx, {
           courseId: input.courseId,
-          userIds: [ctx.actorUserId],
+          userId: ctx.actorUserId,
+          create: joined,
+          update: update ?? joined,
         });
-        return enrollment;
       });
     }),
 
@@ -253,15 +237,16 @@ export const enrollmentRouter = createTRPCRouter({
         permission: "course.manage",
         userId: ctx.actorUserId,
       });
+      // Self-paced learners; class cohort learners are listed per cohort.
       const where = {
-        courseId: input.courseId,
+        cohort: { defaultForCourseId: input.courseId },
         status: input.status,
         ...(input.search
           ? { user: { is: userSearchWhere(input.search) } }
           : {}),
       };
       const [items, statusCounts] = await Promise.all([
-        ctx.db.courseEnrollment.findMany({
+        ctx.db.cohortEnrollment.findMany({
           where,
           orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
           ...pageArgs(input),
@@ -272,7 +257,7 @@ export const enrollmentRouter = createTRPCRouter({
           },
         }),
         input.includeTotal
-          ? ctx.db.courseEnrollment.groupBy({
+          ? ctx.db.cohortEnrollment.groupBy({
               by: ["status"],
               where: { ...where, status: undefined },
               _count: { _all: true },
@@ -358,31 +343,24 @@ export const enrollmentRouter = createTRPCRouter({
           message: "No Hakgyo account was found for this email",
         });
       }
-      return ctx.db.$transaction(async (tx) => {
-        const enrollment = await tx.courseEnrollment.upsert({
-          where: {
-            courseId_userId: { courseId: input.courseId, userId: user.id },
-          },
+      const completedAt = input.status === "COMPLETED" ? new Date() : null;
+      return ctx.db.$transaction((tx) =>
+        upsertDefaultCohortEnrollment(tx, {
+          courseId: input.courseId,
+          userId: user.id,
           create: {
-            courseId: input.courseId,
-            userId: user.id,
             status: input.status,
             expiresAt: input.expiresAt,
-            completedAt: input.status === "COMPLETED" ? new Date() : null,
+            completedAt,
             source: "MANUAL",
           },
           update: {
             status: input.status,
             expiresAt: input.expiresAt,
-            completedAt: input.status === "COMPLETED" ? new Date() : null,
+            completedAt,
           },
-        });
-        await syncDefaultCohortEnrollments(tx, {
-          courseId: input.courseId,
-          userIds: [user.id],
-        });
-        return enrollment;
-      });
+        }),
+      );
     }),
 
   removeCourseEnrollment: protectedProcedure
@@ -393,18 +371,12 @@ export const enrollmentRouter = createTRPCRouter({
         permission: "course.manage",
         userId: ctx.actorUserId,
       });
-      return ctx.db.$transaction(async (tx) => {
-        const removed = await tx.courseEnrollment.deleteMany({
-          where: {
-            courseId: input.courseId,
-            userId: input.userId,
-          },
-        });
-        await syncDefaultCohortEnrollments(tx, {
-          courseId: input.courseId,
-          userIds: [input.userId],
-        });
-        return removed;
+      // Only self-paced access; class cohort memberships stay.
+      return ctx.db.cohortEnrollment.deleteMany({
+        where: {
+          userId: input.userId,
+          cohort: { defaultForCourseId: input.courseId },
+        },
       });
     }),
 
@@ -417,7 +389,7 @@ export const enrollmentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const cohort = await requireCohortPermission({
+      await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "learners.manage",
         userId: ctx.actorUserId,
@@ -432,98 +404,33 @@ export const enrollmentRouter = createTRPCRouter({
           message: "No Hakgyo account was found for this email",
         });
       }
-      return ctx.db.$transaction(async (tx) => {
-        const cohortEnrollment = await tx.cohortEnrollment.upsert({
-          where: {
-            cohortId_userId: {
-              cohortId: input.cohortId,
-              userId: user.id,
-            },
-          },
-          create: {
-            cohortId: input.cohortId,
-            userId: user.id,
-            status: input.status,
-            completedAt: input.status === "COMPLETED" ? new Date() : null,
-            source: "MANUAL",
-          },
-          update: {
-            status: input.status,
-            completedAt: input.status === "COMPLETED" ? new Date() : null,
-          },
-        });
-        if (
-          (input.status === "ACTIVE" || input.status === "COMPLETED") &&
-          (cohort.status === "OPEN" || cohort.status === "IN_PROGRESS") &&
-          (cohort.endsAt === null || cohort.endsAt > new Date())
-        ) {
-          const courseEnrollment = await tx.courseEnrollment.findUnique({
-            where: {
-              courseId_userId: {
-                courseId: cohort.courseId,
-                userId: user.id,
-              },
-            },
-            select: { id: true, source: true },
-          });
-          if (!courseEnrollment) {
-            // skipDuplicates: a concurrent enrollment of the same learner must not abort this one.
-            await tx.courseEnrollment.createMany({
-              data: {
-                courseId: cohort.courseId,
-                userId: user.id,
-                status: "ACTIVE",
-                source: "COHORT",
-              },
-              skipDuplicates: true,
-            });
-          } else if (courseEnrollment.source === "COHORT") {
-            await tx.courseEnrollment.update({
-              where: { id: courseEnrollment.id },
-              data: { status: "ACTIVE", completedAt: null },
-            });
-          }
-        } else {
-          const otherActiveCohortEnrollment =
-            await tx.cohortEnrollment.findFirst({
-              where: {
-                userId: user.id,
-                cohortId: { not: input.cohortId },
-                status: { in: ["ACTIVE", "COMPLETED"] },
-                cohort: { courseId: cohort.courseId, defaultForCourseId: null },
-              },
-              select: { id: true },
-            });
-          if (!otherActiveCohortEnrollment) {
-            await tx.courseEnrollment.updateMany({
-              where: {
-                courseId: cohort.courseId,
-                userId: user.id,
-                source: "COHORT",
-              },
-              data: { status: "CANCELLED", completedAt: null },
-            });
-          }
-        }
-        return cohortEnrollment;
+      const completedAt = input.status === "COMPLETED" ? new Date() : null;
+      return ctx.db.cohortEnrollment.upsert({
+        where: {
+          cohortId_userId: { cohortId: input.cohortId, userId: user.id },
+        },
+        create: {
+          cohortId: input.cohortId,
+          userId: user.id,
+          status: input.status,
+          completedAt,
+          source: "MANUAL",
+        },
+        update: { status: input.status, completedAt },
       });
     }),
 
   removeCohortEnrollment: protectedProcedure
     .input(z.object({ cohortId: id, userId: id }))
     .mutation(async ({ ctx, input }) => {
-      const cohort = await requireCohortPermission({
+      await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "learners.manage",
         userId: ctx.actorUserId,
       });
-      return ctx.db.$transaction((tx) =>
-        removeCohortEnrollmentAndReconcile(tx, {
-          cohortId: input.cohortId,
-          courseId: cohort.courseId,
-          userId: input.userId,
-        }),
-      );
+      return ctx.db.cohortEnrollment.deleteMany({
+        where: { cohortId: input.cohortId, userId: input.userId },
+      });
     }),
 
   createInvite: protectedProcedure

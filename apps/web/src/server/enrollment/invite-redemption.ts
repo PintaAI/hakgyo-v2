@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
-import { syncDefaultCohortEnrollments } from "~/server/enrollment/default-cohort";
+import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
 
 async function findRedeemableEnrollmentInvite(
   tx: Prisma.TransactionClient,
@@ -87,128 +87,50 @@ export async function redeemEnrollmentInvite(
   await tx.$executeRaw`
     SELECT pg_advisory_xact_lock(hashtextextended(${`invite-redeem:${invite.cohortId ?? invite.courseId}:${input.userId}`}, 0))
   `;
-  const existing = invite.cohortId
-    ? await tx.cohortEnrollment.findUnique({
-        where: {
-          cohortId_userId: {
-            cohortId: invite.cohortId,
-            userId: input.userId,
-          },
-        },
-      })
-    : await tx.courseEnrollment.findUnique({
-        where: {
-          courseId_userId: {
-            courseId: invite.courseId,
-            userId: input.userId,
-          },
-        },
-      });
-
-  // Learners who are already enrolled do not consume a use.
-  if (existing?.status === "ACTIVE" || existing?.status === "COMPLETED") {
-    if (invite.cohortId) {
-      await grantCohortCourseAccess(
-        tx,
-        invite.courseId,
-        input.userId,
-        input.now,
-      );
-    }
-    return {
-      type: invite.cohortId ? ("COHORT" as const) : ("COURSE" as const),
-      courseId: invite.courseId,
-      cohortId: invite.cohortId,
-    };
-  }
-
-  await claimEnrollmentInviteUse(tx, invite, input.now);
-  if (invite.cohortId) {
-    await grantCohortCourseAccess(tx, invite.courseId, input.userId, input.now);
-    await tx.cohortEnrollment.upsert({
-      where: {
-        cohortId_userId: {
-          cohortId: invite.cohortId,
-          userId: input.userId,
-        },
-      },
-      create: {
-        cohortId: invite.cohortId,
-        userId: input.userId,
-        status: "ACTIVE",
-        source: "INVITE",
-      },
-      update: { status: "ACTIVE", completedAt: null },
-    });
-  } else {
-    await tx.courseEnrollment.upsert({
-      where: {
-        courseId_userId: {
-          courseId: invite.courseId,
-          userId: input.userId,
-        },
-      },
-      create: {
-        courseId: invite.courseId,
-        userId: input.userId,
-        status: "ACTIVE",
-        source: "INVITE",
-      },
-      update: {
-        status: "ACTIVE",
-        source: "INVITE",
-        completedAt: null,
-        expiresAt: null,
-      },
-    });
-    await syncDefaultCohortEnrollments(tx, {
-      courseId: invite.courseId,
-      userIds: [input.userId],
-    });
-  }
-
-  return {
+  // Course invites join the course's default self-paced cohort.
+  const existing = await tx.cohortEnrollment.findFirst({
+    where: {
+      userId: input.userId,
+      cohort: invite.cohortId
+        ? { id: invite.cohortId }
+        : { defaultForCourseId: invite.courseId },
+    },
+  });
+  const result = {
     type: invite.cohortId ? ("COHORT" as const) : ("COURSE" as const),
     courseId: invite.courseId,
     cohortId: invite.cohortId,
   };
-}
 
-async function grantCohortCourseAccess(
-  tx: Prisma.TransactionClient,
-  courseId: string,
-  userId: string,
-  now: Date,
-) {
-  const enrollment = await tx.courseEnrollment.findUnique({
-    where: { courseId_userId: { courseId, userId } },
-    select: { id: true, status: true, source: true, expiresAt: true },
-  });
-  const hasIndependentAccess =
-    enrollment &&
-    enrollment.source !== "COHORT" &&
-    (enrollment.status === "ACTIVE" || enrollment.status === "COMPLETED") &&
-    (enrollment.expiresAt === null || enrollment.expiresAt > now);
-  if (hasIndependentAccess) return;
-
-  await tx.courseEnrollment.upsert({
-    where: { courseId_userId: { courseId, userId } },
-    create: {
-      courseId,
-      userId,
-      status: "ACTIVE",
-      source: "COHORT",
-    },
-    update: {
-      status: "ACTIVE",
-      source: "COHORT",
-      completedAt: null,
-      expiresAt: null,
-    },
-  });
-  // A lapsed direct enrollment taken over above no longer backs a default
-  // cohort membership.
-  if (enrollment && enrollment.source !== "COHORT") {
-    await syncDefaultCohortEnrollments(tx, { courseId, userIds: [userId] });
+  // Learners who are already enrolled do not consume a use.
+  if (
+    (existing?.status === "ACTIVE" || existing?.status === "COMPLETED") &&
+    (existing.expiresAt === null || existing.expiresAt > input.now)
+  ) {
+    return result;
   }
+
+  await claimEnrollmentInviteUse(tx, invite, input.now);
+  const joined = {
+    status: "ACTIVE",
+    source: "INVITE",
+    completedAt: null,
+    expiresAt: null,
+  } as const;
+  if (invite.cohortId) {
+    await tx.cohortEnrollment.upsert({
+      where: {
+        cohortId_userId: { cohortId: invite.cohortId, userId: input.userId },
+      },
+      create: { cohortId: invite.cohortId, userId: input.userId, ...joined },
+      update: joined,
+    });
+  } else {
+    await upsertDefaultCohortEnrollment(tx, {
+      courseId: invite.courseId,
+      userId: input.userId,
+      create: joined,
+    });
+  }
+  return result;
 }

@@ -37,15 +37,15 @@ import { createRequestCache } from "~/server/request-cache";
 type LearnerContext = TRPCContext & { actorUserId: string };
 type AccessDb = Pick<
   Prisma.TransactionClient,
-  "organizationMember" | "courseEnrollment" | "cohortEnrollment"
+  "organizationMember" | "cohortEnrollment"
 >;
 
 const MOBILE_PRACTICE_SEED = "mobile-sync-v1";
 const MAX_INDEX_VALIDITY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * A learner may scope sync to an organization they belong to, are enrolled
- * in a course of, or are enrolled in a cohort of.
+ * A learner may scope sync to an organization they belong to or have a
+ * cohort membership in.
  */
 export async function requireOrganizationAccess(
   db: AccessDb,
@@ -56,10 +56,6 @@ export async function requireOrganizationAccess(
   const access = await Promise.all([
     db.organizationMember.findFirst({
       where: { userId, organizationId },
-      select: { id: true },
-    }),
-    db.courseEnrollment.findFirst({
-      where: { userId, course: { organizationId } },
       select: { id: true },
     }),
     db.cohortEnrollment.findFirst({
@@ -314,7 +310,7 @@ export async function buildLearnerIndex(
     outlineViewsPromise,
     resumableAttemptsPromise,
     buildLearnerState(ctx.db, actorUserId, courseIds, now),
-    ctx.db.courseEnrollment.findMany({
+    ctx.db.cohortEnrollment.findMany({
       where: { userId: actorUserId, expiresAt: { gt: now } },
       select: { expiresAt: true },
     }),
