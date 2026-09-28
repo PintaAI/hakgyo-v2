@@ -93,10 +93,11 @@ export function LandingCopyPanel({
             <Textarea
               id={`copy-${field.key}`}
               value={value}
-              rows={value.length > 120 ? 4 : 2}
               onChange={(event) => onChange(field.key, event.target.value)}
               onFocus={() => onFocus(field.key)}
               className={cn(
+                // Grows with its content; short copy stays one line.
+                "min-h-10",
                 field.key in edits && "border-primary",
                 field.key === activeKey && "ring-primary/30 ring-2",
               )}
