@@ -369,29 +369,45 @@ function fingerprint(value: string) {
   return (hash >>> 0).toString(36);
 }
 
-/** What the learner studies in an item; titles and settings are left out. */
+/** What the learner studies in an item; cosmetic titles are left out. */
 function itemFingerprint(item: BundleItem, content: BundleContent) {
-  const source =
-    item.type === "MATERIAL"
-      ? item.materialId
-        ? content.materials[item.materialId]?.content
-        : null
-      : item.type === "VOCABULARY_SET"
-        ? item.vocabularySetId
-          ? content.vocabularySets[item.vocabularySetId]?.entries.map(
-              (entry) => [entry.term, entry.definition, entry.examples],
-            )
-          : null
-        : item.assessmentId
-          ? content.assessments[item.assessmentId]?.questions.map(
-              (question) => [
-                question.type,
-                question.prompt,
-                question.points,
-                question.options.map((option) => option.content),
-              ],
-            )
-          : null;
+  const asset = (id: string | null) => (id ? (content.assets[id] ?? id) : null);
+  let source: unknown = null;
+  if (item.type === "MATERIAL" && item.materialId) {
+    const material = content.materials[item.materialId];
+    if (material) {
+      source = {
+        content: material.content,
+        editorSchemaVersion: material.editorSchemaVersion,
+        requirementPolicy: material.requirementPolicy,
+        assetIds: material.assetIds,
+        assets: material.assetIds.map(asset),
+      };
+    }
+  } else if (item.type === "VOCABULARY_SET" && item.vocabularySetId) {
+    const vocabularySet = content.vocabularySets[item.vocabularySetId];
+    if (vocabularySet) {
+      source = vocabularySet.entries.map((entry) => ({
+        ...entry,
+        audioAsset: asset(entry.audioAssetId),
+        imageAsset: asset(entry.imageAssetId),
+      }));
+    }
+  } else if (item.assessmentId) {
+    const assessment = content.assessments[item.assessmentId];
+    if (assessment) {
+      source = {
+        instructions: assessment.instructions,
+        passingScore: item.assessmentPassingScore ?? assessment.passingScore,
+        maxAttempts: assessment.maxAttempts,
+        timeLimitMinutes: assessment.timeLimitMinutes,
+        shuffleQuestions: assessment.shuffleQuestions,
+        shuffleOptions: assessment.shuffleOptions,
+        questionCount: assessment.questionCount,
+        questions: assessment.questions,
+      };
+    }
+  }
   return fingerprint(JSON.stringify(source ?? null));
 }
 

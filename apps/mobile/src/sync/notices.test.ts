@@ -369,4 +369,88 @@ describe("bundle notices", () => {
     expect(diffBundle(base, moved)?.itemsAdded).toEqual([]);
     expect(diffBundle(base, moved)?.itemsUpdated).toEqual([]);
   });
+
+  test("reports material requirements and attached asset changes", () => {
+    const changed = structuredClone(base.content);
+    changed.materials["material-i1"]!.requirementPolicy = "ANY";
+    changed.materials["material-i1"]!.assetIds = ["asset-1"];
+    changed.assets["asset-1"] = {
+      id: "asset-1",
+      fileName: "lesson.pdf",
+      contentType: "application/pdf",
+      size: 100,
+    };
+    expect(
+      diffBundle(base, bundle("2", base.structure, changed))?.itemsUpdated,
+    ).toEqual([{ id: "i1", title: "Item i1", moduleId: "m1" }]);
+  });
+
+  test("reports changed vocabulary media and metadata", () => {
+    const vocabularyStructure = structure([
+      { id: "m1", items: [{ id: "i1" }] },
+    ]);
+    const item = vocabularyStructure.modules[0]!.items[0]!;
+    item.type = "VOCABULARY_SET";
+    item.materialId = null;
+    item.vocabularySetId = "v1";
+    const vocabularyContent = content({});
+    vocabularyContent.vocabularySets.v1 = {
+      id: "v1",
+      title: "Words",
+      description: null,
+      entries: [
+        {
+          id: "word-1",
+          term: "안녕",
+          definition: "hello",
+          examples: null,
+          metadata: null,
+          audioAssetId: null,
+          imageAssetId: null,
+        },
+      ],
+    };
+    const previous = bundle("1", vocabularyStructure, vocabularyContent);
+    const changed = structuredClone(vocabularyContent);
+    changed.vocabularySets.v1!.entries[0]!.metadata = {
+      pronunciation: "annyeong",
+    };
+    changed.vocabularySets.v1!.entries[0]!.audioAssetId = "audio-1";
+    expect(
+      diffBundle(previous, bundle("2", vocabularyStructure, changed))
+        ?.itemsUpdated,
+    ).toEqual([{ id: "i1", title: "Item i1", moduleId: "m1" }]);
+  });
+
+  test("reports changed assessment instructions and attempt settings", () => {
+    const assessmentStructure = structure([
+      { id: "m1", items: [{ id: "i1" }] },
+    ]);
+    const item = assessmentStructure.modules[0]!.items[0]!;
+    item.type = "ASSESSMENT";
+    item.materialId = null;
+    item.assessmentId = "a1";
+    const assessmentContent = content({});
+    assessmentContent.assessments.a1 = {
+      id: "a1",
+      title: "Quiz",
+      description: null,
+      instructions: null,
+      passingScore: 60,
+      maxAttempts: 2,
+      timeLimitMinutes: 30,
+      shuffleQuestions: false,
+      shuffleOptions: false,
+      questionCount: 0,
+      questions: [],
+    };
+    const previous = bundle("1", assessmentStructure, assessmentContent);
+    const changed = structuredClone(assessmentContent);
+    changed.assessments.a1!.instructions = { type: "doc", text: "Read first" };
+    changed.assessments.a1!.timeLimitMinutes = 20;
+    expect(
+      diffBundle(previous, bundle("2", assessmentStructure, changed))
+        ?.itemsUpdated,
+    ).toEqual([{ id: "i1", title: "Item i1", moduleId: "m1" }]);
+  });
 });
