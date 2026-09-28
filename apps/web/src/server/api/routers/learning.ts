@@ -9,7 +9,7 @@ import {
   requireCoursePermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
-import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
 import {
   getCourseOutlineForUser,
   getCourseOutlinesForUser,
@@ -96,8 +96,7 @@ export const learningRouter = createTRPCRouter({
       const cohorts = await ctx.db.cohort.findMany({
         where: {
           organizationId: input?.organizationId,
-          status: { in: [...accessGrantingCohortStatuses] },
-          OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+          ...accessGrantingCohortWhere(now),
           course: { status: "PUBLISHED" },
           enrollments: {
             some: {
@@ -520,8 +519,7 @@ export const learningRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const cohortWhere = {
         organizationId: input?.organizationId,
-        status: { in: [...accessGrantingCohortStatuses] },
-        OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+        ...accessGrantingCohortWhere(new Date()),
         course: { status: "PUBLISHED" },
         enrollments: {
           some: {

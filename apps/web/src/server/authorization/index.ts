@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma } from "../../../generated/prisma/client";
 import { EnrollmentStatus } from "../../../generated/prisma/enums";
 import { db } from "~/server/db";
-import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
 import { getCourseOutlineForUser } from "~/server/learning/course-outline";
 import { memoizeForRequest } from "~/server/request-cache";
 import {
@@ -214,6 +214,7 @@ export async function requireCohortPermission(input: {
           courseId: true,
           status: true,
           endsAt: true,
+          defaultForCourseId: true,
           course: { select: courseScopeSelect(input.userId) },
           staff: {
             where: { organizationMember: { userId: input.userId } },
@@ -223,7 +224,11 @@ export async function requireCohortPermission(input: {
         },
       }),
   );
-  if (!result) throw new TRPCError({ code: "NOT_FOUND" });
+  // Default self-paced cohorts are managed through the course's learners,
+  // not as cohorts.
+  if (!result || result.defaultForCourseId) {
+    throw new TRPCError({ code: "NOT_FOUND" });
+  }
 
   const { course, staff, ...cohort } = result;
   const exactStaffAssignment = staff[0];
@@ -322,8 +327,7 @@ async function loadCourseItemAccess(input: {
                 select: {
                   cohorts: {
                     where: {
-                      status: { in: [...accessGrantingCohortStatuses] },
-                      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+                      ...accessGrantingCohortWhere(now),
                       enrollments: {
                         some: {
                           userId: input.userId,

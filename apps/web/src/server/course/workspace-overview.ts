@@ -134,6 +134,7 @@ async function getManagerOverview(input: {
           ? db.cohort.count({
               where: {
                 courseId: input.courseId,
+                defaultForCourseId: null,
                 ...(input.canViewAllCohorts
                   ? {}
                   : {

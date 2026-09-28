@@ -1,4 +1,5 @@
 import { db } from "~/server/db";
+import { syncDefaultCohortEnrollments } from "~/server/enrollment/default-cohort";
 import { HANGEUL_MASTERY_COURSE_ID } from "./constants";
 
 /**
@@ -13,14 +14,21 @@ export async function ensureHangeulMasteryEnrollment(userId: string) {
 
   if (course?.status !== "PUBLISHED") return null;
 
-  return db.courseEnrollment.upsert({
-    where: { courseId_userId: { courseId: course.id, userId } },
-    create: {
+  return db.$transaction(async (tx) => {
+    const enrollment = await tx.courseEnrollment.upsert({
+      where: { courseId_userId: { courseId: course.id, userId } },
+      create: {
+        courseId: course.id,
+        userId,
+        source: "FOUNDATION",
+        status: "ACTIVE",
+      },
+      update: {},
+    });
+    await syncDefaultCohortEnrollments(tx, {
       courseId: course.id,
-      userId,
-      source: "FOUNDATION",
-      status: "ACTIVE",
-    },
-    update: {},
+      userIds: [userId],
+    });
+    return enrollment;
   });
 }

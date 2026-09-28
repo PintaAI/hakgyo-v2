@@ -1,6 +1,20 @@
 import type { Prisma } from "../../../generated/prisma/client";
+import { syncDefaultCohortEnrollments } from "~/server/enrollment/default-cohort";
 
 export const accessGrantingCohortStatuses = ["OPEN", "IN_PROGRESS"] as const;
+
+/**
+ * Class cohorts whose memberships currently grant course access. Default
+ * self-paced cohorts are excluded while direct course enrollments still
+ * grant that access.
+ */
+export function accessGrantingCohortWhere(now: Date) {
+  return {
+    defaultForCourseId: null,
+    status: { in: [...accessGrantingCohortStatuses] },
+    OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+  } satisfies Prisma.CohortWhereInput;
+}
 
 export async function grantCohortCourseAccessForUsers(
   tx: Prisma.TransactionClient,
@@ -36,6 +50,9 @@ export async function grantCohortCourseAccessForUsers(
       expiresAt: null,
     },
   });
+  // Lapsed direct enrollments taken over above no longer back a
+  // default cohort membership.
+  await syncDefaultCohortEnrollments(tx, { courseId: input.courseId, userIds });
 }
 
 export async function reconcileCohortCourseAccess(
@@ -50,11 +67,7 @@ export async function reconcileCohortCourseAccess(
     where: {
       userId: { in: userIds },
       status: { in: ["ACTIVE", "COMPLETED"] },
-      cohort: {
-        courseId: input.courseId,
-        status: { in: [...accessGrantingCohortStatuses] },
-        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
-      },
+      cohort: { courseId: input.courseId, ...accessGrantingCohortWhere(now) },
     },
     select: { userId: true },
     distinct: ["userId"],

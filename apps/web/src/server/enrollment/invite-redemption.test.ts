@@ -143,14 +143,34 @@ describe("invite redemption", () => {
   test("consumes a use and enrolls a new learner", async () => {
     const { tx, getUseCount } = createTransaction();
     const upserts: unknown[] = [];
+    const memberships: unknown[] = [];
+    const enrollment = {
+      userId: "user-1",
+      status: "ACTIVE",
+      source: "INVITE",
+      enrolledAt: now,
+      completedAt: null,
+      expiresAt: null,
+    };
     Object.assign(tx, {
       $executeRaw: () => Promise.resolve(1),
       courseEnrollment: {
         findUnique: () => Promise.resolve(null),
+        findMany: () => Promise.resolve([enrollment]),
         upsert: (args: unknown) => {
           upserts.push(args);
           return Promise.resolve({});
         },
+      },
+      cohort: {
+        findUnique: () => Promise.resolve({ id: "default-cohort" }),
+      },
+      cohortEnrollment: {
+        createMany: (args: { data: unknown[] }) => {
+          memberships.push(...args.data);
+          return Promise.resolve({ count: 1 });
+        },
+        updateMany: () => Promise.resolve({ count: 1 }),
       },
     });
 
@@ -161,5 +181,8 @@ describe("invite redemption", () => {
     });
     expect(getUseCount()).toBe(1);
     expect(upserts).toHaveLength(1);
+    expect(memberships).toEqual([
+      { cohortId: "default-cohort", ...enrollment },
+    ]);
   });
 });

@@ -2,7 +2,7 @@ import { parseOrganizationTheme } from "@hakgyo/shared";
 
 import { activeEnrollmentStatuses } from "~/server/authorization";
 import type { db } from "~/server/db";
-import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
 
 export const organizationBrandSelect = {
   id: true,
@@ -205,8 +205,7 @@ export async function getActiveBrandContext({
         },
         cohorts: {
           where: {
-            status: { in: [...accessGrantingCohortStatuses] },
-            OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+            ...accessGrantingCohortWhere(now),
             enrollments: {
               some: {
                 userId,
@@ -281,8 +280,7 @@ export async function listAvailableBrandContexts({
           userId: actorUserId,
           status: { in: [...activeEnrollmentStatuses] },
           cohort: {
-            status: { in: [...accessGrantingCohortStatuses] },
-            OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+            ...accessGrantingCohortWhere(now),
             course: { status: "PUBLISHED" },
           },
         },

@@ -4,6 +4,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { hashPassword } from "better-auth/crypto";
 
 import { PrismaClient } from "../generated/prisma/client";
+import { syncDefaultCohortEnrollments } from "../src/server/enrollment/default-cohort";
 import {
   HAKGYO_SYSTEM_ORGANIZATION_ID,
   HANGEUL_MASTERY_COURSE_ID,
@@ -206,6 +207,10 @@ async function main() {
       status: "ACTIVE" as const,
     })),
     skipDuplicates: true,
+  });
+  await syncDefaultCohortEnrollments(db, {
+    courseId: hangeulMasteryCourse.id,
+    userIds: [owner, teacher, student, systemOwner].map(({ id }) => id),
   });
 
   const organization = await db.organization.upsert({
@@ -623,6 +628,10 @@ async function main() {
       source: "OPEN",
       status: "ACTIVE",
     },
+  });
+  await syncDefaultCohortEnrollments(db, {
+    courseId: course.id,
+    userIds: [student.id],
   });
 
   await db.cohortEnrollment.upsert({
