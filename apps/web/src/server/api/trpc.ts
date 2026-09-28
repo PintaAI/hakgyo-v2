@@ -12,6 +12,7 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { auth } from "~/server/better-auth";
+import { isActiveUser } from "~/server/better-auth/active-user";
 import type { Session } from "~/server/better-auth/config";
 import { db } from "~/server/db";
 import {
@@ -44,9 +45,7 @@ export const createTRPCContext = async (opts: {
       ? opts.authSession
       : await auth.api.getSession({ headers: opts.headers });
   const session =
-    authSession && !authSession.user.suspendedAt && !authSession.user.deletedAt
-      ? authSession
-      : null;
+    authSession && isActiveUser(authSession.user) ? authSession : null;
   return {
     db,
     session,

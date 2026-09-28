@@ -8,6 +8,7 @@ import {
   deleteCourseTree,
   deleteOrganizationTree,
 } from "~/server/superadmin/deletion";
+import { revokeUserAccess } from "~/server/superadmin/user-access";
 
 const pageInput = z.object({
   search: z.string().trim().max(100).default(""),
@@ -97,7 +98,7 @@ export const superadminRouter = createTRPCRouter({
         data: { suspendedAt: input.suspended ? new Date() : null },
       });
       if (input.suspended) {
-        await ctx.db.session.deleteMany({ where: { userId: input.userId } });
+        await revokeUserAccess(ctx.db, input.userId);
       }
       await audit(ctx.db, {
         actorUserId: ctx.actorUserId,
@@ -121,7 +122,7 @@ export const superadminRouter = createTRPCRouter({
         where: { id: input.userId },
         data: { deletedAt: new Date(), suspendedAt: new Date() },
       });
-      await ctx.db.session.deleteMany({ where: { userId: input.userId } });
+      await revokeUserAccess(ctx.db, input.userId);
       await audit(ctx.db, {
         actorUserId: ctx.actorUserId,
         targetUserId: input.userId,
@@ -133,7 +134,7 @@ export const superadminRouter = createTRPCRouter({
   revokeSessions: superadminProcedure
     .input(z.object({ userId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.session.deleteMany({ where: { userId: input.userId } });
+      await revokeUserAccess(ctx.db, input.userId);
       await audit(ctx.db, {
         actorUserId: ctx.actorUserId,
         targetUserId: input.userId,
