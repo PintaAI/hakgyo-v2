@@ -301,6 +301,7 @@ export const assessmentEventRouter = createTRPCRouter({
               title: true,
               description: true,
               timeLimitMinutes: true,
+              updatedAt: true,
               _count: { select: { questions: true } },
             },
           },

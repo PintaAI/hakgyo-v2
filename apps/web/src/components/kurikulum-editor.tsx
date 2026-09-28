@@ -73,6 +73,10 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
+  AssessmentPicker,
+  type AssessmentPickerOption,
+} from "~/components/assessment-picker";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -98,8 +102,9 @@ type CourseItem = CourseModule["items"][number];
 /** Library resources only need an id and title to be picked and labelled. */
 type ResourceOption = { id: string; title: string };
 type Material = ResourceOption;
-/** `questionCount` lets the add-item dialog tell an empty assessment apart. */
-type Assessment = ResourceOption & { questionCount?: number };
+/** Picker metadata; `questionCount` also lets the add-item dialog tell an empty assessment apart. */
+type Assessment = ResourceOption &
+  Omit<AssessmentPickerOption, "id" | "title" | "group">;
 type VocabularySet = ResourceOption;
 type PdfPageRangesByMaterial = Partial<Record<string, PdfPageRange[]>>;
 type ItemType = CourseItem["type"];
@@ -1472,30 +1477,40 @@ function ItemDialog({
 
             <div className="space-y-2">
               <Label htmlFor="item-resource">{itemMeta[type].label}</Label>
-              <Select
-                value={resourceId || "NONE"}
-                disabled={resources.length === 0}
-                onValueChange={(value) => {
-                  if (value && value !== "NONE") selectResource(value);
-                }}
-              >
-                <SelectTrigger id="item-resource" className="h-10 w-full">
-                  <span className="flex min-w-0 flex-1 truncate text-left">
-                    {resources.find((resource) => resource.id === resourceId)
-                      ?.title ??
-                      (resources.length === 0
-                        ? `Belum ada ${resourceLabel} tersedia`
-                        : `Pilih ${resourceLabel}`)}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {resources.map((resource) => (
-                    <SelectItem key={resource.id} value={resource.id}>
-                      {resource.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {type === "ASSESSMENT" ? (
+                <AssessmentPicker
+                  id="item-resource"
+                  options={assessments}
+                  value={resourceId || null}
+                  onValueChange={selectResource}
+                  defaultSortLabel="Urutan library"
+                />
+              ) : (
+                <Select
+                  value={resourceId || "NONE"}
+                  disabled={resources.length === 0}
+                  onValueChange={(value) => {
+                    if (value && value !== "NONE") selectResource(value);
+                  }}
+                >
+                  <SelectTrigger id="item-resource" className="h-10 w-full">
+                    <span className="flex min-w-0 flex-1 truncate text-left">
+                      {resources.find((resource) => resource.id === resourceId)
+                        ?.title ??
+                        (resources.length === 0
+                          ? `Belum ada ${resourceLabel} tersedia`
+                          : `Pilih ${resourceLabel}`)}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resources.map((resource) => (
+                      <SelectItem key={resource.id} value={resource.id}>
+                        {resource.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {resources.length === 0 ? (
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                   <CircleOffIcon className="size-3.5" />
