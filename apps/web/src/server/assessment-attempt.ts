@@ -40,6 +40,33 @@ export async function lockInProgressAttempt(
   return rows.length > 0;
 }
 
+/** A graded score passes when it reaches `passingScore` percent; no passing score means any score passes. */
+export function isPassingScore(
+  score: number,
+  maxScore: number | null,
+  passingScore: number | null,
+) {
+  return (
+    maxScore !== null &&
+    maxScore > 0 &&
+    (passingScore === null || (score / maxScore) * 100 >= passingScore)
+  );
+}
+
+/** Marks a standalone course item completed after a passing attempt. */
+export async function markCourseItemCompleted(
+  tx: Prisma.TransactionClient,
+  courseItemId: string,
+  userId: string,
+  now: Date,
+) {
+  await tx.contentProgress.upsert({
+    where: { courseItemId_userId: { courseItemId, userId } },
+    create: { courseItemId, userId, status: "COMPLETED", completedAt: now },
+    update: { status: "COMPLETED", completedAt: now },
+  });
+}
+
 export const gradableAttemptSelect = {
   id: true,
   userId: true,
@@ -160,9 +187,7 @@ export async function gradeInProgressAttempt(
   if (updated.count !== 1) throw new TRPCError({ code: "CONFLICT" });
   const passed =
     !needsReview &&
-    maxScore > 0 &&
-    (attempt.assessment.passingScore === null ||
-      (score / maxScore) * 100 >= attempt.assessment.passingScore);
+    isPassingScore(score, maxScore, attempt.assessment.passingScore);
   return {
     status: needsReview ? ("IN_REVIEW" as const) : ("GRADED" as const),
     score,
