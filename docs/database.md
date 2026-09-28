@@ -328,10 +328,17 @@ Field penting:
 Menghubungkan anggota organisasi dengan cohort sebagai `TEACHER` atau
 `MODERATOR`. Satu anggota hanya boleh terdaftar sekali pada cohort yang sama.
 
-### ZoomConnection dan CohortMeeting
+### Koneksi meeting dan CohortMeeting
 
 `ZoomConnection` menyimpan satu koneksi Zoom terenkripsi per organisasi.
+`GoogleCalendarConnection` menyimpan satu grant Google Calendar terenkripsi per
+organisasi untuk membuat Google Meet pada kalender penyelenggara.
+`Organization.meetingProvider` memilih layanan untuk meeting baru dan default
+ke `ZOOM` agar organisasi lama tetap menggunakan alur sebelumnya.
 `CohortMeeting` menyimpan jadwal dan data meeting yang dibuat untuk cohort.
+`provider` membedakan Zoom dan Google Meet. Meeting Google menyimpan calendar ID
+serta event ID; `moduleId` menghubungkannya secara opsional ke `CourseModule`
+dari course cohort yang sama.
 
 Token Zoom berada di database dan dienkripsi AES-256-GCM sebelum disimpan. Access
 token di-refresh sebelum expiry dan refresh token hasil rotation menggantikan token

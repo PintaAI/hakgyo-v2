@@ -27,6 +27,7 @@ import { createVocabularyProgressService } from "~/server/vocabulary/progress-se
 import { isValidTimeZone } from "~/server/gamification/logic";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import { organizationBrandSelect } from "~/server/brand/context";
+import { getGoogleMeetingJoinUrl } from "~/server/integrations/google-calendar";
 
 // Longest meeting a cohort can schedule (cohort router validation). Anything
 // that started earlier has ended and is never shown or badged by clients.
@@ -140,6 +141,11 @@ export const learningRouter = createTRPCRouter({
               durationMinutes: true,
               timezone: true,
               status: true,
+              provider: true,
+              module: { select: { id: true, title: true } },
+              organizationId: true,
+              googleCalendarId: true,
+              googleCalendarEventId: true,
               joinUrl: true,
               createdAt: true,
               updatedAt: true,
@@ -179,8 +185,45 @@ export const learningRouter = createTRPCRouter({
       const countByCohort = new Map(
         enrollmentCounts.map((row) => [row.cohortId, row._count._all]),
       );
+      await Promise.all(
+        cohorts.flatMap((cohort) =>
+          cohort.meetings
+            .filter(
+              (meeting) => meeting.googleCalendarEventId && !meeting.joinUrl,
+            )
+            .map(async (meeting) => {
+              try {
+                const joinUrl = await getGoogleMeetingJoinUrl(
+                  meeting.organizationId,
+                  meeting.googleCalendarId ?? "primary",
+                  meeting.googleCalendarEventId!,
+                );
+                if (joinUrl) {
+                  await ctx.db.cohortMeeting.update({
+                    where: { id: meeting.id },
+                    data: { joinUrl },
+                  });
+                  meeting.joinUrl = joinUrl;
+                }
+              } catch (error) {
+                console.error("Google Meet link could not be refreshed", {
+                  meetingId: meeting.id,
+                  error,
+                });
+              }
+            }),
+        ),
+      );
       return cohorts.map((cohort) => ({
         ...cohort,
+        meetings: cohort.meetings.map(
+          ({
+            organizationId: _organizationId,
+            googleCalendarId: _googleCalendarId,
+            googleCalendarEventId: _googleCalendarEventId,
+            ...meeting
+          }) => meeting,
+        ),
         _count: { enrollments: countByCohort.get(cohort.id) ?? 0 },
       }));
     }),

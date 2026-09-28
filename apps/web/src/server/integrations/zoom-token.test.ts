@@ -32,7 +32,7 @@ describe("Zoom token encryption", () => {
 
   test("rejects malformed payloads and invalid keys", () => {
     expect(() => decryptZoomTokenValue("invalid", key)).toThrow(
-      "Invalid encrypted Zoom token",
+      "Invalid encrypted token",
     );
     expect(() => encryptZoomTokenValue("token", "dG9vLXNob3J0")).toThrow(
       "must decode to 32 bytes",

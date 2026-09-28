@@ -429,6 +429,27 @@ GET /api/integrations/zoom/callback
 - Access token di-refresh lima menit sebelum expiry dan refresh token hasil
   rotation selalu disimpan.
 
+### Google Meet via Google Calendar
+
+`organization.getGoogleMeetConnectionStatus` mengembalikan status, email
+penyelenggara, masa berlaku access token, dan anggota yang menghubungkan akun.
+`organization.disconnectGoogleMeet` menghapus grant lokal; Google OAuth revoke
+tidak dipanggil karena dapat mencabut semua grant untuk project Google yang sama.
+
+```text
+GET /api/integrations/google-meet/connect?organizationId=<id>
+GET /api/integrations/google-meet/callback
+```
+
+Owner/admin mengotorisasi scope `calendar.events` untuk kalender penyelenggara.
+Callback menyimpan access/refresh token terenkripsi. Google Calendar API harus
+diaktifkan dan callback URL didaftarkan pada OAuth client Google.
+
+`organization.getMeetingProvider` membaca layanan meeting utama organisasi;
+`organization.updateMeetingProvider` (`ZOOM` atau `GOOGLE_MEET`) hanya dapat
+dipanggil owner/admin. Pilihan ini berlaku untuk meeting baru. Default untuk
+organisasi lama adalah `ZOOM`.
+
 ---
 
 ## Course
@@ -970,15 +991,23 @@ sinkronisasi `STARTED`/`ENDED` memerlukan webhook provider yang belum tersedia.
 query({ cohortId: string }): CohortMeeting[]
 ```
 
+Tiap meeting memiliki `provider` (`ZOOM` atau `GOOGLE_MEET`) dan `moduleId`
+opsional. `cohort.listMeetingModules({ cohortId })` mengembalikan modul dari
+course milik cohort untuk pemilihan modul.
+
 #### `cohort.createMeeting`
 
 ```ts
 mutation(MeetingFields & { cohortId: string }): CohortMeeting
 ```
 
-- Memerlukan `ZoomConnection` organization berstatus `CONNECTED`.
-- Server membuat scheduled meeting melalui `POST /users/me/meetings`.
-- ID, UUID, dan join URL meeting berasal dari Zoom, bukan input client.
+- Server memilih provider dari `Organization.meetingProvider`; client tidak
+  mengirim provider. Layanan pilihan organisasi harus terhubung.
+- Zoom menggunakan `POST /users/me/meetings`. Google Meet dibuat sebagai Google
+  Calendar event dengan `hangoutsMeet` conference request.
+- `moduleId` opsional dan harus menunjuk modul dari course cohort tersebut.
+- Link Google Meet dapat muncul belakangan karena Google membuat conference
+  secara asynchronous; pembacaan meeting mencoba menyegarkan link yang pending.
 
 #### `cohort.updateMeeting`
 
@@ -989,7 +1018,8 @@ mutation(Partial<MeetingFields> & {
 }): CohortMeeting
 ```
 
-- Memperbarui Zoom terlebih dahulu, kemudian metadata lokal.
+- Memperbarui provider yang tersimpan pada meeting terlebih dahulu, kemudian
+  metadata lokal. Perubahan preferensi organisasi tidak memindahkan meeting lama.
 
 #### `cohort.deleteMeeting`
 
@@ -997,7 +1027,7 @@ mutation(Partial<MeetingFields> & {
 mutation({ cohortId: string; meetingId: string }): { deleted: true }
 ```
 
-- Menghapus meeting Zoom terlebih dahulu, kemudian metadata lokal.
+- Menghapus meeting pada provider aktif terlebih dahulu, kemudian metadata lokal.
 
 ---
 

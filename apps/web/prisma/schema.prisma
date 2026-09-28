@@ -546,31 +546,33 @@ enum GamificationAction {
 }
 
 model Organization {
-  id                     String                     @id @default(cuid())
-  name                   String
-  slug                   String                     @unique
-  logoUrl                String?
-  theme                  Json?
-  themeEnabled           Boolean                    @default(true)
-  defaultEnrollmentMode  EnrollmentMode             @default(INVITE_ONLY)
-  permissionMode         OrganizationPermissionMode @default(SIMPLE)
-  teacherCanCreateCourse Boolean                    @default(true)
-  createdAt              DateTime                   @default(now())
-  updatedAt              DateTime                   @updatedAt
-  landingPage            OrganizationLandingPage?
-  members                OrganizationMember[]
-  invites                OrganizationInvite[]
-  courses                Course[]
-  materials              Material[]
-  assessments            Assessment[]
-  assessmentEvents       AssessmentEvent[]
-  vocabularySets         VocabularySet[]
-  zoomConnection         ZoomConnection?
-  assets                 Asset[]
-  pdfBooks               PdfBook[]
-  activityEvents         UserActivityEvent[]
-  notifications          Notification[]
-  sidebarSeen            LearnerSidebarSeen[]
+  id                       String                     @id @default(cuid())
+  name                     String
+  slug                     String                     @unique
+  logoUrl                  String?
+  theme                    Json?
+  themeEnabled             Boolean                    @default(true)
+  defaultEnrollmentMode    EnrollmentMode             @default(INVITE_ONLY)
+  permissionMode           OrganizationPermissionMode @default(SIMPLE)
+  teacherCanCreateCourse   Boolean                    @default(true)
+  meetingProvider          MeetingProvider            @default(ZOOM)
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  landingPage              OrganizationLandingPage?
+  members                  OrganizationMember[]
+  invites                  OrganizationInvite[]
+  courses                  Course[]
+  materials                Material[]
+  assessments              Assessment[]
+  assessmentEvents         AssessmentEvent[]
+  vocabularySets           VocabularySet[]
+  zoomConnection           ZoomConnection?
+  googleCalendarConnection GoogleCalendarConnection?
+  assets                   Asset[]
+  pdfBooks                 PdfBook[]
+  activityEvents           UserActivityEvent[]
+  notifications            Notification[]
+  sidebarSeen              LearnerSidebarSeen[]
 }
 
 /// A durable read receipt for one version of a learner-facing sidebar item.
@@ -590,29 +592,30 @@ model LearnerSidebarSeen {
 }
 
 model OrganizationMember {
-  id                           String                       @id @default(cuid())
-  organizationId               String
-  userId                       String
-  role                         OrganizationRole
-  createdAt                    DateTime                     @default(now())
-  updatedAt                    DateTime                     @updatedAt
-  organization                 Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user                         User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ownedCourses                 Course[]                     @relation("CourseOwner")
-  courseCollaborations         CourseCollaborator[]
-  cohortStaffMemberships       CohortStaff[]
-  createdMaterials             Material[]                   @relation("MaterialCreator")
-  createdAssessments           Assessment[]                 @relation("AssessmentCreator")
-  createdVocabularySets        VocabularySet[]              @relation("VocabularySetCreator")
-  createdEnrollmentInvites     EnrollmentInvite[]           @relation("EnrollmentInviteCreator")
-  reviewedAssessmentAnswers    AssessmentAnswer[]           @relation("AssessmentAnswerReviewer")
-  connectedZoomAccounts        ZoomConnection[]             @relation("ZoomConnectionCreator")
-  createdCohortMeetings        CohortMeeting[]              @relation("CohortMeetingCreator")
-  createdAssessmentEvents      AssessmentEvent[]            @relation("AssessmentEventCreator")
-  assessmentEventAudits        AssessmentEventAudit[]       @relation("AssessmentEventAuditActor")
-  invalidatedEventParticipants AssessmentEventParticipant[] @relation("AssessmentEventParticipantInvalidator")
-  sentOrganizationInvites      OrganizationInvite[]         @relation("OrganizationInviteSender")
-  createdPdfBooks              PdfBook[]                    @relation("PdfBookCreator")
+  id                              String                       @id @default(cuid())
+  organizationId                  String
+  userId                          String
+  role                            OrganizationRole
+  createdAt                       DateTime                     @default(now())
+  updatedAt                       DateTime                     @updatedAt
+  organization                    Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                            User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownedCourses                    Course[]                     @relation("CourseOwner")
+  courseCollaborations            CourseCollaborator[]
+  cohortStaffMemberships          CohortStaff[]
+  createdMaterials                Material[]                   @relation("MaterialCreator")
+  createdAssessments              Assessment[]                 @relation("AssessmentCreator")
+  createdVocabularySets           VocabularySet[]              @relation("VocabularySetCreator")
+  createdEnrollmentInvites        EnrollmentInvite[]           @relation("EnrollmentInviteCreator")
+  reviewedAssessmentAnswers       AssessmentAnswer[]           @relation("AssessmentAnswerReviewer")
+  connectedZoomAccounts           ZoomConnection[]             @relation("ZoomConnectionCreator")
+  connectedGoogleCalendarAccounts GoogleCalendarConnection[]   @relation("GoogleCalendarConnectionCreator")
+  createdCohortMeetings           CohortMeeting[]              @relation("CohortMeetingCreator")
+  createdAssessmentEvents         AssessmentEvent[]            @relation("AssessmentEventCreator")
+  assessmentEventAudits           AssessmentEventAudit[]       @relation("AssessmentEventAuditActor")
+  invalidatedEventParticipants    AssessmentEventParticipant[] @relation("AssessmentEventParticipantInvalidator")
+  sentOrganizationInvites         OrganizationInvite[]         @relation("OrganizationInviteSender")
+  createdPdfBooks                 PdfBook[]                    @relation("PdfBookCreator")
 
   @@unique([organizationId, userId])
   @@unique([id, organizationId])
@@ -742,6 +745,37 @@ model ZoomConnection {
   @@index([zoomAccountId])
 }
 
+model GoogleCalendarConnection {
+  id                      String                         @id @default(cuid())
+  organizationId          String                         @unique
+  connectedByMembershipId String
+  googleUserId            String
+  email                   String
+  encryptedAccessToken    String
+  encryptedRefreshToken   String
+  accessTokenExpiresAt    DateTime
+  scope                   String?
+  status                  GoogleCalendarConnectionStatus @default(CONNECTED)
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  organization            Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  connectedBy             OrganizationMember             @relation("GoogleCalendarConnectionCreator", fields: [connectedByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "GoogleCalendarConnection_creator_fkey")
+
+  @@index([connectedByMembershipId])
+  @@index([googleUserId])
+}
+
+enum GoogleCalendarConnectionStatus {
+  CONNECTED
+  EXPIRED
+  REVOKED
+}
+
+enum MeetingProvider {
+  ZOOM
+  GOOGLE_MEET
+}
+
 model CohortMeeting {
   id                    String              @id @default(cuid())
   cohortId              String
@@ -749,8 +783,12 @@ model CohortMeeting {
   createdByMembershipId String
   title                 String
   agenda                String?
+  provider              MeetingProvider     @default(ZOOM)
   zoomMeetingId         String?             @unique
   zoomMeetingUuid       String?
+  googleCalendarId      String?
+  googleCalendarEventId String?
+  moduleId              String?
   joinUrl               String?
   startsAt              DateTime
   durationMinutes       Int
@@ -759,9 +797,12 @@ model CohortMeeting {
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   cohort                Cohort              @relation(fields: [cohortId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  module                CourseModule?       @relation(fields: [moduleId], references: [id], onDelete: SetNull)
   createdBy             OrganizationMember  @relation("CohortMeetingCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
+  @@unique([organizationId, googleCalendarId, googleCalendarEventId], map: "CohortMeeting_googleEvent_key")
   @@index([cohortId, startsAt])
+  @@index([moduleId])
   @@index([createdByMembershipId])
   @@index([organizationId, status, startsAt])
 }
@@ -781,16 +822,17 @@ model CohortStaff {
 }
 
 model CourseModule {
-  id             String       @id @default(cuid())
+  id             String          @id @default(cuid())
   courseId       String
   organizationId String
   title          String
   description    String?
   position       Int
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  course         Course       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  course         Course          @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
   items          CourseItem[]
+  cohortMeetings CohortMeeting[]
 
   @@unique([courseId, position])
   @@unique([id, organizationId])

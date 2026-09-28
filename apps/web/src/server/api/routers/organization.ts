@@ -26,6 +26,7 @@ import {
 } from "~/server/db-retry";
 import { canDemoteOwner } from "~/server/organization-role";
 import { revokeZoomConnection } from "~/server/integrations/zoom";
+import { revokeGoogleConnection } from "~/server/integrations/google-calendar";
 import {
   acceptOrganizationInvite,
   createOrganizationInviteToken,
@@ -112,6 +113,38 @@ export const organizationRouter = createTRPCRouter({
       }
     }),
 
+  getMeetingProvider: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .query(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        ...input,
+        permission: "organization.manage",
+        userId: ctx.actorUserId,
+      });
+      return db.organization.findUniqueOrThrow({
+        where: { id: input.organizationId },
+        select: { meetingProvider: true },
+      });
+    }),
+  updateMeetingProvider: protectedProcedure
+    .input(
+      z.object({
+        organizationId: id,
+        meetingProvider: z.enum(["ZOOM", "GOOGLE_MEET"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "organization.manage",
+        userId: ctx.actorUserId,
+      });
+      return db.organization.update({
+        where: { id: input.organizationId },
+        data: { meetingProvider: input.meetingProvider },
+        select: { meetingProvider: true },
+      });
+    }),
   getZoomConnectionStatus: protectedProcedure
     .input(z.object({ organizationId: id }))
     .query(async ({ ctx, input }) => {
@@ -146,6 +179,38 @@ export const organizationRouter = createTRPCRouter({
         userId: ctx.actorUserId,
       });
       await revokeZoomConnection(input.organizationId);
+      return { disconnected: true };
+    }),
+  getGoogleMeetConnectionStatus: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .query(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        ...input,
+        permission: "organization.manage",
+        userId: ctx.actorUserId,
+      });
+      return db.googleCalendarConnection.findUnique({
+        where: { organizationId: input.organizationId },
+        select: {
+          id: true,
+          status: true,
+          email: true,
+          accessTokenExpiresAt: true,
+          connectedBy: {
+            select: { user: { select: { id: true, name: true } } },
+          },
+        },
+      });
+    }),
+  disconnectGoogleMeet: protectedProcedure
+    .input(z.object({ organizationId: id }))
+    .mutation(async ({ ctx, input }) => {
+      await requireOrganizationPermission({
+        ...input,
+        permission: "organization.manage",
+        userId: ctx.actorUserId,
+      });
+      await revokeGoogleConnection(input.organizationId);
       return { disconnected: true };
     }),
   list: protectedProcedure.query(({ ctx }) =>
