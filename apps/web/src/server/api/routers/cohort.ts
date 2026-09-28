@@ -21,7 +21,14 @@ import {
   createZoomMeeting,
   deleteZoomMeeting,
   updateZoomMeeting,
+  type ZoomMeetingInput,
 } from "~/server/integrations/zoom";
+import {
+  createGoogleMeeting,
+  deleteGoogleMeeting,
+  getGoogleMeetingJoinUrl,
+  updateGoogleMeeting,
+} from "~/server/integrations/google-calendar";
 
 const id = z.string().min(1);
 const cohortFields = z.object({
@@ -43,7 +50,70 @@ const meetingFields = z.object({
   startsAt: z.date(),
   durationMinutes: z.number().int().positive().max(1440),
   timezone: z.string().trim().min(1).max(100),
+  moduleId: id.nullable().optional(),
 });
+
+async function validateMeetingModule(
+  courseId: string,
+  moduleId: string | null | undefined,
+) {
+  if (!moduleId) return;
+  const courseModule = await db.courseModule.findFirst({
+    where: { id: moduleId, courseId },
+    select: { id: true },
+  });
+  if (!courseModule)
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Module does not belong to this cohort's course",
+    });
+}
+
+async function createRemoteMeeting(
+  provider: "ZOOM" | "GOOGLE_MEET",
+  organizationId: string,
+  input: ZoomMeetingInput,
+) {
+  if (provider === "ZOOM") {
+    const meeting = await createZoomMeeting(organizationId, input);
+    return {
+      provider,
+      zoomMeetingId: String(meeting.id),
+      zoomMeetingUuid: meeting.uuid,
+      googleCalendarId: null,
+      googleCalendarEventId: null,
+      joinUrl: meeting.join_url,
+    };
+  }
+  const meeting = await createGoogleMeeting(organizationId, input);
+  return {
+    provider,
+    zoomMeetingId: null,
+    zoomMeetingUuid: null,
+    googleCalendarId: meeting.calendarId,
+    googleCalendarEventId: meeting.eventId,
+    joinUrl: meeting.joinUrl,
+  };
+}
+
+async function deleteRemoteMeeting(
+  organizationId: string,
+  meeting: {
+    zoomMeetingId: string | null;
+    googleCalendarId: string | null;
+    googleCalendarEventId: string | null;
+  },
+) {
+  if (meeting.zoomMeetingId)
+    await deleteZoomMeeting(organizationId, meeting.zoomMeetingId);
+  if (meeting.googleCalendarEventId) {
+    await deleteGoogleMeeting(
+      organizationId,
+      meeting.googleCalendarId ?? "primary",
+      meeting.googleCalendarEventId,
+    );
+  }
+}
 
 async function requireManagedCohort(
   cohortId: string,
@@ -523,6 +593,7 @@ export const cohortRouter = createTRPCRouter({
           cursor: input.cursor ? { id: input.cursor } : undefined,
           skip: input.cursor ? 1 : undefined,
           include: {
+            module: { select: { id: true, title: true } },
             createdBy: {
               include: { user: { select: { id: true, name: true } } },
             },
@@ -532,7 +603,46 @@ export const cohortRouter = createTRPCRouter({
           ? db.cohortMeeting.count({ where })
           : Promise.resolve(undefined),
       ]);
+      await Promise.all(
+        items
+          .filter((item) => item.googleCalendarEventId && !item.joinUrl)
+          .map(async (item) => {
+            try {
+              const joinUrl = await getGoogleMeetingJoinUrl(
+                item.organizationId,
+                item.googleCalendarId ?? "primary",
+                item.googleCalendarEventId!,
+              );
+              if (joinUrl) {
+                await db.cohortMeeting.update({
+                  where: { id: item.id },
+                  data: { joinUrl },
+                });
+                item.joinUrl = joinUrl;
+              }
+            } catch (error) {
+              console.error("Google Meet link could not be refreshed", {
+                meetingId: item.id,
+                error,
+              });
+            }
+          }),
+      );
       return pageResult(items, input.limit, total);
+    }),
+  listMeetingModules: protectedProcedure
+    .input(z.object({ cohortId: id }))
+    .query(async ({ ctx, input }) => {
+      const cohort = await requireManagedCohort(
+        input.cohortId,
+        ctx.actorUserId,
+        "view",
+      );
+      return db.courseModule.findMany({
+        where: { courseId: cohort.courseId },
+        select: { id: true, title: true, position: true },
+        orderBy: [{ position: "asc" }, { id: "asc" }],
+      });
     }),
   getMeetingIntegrationStatus: protectedProcedure
     .input(z.object({ cohortId: id }))
@@ -542,24 +652,37 @@ export const cohortRouter = createTRPCRouter({
         ctx.actorUserId,
         "view",
       );
-      const [connection, membership] = await Promise.all([
-        db.zoomConnection.findUnique({
-          where: { organizationId: cohort.organizationId },
-          select: { status: true },
-        }),
-        db.organizationMember.findUnique({
-          where: {
-            organizationId_userId: {
-              organizationId: cohort.organizationId,
-              userId: ctx.actorUserId,
+      const [organization, connection, googleConnection, membership] =
+        await Promise.all([
+          db.organization.findUniqueOrThrow({
+            where: { id: cohort.organizationId },
+            select: { meetingProvider: true },
+          }),
+          db.zoomConnection.findUnique({
+            where: { organizationId: cohort.organizationId },
+            select: { status: true },
+          }),
+          db.googleCalendarConnection.findUnique({
+            where: { organizationId: cohort.organizationId },
+            select: { status: true },
+          }),
+          db.organizationMember.findUnique({
+            where: {
+              organizationId_userId: {
+                organizationId: cohort.organizationId,
+                userId: ctx.actorUserId,
+              },
             },
-          },
-          select: { role: true },
-        }),
-      ]);
+            select: { role: true },
+          }),
+        ]);
 
       return {
-        isConnected: connection?.status === "CONNECTED",
+        provider: organization.meetingProvider,
+        isConnected:
+          organization.meetingProvider === "ZOOM"
+            ? connection?.status === "CONNECTED"
+            : googleConnection?.status === "CONNECTED",
         canConfigure:
           membership?.role === "OWNER" || membership?.role === "ADMIN",
       };
@@ -581,24 +704,32 @@ export const cohortRouter = createTRPCRouter({
         },
       });
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
-      const meeting = await createZoomMeeting(cohort.organizationId, input);
+      await validateMeetingModule(cohort.courseId, input.moduleId);
+      const organization = await db.organization.findUniqueOrThrow({
+        where: { id: cohort.organizationId },
+        select: { meetingProvider: true },
+      });
+      const provider = organization.meetingProvider;
+      const remote = await createRemoteMeeting(
+        provider,
+        cohort.organizationId,
+        input,
+      );
       try {
         return await db.cohortMeeting.create({
           data: {
             ...input,
+            ...remote,
             organizationId: cohort.organizationId,
             createdByMembershipId: member.id,
-            zoomMeetingId: String(meeting.id),
-            zoomMeetingUuid: meeting.uuid,
-            joinUrl: meeting.join_url,
           },
         });
       } catch (error) {
         try {
-          await deleteZoomMeeting(cohort.organizationId, String(meeting.id));
+          await deleteRemoteMeeting(cohort.organizationId, remote);
         } catch (cleanupError) {
-          console.error("Orphaned Zoom meeting could not be removed", {
-            meetingId: meeting.id,
+          console.error("Orphaned meeting could not be removed", {
+            provider,
             cleanupError,
           });
         }
@@ -608,7 +739,7 @@ export const cohortRouter = createTRPCRouter({
   updateMeeting: protectedProcedure
     .input(meetingFields.partial().extend({ cohortId: id, meetingId: id }))
     .mutation(async ({ ctx, input }) => {
-      await requireCohortPermission({
+      const cohort = await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "meetings.manage",
         userId: ctx.actorUserId,
@@ -618,19 +749,38 @@ export const cohortRouter = createTRPCRouter({
         where: { id: meetingId, cohortId },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      if (!existing.zoomMeetingId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Meeting is not linked to Zoom",
-        });
-      }
-      await updateZoomMeeting(existing.organizationId, existing.zoomMeetingId, {
+      await validateMeetingModule(cohort.courseId, data.moduleId);
+      const remoteInput = {
         title: data.title ?? existing.title,
         agenda: data.agenda === undefined ? existing.agenda : data.agenda,
         startsAt: data.startsAt ?? existing.startsAt,
         durationMinutes: data.durationMinutes ?? existing.durationMinutes,
         timezone: data.timezone ?? existing.timezone,
-      });
+      };
+      if (existing.provider === "ZOOM") {
+        if (!existing.zoomMeetingId)
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Meeting is not linked to Zoom",
+          });
+        await updateZoomMeeting(
+          existing.organizationId,
+          existing.zoomMeetingId,
+          remoteInput,
+        );
+      } else {
+        if (!existing.googleCalendarEventId)
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Meeting is not linked to Google Meet",
+          });
+        await updateGoogleMeeting(
+          existing.organizationId,
+          existing.googleCalendarId ?? "primary",
+          existing.googleCalendarEventId,
+          remoteInput,
+        );
+      }
       const result = await db.cohortMeeting.updateMany({
         where: { id: meetingId, cohortId },
         data,
@@ -650,9 +800,7 @@ export const cohortRouter = createTRPCRouter({
         where: { id: input.meetingId, cohortId: input.cohortId },
       });
       if (!meeting) throw new TRPCError({ code: "NOT_FOUND" });
-      if (meeting.zoomMeetingId) {
-        await deleteZoomMeeting(meeting.organizationId, meeting.zoomMeetingId);
-      }
+      await deleteRemoteMeeting(meeting.organizationId, meeting);
       const result = await db.cohortMeeting.deleteMany({
         where: { id: input.meetingId, cohortId: input.cohortId },
       });

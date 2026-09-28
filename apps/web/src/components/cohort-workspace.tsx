@@ -578,7 +578,7 @@ function Overview({
               {
                 target: "meetings" as const,
                 icon: VideoIcon,
-                label: "Jadwalkan meeting Zoom",
+                label: "Jadwalkan meeting",
               },
             ].map(({ target, icon: Icon, label }) => (
               <button
@@ -611,14 +611,14 @@ function Overview({
               className={buttonVariants()}
             >
               <VideoIcon />
-              Mulai Zoom
+              Gabung meeting
               <ExternalLinkIcon />
             </a>
           ) : null}
           {canManageMeetings ? (
             <Button variant="outline" onClick={() => onNavigate("meetings")}>
               <PlusIcon />
-              Buat meeting Zoom
+              Buat meeting
             </Button>
           ) : null}
           {cohort.whatsappGroupUrl ? (
@@ -1238,7 +1238,7 @@ function Meetings({
       return (
         <Button size={size} variant="outline" disabled>
           <LoaderCircleIcon className="animate-spin" />
-          Memeriksa Zoom
+          Memeriksa integrasi
         </Button>
       );
     }
@@ -1249,7 +1249,7 @@ function Meetings({
           variant="outline"
           onClick={() => integration.refetch()}
         >
-          Coba cek Zoom lagi
+          Coba cek integrasi lagi
         </Button>
       );
     }
@@ -1274,7 +1274,8 @@ function Meetings({
     }
     return (
       <Button size={size} variant="outline" disabled>
-        Zoom belum terhubung
+        {integration.data?.provider === "GOOGLE_MEET" ? "Google Meet" : "Zoom"}{" "}
+        belum terhubung
       </Button>
     );
   }
@@ -1292,7 +1293,7 @@ function Meetings({
     <section className="space-y-5">
       <SectionHeading
         title="Meetings"
-        description="Jadwal live session yang terhubung ke Zoom."
+        description="Jadwal live session melalui Zoom atau Google Meet."
         action={renderMeetingAction()}
       />
       {pending || error ? <LoadingRows error={error} /> : null}
@@ -1309,8 +1310,8 @@ function Meetings({
                   : integration.data?.isConnected
                     ? "Jadwalkan live session pertama untuk Group belajar ini."
                     : integration.data?.canConfigure
-                      ? "Hubungkan Zoom organization sebelum menjadwalkan live session."
-                      : "Zoom organization belum terhubung. Hubungi owner atau admin organisasi."
+                      ? `Hubungkan ${integration.data?.provider === "GOOGLE_MEET" ? "Google Meet" : "Zoom"} di pengaturan integrasi sebelum menjadwalkan live session.`
+                      : "Layanan meeting pilihan organisasi belum terhubung. Hubungi owner atau admin organisasi."
               }
               action={renderMeetingAction("sm")}
             />
@@ -1324,6 +1325,11 @@ function Meetings({
               <CardHeader>
                 <div>
                   <Badge variant="outline">{meeting.status}</Badge>
+                  <Badge variant="secondary" className="ml-2">
+                    {meeting.provider === "GOOGLE_MEET"
+                      ? "Google Meet"
+                      : "Zoom"}
+                  </Badge>
                   <CardTitle className="mt-3 text-base">
                     {meeting.title}
                   </CardTitle>
@@ -1331,6 +1337,11 @@ function Meetings({
                     {formatMeetingDateTime(meeting.startsAt, meeting.timezone)}{" "}
                     · {meeting.durationMinutes} menit · {meeting.timezone}
                   </CardDescription>
+                  {meeting.module ? (
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Modul: {meeting.module.title}
+                    </p>
+                  ) : null}
                 </div>
               </CardHeader>
               <CardContent>
@@ -1345,9 +1356,16 @@ function Meetings({
                       rel="noreferrer"
                       className={buttonVariants({ size: "sm" })}
                     >
-                      Join Zoom
+                      Gabung{" "}
+                      {meeting.provider === "GOOGLE_MEET"
+                        ? "Google Meet"
+                        : "Zoom"}
                       <ExternalLinkIcon />
                     </a>
+                  ) : meeting.provider === "GOOGLE_MEET" ? (
+                    <span className="text-muted-foreground text-xs">
+                      Link Meet sedang dibuat. Muat ulang sebentar lagi.
+                    </span>
                   ) : null}
                   {canManage ? (
                     <>
@@ -1396,6 +1414,7 @@ function Meetings({
           key={editing?.id ?? "new"}
           cohortId={cohortId}
           meeting={editing}
+          organizationProvider={integration.data?.provider ?? "ZOOM"}
           open={open}
           onOpenChange={setOpen}
         />
@@ -1407,11 +1426,13 @@ function Meetings({
 function MeetingForm({
   cohortId,
   meeting,
+  organizationProvider,
   open,
   onOpenChange,
 }: {
   cohortId: string;
   meeting: Meeting | null;
+  organizationProvider: "ZOOM" | "GOOGLE_MEET";
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -1427,6 +1448,8 @@ function MeetingForm({
     String(meeting?.durationMinutes ?? 60),
   );
   const [timezone, setTimezone] = useState(initialTimezone);
+  const [moduleId, setModuleId] = useState(meeting?.moduleId ?? "none");
+  const modules = api.cohort.listMeetingModules.useQuery({ cohortId });
   const timezoneValid = isValidTimeZone(timezone);
   const create = api.cohort.createMeeting.useMutation();
   const update = api.cohort.updateMeeting.useMutation();
@@ -1435,6 +1458,7 @@ function MeetingForm({
     try {
       const input = {
         cohortId,
+        moduleId: moduleId === "none" ? null : moduleId,
         title: title.trim(),
         agenda: agenda.trim() || null,
         startsAt: parseZonedDateTimeInput(startsAt, timezone),
@@ -1461,10 +1485,43 @@ function MeetingForm({
               {meeting ? "Edit meeting" : "Jadwalkan meeting"}
             </DialogTitle>
             <DialogDescription>
-              Meeting dibuat dan disinkronkan dengan Zoom organization.
+              {meeting
+                ? "Meeting ini tetap menggunakan"
+                : "Meeting baru menggunakan"}{" "}
+              {meeting?.provider === "GOOGLE_MEET" ||
+              (!meeting && organizationProvider === "GOOGLE_MEET")
+                ? "Google Meet"
+                : "Zoom"}{" "}
+              sesuai pengaturan organisasi saat dibuat.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-5 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="meeting-module">Modul cohort</Label>
+              <Select
+                value={moduleId}
+                onValueChange={(value) => {
+                  if (value) setModuleId(value);
+                }}
+              >
+                <SelectTrigger id="meeting-module" className="w-full">
+                  <span className="flex flex-1 truncate text-left">
+                    {moduleId === "none"
+                      ? "Tidak terkait modul"
+                      : (modules.data?.find((module) => module.id === moduleId)
+                          ?.title ?? "Memuat modul")}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Tidak terkait modul</SelectItem>
+                  {modules.data?.map((module) => (
+                    <SelectItem key={module.id} value={module.id}>
+                      {module.position + 1}. {module.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="meeting-title">Judul</Label>
               <Input

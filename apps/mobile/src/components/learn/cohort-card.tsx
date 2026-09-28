@@ -40,8 +40,7 @@ import {
 } from "./milestone-section";
 
 // Official brand assets (see apps/mobile/assets/brands/README.md for sources).
-// Used unmodified; Zoom opens the cohort's meeting URL, WhatsApp opens the
-// cohort's discussion room invite.
+// Used unmodified for Zoom meetings and WhatsApp invitations.
 const zoomBrandIcon = require("../../../assets/brands/zoom.png");
 const whatsappBrandIcon = require("../../../assets/brands/whatsapp.png");
 
@@ -53,6 +52,8 @@ export type CohortMeeting = {
   durationMinutes: number;
   timezone: string;
   status: string;
+  provider: "ZOOM" | "GOOGLE_MEET";
+  module: { id: string; title: string } | null;
   joinUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -105,7 +106,7 @@ export function assessmentSourceBadge(event: {
 
 export async function openExternalLink(
   value: string,
-  kind: "zoom" | "whatsapp",
+  kind: "zoom" | "googleMeet" | "whatsapp",
 ) {
   const url = safeExternalUrl(value, kind);
   if (!url) {
@@ -138,11 +139,14 @@ export async function openMeetingOnWeb(courseId: string) {
 }
 
 export function openMeeting(
-  meeting: Pick<CohortMeeting, "joinUrl">,
+  meeting: Pick<CohortMeeting, "joinUrl" | "provider">,
   courseId: string,
 ) {
   if (meeting.joinUrl) {
-    void openExternalLink(meeting.joinUrl, "zoom");
+    void openExternalLink(
+      meeting.joinUrl,
+      meeting.provider === "GOOGLE_MEET" ? "googleMeet" : "zoom",
+    );
     return;
   }
   void openMeetingOnWeb(courseId);
@@ -583,10 +587,10 @@ export function CohortCard({
       title: next.title,
       meta:
         nextState === "live"
-          ? `Berakhir ${timeLabel(endsAt)} · ${next.durationMinutes} menit`
-          : `Mulai ${timeLabel(next.startsAt)} · ${next.durationMinutes} menit`,
+          ? `Berakhir ${timeLabel(endsAt)} · ${next.durationMinutes} menit${next.module ? ` · ${next.module.title}` : ""}`
+          : `Mulai ${timeLabel(next.startsAt)} · ${next.durationMinutes} menit${next.module ? ` · ${next.module.title}` : ""}`,
       pill: joinUrl ? "Gabung" : "Detail",
-      pillIcon: joinUrl ? zoomBrandIcon : undefined,
+      pillIcon: joinUrl && next.provider === "ZOOM" ? zoomBrandIcon : undefined,
       onPress: () => {
         markEntitySeen("MEETING", next.id);
         openMeeting(next, cohort.course.id);
@@ -634,11 +638,11 @@ export function CohortCard({
     plateRows.push({
       key: "next-class",
       icon: "calendar",
-      brandIcon: zoomBrandIcon,
+      brandIcon: next.provider === "ZOOM" ? zoomBrandIcon : undefined,
       fallback: "◷",
       title: next.title,
       detail: joinUrl
-        ? `${dateLabel(next.startsAt)} · ${next.durationMinutes} menit · Ketuk untuk bergabung`
+        ? `${dateLabel(next.startsAt)} · ${next.durationMinutes} menit${next.module ? ` · ${next.module.title}` : ""} · Ketuk untuk bergabung`
         : `${dateLabel(next.startsAt)} · ${next.durationMinutes} menit · Detail di web`,
       onPress: () => {
         markEntitySeen("MEETING", next.id);

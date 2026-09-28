@@ -14,18 +14,23 @@ export function meetingState(
   return now >= start - 10 * 60_000 ? "joining" : "upcoming";
 }
 
-export function safeExternalUrl(value: string, kind: "zoom" | "whatsapp") {
+export function safeExternalUrl(
+  value: string,
+  kind: "zoom" | "googleMeet" | "whatsapp",
+) {
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.username || url.password) return null;
     const host = url.hostname.toLowerCase();
     const allowed =
-      kind === "zoom"
-        ? host === "zoom.us" ||
-          host.endsWith(".zoom.us") ||
-          host === "zoom.com" ||
-          host.endsWith(".zoom.com")
-        : host === "chat.whatsapp.com";
+      kind === "googleMeet"
+        ? host === "meet.google.com"
+        : kind === "zoom"
+          ? host === "zoom.us" ||
+            host.endsWith(".zoom.us") ||
+            host === "zoom.com" ||
+            host.endsWith(".zoom.com")
+          : host === "chat.whatsapp.com";
     return allowed ? url.toString() : null;
   } catch {
     return null;

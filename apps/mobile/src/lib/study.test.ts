@@ -29,6 +29,18 @@ describe("student meeting actions", () => {
     expect(
       safeExternalUrl("https://chat.whatsapp.com/invite", "whatsapp"),
     ).toBeTruthy();
+    expect(
+      safeExternalUrl("https://meet.google.com/abc-defg-hij", "googleMeet"),
+    ).toBeTruthy();
+    expect(
+      safeExternalUrl("https://meet.google.com.evil.test/abc", "googleMeet"),
+    ).toBeNull();
+    expect(
+      safeExternalUrl("https://evil@meet.google.com/abc", "googleMeet"),
+    ).toBeNull();
+    expect(
+      safeExternalUrl("http://meet.google.com/abc", "googleMeet"),
+    ).toBeNull();
     for (const url of [
       "https://zoom.us.evil.test/j/123",
       "javascript:alert(1)",
