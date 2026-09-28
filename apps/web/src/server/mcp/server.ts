@@ -5,6 +5,7 @@ import { hakgyoBlockCatalog } from "~/lib/blocknote/block-catalog";
 
 import { requireMcpUserId } from "./auth";
 import { sanitizeMcpResult } from "./domain-actions";
+import { registerLandingTools } from "./landing-tools";
 import { getMcpCatalogCourse, listMcpCatalog } from "./services/catalog";
 import { getMcpContext } from "./services/context";
 import {
@@ -302,6 +303,8 @@ export const mcpHandler = createMcpHandler(
         },
       );
     }
+
+    registerLandingTools(server);
 
     return server;
   },

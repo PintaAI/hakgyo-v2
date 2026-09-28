@@ -1,57 +1,55 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
-  ArrowDown,
-  ArrowUp,
-  Check,
-  ChevronRight,
-  Copy,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  Globe,
-  Layers,
-  LoaderCircle,
-  Monitor,
-  MousePointer2,
-  Paintbrush,
-  Pencil,
-  Redo2,
-  Search,
-  Smartphone,
-  Undo2,
-  X,
+  ArrowLeftIcon,
+  ExternalLinkIcon,
+  LoaderCircleIcon,
+  MonitorIcon,
+  RefreshCwIcon,
+  SmartphoneIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
+
+import {
+  formatTime,
+  LandingAiPanel,
+  LandingCopyPanel,
+  LandingImagesPanel,
+  LandingRevisionsPanel,
+} from "~/components/landing-editor-panels";
+import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
-import { OrganizationLandingPage } from "~/components/organization-landing-page";
-import {
-  LandingContentControls,
-  type EditorSection,
-} from "~/components/landing-content-controls";
-import { LandingDesignControls } from "~/components/landing-design-controls";
-import {
-  organizationLandingConfigSchema,
-  type OrganizationLandingConfig,
-} from "~/lib/organization-landing";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useDialogs } from "~/components/ui/use-dialogs";
+import { MAX_LANDING_FIELD_LENGTH } from "~/lib/organization-landing";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
-import styles from "./landing-editor.module.css";
 
-type LandingData = RouterOutputs["organizationLanding"]["get"];
-const labels: Record<EditorSection, string> = {
-  hero: "Hero",
-  courses: "Program & course",
-  about: "Tentang kami",
-  features: "Keunggulan",
-  testimonials: "Testimoni",
-  faq: "Pertanyaan umum",
-  contact: "Kontak",
-  seo: "SEO & berbagi",
-};
+type LandingDraft = RouterOutputs["organizationLanding"]["get"];
+
+// Short enough that MCP edits feel live, long enough to stay cheap.
+const STATUS_POLL_MS = 3_000;
+
+// Messages from the preview's editing bridge (editor-bridge.ts). The frame
+// also runs AI-authored scripts, so every message is validated as untrusted.
+const previewMessageSchema = z.discriminatedUnion("type", [
+  z.object({ source: z.literal("hakgyo-landing"), type: z.literal("ready") }),
+  z.object({
+    source: z.literal("hakgyo-landing"),
+    type: z.literal("input"),
+    key: z.string(),
+    text: z.string().max(MAX_LANDING_FIELD_LENGTH),
+  }),
+  z.object({
+    source: z.literal("hakgyo-landing"),
+    type: z.literal("focus"),
+    key: z.string(),
+  }),
+]);
+
 export function OrganizationLandingEditor({
   organizationId,
 }: {
@@ -61,632 +59,358 @@ export function OrganizationLandingEditor({
   if (query.isPending)
     return (
       <div className="flex min-h-80 items-center justify-center gap-3 text-sm">
-        <LoaderCircle className="size-4 animate-spin" />
-        Menyiapkan studio…
+        <LoaderCircleIcon className="size-4 animate-spin" />
+        Memuat landing page…
       </div>
     );
-  if (!query.data || query.error)
+  if (!query.data)
     return (
       <div className="grid justify-items-center gap-4 py-20">
         <p role="alert">{query.error?.message ?? "Halaman gagal dimuat."}</p>
-        <Button onClick={() => query.refetch()}>Coba lagi</Button>
+        <Button onClick={() => void query.refetch()}>Coba lagi</Button>
       </div>
     );
-  return (
-    <LandingStudio
-      key={organizationId}
-      initial={query.data}
-      organizationId={organizationId}
-    />
-  );
+  return <LandingEditor organizationId={organizationId} draft={query.data} />;
 }
-function LandingStudio({
-  initial,
+
+function LandingEditor({
   organizationId,
+  draft,
 }: {
-  initial: LandingData;
   organizationId: string;
+  draft: LandingDraft;
 }) {
-  const [history, setHistory] = useState({
-    past: [] as OrganizationLandingConfig[],
-    present: initial.config,
-    future: [] as OrganizationLandingConfig[],
-  });
-  const config = history.present;
-  const [saved, setSaved] = useState(JSON.stringify(initial.config));
-  const [published, setPublished] = useState(!!initial.publishedAt);
-  const [savedOnce, setSavedOnce] = useState(!!initial.updatedAt);
-  const [selected, setSelected] = useState<EditorSection>("hero");
-  const [tab, setTab] = useState<"sections" | "content" | "design">("sections");
-  const [mobile, setMobile] = useState(false);
-  const [preview, setPreview] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true);
-  const [validation, setValidation] = useState<string | null>(null);
-  const canvas = useRef<HTMLDivElement>(null);
-  const save = api.organizationLanding.saveDraft.useMutation();
-  const publish = api.organizationLanding.publish.useMutation();
-  const unpublish = api.organizationLanding.unpublish.useMutation();
   const utils = api.useUtils();
-  const dirty = JSON.stringify(config) !== saved;
-  const busy = save.isPending || publish.isPending || unpublish.isPending;
-  const path = `/${initial.organization.slug}`;
+  const { confirm, dialogs } = useDialogs();
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [mobile, setMobile] = useState(false);
+  const [tab, setTab] = useState("copy");
+  const [activeField, setActiveField] = useState<string | null>(null);
+  const frame = useRef<HTMLIFrameElement>(null);
+  const status = api.organizationLanding.status.useQuery(
+    { organizationId },
+    { refetchInterval: STATUS_POLL_MS },
+  );
+  const dirty = Object.keys(edits).length > 0;
+  const remoteChanged =
+    !!status.data &&
+    (status.data.revisionId !== draft.revisionId ||
+      status.data.publishedRevisionId !== draft.publishedRevisionId);
+
+  const reload = useCallback(
+    () =>
+      Promise.all([
+        utils.organizationLanding.get.invalidate({ organizationId }),
+        utils.organizationLanding.status.invalidate({ organizationId }),
+        utils.organizationLanding.revisions.invalidate({ organizationId }),
+      ]),
+    [utils, organizationId],
+  );
+
+  // Pick up MCP revisions automatically unless that would discard copy edits.
+  useEffect(() => {
+    if (remoteChanged && !dirty) void reload();
+  }, [remoteChanged, dirty, reload]);
+
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
-  function change(next: OrganizationLandingConfig) {
-    setHistory((current) =>
-      JSON.stringify(next) === JSON.stringify(current.present)
-        ? current
-        : {
-            past: [...current.past, current.present].slice(-60),
-            present: next,
-            future: [],
-          },
-    );
-    setValidation(null);
-  }
-  function update<K extends keyof OrganizationLandingConfig>(
-    key: K,
-    value: OrganizationLandingConfig[K],
-  ) {
-    change({ ...config, [key]: value });
-  }
-  function undo() {
-    setHistory((current) => {
-      const last = current.past.at(-1);
-      return last
-        ? {
-            past: current.past.slice(0, -1),
-            present: last,
-            future: [current.present, ...current.future],
-          }
-        : current;
-    });
-  }
-  function redo() {
-    setHistory((current) => {
-      const first = current.future[0];
-      return first
-        ? {
-            past: [...current.past, current.present],
-            present: first,
-            future: current.future.slice(1),
-          }
-        : current;
-    });
-  }
-  function select(section: EditorSection, content = true) {
-    setSelected(section);
-    setPanelOpen(true);
-    if (content) setTab("content");
-    canvas.current
-      ?.querySelector(`[data-landing-section="${section}"]`)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-  function move(index: number, delta: number) {
-    const next = [...config.sectionOrder];
-    const target = index + delta;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target]!, next[index]!];
-    update("sectionOrder", next);
-  }
-  async function persist(makePublic: boolean) {
-    const result = organizationLandingConfigSchema.safeParse(config);
-    if (!result.success) {
-      const issue = result.error.issues[0];
-      setValidation(`${issue?.path.join(" → ")}: ${issue?.message}`);
-      toast.error("Periksa isian yang ditandai sebelum menyimpan.");
-      return;
-    }
-    try {
-      await save.mutateAsync({ organizationId, config: result.data });
-      setSaved(JSON.stringify(result.data));
-      setSavedOnce(true);
-      if (makePublic) {
-        await publish.mutateAsync({ organizationId });
-        setPublished(true);
+
+  const saveCopy = api.organizationLanding.updateCopy.useMutation({
+    onSuccess: async () => {
+      setEdits({});
+      await reload();
+      toast.success("Teks disimpan ke draft.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const publish = api.organizationLanding.publish.useMutation({
+    onSuccess: async () => {
+      await reload();
+      toast.success("Landing page dipublikasikan.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const unpublish = api.organizationLanding.unpublish.useMutation({
+    onSuccess: async () => {
+      await reload();
+      toast.success("Landing page tidak lagi tampil untuk publik.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const busy = saveCopy.isPending || publish.isPending || unpublish.isPending;
+
+  const changeCopy = useCallback(
+    (key: string, value: string) => {
+      const original = draft.fields.find((field) => field.key === key)?.text;
+      setEdits((current) => {
+        const rest = Object.fromEntries(
+          Object.entries(current).filter(([existing]) => existing !== key),
+        );
+        return value === original ? rest : { ...rest, [key]: value };
+      });
+    },
+    [draft.fields],
+  );
+
+  const copy = useMemo(
+    () =>
+      Object.fromEntries(
+        draft.fields.map((field) => [
+          field.key,
+          edits[field.key] ?? field.text,
+        ]),
+      ),
+    [draft.fields, edits],
+  );
+  const copyRef = useRef(copy);
+
+  const postToPreview = useCallback(
+    (
+      message:
+        | { type: "set"; copy: Record<string, string> }
+        | { type: "reveal"; key: string },
+    ) =>
+      frame.current?.contentWindow?.postMessage(
+        { source: "hakgyo-editor", ...message },
+        "*",
+      ),
+    [],
+  );
+
+  // Mirror panel edits and discards onto the canvas.
+  useEffect(() => {
+    copyRef.current = copy;
+    postToPreview({ type: "set", copy });
+  }, [copy, postToPreview]);
+
+  useEffect(() => {
+    function receive(event: MessageEvent) {
+      if (event.source !== frame.current?.contentWindow) return;
+      const message = previewMessageSchema.safeParse(event.data);
+      if (!message.success) return;
+      const data = message.data;
+      if (data.type === "ready")
+        postToPreview({ type: "set", copy: copyRef.current });
+      else if (!(data.key in copyRef.current)) return;
+      else if (data.type === "input") changeCopy(data.key, data.text);
+      else {
+        setTab("copy");
+        setActiveField(data.key);
+        document
+          .getElementById(`copy-${data.key}`)
+          ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
-      await utils.organizationLanding.get.invalidate({ organizationId });
-      toast.success(
-        makePublic
-          ? "Halaman berhasil dipublikasikan."
-          : "Draft tersimpan. Halaman publik belum berubah.",
-      );
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Gagal menyimpan halaman.",
-      );
     }
+    window.addEventListener("message", receive);
+    return () => window.removeEventListener("message", receive);
+  }, [changeCopy, postToPreview]);
+
+  async function confirmUnpublish() {
+    const confirmed = await confirm({
+      title: "Nonaktifkan landing page?",
+      description:
+        "Halaman publik langsung hilang. Draft dan riwayat revisi tetap tersimpan.",
+      confirmLabel: "Nonaktifkan",
+      destructive: true,
+    });
+    if (confirmed) unpublish.mutate({ organizationId });
   }
-  async function takeOffline() {
-    try {
-      await unpublish.mutateAsync({ organizationId });
-      setPublished(false);
-      await utils.organizationLanding.get.invalidate({ organizationId });
-      toast.success("Halaman tidak lagi tersedia untuk publik.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Gagal menghentikan publikasi.",
-      );
-    }
-  }
-  function canvasClick(event: React.MouseEvent<HTMLDivElement>) {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    if (target.closest("a")) event.preventDefault();
-    if (preview) return;
-    const section = target.closest<HTMLElement>("[data-landing-section]")
-      ?.dataset.landingSection;
-    if (section && section in labels) {
-      setSelected(section as EditorSection);
-      setTab("content");
-      setPanelOpen(true);
-    }
-  }
+
+  const isLive = !!draft.publishedAt;
+  const upToDate = isLive && draft.revisionId === draft.publishedRevisionId;
+  const previewSrc = `/api/organization-landing/draft/${encodeURIComponent(organizationId)}?edit=1&revision=${draft.revisionId ?? "starter"}`;
+
   return (
-    <div className={styles.studio}>
-      <header className={styles.toolbar}>
-        <div className="flex min-w-0 items-center gap-3">
-          <Link
-            href={`/workspace/${initial.organization.slug}/dashboard`}
-            aria-label="Kembali ke workspace"
-            className="hover:bg-muted rounded-md p-2"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
-          <span className="h-5 border-l" />
-          <div className="min-w-0">
-            <h1 className="truncate text-sm font-semibold">
-              {initial.organization.name}
-              <span className="text-muted-foreground ml-2 font-normal">
-                / Site studio
-              </span>
-            </h1>
-            <p
-              className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[10px]"
-              role="status"
+    <div className="bg-background fixed inset-0 z-40 flex flex-col">
+      <header className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
+        <Link
+          href={`/workspace/${draft.organization.slug}/dashboard`}
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
+        >
+          <ArrowLeftIcon />
+          Workspace
+        </Link>
+        <h1 className="font-medium">Landing page</h1>
+        <Badge variant={isLive ? "default" : "secondary"}>
+          {isLive
+            ? upToDate
+              ? "Live"
+              : "Live · ada perubahan draft"
+            : "Belum dipublikasikan"}
+        </Badge>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border p-0.5">
+            <Button
+              variant={mobile ? "ghost" : "secondary"}
+              size="icon-sm"
+              aria-label="Pratinjau desktop"
+              aria-pressed={!mobile}
+              onClick={() => setMobile(false)}
             >
-              {dirty ? (
-                <>
-                  <span className="size-1.5 rounded-full bg-amber-500" />
-                  Belum disimpan
-                </>
-              ) : (
-                <>
-                  <Check className="size-3" />
-                  {savedOnce
-                    ? "Semua perubahan tersimpan"
-                    : "Siap untuk dirancang"}
-                </>
-              )}
-            </p>
+              <MonitorIcon />
+            </Button>
+            <Button
+              variant={mobile ? "secondary" : "ghost"}
+              size="icon-sm"
+              aria-label="Pratinjau mobile"
+              aria-pressed={mobile}
+              onClick={() => setMobile(true)}
+            >
+              <SmartphoneIcon />
+            </Button>
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+          {isLive && (
+            <a
+              href={draft.publicUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <ExternalLinkIcon />
+              Lihat live
+            </a>
+          )}
+          {isLive && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => void confirmUnpublish()}
+            >
+              Nonaktifkan
+            </Button>
+          )}
           <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Urungkan"
-            disabled={!history.past.length || busy}
-            onClick={undo}
+            size="sm"
+            disabled={busy || dirty || upToDate}
+            title={
+              dirty ? "Simpan atau batalkan perubahan teks dulu" : undefined
+            }
+            onClick={() =>
+              publish.mutate({ organizationId, revisionId: draft.revisionId })
+            }
           >
-            <Undo2 />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Ulangi"
-            disabled={!history.future.length || busy}
-            onClick={redo}
-          >
-            <Redo2 />
-          </Button>
-          <span className="mx-2 hidden h-5 border-l sm:block" />
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => persist(false)}
-          >
-            Simpan draft
-          </Button>
-          <Button disabled={busy} onClick={() => persist(true)}>
-            {busy ? <LoaderCircle className="animate-spin" /> : <Globe />}
-            <span className="hidden sm:inline">
-              {published ? "Publikasikan perubahan" : "Publikasikan"}
-            </span>
-            <span className="sm:hidden">Publikasikan</span>
+            {publish.isPending && <LoaderCircleIcon className="animate-spin" />}
+            Publikasikan
           </Button>
         </div>
       </header>
-      {validation && (
-        <div
-          role="alert"
-          className="border-destructive/30 bg-destructive/5 text-destructive border-b px-5 py-3 text-xs"
-        >
-          {validation}
-        </div>
-      )}
-      <div className={styles.workbench}>
-        {!preview && panelOpen && (
-          <aside
-            className={styles.inspector}
-            aria-label="Kontrol desain halaman"
+
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <main className="bg-muted/40 flex min-h-[50vh] flex-1 justify-center overflow-hidden p-4">
+          <iframe
+            ref={frame}
+            src={previewSrc}
+            title="Pratinjau draft landing page"
+            sandbox="allow-scripts"
+            className={cn(
+              "h-full rounded-lg border bg-white shadow-sm transition-[width]",
+              mobile ? "w-[390px]" : "w-full",
+            )}
+          />
+        </main>
+
+        <aside className="flex min-h-0 w-full flex-col border-t lg:w-96 lg:border-t-0 lg:border-l">
+          {remoteChanged && dirty && (
+            <div className="flex items-center gap-2 border-b bg-amber-50 px-4 py-2.5 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
+              <p className="flex-1">Ada versi draft baru, misalnya dari AI.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEdits({});
+                  void reload();
+                }}
+              >
+                <RefreshCwIcon />
+                Muat
+              </Button>
+            </div>
+          )}
+          <Tabs
+            value={tab}
+            onValueChange={(value) => setTab(String(value))}
+            className="min-h-0 flex-1 gap-0"
           >
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <span className="text-xs font-medium">Website Anda</span>
-              <button
-                onClick={() => setPanelOpen(false)}
-                aria-label="Tutup panel"
-                className="hover:bg-muted rounded p-1"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-            <div className={styles.tabs}>
-              {(
-                [
-                  { id: "sections", icon: Layers, label: "Bagian" },
-                  { id: "content", icon: Pencil, label: "Konten" },
-                  { id: "design", icon: Paintbrush, label: "Desain" },
-                ] as const
-              ).map((item) => (
-                <button
-                  key={item.id}
-                  aria-pressed={tab === item.id}
-                  onClick={() => setTab(item.id)}
-                >
-                  <item.icon size={14} />
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <div className={styles.panelScroll}>
-              {tab === "sections" && (
-                <>
-                  <p className="text-muted-foreground mb-5 text-[11px] leading-relaxed">
-                    Pilih bagian di sini atau langsung klik pada halaman untuk
-                    mengedit.
-                  </p>
-                  <button
-                    onClick={() => select("hero")}
-                    className={cn(
-                      styles.layer,
-                      selected === "hero" && styles.activeLayer,
-                    )}
-                  >
-                    <span className={styles.layerThumb}>H</span>
-                    <span className="flex-1 text-left">Hero</span>
-                    <ChevronRight size={14} />
-                  </button>
-                  {config.sectionOrder.map((section, index) => {
-                    const hidden = config.hiddenSections.includes(section);
-                    return (
-                      <div
-                        key={section}
-                        className={cn(
-                          styles.layerRow,
-                          hidden && "opacity-50",
-                          selected === section && styles.activeLayer,
-                        )}
-                      >
-                        <button
-                          className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left text-xs"
-                          onClick={() => select(section)}
-                        >
-                          <span className={styles.layerThumb}>
-                            {String(index + 1).padStart(2, "0")}
-                          </span>
-                          <span className="truncate">{labels[section]}</span>
-                        </button>
-                        <div className="flex items-center">
-                          <button
-                            aria-label={`${hidden ? "Tampilkan" : "Sembunyikan"} ${labels[section]}`}
-                            onClick={() =>
-                              update(
-                                "hiddenSections",
-                                hidden
-                                  ? config.hiddenSections.filter(
-                                      (s) => s !== section,
-                                    )
-                                  : [...config.hiddenSections, section],
-                              )
-                            }
-                          >
-                            {hidden ? <EyeOff size={13} /> : <Eye size={13} />}
-                          </button>
-                          <div className="flex flex-col">
-                            <button
-                              disabled={!index}
-                              aria-label={`Naikkan ${labels[section]}`}
-                              onClick={() => move(index, -1)}
-                            >
-                              <ArrowUp size={10} />
-                            </button>
-                            <button
-                              disabled={
-                                index === config.sectionOrder.length - 1
-                              }
-                              aria-label={`Turunkan ${labels[section]}`}
-                              onClick={() => move(index, 1)}
-                            >
-                              <ArrowDown size={10} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <button
-                    className={cn(styles.layer, "mt-6")}
-                    onClick={() => select("seo")}
-                  >
-                    <Search size={15} />
-                    <span className="flex-1 text-left">SEO & berbagi</span>
-                    <ChevronRight size={14} />
-                  </button>
-                  <div className="mt-8 border-t pt-5">
-                    <p className="text-muted-foreground mb-3 text-[10px] font-semibold tracking-widest uppercase">
-                      Alamat publik
-                    </p>
-                    <p className="font-mono text-xs break-all">{path}</p>
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(
-                              new URL(path, window.location.origin).href,
-                            );
-                            toast.success("Link disalin.");
-                          } catch {
-                            toast.error("Link gagal disalin.");
-                          }
-                        }}
-                      >
-                        <Copy />
-                        Salin
-                      </Button>
-                      {published && (
-                        <Link
-                          href={path}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={buttonVariants({
-                            variant: "outline",
-                            size: "sm",
-                          })}
-                        >
-                          <ExternalLink />
-                          Buka
-                        </Link>
-                      )}
-                    </div>
-                    {published && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground mt-4"
-                        disabled={busy}
-                        onClick={takeOffline}
-                      >
-                        Batalkan publikasi
-                      </Button>
-                    )}
-                  </div>
-                </>
-              )}
-              {tab === "content" && (
-                <>
-                  <div className="mb-6">
-                    <p className="text-muted-foreground mb-1 text-[10px] tracking-widest uppercase">
-                      Mengedit bagian
-                    </p>
-                    <h2 className="text-base font-semibold">
-                      {labels[selected]}
-                    </h2>
-                    {selected !== "hero" &&
-                      selected !== "seo" &&
-                      config.hiddenSections.includes(selected) && (
-                        <button
-                          className="mt-3 text-xs underline"
-                          onClick={() =>
-                            update(
-                              "hiddenSections",
-                              config.hiddenSections.filter(
-                                (s) => s !== selected,
-                              ),
-                            )
-                          }
-                        >
-                          Bagian tersembunyi · Tampilkan
-                        </button>
-                      )}
-                  </div>
-                  <LandingContentControls
-                    section={selected}
-                    config={config}
-                    update={update}
-                    initial={initial}
-                  />
-                  {selected === "hero" && (
-                    <>
-                      <div className="my-6 border-t" />
-                      <p className="mb-3 text-xs font-medium">
-                        Gunakan foto course
-                      </p>
-                      <div className="grid gap-2">
-                        {initial.courses
-                          .filter((c) => c.thumbnailUrl)
-                          .map((course) => (
-                            <button
-                              key={course.id}
-                              className="hover:bg-muted rounded border p-2 text-left text-xs"
-                              onClick={() =>
-                                update(
-                                  "heroImageUrl",
-                                  course.thumbnailUrl ?? "",
-                                )
-                              }
-                            >
-                              {course.title}
-                            </button>
-                          ))}
-                      </div>
-                      <p className="text-muted-foreground mt-3 text-[11px] leading-relaxed">
-                        Jika foto hero kosong, foto course pertama digunakan.
-                        Atur komposisi dan posisi foto di tab Desain.
-                      </p>
-                    </>
-                  )}
-                </>
-              )}
-              {tab === "design" && (
-                <>
-                  <h2 className="mb-1 text-base font-semibold">
-                    Art direction
-                  </h2>
-                  <p className="text-muted-foreground mb-6 text-[11px] leading-relaxed">
-                    Setiap pilihan langsung mengubah halaman. Konten Anda tetap
-                    tersimpan.
-                  </p>
-                  <LandingDesignControls
-                    design={config.design}
-                    onChange={(value) => update("design", value)}
-                  />
-                  <Link
-                    href={`/workspace/${initial.organization.slug}/settings/general`}
-                    className="mt-7 block border-t pt-5 text-xs underline underline-offset-4"
-                  >
-                    Ubah logo & warna brand ↗
-                  </Link>
-                </>
-              )}
-            </div>
-          </aside>
-        )}
-        <div className={styles.stage}>
-          <div className={styles.stageBar}>
-            <div className="flex items-center gap-2">
-              {!preview && !panelOpen && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setPanelOpen(true)}
-                >
-                  <Layers />
-                  Panel
-                </Button>
-              )}
-              <span className="text-muted-foreground hidden text-[10px] sm:inline">
-                {preview ? "PRATINJAU" : "KANVAS LANGSUNG"}
-              </span>
-            </div>
-            <div className="bg-background flex items-center rounded-md border p-0.5">
-              <button
-                aria-label="Tampilan desktop"
-                aria-pressed={!mobile}
-                onClick={() => setMobile(false)}
-                className={cn("rounded px-3 py-1.5", !mobile && "bg-muted")}
-              >
-                <Monitor size={14} />
-              </button>
-              <button
-                aria-label="Tampilan seluler"
-                aria-pressed={mobile}
-                onClick={() => setMobile(true)}
-                className={cn("rounded px-3 py-1.5", mobile && "bg-muted")}
-              >
-                <Smartphone size={14} />
-              </button>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setPreview(!preview)}
+            <TabsList
+              variant="line"
+              className="h-11 w-full justify-start rounded-none border-b px-4"
             >
-              {preview ? <MousePointer2 /> : <Eye />}
-              {preview ? "Kembali mengedit" : "Pratinjau"}
-            </Button>
-          </div>
-          <div className={styles.canvasScroll} ref={canvas}>
-            <div className={cn(styles.browser, mobile && styles.mobileBrowser)}>
-              <div className={styles.browserBar}>
-                <span className="flex gap-1">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                <span>{path}</span>
-                <span className="text-[9px]">
-                  {published ? "LIVE + DRAFT" : "DRAFT"}
-                </span>
-              </div>
-              <div
-                className={cn(styles.canvas, !preview && styles.editable)}
-                data-selection={selected}
-                onClickCapture={canvasClick}
-                onBlurCapture={(event) => {
-                  const field = event.target.dataset.editField;
-                  if (field === "headline" || field === "description") {
-                    const value = event.target.textContent ?? "";
-                    update(
-                      field,
-                      value.slice(0, field === "headline" ? 160 : 1000),
-                    );
-                  }
-                }}
-                onKeyDownCapture={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    event.target instanceof HTMLElement &&
-                    event.target.dataset.landingSection &&
-                    !preview
-                  ) {
-                    event.preventDefault();
-                    select(
-                      event.target.dataset.landingSection as EditorSection,
-                    );
-                  }
-                }}
-              >
-                <OrganizationLandingPage
-                  data={{
-                    organization: initial.organization,
-                    config,
-                    courses: initial.courses,
+              <TabsTrigger value="copy">Teks</TabsTrigger>
+              <TabsTrigger value="ai">Desain dengan AI</TabsTrigger>
+              <TabsTrigger value="images">Gambar</TabsTrigger>
+              <TabsTrigger value="history">Riwayat</TabsTrigger>
+            </TabsList>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <TabsContent value="copy" className="grid gap-4">
+                <p className="text-muted-foreground text-sm">
+                  {draft.isStarterTemplate
+                    ? "Ini template awal. Desain ulang dengan AI, atau klik teks di pratinjau untuk mengeditnya."
+                    : `Klik teks di pratinjau untuk mengeditnya langsung. Draft terakhir diubah ${draft.updatedAt ? formatTime(draft.updatedAt) : "-"}.`}
+                </p>
+                <LandingCopyPanel
+                  fields={draft.fields}
+                  edits={edits}
+                  activeKey={activeField}
+                  onChange={changeCopy}
+                  onFocus={(key) => {
+                    setActiveField(key);
+                    postToPreview({ type: "reveal", key });
                   }}
-                  preview={!preview}
                 />
-              </div>
+              </TabsContent>
+              <TabsContent value="ai">
+                <LandingAiPanel organizationId={organizationId} draft={draft} />
+              </TabsContent>
+              <TabsContent value="images">
+                <LandingImagesPanel
+                  organizationId={organizationId}
+                  images={draft.images}
+                />
+              </TabsContent>
+              <TabsContent value="history">
+                <LandingRevisionsPanel
+                  organizationId={organizationId}
+                  draft={draft}
+                  canRestore={!dirty && !busy}
+                  onRestored={() => void reload()}
+                />
+              </TabsContent>
             </div>
-            <p className="text-muted-foreground mx-auto mt-5 max-w-md text-center text-[10px]">
-              {preview
-                ? "Pratinjau draft. Link dinonaktifkan agar Anda tetap di studio."
-                : "Klik bagian untuk mengedit · Klik judul untuk mengetik langsung"}
-            </p>
-          </div>
-          <div className={styles.statusBar}>
-            <span className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  published ? "bg-emerald-500" : "bg-muted-foreground",
+          </Tabs>
+          {dirty && (
+            <div className="flex justify-end gap-2 border-t p-3">
+              <Button
+                variant="ghost"
+                disabled={busy}
+                onClick={() => setEdits({})}
+              >
+                Batal
+              </Button>
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  saveCopy.mutate({
+                    organizationId,
+                    baseRevisionId: draft.revisionId,
+                    copy: edits,
+                  })
+                }
+              >
+                {saveCopy.isPending && (
+                  <LoaderCircleIcon className="animate-spin" />
                 )}
-              />
-              {published
-                ? "Halaman dipublikasikan"
-                : "Hanya Anda yang dapat melihat draft ini"}
-            </span>
-            <span>{mobile ? "390 px" : "Responsif"}</span>
-          </div>
-        </div>
+                Simpan teks
+              </Button>
+            </div>
+          )}
+        </aside>
       </div>
+      {dialogs}
     </div>
   );
 }

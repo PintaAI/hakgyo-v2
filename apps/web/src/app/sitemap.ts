@@ -1,20 +1,16 @@
 import type { MetadataRoute } from "next";
 
 import { env } from "~/env";
-import {
-  organizationLandingConfigSchema,
-  organizationPublicSlugSchema,
-} from "~/lib/organization-landing";
+import { organizationPublicSlugSchema } from "~/lib/organization-landing";
 import { db } from "~/server/db";
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const landings = await db.organizationLandingPage.findMany({
-    where: { publishedAt: { not: null } },
+    where: { publishedAt: { not: null }, publishedHtml: { not: null } },
     select: {
       publishedAt: true,
-      published: true,
       organization: { select: { slug: true } },
     },
   });
@@ -33,8 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter(
         (landing) =>
           organizationPublicSlugSchema.safeParse(landing.organization.slug)
-            .success &&
-          organizationLandingConfigSchema.safeParse(landing.published).success,
+            .success,
       )
       .map((landing) => ({
         url: new URL(`/${landing.organization.slug}`, env.APP_URL).toString(),
