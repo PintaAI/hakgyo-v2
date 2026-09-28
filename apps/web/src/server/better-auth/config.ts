@@ -105,7 +105,9 @@ export const auth = betterAuth({
     // read plus a signature per request. MCP/OAuth token signing is unaffected.
     jwt({ disableSettingJwtHeader: true }),
     mcp({
-      loginPage: "/",
+      // The sign-in page must keep the signed OAuth query in its URL so the
+      // client can resume authorization after sign-in.
+      loginPage: "/auth",
       consentPage: "/oauth/consent",
       resource: mcpResource,
       scopes: mcpOAuthScopes,
