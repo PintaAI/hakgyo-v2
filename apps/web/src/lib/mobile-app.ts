@@ -21,6 +21,11 @@ export function appCourseDeepLink(courseId: string) {
   return `${mobileAppScheme}://courses/${encodeURIComponent(courseId)}`;
 }
 
+/** Custom-scheme deep link handled by `apps/mobile/app/courses/[courseId]/items/[courseItemId].tsx`. */
+export function appCourseItemDeepLink(courseId: string, courseItemId: string) {
+  return `${appCourseDeepLink(courseId)}/items/${encodeURIComponent(courseItemId)}`;
+}
+
 /**
  * Chrome on Android resolves `intent:` URLs and, when no installed app handles
  * the scheme, silently navigates to the fallback instead of showing an error.

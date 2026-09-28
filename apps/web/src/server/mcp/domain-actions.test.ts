@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  addAssessmentAppLinks,
   mcpDomainActions,
   normalizeMcpProcedureInput,
   sanitizeMcpResult,
@@ -33,6 +34,113 @@ describe("MCP domain action allowlist", () => {
     expect(actions.some((action) => action.includes("DownloadUrl"))).toBe(
       false,
     );
+  });
+
+  test("keeps Tugas attempts in the mobile app", () => {
+    const actions = mcpDomainActions.assessment as readonly string[];
+
+    for (const action of [
+      "getForCourseItem",
+      "startAttempt",
+      "saveAnswers",
+      "submitAttempt",
+      "getMyAttempt",
+    ]) {
+      expect(actions).not.toContain(action);
+    }
+  });
+
+  test("links assessment outline items to the mobile app", () => {
+    const result = addAssessmentAppLinks({
+      action: "getCourseOutline",
+      domain: "learning",
+      result: {
+        id: "c1",
+        modules: [
+          {
+            id: "m1",
+            items: [
+              { id: "i1", type: "MATERIAL" },
+              { id: "i2", type: "ASSESSMENT" },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(result).toEqual({
+      id: "c1",
+      modules: [
+        {
+          id: "m1",
+          items: [
+            { id: "i1", type: "MATERIAL" },
+            {
+              id: "i2",
+              type: "ASSESSMENT",
+              appUrl: "hakgyo://courses/c1/items/i2",
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  test("links assessment course items and material references", () => {
+    const result = addAssessmentAppLinks({
+      action: "getCourseItem",
+      domain: "learning",
+      result: {
+        id: "i1",
+        type: "MATERIAL",
+        module: { courseId: "c1" },
+        material: {
+          requiredActivities: [
+            { type: "VOCABULARY_SET", courseItemId: "i2" },
+            { type: "ASSESSMENT", courseItemId: "i3" },
+          ],
+        },
+        embeddedResources: {
+          courseId: "c1",
+          assessments: [{ id: "a1", courseItemId: "i4" }],
+        },
+      },
+    }) as Record<string, unknown>;
+
+    expect(result.appUrl).toBeUndefined();
+    expect(result.material).toEqual({
+      requiredActivities: [
+        { type: "VOCABULARY_SET", courseItemId: "i2" },
+        {
+          type: "ASSESSMENT",
+          courseItemId: "i3",
+          appUrl: "hakgyo://courses/c1/items/i3",
+        },
+      ],
+    });
+    expect(result.embeddedResources).toEqual({
+      courseId: "c1",
+      assessments: [
+        {
+          id: "a1",
+          courseItemId: "i4",
+          appUrl: "hakgyo://courses/c1/items/i4",
+        },
+      ],
+    });
+    expect(
+      addAssessmentAppLinks({
+        action: "getCourseItem",
+        domain: "learning",
+        result: {
+          id: "i3",
+          type: "ASSESSMENT",
+          module: { courseId: "c1" },
+          material: null,
+          embeddedResources: { assessments: [] },
+        },
+      }),
+    ).toMatchObject({ appUrl: "hakgyo://courses/c1/items/i3" });
   });
 
   test("normalizes meeting dates and removes private storage metadata", () => {

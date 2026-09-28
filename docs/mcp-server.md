@@ -106,6 +106,17 @@ Permission failures that OAuth consent cannot fix remain normal domain denials.
 Only a genuinely missing OAuth scope should produce `insufficient_scope` and
 trigger step-up authorization.
 
+## Learner Tugas
+
+Learners can read course outlines, materials, and kosakata through
+`hakgyo.learning.manage`, but Tugas are taken only in the mobile app. The MCP
+allowlist excludes learner attempt actions (`getForCourseItem`, `startAttempt`,
+`saveAnswers`, `submitAttempt`, `getMyAttempt`), so a model cannot read the
+questions or answer on the learner's behalf. Instead, `learning.getCourseOutline`
+and `learning.getCourseItem` add an `appUrl` deep link
+(`hakgyo://courses/{courseId}/items/{courseItemId}`) to every assessment item for
+the client to hand the learner.
+
 ## Transport
 
 `src/server/mcp/server.ts` creates a fresh `McpServer` for every request and sets

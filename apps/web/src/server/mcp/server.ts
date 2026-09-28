@@ -248,15 +248,17 @@ export const mcpHandler = createMcpHandler(
     );
 
     for (const [domain, actions] of Object.entries(mcpDomainActions)) {
-      const contentGuidance =
+      const domainGuidance =
         domain === "content"
           ? " Before createMaterial or updateMaterial, call hakgyo.content.get_block_catalog and generate BlockNote editor.document JSON using its current catalog version."
-          : "";
+          : domain === "learning"
+            ? " Tugas (ASSESSMENT items) cannot be taken through MCP: do not answer them for the learner; share the item's appUrl so they open it in the Hakgyo mobile app."
+            : "";
       server.registerTool(
         `hakgyo.${domain}.manage`,
         {
           title: `Hakgyo ${domain} operations`,
-          description: `Run a safe ${domain} operation using the current user's live Hakgyo permissions. Call hakgyo.capabilities.get first for exact action input schemas.${contentGuidance} Destructive and secret-bearing operations are not available.`,
+          description: `Run a safe ${domain} operation using the current user's live Hakgyo permissions. Call hakgyo.capabilities.get first for exact action input schemas.${domainGuidance} Destructive and secret-bearing operations are not available.`,
           inputSchema: z.object({
             action: z.enum(actions),
             input: z.record(z.string(), z.unknown()).default({}),
