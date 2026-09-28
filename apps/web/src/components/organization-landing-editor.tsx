@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeftIcon,
   ExternalLinkIcon,
+  EyeOffIcon,
   LoaderCircleIcon,
   MonitorIcon,
   RefreshCwIcon,
@@ -24,6 +25,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useDialogs } from "~/components/ui/use-dialogs";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { MAX_LANDING_FIELD_LENGTH } from "~/lib/organization-landing";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -83,8 +85,9 @@ function LandingEditor({
   const utils = api.useUtils();
   const { confirm, dialogs } = useDialogs();
   const [edits, setEdits] = useState<Record<string, string>>({});
-  const [mobile, setMobile] = useState(false);
-  const [tab, setTab] = useState("copy");
+  const isMobile = useIsMobile();
+  const [narrowPreview, setNarrowPreview] = useState(false);
+  const [tab, setTab] = useState("preview");
   const [activeField, setActiveField] = useState<string | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const status = api.organizationLanding.status.useQuery(
@@ -198,7 +201,8 @@ function LandingEditor({
       else if (!(data.key in copyRef.current)) return;
       else if (data.type === "input") changeCopy(data.key, data.text);
       else {
-        setTab("copy");
+        // Phones keep editing on the canvas instead of jumping to the panel.
+        if (!isMobile) setTab("copy");
         setActiveField(data.key);
         document
           .getElementById(`copy-${data.key}`)
@@ -207,7 +211,7 @@ function LandingEditor({
     }
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [changeCopy, postToPreview]);
+  }, [changeCopy, isMobile, postToPreview]);
 
   async function confirmUnpublish() {
     const confirmed = await confirm({
@@ -223,42 +227,48 @@ function LandingEditor({
   const isLive = !!draft.publishedAt;
   const upToDate = isLive && draft.revisionId === draft.publishedRevisionId;
   const previewSrc = `/api/organization-landing/draft/${encodeURIComponent(organizationId)}?edit=1&revision=${draft.revisionId ?? "starter"}`;
+  // Phones show one full-screen tab at a time; wider screens always show the
+  // preview beside the panel, so "preview" falls back to the copy tab there.
+  const view = !isMobile && tab === "preview" ? "copy" : tab;
+  const statusLabel = isLive
+    ? upToDate
+      ? { short: "Live", full: "Live" }
+      : { short: "Diubah", full: "Live · ada perubahan draft" }
+    : { short: "Draft", full: "Belum dipublikasikan" };
 
   return (
     <div className="bg-background fixed inset-0 z-40 flex flex-col">
-      <header className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
+      <header className="flex items-center gap-1.5 border-b px-2 py-2 sm:gap-2 sm:px-4">
         <Link
           href={`/workspace/${draft.organization.slug}/dashboard`}
+          aria-label="Kembali ke workspace"
           className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
           <ArrowLeftIcon />
-          Workspace
+          <span className="hidden sm:inline">Workspace</span>
         </Link>
-        <h1 className="font-medium">Landing page</h1>
-        <Badge variant={isLive ? "default" : "secondary"}>
-          {isLive
-            ? upToDate
-              ? "Live"
-              : "Live · ada perubahan draft"
-            : "Belum dipublikasikan"}
+        <h1 className="min-w-0 truncate font-medium">Landing page</h1>
+        <Badge variant={isLive ? "default" : "secondary"} className="shrink-0">
+          <span className="sm:hidden">{statusLabel.short}</span>
+          <span className="hidden sm:inline">{statusLabel.full}</span>
         </Badge>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg border p-0.5">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div className="hidden rounded-lg border p-0.5 md:flex">
             <Button
-              variant={mobile ? "ghost" : "secondary"}
+              variant={narrowPreview ? "ghost" : "secondary"}
               size="icon-sm"
               aria-label="Pratinjau desktop"
-              aria-pressed={!mobile}
-              onClick={() => setMobile(false)}
+              aria-pressed={!narrowPreview}
+              onClick={() => setNarrowPreview(false)}
             >
               <MonitorIcon />
             </Button>
             <Button
-              variant={mobile ? "secondary" : "ghost"}
+              variant={narrowPreview ? "secondary" : "ghost"}
               size="icon-sm"
               aria-label="Pratinjau mobile"
-              aria-pressed={mobile}
-              onClick={() => setMobile(true)}
+              aria-pressed={narrowPreview}
+              onClick={() => setNarrowPreview(true)}
             >
               <SmartphoneIcon />
             </Button>
@@ -268,20 +278,23 @@ function LandingEditor({
               href={draft.publicUrl}
               target="_blank"
               rel="noreferrer"
+              aria-label="Lihat halaman live"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               <ExternalLinkIcon />
-              Lihat live
+              <span className="hidden sm:inline">Lihat live</span>
             </a>
           )}
           {isLive && (
             <Button
               variant="outline"
               size="sm"
+              aria-label="Nonaktifkan landing page"
               disabled={busy}
               onClick={() => void confirmUnpublish()}
             >
-              Nonaktifkan
+              <EyeOffIcon />
+              <span className="hidden sm:inline">Nonaktifkan</span>
             </Button>
           )}
           <Button
@@ -300,116 +313,145 @@ function LandingEditor({
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <main className="bg-muted/40 flex min-h-[50vh] flex-1 justify-center overflow-hidden p-4">
+      <Tabs
+        value={view}
+        onValueChange={(value) => setTab(String(value))}
+        className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-0 md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[minmax(0,1fr)_24rem]"
+      >
+        {remoteChanged && dirty && (
+          <div className="row-start-1 flex items-center gap-2 border-b bg-amber-50 px-4 py-2.5 text-sm text-amber-950 md:col-start-2 md:border-l dark:bg-amber-950/40 dark:text-amber-100">
+            <p className="flex-1">Ada versi draft baru, misalnya dari AI.</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEdits({});
+                void reload();
+              }}
+            >
+              <RefreshCwIcon />
+              Muat
+            </Button>
+          </div>
+        )}
+        <TabsList
+          variant="line"
+          className="row-start-2 h-11 w-full justify-start overflow-x-auto rounded-none border-b px-2 [scrollbar-width:none] md:col-start-2 md:border-l md:px-4 [&::-webkit-scrollbar]:hidden"
+        >
+          <TabsTrigger value="preview" className="flex-none md:hidden">
+            Pratinjau
+          </TabsTrigger>
+          <TabsTrigger value="copy" className="flex-none md:flex-1">
+            Teks
+            {dirty && (
+              <span
+                aria-label="ada perubahan belum disimpan"
+                className="bg-primary size-1.5 rounded-full"
+              />
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="flex-none md:flex-1">
+            <span className="lg:hidden">AI</span>
+            <span className="hidden lg:inline">Desain dengan AI</span>
+          </TabsTrigger>
+          <TabsTrigger value="images" className="flex-none md:flex-1">
+            Gambar
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex-none md:flex-1">
+            Riwayat
+          </TabsTrigger>
+        </TabsList>
+
+        <main
+          className={cn(
+            "bg-muted/40 row-start-3 min-h-0 justify-center overflow-hidden md:col-start-1 md:row-span-4 md:row-start-1 md:flex md:p-4",
+            view === "preview" ? "flex" : "hidden",
+          )}
+        >
           <iframe
             ref={frame}
             src={previewSrc}
             title="Pratinjau draft landing page"
             sandbox="allow-scripts"
             className={cn(
-              "h-full rounded-lg border bg-white shadow-sm transition-[width]",
-              mobile ? "w-[390px]" : "w-full",
+              "size-full bg-white transition-[width] md:rounded-lg md:border md:shadow-sm",
+              narrowPreview && "md:w-[390px]",
             )}
           />
         </main>
 
-        <aside className="flex min-h-0 w-full flex-col border-t lg:w-96 lg:border-t-0 lg:border-l">
-          {remoteChanged && dirty && (
-            <div className="flex items-center gap-2 border-b bg-amber-50 px-4 py-2.5 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
-              <p className="flex-1">Ada versi draft baru, misalnya dari AI.</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setEdits({});
-                  void reload();
-                }}
-              >
-                <RefreshCwIcon />
-                Muat
-              </Button>
-            </div>
+        <div
+          className={cn(
+            "row-start-3 min-h-0 overflow-y-auto overscroll-contain p-4 md:col-start-2 md:block md:border-l",
+            view === "preview" && "hidden",
           )}
-          <Tabs
-            value={tab}
-            onValueChange={(value) => setTab(String(value))}
-            className="min-h-0 flex-1 gap-0"
-          >
-            <TabsList
-              variant="line"
-              className="h-11 w-full justify-start rounded-none border-b px-4"
+        >
+          <TabsContent value="copy" className="grid gap-4">
+            <p className="text-muted-foreground text-sm">
+              {draft.isStarterTemplate
+                ? "Ini template awal. Desain ulang dengan AI, atau klik teks di pratinjau untuk mengeditnya."
+                : `Klik teks di pratinjau untuk mengeditnya langsung. Draft terakhir diubah ${draft.updatedAt ? formatTime(draft.updatedAt) : "-"}.`}
+            </p>
+            <LandingCopyPanel
+              fields={draft.fields}
+              edits={edits}
+              activeKey={activeField}
+              onChange={changeCopy}
+              onFocus={(key) => {
+                setActiveField(key);
+                postToPreview({ type: "reveal", key });
+              }}
+            />
+          </TabsContent>
+          <TabsContent value="ai">
+            <LandingAiPanel organizationId={organizationId} draft={draft} />
+          </TabsContent>
+          <TabsContent value="images">
+            <LandingImagesPanel
+              organizationId={organizationId}
+              images={draft.images}
+            />
+          </TabsContent>
+          <TabsContent value="history">
+            <LandingRevisionsPanel
+              organizationId={organizationId}
+              draft={draft}
+              canRestore={!dirty && !busy}
+              onRestored={() => void reload()}
+            />
+          </TabsContent>
+        </div>
+
+        {dirty && (
+          <div className="row-start-4 flex items-center justify-end gap-2 border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:col-start-2 md:border-l">
+            <p className="text-muted-foreground mr-auto text-sm md:hidden">
+              {Object.keys(edits).length} teks diubah
+            </p>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setEdits({})}
             >
-              <TabsTrigger value="copy">Teks</TabsTrigger>
-              <TabsTrigger value="ai">Desain dengan AI</TabsTrigger>
-              <TabsTrigger value="images">Gambar</TabsTrigger>
-              <TabsTrigger value="history">Riwayat</TabsTrigger>
-            </TabsList>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              <TabsContent value="copy" className="grid gap-4">
-                <p className="text-muted-foreground text-sm">
-                  {draft.isStarterTemplate
-                    ? "Ini template awal. Desain ulang dengan AI, atau klik teks di pratinjau untuk mengeditnya."
-                    : `Klik teks di pratinjau untuk mengeditnya langsung. Draft terakhir diubah ${draft.updatedAt ? formatTime(draft.updatedAt) : "-"}.`}
-                </p>
-                <LandingCopyPanel
-                  fields={draft.fields}
-                  edits={edits}
-                  activeKey={activeField}
-                  onChange={changeCopy}
-                  onFocus={(key) => {
-                    setActiveField(key);
-                    postToPreview({ type: "reveal", key });
-                  }}
-                />
-              </TabsContent>
-              <TabsContent value="ai">
-                <LandingAiPanel organizationId={organizationId} draft={draft} />
-              </TabsContent>
-              <TabsContent value="images">
-                <LandingImagesPanel
-                  organizationId={organizationId}
-                  images={draft.images}
-                />
-              </TabsContent>
-              <TabsContent value="history">
-                <LandingRevisionsPanel
-                  organizationId={organizationId}
-                  draft={draft}
-                  canRestore={!dirty && !busy}
-                  onRestored={() => void reload()}
-                />
-              </TabsContent>
-            </div>
-          </Tabs>
-          {dirty && (
-            <div className="flex justify-end gap-2 border-t p-3">
-              <Button
-                variant="ghost"
-                disabled={busy}
-                onClick={() => setEdits({})}
-              >
-                Batal
-              </Button>
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  saveCopy.mutate({
-                    organizationId,
-                    baseRevisionId: draft.revisionId,
-                    copy: edits,
-                  })
-                }
-              >
-                {saveCopy.isPending && (
-                  <LoaderCircleIcon className="animate-spin" />
-                )}
-                Simpan teks
-              </Button>
-            </div>
-          )}
-        </aside>
-      </div>
+              Batal
+            </Button>
+            <Button
+              disabled={busy}
+              onClick={() =>
+                saveCopy.mutate({
+                  organizationId,
+                  baseRevisionId: draft.revisionId,
+                  copy: edits,
+                })
+              }
+            >
+              {saveCopy.isPending && (
+                <LoaderCircleIcon className="animate-spin" />
+              )}
+              Simpan teks
+            </Button>
+          </div>
+        )}
+      </Tabs>
       {dialogs}
     </div>
   );
