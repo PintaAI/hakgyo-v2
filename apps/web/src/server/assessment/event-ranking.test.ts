@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { rankAssessmentEventAttempts } from "./assessment-event-ranking";
+import { rankAssessmentEventAttempts } from "./event-ranking";
 
 const start = new Date("2026-09-04T10:00:00.000Z");
 

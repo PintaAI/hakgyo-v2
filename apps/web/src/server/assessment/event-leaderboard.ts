@@ -1,5 +1,5 @@
-import { Prisma } from "../../generated/prisma/client";
-import type { AssessmentEventLeaderboardEntry } from "~/server/assessment-event-ranking";
+import { Prisma } from "../../../generated/prisma/client";
+import type { AssessmentEventLeaderboardEntry } from "~/server/assessment/event-ranking";
 
 type Db = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 

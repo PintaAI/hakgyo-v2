@@ -10,7 +10,7 @@ import {
   evaluateOpenModules,
   evaluateSequentialModules,
   hasPassedAssessment,
-} from "./sequential-access";
+} from "@hakgyo/shared/learning/sequential-access";
 
 const activeEnrollmentStatuses = [
   EnrollmentStatus.ACTIVE,

@@ -1,10 +1,10 @@
-import { Prisma } from "../../generated/prisma/client";
-import { chunk } from "./batch";
+import { Prisma } from "../../../generated/prisma/client";
+import { chunk } from "../batch";
 import {
   calculateStreak,
   DEFAULT_ACHIEVEMENT_RULES,
   findNewAchievements,
-} from "./gamification/logic";
+} from "../gamification/logic";
 
 type Transaction = Prisma.TransactionClient;
 

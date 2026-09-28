@@ -10,12 +10,12 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   autoSubmitEventAttempts,
   lockAttemptStart,
-} from "~/server/assessment-attempt";
+} from "~/server/assessment/attempt";
 import {
   countLatestAssessmentEventAttemptStatuses,
   getAssessmentEventLeaderboard,
-} from "~/server/assessment-event-leaderboard";
-import { deleteAssessmentEventWithProgress } from "~/server/content-resource-deletion";
+} from "~/server/assessment/event-leaderboard";
+import { deleteAssessmentEventWithProgress } from "~/server/content/resource-deletion";
 import {
   activeEnrollmentStatuses,
   requireCohortPermission,

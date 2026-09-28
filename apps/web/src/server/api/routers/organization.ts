@@ -24,7 +24,7 @@ import {
   isUniqueConstraintError,
   withTransactionRetry,
 } from "~/server/db-retry";
-import { canDemoteOwner } from "~/server/organization-role";
+import { canDemoteOwner } from "~/server/organization/role";
 import { revokeZoomConnection } from "~/server/integrations/zoom";
 import { revokeGoogleConnection } from "~/server/integrations/google-calendar";
 import {

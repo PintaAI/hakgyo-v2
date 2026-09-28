@@ -16,7 +16,7 @@ import {
 } from "~/server/learning/course-outline";
 import { enrolledCourseWhere } from "~/server/learning/enrolled-courses";
 import { getCourseItemDetails } from "~/server/learning/course-item-detail";
-import { hasPassedAssessment } from "~/server/learning/sequential-access";
+import { hasPassedAssessment } from "@hakgyo/shared/learning/sequential-access";
 import { recordGamificationActivity } from "~/server/gamification/record-activity";
 import {
   isVocabularySetPracticed,

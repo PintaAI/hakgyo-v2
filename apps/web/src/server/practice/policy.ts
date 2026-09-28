@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { shuffleForAttempt } from "./assessment-order";
+import { shuffleForAttempt } from "../assessment/order";
 
 type Identifiable = { id: string };
 

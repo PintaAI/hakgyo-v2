@@ -56,7 +56,7 @@ import {
   getReadableForeground,
   isHexColor,
   normalizeHexColor,
-} from "~/lib/colors";
+} from "@hakgyo/shared";
 import {
   createOrganizationThemeRuntime,
   createOrganizationThemeTokens,

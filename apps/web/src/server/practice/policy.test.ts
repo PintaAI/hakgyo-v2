@@ -5,7 +5,7 @@ import {
   preparePracticeOptions,
   sampleForPractice,
   vocabularySetVersion,
-} from "./practice-policy";
+} from "./policy";
 
 describe("practice policy", () => {
   test("samples deterministically without duplicates", () => {

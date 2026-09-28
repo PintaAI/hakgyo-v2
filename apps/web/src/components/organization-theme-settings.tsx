@@ -27,7 +27,7 @@ import {
   parseOrganizationTheme,
   type OrganizationTheme,
 } from "~/lib/organization-theme";
-import { normalizeHexColor } from "~/lib/colors";
+import { normalizeHexColor } from "@hakgyo/shared";
 import { api } from "~/trpc/react";
 
 function errorMessage(error: unknown) {

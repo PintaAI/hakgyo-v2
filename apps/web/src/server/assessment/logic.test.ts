@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   getMissingWrittenQuestionIds,
   groupScoresByValue,
-} from "./assessment-logic";
+} from "./logic";
 
 describe("assessment submission logic", () => {
   test("represents unanswered written questions for review", () => {

@@ -11,16 +11,16 @@ import type {
   AttemptsNeedingReviewInput,
   ReviewAttemptInput,
 } from "~/server/assessment/inputs";
-import { buildAssessmentAnswerReviewUpdate } from "~/server/assessment-answer-content";
+import { buildAssessmentAnswerReviewUpdate } from "~/server/assessment/answer-content";
 import {
   isPassingScore,
   markCourseItemCompleted,
-} from "~/server/assessment-attempt";
+} from "~/server/assessment/attempt";
 import {
   attemptSummarySelect,
   reviewScope,
   summarizeAttempt,
-} from "~/server/assessment-register";
+} from "~/server/assessment/register";
 import {
   requireCohortPermission,
   requireOrganizationPermission,

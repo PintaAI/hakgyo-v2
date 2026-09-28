@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   getAssessmentDeadline,
   isAssessmentExpired,
-} from "./assessment-timing";
+} from "./timing";
 
 const startedAt = new Date("2026-08-20T10:00:00.000Z");
 

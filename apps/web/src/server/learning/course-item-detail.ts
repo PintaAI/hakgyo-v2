@@ -1,6 +1,6 @@
 import type { Prisma } from "../../../generated/prisma/client";
-import { passesAssessmentRequirement } from "~/server/learning/material-completion";
-import { getLearnerMaterialReferencesForSources } from "~/server/material-reference-service";
+import { passesAssessmentRequirement } from "@hakgyo/shared/learning/material-completion";
+import { getLearnerMaterialReferencesForSources } from "~/server/content/material-references";
 import { getVocabularyEvidenceForSets } from "~/server/vocabulary/evidence";
 
 type DatabaseClient = Prisma.TransactionClient | Prisma.DefaultPrismaClient;

@@ -13,8 +13,8 @@ import {
   deleteCourseItemsWithProgress,
   deleteMaterialWithProgress,
   deleteVocabularySetWithProgress,
-} from "~/server/content-resource-deletion";
-import { sanitizeMaterialContent } from "~/server/material-reference-service";
+} from "~/server/content/resource-deletion";
+import { sanitizeMaterialContent } from "~/server/content/material-references";
 import {
   assertMaterialChangeKeepsReadiness,
   assertPlacementsRemovable,

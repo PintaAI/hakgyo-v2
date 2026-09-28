@@ -43,12 +43,12 @@ import {
   listRegisteredAttempts,
   registerInput,
   reviewScope,
-} from "~/server/assessment-register";
+} from "~/server/assessment/register";
 import {
   requireContentAuthor,
   requireOrganizationPermission,
 } from "~/server/authorization";
-import { deleteAssessmentWithProgress } from "~/server/content-resource-deletion";
+import { deleteAssessmentWithProgress } from "~/server/content/resource-deletion";
 import { assertPlacementsRemovable } from "~/server/course/readiness-service";
 
 /**
