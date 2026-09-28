@@ -2,10 +2,12 @@ import { describe, expect, mock, test } from "bun:test";
 
 import { createDefaultLandingHtml } from "./default-template";
 import {
+  clearLandingRevisions,
   getLandingDraft,
   getPublishedLanding,
   publishLandingPage,
   removeLandingImage,
+  renderDraftLanding,
   saveLandingDraft,
   unpublishLandingPage,
   updateLandingCopy,
@@ -80,6 +82,14 @@ function setup(
       create: mock(async (_args: unknown) => ({ id: "rev-new" })),
       findMany: mock(async (_args: unknown) => []),
       deleteMany: mock(async (_args: unknown) => ({ count: 0 })),
+      findFirst: mock(async (args: unknown) => {
+        const where = (
+          args as { where: { id: string; organizationId: string } }
+        ).where;
+        return where.id === "rev-old" && where.organizationId === "org-1"
+          ? { html: validHtml.replace("Bertumbuh bersama", "Versi lama") }
+          : null;
+      }),
     },
     $transaction: mock(async (run: (tx: unknown) => Promise<unknown>) =>
       run(spies),
@@ -318,5 +328,50 @@ describe("landing image library", () => {
       removeLandingImage({ ...owner(db), imageUrl }),
       "CONFLICT",
     );
+  });
+});
+
+describe("landing revision history", () => {
+  test("clearing history keeps the draft and live revisions", async () => {
+    const { db, spies } = setup({
+      landing: {
+        draftHtml: validHtml,
+        draftRevisionId: "rev-2",
+        publishedRevisionId: "rev-1",
+      },
+    });
+    await clearLandingRevisions(owner(db));
+    expect(
+      spies.organizationLandingRevision.deleteMany.mock.calls[0]?.[0],
+    ).toEqual({
+      where: { organizationId: "org-1", id: { notIn: ["rev-2", "rev-1"] } },
+    });
+    await expectCode(
+      clearLandingRevisions(owner(setup({ role: "ADMIN" }).db)),
+      "FORBIDDEN",
+    );
+  });
+
+  test("previews a revision read-only, scoped to the organization", async () => {
+    const { db } = setup({
+      landing: { draftHtml: validHtml, draftRevisionId: "rev-2" },
+    });
+    const preview = await renderDraftLanding({
+      ...owner(db),
+      editable: true,
+      revisionId: "rev-old",
+    });
+    expect(preview.html).toContain("Versi lama Academy");
+    expect(preview.html).not.toContain("hakgyo-landing");
+    await expectCode(
+      renderDraftLanding({
+        ...owner(db),
+        editable: false,
+        revisionId: "rev-from-another-org",
+      }),
+      "NOT_FOUND",
+    );
+    const draft = await renderDraftLanding({ ...owner(db), editable: true });
+    expect(draft.html).toContain("hakgyo-landing");
   });
 });

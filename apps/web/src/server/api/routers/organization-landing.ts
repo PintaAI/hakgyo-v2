@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { MAX_LANDING_FIELD_LENGTH } from "~/lib/organization-landing";
 import {
+  clearLandingRevisions,
   getLandingDraft,
   getLandingStatus,
   listLandingRevisions,
@@ -50,6 +51,15 @@ export const organizationLandingRouter = createTRPCRouter({
     )
     .mutation(({ ctx, input }) =>
       updateLandingCopy({ ...input, db: ctx.db, actorUserId: ctx.actorUserId }),
+    ),
+  clearRevisions: protectedProcedure
+    .input(organizationInput)
+    .mutation(({ ctx, input }) =>
+      clearLandingRevisions({
+        ...input,
+        db: ctx.db,
+        actorUserId: ctx.actorUserId,
+      }),
     ),
   restoreRevision: protectedProcedure
     .input(organizationInput.extend({ revisionId: z.string().min(1) }))

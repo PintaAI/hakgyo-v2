@@ -91,6 +91,12 @@ without changing the document contract.
   (`MCP`, `EDITOR`, or `RESTORE`), summary, and author. The newest 50 revisions
   are kept. Saves compare-and-swap `draftRevisionId`, and clients may pass
   `baseRevisionId` to reject edits made on a stale draft.
+- In the editor's history tab, each revision shows a live thumbnail (the
+  sandboxed preview rendered at four times the card width and scaled to 25%,
+  loaded lazily). Selecting it previews the revision read-only on the
+  canvas (`/api/organization-landing/draft/{organizationId}?preview={id}`)
+  before restoring it, and can clear history. Clearing keeps the current draft
+  and live revisions; it is not available over MCP.
 - `imageUrls` is the owner's image library. Uploads go to R2 through the
   existing landing image upload procedures; images used by the draft or live
   page cannot be deleted.

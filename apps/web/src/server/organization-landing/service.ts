@@ -404,6 +404,25 @@ export async function listLandingRevisions(
   });
 }
 
+/**
+ * Deletes revision history. The current draft and live revisions are kept,
+ * since the editor and publishing still point at them.
+ */
+export async function clearLandingRevisions(input: OwnerInput) {
+  await requireLandingOwner(input);
+  const landing = await input.db.organizationLandingPage.findUnique({
+    where: { organizationId: input.organizationId },
+    select: { draftRevisionId: true, publishedRevisionId: true },
+  });
+  const kept = [landing?.draftRevisionId, landing?.publishedRevisionId].filter(
+    (id): id is string => !!id,
+  );
+  const { count } = await input.db.organizationLandingRevision.deleteMany({
+    where: { organizationId: input.organizationId, id: { notIn: kept } },
+  });
+  return { deleted: count };
+}
+
 export async function restoreLandingRevision(
   input: OwnerInput & { revisionId: string },
 ) {
@@ -577,21 +596,34 @@ export async function renderPublishedLanding(input: {
 }
 
 /** Owner preview; `editable` adds the in-place copy editing bridge. */
+/**
+ * Owner preview of the draft, or of an earlier revision when `revisionId` is
+ * given. `editable` adds the in-place copy editing bridge (drafts only).
+ */
 export async function renderDraftLanding(
-  input: OwnerInput & { editable: boolean },
+  input: OwnerInput & { editable: boolean; revisionId?: string },
 ) {
   await requireLandingOwner(input);
-  const [organization, courses] = await Promise.all([
+  const [organization, courses, revision] = await Promise.all([
     loadOrganization(input.db, input.organizationId),
     getLandingCourses(input.db, input.organizationId),
+    input.revisionId
+      ? input.db.organizationLandingRevision.findFirst({
+          where: { id: input.revisionId, organizationId: input.organizationId },
+          select: { html: true },
+        })
+      : null,
   ]);
-  const html = renderLandingDocument(draftOf(organization).html, { courses });
+  if (input.revisionId && !revision) throw new TRPCError({ code: "NOT_FOUND" });
+  const source = revision?.html ?? draftOf(organization).html;
+  const html = renderLandingDocument(source, { courses });
   // The serializer always emits </body>, after any document content.
   const end = html.lastIndexOf("</body>");
   return {
-    html: input.editable
-      ? `${html.slice(0, end)}${landingEditorBridge}${html.slice(end)}`
-      : html,
+    html:
+      input.editable && !revision
+        ? `${html.slice(0, end)}${landingEditorBridge}${html.slice(end)}`
+        : html,
     assetOrigins: buildLandingPolicy(organization, courses).policy.assetOrigins,
   };
 }
