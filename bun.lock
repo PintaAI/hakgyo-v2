@@ -167,6 +167,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "@better-auth/cimd@1.7.1": "patches/@better-auth%2Fcimd@1.7.1.patch",
+  },
   "overrides": {
     "lightningcss": "1.30.1",
   },
