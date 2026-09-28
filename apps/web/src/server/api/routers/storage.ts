@@ -32,7 +32,6 @@ import {
   organizationLandingImagePurposes,
   parseOrganizationLandingImageKey,
 } from "~/lib/organization-landing-image";
-import { organizationLandingConfigSchema } from "~/lib/organization-landing";
 import {
   createProfileImageKey,
   getManagedProfileImageKey,
@@ -48,7 +47,11 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
-import { requireLandingOwner } from "~/server/organization-landing/service";
+import {
+  addLandingImage,
+  removeLandingImage,
+  requireLandingOwner,
+} from "~/server/organization-landing/service";
 import { r2, r2Bucket } from "~/server/r2";
 
 const MAX_DOCUMENT_SIZE = 100 * 1024 * 1024;
@@ -144,14 +147,6 @@ async function validateImageObject(
       message: `Uploaded file is not a valid ${label}`,
     });
   }
-}
-
-function landingConfigReferencesImage(value: unknown, imageUrl: string) {
-  const parsed = organizationLandingConfigSchema.safeParse(value);
-  return (
-    parsed.success &&
-    [parsed.data.heroImageUrl, parsed.data.socialImageUrl].includes(imageUrl)
-  );
 }
 
 const downloadDispositionSchema = z
@@ -795,14 +790,18 @@ export const storageRouter = createTRPCRouter({
         parsed.contentType,
         "landing page image",
       );
-      return {
-        key: input.key,
-        imageUrl: getOrganizationLandingImagePath(
-          input.organizationId,
-          parsed.purpose,
-          parsed.fileName,
-        ),
-      };
+      const imageUrl = getOrganizationLandingImagePath(
+        input.organizationId,
+        parsed.purpose,
+        parsed.fileName,
+      );
+      await addLandingImage({
+        db: ctx.db,
+        organizationId: input.organizationId,
+        actorUserId: ctx.actorUserId,
+        imageUrl,
+      });
+      return { key: input.key, imageUrl };
     }),
 
   discardOrganizationLandingImageUpload: protectedProcedure
@@ -828,19 +827,12 @@ export const storageRouter = createTRPCRouter({
         parsed.purpose,
         parsed.fileName,
       );
-      const landing = await ctx.db.organizationLandingPage.findUnique({
-        where: { organizationId: input.organizationId },
-        select: { draft: true, published: true },
+      await removeLandingImage({
+        db: ctx.db,
+        organizationId: input.organizationId,
+        actorUserId: ctx.actorUserId,
+        imageUrl,
       });
-      if (
-        landingConfigReferencesImage(landing?.draft, imageUrl) ||
-        landingConfigReferencesImage(landing?.published, imageUrl)
-      ) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "The landing image is currently in use",
-        });
-      }
       await r2.send(
         new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
       );

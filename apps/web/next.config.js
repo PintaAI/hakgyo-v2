@@ -21,7 +21,10 @@ const config = {
   },
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev" },
+      {
+        protocol: "https",
+        hostname: "pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev",
+      },
     ],
   },
   async headers() {
@@ -52,6 +55,12 @@ const config = {
               ]
             : []),
         ],
+      },
+      {
+        // Landing documents are framed by the organization's public page and
+        // the owner's editor; their route handlers send a sandboxing CSP.
+        source: "/api/organization-landing/:path*",
+        headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }],
       },
     ];
   },

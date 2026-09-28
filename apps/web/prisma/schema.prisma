@@ -44,19 +44,20 @@ model MobileSyncCompaction {
 }
 
 model User {
-  id                          String                       @id
+  id                          String                        @id
   name                        String //@db.Text
   email                       String
-  emailVerified               Boolean                      @default(false)
+  emailVerified               Boolean                       @default(false)
   image                       String? //@db.Text
-  createdAt                   DateTime                     @default(now())
-  updatedAt                   DateTime                     @default(now()) @updatedAt
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @default(now()) @updatedAt
   suspendedAt                 DateTime?
   deletedAt                   DateTime?
   sessions                    Session[]
   accounts                    Account[]
   organizationMemberships     OrganizationMember[]
-  acceptedOrganizationInvites OrganizationInvite[]         @relation("OrganizationInviteAcceptedBy")
+  landingRevisions            OrganizationLandingRevision[]
+  acceptedOrganizationInvites OrganizationInvite[]          @relation("OrganizationInviteAcceptedBy")
   courseEnrollments           CourseEnrollment[]
   cohortEnrollments           CohortEnrollment[]
   assessmentEventParticipants AssessmentEventParticipant[]
@@ -72,8 +73,8 @@ model User {
   oauthRefreshTokens          OauthRefreshToken[]
   oauthAccessTokens           OauthAccessToken[]
   oauthConsents               OauthConsent[]
-  adminActions                AdminAuditLog[]              @relation("AdminAuditActor")
-  adminActionTargets          AdminAuditLog[]              @relation("AdminAuditTarget")
+  adminActions                AdminAuditLog[]               @relation("AdminAuditActor")
+  adminActionTargets          AdminAuditLog[]               @relation("AdminAuditTarget")
   pushTargets                 PushTarget[]
   notifications               Notification[]
   sidebarSeen                 LearnerSidebarSeen[]
@@ -1348,13 +1349,46 @@ model VocabularyPracticeAttempt {
   @@index([sourceCourseItemId])
 }
 
+enum LandingRevisionSource {
+  MCP
+  EDITOR
+  RESTORE
+}
+
 // Organization primary key guarantees exactly one customizable page per organization.
+// The page is a single AI-authored HTML document; `draftHtml` mirrors the
+// newest revision and `publishedHtml` is the public snapshot.
 model OrganizationLandingPage {
-  organizationId String       @id
-  draft          Json
-  published      Json?
-  publishedAt    DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId      String                        @id
+  /// Legacy structured config from the section editor. Unused; drop after rollout.
+  draft               Json?
+  /// Legacy structured snapshot from the section editor. Unused; drop after rollout.
+  published           Json?
+  draftHtml           String?
+  draftRevisionId     String?
+  publishedHtml       String?
+  publishedRevisionId String?
+  publishedAt         DateTime?
+  /// Owner-uploaded image URLs the AI may reference.
+  imageUrls           String[]                      @default([])
+  createdAt           DateTime                      @default(now())
+  updatedAt           DateTime                      @updatedAt
+  organization        Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  revisions           OrganizationLandingRevision[]
+}
+
+/// Every draft change, from MCP or the web copy editor, for review and restore.
+model OrganizationLandingRevision {
+  id              String                  @id @default(cuid())
+  organizationId  String
+  html            String
+  source          LandingRevisionSource
+  summary         String?
+  createdByUserId String?
+  createdAt       DateTime                @default(now())
+  landingPage     OrganizationLandingPage @relation(fields: [organizationId], references: [organizationId], onDelete: Cascade)
+  createdBy       User?                   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([createdByUserId])
 }

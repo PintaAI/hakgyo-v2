@@ -189,6 +189,7 @@ Then test the public deployment with MCP Inspector and at least one launch clien
 | `src/server/mcp/auth.ts`                                           | Verified claims to SDK `AuthInfo` mapping    |
 | `src/server/mcp/security.ts`                                       | Host and Origin boundary checks              |
 | `src/server/mcp/server.ts`                                         | Per-request MCP server and tool registration |
+| `src/server/mcp/landing-tools.ts`                                  | Owner-only landing page design tools         |
 
 ## Primary References
 
