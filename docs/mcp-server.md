@@ -64,6 +64,20 @@ The Node CIMD transport resolves each hostname once, rejects special-use network
 ranges, pins the approved address, and refuses redirects. Do not replace it with
 plain `fetch`.
 
+`patches/@better-auth%2Fcimd@1.7.2.patch` backports the upstream 1.7.3 fix
+([#10730](https://github.com/better-auth/better-auth/pull/10730)): without it,
+the transport's pinned `lookup` breaks on Node 20+ and every metadata fetch fails
+with `ERR_INVALID_IP_ADDRESS`. Drop the patch when upgrading to 1.7.3 or later,
+after the account schema cleanup in the 1.7 upgrade guide.
+
+`@better-auth/oauth-provider` 1.7.2 or later is required: earlier versions reject
+CIMD clients that also declare grants Hakgyo does not offer, such as Claude's
+`jwt-bearer` grant.
+
+`loginPage` is `/auth`. The sign-in page must keep the signed OAuth query in its
+URL, and `AuthPanel` must let the auth client follow the returned redirect, so
+authorization resumes after sign-in.
+
 Dynamic Client Registration is disabled. Do not add
 `allowDynamicClientRegistration` or `allowUnauthenticatedClientRegistration` as
 a client compatibility workaround.

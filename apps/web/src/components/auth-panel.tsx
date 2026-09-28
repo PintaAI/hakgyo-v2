@@ -9,6 +9,17 @@ import { getPostSignInPath } from "~/lib/access";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
 
+function resumesAuthorization(data: unknown) {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "redirect" in data &&
+    data.redirect === true &&
+    "url" in data &&
+    typeof data.url === "string"
+  );
+}
+
 export function AuthPanel({
   redirectTo,
   initialMode = "sign-in",
@@ -55,6 +66,9 @@ export function AuthPanel({
         return;
       }
 
+      // An OAuth authorization (e.g. an MCP client) resumes at the URL Better
+      // Auth returns, which its client already navigates to.
+      if (resumesAuthorization(result.data)) return;
       window.location.replace(postSignInPath);
     } catch {
       setError("Tidak dapat terhubung. Periksa koneksi Anda dan coba lagi.");
