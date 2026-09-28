@@ -4,7 +4,7 @@ import type { Prisma } from "../../../generated/prisma/client";
 import { EnrollmentStatus } from "../../../generated/prisma/enums";
 import { canManageContent } from "~/server/authorization/permissions";
 import { db } from "~/server/db";
-import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
 import { memoizeForRequest } from "~/server/request-cache";
 import {
   evaluateOpenModules,
@@ -35,8 +35,7 @@ export async function getActiveCohortCourseIds(
       status: { in: [...activeEnrollmentStatuses] },
       cohort: {
         ...(courseIds ? { courseId: { in: courseIds } } : {}),
-        status: { in: [...accessGrantingCohortStatuses] },
-        OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+        ...accessGrantingCohortWhere(now),
       },
     },
     select: { cohort: { select: { courseId: true } } },

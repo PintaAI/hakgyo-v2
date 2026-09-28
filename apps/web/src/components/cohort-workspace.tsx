@@ -402,6 +402,8 @@ export function CohortWorkspace({
                   courseId={cohort.courseId}
                   cohortId={cohort.id}
                   cohortName={cohort.name}
+                  cohortStatus={cohort.status}
+                  cohortEndsAt={cohort.endsAt}
                 />
               </div>
             ) : null}

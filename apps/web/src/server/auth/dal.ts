@@ -10,7 +10,7 @@ import {
 } from "~/lib/access";
 import { getSession } from "~/server/better-auth/server";
 import { db } from "~/server/db";
-import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
 import { getSuperadminUser } from "~/server/authorization/superadmin";
 
 export const requireSession = cache(async () => {
@@ -61,8 +61,7 @@ export const getSignedInDestination = cache(async (userId: string) => {
         userId,
         status: { in: ["ACTIVE", "COMPLETED"] },
         cohort: {
-          status: { in: [...accessGrantingCohortStatuses] },
-          OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+          ...accessGrantingCohortWhere(now),
           course: { status: "PUBLISHED" },
         },
       },

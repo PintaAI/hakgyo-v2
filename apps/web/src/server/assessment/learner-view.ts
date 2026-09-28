@@ -3,7 +3,7 @@ import { activeEnrollmentStatuses } from "~/server/authorization";
 import { orderAssessmentQuestions } from "~/server/assessment/order";
 import { shouldRevealAssessmentAnswers } from "~/server/assessment/result-policy";
 import { getAssessmentDeadline } from "~/server/assessment/timing";
-import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
 
 /**
  * Learner view of a course item's assessment, as returned by `assessment.getForCourseItem`.
@@ -121,8 +121,7 @@ export function eligibleCohortEnrollmentWhere(
             },
           }
         : { courseId: scope.courseId }),
-      status: { in: [...accessGrantingCohortStatuses] },
-      OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      ...accessGrantingCohortWhere(now),
     },
   } satisfies Prisma.CohortEnrollmentWhereInput;
 }

@@ -197,9 +197,10 @@ async function listCohortPage(
   orderBy: Prisma.CohortOrderByWithRelationInput[],
   input: { limit: number; cursor?: string; includeTotal: boolean },
 ) {
+  const classWhere = { ...where, defaultForCourseId: null };
   const [items, total] = await Promise.all([
     db.cohort.findMany({
-      where,
+      where: classWhere,
       orderBy,
       ...pageArgs(input),
       include: {
@@ -207,7 +208,7 @@ async function listCohortPage(
       },
     }),
     input.includeTotal
-      ? db.cohort.count({ where })
+      ? db.cohort.count({ where: classWhere })
       : Promise.resolve(undefined),
   ]);
   return pageResult(await withCohortCounts(items), input.limit, total);
@@ -305,6 +306,7 @@ export const cohortRouter = createTRPCRouter({
       });
       const where = {
         courseId: input.courseId,
+        defaultForCourseId: null,
         status: input.status,
         ...(input.search
           ? {

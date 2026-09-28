@@ -9,7 +9,7 @@ import {
   requireCoursePermission,
 } from "~/server/authorization";
 import { assertAssessmentNotLive } from "~/server/assessment/live-status";
-import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
 
 type DatabaseClient = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
@@ -90,8 +90,7 @@ export async function requireInProgressAttemptAccess(
             {
               cohorts: {
                 some: {
-                  status: { in: [...accessGrantingCohortStatuses] },
-                  OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+                  ...accessGrantingCohortWhere(now),
                   enrollments: {
                     some: {
                       userId,

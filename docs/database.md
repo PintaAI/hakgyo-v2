@@ -372,6 +372,20 @@ Keanggotaan user pada cohort tertentu. Saat user masuk cohort, service layer
 harus memastikan user juga mempunyai `CourseEnrollment` aktif untuk course
 induknya.
 
+### Cohort default (belajar mandiri)
+
+Setiap course dapat memiliki satu cohort sistem dengan `defaultForCourseId`
+berisi `courseId`. Cohort ini dibuat saat pertama dipakai dan menampung learner
+yang belajar tanpa kelas. Setiap `CourseEnrollment` langsung (semua source
+selain `COHORT`) dicerminkan sebagai `CohortEnrollment` di cohort default
+melalui `syncDefaultCohortEnrollments`, termasuk status, source dan
+`expiresAt`.
+
+Ini tahap transisi menuju keanggotaan cohort sebagai satu-satunya sumber akses.
+Untuk sementara akses masih dibaca dari `CourseEnrollment`, sehingga cohort
+default disembunyikan dari daftar cohort, hitungan, dan pemeriksaan akses
+cohort (`accessGrantingCohortWhere`), dan `requireCohortPermission` menolaknya.
+
 Kedua tabel memiliki constraint unik agar user tidak terdaftar dua kali pada
 course atau cohort yang sama.
 

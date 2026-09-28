@@ -709,6 +709,10 @@ model Cohort {
   capacity           Int?
   startsAt           DateTime?
   endsAt             DateTime?
+  // Set to courseId on the course's system self-paced cohort, which holds
+  // learners who study without a class cohort. A CHECK constraint keeps it
+  // equal to courseId, and the unique index allows one per course.
+  defaultForCourseId String?             @unique
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   course             Course              @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
@@ -1036,6 +1040,7 @@ model CohortEnrollment {
   source      EnrollmentSource
   enrolledAt  DateTime         @default(now())
   completedAt DateTime?
+  expiresAt   DateTime?
   cohort      Cohort           @relation(fields: [cohortId], references: [id], onDelete: Restrict)
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -16,7 +16,7 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
-import { accessGrantingCohortStatuses } from "~/server/enrollment/cohort-access";
+import { accessGrantingCohortWhere } from "~/server/enrollment/cohort-access";
 import { generateOrganizationTheme } from "~/server/ai/organization-theme";
 import { fetchStats } from "~/server/foundation/fetch-stats";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
@@ -275,8 +275,7 @@ export const organizationRouter = createTRPCRouter({
               {
                 cohorts: {
                   some: {
-                    status: { in: [...accessGrantingCohortStatuses] },
-                    OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+                    ...accessGrantingCohortWhere(now),
                     enrollments: {
                       some: {
                         userId: ctx.actorUserId,
@@ -343,8 +342,7 @@ export const organizationRouter = createTRPCRouter({
                     {
                       cohorts: {
                         some: {
-                          status: { in: [...accessGrantingCohortStatuses] },
-                          OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+                          ...accessGrantingCohortWhere(now),
                           enrollments: {
                             some: {
                               userId: ctx.actorUserId,
@@ -867,7 +865,7 @@ export const organizationRouter = createTRPCRouter({
         }),
         ctx.db.cohort.groupBy({
           by: ["status"],
-          where: organizationScope,
+          where: { ...organizationScope, defaultForCourseId: null },
           _count: { _all: true },
         }),
         ctx.db.courseEnrollment.groupBy({

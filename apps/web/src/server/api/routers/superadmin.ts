@@ -162,7 +162,12 @@ export const superadminRouter = createTRPCRouter({
         id: true,
         title: true,
         organization: { select: { name: true } },
-        _count: { select: { modules: true, cohorts: true } },
+        _count: {
+          select: {
+            modules: true,
+            cohorts: { where: { defaultForCourseId: null } },
+          },
+        },
       },
     }),
   ),

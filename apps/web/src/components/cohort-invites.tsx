@@ -50,10 +50,14 @@ export function CohortInvites({
   courseId,
   cohortId,
   cohortName,
+  cohortStatus,
+  cohortEndsAt,
 }: {
   courseId: string;
   cohortId: string;
   cohortName: string;
+  cohortStatus: "DRAFT" | "OPEN" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  cohortEndsAt: Date | null;
 }) {
   const utils = api.useUtils();
   const invites = api.enrollment.listInvites.useInfiniteQuery(
@@ -201,14 +205,28 @@ export function CohortInvites({
               );
               const exhausted =
                 invite.maxUses !== null && invite.useCount >= invite.maxUses;
-              const active = !invite.revokedAt && !expired && !exhausted;
+              // Redemption also requires the group to be open and not ended.
+              const cohortNotOpen = cohortStatus === "DRAFT";
+              const cohortEnded =
+                cohortStatus === "COMPLETED" ||
+                cohortStatus === "CANCELLED" ||
+                Boolean(cohortEndsAt && cohortEndsAt <= new Date());
+              // Links made while the group is in draft start working once it
+              // opens, so they can still be revoked.
+              const revocable =
+                !invite.revokedAt && !expired && !exhausted && !cohortEnded;
+              const active = revocable && !cohortNotOpen;
               const status = invite.revokedAt
                 ? "Dicabut"
                 : expired
                   ? "Kedaluwarsa"
                   : exhausted
                     ? "Habis"
-                    : "Aktif";
+                    : cohortEnded
+                      ? "Group berakhir"
+                      : cohortNotOpen
+                        ? "Group belum dibuka"
+                        : "Aktif";
 
               return (
                 <Card key={invite.id} className="rounded-lg py-0">
@@ -238,7 +256,7 @@ export function CohortInvites({
                         </span>
                       </div>
                     </div>
-                    {active ? (
+                    {revocable ? (
                       <Button
                         className="self-start sm:self-auto"
                         variant="outline"

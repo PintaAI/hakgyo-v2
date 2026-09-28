@@ -24,7 +24,12 @@ export async function listMcpCatalog(input: {
       price: true,
       currency: true,
       organization: { select: { id: true, name: true, slug: true } },
-      _count: { select: { modules: true, cohorts: true } },
+      _count: {
+        select: {
+          modules: true,
+          cohorts: { where: { defaultForCourseId: null } },
+        },
+      },
     },
   });
   const hasMore = rows.length > input.limit;

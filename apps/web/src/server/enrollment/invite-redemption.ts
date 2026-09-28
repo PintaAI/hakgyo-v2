@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
+import { syncDefaultCohortEnrollments } from "~/server/enrollment/default-cohort";
 
 async function findRedeemableEnrollmentInvite(
   tx: Prisma.TransactionClient,
@@ -160,6 +161,10 @@ export async function redeemEnrollmentInvite(
         expiresAt: null,
       },
     });
+    await syncDefaultCohortEnrollments(tx, {
+      courseId: invite.courseId,
+      userIds: [input.userId],
+    });
   }
 
   return {
@@ -201,4 +206,9 @@ async function grantCohortCourseAccess(
       expiresAt: null,
     },
   });
+  // A lapsed direct enrollment taken over above no longer backs a default
+  // cohort membership.
+  if (enrollment && enrollment.source !== "COHORT") {
+    await syncDefaultCohortEnrollments(tx, { courseId, userIds: [userId] });
+  }
 }

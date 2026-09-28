@@ -19,7 +19,11 @@ export async function withCourseCounts<T extends { id: string }>(
       where,
       _count: { _all: true },
     }),
-    db.cohort.groupBy({ by: ["courseId"], where, _count: { _all: true } }),
+    db.cohort.groupBy({
+      by: ["courseId"],
+      where: { ...where, defaultForCourseId: null },
+      _count: { _all: true },
+    }),
   ]);
   const moduleCounts = new Map(
     modules.map((row) => [row.courseId, row._count._all]),
