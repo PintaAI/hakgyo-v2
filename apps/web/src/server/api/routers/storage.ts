@@ -1,3 +1,6 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+
 import {
   createCourseThumbnailKey,
   courseThumbnailContentTypes,
@@ -6,15 +9,13 @@ import {
   parseCourseThumbnailKey,
 } from "~/lib/course-thumbnail";
 import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  HeadObjectCommand,
-  PutObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { TRPCError } from "@trpc/server";
-import { z } from "zod";
-
+  createOrganizationLandingImageKey,
+  getOrganizationLandingImagePath,
+  MAX_ORGANIZATION_LANDING_IMAGE_SIZE,
+  organizationLandingImageContentTypes,
+  organizationLandingImagePurposes,
+  parseOrganizationLandingImageKey,
+} from "~/lib/organization-landing-image";
 import {
   createOrganizationLogoKey,
   getManagedOrganizationLogoKey,
@@ -23,15 +24,6 @@ import {
   organizationLogoContentTypes,
   parseOrganizationLogoKey,
 } from "~/lib/organization-logo";
-import { hasImageSignature } from "~/lib/image-signature";
-import {
-  createOrganizationLandingImageKey,
-  getOrganizationLandingImagePath,
-  MAX_ORGANIZATION_LANDING_IMAGE_SIZE,
-  organizationLandingImageContentTypes,
-  organizationLandingImagePurposes,
-  parseOrganizationLandingImageKey,
-} from "~/lib/organization-landing-image";
 import {
   createProfileImageKey,
   getManagedProfileImageKey,
@@ -52,10 +44,17 @@ import {
   removeLandingImage,
   requireLandingOwner,
 } from "~/server/organization-landing/service";
-import { r2, r2Bucket } from "~/server/r2";
+import {
+  createUploadUrl,
+  deleteObject,
+  headUploadedObject,
+  removeObject,
+  SIGNED_URL_TTL_SECONDS,
+  signDownloadUrl,
+  validateImageObject,
+} from "~/server/storage/objects";
 
 const MAX_DOCUMENT_SIZE = 100 * 1024 * 1024;
-const SIGNED_URL_TTL_SECONDS = 5 * 60;
 
 const documentKeySchema = z.string().min(1).max(1024);
 
@@ -80,73 +79,81 @@ const getExpectedSize = (key: string) => {
   return expectedSize;
 };
 
-async function removeObject(key: string) {
-  try {
-    await r2.send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }));
-  } catch (error) {
-    console.error("Failed to remove rejected upload", error);
-  }
+const requireCourseManager = (courseId: string, userId: string) =>
+  requireCoursePermission({ courseId, permission: "course.manage", userId });
+
+const requireOrganizationManager = (organizationId: string, userId: string) =>
+  requireOrganizationPermission({
+    organizationId,
+    permission: "organization.manage",
+    userId,
+  });
+
+async function getProfileImageKey(userId: string) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { image: true },
+  });
+  return getManagedProfileImageKey(user?.image, userId);
 }
 
-async function validateImageObject(
-  key: string,
-  expectedSize: number,
-  expectedContentType: string,
-  label: string,
+async function getOrganizationLogoKey(organizationId: string) {
+  const organization = await db.organization.findUniqueOrThrow({
+    where: { id: organizationId },
+    select: { logoUrl: true },
+  });
+  return getManagedOrganizationLogoKey(organization.logoUrl, organizationId);
+}
+
+/**
+ * Soft-deletes one of the user's own uploaded documents, refusing while any
+ * material, assessment, vocabulary entry or PDF book still references it.
+ */
+async function deleteOwnAsset(
+  where: { id: string } | { objectKey: string },
+  userId: string,
 ) {
-  let object;
-  try {
-    object = await r2.send(
-      new HeadObjectCommand({ Bucket: r2Bucket, Key: key }),
-    );
-  } catch (cause) {
-    const status = (cause as { $metadata?: { httpStatusCode?: number } })
-      .$metadata?.httpStatusCode;
-    throw new TRPCError({
-      code: status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
-      message: status === 404 ? `Uploaded ${label} was not found` : undefined,
-      cause,
-    });
+  const asset = await db.asset.findUnique({
+    where,
+    select: {
+      id: true,
+      objectKey: true,
+      uploadedByUserId: true,
+      deletedAt: true,
+      pdfBookPage: { select: { bookId: true } },
+      pdfBookThumbnail: { select: { bookId: true } },
+      _count: {
+        select: {
+          materials: true,
+          assessments: true,
+          vocabularyEntries: true,
+        },
+      },
+    },
+  });
+  if (asset?.uploadedByUserId !== userId) {
+    throw new TRPCError({ code: "NOT_FOUND" });
   }
-
   if (
-    object.ContentLength !== expectedSize ||
-    object.ContentType !== expectedContentType
+    asset.pdfBookPage ||
+    asset.pdfBookThumbnail ||
+    asset._count.materials > 0 ||
+    asset._count.assessments > 0 ||
+    asset._count.vocabularyEntries > 0
   ) {
-    await removeObject(key);
     throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `Uploaded ${label} does not match the signed request`,
+      code: "CONFLICT",
+      message: "Asset is still referenced",
     });
   }
+  if (asset.deletedAt) return { deleted: true };
 
-  let headerBytes: Uint8Array;
-  try {
-    const headerObject = await r2.send(
-      new GetObjectCommand({
-        Bucket: r2Bucket,
-        Key: key,
-        Range: "bytes=0-15",
-      }),
-    );
-    if (!headerObject.Body) throw new Error(`Uploaded ${label} has no body`);
-    headerBytes = await headerObject.Body.transformToByteArray();
-  } catch (cause) {
-    await removeObject(key);
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: `Uploaded ${label} could not be validated`,
-      cause,
-    });
-  }
-
-  if (!hasImageSignature(headerBytes, expectedContentType)) {
-    await removeObject(key);
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `Uploaded file is not a valid ${label}`,
-    });
-  }
+  await deleteObject(asset.objectKey);
+  await db.asset.update({
+    where: { id: asset.id },
+    data: { deletedAt: new Date() },
+  });
+  return { deleted: true };
 }
 
 const downloadDispositionSchema = z
@@ -296,17 +303,8 @@ async function signDownload(
   asset: DownloadableAsset,
   disposition: "attachment" | "inline",
 ) {
-  const downloadUrl = await getSignedUrl(
-    r2,
-    new GetObjectCommand({
-      Bucket: r2Bucket,
-      Key: asset.objectKey,
-      ResponseContentDisposition: disposition,
-    }),
-    { expiresIn: SIGNED_URL_TTL_SECONDS },
-  );
   return {
-    downloadUrl,
+    downloadUrl: await signDownloadUrl(asset.objectKey, disposition),
     expiresIn: SIGNED_URL_TTL_SECONDS,
     fileName: asset.fileName,
     contentType: asset.contentType,
@@ -324,68 +322,28 @@ export const storageRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const course = await requireCoursePermission({
-        courseId: input.courseId,
-        permission: "course.manage",
-        userId: ctx.actorUserId,
-      });
+      const course = await requireCourseManager(
+        input.courseId,
+        ctx.actorUserId,
+      );
       const key = createCourseThumbnailKey(
         input.courseId,
         input.fileSize,
         input.contentType,
       );
-      const uploadUrl = await getSignedUrl(
-        r2,
-        new PutObjectCommand({
-          Bucket: r2Bucket,
-          Key: key,
-          ContentType: input.contentType,
-        }),
-        { expiresIn: SIGNED_URL_TTL_SECONDS },
-      );
       return {
         courseId: course.id,
-        key,
-        uploadUrl,
-        expiresIn: SIGNED_URL_TTL_SECONDS,
-        headers: { "Content-Type": input.contentType },
+        ...(await createUploadUrl(key, input.contentType)),
       };
     }),
 
   confirmCourseThumbnailUpload: protectedProcedure
     .input(z.object({ courseId: z.string().min(1), key: documentKeySchema }))
     .mutation(async ({ ctx, input }) => {
-      await requireCoursePermission({
-        courseId: input.courseId,
-        permission: "course.manage",
-        userId: ctx.actorUserId,
-      });
+      await requireCourseManager(input.courseId, ctx.actorUserId);
       const parsed = parseCourseThumbnailKey(input.key, input.courseId);
       if (!parsed) throw new TRPCError({ code: "BAD_REQUEST" });
-      let object;
-      try {
-        object = await r2.send(
-          new HeadObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-        );
-      } catch (cause) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Uploaded thumbnail was not found",
-          cause,
-        });
-      }
-      if (
-        object.ContentLength !== parsed.size ||
-        object.ContentType !== parsed.contentType
-      ) {
-        await r2.send(
-          new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-        );
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Uploaded thumbnail does not match the signed request",
-        });
-      }
+      await validateImageObject(input.key, parsed, "thumbnail");
       return {
         key: input.key,
         thumbnailUrl: getCourseThumbnailPath(input.courseId, parsed.fileName),
@@ -395,17 +353,11 @@ export const storageRouter = createTRPCRouter({
   deleteCourseThumbnail: protectedProcedure
     .input(z.object({ courseId: z.string().min(1), key: documentKeySchema }))
     .mutation(async ({ ctx, input }) => {
-      await requireCoursePermission({
-        courseId: input.courseId,
-        permission: "course.manage",
-        userId: ctx.actorUserId,
-      });
+      await requireCourseManager(input.courseId, ctx.actorUserId);
       if (!parseCourseThumbnailKey(input.key, input.courseId)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      await r2.send(
-        new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-      );
+      await deleteObject(input.key);
       return { deleted: true };
     }),
 
@@ -422,27 +374,11 @@ export const storageRouter = createTRPCRouter({
         input.fileSize,
         input.contentType,
       );
-      const uploadUrl = await getSignedUrl(
-        r2,
-        new PutObjectCommand({
-          Bucket: r2Bucket,
-          Key: key,
-          ContentType: input.contentType,
-          CacheControl: "public, max-age=31536000, immutable",
-        }),
-        { expiresIn: SIGNED_URL_TTL_SECONDS },
-      );
-
-      return {
-        key,
-        uploadUrl,
-        expiresIn: SIGNED_URL_TTL_SECONDS,
-        headers: { "Content-Type": input.contentType },
-      };
+      return createUploadUrl(key, input.contentType, { immutable: true });
     }),
 
   confirmProfileImageUpload: protectedProcedure
-    .input(z.object({ key: z.string().min(1).max(1024) }))
+    .input(z.object({ key: documentKeySchema }))
     .mutation(async ({ ctx, input }) => {
       const parsed = parseProfileImageKey(input.key, ctx.actorUserId);
       if (!parsed) {
@@ -451,103 +387,43 @@ export const storageRouter = createTRPCRouter({
           message: "Invalid image key",
         });
       }
+      await validateImageObject(input.key, parsed, "image");
 
-      let object;
-      try {
-        object = await r2.send(
-          new HeadObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-        );
-      } catch (cause) {
-        const status = (cause as { $metadata?: { httpStatusCode?: number } })
-          .$metadata?.httpStatusCode;
-        throw new TRPCError({
-          code: status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
-          message: status === 404 ? "Uploaded image was not found" : undefined,
-          cause,
-        });
-      }
-
-      if (
-        object.ContentLength !== parsed.size ||
-        object.ContentType !== parsed.contentType
-      ) {
-        await r2.send(
-          new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-        );
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Uploaded image does not match the signed request",
-        });
-      }
-
-      const currentUser = await db.user.findUnique({
-        where: { id: ctx.actorUserId },
-        select: { image: true },
-      });
-      const oldKey = getManagedProfileImageKey(
-        currentUser?.image,
-        ctx.actorUserId,
-      );
+      const oldKey = await getProfileImageKey(ctx.actorUserId);
       const image = getProfileImagePath(ctx.actorUserId, parsed.fileName);
       await db.user.update({
         where: { id: ctx.actorUserId },
         data: { image },
       });
-
       if (oldKey && oldKey !== input.key) {
-        try {
-          await r2.send(
-            new DeleteObjectCommand({ Bucket: r2Bucket, Key: oldKey }),
-          );
-        } catch (error) {
-          console.error("Failed to remove replaced profile image", error);
-        }
+        await removeObject(oldKey, "replaced profile image");
       }
-
       return { image };
     }),
 
   discardProfileImageUpload: protectedProcedure
-    .input(z.object({ key: z.string().min(1).max(1024) }))
+    .input(z.object({ key: documentKeySchema }))
     .mutation(async ({ ctx, input }) => {
       if (!parseProfileImageKey(input.key, ctx.actorUserId)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const user = await db.user.findUnique({
-        where: { id: ctx.actorUserId },
-        select: { image: true },
-      });
-      if (
-        getManagedProfileImageKey(user?.image, ctx.actorUserId) === input.key
-      ) {
+      if ((await getProfileImageKey(ctx.actorUserId)) === input.key) {
         throw new TRPCError({
           code: "CONFLICT",
           message: "The image is currently in use",
         });
       }
-      await r2.send(
-        new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-      );
+      await deleteObject(input.key);
       return { deleted: true };
     }),
 
   deleteProfileImage: protectedProcedure.mutation(async ({ ctx }) => {
-    const user = await db.user.findUnique({
-      where: { id: ctx.actorUserId },
-      select: { image: true },
-    });
-    const key = getManagedProfileImageKey(user?.image, ctx.actorUserId);
+    const key = await getProfileImageKey(ctx.actorUserId);
     await db.user.update({
       where: { id: ctx.actorUserId },
       data: { image: null },
     });
-    if (key) {
-      try {
-        await r2.send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }));
-      } catch (error) {
-        console.error("Failed to remove profile image", error);
-      }
-    }
+    if (key) await removeObject(key, "profile image");
     return { deleted: true };
   }),
 
@@ -560,48 +436,24 @@ export const storageRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireOrganizationPermission({
-        organizationId: input.organizationId,
-        permission: "organization.manage",
-        userId: ctx.actorUserId,
-      });
+      await requireOrganizationManager(input.organizationId, ctx.actorUserId);
       const key = createOrganizationLogoKey(
         input.organizationId,
         input.fileSize,
         input.contentType,
       );
-      const uploadUrl = await getSignedUrl(
-        r2,
-        new PutObjectCommand({
-          Bucket: r2Bucket,
-          Key: key,
-          ContentType: input.contentType,
-          CacheControl: "public, max-age=31536000, immutable",
-        }),
-        { expiresIn: SIGNED_URL_TTL_SECONDS },
-      );
-
-      return {
-        key,
-        uploadUrl,
-        expiresIn: SIGNED_URL_TTL_SECONDS,
-        headers: { "Content-Type": input.contentType },
-      };
+      return createUploadUrl(key, input.contentType, { immutable: true });
     }),
 
   confirmOrganizationLogoUpload: protectedProcedure
     .input(
       z.object({
         organizationId: z.string().min(1),
-        key: z.string().min(1).max(1024),
+        key: documentKeySchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireOrganizationPermission({
-        organizationId: input.organizationId,
-        permission: "organization.manage",
-        userId: ctx.actorUserId,
-      });
+      await requireOrganizationManager(input.organizationId, ctx.actorUserId);
       const parsed = parseOrganizationLogoKey(input.key, input.organizationId);
       if (!parsed) {
         throw new TRPCError({
@@ -609,22 +461,9 @@ export const storageRouter = createTRPCRouter({
           message: "Invalid logo key",
         });
       }
+      await validateImageObject(input.key, parsed, "organization logo");
 
-      await validateImageObject(
-        input.key,
-        parsed.size,
-        parsed.contentType,
-        "organization logo",
-      );
-
-      const organization = await db.organization.findUniqueOrThrow({
-        where: { id: input.organizationId },
-        select: { logoUrl: true },
-      });
-      const oldKey = getManagedOrganizationLogoKey(
-        organization.logoUrl,
-        input.organizationId,
-      );
+      const oldKey = await getOrganizationLogoKey(input.organizationId);
       const logoUrl = getOrganizationLogoPath(
         input.organizationId,
         parsed.fileName,
@@ -633,17 +472,9 @@ export const storageRouter = createTRPCRouter({
         where: { id: input.organizationId },
         data: { logoUrl },
       });
-
       if (oldKey && oldKey !== input.key) {
-        try {
-          await r2.send(
-            new DeleteObjectCommand({ Bucket: r2Bucket, Key: oldKey }),
-          );
-        } catch (error) {
-          console.error("Failed to remove replaced organization logo", error);
-        }
+        await removeObject(oldKey, "replaced organization logo");
       }
-
       return { logoUrl };
     }),
 
@@ -651,68 +482,34 @@ export const storageRouter = createTRPCRouter({
     .input(
       z.object({
         organizationId: z.string().min(1),
-        key: z.string().min(1).max(1024),
+        key: documentKeySchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireOrganizationPermission({
-        organizationId: input.organizationId,
-        permission: "organization.manage",
-        userId: ctx.actorUserId,
-      });
+      await requireOrganizationManager(input.organizationId, ctx.actorUserId);
       if (!parseOrganizationLogoKey(input.key, input.organizationId)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const organization = await db.organization.findUniqueOrThrow({
-        where: { id: input.organizationId },
-        select: { logoUrl: true },
-      });
-      if (
-        getManagedOrganizationLogoKey(
-          organization.logoUrl,
-          input.organizationId,
-        ) === input.key
-      ) {
+      if ((await getOrganizationLogoKey(input.organizationId)) === input.key) {
         throw new TRPCError({
           code: "CONFLICT",
           message: "The logo is currently in use",
         });
       }
-      await r2.send(
-        new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-      );
+      await deleteObject(input.key);
       return { deleted: true };
     }),
 
   deleteOrganizationLogo: protectedProcedure
     .input(z.object({ organizationId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrganizationPermission({
-        organizationId: input.organizationId,
-        permission: "organization.manage",
-        userId: ctx.actorUserId,
-      });
-      const organization = await db.organization.findUniqueOrThrow({
-        where: { id: input.organizationId },
-        select: { logoUrl: true },
-      });
-      const key = getManagedOrganizationLogoKey(
-        organization.logoUrl,
-        input.organizationId,
-      );
+      await requireOrganizationManager(input.organizationId, ctx.actorUserId);
+      const key = await getOrganizationLogoKey(input.organizationId);
       await db.organization.update({
         where: { id: input.organizationId },
         data: { logoUrl: null },
       });
-      if (key) {
-        try {
-          await r2.send(
-            new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }),
-          );
-        } catch (error) {
-          console.error("Failed to remove organization logo", error);
-        }
-      }
+      if (key) await removeObject(key, "organization logo");
       return { deleted: true };
     }),
 
@@ -741,22 +538,7 @@ export const storageRouter = createTRPCRouter({
         input.fileSize,
         input.contentType,
       );
-      const uploadUrl = await getSignedUrl(
-        r2,
-        new PutObjectCommand({
-          Bucket: r2Bucket,
-          Key: key,
-          ContentType: input.contentType,
-          CacheControl: "public, max-age=31536000, immutable",
-        }),
-        { expiresIn: SIGNED_URL_TTL_SECONDS },
-      );
-      return {
-        key,
-        uploadUrl,
-        expiresIn: SIGNED_URL_TTL_SECONDS,
-        headers: { "Content-Type": input.contentType },
-      };
+      return createUploadUrl(key, input.contentType, { immutable: true });
     }),
 
   confirmOrganizationLandingImageUpload: protectedProcedure
@@ -784,12 +566,7 @@ export const storageRouter = createTRPCRouter({
           message: "Invalid landing image key",
         });
       }
-      await validateImageObject(
-        input.key,
-        parsed.size,
-        parsed.contentType,
-        "landing page image",
-      );
+      await validateImageObject(input.key, parsed, "landing page image");
       const imageUrl = getOrganizationLandingImagePath(
         input.organizationId,
         parsed.purpose,
@@ -833,9 +610,7 @@ export const storageRouter = createTRPCRouter({
         actorUserId: ctx.actorUserId,
         imageUrl,
       });
-      await r2.send(
-        new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-      );
+      await deleteObject(input.key);
       return { deleted: true };
     }),
 
@@ -861,16 +636,8 @@ export const storageRouter = createTRPCRouter({
 
       const extension =
         /\.[a-z0-9]{1,10}$/i.exec(input.fileName)?.[0].toLowerCase() ?? "";
-      const key = `${getUserPrefix(ctx.actorUserId)}${crypto.randomUUID()}-${input.fileSize}${extension}`;
-      const command = new PutObjectCommand({
-        Bucket: r2Bucket,
-        Key: key,
-        ContentType: input.contentType,
-      });
-
-      const uploadUrl = await getSignedUrl(r2, command, {
-        expiresIn: SIGNED_URL_TTL_SECONDS,
-      });
+      const key = `${getUserPrefix(userId)}${crypto.randomUUID()}-${input.fileSize}${extension}`;
+      const upload = await createUploadUrl(key, input.contentType);
       const asset = await db.asset.create({
         data: {
           organizationId: input.organizationId,
@@ -883,13 +650,7 @@ export const storageRouter = createTRPCRouter({
         select: { id: true },
       });
 
-      return {
-        assetId: asset.id,
-        key,
-        uploadUrl,
-        expiresIn: SIGNED_URL_TTL_SECONDS,
-        headers: { "Content-Type": input.contentType },
-      };
+      return { assetId: asset.id, ...upload };
     }),
 
   confirmUpload: protectedProcedure
@@ -908,29 +669,12 @@ export const storageRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid asset" });
       }
 
-      let object;
-      try {
-        object = await r2.send(
-          new HeadObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-        );
-      } catch (cause) {
-        const status = (cause as { $metadata?: { httpStatusCode?: number } })
-          .$metadata?.httpStatusCode;
-        throw new TRPCError({
-          code: status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
-          message:
-            status === 404 ? "Uploaded document was not found" : undefined,
-          cause,
-        });
-      }
-
+      const object = await headUploadedObject(input.key, "document");
       if (
         object.ContentLength !== expectedSize ||
         object.ContentLength > MAX_DOCUMENT_SIZE
       ) {
-        await r2.send(
-          new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-        );
+        await deleteObject(input.key);
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Uploaded document size does not match the signed request",
@@ -1009,95 +753,12 @@ export const storageRouter = createTRPCRouter({
     .input(z.object({ key: documentKeySchema }))
     .mutation(async ({ ctx, input }) => {
       assertOwnedKey(input.key, ctx.actorUserId);
-      const asset = await db.asset.findUnique({
-        where: { objectKey: input.key },
-        select: {
-          id: true,
-          uploadedByUserId: true,
-          deletedAt: true,
-          pdfBookPage: { select: { bookId: true } },
-          pdfBookThumbnail: { select: { bookId: true } },
-          _count: {
-            select: {
-              materials: true,
-              assessments: true,
-              vocabularyEntries: true,
-            },
-          },
-        },
-      });
-      if (asset?.uploadedByUserId !== ctx.actorUserId) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-      if (
-        asset.pdfBookPage ||
-        asset.pdfBookThumbnail ||
-        asset._count.materials > 0 ||
-        asset._count.assessments > 0 ||
-        asset._count.vocabularyEntries > 0
-      ) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "Asset is still referenced",
-        });
-      }
-      if (asset.deletedAt) return { deleted: true };
-
-      await r2.send(
-        new DeleteObjectCommand({ Bucket: r2Bucket, Key: input.key }),
-      );
-      await db.asset.update({
-        where: { id: asset.id },
-        data: { deletedAt: new Date() },
-      });
-      return { deleted: true };
+      return deleteOwnAsset({ objectKey: input.key }, ctx.actorUserId);
     }),
 
   deleteAsset: protectedProcedure
     .input(z.object({ assetId: z.string().min(1) }))
-    .mutation(async ({ ctx, input }) => {
-      const asset = await db.asset.findUnique({
-        where: { id: input.assetId },
-        select: {
-          id: true,
-          objectKey: true,
-          uploadedByUserId: true,
-          deletedAt: true,
-          pdfBookPage: { select: { bookId: true } },
-          pdfBookThumbnail: { select: { bookId: true } },
-          _count: {
-            select: {
-              materials: true,
-              assessments: true,
-              vocabularyEntries: true,
-            },
-          },
-        },
-      });
-      if (asset?.uploadedByUserId !== ctx.actorUserId) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-      if (
-        asset.pdfBookPage ||
-        asset.pdfBookThumbnail ||
-        asset._count.materials > 0 ||
-        asset._count.assessments > 0 ||
-        asset._count.vocabularyEntries > 0
-      ) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "Asset is still referenced",
-        });
-      }
-      if (asset.deletedAt) return { deleted: true };
-
-      await r2.send(
-        new DeleteObjectCommand({ Bucket: r2Bucket, Key: asset.objectKey }),
-      );
-      await db.asset.update({
-        where: { id: asset.id },
-        data: { deletedAt: new Date() },
-      });
-      return { deleted: true };
-    }),
+    .mutation(({ ctx, input }) =>
+      deleteOwnAsset({ id: input.assetId }, ctx.actorUserId),
+    ),
 });

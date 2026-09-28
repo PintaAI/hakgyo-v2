@@ -14,16 +14,16 @@ import {
   learnerAssessmentItemSelect,
   shapeLearnerAssessment,
 } from "~/server/assessment/learner-view";
-import { buildAssessmentAnswerContentUpdate } from "~/server/assessment-answer-content";
+import { buildAssessmentAnswerContentUpdate } from "~/server/assessment/answer-content";
 import {
   gradableAttemptSelect,
   gradeInProgressAttempt,
   lockAttemptStart,
   lockInProgressAttempt,
   markCourseItemCompleted,
-} from "~/server/assessment-attempt";
-import { assessmentContext } from "~/server/assessment-register";
-import { isAssessmentExpired } from "~/server/assessment-timing";
+} from "~/server/assessment/attempt";
+import { assessmentContext } from "~/server/assessment/register";
+import { isAssessmentExpired } from "~/server/assessment/timing";
 import { requireCourseItemAccess } from "~/server/authorization";
 import {
   isUniqueConstraintError,

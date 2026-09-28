@@ -16,7 +16,7 @@ import {
   grantCohortCourseAccessForUsers,
   reconcileCohortCourseAccess,
 } from "~/server/enrollment/cohort-access";
-import { pageInput, pageResult } from "~/server/api/pagination";
+import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 import {
   createZoomMeeting,
   deleteZoomMeeting,
@@ -191,6 +191,28 @@ async function getCohortLearnerPreviews(cohortIds: string[]) {
   return previews;
 }
 
+/** One page of cohorts with their course and member counts. */
+async function listCohortPage(
+  where: Prisma.CohortWhereInput,
+  orderBy: Prisma.CohortOrderByWithRelationInput[],
+  input: { limit: number; cursor?: string; includeTotal: boolean },
+) {
+  const [items, total] = await Promise.all([
+    db.cohort.findMany({
+      where,
+      orderBy,
+      ...pageArgs(input),
+      include: {
+        course: { select: { id: true, title: true, thumbnailUrl: true } },
+      },
+    }),
+    input.includeTotal
+      ? db.cohort.count({ where })
+      : Promise.resolve(undefined),
+  ]);
+  return pageResult(await withCohortCounts(items), input.limit, total);
+}
+
 export const cohortRouter = createTRPCRouter({
   listByOrganization: protectedProcedure
     .input(
@@ -232,22 +254,11 @@ export const cohortRouter = createTRPCRouter({
             }
           : {}),
       };
-      const [items, total] = await Promise.all([
-        db.cohort.findMany({
-          where,
-          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
-          include: {
-            course: { select: { id: true, title: true, thumbnailUrl: true } },
-          },
-        }),
-        input.includeTotal
-          ? db.cohort.count({ where })
-          : Promise.resolve(undefined),
-      ]);
-      return pageResult(await withCohortCounts(items), input.limit, total);
+      return listCohortPage(
+        where,
+        [{ createdAt: "desc" }, { id: "desc" }],
+        input,
+      );
     }),
   listForCurrentMember: protectedProcedure
     .input(
@@ -270,22 +281,11 @@ export const cohortRouter = createTRPCRouter({
           role: member.role,
         }),
       };
-      const [items, total] = await Promise.all([
-        db.cohort.findMany({
-          where,
-          orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
-          include: {
-            course: { select: { id: true, title: true, thumbnailUrl: true } },
-          },
-        }),
-        input.includeTotal
-          ? db.cohort.count({ where })
-          : Promise.resolve(undefined),
-      ]);
-      return pageResult(await withCohortCounts(items), input.limit, total);
+      return listCohortPage(
+        where,
+        [{ updatedAt: "desc" }, { id: "desc" }],
+        input,
+      );
     }),
   list: protectedProcedure
     .input(
@@ -334,9 +334,7 @@ export const cohortRouter = createTRPCRouter({
         db.cohort.findMany({
           where,
           orderBy,
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
+          ...pageArgs(input),
         }),
         input.includeTotal
           ? db.cohort.count({ where })
@@ -589,9 +587,7 @@ export const cohortRouter = createTRPCRouter({
         db.cohortMeeting.findMany({
           where,
           orderBy: [{ startsAt: "asc" }, { id: "asc" }],
-          take: input.limit + 1,
-          cursor: input.cursor ? { id: input.cursor } : undefined,
-          skip: input.cursor ? 1 : undefined,
+          ...pageArgs(input),
           include: {
             module: { select: { id: true, title: true } },
             createdBy: {

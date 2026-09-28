@@ -10,7 +10,7 @@ import {
   evaluateOpenModules,
   evaluateSequentialModules,
   hasPassedAssessment,
-} from "./sequential-access";
+} from "@hakgyo/shared/learning/sequential-access";
 
 const activeEnrollmentStatuses = [
   EnrollmentStatus.ACTIVE,
@@ -290,6 +290,23 @@ export function getCourseOutlineForUser(
   );
 }
 
+function loadOutlineInputs(
+  courseWhere: Prisma.CourseWhereInput,
+  userId: string,
+  orderBy: Prisma.CourseOrderByWithRelationInput = { title: "asc" },
+) {
+  const now = new Date();
+  return Promise.all([
+    db.course.findMany({
+      where: courseWhere,
+      orderBy,
+      select: courseOutlineSelect(userId, now),
+    }),
+    loadPassEvidence(userId, courseWhere),
+    getActiveCohortCourseIds(userId, now),
+  ]);
+}
+
 /**
  * Batched `getCourseOutlineForUser` for every course matching `courseWhere`, in two queries
  * regardless of the course count. Courses the user cannot access are omitted instead of throwing.
@@ -302,16 +319,11 @@ export async function getCourseOutlinesForUser(
     orderBy?: Prisma.CourseOrderByWithRelationInput;
   } = {},
 ): Promise<CourseOutline[]> {
-  const now = new Date();
-  const [courses, passEvidence, cohortCourseIds] = await Promise.all([
-    db.course.findMany({
-      where: courseWhere,
-      orderBy: options.orderBy ?? { title: "asc" },
-      select: courseOutlineSelect(userId, now),
-    }),
-    loadPassEvidence(userId, courseWhere),
-    getActiveCohortCourseIds(userId, now),
-  ]);
+  const [courses, passEvidence, cohortCourseIds] = await loadOutlineInputs(
+    courseWhere,
+    userId,
+    options.orderBy,
+  );
 
   return courses
     .map((course) =>
@@ -336,16 +348,11 @@ export async function getCourseOutlineViewsForUser(
   userId: string,
   options: { orderBy?: Prisma.CourseOrderByWithRelationInput } = {},
 ): Promise<Array<{ outline: CourseOutline; learnerOutline: CourseOutline }>> {
-  const now = new Date();
-  const [courses, passEvidence, cohortCourseIds] = await Promise.all([
-    db.course.findMany({
-      where: courseWhere,
-      orderBy: options.orderBy ?? { title: "asc" },
-      select: courseOutlineSelect(userId, now),
-    }),
-    loadPassEvidence(userId, courseWhere),
-    getActiveCohortCourseIds(userId, now),
-  ]);
+  const [courses, passEvidence, cohortCourseIds] = await loadOutlineInputs(
+    courseWhere,
+    userId,
+    options.orderBy,
+  );
 
   return courses.flatMap((course) => {
     const outline = buildCourseOutline(

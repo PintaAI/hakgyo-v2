@@ -16,7 +16,7 @@ import {
   preparePracticeOptions,
   sampleForPractice,
   vocabularySetVersion,
-} from "~/server/practice-policy";
+} from "~/server/practice/policy";
 
 const seed = z.string().trim().min(1).max(100);
 

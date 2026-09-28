@@ -1,8 +1,7 @@
-import { notFound } from "next/navigation";
-
 import { VocabularyEditor } from "~/components/vocabulary-editor";
-import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
 import { HydrateClient, api } from "~/trpc/server";
+
+import { requireCurriculumModule } from "../../curriculum-module";
 
 export default async function Page({
   params,
@@ -14,45 +13,20 @@ export default async function Page({
     vocabularySetId: string;
   }>;
 }) {
-  const {
-    organizationId: organizationSlug,
-    courseId,
-    moduleId,
-    vocabularySetId,
-  } = await params;
-  // Start the course lookup alongside the membership check; its errors are
-  // surfaced only after the membership check so redirects keep precedence.
-  const coursePromise = api.course.get({ courseId });
-  coursePromise.catch(() => undefined);
-  const membership =
-    await requireOrganizationMembershipBySlug(organizationSlug);
-  const course = await coursePromise;
-  const courseModule = course.modules.find((module) => module.id === moduleId);
-
-  if (
-    course.organizationId !== membership.organizationId ||
-    !course.access.canManageContent ||
-    !courseModule
-  ) {
-    notFound();
-  }
-
-  const curriculumHref = `/workspace/${organizationSlug}/courses/${courseId}/kurikulum`;
+  const resolvedParams = await params;
+  const { organizationId, organizationSlug, attachTo, moduleHref } =
+    await requireCurriculumModule(resolvedParams);
+  const { vocabularySetId } = resolvedParams;
   void api.content.getVocabularySet.prefetch({
-    organizationId: membership.organizationId,
+    organizationId,
     vocabularySetId,
   });
 
   return (
     <HydrateClient>
       <VocabularyEditor
-        attachTo={{
-          moduleId: courseModule.id,
-          moduleTitle: courseModule.title,
-          curriculumHref,
-          editorBaseHref: `${curriculumHref}/${courseModule.id}/vocabulary`,
-        }}
-        organizationId={membership.organizationId}
+        attachTo={{ ...attachTo, editorBaseHref: `${moduleHref}/vocabulary` }}
+        organizationId={organizationId}
         organizationSlug={organizationSlug}
         vocabularySetId={vocabularySetId}
       />

@@ -7,15 +7,16 @@ import { after } from "next/server";
 import { Prisma } from "../../../../generated/prisma/client";
 import { assertAssessmentComplete } from "~/server/course/readiness-service";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { userSearchWhere } from "~/server/api/user-search";
 import {
   autoSubmitEventAttempts,
   lockAttemptStart,
-} from "~/server/assessment-attempt";
+} from "~/server/assessment/attempt";
 import {
   countLatestAssessmentEventAttemptStatuses,
   getAssessmentEventLeaderboard,
-} from "~/server/assessment-event-leaderboard";
-import { deleteAssessmentEventWithProgress } from "~/server/content-resource-deletion";
+} from "~/server/assessment/event-leaderboard";
+import { deleteAssessmentEventWithProgress } from "~/server/content/resource-deletion";
 import {
   activeEnrollmentStatuses,
   requireCohortPermission,
@@ -967,14 +968,7 @@ export const assessmentEventRouter = createTRPCRouter({
       const participantWhere: Prisma.AssessmentEventParticipantWhereInput = {
         eventId: input.eventId,
         user: {
-          ...(input.search
-            ? {
-                OR: [
-                  { name: { contains: input.search, mode: "insensitive" } },
-                  { email: { contains: input.search, mode: "insensitive" } },
-                ],
-              }
-            : {}),
+          ...(input.search ? userSearchWhere(input.search) : {}),
           ...(input.status
             ? {
                 assessmentAttempts:

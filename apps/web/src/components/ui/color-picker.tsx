@@ -20,7 +20,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "~/components/ui/popover";
-import { getReadableForeground, normalizeHexColor } from "~/lib/colors";
+import { getReadableForeground, normalizeHexColor } from "@hakgyo/shared";
 import { cn } from "~/lib/utils";
 
 type ColorPreset = {

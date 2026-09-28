@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   orderAssessmentQuestions,
   shuffleForAttempt,
-} from "./assessment-order";
+} from "./order";
 
 const questions = [
   {

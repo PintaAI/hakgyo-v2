@@ -2,7 +2,7 @@ import type { Prisma } from "../../../generated/prisma/client";
 import {
   passesAssessmentRequirement,
   passesRequirementPolicy,
-} from "~/server/learning/material-completion";
+} from "@hakgyo/shared/learning/material-completion";
 import {
   emptyVocabularyProgress,
   vocabularyContentHash,

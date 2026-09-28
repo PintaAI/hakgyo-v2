@@ -1,11 +1,11 @@
 import { TRPCError } from "@trpc/server";
 
-import type { Prisma, PrismaClient } from "../../generated/prisma/client";
+import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import {
   getMissingWrittenQuestionIds,
   groupScoresByValue,
-} from "./assessment-logic";
-import { withTransactionRetry } from "./db-retry";
+} from "./logic";
+import { withTransactionRetry } from "../db-retry";
 
 /**
  * Serializes attempt creation for one learner and course item (standalone and event attempts

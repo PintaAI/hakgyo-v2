@@ -18,6 +18,7 @@ import {
 } from "~/lib/blocknote/block-catalog";
 
 import { CustomBlockToolbar } from "./custom-block-toolbar";
+import { ThemePaletteButtons } from "./theme-palette-buttons";
 import { EditableBlockText } from "./editable-block-text";
 
 type RuleRow = {
@@ -189,28 +190,14 @@ export const grammarBlock = createReactBlockSpec(
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
-                  {grammarBlockThemes.map((theme) => {
-                    const option = grammarThemeStyles[theme];
-                    const selected = block.props.theme === theme;
-                    return (
-                      <button
-                        aria-label={`Gunakan palet ${option.label}`}
-                        aria-pressed={selected}
-                        className={`ring-foreground/10 focus-visible:ring-ring grid size-7 place-items-center rounded-md ring-1 transition focus-visible:ring-2 focus-visible:outline-none ${selected ? "bg-background shadow-xs" : "hover:bg-background/70"}`}
-                        key={theme}
-                        onClick={() =>
-                          editor.updateBlock(block, { props: { theme } })
-                        }
-                        title={option.label}
-                        type="button"
-                      >
-                        <span
-                          className="size-3.5 rounded-full"
-                          style={{ backgroundColor: option.accent }}
-                        />
-                      </button>
-                    );
-                  })}
+                  <ThemePaletteButtons
+                    onChange={(theme) =>
+                      editor.updateBlock(block, { props: { theme } })
+                    }
+                    styles={grammarThemeStyles}
+                    themes={grammarBlockThemes}
+                    value={block.props.theme}
+                  />
                 </div>
                 <button
                   aria-pressed={block.props.showTip}

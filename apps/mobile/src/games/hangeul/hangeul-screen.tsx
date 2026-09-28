@@ -171,47 +171,53 @@ function OverviewStep() {
         </Text>
       </View>
       <View style={styles.equationRow}>
-        <View style={[styles.equationTile, { backgroundColor: colors.muted }]}>
-          <Text style={[styles.equationLetter, { color: colors.foreground }]}>
-            ㅇ
-          </Text>
-          <Text
-            style={[styles.equationLabel, { color: colors.mutedForeground }]}
-          >
-            diam
-          </Text>
-        </View>
+        <EquationTile letter="ㅇ" label="diam" />
         <Text style={[styles.equationSign, { color: colors.mutedForeground }]}>
           +
         </Text>
-        <View style={[styles.equationTile, { backgroundColor: colors.muted }]}>
-          <Text style={[styles.equationLetter, { color: colors.foreground }]}>
-            ㅏ
-          </Text>
-          <Text
-            style={[styles.equationLabel, { color: colors.mutedForeground }]}
-          >
-            a
-          </Text>
-        </View>
+        <EquationTile letter="ㅏ" label="a" />
         <Text style={[styles.equationSign, { color: colors.mutedForeground }]}>
           =
         </Text>
-        <View
-          style={[styles.equationTile, { backgroundColor: colors.primary }]}
-        >
-          <Text
-            style={[styles.equationLetter, { color: colors.primaryForeground }]}
-          >
-            아
-          </Text>
-          <Text
-            style={[styles.equationLabel, { color: colors.primaryForeground }]}
-          >
-            a
-          </Text>
-        </View>
+        <EquationTile highlighted letter="아" label="a" />
       </View>
+    </View>
+  );
+}
+
+function EquationTile({
+  highlighted = false,
+  label,
+  letter,
+}: {
+  highlighted?: boolean;
+  label: string;
+  letter: string;
+}) {
+  const { colors } = useAppTheme();
+  const foreground = highlighted ? colors.primaryForeground : colors.foreground;
+  return (
+    <View
+      style={[
+        styles.equationTile,
+        { backgroundColor: highlighted ? colors.primary : colors.muted },
+      ]}
+    >
+      <Text style={[styles.equationLetter, { color: foreground }]}>
+        {letter}
+      </Text>
+      <Text
+        style={[
+          styles.equationLabel,
+          {
+            color: highlighted
+              ? colors.primaryForeground
+              : colors.mutedForeground,
+          },
+        ]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }

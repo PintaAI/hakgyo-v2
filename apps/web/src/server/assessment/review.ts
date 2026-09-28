@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
-import { pageResult } from "~/server/api/pagination";
+import { pageArgs, pageResult } from "~/server/api/pagination";
 import {
   authorizeReview,
   requireReviewAccess,
@@ -11,16 +11,16 @@ import type {
   AttemptsNeedingReviewInput,
   ReviewAttemptInput,
 } from "~/server/assessment/inputs";
-import { buildAssessmentAnswerReviewUpdate } from "~/server/assessment-answer-content";
+import { buildAssessmentAnswerReviewUpdate } from "~/server/assessment/answer-content";
 import {
   isPassingScore,
   markCourseItemCompleted,
-} from "~/server/assessment-attempt";
+} from "~/server/assessment/attempt";
 import {
   attemptSummarySelect,
   reviewScope,
   summarizeAttempt,
-} from "~/server/assessment-register";
+} from "~/server/assessment/register";
 import {
   requireCohortPermission,
   requireOrganizationPermission,
@@ -377,9 +377,7 @@ export async function listAttemptsNeedingReview(
     db.assessmentAttempt.findMany({
       where,
       orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
-      take: input.limit + 1,
-      cursor: input.cursor ? { id: input.cursor } : undefined,
-      skip: input.cursor ? 1 : undefined,
+      ...pageArgs(input),
       select: {
         id: true,
         assessmentId: true,

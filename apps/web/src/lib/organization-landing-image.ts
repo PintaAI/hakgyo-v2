@@ -1,5 +1,4 @@
-import { getPublicR2Url } from "~/lib/profile-image";
-import { getUrlPathname } from "~/lib/url";
+import { defineManagedImage, getPublicR2Url } from "~/lib/managed-image";
 
 export const MAX_ORGANIZATION_LANDING_IMAGE_SIZE = 10 * 1024 * 1024;
 
@@ -15,23 +14,10 @@ export const organizationLandingImageContentTypes = [
 export type OrganizationLandingImageContentType =
   (typeof organizationLandingImageContentTypes)[number];
 
-const extensions: Record<OrganizationLandingImageContentType, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
-
-const contentTypesByExtension: Record<
-  string,
-  OrganizationLandingImageContentType
-> = {
-  jpg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-};
-
-const fileNamePattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(\d+)\.(jpg|png|webp)$/;
+const landingImage = defineManagedImage({
+  contentTypes: organizationLandingImageContentTypes,
+  maxSize: MAX_ORGANIZATION_LANDING_IMAGE_SIZE,
+});
 
 export function getOrganizationLandingImagePrefix(
   organizationId: string,
@@ -45,46 +31,32 @@ export function createOrganizationLandingImageKey(
   purpose: OrganizationLandingImagePurpose,
   fileSize: number,
   contentType: OrganizationLandingImageContentType,
-  objectId = crypto.randomUUID(),
+  objectId?: string,
 ) {
-  return `${getOrganizationLandingImagePrefix(organizationId, purpose)}${objectId}-${fileSize}.${extensions[contentType]}`;
+  return landingImage.createKey(
+    getOrganizationLandingImagePrefix(organizationId, purpose),
+    fileSize,
+    contentType,
+    objectId,
+  );
 }
 
+/** Parses a landing image key; without `purpose`, any purpose is accepted. */
 export function parseOrganizationLandingImageKey(
   key: string,
   organizationId: string,
   purpose?: OrganizationLandingImagePurpose,
 ) {
-  const matchedPurpose =
-    purpose ??
-    organizationLandingImagePurposes.find((candidate) =>
-      key.startsWith(
-        getOrganizationLandingImagePrefix(organizationId, candidate),
-      ),
+  for (const candidate of purpose
+    ? [purpose]
+    : organizationLandingImagePurposes) {
+    const parsed = landingImage.parseKey(
+      key,
+      getOrganizationLandingImagePrefix(organizationId, candidate),
     );
-  if (!matchedPurpose) return null;
-
-  const prefix = getOrganizationLandingImagePrefix(
-    organizationId,
-    matchedPurpose,
-  );
-  if (!key.startsWith(prefix)) return null;
-  const fileName = key.slice(prefix.length);
-  const match = fileNamePattern.exec(fileName);
-  const size = Number(match?.[1]);
-  const extension = match?.[2];
-  const contentType = extension
-    ? contentTypesByExtension[extension]
-    : undefined;
-  if (
-    !Number.isSafeInteger(size) ||
-    size <= 0 ||
-    size > MAX_ORGANIZATION_LANDING_IMAGE_SIZE ||
-    !contentType
-  ) {
-    return null;
+    if (parsed) return { ...parsed, purpose: candidate };
   }
-  return { contentType, fileName, purpose: matchedPurpose, size };
+  return null;
 }
 
 export function getOrganizationLandingImagePath(
@@ -101,17 +73,12 @@ export function getManagedOrganizationLandingImageKey(
   imageUrl: string | null | undefined,
   organizationId: string,
 ) {
-  if (!imageUrl) return null;
-  const pathname = getUrlPathname(imageUrl);
-  if (!pathname) return null;
-
   for (const purpose of organizationLandingImagePurposes) {
-    const prefix = `/${getOrganizationLandingImagePrefix(organizationId, purpose)}`;
-    if (!pathname.startsWith(prefix)) continue;
-    const key = `${getOrganizationLandingImagePrefix(organizationId, purpose)}${pathname.slice(prefix.length)}`;
-    return parseOrganizationLandingImageKey(key, organizationId, purpose)
-      ? key
-      : null;
+    const key = landingImage.getManagedKey(
+      imageUrl,
+      getOrganizationLandingImagePrefix(organizationId, purpose),
+    );
+    if (key) return key;
   }
   return null;
 }

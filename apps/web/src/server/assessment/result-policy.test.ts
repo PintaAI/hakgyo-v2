@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { shouldRevealAssessmentAnswers } from "./assessment-result-policy";
+import { shouldRevealAssessmentAnswers } from "./result-policy";
 
 describe("learner answer-review policy", () => {
   test("reveals chapter answers after grading", () => {

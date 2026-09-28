@@ -1,15 +1,15 @@
 import { expect, test } from "bun:test";
 
-import type { Prisma } from "../../generated/prisma/client";
+import type { Prisma } from "../../../generated/prisma/client";
 import {
   deleteAssessmentEventWithProgress,
   deleteAssessmentWithProgress,
   deleteCourseItemsWithProgress,
   deleteMaterialWithProgress,
   deleteVocabularySetWithProgress,
-} from "./content-resource-deletion";
-import { db } from "./db";
-import { recordGamificationActivity } from "./gamification/record-activity";
+} from "./resource-deletion";
+import { db } from "../db";
+import { recordGamificationActivity } from "../gamification/record-activity";
 
 class RollbackFixture extends Error {}
 

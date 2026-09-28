@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { canDemoteOwner } from "./organization-role";
+import { canDemoteOwner } from "./role";
 
 describe("organization owner protection", () => {
   test("does not allow a transaction to demote the final owner", () => {
