@@ -60,6 +60,8 @@ export function StudyScreen({
   const viewportRef = useRef<View>(null);
   const [keyboardVerticalOffset, setKeyboardVerticalOffset] = useState(0);
   const behavior = bleedTop ? "never" : contentInsetAdjustmentBehavior;
+  // ~44pt native navigation bar on iOS; Android tab roots have no header.
+  const refreshOffset = insets.top + (Platform.OS === "ios" ? 44 : 0);
   const measureViewportOffset = useCallback(() => {
     viewportRef.current?.measureInWindow((_x, y) => {
       setKeyboardVerticalOffset((current) =>
@@ -94,6 +96,11 @@ export function StudyScreen({
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={colors.primary}
+            // Bleeding content starts under the status bar and transparent
+            // header, which would hide the spinner. Move it below them and
+            // above the full-bleed content.
+            progressViewOffset={bleedTop ? refreshOffset : undefined}
+            style={bleedTop ? { zIndex: 1 } : undefined}
           />
         ) : undefined
       }
