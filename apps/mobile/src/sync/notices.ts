@@ -36,6 +36,11 @@ type SyncNoticeBase = {
   group: string;
   organizationId: string | null;
   createdAt: number;
+  /**
+   * When the learner opened the notice or marked it read. Set when listing
+   * (never stored in the payload); read notices stay as muted history.
+   */
+  readAt?: number | null;
 };
 
 export type SyncNotice = SyncNoticeBase &
@@ -97,8 +102,11 @@ export type SyncNoticeUpdate = {
   notices: SyncNotice[];
 };
 
-/** Sync notices kept per user (dismissed ones included, for deduplication). */
-export const MAX_SYNC_NOTICES = 100;
+/**
+ * Sync notices kept per user (read ones included: they form the Pembaruan
+ * history and deduplicate re-syncs).
+ */
+export const MAX_SYNC_NOTICES = 200;
 /** Sync notices older than this are hidden and dropped. */
 export const SYNC_NOTICE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 

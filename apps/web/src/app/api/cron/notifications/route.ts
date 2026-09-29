@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 
 import { env } from "~/env";
+import { db } from "~/server/db";
 import { checkPushReceipts } from "~/server/notifications/receipts";
 import { sendDueReminders } from "~/server/notifications/reminders";
 
@@ -16,11 +17,14 @@ function isAuthorized(request: Request) {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
+/** Inbox history kept for a month, matching the app's Pembaruan history. */
+const INBOX_RETENTION_MS = 30 * 24 * 60 * 60_000;
+
 /**
  * Notification sweep, called every 10 minutes by the GitHub Actions workflow
  * `.github/workflows/notifications.yml` with
  * `Authorization: Bearer ${CRON_SECRET}`: sends due event/meeting reminders
- * and processes Expo push receipts.
+ * processes Expo push receipts, and drops inbox rows older than 30 days.
  */
 async function handler(request: Request) {
   if (!isAuthorized(request)) {
@@ -29,7 +33,10 @@ async function handler(request: Request) {
   const now = new Date();
   const reminders = await sendDueReminders(now);
   const receipts = await checkPushReceipts(now);
-  return Response.json({ reminders, receipts });
+  const { count: expiredInbox } = await db.notification.deleteMany({
+    where: { createdAt: { lt: new Date(now.getTime() - INBOX_RETENTION_MS) } },
+  });
+  return Response.json({ reminders, receipts, expiredInbox });
 }
 
 export { handler as GET, handler as POST };

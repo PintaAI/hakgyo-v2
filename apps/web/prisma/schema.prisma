@@ -212,6 +212,8 @@ model Notification {
   @@index([userId, readAt, createdAt])
   @@index([userId, createdAt])
   @@index([organizationId])
+  // 30-day retention sweep (notifications cron).
+  @@index([createdAt])
   @@map("notification")
 }
 

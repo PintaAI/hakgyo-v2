@@ -26,3 +26,6 @@ CREATE INDEX "pushTicket_pushTargetId_idx" ON "pushTicket"("pushTargetId");
 -- AddForeignKey
 ALTER TABLE "pushTicket" ADD CONSTRAINT "pushTicket_pushTargetId_fkey" FOREIGN KEY ("pushTargetId") REFERENCES "pushTarget"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+
+-- CreateIndex
+CREATE INDEX "notification_createdAt_idx" ON "notification"("createdAt");

@@ -202,12 +202,12 @@ export type MobileSyncStore = {
     update: SyncNoticeUpdate,
     recordedAt?: number,
   ) => Promise<void>;
-  /** Notices not dismissed yet, newest first. */
+  /** Notices of the last 30 days, newest first; read ones carry `readAt`. */
   listNotices: (userId: string, now?: number) => Promise<SyncNotice[]>;
-  dismissNotices: (
+  markNoticesRead: (
     userId: string,
     ids: string[],
-    dismissedAt?: number,
+    readAt?: number,
   ) => Promise<void>;
 };
 
@@ -241,6 +241,7 @@ type FailureRow = {
   first_failed_at: number;
 };
 type NoticeRow = { payload: string };
+type ListedNoticeRow = NoticeRow & { dismissed_at: number | null };
 type DeadLetterRow = {
   payload: string;
   code: string;
@@ -1124,17 +1125,21 @@ export function createMobileSyncStore(
       await initialize();
       const rows = await (
         await database()
-      ).getAllAsync<NoticeRow>(
-        `SELECT payload FROM mobile_sync_notice
-         WHERE user_id = ? AND dismissed_at IS NULL AND created_at >= ?
+      ).getAllAsync<ListedNoticeRow>(
+        `SELECT payload, dismissed_at FROM mobile_sync_notice
+         WHERE user_id = ? AND created_at >= ?
          ORDER BY created_at DESC, rowid DESC`,
         userId,
         now - SYNC_NOTICE_MAX_AGE_MS,
       );
-      return rows.map((row) => JSON.parse(row.payload) as SyncNotice);
+      return rows.map((row) => ({
+        ...(JSON.parse(row.payload) as SyncNotice),
+        readAt: row.dismissed_at,
+      }));
     },
 
-    async dismissNotices(userId, ids, dismissedAt = Date.now()) {
+    // `dismissed_at` is the read time; the column predates read history.
+    async markNoticesRead(userId, ids, dismissedAt = Date.now()) {
       if (!ids.length) return;
       await initialize();
       const db = await database();

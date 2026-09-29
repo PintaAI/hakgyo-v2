@@ -180,6 +180,11 @@ function engineFor(
   return { engine, store, queryClient };
 }
 
+/** Notices the learner has not read yet (read ones stay as history). */
+function unread(notices: SyncNotice[]) {
+  return notices.filter((notice) => !notice.readAt);
+}
+
 describe("mobile sync engine outbox", () => {
   test("records many vocabulary interactions as one session operation", async () => {
     const sent: MobileSyncOperation[][] = [];
@@ -1262,13 +1267,13 @@ describe("mobile sync notices", () => {
     server.publishLessons("course-a", ["course-a-1", "course-a-2"]);
     await sync(engine, "org-a");
     const [notice] = await engine.listNotices();
-    await engine.dismissNotices([notice!.id]);
+    await engine.markNoticesRead([notice!.id]);
 
     // Forced: the index and every bundle are fetched again.
     await engine.refresh("org-a", { force: true, immediateBundles: true });
     await engine.whenBundlesIdle();
     await engine.checkForUpdates("org-a", { manual: true });
-    expect(await engine.listNotices()).toEqual([]);
+    expect(unread(await engine.listNotices())).toEqual([]);
   });
 
   test("a failed notice write is retried without advancing the baseline", async () => {
@@ -1359,15 +1364,15 @@ describe("mobile sync notices", () => {
     ]);
 
     // Pruned and unchanged: re-downloading it is not news.
-    await engine.dismissNotices(
+    await engine.markNoticesRead(
       (await engine.listNotices()).map((notice) => notice.id),
     );
     await sync(engine, "org-b");
     await sync(engine, "org-a");
-    expect(await engine.listNotices()).toEqual([]);
+    expect(unread(await engine.listNotices())).toEqual([]);
   });
 
-  test("dismissing updates the notice query at once and survives restarts", async () => {
+  test("reading updates the notice query at once and survives restarts", async () => {
     const server = fakeServer();
     const store = memoryStore();
     const { engine, queryClient } = engineFor({
@@ -1383,18 +1388,24 @@ describe("mobile sync notices", () => {
       queryClient.getQueryData<SyncNotice[]>(syncQueryKeys.notices()),
     ).toEqual(notices);
 
-    const dismissing = engine.dismissNotices([notices[0]!.id]);
+    const reading = engine.markNoticesRead([notices[0]!.id]);
+    // Read notices stay listed as history, marked with `readAt`.
     expect(
-      queryClient.getQueryData<SyncNotice[]>(syncQueryKeys.notices()),
+      unread(
+        queryClient.getQueryData<SyncNotice[]>(syncQueryKeys.notices()) ?? [],
+      ),
     ).toEqual([]);
-    await dismissing;
+    await reading;
+    const history = await engine.listNotices();
+    expect(history.map((notice) => notice.id)).toEqual([notices[0]!.id]);
+    expect(history[0]!.readAt).toBeNumber();
 
     const restarted = engineFor({ store, transport: server.transport });
     await restarted.engine.initialize();
-    expect(await restarted.engine.listNotices()).toEqual([]);
+    expect(unread(await restarted.engine.listNotices())).toEqual([]);
     await restarted.engine.clearLocalCache();
     await sync(restarted.engine, "org-a");
-    expect(await restarted.engine.listNotices()).toEqual([]);
+    expect(unread(await restarted.engine.listNotices())).toEqual([]);
   });
 
   test("clearing local data keeps baselines; signing out removes them", async () => {

@@ -538,14 +538,17 @@ export function createMobileSyncEngine({
     };
   }
 
-  async function dismissNotices(ids: string[]) {
+  async function markNoticesRead(ids: string[]) {
     if (!ids.length) return;
-    const dismissed = new Set(ids);
+    const read = new Set(ids);
+    const readAt = now();
     queryClient.setQueryData<SyncNotice[]>(syncQueryKeys.notices(), (current) =>
-      current?.filter((notice) => !dismissed.has(notice.id)),
+      current?.map((notice) =>
+        read.has(notice.id) && !notice.readAt ? { ...notice, readAt } : notice,
+      ),
     );
     try {
-      await store.dismissNotices(userId, ids, now());
+      await store.markNoticesRead(userId, ids, readAt);
     } finally {
       await publishNotices();
     }
@@ -1191,9 +1194,9 @@ export function createMobileSyncEngine({
       };
     },
     getLocalDataStats: () => store.getLocalDataStats(userId),
-    /** Undismissed sync notices of every organization, newest first. */
+    /** Sync notices of every organization from the last 30 days, newest first. */
     listNotices: () => store.listNotices(userId, now()),
-    dismissNotices,
+    markNoticesRead,
     whenBundlesIdle: () => bundles.whenIdle(),
     clearLocalCache,
     dispose,

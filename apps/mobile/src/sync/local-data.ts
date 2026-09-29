@@ -53,7 +53,7 @@ export type LocalData<TIndex> = {
   ): Promise<void>;
   /** Asks the engine to download/refresh a course bundle with top priority. */
   requestBundle(courseId: string): void;
-  /** Undismissed sync notices of every organization, newest first. */
+  /** Sync notices of the last 30 days, newest first; read ones have `readAt`. */
   loadNotices(): Promise<SyncNotice[]>;
-  dismissNotices(ids: string[]): Promise<void>;
+  markNoticesRead(ids: string[]): Promise<void>;
 };

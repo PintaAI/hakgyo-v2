@@ -109,7 +109,7 @@ export function PushNotificationsProvider({
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useAppTheme();
   const { checkForUpdates } = useMobileSyncActions();
-  const { dismiss: dismissNotices } = useSyncNotices(null);
+  const { markRead: markNoticesRead } = useSyncNotices(null);
   const { markSeen } = useSidebarIndicators();
 
   /**
@@ -126,7 +126,7 @@ export function PushNotificationsProvider({
       const notices =
         queryClient.getQueryData<SyncNotice[]>(syncQueryKeys.notices()) ?? [];
       const noticeIds = matchingNoticeIds(notices, entity);
-      if (noticeIds.length > 0) dismissNotices(noticeIds);
+      if (noticeIds.length > 0) markNoticesRead(noticeIds);
       const index = queryClient.getQueryData<LocalIndexRecord<LearnerIndex>>(
         syncQueryKeys.index(indexScope(activeOrganizationId)),
       );
@@ -139,7 +139,7 @@ export function PushNotificationsProvider({
     [
       activeOrganizationId,
       checkForUpdates,
-      dismissNotices,
+      markNoticesRead,
       markSeen,
       queryClient,
     ],

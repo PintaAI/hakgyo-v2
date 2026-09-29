@@ -756,8 +756,9 @@ export function lessonItemIds(
 // ---------------------------------------------------------------------------
 
 /**
- * Undismissed sync notices of an organization (of every organization without
- * one); notices whose organization is unknown show everywhere.
+ * Sync notices of the last 30 days for an organization (of every organization
+ * without one), read ones included as history; notices whose organization is
+ * unknown show everywhere.
  */
 export function useSyncNotices(organizationId?: string | null) {
   const localData = useLocalData();
@@ -778,11 +779,11 @@ export function useSyncNotices(organizationId?: string | null) {
       ),
     [organizationId, query.data],
   );
-  const dismiss = useCallback(
+  const markRead = useCallback(
     (ids: string[]) => {
-      void localData?.dismissNotices(ids).catch(() => undefined);
+      void localData?.markNoticesRead(ids).catch(() => undefined);
     },
     [localData],
   );
-  return { notices, dismiss };
+  return { notices, markRead };
 }
