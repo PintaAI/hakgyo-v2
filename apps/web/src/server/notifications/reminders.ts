@@ -1,15 +1,10 @@
 import { db } from "~/server/db";
 import {
+  EVENT_CLOSING_WINDOW_MS,
+  MEETING_STARTING_WINDOW_MS,
   notifyEventClosingSoon,
   notifyMeetingStartingSoon,
 } from "~/server/notifications/triggers";
-
-/**
- * Windows are wider than the cron interval (10 minutes, and GitHub schedules
- * often run late) so a delayed run still catches every event and meeting.
- */
-export const EVENT_CLOSING_WINDOW_MS = 30 * 60_000;
-export const MEETING_STARTING_WINDOW_MS = 60 * 60_000;
 
 export type ReminderResult = { events: number; meetings: number };
 

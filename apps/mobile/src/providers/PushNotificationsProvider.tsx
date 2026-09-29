@@ -302,7 +302,15 @@ export function PushNotificationsProvider({
   );
 
   const promptInContext = useCallback(() => {
-    if (status !== "undetermined" || promptingRef.current) return;
+    // Android 13+ reports a never-asked permission as "denied" (with
+    // canAskAgain); iOS reports it as "undetermined". wasPushPrompted keeps
+    // this to one prompt either way.
+    if (
+      (status !== "undetermined" && status !== "denied") ||
+      promptingRef.current
+    ) {
+      return;
+    }
     promptingRef.current = true;
     void (async () => {
       try {

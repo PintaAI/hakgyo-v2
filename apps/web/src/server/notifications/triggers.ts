@@ -9,6 +9,14 @@ import {
 } from "~/server/notifications/format";
 
 /**
+ * Reminder windows used by the notifications cron. They are wider than the
+ * cron interval (10 minutes, and GitHub schedules often run late) so a
+ * delayed run still catches every event and meeting.
+ */
+export const EVENT_CLOSING_WINDOW_MS = 30 * 60_000;
+export const MEETING_STARTING_WINDOW_MS = 60 * 60_000;
+
+/**
  * Domain events that push to learners. Each trigger loads what it needs by
  * id, so routers call it after their write commits and never share its
  * transaction. Recipients are learners with an ACTIVE, unexpired enrollment.
@@ -271,10 +279,25 @@ async function meetingContext(meeting: MeetingSnapshot, now: Date) {
   };
 }
 
+/**
+ * A meeting scheduled or moved into the reminder window already announced
+ * its time; skip the "starts soon" push that would follow minutes later.
+ */
+async function claimReminderIfImminent(meeting: MeetingSnapshot, now: Date) {
+  if (meeting.startsAt.getTime() - now.getTime() > MEETING_STARTING_WINDOW_MS)
+    return;
+  await db.cohortMeeting.updateMany({
+    where: { id: meeting.id, reminderSentAt: null },
+    data: { reminderSentAt: now },
+  });
+}
+
 export async function notifyMeetingScheduled(meeting: MeetingSnapshot) {
+  const now = new Date();
+  await claimReminderIfImminent(meeting, now);
   const { recipients, content, cohortName, when } = await meetingContext(
     meeting,
-    new Date(),
+    now,
   );
   return notifyUsers(recipients, {
     ...content,
@@ -285,9 +308,11 @@ export async function notifyMeetingScheduled(meeting: MeetingSnapshot) {
 }
 
 export async function notifyMeetingUpdated(meeting: MeetingSnapshot) {
+  const now = new Date();
+  await claimReminderIfImminent(meeting, now);
   const { recipients, content, cohortName, when } = await meetingContext(
     meeting,
-    new Date(),
+    now,
   );
   return notifyUsers(recipients, {
     ...content,
