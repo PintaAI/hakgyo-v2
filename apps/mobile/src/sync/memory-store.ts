@@ -348,12 +348,14 @@ export function createMemoryStore(): MobileSyncStore & {
         .filter(
           (row) =>
             row.userId === userId &&
-            row.dismissedAt === null &&
             row.notice.createdAt >= now - SYNC_NOTICE_MAX_AGE_MS,
         )
-        .map((row) => structuredClone(row.notice))
+        .map((row) => ({
+          ...structuredClone(row.notice),
+          readAt: row.dismissedAt,
+        }))
         .reverse(),
-    dismissNotices: async (userId, ids, dismissedAt = Date.now()) => {
+    markNoticesRead: async (userId, ids, dismissedAt = Date.now()) => {
       const dismissed = new Set(ids);
       for (const row of notices) {
         if (row.userId === userId && dismissed.has(row.notice.id))

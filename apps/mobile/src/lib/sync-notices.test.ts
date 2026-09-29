@@ -67,7 +67,7 @@ describe("groupSyncNotices", () => {
 
     expect(entries.map((entry) => entry.key)).toEqual([
       meeting.id,
-      "content:course-1",
+      "content:course-1:new",
     ]);
     expect(entries[1]!.ids).toEqual([
       "content:course-1:3@changed",
@@ -133,6 +133,32 @@ describe("countUpdatesBadge", () => {
       ]),
     ).toBe(2);
     expect(countUpdatesBadge(entries, [])).toBe(2);
+  });
+
+  test("read notices stay listed but leave the badge", () => {
+    const entries = groupSyncNotices([{ ...meeting, readAt: 10 }, moduleOnly]);
+    expect(entries.map((entry) => entry.read)).toEqual([true, false]);
+    expect(countUpdatesBadge(entries, [])).toBe(1);
+  });
+});
+
+describe("groupSyncNotices read history", () => {
+  test("merges read and unread content changes separately", () => {
+    const entries = groupSyncNotices([
+      content("3", 3, {
+        itemsAdded: [{ id: "i3", title: "Baru", moduleId: "x" }],
+      }),
+      {
+        ...content("2", 2, {
+          itemsAdded: [{ id: "i2", title: "Lama", moduleId: "x" }],
+        }),
+        readAt: 5,
+      },
+    ]);
+    expect(entries.map((entry) => [entry.key, entry.read])).toEqual([
+      ["content:course-1:new", false],
+      ["content:course-1:read", true],
+    ]);
   });
 });
 

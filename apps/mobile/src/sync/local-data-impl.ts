@@ -33,7 +33,7 @@ export function createLocalData({
     | "patchLearnerState"
     | "requestBundle"
     | "listNotices"
-    | "dismissNotices"
+    | "markNoticesRead"
   >;
 }): LocalData<LearnerIndex> {
   return {
@@ -84,6 +84,6 @@ export function createLocalData({
 
     loadNotices: () => engine.listNotices(),
 
-    dismissNotices: (ids) => engine.dismissNotices(ids),
+    markNoticesRead: (ids) => engine.markNoticesRead(ids),
   };
 }

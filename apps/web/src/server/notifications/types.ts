@@ -11,7 +11,7 @@ export type PushPlatform = "web" | "expo";
 
 /**
  * Wire payload delivered to every device. Both the web service worker and
- * the future Expo notification handler interpret this shape. Keep it under
+ * the Expo notification handler interpret this shape. Keep it under
  * ~4KB: identifiers + short copy only.
  */
 export interface NotifyPayload {
@@ -20,10 +20,18 @@ export interface NotifyPayload {
   body: string;
   /** Web route opened on notification click. Defaults to `/`. */
   path: string;
-  /** Expo-router route for the native tap handler. Defaults to `path`. */
-  mobilePath: string;
+  /**
+   * Expo Router route for the native tap handler. Omitted when the event has
+   * no screen in the app; web paths never double as app routes.
+   */
+  mobilePath?: string;
   /** Collapse key: same-tag notifications replace each other per device. */
   tag: string;
+  /**
+   * Entity ids (eventId, meetingId, attemptId, cohortId, courseId). The app
+   * uses them to sync and clear the matching Pembaruan items on tap.
+   */
+  data?: Record<string, string>;
 }
 
 /** Inbox event kinds. Domain triggers reuse these; add new kinds here. */
@@ -32,6 +40,8 @@ export type NotificationType =
   | "assessment-graded"
   | "assessment-opened"
   | "assessment-closing"
+  | "assessment-cancelled"
+  | "assessment-invalidated"
   | "cohort-meeting"
   | "enrollment"
   | "announcement";

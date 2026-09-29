@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { Label } from "~/components/ui/label";
@@ -133,6 +134,7 @@ export function AssessmentEventManager({
   const [courseItemId, setCourseItemId] = useState<string | null>(null);
   const type = cohortId ? "QUICK_ASSESSMENT" : "TRYOUT";
   const [durationMinutes, setDurationMinutes] = useState("30");
+  const [notifyLearners, setNotifyLearners] = useState(true);
   const [closesAt, setClosesAt] = useState(() =>
     toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60_000)),
   );
@@ -230,7 +232,10 @@ export function AssessmentEventManager({
         durationMinutes: duration,
         closesAt: closeDate,
       });
-      const opened = await open.mutateAsync({ eventId: created.id });
+      const opened = await open.mutateAsync({
+        eventId: created.id,
+        notify: notifyLearners,
+      });
       toast.success(`Event dibuka untuk ${opened.participantCount} peserta.`);
       setCreateOpen(false);
       setTitle("");
@@ -277,11 +282,20 @@ export function AssessmentEventManager({
       destructive: true,
       fields: [
         { name: "reason", label: "Alasan pembatalan", type: "textarea" },
+        {
+          name: "notify",
+          label: "Beri tahu peserta lewat notifikasi",
+          type: "checkbox",
+        },
       ],
     });
     if (!values?.reason) return;
     try {
-      await cancel.mutateAsync({ eventId, reason: values.reason });
+      await cancel.mutateAsync({
+        eventId,
+        reason: values.reason,
+        notify: values.notify === "true",
+      });
       toast.success("Event dibatalkan.");
       await refresh(eventId);
     } catch (error) {
@@ -526,6 +540,16 @@ export function AssessmentEventManager({
                     onChange={setClosesAt}
                   />
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="event-notify"
+                  checked={notifyLearners}
+                  onCheckedChange={setNotifyLearners}
+                />
+                <Label htmlFor="event-notify">
+                  Beri tahu peserta lewat notifikasi
+                </Label>
               </div>
             </div>
             <DialogFooter>

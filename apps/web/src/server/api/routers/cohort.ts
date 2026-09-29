@@ -12,6 +12,12 @@ import {
 import { getOrganizationCohortScope } from "~/server/authorization/cohort-scope";
 import { Prisma } from "../../../../generated/prisma/client";
 import { db } from "~/server/db";
+import {
+  notifyInBackground,
+  notifyMeetingCancelled,
+  notifyMeetingScheduled,
+  notifyMeetingUpdated,
+} from "~/server/notifications/triggers";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 import {
   createZoomMeeting,
@@ -48,6 +54,8 @@ const meetingFields = z.object({
   timezone: z.string().trim().min(1).max(100),
   moduleId: id.nullable().optional(),
 });
+/** "Notify learners" checkbox; pushes go out after the write commits. */
+const notify = z.boolean().default(true);
 
 async function validateMeetingModule(
   courseId: string,
@@ -657,8 +665,8 @@ export const cohortRouter = createTRPCRouter({
       };
     }),
   createMeeting: protectedProcedure
-    .input(meetingFields.extend({ cohortId: id }))
-    .mutation(async ({ ctx, input }) => {
+    .input(meetingFields.extend({ cohortId: id, notify }))
+    .mutation(async ({ ctx, input: { notify: shouldNotify, ...input } }) => {
       const cohort = await requireManagedCohort(
         input.cohortId,
         ctx.actorUserId,
@@ -684,8 +692,9 @@ export const cohortRouter = createTRPCRouter({
         cohort.organizationId,
         input,
       );
+      let meeting;
       try {
-        return await db.cohortMeeting.create({
+        meeting = await db.cohortMeeting.create({
           data: {
             ...input,
             ...remote,
@@ -704,16 +713,25 @@ export const cohortRouter = createTRPCRouter({
         }
         throw error;
       }
+      if (shouldNotify) {
+        const created = meeting;
+        await notifyInBackground("meeting scheduled", () =>
+          notifyMeetingScheduled(created),
+        );
+      }
+      return meeting;
     }),
   updateMeeting: protectedProcedure
-    .input(meetingFields.partial().extend({ cohortId: id, meetingId: id }))
+    .input(
+      meetingFields.partial().extend({ cohortId: id, meetingId: id, notify }),
+    )
     .mutation(async ({ ctx, input }) => {
       const cohort = await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "meetings.manage",
         userId: ctx.actorUserId,
       });
-      const { cohortId, meetingId, ...data } = input;
+      const { cohortId, meetingId, notify: shouldNotify, ...data } = input;
       const existing = await db.cohortMeeting.findFirst({
         where: { id: meetingId, cohortId },
       });
@@ -750,15 +768,29 @@ export const cohortRouter = createTRPCRouter({
           remoteInput,
         );
       }
+      const rescheduled =
+        remoteInput.startsAt.getTime() !== existing.startsAt.getTime() ||
+        remoteInput.durationMinutes !== existing.durationMinutes ||
+        remoteInput.timezone !== existing.timezone;
       const result = await db.cohortMeeting.updateMany({
         where: { id: meetingId, cohortId },
-        data,
+        // A moved meeting gets a fresh "starts soon" reminder.
+        data: rescheduled ? { ...data, reminderSentAt: null } : data,
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.cohortMeeting.findUniqueOrThrow({ where: { id: meetingId } });
+      const meeting = await db.cohortMeeting.findUniqueOrThrow({
+        where: { id: meetingId },
+      });
+      // Only schedule changes are worth a push; title/agenda edits are not.
+      if (shouldNotify && rescheduled) {
+        await notifyInBackground("meeting updated", () =>
+          notifyMeetingUpdated(meeting),
+        );
+      }
+      return meeting;
     }),
   deleteMeeting: protectedProcedure
-    .input(z.object({ cohortId: id, meetingId: id }))
+    .input(z.object({ cohortId: id, meetingId: id, notify }))
     .mutation(async ({ ctx, input }) => {
       await requireCohortPermission({
         cohortId: input.cohortId,
@@ -774,6 +806,12 @@ export const cohortRouter = createTRPCRouter({
         where: { id: input.meetingId, cohortId: input.cohortId },
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
+      // Past meetings need no cancellation notice.
+      if (input.notify && meeting.startsAt > new Date()) {
+        await notifyInBackground("meeting cancelled", () =>
+          notifyMeetingCancelled(meeting),
+        );
+      }
       return { deleted: true };
     }),
 });

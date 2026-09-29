@@ -16,6 +16,11 @@ import { withTransactionRetry } from "~/server/db-retry";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
 import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
+import {
+  notifyEnrollmentAdded,
+  notifyEnrollmentRemoved,
+  notifyInBackground,
+} from "~/server/notifications/triggers";
 
 const id = z.string().min(1);
 const enrollmentStatus = z.enum([
@@ -68,6 +73,30 @@ async function requireInviteManager(
       userId,
     });
   }
+}
+
+/** Pushes only when a staff change newly grants active access. */
+async function notifyIfActivated(
+  previousStatus: string | undefined,
+  enrollment: { cohortId: string; userId: string; status: string },
+) {
+  if (enrollment.status !== "ACTIVE" || previousStatus === "ACTIVE") return;
+  await notifyInBackground("enrollment added", () =>
+    notifyEnrollmentAdded(enrollment.userId, enrollment.cohortId),
+  );
+}
+
+/** Pushes only when an active membership was actually removed. */
+async function notifyIfDeactivated(
+  userId: string,
+  previous: { cohortId: string; status: string } | null,
+  removed: number,
+) {
+  if (previous?.status !== "ACTIVE" || removed === 0) return;
+  const { cohortId } = previous;
+  await notifyInBackground("enrollment removed", () =>
+    notifyEnrollmentRemoved(userId, cohortId),
+  );
 }
 
 export const enrollmentRouter = createTRPCRouter({
@@ -344,7 +373,14 @@ export const enrollmentRouter = createTRPCRouter({
         });
       }
       const completedAt = input.status === "COMPLETED" ? new Date() : null;
-      return ctx.db.$transaction((tx) =>
+      const previous = await ctx.db.cohortEnrollment.findFirst({
+        where: {
+          userId: user.id,
+          cohort: { defaultForCourseId: input.courseId },
+        },
+        select: { status: true },
+      });
+      const enrollment = await ctx.db.$transaction((tx) =>
         upsertDefaultCohortEnrollment(tx, {
           courseId: input.courseId,
           userId: user.id,
@@ -361,6 +397,8 @@ export const enrollmentRouter = createTRPCRouter({
           },
         }),
       );
+      await notifyIfActivated(previous?.status, enrollment);
+      return enrollment;
     }),
 
   removeCourseEnrollment: protectedProcedure
@@ -372,12 +410,17 @@ export const enrollmentRouter = createTRPCRouter({
         userId: ctx.actorUserId,
       });
       // Only self-paced access; class cohort memberships stay.
-      return ctx.db.cohortEnrollment.deleteMany({
-        where: {
-          userId: input.userId,
-          cohort: { defaultForCourseId: input.courseId },
-        },
+      const where = {
+        userId: input.userId,
+        cohort: { defaultForCourseId: input.courseId },
+      };
+      const previous = await ctx.db.cohortEnrollment.findFirst({
+        where,
+        select: { cohortId: true, status: true },
       });
+      const result = await ctx.db.cohortEnrollment.deleteMany({ where });
+      await notifyIfDeactivated(input.userId, previous, result.count);
+      return result;
     }),
 
   setCohortEnrollment: protectedProcedure
@@ -405,7 +448,13 @@ export const enrollmentRouter = createTRPCRouter({
         });
       }
       const completedAt = input.status === "COMPLETED" ? new Date() : null;
-      return ctx.db.cohortEnrollment.upsert({
+      const previous = await ctx.db.cohortEnrollment.findUnique({
+        where: {
+          cohortId_userId: { cohortId: input.cohortId, userId: user.id },
+        },
+        select: { status: true },
+      });
+      const enrollment = await ctx.db.cohortEnrollment.upsert({
         where: {
           cohortId_userId: { cohortId: input.cohortId, userId: user.id },
         },
@@ -418,6 +467,8 @@ export const enrollmentRouter = createTRPCRouter({
         },
         update: { status: input.status, completedAt },
       });
+      await notifyIfActivated(previous?.status, enrollment);
+      return enrollment;
     }),
 
   removeCohortEnrollment: protectedProcedure
@@ -428,9 +479,14 @@ export const enrollmentRouter = createTRPCRouter({
         permission: "learners.manage",
         userId: ctx.actorUserId,
       });
-      return ctx.db.cohortEnrollment.deleteMany({
-        where: { cohortId: input.cohortId, userId: input.userId },
+      const where = { cohortId: input.cohortId, userId: input.userId };
+      const previous = await ctx.db.cohortEnrollment.findFirst({
+        where,
+        select: { cohortId: true, status: true },
       });
+      const result = await ctx.db.cohortEnrollment.deleteMany({ where });
+      await notifyIfDeactivated(input.userId, previous, result.count);
+      return result;
     }),
 
   createInvite: protectedProcedure

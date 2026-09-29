@@ -128,7 +128,7 @@ Instrument events without embedding answer text or private course content in ana
 - Released detailed answer explanations are a follow-up; the native results view currently shows the server score/status.
 - The course outline helper supports staff preview elsewhere. Mobile starts from enrolled courses, but stronger role-specific isolation for dual-role accounts is a future shared-authorization decision.
 - Initial lists favor existing course sizes; aggregate/paginated learning feeds should replace per-course outline queries as enrollment volume grows.
-- No push notifications, embedded tutor, attendance synchronization, calendar integration, or recording player is claimed as implemented.
+- Push notifications cover assessment events, grading, meetings and enrollment (see `docs/push-notifications.md`); per-category opt-in and quiet hours are not implemented. No embedded tutor, attendance synchronization, calendar integration, or recording player is claimed as implemented.
 - Physical iOS/Android behavior is unverified in this Linux workspace. JS export and type checks do not substitute for native device tests.
 
 ## Device handoff checklist

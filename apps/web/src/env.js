@@ -55,6 +55,7 @@ export const env = createEnv({
     ZOOM_TOKEN_ENCRYPTION_KEY: z.string().base64(),
     VAPID_PRIVATE_KEY: z.string().min(1).optional(),
     VAPID_CONTACT_EMAIL: z.string().email().optional(),
+    EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -97,6 +98,7 @@ export const env = createEnv({
     ZOOM_TOKEN_ENCRYPTION_KEY: process.env.ZOOM_TOKEN_ENCRYPTION_KEY,
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     VAPID_CONTACT_EMAIL: process.env.VAPID_CONTACT_EMAIL,
+    EXPO_ACCESS_TOKEN: process.env.EXPO_ACCESS_TOKEN,
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     NODE_ENV: process.env.NODE_ENV,
   },

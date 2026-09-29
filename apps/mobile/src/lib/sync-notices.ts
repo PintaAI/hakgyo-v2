@@ -4,11 +4,13 @@ import type { CourseContentNotice, SyncNotice } from "../sync/notices";
 import type { SidebarIndicatorKind } from "./sidebar-indicator-count";
 import { dateLabel } from "./study";
 
-/** One card in Pembaruan; dismissing it dismisses every notice in `ids`. */
+/** One card in Pembaruan; opening it marks every notice in `ids` read. */
 export type SyncNoticeEntry = {
   key: string;
   ids: string[];
   notice: SyncNotice;
+  /** Read entries stay as muted history without a badge. */
+  read: boolean;
 };
 
 function unionById<T extends { id: string }>(lists: T[][]) {
@@ -41,32 +43,43 @@ function mergeCourseContent(
 
 /**
  * Notices newest first, with the content notices of one course (one per
- * downloaded revision) merged into a single entry.
+ * downloaded revision) merged into a single entry. Unread and read content
+ * notices merge separately, so news never hides inside history.
  */
 export function groupSyncNotices(notices: SyncNotice[]): SyncNoticeEntry[] {
   const sorted = [...notices].sort(
     (first, second) => second.createdAt - first.createdAt,
   );
-  const contentByCourse = new Map<string, CourseContentNotice[]>();
+  const contentGroupKey = (notice: CourseContentNotice) =>
+    `content:${notice.courseId}:${notice.readAt ? "read" : "new"}`;
+  const contentGroups = new Map<string, CourseContentNotice[]>();
   for (const notice of sorted) {
     if (notice.kind !== "COURSE_CONTENT") continue;
-    const list = contentByCourse.get(notice.courseId);
+    const key = contentGroupKey(notice);
+    const list = contentGroups.get(key);
     if (list) list.push(notice);
-    else contentByCourse.set(notice.courseId, [notice]);
+    else contentGroups.set(key, [notice]);
   }
   const entries: SyncNoticeEntry[] = [];
   for (const notice of sorted) {
     if (notice.kind !== "COURSE_CONTENT") {
-      entries.push({ key: notice.id, ids: [notice.id], notice });
+      entries.push({
+        key: notice.id,
+        ids: [notice.id],
+        notice,
+        read: Boolean(notice.readAt),
+      });
       continue;
     }
-    const group = contentByCourse.get(notice.courseId);
-    // Emitted once, at the newest notice of the course.
+    const key = contentGroupKey(notice);
+    const group = contentGroups.get(key);
+    // Emitted once, at the newest notice of the group.
     if (!group || group[0] !== notice) continue;
     entries.push({
-      key: `content:${notice.courseId}`,
+      key,
       ids: group.map((member) => member.id),
       notice: mergeCourseContent(group),
+      read: Boolean(notice.readAt),
     });
   }
   return entries;
@@ -114,7 +127,7 @@ export function isCoveredByIndicator(
   }
 }
 
-/** Bell badge: unread indicators plus the notices they do not cover. */
+/** Bell badge: unread indicators plus the unread notices they do not cover. */
 export function countUpdatesBadge(
   entries: SyncNoticeEntry[],
   indicators: ReadonlyArray<{
@@ -130,8 +143,9 @@ export function countUpdatesBadge(
   );
   return (
     unread.size +
-    entries.filter((entry) => !isCoveredByIndicator(entry.notice, unread))
-      .length
+    entries.filter(
+      (entry) => !entry.read && !isCoveredByIndicator(entry.notice, unread),
+    ).length
   );
 }
 

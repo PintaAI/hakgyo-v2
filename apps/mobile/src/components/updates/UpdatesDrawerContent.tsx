@@ -41,8 +41,11 @@ export function UpdatesDrawerContent({
   const { items, markAllSeen, markEntitySeen, unreadCount } =
     useSidebarIndicators();
   const index = useSyncIndex(activeOrganizationId);
-  const { notices, dismiss } = useSyncNotices(activeOrganizationId);
+  const { notices, markRead } = useSyncNotices(activeOrganizationId);
   const noticeEntries = useMemo(() => groupSyncNotices(notices), [notices]);
+  const unreadNotices = noticeEntries.filter((entry) => !entry.read);
+  // Read notices stay for 30 days as muted history.
+  const readNotices = noticeEntries.filter((entry) => entry.read);
   // Validate notice destinations against the current outline, because an
   // item mentioned by an older revision may have since been removed.
   const outlineCourseIds = useMemo(
@@ -138,12 +141,12 @@ export function UpdatesDrawerContent({
     onClose();
   }
 
-  function dismissAllNotices() {
-    dismiss(noticeEntries.flatMap((entry) => entry.ids));
+  function markAllNoticesRead() {
+    markRead(unreadNotices.flatMap((entry) => entry.ids));
   }
 
   function openNotice(entry: SyncNoticeEntry) {
-    dismiss(entry.ids);
+    if (!entry.read) markRead(entry.ids);
     const notice = entry.notice;
     onNavigate(() => {
       switch (notice.kind) {
@@ -205,7 +208,11 @@ export function UpdatesDrawerContent({
   function renderNotice(entry: SyncNoticeEntry) {
     const { title, detail, icon } = describeSyncNotice(entry.notice);
     return (
-      <View className="flex-row items-center" key={entry.key}>
+      <View
+        className="flex-row items-center"
+        key={entry.key}
+        style={entry.read ? { opacity: 0.55 } : undefined}
+      >
         <Pressable
           accessibilityHint="Membuka pembaruan ini"
           accessibilityRole="button"
@@ -215,26 +222,42 @@ export function UpdatesDrawerContent({
           <View className="flex-row items-center gap-2.5">
             <View
               className="size-7 items-center justify-center rounded-full"
-              style={{ backgroundColor: colors.primary }}
+              style={{
+                backgroundColor: entry.read
+                  ? colors.sidebarAccent
+                  : colors.primary,
+              }}
             >
               <SymbolView
                 fallback={
                   <Text
-                    style={{ color: colors.primaryForeground, fontSize: 14 }}
+                    style={{
+                      color: entry.read
+                        ? colors.mutedForeground
+                        : colors.primaryForeground,
+                      fontSize: 14,
+                    }}
                   >
                     •
                   </Text>
                 }
                 name={icon}
                 size={14}
-                tintColor={colors.primaryForeground}
+                tintColor={
+                  entry.read ? colors.mutedForeground : colors.primaryForeground
+                }
               />
             </View>
             <View className="min-w-0 flex-1">
               <Text
-                className="font-semibold"
+                className={entry.read ? "font-medium" : "font-semibold"}
                 numberOfLines={1}
-                style={{ color: colors.foreground, fontSize: 13 }}
+                style={{
+                  color: entry.read
+                    ? colors.mutedForeground
+                    : colors.foreground,
+                  fontSize: 13,
+                }}
               >
                 {title}
               </Text>
@@ -248,30 +271,32 @@ export function UpdatesDrawerContent({
             </View>
           </View>
         </Pressable>
-        <Pressable
-          accessibilityLabel={`Tutup pemberitahuan ${title}`}
-          accessibilityRole="button"
-          className="size-9 items-center justify-center rounded-full"
-          hitSlop={4}
-          onPress={() => dismiss(entry.ids)}
-        >
-          <SymbolView
-            fallback={
-              <Text style={{ color: colors.mutedForeground, fontSize: 16 }}>
-                ×
-              </Text>
-            }
-            name="xmark"
-            size={12}
-            tintColor={colors.mutedForeground}
-          />
-        </Pressable>
+        {entry.read ? null : (
+          <Pressable
+            accessibilityLabel={`Tandai ${title} sudah dibaca`}
+            accessibilityRole="button"
+            className="size-9 items-center justify-center rounded-full"
+            hitSlop={4}
+            onPress={() => markRead(entry.ids)}
+          >
+            <SymbolView
+              fallback={
+                <Text style={{ color: colors.mutedForeground, fontSize: 16 }}>
+                  ✓
+                </Text>
+              }
+              name="checkmark"
+              size={12}
+              tintColor={colors.mutedForeground}
+            />
+          </Pressable>
+        )}
       </View>
     );
   }
 
   function renderNotices() {
-    if (noticeEntries.length === 0) return null;
+    if (unreadNotices.length === 0) return null;
     return (
       <View
         className="rounded-2xl px-1 py-2"
@@ -293,24 +318,24 @@ export function UpdatesDrawerContent({
               className="text-[10px] font-bold"
               style={{ color: colors.destructiveForeground }}
             >
-              {noticeEntries.length > 99 ? "99+" : noticeEntries.length}
+              {unreadNotices.length > 99 ? "99+" : unreadNotices.length}
             </Text>
           </View>
           <Pressable
-            accessibilityHint="Menutup semua pemberitahuan sinkronisasi"
+            accessibilityHint="Menandai semua pemberitahuan sinkronisasi sudah dibaca"
             accessibilityRole="button"
             hitSlop={8}
-            onPress={dismissAllNotices}
+            onPress={markAllNoticesRead}
           >
             <Text
               className="text-xs font-bold"
               style={{ color: colors.primary }}
             >
-              Tutup semua
+              Tandai dibaca
             </Text>
           </Pressable>
         </View>
-        <View style={{ gap: 1 }}>{noticeEntries.map(renderNotice)}</View>
+        <View style={{ gap: 1 }}>{unreadNotices.map(renderNotice)}</View>
       </View>
     );
   }
@@ -362,6 +387,7 @@ export function UpdatesDrawerContent({
         className="overflow-hidden rounded-xl px-2.5 py-2"
         key={item.key}
         onPress={() => openUpdate(item)}
+        style={item.unread ? undefined : { opacity: 0.55 }}
       >
         <View className="flex-row items-center gap-2.5">
           <View
@@ -370,19 +396,33 @@ export function UpdatesDrawerContent({
           >
             <SymbolView
               fallback={
-                <Text style={{ color: colors.primary, fontSize: 14 }}>•</Text>
+                <Text
+                  style={{
+                    color: item.unread
+                      ? colors.primary
+                      : colors.mutedForeground,
+                    fontSize: 14,
+                  }}
+                >
+                  •
+                </Text>
               }
               name={icon}
               size={14}
-              tintColor={colors.primary}
+              tintColor={item.unread ? colors.primary : colors.mutedForeground}
             />
           </View>
           <View className="min-w-0 flex-1">
             <View className="flex-row items-center gap-1.5">
               <Text
-                className="min-w-0 flex-1 font-semibold"
+                className={`min-w-0 flex-1 ${item.unread ? "font-semibold" : "font-medium"}`}
                 numberOfLines={1}
-                style={{ color: colors.foreground, fontSize: 13 }}
+                style={{
+                  color: item.unread
+                    ? colors.foreground
+                    : colors.mutedForeground,
+                  fontSize: 13,
+                }}
               >
                 {title}
               </Text>
@@ -416,8 +456,13 @@ export function UpdatesDrawerContent({
     );
   }
 
-  function renderSection(label: string, sectionItems: typeof updateItems) {
-    if (sectionItems.length === 0) return null;
+  function renderSection(
+    label: string,
+    sectionItems: typeof updateItems,
+    sectionNotices: SyncNoticeEntry[] = [],
+  ) {
+    const total = sectionItems.length + sectionNotices.length;
+    if (total === 0) return null;
     return (
       <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
         <View className="mb-1.5 flex-row items-center justify-between px-2">
@@ -431,10 +476,13 @@ export function UpdatesDrawerContent({
             className="text-xs font-bold"
             style={{ color: colors.mutedForeground }}
           >
-            {sectionItems.length}
+            {total}
           </Text>
         </View>
-        <View style={{ gap: 1 }}>{sectionItems.map(renderUpdate)}</View>
+        <View style={{ gap: 1 }}>
+          {sectionNotices.map(renderNotice)}
+          {sectionItems.map(renderUpdate)}
+        </View>
       </View>
     );
   }
@@ -482,13 +530,13 @@ export function UpdatesDrawerContent({
             Belajar
           </Text>
         </View>
-        {unreadCount > 0 || noticeEntries.length > 0 ? (
+        {unreadCount > 0 || unreadNotices.length > 0 ? (
           <Pressable
             accessibilityRole="button"
             className="rounded-xl px-2.5 py-2"
             onPress={() => {
               markAllSeen();
-              dismissAllNotices();
+              markAllNoticesRead();
             }}
             style={{ backgroundColor: colors.sidebarAccent }}
           >
@@ -540,7 +588,7 @@ export function UpdatesDrawerContent({
         ) : (
           <>
             {renderSection("Baru", newItems)}
-            {renderSection("Sebelumnya", recentItems)}
+            {renderSection("Sebelumnya · 30 hari", recentItems, readNotices)}
           </>
         )}
       </ScrollView>

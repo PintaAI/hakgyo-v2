@@ -14,7 +14,7 @@ export const syncQueryKeys = {
     ["mobileSync", "bundleContent", courseId] as const,
   /** Map of courseItemId → courseId across all local bundles. */
   itemCourseMap: () => ["mobileSync", "itemCourseMap"] as const,
-  /** Undismissed sync notices of the user (every organization). */
+  /** Sync notices of the user from the last 30 days (every organization). */
   notices: () => ["mobileSync", "notices"] as const,
   /** Persisted small tRPC results (resumable attempts, vocab progress...). */
   query: (queryKey: string) => ["mobileSync", "query", queryKey] as const,

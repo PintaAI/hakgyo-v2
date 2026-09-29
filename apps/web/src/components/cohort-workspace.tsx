@@ -62,6 +62,8 @@ import {
 } from "~/components/ui/dialog";
 import { DatePicker } from "~/components/ui/date-picker";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
+import { Checkbox } from "~/components/ui/checkbox";
+import { useDialogs } from "~/components/ui/use-dialogs";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -1228,6 +1230,7 @@ function Meetings({
     { enabled: canManage },
   );
   const remove = api.cohort.deleteMeeting.useMutation();
+  const { prompt, dialogs } = useDialogs();
 
   function openMeetingForm() {
     setEditing(null);
@@ -1282,9 +1285,27 @@ function Meetings({
     );
   }
 
-  async function deleteMeeting(meetingId: string) {
+  async function deleteMeeting(meeting: Meeting) {
+    const values = await prompt({
+      title: "Hapus meeting?",
+      description: `"${meeting.title}" akan dihapus dari jadwal dan dari ${meeting.provider === "GOOGLE_MEET" ? "Google Meet" : "Zoom"}.`,
+      confirmLabel: "Hapus meeting",
+      destructive: true,
+      fields: [
+        {
+          name: "notify",
+          label: "Beri tahu peserta bahwa meeting dibatalkan",
+          type: "checkbox",
+        },
+      ],
+    });
+    if (!values) return;
     try {
-      await remove.mutateAsync({ cohortId, meetingId });
+      await remove.mutateAsync({
+        cohortId,
+        meetingId: meeting.id,
+        notify: values.notify === "true",
+      });
       await utils.cohort.listMeetings.invalidate({ cohortId });
       toast.success("Meeting dihapus.");
     } catch (cause) {
@@ -1385,7 +1406,7 @@ function Meetings({
                       <Button
                         size="icon-sm"
                         variant="ghost"
-                        onClick={() => deleteMeeting(meeting.id)}
+                        onClick={() => deleteMeeting(meeting)}
                       >
                         <Trash2Icon />
                       </Button>
@@ -1421,6 +1442,7 @@ function Meetings({
           onOpenChange={setOpen}
         />
       ) : null}
+      {dialogs}
     </section>
   );
 }
@@ -1451,6 +1473,7 @@ function MeetingForm({
   );
   const [timezone, setTimezone] = useState(initialTimezone);
   const [moduleId, setModuleId] = useState(meeting?.moduleId ?? "none");
+  const [notifyLearners, setNotifyLearners] = useState(true);
   const modules = api.cohort.listMeetingModules.useQuery({ cohortId });
   const timezoneValid = isValidTimeZone(timezone);
   const create = api.cohort.createMeeting.useMutation();
@@ -1466,6 +1489,7 @@ function MeetingForm({
         startsAt: parseZonedDateTimeInput(startsAt, timezone),
         durationMinutes: Number(duration),
         timezone,
+        notify: notifyLearners,
       };
       if (meeting)
         await update.mutateAsync({ ...input, meetingId: meeting.id });
@@ -1584,6 +1608,18 @@ function MeetingForm({
                   Contoh: Asia/Jakarta. Waktu akan disimpan sesuai timezone ini.
                 </p>
               )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="meeting-notify"
+                checked={notifyLearners}
+                onCheckedChange={setNotifyLearners}
+              />
+              <Label htmlFor="meeting-notify">
+                {meeting
+                  ? "Beri tahu peserta jika jadwal berubah"
+                  : "Beri tahu peserta lewat notifikasi"}
+              </Label>
             </div>
           </div>
           <DialogFooter className="mt-5">
