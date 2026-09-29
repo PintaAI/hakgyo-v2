@@ -34,6 +34,10 @@ import {
 } from "~/server/assessment/learner-attempts";
 import { getAssessmentLiveStatus } from "~/server/assessment/live-status";
 import {
+  notifyAttemptGraded,
+  notifyInBackground,
+} from "~/server/notifications/triggers";
+import {
   getRegisterFilters,
   getReviewAttempt,
   listAttemptsNeedingReview,
@@ -277,9 +281,13 @@ export const assessmentRouter = createTRPCRouter({
 
   reviewAttempt: protectedProcedure
     .input(reviewAttemptInput)
-    .mutation(({ ctx, input }) =>
-      reviewAttempt(ctx.db, input, ctx.actorUserId),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const result = await reviewAttempt(ctx.db, input, ctx.actorUserId);
+      await notifyInBackground("attempt graded", () =>
+        notifyAttemptGraded(input.attemptId),
+      );
+      return result;
+    }),
   listAttemptsNeedingReview: protectedProcedure
     .input(attemptsNeedingReviewInput)
     .query(({ ctx, input }) =>

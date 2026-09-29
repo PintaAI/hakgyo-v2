@@ -21,12 +21,17 @@ import {
 import {
   SettingsRow,
   SettingsSection,
+  SettingsToggleRow,
 } from "../../../../src/components/settings-ui";
 import { WeeklyStreak } from "../../../../src/components/weekly-streak";
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
+import {
+  type PushStatus,
+  usePushNotifications,
+} from "../../../../src/providers/PushNotificationsProvider";
 import { useSyncIndex } from "../../../../src/sync/hooks";
 import type { LocalDataStats } from "../../../../src/sync/store";
 import type { ResyncReport } from "../../../../src/sync/types";
@@ -34,6 +39,17 @@ import type { ResyncReport } from "../../../../src/sync/types";
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 const UPDATE_CHANNEL = Updates.channel ?? "unpublished";
 const CURRENT_UPDATE_ID = Updates.updateId ?? null;
+
+const PUSH_STATUS_DETAIL: Record<PushStatus, string | undefined> = {
+  loading: undefined,
+  unsupported: "Tidak tersedia di perangkat ini",
+  off: "Tugas, tryout, dan pertemuan kelas",
+  undetermined: "Tugas, tryout, dan pertemuan kelas",
+  denied: "Izin notifikasi belum diberikan",
+  blocked: "Diblokir di pengaturan perangkat",
+  unregistered: "Belum terhubung, coba lagi saat online",
+  enabled: "Tugas, tryout, dan pertemuan kelas",
+};
 
 export default function ProfileTab() {
   const queryClient = useQueryClient();
@@ -59,6 +75,7 @@ export default function ProfileTab() {
     clearLocalDataAndResync,
     getLocalDataStats,
   } = useMobileSync();
+  const push = usePushNotifications();
   const [isResetting, setIsResetting] = useState(false);
   const [localStats, setLocalStats] = useState<LocalDataStats | null>(null);
   const [resyncReport, setResyncReport] = useState<ResyncReport | null>(null);
@@ -192,6 +209,8 @@ export default function ProfileTab() {
         if (!flushed && !(await confirmDiscardPending())) return;
       }
 
+      // Needs the session, so it must run before signing out.
+      await push.unregisterDevice();
       const result = await authClient.signOut();
 
       if (result.error) {
@@ -284,6 +303,23 @@ export default function ProfileTab() {
             </SettingsSection>
 
             <SettingsSection title="Notifikasi">
+              <SettingsToggleRow
+                label="Notifikasi push"
+                detail={PUSH_STATUS_DETAIL[push.status]}
+                symbol="bell.fill"
+                fallback="!"
+                value={push.status === "enabled"}
+                onValueChange={(enabled) => {
+                  if (push.status === "unsupported") {
+                    Alert.alert(
+                      "Notifikasi push",
+                      "Notifikasi push hanya tersedia di aplikasi yang terpasang pada perangkat fisik.",
+                    );
+                    return;
+                  }
+                  void push.setEnabled(enabled);
+                }}
+              />
               <SettingsRow
                 label="Pengingat dan peringatan"
                 detail="Pengaturan sistem"

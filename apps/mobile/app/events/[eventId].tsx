@@ -10,12 +10,19 @@ import { dateLabel } from "../../src/lib/study";
 import { api } from "../../src/lib/trpc";
 import { useSidebarIndicators } from "../../src/lib/sidebar-indicators";
 import { useMobileSyncActions } from "../../src/providers/MobileSyncProvider";
+import { usePushNotifications } from "../../src/providers/PushNotificationsProvider";
 import { useLearnerEvent } from "../../src/sync/hooks";
 
 export default function AssessmentEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { markEntitySeen } = useSidebarIndicators();
   const { saveStartedAttempt } = useMobileSyncActions();
+  const { promptInContext } = usePushNotifications();
+
+  useEffect(() => {
+    const timer = setTimeout(promptInContext, 800);
+    return () => clearTimeout(timer);
+  }, [promptInContext]);
   // Online detail (leaderboard included), persisted for offline reopening.
   const query = useLearnerEvent(eventId);
   const start = api.mobileSyncV2.startEventAssessment.useMutation();

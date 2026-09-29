@@ -14,6 +14,7 @@ import { OrganizationSwitcherTrigger } from "../../../../src/components/organiza
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
+import { usePushNotifications } from "../../../../src/providers/PushNotificationsProvider";
 import { useCourseOutlines, useSyncIndex } from "../../../../src/sync/hooks";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 
@@ -48,6 +49,16 @@ export default function PracticeTab() {
   const { isSyncing, syncNow } = useMobileSync();
   const [now, setNow] = useState(Date.now);
   const scrollViewRef = useRef<ScrollView>(null);
+  const { promptInContext } = usePushNotifications();
+
+  // Tryouts open without warning, so this is where notifications pay off.
+  // Delay past the tab transition; shown at most once per install.
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setTimeout(promptInContext, 800);
+      return () => clearTimeout(timer);
+    }, [promptInContext]),
+  );
 
   const focusResources = useCallback((offsetY: number) => {
     scrollViewRef.current?.scrollTo({

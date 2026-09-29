@@ -27,9 +27,17 @@ import {
   withTransactionRetry,
 } from "~/server/db-retry";
 import { courseAccessCohortStatuses } from "~/server/enrollment/cohort-access";
+import {
+  notifyEventCancelled,
+  notifyEventOpened,
+  notifyInBackground,
+  notifyParticipationInvalidated,
+} from "~/server/notifications/triggers";
 
 const id = z.string().min(1);
 const reason = z.string().trim().min(3).max(1000);
+/** "Notify learners" checkbox; pushes go out after the write commits. */
+const notify = z.boolean().default(true);
 /**
  * Event summary fields without relation counts. A relation `_count` in `findMany` compiles to a
  * whole-table grouped subquery, so list queries use this select and attach counts for their page
@@ -446,7 +454,7 @@ export const assessmentEventRouter = createTRPCRouter({
     }),
 
   open: protectedProcedure
-    .input(z.object({ eventId: id }))
+    .input(z.object({ eventId: id, notify }))
     .mutation(async ({ ctx, input }) => {
       const access = await requireEventManagement(
         ctx.db,
@@ -456,7 +464,7 @@ export const assessmentEventRouter = createTRPCRouter({
       // READ COMMITTED with the event row locked: concurrent open/close/cancel of this event wait
       // for each other, and the DRAFT -> OPEN transition is re-checked by the conditional update.
       // Participants are inserted with ON CONFLICT DO NOTHING.
-      return withTransactionRetry(() =>
+      const result = await withTransactionRetry(() =>
         ctx.db.$transaction(async (tx) => {
           await tx.$queryRaw`
             SELECT "id" FROM "AssessmentEvent" WHERE "id" = ${input.eventId} FOR UPDATE
@@ -557,6 +565,12 @@ export const assessmentEventRouter = createTRPCRouter({
           return { opened: true, participantCount };
         }),
       );
+      if (input.notify) {
+        await notifyInBackground("event opened", () =>
+          notifyEventOpened(input.eventId),
+        );
+      }
+      return result;
     }),
 
   close: protectedProcedure
@@ -617,14 +631,14 @@ export const assessmentEventRouter = createTRPCRouter({
     }),
 
   cancel: protectedProcedure
-    .input(z.object({ eventId: id, reason }))
+    .input(z.object({ eventId: id, reason, notify }))
     .mutation(async ({ ctx, input }) => {
       const access = await requireEventManagement(
         ctx.db,
         input.eventId,
         ctx.actorUserId,
       );
-      return ctx.db.$transaction(async (tx) => {
+      const result = await ctx.db.$transaction(async (tx) => {
         const now = new Date();
         const updated = await tx.assessmentEvent.updateMany({
           where: { id: input.eventId, status: { in: ["DRAFT", "OPEN"] } },
@@ -641,6 +655,13 @@ export const assessmentEventRouter = createTRPCRouter({
         });
         return { cancelled: true };
       });
+      // Draft events have no participants, so only opened events notify.
+      if (input.notify) {
+        await notifyInBackground("event cancelled", () =>
+          notifyEventCancelled(input.eventId, input.reason),
+        );
+      }
+      return result;
     }),
 
   delete: protectedProcedure
@@ -1090,7 +1111,7 @@ export const assessmentEventRouter = createTRPCRouter({
         input.eventId,
         ctx.actorUserId,
       );
-      return ctx.db.$transaction(async (tx) => {
+      const result = await ctx.db.$transaction(async (tx) => {
         const attempt = await tx.assessmentAttempt.findFirst({
           where: { id: input.attemptId, assessmentEventId: input.eventId },
           select: { id: true, userId: true },
@@ -1115,8 +1136,16 @@ export const assessmentEventRouter = createTRPCRouter({
             reason: input.reason,
           },
         });
-        return { invalidated: true };
+        return { invalidated: true, userId: attempt.userId };
       });
+      await notifyInBackground("participation invalidated", () =>
+        notifyParticipationInvalidated(
+          input.eventId,
+          result.userId,
+          input.reason,
+        ),
+      );
+      return { invalidated: result.invalidated };
     }),
 
   adjustResult: protectedProcedure

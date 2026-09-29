@@ -150,30 +150,46 @@ model Account {
 /// fan-out sends to every active row. `deviceId` is a client-generated UUID
 /// (localStorage / SecureStore) stable across token rotations.
 model PushTarget {
-  id              String    @id @default(cuid())
+  id              String       @id @default(cuid())
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   platform        String // "web" | "expo"
   deviceId        String
   // Web Push (VAPID) fields
-  endpoint        String?   @unique
+  endpoint        String?      @unique
   p256dh          String?
   auth            String?
   // Expo native fields
-  expoPushToken   String?   @unique
+  expoPushToken   String?      @unique
   deviceName      String?
   os              String? // e.g. "web-chrome", "ios", "android"
   appVersion      String?
   userAgent       String?
   disabledAt      DateTime?
   disabledReason  String?
-  lastSeenAt      DateTime  @default(now())
+  lastSeenAt      DateTime     @default(now())
   lastDeliveredAt DateTime?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime     @default(now())
+  pushTickets     PushTicket[]
 
   @@unique([userId, deviceId])
   @@index([userId, disabledAt])
   @@map("pushTarget")
+}
+
+/// Expo push ticket awaiting its delivery receipt. Expo reports most dead
+/// tokens (DeviceNotRegistered) only in receipts, which are ready ~15 minutes
+/// after sending; the notifications cron checks them and deletes the rows.
+model PushTicket {
+  id           String     @id @default(cuid())
+  pushTargetId String
+  pushTarget   PushTarget @relation(fields: [pushTargetId], references: [id], onDelete: Cascade)
+  ticketId     String     @unique
+  createdAt    DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([pushTargetId])
+  @@map("pushTicket")
 }
 
 /// Per-user inbox row: the source of truth shared by web and mobile.
@@ -799,6 +815,8 @@ model CohortMeeting {
   durationMinutes       Int
   timezone              String
   status                CohortMeetingStatus @default(SCHEDULED)
+  /// Set once the "starting soon" push went out; cleared on reschedule.
+  reminderSentAt        DateTime?
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   cohort                Cohort              @relation(fields: [cohortId, organizationId], references: [id, organizationId], onDelete: Cascade)
@@ -1181,6 +1199,8 @@ model AssessmentEvent {
   closesAt              DateTime?
   closedAt              DateTime?
   cancelledAt           DateTime?
+  /// Set once the "closing soon" push went out (notifications cron).
+  closingReminderSentAt DateTime?
   createdAt             DateTime                     @default(now())
   updatedAt             DateTime                     @updatedAt
   organization          Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)

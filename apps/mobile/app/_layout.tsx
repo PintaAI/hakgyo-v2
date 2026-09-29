@@ -16,6 +16,7 @@ import {
   useAppTheme,
 } from "../src/providers/AppThemeProvider";
 import { DrawerProvider } from "../src/providers/DrawerProvider";
+import { PushNotificationsProvider } from "../src/providers/PushNotificationsProvider";
 import { QuestionNavigatorProvider } from "../src/providers/QuestionNavigatorProvider";
 import {
   TransitionOverrideProvider,
@@ -193,186 +194,188 @@ function RootNavigator() {
     <>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
       <ThemeProvider value={navigationTheme}>
-        <DrawerProvider enabled={Boolean(session)}>
-          <Stack
-            screenOptions={{
-              contentStyle: { backgroundColor: colors.background },
-              headerShown: false,
-              headerStyle: { backgroundColor: colors.background },
-              headerTintColor: colors.foreground,
-            }}
-          >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="courses/[courseId]"
-              options={{
+        <PushNotificationsProvider>
+          <DrawerProvider enabled={Boolean(session)}>
+            <Stack
+              screenOptions={{
+                contentStyle: { backgroundColor: colors.background },
                 headerShown: false,
-                ...Platform.select({
-                  ios: {
-                    presentation: "formSheet",
-                    sheetAllowedDetents: [1],
-                    sheetGrabberVisible: false,
-                    sheetCornerRadius: 28,
-                    sheetExpandsWhenScrolledToEdge: true,
-                  },
-                  default: {
-                    presentation: "formSheet",
-                    sheetAllowedDetents: [1],
-                    sheetInitialDetentIndex: 0,
-                    sheetCornerRadius: 28,
-                    sheetElevation: 24,
-                    sheetGrabberVisible: false,
-                    sheetLargestUndimmedDetentIndex: "none",
-                  },
-                }),
+                headerStyle: { backgroundColor: colors.background },
+                headerTintColor: colors.foreground,
               }}
-            />
-
-            <Stack.Protected guard={!session}>
-              <Stack.Screen name="(onboarding)" />
+            >
+              <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen
-                name="auth"
-                options={Platform.select({
-                  ios: {
-                    presentation: "formSheet",
-                    headerLargeTitle: false,
-                    headerTransparent: true,
-                    sheetAllowedDetents: "fitToContents",
-                    sheetExpandsWhenScrolledToEdge: false,
-                    sheetGrabberVisible: true,
-                  },
-                  default: {
-                    presentation: "formSheet",
-                    headerLargeTitle: false,
-                    headerTransparent: false,
-                    sheetAllowedDetents: "fitToContents",
-                    sheetInitialDetentIndex: 0,
-                    sheetCornerRadius: 28,
-                    sheetElevation: 24,
-                    sheetShouldOverflowTopInset: false,
-                    sheetLargestUndimmedDetentIndex: "none",
-                    sheetResizeAnimationEnabled: true,
-                  },
-                })}
-              />
-            </Stack.Protected>
-
-            <Stack.Protected guard={Boolean(session)}>
-              <Stack.Screen
-                name="assessment-questions"
+                name="courses/[courseId]"
                 options={{
-                  presentation: "formSheet",
                   headerShown: false,
-                  sheetAllowedDetents: [0.55, 0.9],
-                  sheetInitialDetentIndex: 0,
-                  sheetCornerRadius: 28,
-                  sheetGrabberVisible: true,
-                  sheetExpandsWhenScrolledToEdge: true,
-                  sheetLargestUndimmedDetentIndex: "none",
+                  ...Platform.select({
+                    ios: {
+                      presentation: "formSheet",
+                      sheetAllowedDetents: [1],
+                      sheetGrabberVisible: false,
+                      sheetCornerRadius: 28,
+                      sheetExpandsWhenScrolledToEdge: true,
+                    },
+                    default: {
+                      presentation: "formSheet",
+                      sheetAllowedDetents: [1],
+                      sheetInitialDetentIndex: 0,
+                      sheetCornerRadius: 28,
+                      sheetElevation: 24,
+                      sheetGrabberVisible: false,
+                      sheetLargestUndimmedDetentIndex: "none",
+                    },
+                  }),
                 }}
               />
-              <Stack.Screen name="(home)" />
-              <Stack.Screen
-                name="organization-switcher"
-                options={{
-                  headerShown: Platform.OS === "ios",
-                  headerBackVisible: false,
-                  headerShadowVisible: false,
-                  headerStyle: { backgroundColor: "transparent" },
-                  title: "Pilih organisasi",
-                  contentStyle: { backgroundColor: "transparent" },
-                  presentation: "formSheet",
-                  sheetAllowedDetents: [0.55, 0.9],
-                  sheetInitialDetentIndex: 0,
-                  sheetCornerRadius: 28,
-                  sheetElevation: 24,
-                  sheetGrabberVisible: false,
-                  sheetExpandsWhenScrolledToEdge: true,
-                  sheetLargestUndimmedDetentIndex: "none",
-                }}
-                listeners={{
-                  transitionEnd: (event) => {
-                    if (!event.data.closing) void refreshOrganizations();
-                  },
-                }}
-              />
-              <Stack.Screen
-                name="events/[eventId]"
-                options={{ animation: transition }}
-              />
-              <Stack.Screen name="vocabulary/[vocabularySetId]" />
-              <Stack.Screen
-                name="vocabulary/[vocabularySetId]/items/[entryId]"
-                options={Platform.select({
-                  ios: {
+
+              <Stack.Protected guard={!session}>
+                <Stack.Screen name="(onboarding)" />
+                <Stack.Screen
+                  name="auth"
+                  options={Platform.select({
+                    ios: {
+                      presentation: "formSheet",
+                      headerLargeTitle: false,
+                      headerTransparent: true,
+                      sheetAllowedDetents: "fitToContents",
+                      sheetExpandsWhenScrolledToEdge: false,
+                      sheetGrabberVisible: true,
+                    },
+                    default: {
+                      presentation: "formSheet",
+                      headerLargeTitle: false,
+                      headerTransparent: false,
+                      sheetAllowedDetents: "fitToContents",
+                      sheetInitialDetentIndex: 0,
+                      sheetCornerRadius: 28,
+                      sheetElevation: 24,
+                      sheetShouldOverflowTopInset: false,
+                      sheetLargestUndimmedDetentIndex: "none",
+                      sheetResizeAnimationEnabled: true,
+                    },
+                  })}
+                />
+              </Stack.Protected>
+
+              <Stack.Protected guard={Boolean(session)}>
+                <Stack.Screen
+                  name="assessment-questions"
+                  options={{
                     presentation: "formSheet",
                     headerShown: false,
-                    contentStyle: { backgroundColor: colors.background },
                     sheetAllowedDetents: [0.55, 0.9],
                     sheetInitialDetentIndex: 0,
                     sheetCornerRadius: 28,
                     sheetGrabberVisible: true,
                     sheetExpandsWhenScrolledToEdge: true,
-                  },
-                  default: {
+                    sheetLargestUndimmedDetentIndex: "none",
+                  }}
+                />
+                <Stack.Screen name="(home)" />
+                <Stack.Screen
+                  name="organization-switcher"
+                  options={{
+                    headerShown: Platform.OS === "ios",
+                    headerBackVisible: false,
+                    headerShadowVisible: false,
+                    headerStyle: { backgroundColor: "transparent" },
+                    title: "Pilih organisasi",
+                    contentStyle: { backgroundColor: "transparent" },
                     presentation: "formSheet",
-                    headerShown: false,
-                    contentStyle: { backgroundColor: colors.background },
                     sheetAllowedDetents: [0.55, 0.9],
                     sheetInitialDetentIndex: 0,
                     sheetCornerRadius: 28,
                     sheetElevation: 24,
-                    sheetGrabberVisible: true,
+                    sheetGrabberVisible: false,
                     sheetExpandsWhenScrolledToEdge: true,
                     sheetLargestUndimmedDetentIndex: "none",
-                  },
-                })}
-              />
-              <Stack.Screen
-                name="games/[gameKey]"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="courses/[courseId]/items/[courseItemId]"
-                options={{
-                  headerShown: true,
-                  headerTitle: "",
-                  animation: transition,
-                }}
-              />
-              <Stack.Screen
-                name="courses/[courseId]/items/[courseItemId]/learning-progress"
-                options={Platform.select({
-                  ios: {
-                    presentation: "formSheet",
-                    headerShown: false,
-                    contentStyle: { backgroundColor: "transparent" },
-                    sheetAllowedDetents: "fitToContents",
-                    sheetExpandsWhenScrolledToEdge: false,
-                    sheetGrabberVisible: false,
-                  },
-                  default: {
-                    presentation: "formSheet",
-                    headerShown: false,
-                    contentStyle: { backgroundColor: "transparent" },
-                    sheetAllowedDetents: "fitToContents",
-                    sheetInitialDetentIndex: 0,
-                    sheetCornerRadius: 28,
-                    sheetElevation: 24,
-                    sheetGrabberVisible: false,
-                    sheetShouldOverflowTopInset: false,
-                    sheetLargestUndimmedDetentIndex: "none",
-                    sheetResizeAnimationEnabled: true,
-                  },
-                })}
-              />
-              <Stack.Screen
-                name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"
-                options={{ headerShown: true, animation: transition }}
-              />
-            </Stack.Protected>
-          </Stack>
-        </DrawerProvider>
+                  }}
+                  listeners={{
+                    transitionEnd: (event) => {
+                      if (!event.data.closing) void refreshOrganizations();
+                    },
+                  }}
+                />
+                <Stack.Screen
+                  name="events/[eventId]"
+                  options={{ animation: transition }}
+                />
+                <Stack.Screen name="vocabulary/[vocabularySetId]" />
+                <Stack.Screen
+                  name="vocabulary/[vocabularySetId]/items/[entryId]"
+                  options={Platform.select({
+                    ios: {
+                      presentation: "formSheet",
+                      headerShown: false,
+                      contentStyle: { backgroundColor: colors.background },
+                      sheetAllowedDetents: [0.55, 0.9],
+                      sheetInitialDetentIndex: 0,
+                      sheetCornerRadius: 28,
+                      sheetGrabberVisible: true,
+                      sheetExpandsWhenScrolledToEdge: true,
+                    },
+                    default: {
+                      presentation: "formSheet",
+                      headerShown: false,
+                      contentStyle: { backgroundColor: colors.background },
+                      sheetAllowedDetents: [0.55, 0.9],
+                      sheetInitialDetentIndex: 0,
+                      sheetCornerRadius: 28,
+                      sheetElevation: 24,
+                      sheetGrabberVisible: true,
+                      sheetExpandsWhenScrolledToEdge: true,
+                      sheetLargestUndimmedDetentIndex: "none",
+                    },
+                  })}
+                />
+                <Stack.Screen
+                  name="games/[gameKey]"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="courses/[courseId]/items/[courseItemId]"
+                  options={{
+                    headerShown: true,
+                    headerTitle: "",
+                    animation: transition,
+                  }}
+                />
+                <Stack.Screen
+                  name="courses/[courseId]/items/[courseItemId]/learning-progress"
+                  options={Platform.select({
+                    ios: {
+                      presentation: "formSheet",
+                      headerShown: false,
+                      contentStyle: { backgroundColor: "transparent" },
+                      sheetAllowedDetents: "fitToContents",
+                      sheetExpandsWhenScrolledToEdge: false,
+                      sheetGrabberVisible: false,
+                    },
+                    default: {
+                      presentation: "formSheet",
+                      headerShown: false,
+                      contentStyle: { backgroundColor: "transparent" },
+                      sheetAllowedDetents: "fitToContents",
+                      sheetInitialDetentIndex: 0,
+                      sheetCornerRadius: 28,
+                      sheetElevation: 24,
+                      sheetGrabberVisible: false,
+                      sheetShouldOverflowTopInset: false,
+                      sheetLargestUndimmedDetentIndex: "none",
+                      sheetResizeAnimationEnabled: true,
+                    },
+                  })}
+                />
+                <Stack.Screen
+                  name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"
+                  options={{ headerShown: true, animation: transition }}
+                />
+              </Stack.Protected>
+            </Stack>
+          </DrawerProvider>
+        </PushNotificationsProvider>
       </ThemeProvider>
     </>
   );

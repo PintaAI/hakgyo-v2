@@ -43,7 +43,8 @@ export const subscribeWebSchema = z.object({
 
 const expoTokenSchema = z
   .string()
-  .regex(/^ExponentPushToken\[[^\]]+\]$/, {
+  // Same forms `Expo.isExpoPushToken` accepts for native tokens.
+  .regex(/^Expo(?:nent)?PushToken\[[^\]]+\]$/, {
     message: "Invalid Expo push token",
   })
   .max(500);
@@ -63,6 +64,8 @@ export const notificationTypeSchema = z.enum([
   "assessment-graded",
   "assessment-opened",
   "assessment-closing",
+  "assessment-cancelled",
+  "assessment-invalidated",
   "cohort-meeting",
   "enrollment",
   "announcement",

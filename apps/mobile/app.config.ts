@@ -4,12 +4,20 @@
 // NOTE: the `hakgyo` deep-link scheme is intentionally identical for both
 // variants to stay aligned with the Expo auth client and Better Auth
 // trustedOrigins (see AGENTS.md).
+import { existsSync } from "node:fs";
+
 const variant =
   process.env.APP_VARIANT === "development" ? "development" : "production";
 const isDev = variant === "development";
 
 const bundleIdentifier = isDev ? "com.rorez.hakgyo.dev" : "com.rorez.hakgyo";
 const androidPackage = isDev ? "com.rorez.hakgyo.dev" : "com.rorez.hakgyo";
+// Firebase config for Android FCM push. EAS can inject it as a file env var
+// (GOOGLE_SERVICES_JSON); otherwise use the committed file when present.
+// Without it the app still builds, but Android cannot receive pushes.
+const googleServicesFile =
+  process.env.GOOGLE_SERVICES_JSON ??
+  (existsSync("./google-services.json") ? "./google-services.json" : undefined);
 const appGroup = isDev
   ? "group.com.rorez.hakgyo.dev"
   : "group.com.rorez.hakgyo";
@@ -49,6 +57,7 @@ export default {
         monochromeImage: "./assets/android-icon-monochrome.png",
       },
       predictiveBackGestureEnabled: false,
+      ...(googleServicesFile ? { googleServicesFile } : {}),
     },
     web: {
       favicon: "./assets/favicon.png",
@@ -75,6 +84,14 @@ export default {
         },
       ],
       "expo-audio",
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/notification-icon.png",
+          color: "#171717",
+          defaultChannel: "default",
+        },
+      ],
       [
         "expo-speech-recognition",
         {

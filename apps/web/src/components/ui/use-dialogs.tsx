@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +36,8 @@ type ConfirmOptions = {
 type PromptField = {
   name: string;
   label: string;
-  type?: "text" | "number" | "textarea";
+  /** Checkbox fields are optional and resolve to "true" or "false". */
+  type?: "text" | "number" | "textarea" | "checkbox";
   defaultValue?: string;
   min?: number;
   max?: number;
@@ -113,7 +115,9 @@ export function useDialogs() {
       Object.fromEntries(
         request.options.fields.map((field) => [
           field.name,
-          (data.get(field.name) as string | null)?.trim() ?? "",
+          field.type === "checkbox"
+            ? String(data.get(field.name) !== null)
+            : ((data.get(field.name) as string | null)?.trim() ?? ""),
         ]),
       ),
     );
@@ -156,6 +160,18 @@ export function useDialogs() {
             </DialogHeader>
             {request.options.fields.map((field, index) => {
               const id = `dialog-field-${field.name}`;
+              if (field.type === "checkbox") {
+                return (
+                  <div key={field.name} className="flex items-center gap-2">
+                    <Checkbox
+                      id={id}
+                      name={field.name}
+                      defaultChecked={field.defaultValue !== "false"}
+                    />
+                    <Label htmlFor={id}>{field.label}</Label>
+                  </div>
+                );
+              }
               return (
                 <div key={field.name} className="grid gap-2">
                   <Label htmlFor={id}>{field.label}</Label>

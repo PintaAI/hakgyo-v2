@@ -1,0 +1,30 @@
+name: Notifications
+
+# Every 10 minutes: event "closes soon" and meeting "starts soon" pushes, and
+# Expo push receipt checks (see apps/web/src/app/api/cron/notifications/route.ts).
+# GitHub may start scheduled runs late; the reminder windows allow for that.
+# CRON_SECRET must match the value set in Vercel.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: notifications-cron
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call notifications route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 300 \
+            -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            https://hakgyo-v2.vercel.app/api/cron/notifications

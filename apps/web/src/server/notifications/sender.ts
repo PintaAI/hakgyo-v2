@@ -1,5 +1,5 @@
 import type { NotifyPayload } from "~/server/notifications/types";
-import { Expo } from "expo-server-sdk";
+import { Expo, type ExpoPushMessage } from "expo-server-sdk";
 import webpush from "web-push";
 
 import { env } from "~/env";
@@ -34,22 +34,16 @@ function ensureVapid() {
   return true;
 }
 
-const expo = new Expo();
+// With "enhanced push security" enabled in EAS, Expo rejects sends without
+// this token.
+export const expo = new Expo(
+  env.EXPO_ACCESS_TOKEN ? { accessToken: env.EXPO_ACCESS_TOKEN } : {},
+);
 
-export async function sendToTarget(
-  target: PushTargetRef,
-  payload: NotifyPayload,
-): Promise<SendOutcome> {
-  if (target.platform === "web") {
-    return sendWebPush(target, payload);
-  }
-  if (target.platform === "expo") {
-    return sendExpoPush(target, payload);
-  }
-  return { status: "failed", reason: `unknown platform ${target.platform}` };
-}
+/** Android channel created by the mobile app (`DEFAULT_CHANNEL_ID`). */
+const EXPO_CHANNEL_ID = "default";
 
-async function sendWebPush(
+export async function sendWebPush(
   target: PushTargetRef,
   payload: NotifyPayload,
 ): Promise<SendOutcome> {
@@ -94,42 +88,76 @@ async function sendWebPush(
   }
 }
 
-async function sendExpoPush(
-  target: PushTargetRef,
-  payload: NotifyPayload,
-): Promise<SendOutcome> {
-  if (!target.expoPushToken) {
-    return { status: "failed", reason: "missing Expo push token" };
-  }
-  if (!Expo.isExpoPushToken(target.expoPushToken)) {
-    return { status: "gone", reason: "malformed Expo push token" };
-  }
-  try {
-    const [ticket] = await expo.sendPushNotificationsAsync([
-      {
-        to: target.expoPushToken,
-        title: payload.title,
-        body: payload.body,
-        data: {
-          notificationId: payload.notificationId,
-          path: payload.path,
-          mobilePath: payload.mobilePath,
+export type ExpoSendOutcome = SendOutcome & { ticketId?: string };
+
+/**
+ * Sends one message per target through Expo in chunks of 100. Outcomes are
+ * returned in input order; `ticketId` is set for accepted messages so their
+ * receipts can be checked later.
+ */
+export async function sendExpoPushes(
+  sends: Array<{ target: PushTargetRef; payload: NotifyPayload }>,
+): Promise<ExpoSendOutcome[]> {
+  const outcomes: ExpoSendOutcome[] = sends.map(() => ({
+    status: "failed",
+    reason: "not sent",
+  }));
+  const indexed: Array<{ index: number; message: ExpoPushMessage }> = [];
+  sends.forEach(({ target, payload }, index) => {
+    if (!target.expoPushToken) {
+      outcomes[index] = { status: "failed", reason: "missing Expo push token" };
+    } else if (!Expo.isExpoPushToken(target.expoPushToken)) {
+      outcomes[index] = { status: "gone", reason: "malformed Expo push token" };
+    } else {
+      indexed.push({
+        index,
+        message: {
+          to: target.expoPushToken,
+          title: payload.title,
+          body: payload.body,
+          data: {
+            notificationId: payload.notificationId,
+            path: payload.path,
+            mobilePath: payload.mobilePath,
+          },
+          sound: "default",
+          priority: "high",
+          channelId: EXPO_CHANNEL_ID,
+          // Same-tag notifications replace each other (iOS / Android).
+          collapseId: payload.tag,
+          tag: payload.tag,
         },
-      },
-    ]);
-    if (!ticket) return { status: "failed", reason: "empty ticket" };
-    if (ticket.status === "ok") return { status: "sent" };
-    if (ticket.details?.error === "DeviceNotRegistered") {
-      return { status: "gone", reason: "DeviceNotRegistered" };
+      });
     }
-    return {
-      status: "failed",
-      reason: ticket.details?.error ?? "expo ticket error",
-    };
-  } catch (error) {
-    return {
-      status: "failed",
-      reason: error instanceof Error ? error.message : "expo send error",
-    };
+  });
+
+  for (let start = 0; start < indexed.length; start += 100) {
+    const chunk = indexed.slice(start, start + 100);
+    try {
+      const tickets = await expo.sendPushNotificationsAsync(
+        chunk.map(({ message }) => message),
+      );
+      chunk.forEach(({ index }, position) => {
+        const ticket = tickets[position];
+        if (!ticket) {
+          outcomes[index] = { status: "failed", reason: "empty ticket" };
+        } else if (ticket.status === "ok") {
+          outcomes[index] = { status: "sent", ticketId: ticket.id };
+        } else if (ticket.details?.error === "DeviceNotRegistered") {
+          outcomes[index] = { status: "gone", reason: "DeviceNotRegistered" };
+        } else {
+          outcomes[index] = {
+            status: "failed",
+            reason: ticket.details?.error ?? ticket.message,
+          };
+        }
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "expo send error";
+      for (const { index } of chunk) {
+        outcomes[index] = { status: "failed", reason };
+      }
+    }
   }
+  return outcomes;
 }
