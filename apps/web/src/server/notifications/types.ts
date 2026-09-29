@@ -27,6 +27,11 @@ export interface NotifyPayload {
   mobilePath?: string;
   /** Collapse key: same-tag notifications replace each other per device. */
   tag: string;
+  /**
+   * Entity ids (eventId, meetingId, attemptId, cohortId, courseId). The app
+   * uses them to sync and clear the matching Pembaruan items on tap.
+   */
+  data?: Record<string, string>;
 }
 
 /** Inbox event kinds. Domain triggers reuse these; add new kinds here. */

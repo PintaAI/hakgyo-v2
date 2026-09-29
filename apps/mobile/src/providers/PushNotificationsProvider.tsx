@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import {
@@ -14,7 +15,12 @@ import { Alert, AppState, Linking } from "react-native";
 
 import { authClient } from "../lib/auth-client";
 import { requestLearnCohortFocus } from "../lib/learn-cohort-focus";
-import { getNotificationTarget } from "../lib/notification-target";
+import {
+  getNotificationTarget,
+  getPushedEntity,
+  matchingIndicatorKeys,
+  matchingNoticeIds,
+} from "../lib/notification-target";
 import {
   getDeviceDetails,
   getExpoPushToken,
@@ -28,7 +34,14 @@ import {
   setPushOptedOut,
   wasPushPrompted,
 } from "../lib/push-notifications";
+import { useSidebarIndicators } from "../lib/sidebar-indicators";
 import { api } from "../lib/trpc";
+import { useSyncNotices, type LearnerIndex } from "../sync/hooks";
+import type { LocalIndexRecord } from "../sync/local-data";
+import type { SyncNotice } from "../sync/notices";
+import { indexScope, syncQueryKeys } from "../sync/query-keys";
+import { useAppTheme } from "./AppThemeProvider";
+import { useMobileSyncActions } from "./MobileSyncProvider";
 
 // Show pushes that arrive while the app is open like any other notification.
 Notifications.setNotificationHandler({
@@ -93,6 +106,49 @@ export function PushNotificationsProvider({
   const utils = api.useUtils();
   const registeredRef = useRef<string | null>(null);
   const promptingRef = useRef(false);
+  const queryClient = useQueryClient();
+  const { activeOrganizationId } = useAppTheme();
+  const { checkForUpdates } = useMobileSyncActions();
+  const { dismiss: dismissNotices } = useSyncNotices(null);
+  const { markSeen } = useSidebarIndicators();
+
+  /**
+   * Pushes announce changes the Pembaruan drawer derives from sync data, so
+   * pull them in now instead of at the next poll. After a tap, clear the
+   * drawer items about the same change so it is not unread twice.
+   */
+  const syncPushedChange = useCallback(
+    async (data: unknown, opened: boolean) => {
+      const organizationId = activeOrganizationId ?? undefined;
+      await checkForUpdates(organizationId).catch(() => undefined);
+      if (!opened) return;
+      const entity = getPushedEntity(data);
+      const notices =
+        queryClient.getQueryData<SyncNotice[]>(syncQueryKeys.notices()) ?? [];
+      const noticeIds = matchingNoticeIds(notices, entity);
+      if (noticeIds.length > 0) dismissNotices(noticeIds);
+      const index = queryClient.getQueryData<LocalIndexRecord<LearnerIndex>>(
+        syncQueryKeys.index(indexScope(activeOrganizationId)),
+      );
+      const keys = matchingIndicatorKeys(
+        index?.index.sidebarIndicators?.items ?? [],
+        entity,
+      );
+      if (keys.length > 0) markSeen(keys);
+    },
+    [
+      activeOrganizationId,
+      checkForUpdates,
+      dismissNotices,
+      markSeen,
+      queryClient,
+    ],
+  );
+  // Listeners subscribe once; they always call the latest version.
+  const syncPushedChangeRef = useRef(syncPushedChange);
+  useEffect(() => {
+    syncPushedChangeRef.current = syncPushedChange;
+  }, [syncPushedChange]);
 
   const register = useCallback(async () => {
     if (!userId) return;
@@ -178,6 +234,10 @@ export function PushNotificationsProvider({
           { onSuccess: () => void utils.notification.unreadCount.invalidate() },
         );
       }
+      void syncPushedChangeRef.current(
+        response.notification.request.content.data,
+        true,
+      );
       if (target.kind === "cohort") {
         requestLearnCohortFocus(target.cohortId);
         router.navigate("/(home)/(tabs)/learn");
@@ -190,7 +250,18 @@ export function PushNotificationsProvider({
     handle(Notifications.getLastNotificationResponse());
     const subscription =
       Notifications.addNotificationResponseReceivedListener(handle);
-    return () => subscription.remove();
+    // Arrived while the app is open: refresh so the drawer already has it.
+    const received = Notifications.addNotificationReceivedListener(
+      (notification) =>
+        void syncPushedChangeRef.current(
+          notification.request.content.data,
+          false,
+        ),
+    );
+    return () => {
+      subscription.remove();
+      received.remove();
+    };
   }, [markRead, userId, utils]);
 
   const setEnabled = useCallback(

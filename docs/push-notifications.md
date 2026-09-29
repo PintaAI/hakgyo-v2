@@ -25,7 +25,7 @@ Teachers choose per action with the "Beri tahu peserta" checkbox (default on); t
 
 ## Mobile client
 
-`PushNotificationsProvider` (inside the root navigator) registers the device through `notification.registerDevice` whenever permission already exists, re-registers on token rotation, and routes taps, including the tap that launched the app. It never prompts on launch: the one-time pre-permission alert appears on the Tugas tab or an event screen, and Profile › Pengaturan › Notifikasi has an on/off switch. Signing out calls `notification.disableDevice` first. The install's `deviceId` lives in SecureStore.
+`PushNotificationsProvider` (inside the root navigator) registers the device through `notification.registerDevice` whenever permission already exists, re-registers on token rotation, and routes taps, including the tap that launched the app. It never prompts on launch: the one-time pre-permission alert appears on the Tugas tab or an event screen, and Profile › Pengaturan › Notifikasi has an on/off switch. Signing out calls `notification.disableDevice` first. Pushes carry the entity ids from the trigger's `data` (`eventId`, `meetingId`, `attemptId`, `cohortId`, `courseId`). A push that arrives while the app is open, or is tapped, runs a sync check so the Pembaruan drawer shows the change immediately; a tap also dismisses the drawer notices and unread indicators about the same entity (`src/lib/notification-target.ts`). The drawer stays the in-app list; the server inbox (`notification.inboxList`) is not shown on mobile. The install's `deviceId` lives in SecureStore.
 
 Push needs a development or store build on a physical device; simulators and Expo Go report the feature as unavailable.
 

@@ -112,6 +112,7 @@ export async function notifyUsers(
         path,
         mobilePath: content.mobilePath,
         tag: content.tag ?? `${content.type}:${notificationId}`,
+        data: content.data,
       },
     });
   }

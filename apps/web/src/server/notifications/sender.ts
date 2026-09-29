@@ -116,6 +116,7 @@ export async function sendExpoPushes(
           title: payload.title,
           body: payload.body,
           data: {
+            ...payload.data,
             notificationId: payload.notificationId,
             path: payload.path,
             mobilePath: payload.mobilePath,
