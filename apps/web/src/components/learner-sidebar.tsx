@@ -9,6 +9,7 @@ import {
   BookOpenIcon,
   CompassIcon,
   GraduationCapIcon,
+  HouseIcon,
   LayoutDashboardIcon,
   TrophyIcon,
 } from "lucide-react";
@@ -56,7 +57,7 @@ export function LearnerSidebar({
             <SidebarMenuButton
               size="lg"
               tooltip="Hakgyo Learn"
-              render={<Link href="/learn/courses" onClick={closeMobile} />}
+              render={<Link href="/learn" onClick={closeMobile} />}
             >
               <span className="bg-sidebar-primary text-sidebar-primary-foreground flex size-8 items-center justify-center rounded-lg">
                 <GraduationCapIcon className="size-4.5" />
@@ -79,24 +80,34 @@ export function LearnerSidebar({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
+                  isActive={pathname === "/learn"}
+                  tooltip="Hari ini"
+                  render={<Link href="/learn" onClick={closeMobile} />}
+                >
+                  <HouseIcon />
+                  <span>Hari ini</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
                   isActive={pathname === "/learn/courses"}
-                  tooltip="Dashboard"
+                  tooltip="Belajar"
                   render={<Link href="/learn/courses" onClick={closeMobile} />}
                 >
                   <LayoutDashboardIcon />
-                  <span>Dashboard</span>
+                  <span>Belajar</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={isActive(pathname, "/learn/assessments")}
-                  tooltip="Event tugas"
+                  tooltip="Latihan"
                   render={
                     <Link href="/learn/assessments" onClick={closeMobile} />
                   }
                 >
                   <TrophyIcon />
-                  <span>Event tugas</span>
+                  <span>Latihan</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

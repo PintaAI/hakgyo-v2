@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { LearnerAssessmentEvent } from "~/components/learner-assessment-events";
+import { AssessmentEvent } from "~/components/learner/assessment/assessment-event";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = { title: "Event tugas" };
@@ -21,5 +21,5 @@ export default async function AssessmentEventPage({
     );
   }
 
-  return <LearnerAssessmentEvent event={event} />;
+  return <AssessmentEvent event={event} />;
 }

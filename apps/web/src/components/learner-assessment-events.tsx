@@ -1,20 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  ArrowLeftIcon,
   ArrowRightIcon,
   Clock3Icon,
-  LoaderCircleIcon,
   TrophyIcon,
   UsersIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";
-import { Button, buttonVariants } from "~/components/ui/button";
+import { buttonVariants } from "~/components/ui/button";
 import {
   Card,
   CardContent,
@@ -22,16 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
-import { cn } from "~/lib/utils";
-import { api, type RouterOutputs } from "~/trpc/react";
+import type { RouterOutputs } from "~/trpc/react";
 
 type LearnerEvent = RouterOutputs["assessmentEvent"]["listForLearner"][number];
 
@@ -42,13 +29,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-function formatDuration(milliseconds: number) {
-  const totalSeconds = Math.round(milliseconds / 1000);
-  return `${Math.floor(totalSeconds / 60)}:${(totalSeconds % 60)
-    .toString()
-    .padStart(2, "0")}`;
-}
 
 function eventState(event: LearnerEvent) {
   const attempt = event.attempts[0];
@@ -169,202 +149,6 @@ export function LearnerAssessmentEvents({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-export function LearnerAssessmentEvent({
-  event,
-}: {
-  event: RouterOutputs["assessmentEvent"]["getForLearner"];
-}) {
-  const router = useRouter();
-  const start = api.assessmentEvent.startAttempt.useMutation();
-  const attempt = event.attempts[0];
-  const participant = event.participants[0];
-  const expired = event.closesAt ? event.closesAt <= new Date() : false;
-  const attemptHref = attempt
-    ? `/learn/${event.course.id}/items/${event.courseItem.id}/attempts/${attempt.id}`
-    : null;
-  const showLeaderboard =
-    event.entry.state === "SUBMITTED" ||
-    event.entry.state === "IN_REVIEW" ||
-    event.entry.state === "GRADED" ||
-    event.status === "CLOSED";
-
-  async function startAttempt() {
-    try {
-      const created = await start.mutateAsync({ eventId: event.id });
-      router.push(
-        `/learn/${created.courseId}/items/${created.courseItemId}/attempts/${created.id}`,
-      );
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Event belum dapat dimulai.",
-      );
-    }
-  }
-
-  return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
-      <Link
-        href="/learn/assessments"
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "sm" }),
-          "text-muted-foreground -ml-2",
-        )}
-      >
-        <ArrowLeftIcon /> Semua event
-      </Link>
-      <section className="bg-foreground text-background relative overflow-hidden rounded-lg px-6 py-8 sm:px-9 sm:py-11">
-        <div className="pointer-events-none absolute top-0 right-0 size-56 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
-        <div className="relative">
-          <div className="flex flex-wrap gap-2">
-            <Badge className="border-background/20 bg-background/10 text-background">
-              {event.type === "TRYOUT" ? "Tryout" : "Tugas cepat"}
-            </Badge>
-            <Badge className="border-background/20 bg-background/10 text-background">
-              {event.scope === "COHORT"
-                ? event.cohort?.name
-                : event.course.title}
-            </Badge>
-          </div>
-          <h1 className="font-heading mt-4 max-w-3xl text-3xl font-medium tracking-tight sm:text-5xl">
-            {event.title}
-          </h1>
-          <p className="text-background/70 mt-3 text-sm">
-            {event.courseItem.assessment?.title} · {event.durationMinutes} menit
-          </p>
-          <p className="text-background/70 mt-1 text-sm">
-            {event.courseItem.assessment?._count.questions ?? 0} soal · Nilai
-            lulus {event.courseItem.assessment?.passingScore ?? 0}% · Attempt{" "}
-            {event.attemptCount}/
-            {event.courseItem.assessment?.maxAttempts ?? "∞"}
-          </p>
-          {event.closesAt ? (
-            <p className="text-background/70 mt-1 text-sm">
-              Ditutup {dateTimeFormatter.format(event.closesAt)}
-            </p>
-          ) : null}
-          {participant?.invalidatedAt ? (
-            <div className="border-destructive/40 bg-destructive/10 mt-7 rounded-md border p-4 text-sm">
-              Attempt kamu dinyatakan tidak valid.{" "}
-              {participant.invalidationReason}
-            </div>
-          ) : event.status === "OPEN" && !expired ? (
-            <div className="mt-7 flex flex-wrap gap-3">
-              {event.entry.canStart || event.entry.canReattempt ? (
-                <Button
-                  className="bg-background text-foreground hover:bg-background/90"
-                  size="lg"
-                  disabled={start.isPending}
-                  onClick={startAttempt}
-                >
-                  {start.isPending ? (
-                    <LoaderCircleIcon className="animate-spin" />
-                  ) : null}
-                  {event.entry.canReattempt ? "Coba lagi" : "Mulai sekarang"}
-                  <ArrowRightIcon />
-                </Button>
-              ) : null}
-              {attemptHref ? (
-                <Link
-                  href={attemptHref}
-                  className={buttonVariants({
-                    variant: "secondary",
-                    size: "lg",
-                  })}
-                >
-                  Lihat hasil <ArrowRightIcon />
-                </Link>
-              ) : null}
-            </div>
-          ) : attemptHref ? (
-            <Link
-              href={attemptHref}
-              className={cn(
-                buttonVariants({ variant: "secondary", size: "lg" }),
-                "mt-7",
-              )}
-            >
-              Lihat hasil <ArrowRightIcon />
-            </Link>
-          ) : (
-            <p className="text-background/70 mt-7 text-sm">
-              Event telah ditutup. Tidak ada attempt yang tercatat.
-            </p>
-          )}
-        </div>
-      </section>
-
-      {showLeaderboard ? (
-        <Card className="rounded-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrophyIcon className="size-5" /> Leaderboard
-            </CardTitle>
-            <CardDescription>
-              Attempt terbaik setiap peserta, diurutkan berdasarkan nilai, waktu
-              pengerjaan, lalu waktu submit.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {event.leaderboard?.length ? (
-              <div className="overflow-x-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-20">Rank</TableHead>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Nilai</TableHead>
-                      <TableHead>Waktu</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {event.leaderboard.map((entry) => (
-                      <TableRow
-                        key={entry.userId}
-                        className={
-                          entry.attemptId === attempt?.id
-                            ? "bg-muted/40"
-                            : undefined
-                        }
-                      >
-                        <TableCell className="font-semibold tabular-nums">
-                          #{entry.rank}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {entry.name}
-                        </TableCell>
-                        <TableCell className="tabular-nums">
-                          {entry.score}/{entry.maxScore} ({entry.percentage}%)
-                        </TableCell>
-                        <TableCell className="tabular-nums">
-                          {formatDuration(entry.completionTimeMs)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-muted-foreground py-8 text-center text-sm">
-                Belum ada hasil valid untuk ditampilkan.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="rounded-lg">
-          <CardContent className="py-8 text-center">
-            <TrophyIcon className="text-muted-foreground mx-auto size-6" />
-            <p className="mt-2 font-medium">Leaderboard belum tersedia</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Nama dan hasil peserta akan tampil setelah event ditutup.
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

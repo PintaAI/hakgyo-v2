@@ -1,0 +1,62 @@
+export function canOpenModule(access: string) {
+  return access === "AVAILABLE" || access === "COMPLETED";
+}
+
+export function meetingState(
+  meeting: { startsAt: Date; durationMinutes: number; status: string },
+  now = Date.now(),
+) {
+  if (meeting.status === "CANCELLED" || meeting.status === "ENDED")
+    return "ended";
+  const start = meeting.startsAt.getTime();
+  if (now >= start + meeting.durationMinutes * 60_000) return "ended";
+  if (meeting.status === "STARTED" || now >= start) return "live";
+  return now >= start - 10 * 60_000 ? "joining" : "upcoming";
+}
+
+export function safeExternalUrl(
+  value: string,
+  kind: "zoom" | "googleMeet" | "whatsapp",
+) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    const host = url.hostname.toLowerCase();
+    const allowed =
+      kind === "googleMeet"
+        ? host === "meet.google.com"
+        : kind === "zoom"
+          ? host === "zoom.us" ||
+            host.endsWith(".zoom.us") ||
+            host === "zoom.com" ||
+            host.endsWith(".zoom.com")
+          : host === "chat.whatsapp.com";
+    return allowed ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+export function dateLabel(date: Date) {
+  return date.toLocaleString("id-ID", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function dayLabel(date: Date) {
+  return date.toLocaleDateString("id-ID", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function timeLabel(date: Date) {
+  return date.toLocaleTimeString("id-ID", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

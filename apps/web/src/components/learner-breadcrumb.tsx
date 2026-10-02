@@ -16,19 +16,24 @@ export function LearnerBreadcrumb() {
   const pathname = usePathname();
   const currentLabel = pathname.includes("/attempts/")
     ? "Tugas"
-    : pathname.startsWith("/learn/assessments")
-      ? "Event tugas"
-      : pathname.includes("/items/")
-        ? "Aktivitas"
-        : pathname === "/learn/courses"
-          ? "Dashboard"
-          : "Course";
+    : pathname.startsWith("/learn/assessments") ||
+        pathname.startsWith("/learn/practice")
+      ? "Latihan"
+      : pathname.startsWith("/learn/vocabulary")
+        ? "Kosakata"
+        : pathname.includes("/items/")
+          ? "Aktivitas"
+          : pathname === "/learn"
+            ? "Hari ini"
+            : pathname === "/learn/courses"
+              ? "Belajar"
+              : "Course";
 
   return (
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem className="hidden md:inline-flex">
-          <BreadcrumbLink render={<Link href="/learn/courses" />}>
+          <BreadcrumbLink render={<Link href="/learn" />}>
             Ruang belajar
           </BreadcrumbLink>
         </BreadcrumbItem>

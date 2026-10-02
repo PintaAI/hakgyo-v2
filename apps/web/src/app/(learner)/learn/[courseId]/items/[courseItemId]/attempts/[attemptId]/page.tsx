@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { AssessmentAttempt } from "~/components/learner-assessment";
+import { AssessmentAttempt } from "~/components/learner/assessment/assessment-attempt";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = { title: "Kerjakan tugas" };

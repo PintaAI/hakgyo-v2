@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { AssessmentIntroduction } from "~/components/learner-assessment";
+import { AssessmentIntroduction } from "~/components/learner/assessment/assessment-introduction";
 import { LearnerCourseItem } from "~/components/learner-course-item";
 import { api } from "~/trpc/server";
 

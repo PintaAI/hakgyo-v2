@@ -1,0 +1,96 @@
+export type LearningPathItem = {
+  id: string;
+  title: string;
+  isCompleted: boolean;
+  type?: "MATERIAL" | "VOCABULARY_SET" | "ASSESSMENT";
+  attempt?: {
+    id: string;
+    status: "IN_PROGRESS" | "SUBMITTED" | "IN_REVIEW" | "GRADED";
+  } | null;
+};
+
+export type LearningPathModule = {
+  id: string;
+  title: string;
+  access: "LOCKED" | "AVAILABLE" | "COMPLETED";
+  isCompleted: boolean;
+  items: LearningPathItem[];
+};
+
+export type LearningPathCourse = { modules: LearningPathModule[] };
+
+export function getCourseResumeItem(course: LearningPathCourse) {
+  return course.modules
+    .filter((module) => module.access !== "LOCKED")
+    .flatMap((module) => module.items)
+    .find((item) => !item.isCompleted);
+}
+
+export function getLearningPath(course: LearningPathCourse, itemId: string) {
+  const moduleIndex = course.modules.findIndex((entry) =>
+    entry.items.some((item) => item.id === itemId),
+  );
+  const courseModule = course.modules[moduleIndex];
+  if (!courseModule || courseModule.access === "LOCKED") return undefined;
+  const itemIndex = courseModule.items.findIndex((item) => item.id === itemId);
+  const item = courseModule.items[itemIndex]!;
+  const allItems = course.modules.flatMap((entry) => entry.items);
+  const available = course.modules
+    .filter((entry) => entry.access !== "LOCKED")
+    .flatMap((entry) => entry.items);
+  const currentIndex = available.findIndex((item) => item.id === itemId);
+  // Revisiting completed content stays in its local sequence. Otherwise, finish
+  // gaps in this module before moving on, even when opened out of order.
+  const nextItem =
+    (item.isCompleted ? courseModule.items[itemIndex + 1] : undefined) ??
+    courseModule.items.slice(itemIndex + 1).find((item) => !item.isCompleted) ??
+    courseModule.items.find(
+      (item) => item.id !== itemId && !item.isCompleted,
+    ) ??
+    available.slice(currentIndex + 1).find((item) => !item.isCompleted) ??
+    available.find((item) => item.id !== itemId && !item.isCompleted) ??
+    available[currentIndex + 1];
+  return {
+    module: courseModule,
+    moduleIndex,
+    itemIndex,
+    item,
+    completedCount: courseModule.items.filter((item) => item.isCompleted)
+      .length,
+    courseCompleted:
+      allItems.length > 0 && allItems.every((item) => item.isCompleted),
+    nextItem,
+    nextModule: course.modules.find((entry) =>
+      entry.items.some((item) => item.id === nextItem?.id),
+    ),
+  };
+}
+
+export function getLearningMilestone(
+  before: LearningPathCourse,
+  after: LearningPathCourse,
+  itemId: string,
+) {
+  const previous = getLearningPath(before, itemId);
+  const current = getLearningPath(after, itemId);
+  if (
+    !previous ||
+    !current ||
+    previous.module.isCompleted ||
+    !current.module.isCompleted
+  )
+    return undefined;
+  const unlockedModule = after.modules.find(
+    (module) =>
+      module.access !== "LOCKED" &&
+      before.modules.some(
+        (entry) => entry.id === module.id && entry.access === "LOCKED",
+      ),
+  );
+  return {
+    moduleTitle: current.module.title,
+    courseCompleted: current.courseCompleted,
+    unlockedModuleTitle: unlockedModule?.title,
+    nextItem: current.courseCompleted ? undefined : current.nextItem,
+  };
+}
