@@ -7,6 +7,7 @@ import {
   OTHER_BANK_CODE,
 } from "~/lib/payments/banks";
 import { normalizeQris, validateQris } from "~/lib/qris";
+import { requireOrganizationPermission } from "~/server/authorization";
 
 type Database = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
@@ -20,8 +21,8 @@ const bankAccountSelect = {
   position: true,
 } satisfies Prisma.OrganizationBankAccountSelect;
 
-/** Everything the payment settings page shows. Callers check permission. */
-export async function getPaymentSettings(db: Database, organizationId: string) {
+/** Organization payment destinations; internal checkout reads need no manager role. */
+async function loadPaymentSettings(db: Database, organizationId: string) {
   const [qris, bankAccounts] = await Promise.all([
     db.organizationQris.findUnique({
       where: { organizationId },
@@ -47,7 +48,7 @@ export async function getCheckoutDestinations(
   db: Database,
   organizationId: string,
 ) {
-  const settings = await getPaymentSettings(db, organizationId);
+  const settings = await loadPaymentSettings(db, organizationId);
   return {
     qris: settings.qris?.enabled ? settings.qris : null,
     bankAccounts: settings.bankAccounts.filter(({ enabled }) => enabled),
@@ -70,8 +71,9 @@ export function availablePaymentMethods(destinations: CheckoutDestinations) {
 /** Stores a static QRIS after validating it; dynamic codes are refused. */
 export async function saveOrganizationQris(
   db: Database,
-  input: { organizationId: string; payload: string },
+  input: { organizationId: string; userId: string; payload: string },
 ) {
+  await requirePaymentSettingsManager(input.organizationId, input.userId);
   const payload = normalizeQris(input.payload);
   const validation = validateQris(payload);
   if (!validation.valid) {
@@ -120,12 +122,14 @@ export async function createOrganizationBankAccount(
   db: Database,
   input: {
     organizationId: string;
+    userId: string;
     bankCode: string;
     bankName?: string | null;
     accountNumber: string;
     accountHolder: string;
   },
 ) {
+  await requirePaymentSettingsManager(input.organizationId, input.userId);
   const last = await db.organizationBankAccount.findFirst({
     where: { organizationId: input.organizationId },
     orderBy: { position: "desc" },
@@ -148,6 +152,7 @@ export async function updateOrganizationBankAccount(
   db: Database,
   input: {
     organizationId: string;
+    userId: string;
     bankAccountId: string;
     bankCode?: string;
     bankName?: string | null;
@@ -156,6 +161,7 @@ export async function updateOrganizationBankAccount(
     enabled?: boolean;
   },
 ) {
+  await requirePaymentSettingsManager(input.organizationId, input.userId);
   const existing = await db.organizationBankAccount.findFirst({
     where: { id: input.bankAccountId, organizationId: input.organizationId },
     select: { bankCode: true, bankName: true },
@@ -177,4 +183,57 @@ export async function updateOrganizationBankAccount(
     },
     select: bankAccountSelect,
   });
+}
+
+function requirePaymentSettingsManager(organizationId: string, userId: string) {
+  return requireOrganizationPermission({
+    organizationId,
+    userId,
+    permission: "organization.manage",
+  });
+}
+
+export async function getPaymentSettings(
+  db: Database,
+  organizationId: string,
+  userId: string,
+) {
+  await requirePaymentSettingsManager(organizationId, userId);
+  return loadPaymentSettings(db, organizationId);
+}
+
+export async function setOrganizationQrisEnabled(
+  db: Database,
+  input: { organizationId: string; userId: string; enabled: boolean },
+) {
+  await requirePaymentSettingsManager(input.organizationId, input.userId);
+  const updated = await db.organizationQris.updateMany({
+    where: { organizationId: input.organizationId },
+    data: { enabled: input.enabled },
+  });
+  if (updated.count === 0) throw new TRPCError({ code: "NOT_FOUND" });
+  return { enabled: input.enabled };
+}
+
+export async function removeOrganizationQris(
+  db: Database,
+  input: { organizationId: string; userId: string },
+) {
+  await requirePaymentSettingsManager(input.organizationId, input.userId);
+  await db.organizationQris.deleteMany({
+    where: { organizationId: input.organizationId },
+  });
+  return { removed: true };
+}
+
+export async function deleteOrganizationBankAccount(
+  db: Database,
+  input: { organizationId: string; userId: string; bankAccountId: string },
+) {
+  await requirePaymentSettingsManager(input.organizationId, input.userId);
+  const deleted = await db.organizationBankAccount.deleteMany({
+    where: { id: input.bankAccountId, organizationId: input.organizationId },
+  });
+  if (deleted.count === 0) throw new TRPCError({ code: "NOT_FOUND" });
+  return { deleted: true };
 }

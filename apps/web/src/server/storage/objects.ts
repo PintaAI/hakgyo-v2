@@ -84,19 +84,22 @@ export async function headUploadedObject(key: string, label: string) {
 /**
  * Checks that an uploaded image matches the size and content type it was
  * signed for and that its bytes really are that image type. Rejected uploads
- * are removed from R2.
+ * are removed from R2 unless the caller manages cleanup of referenced objects.
  */
 export async function validateImageObject(
   key: string,
   expected: { size: number; contentType: string },
   label: string,
+  options: { removeOnFailure?: boolean } = {},
 ) {
   const object = await headUploadedObject(key, label);
   if (
     object.ContentLength !== expected.size ||
     object.ContentType !== expected.contentType
   ) {
-    await removeObject(key, "rejected upload");
+    if (options.removeOnFailure !== false) {
+      await removeObject(key, "rejected upload");
+    }
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: `Uploaded ${label} does not match the signed request`,
@@ -111,7 +114,9 @@ export async function validateImageObject(
     if (!headerObject.Body) throw new Error(`Uploaded ${label} has no body`);
     headerBytes = await headerObject.Body.transformToByteArray();
   } catch (cause) {
-    await removeObject(key, "rejected upload");
+    if (options.removeOnFailure !== false) {
+      await removeObject(key, "rejected upload");
+    }
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: `Uploaded ${label} could not be validated`,
@@ -120,7 +125,9 @@ export async function validateImageObject(
   }
 
   if (!hasImageSignature(headerBytes, expected.contentType)) {
-    await removeObject(key, "rejected upload");
+    if (options.removeOnFailure !== false) {
+      await removeObject(key, "rejected upload");
+    }
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: `Uploaded file is not a valid ${label}`,
