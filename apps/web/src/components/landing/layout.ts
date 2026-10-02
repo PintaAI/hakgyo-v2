@@ -20,10 +20,6 @@ export const wideScreenQuery = "(min-width: 64rem)";
  */
 export const presentingQuery = `${wideScreenQuery} and (min-height: 40rem)`;
 
-/** Type scale of a slide's main heading. */
-export const headlineText =
-  "text-[2rem] leading-[1.08] font-medium tracking-[-0.045em] sm:text-5xl sm:leading-[1.06] sm:tracking-[-0.05em] xl:text-6xl";
-
 /**
  * A card row that phones swipe sideways, so a slide of cards still fits one
  * screen. It bleeds to the screen edge past the container padding; add the

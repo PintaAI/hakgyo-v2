@@ -5,6 +5,7 @@ import {
   useState,
   useSyncExternalStore,
   type FormEvent,
+  type ReactNode,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,8 +15,11 @@ import {
   Building2Icon,
   KeyRoundIcon,
   LoaderCircleIcon,
+  type LucideIcon,
 } from "lucide-react";
 
+import { FlowShell, surfaceCard } from "~/components/brand/flow-shell";
+import { Headline, Kicker, leadText } from "~/components/brand/typography";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { getWorkspaceFallback } from "~/lib/access";
@@ -106,142 +110,181 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
     organizations.data?.length
   ) {
     return (
-      <main className="bg-background grid min-h-screen place-items-center px-6">
-        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+      <FlowShell className="grid min-h-[60dvh] place-items-center">
+        <p className="text-muted-foreground flex items-center gap-2 text-sm">
           <LoaderCircleIcon className="size-4 animate-spin" />
           Menyiapkan ruang Anda
-        </div>
-      </main>
+        </p>
+      </FlowShell>
     );
   }
 
+  const skip = (
+    <button
+      type="button"
+      onClick={continueAsLearner}
+      className={cn(
+        buttonVariants({ variant: "ghost", size: "sm" }),
+        "text-muted-foreground",
+      )}
+    >
+      Lewati untuk sekarang
+    </button>
+  );
+
   return (
-    <main className="bg-background min-h-screen p-4 md:p-6 lg:p-8">
-      <div className="mx-auto w-full max-w-6xl">
-        <header className="flex items-center justify-between gap-4">
+    <FlowShell action={skip}>
+      <section className="max-w-3xl pt-6 sm:pt-14">
+        <Kicker>Mulai dengan Hakgyo</Kicker>
+        <Headline
+          as="h1"
+          title="Mau mulai dari mana?"
+          muted="Mengajar, bergabung, atau belajar."
+          className="mt-3 sm:mt-5"
+        />
+        <p className={cn(leadText, "mt-4 sm:mt-6")}>
+          Hakgyo memisahkan workspace organization dari ruang belajar. Pilih
+          jalur yang sesuai sekarang; Anda tetap dapat membuat organization
+          lain nanti.
+        </p>
+      </section>
+
+      <section className="mt-8 grid gap-3 sm:mt-12 sm:gap-4 lg:grid-cols-3">
+        <PathCard
+          number={1}
+          icon={Building2Icon}
+          audience="Untuk pendiri"
+          title="Buat organization"
+          description="Siapkan workspace, atur course sebagai Public atau Private, dan kelola teacher, cohort, serta learner. Anda otomatis menjadi owner."
+          featured
+        >
           <Link
-            href="/"
-            className="flex items-center gap-2.5 font-semibold tracking-tight"
-          >
-            <span className="bg-foreground text-background grid size-8 place-items-center rounded-lg text-sm font-bold">
-              H
-            </span>
-            hakgyo
-          </Link>
-          <button
-            type="button"
-            onClick={continueAsLearner}
+            href="/organizations/new"
             className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "text-muted-foreground",
+              buttonVariants({ size: "lg" }),
+              "bg-primary-foreground text-primary hover:bg-primary-foreground/90 h-11 w-full",
             )}
           >
-            Lewati untuk sekarang
-          </button>
-        </header>
+            Mulai workspace
+            <ArrowRightIcon data-icon="inline-end" />
+          </Link>
+        </PathCard>
 
-        <section className="mx-auto mt-12 max-w-2xl text-center sm:mt-16">
-          <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-            Pilih perjalanan Anda
-          </p>
-          <h1 className="font-heading mt-3 text-3xl font-medium tracking-tight sm:text-4xl">
-            Mengajar, bergabung, atau mulai belajar.
-          </h1>
-          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-            Hakgyo memisahkan workspace organization dari ruang belajar. Pilih
-            jalur yang sesuai sekarang; Anda tetap dapat membuat organization
-            lain nanti.
-          </p>
-        </section>
-
-        <section className="mt-10 grid gap-4 lg:grid-cols-3">
-          <article className="bg-card ring-foreground/10 flex flex-col rounded-lg p-5 ring-1 sm:p-6">
-            <span className="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md">
-              <Building2Icon className="size-4" />
-            </span>
-            <p className="text-muted-foreground mt-6 text-xs font-semibold tracking-[0.14em] uppercase">
-              Untuk pendiri
-            </p>
-            <h2 className="font-heading mt-2 text-lg font-medium">
-              Buat organization
-            </h2>
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Siapkan workspace, atur course sebagai Public atau Private, dan
-              kelola teacher, cohort, serta learner. Anda otomatis menjadi
-              owner.
-            </p>
-            <Link
-              href="/organizations/new"
-              className={cn(buttonVariants(), "mt-6 w-full")}
-            >
-              Mulai workspace
-              <ArrowRightIcon data-icon="inline-end" />
-            </Link>
-          </article>
-
-          <article className="bg-card ring-foreground/10 flex flex-col rounded-lg p-5 ring-1 sm:p-6">
-            <span className="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md">
-              <KeyRoundIcon className="size-4" />
-            </span>
-            <p className="text-muted-foreground mt-6 text-xs font-semibold tracking-[0.14em] uppercase">
-              Untuk staff
-            </p>
-            <h2 className="font-heading mt-2 text-lg font-medium">
-              Pakai invitation
-            </h2>
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Masukkan link atau token dari owner/admin untuk menerima role
-              Teacher atau Admin.
-            </p>
-            <form onSubmit={openInvitation} className="mt-6 grid gap-2">
-              <Input
-                name="invitation"
-                placeholder="Paste link atau token"
-                aria-label="Link atau token invitation"
-              />
-              {inviteError ? (
-                <p className="text-destructive text-xs">{inviteError}</p>
-              ) : null}
-              <Button type="submit" variant="outline" className="w-full">
-                Buka invitation
-                <ArrowRightIcon data-icon="inline-end" />
-              </Button>
-            </form>
-          </article>
-
-          <article className="bg-card ring-foreground/10 flex flex-col rounded-lg p-5 ring-1 sm:p-6">
-            <span className="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md">
-              <BookOpenIcon className="size-4" />
-            </span>
-            <p className="text-muted-foreground mt-6 text-xs font-semibold tracking-[0.14em] uppercase">
-              Untuk learner
-            </p>
-            <h2 className="font-heading mt-2 text-lg font-medium">
-              Jelajahi course
-            </h2>
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Tidak perlu organization untuk mengikuti course dan melanjutkan
-              progres belajar.
-            </p>
+        <PathCard
+          number={2}
+          icon={KeyRoundIcon}
+          audience="Untuk staff"
+          title="Pakai invitation"
+          description="Masukkan link atau token dari owner atau admin untuk menerima role Teacher atau Admin."
+        >
+          <form onSubmit={openInvitation} className="grid gap-2">
+            <Input
+              name="invitation"
+              placeholder="Paste link atau token"
+              aria-label="Link atau token invitation"
+              className="h-11"
+            />
+            {inviteError ? (
+              <p className="text-destructive text-xs">{inviteError}</p>
+            ) : null}
             <Button
-              type="button"
+              type="submit"
               variant="outline"
-              className="mt-6 w-full"
-              onClick={continueAsLearner}
+              size="lg"
+              className="h-11 w-full"
             >
-              Buka catalog
+              Buka invitation
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
-          </article>
-        </section>
+          </form>
+        </PathCard>
 
-        {organizations.error ? (
-          <p className="text-destructive mt-6 text-center text-sm">
-            Organization belum dapat diperiksa. Anda tetap dapat memilih salah
-            satu jalur di atas.
-          </p>
-        ) : null}
+        <PathCard
+          number={3}
+          icon={BookOpenIcon}
+          audience="Untuk learner"
+          title="Jelajahi course"
+          description="Tidak perlu organization untuk mengikuti course dan melanjutkan progres belajar."
+        >
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-11 w-full"
+            onClick={continueAsLearner}
+          >
+            Buka catalog
+            <ArrowRightIcon data-icon="inline-end" />
+          </Button>
+        </PathCard>
+      </section>
+
+      {organizations.error ? (
+        <p className="text-destructive mt-6 text-sm">
+          Organization belum dapat diperiksa. Anda tetap dapat memilih salah
+          satu jalur di atas.
+        </p>
+      ) : null}
+    </FlowShell>
+  );
+}
+
+/** One way to start, as a card in the landing page's style. */
+function PathCard({
+  number,
+  icon: Icon,
+  audience,
+  title,
+  description,
+  featured = false,
+  children,
+}: {
+  number: number;
+  icon: LucideIcon;
+  audience: string;
+  title: string;
+  description: string;
+  /** The path for the customers Hakgyo is built for, shown in primary. */
+  featured?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <article
+      className={cn(
+        "flex flex-col p-5 sm:p-6",
+        featured
+          ? "bg-primary text-primary-foreground rounded-2xl"
+          : surfaceCard,
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          className={cn(
+            "grid size-10 place-items-center rounded-xl",
+            featured
+              ? "bg-primary-foreground text-primary"
+              : "bg-primary text-primary-foreground",
+          )}
+        >
+          <Icon className="size-5" strokeWidth={1.5} aria-hidden="true" />
+        </span>
+        <span className="font-mono text-xs opacity-60">0{number}</span>
       </div>
-    </main>
+      <Kicker inverted={featured} className="mt-6 sm:mt-10">
+        {audience}
+      </Kicker>
+      <h2 className="mt-3 text-xl font-medium tracking-tight sm:text-2xl">
+        {title}
+      </h2>
+      <p
+        className={cn(
+          "mt-2 mb-6 flex-1 text-sm leading-6",
+          featured ? "opacity-80" : "text-muted-foreground",
+        )}
+      >
+        {description}
+      </p>
+      {children}
+    </article>
   );
 }

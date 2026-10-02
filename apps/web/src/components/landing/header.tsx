@@ -1,30 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRightIcon } from "lucide-react";
 
+import { BrandLink } from "~/components/brand/brand-link";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { buttonVariants } from "~/components/ui/button";
 
 import { landingContainer } from "./layout";
-
-function Brand() {
-  return (
-    <Link
-      href="/"
-      aria-label="Hakgyo, beranda"
-      className="inline-flex items-center gap-2.5 text-xl font-semibold tracking-[-0.06em]"
-    >
-      <Image
-        src="/icons/icon-192.png"
-        alt=""
-        width={36}
-        height={36}
-        className="size-9 rounded-lg"
-      />
-      hakgyo
-    </Link>
-  );
-}
 
 /** The page header, laid over the opening slide. */
 export function LandingHeader() {
@@ -33,7 +14,7 @@ export function LandingHeader() {
       <div
         className={`${landingContainer} flex h-16 items-center justify-between gap-4 sm:h-20`}
       >
-        <Brand />
+        <BrandLink />
         <nav
           aria-label="Navigasi utama"
           className="text-muted-foreground hidden items-center gap-8 text-sm md:flex"
