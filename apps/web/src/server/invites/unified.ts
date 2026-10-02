@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
 import { courseAccessCohortStatuses } from "~/server/enrollment/cohort-access";
+import { effectiveCohortPrice } from "~/server/payment/cohort-offer";
 import {
   hashOrganizationInviteToken,
   organizationInviteStatus,
@@ -49,6 +50,7 @@ export async function resolveUnifiedInvite(
             title: true,
             description: true,
             thumbnailUrl: true,
+            price: true,
             organization: { select: { name: true, slug: true } },
             modules: {
               where: { items: { some: { isPublished: true } } },
@@ -82,6 +84,7 @@ export async function resolveUnifiedInvite(
             status: true,
             startsAt: true,
             endsAt: true,
+            price: true,
             _count: {
               select: {
                 enrollments: {
@@ -163,6 +166,11 @@ export async function resolveUnifiedInvite(
           status: enrollmentInvite.cohort.status,
           startsAt: enrollmentInvite.cohort.startsAt,
           endsAt: enrollmentInvite.cohort.endsAt,
+          // Paid cohorts are joined through checkout with this invite.
+          price: effectiveCohortPrice(
+            enrollmentInvite.cohort,
+            enrollmentInvite.course,
+          ),
         },
         joinedCount: enrollmentInvite.cohort._count.enrollments,
       };

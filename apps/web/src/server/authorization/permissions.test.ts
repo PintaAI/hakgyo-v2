@@ -149,6 +149,7 @@ describe("course capabilities", () => {
       manageLearners: false,
       manageInvites: true,
       manageMeetings: false,
+      managePayments: true,
     });
   });
 });
@@ -170,6 +171,7 @@ describe("cohort capabilities", () => {
       manageLearners: true,
       manageInvites: true,
       manageMeetings: true,
+      managePayments: true,
       reviewAssessments: true,
     });
   });
@@ -185,6 +187,7 @@ describe("cohort capabilities", () => {
       manageLearners: true,
       manageInvites: false,
       manageMeetings: false,
+      managePayments: false,
       reviewAssessments: false,
     });
   });
@@ -214,6 +217,7 @@ describe("cohort capabilities", () => {
       manageLearners: true,
       manageInvites: true,
       manageMeetings: true,
+      managePayments: true,
       reviewAssessments: true,
     });
   });

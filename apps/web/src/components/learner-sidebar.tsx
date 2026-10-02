@@ -11,6 +11,7 @@ import {
   GraduationCapIcon,
   HouseIcon,
   LayoutDashboardIcon,
+  ReceiptIcon,
   TrophyIcon,
 } from "lucide-react";
 
@@ -118,6 +119,16 @@ export function LearnerSidebar({
                 >
                   <CompassIcon />
                   <span>Jelajahi course</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isActive(pathname, "/learn/payments")}
+                  tooltip="Pembayaran"
+                  render={<Link href="/learn/payments" onClick={closeMobile} />}
+                >
+                  <ReceiptIcon />
+                  <span>Pembayaran</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

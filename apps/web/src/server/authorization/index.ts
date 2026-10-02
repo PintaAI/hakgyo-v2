@@ -194,6 +194,7 @@ export type CohortPermission =
   | "learners.manage"
   | "invites.manage"
   | "meetings.manage"
+  | "payments.manage"
   | "assessment.review";
 
 export async function requireCohortPermission(input: {
@@ -249,6 +250,7 @@ export async function requireCohortPermission(input: {
     "learners.manage": capabilities.manageLearners,
     "invites.manage": capabilities.manageInvites,
     "meetings.manage": capabilities.manageMeetings,
+    "payments.manage": capabilities.managePayments,
     "assessment.review": capabilities.reviewAssessments,
   }[permission];
 

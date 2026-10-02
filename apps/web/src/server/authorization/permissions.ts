@@ -115,6 +115,9 @@ export function getCohortCapabilities(input: {
     manageInvites:
       manager || inviteManager || (simplified ? assigned : instructor),
     manageMeetings: manager || (simplified ? assigned : instructor),
+    // Verifying manual payments grants access, so it follows invites.
+    managePayments:
+      manager || inviteManager || (simplified ? assigned : instructor),
     reviewAssessments: manager || (simplified ? assigned : instructor),
   };
 }

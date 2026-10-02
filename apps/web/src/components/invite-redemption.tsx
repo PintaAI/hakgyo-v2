@@ -23,6 +23,7 @@ import { Button, buttonVariants } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { appHandoffPath } from "~/lib/mobile-app";
+import { formatRupiah } from "~/lib/payments/payment";
 import { completeOnboarding } from "~/lib/onboarding";
 import { cn } from "~/lib/utils";
 import { authClient } from "~/server/better-auth/client";
@@ -129,6 +130,13 @@ export function InviteRedemption({ token }: { token: string }) {
     data.type === "ORGANIZATION" && data.emailMatches === false;
   const thumbnailUrl =
     data.type === "ORGANIZATION" ? null : data.course.thumbnailUrl;
+  // Paid cohorts are joined through checkout; the invite opens it.
+  const paidCohortPrice =
+    data.type === "COHORT" && data.cohort.price > 0 ? data.cohort.price : null;
+  const checkoutHref =
+    data.type === "COHORT"
+      ? `/learn/checkout/${encodeURIComponent(data.cohort.id)}?invite=${encodeURIComponent(token)}`
+      : null;
 
   async function acceptInvite() {
     try {
@@ -243,7 +251,9 @@ export function InviteRedemption({ token }: { token: string }) {
                     ? `Undangan ini ditujukan ke ${data.emailHint}. Masuklah dengan akun yang menggunakan email tersebut.`
                     : !session.data?.user
                       ? "Masuk atau buat akun untuk menerima akses. Link undangan ini tetap tersimpan selama proses masuk."
-                      : "Akun Anda sudah siap. Terima undangan untuk mengaktifkan akses belajar."}
+                      : paidCohortPrice !== null
+                        ? "Group belajar ini berbayar. Selesaikan pembayaran untuk mengaktifkan akses belajar."
+                        : "Akun Anda sudah siap. Terima undangan untuk mengaktifkan akses belajar."}
               </p>
 
               <dl className="divide-border order-3 overflow-hidden rounded-lg border lg:order-2">
@@ -258,6 +268,14 @@ export function InviteRedemption({ token }: { token: string }) {
                     <dt className="text-muted-foreground text-xs">Course</dt>
                     <dd className="truncate text-xs font-medium">
                       {data.course.title}
+                    </dd>
+                  </div>
+                ) : null}
+                {paidCohortPrice !== null ? (
+                  <div className="border-border flex items-center justify-between gap-4 border-t px-3 py-2.5">
+                    <dt className="text-muted-foreground text-xs">Biaya</dt>
+                    <dd className="text-xs font-medium tabular-nums">
+                      {formatRupiah(paidCohortPrice)}
                     </dd>
                   </div>
                 ) : null}
@@ -311,7 +329,26 @@ export function InviteRedemption({ token }: { token: string }) {
                 </Link>
               ) : null}
 
-              {!unavailable && session.data?.user && !emailMismatch ? (
+              {!unavailable &&
+              session.data?.user &&
+              paidCohortPrice !== null &&
+              checkoutHref ? (
+                <Link
+                  href={checkoutHref}
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "order-2 h-11 w-full lg:order-3 lg:h-10",
+                  )}
+                >
+                  Lanjut ke pembayaran
+                  <ArrowRightIcon data-icon="inline-end" />
+                </Link>
+              ) : null}
+
+              {!unavailable &&
+              session.data?.user &&
+              !emailMismatch &&
+              paidCohortPrice === null ? (
                 <Button
                   size="lg"
                   className="order-2 h-11 w-full lg:order-3 lg:h-10"

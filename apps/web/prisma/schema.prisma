@@ -78,6 +78,8 @@ model User {
   pushTargets                 PushTarget[]
   notifications               Notification[]
   sidebarSeen                 LearnerSidebarSeen[]
+  payments                    Payment[]                     @relation("PaymentLearner")
+  reviewedPayments            Payment[]                     @relation("PaymentReviewer")
 
   @@unique([email])
   @@index([createdAt])
@@ -592,6 +594,9 @@ model Organization {
   activityEvents           UserActivityEvent[]
   notifications            Notification[]
   sidebarSeen              LearnerSidebarSeen[]
+  qris                     OrganizationQris?
+  bankAccounts             OrganizationBankAccount[]
+  payments                 Payment[]
 }
 
 /// A durable read receipt for one version of a learner-facing sidebar item.
@@ -737,6 +742,7 @@ model Cohort {
   staff              CohortStaff[]
   enrollments        CohortEnrollment[]
   enrollmentInvites  EnrollmentInvite[]
+  payments           Payment[]
   meetings           CohortMeeting[]
   assessmentAttempts AssessmentAttempt[]
   assessmentEvents   AssessmentEvent[]
@@ -1084,6 +1090,7 @@ model EnrollmentInvite {
   course                Course             @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
   cohort                Cohort?            @relation(fields: [cohortId, courseId], references: [id, courseId], onDelete: Cascade)
   createdBy             OrganizationMember @relation("EnrollmentInviteCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  payments              Payment[]
 
   @@index([courseId])
   @@index([cohortId])
@@ -1460,4 +1467,104 @@ model OrganizationLandingRevision {
 
   @@index([organizationId, createdAt])
   @@index([createdByUserId])
+}
+
+enum PaymentMethod {
+  QRIS
+  BANK_TRANSFER
+}
+
+/// Who collects the money. MANUAL payments are checked by organization staff;
+/// gateway providers are reserved for automatic confirmation via webhooks.
+enum PaymentProvider {
+  MANUAL
+  MIDTRANS
+  XENDIT
+}
+
+enum PaymentStatus {
+  /// Created at checkout, waiting for the learner to pay.
+  PENDING
+  /// The learner reported the payment with a proof; staff must verify it.
+  SUBMITTED
+  PAID
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+/// The organization's static QRIS. Checkout turns it into a dynamic QRIS
+/// carrying the amount of each payment.
+model OrganizationQris {
+  organizationId String       @id
+  payload        String
+  merchantName   String
+  merchantCity   String
+  enabled        Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+/// A bank account learners can transfer to. `bankCode` is the Bank Indonesia
+/// bank code from src/lib/payments/banks.ts, or OTHER with a custom name.
+model OrganizationBankAccount {
+  id             String       @id @default(cuid())
+  organizationId String
+  bankCode       String
+  bankName       String
+  accountNumber  String
+  accountHolder  String
+  enabled        Boolean      @default(true)
+  position       Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, position])
+}
+
+/// One attempt by a learner to buy a seat in a paid cohort. `instructions`
+/// snapshots where to pay at checkout; approval grants a PURCHASE membership.
+model Payment {
+  id                 String            @id @default(cuid())
+  /// Short code the learner quotes in the transfer note.
+  reference          String            @unique
+  organizationId     String
+  cohortId           String
+  userId             String
+  enrollmentInviteId String?
+  amount             Int
+  currency           String            @default("IDR")
+  method             PaymentMethod
+  provider           PaymentProvider   @default(MANUAL)
+  status             PaymentStatus     @default(PENDING)
+  instructions       Json
+  /// Gateway transaction id and raw payload, unused by MANUAL payments.
+  providerPaymentId  String?
+  providerData       Json?
+  proofKey           String?
+  payerName          String?
+  payerNote          String?
+  submittedAt        DateTime?
+  reviewedByUserId   String?
+  reviewedAt         DateTime?
+  reviewNote         String?
+  paidAt             DateTime?
+  expiresAt          DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cohort             Cohort            @relation(fields: [cohortId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user               User              @relation("PaymentLearner", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy         User?             @relation("PaymentReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  enrollmentInvite   EnrollmentInvite? @relation(fields: [enrollmentInviteId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerPaymentId])
+  @@index([cohortId, status, createdAt])
+  @@index([cohortId, userId])
+  @@index([userId, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([reviewedByUserId])
+  @@index([enrollmentInviteId])
 }

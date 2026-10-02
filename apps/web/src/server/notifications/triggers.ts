@@ -412,3 +412,100 @@ export async function notifyEnrollmentRemoved(
     tag: `enrollment:${cohortId}`,
   });
 }
+
+const paymentNotificationSelect = {
+  id: true,
+  reference: true,
+  amount: true,
+  userId: true,
+  reviewNote: true,
+  cohortId: true,
+  organizationId: true,
+  user: { select: { name: true } },
+  organization: { select: { slug: true } },
+  cohort: {
+    select: {
+      name: true,
+      courseId: true,
+      course: { select: { title: true } },
+    },
+  },
+} as const;
+
+function formatPaymentAmount(amount: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/** Staff who can verify the payment: cohort staff and organization managers. */
+export async function notifyPaymentSubmitted(paymentId: string) {
+  const payment = await db.payment.findUnique({
+    where: { id: paymentId },
+    select: paymentNotificationSelect,
+  });
+  if (!payment) return;
+  const reviewers = await db.organizationMember.findMany({
+    where: {
+      organizationId: payment.organizationId,
+      userId: { not: payment.userId },
+      OR: [
+        { role: { in: ["OWNER", "ADMIN"] } },
+        { cohortStaffMemberships: { some: { cohortId: payment.cohortId } } },
+      ],
+    },
+    select: { userId: true },
+  });
+  if (reviewers.length === 0) return;
+  return notifyUsers(
+    reviewers.map(({ userId }) => userId),
+    {
+      type: "payment-review",
+      title: "Bukti pembayaran baru",
+      body: `${payment.user.name} · ${payment.cohort.name} · ${formatPaymentAmount(payment.amount)}`,
+      organizationId: payment.organizationId,
+      data: { paymentId: payment.id, cohortId: payment.cohortId },
+      path: `/workspace/${payment.organization.slug}/courses/${payment.cohort.courseId}/cohorts/${payment.cohortId}?view=payments`,
+      tag: `payment-review:${payment.id}`,
+    },
+  );
+}
+
+export async function notifyPaymentApproved(paymentId: string) {
+  const payment = await db.payment.findUnique({
+    where: { id: paymentId },
+    select: paymentNotificationSelect,
+  });
+  if (!payment) return;
+  return notifyUsers([payment.userId], {
+    type: "payment",
+    title: "Pembayaran dikonfirmasi",
+    body: `Kamu sekarang terdaftar di ${payment.cohort.name} (${payment.cohort.course.title}).`,
+    organizationId: payment.organizationId,
+    data: { paymentId: payment.id, courseId: payment.cohort.courseId },
+    path: `/learn/${payment.cohort.courseId}`,
+    mobilePath: `/courses/${payment.cohort.courseId}`,
+    tag: `payment:${payment.id}`,
+  });
+}
+
+export async function notifyPaymentRejected(paymentId: string) {
+  const payment = await db.payment.findUnique({
+    where: { id: paymentId },
+    select: paymentNotificationSelect,
+  });
+  if (!payment) return;
+  return notifyUsers([payment.userId], {
+    type: "payment",
+    title: `Pembayaran ${payment.reference} ditolak`,
+    body:
+      payment.reviewNote ??
+      `Periksa kembali pembayaran untuk ${payment.cohort.name}.`,
+    organizationId: payment.organizationId,
+    data: { paymentId: payment.id },
+    path: `/learn/payments/${payment.id}`,
+    tag: `payment:${payment.id}`,
+  });
+}

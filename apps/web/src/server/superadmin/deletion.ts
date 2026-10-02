@@ -169,6 +169,9 @@ async function deleteCourseChildren(
   await tx.cohortEnrollment.deleteMany({
     where: { cohortId: { in: input.cohortIds } },
   });
+  await tx.payment.deleteMany({
+    where: { cohortId: { in: input.cohortIds } },
+  });
   await tx.cohort.deleteMany({ where: { id: { in: input.cohortIds } } });
   await tx.courseCollaborator.deleteMany({
     where: { courseId: input.courseId },
@@ -177,21 +180,34 @@ async function deleteCourseChildren(
   await tx.courseEnrollment.deleteMany({ where: { courseId: input.courseId } });
 }
 
-async function collectCourseR2Keys(courseId: string): Promise<string[]> {
-  const course = await db.course.findUnique({
-    where: { id: courseId },
-    select: { thumbnailUrl: true },
+async function collectPaymentProofKeys(
+  where: Prisma.PaymentWhereInput,
+): Promise<string[]> {
+  const payments = await db.payment.findMany({
+    where: { ...where, proofKey: { not: null } },
+    select: { proofKey: true },
   });
+  return payments.flatMap(({ proofKey }) => (proofKey ? [proofKey] : []));
+}
+
+async function collectCourseR2Keys(courseId: string): Promise<string[]> {
+  const [course, proofKeys] = await Promise.all([
+    db.course.findUnique({
+      where: { id: courseId },
+      select: { thumbnailUrl: true },
+    }),
+    collectPaymentProofKeys({ cohort: { courseId } }),
+  ]);
   const key = course?.thumbnailUrl
     ? getManagedCourseThumbnailKey(course.thumbnailUrl, courseId)
     : null;
-  return key ? [key] : [];
+  return key ? [key, ...proofKeys] : proofKeys;
 }
 
 async function collectOrganizationR2Keys(
   organizationId: string,
 ): Promise<string[]> {
-  const [organization, assets, courses] = await Promise.all([
+  const [organization, assets, courses, proofKeys] = await Promise.all([
     db.organization.findUnique({
       where: { id: organizationId },
       select: { logoUrl: true },
@@ -204,9 +220,13 @@ async function collectOrganizationR2Keys(
       where: { organizationId },
       select: { id: true, thumbnailUrl: true },
     }),
+    collectPaymentProofKeys({ organizationId }),
   ]);
 
-  const keys: string[] = assets.map((asset) => asset.objectKey);
+  const keys: string[] = [
+    ...assets.map((asset) => asset.objectKey),
+    ...proofKeys,
+  ];
 
   const logoKey = organization?.logoUrl
     ? getManagedOrganizationLogoKey(organization.logoUrl, organizationId)

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { CohortWorkspace } from "~/components/cohort-workspace";
+import { organizationManagerRoles } from "~/lib/access";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
 import { api, HydrateClient } from "~/trpc/server";
 
@@ -59,6 +60,9 @@ export default async function CohortPage({
         <CohortWorkspace
           initialCohort={cohort}
           organizationSlug={organizationSlug}
+          canManagePaymentSettings={organizationManagerRoles.includes(
+            membership.role,
+          )}
         />
       </HydrateClient>
     </div>

@@ -2,15 +2,19 @@ import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
 import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
+import { effectiveCohortPrice } from "~/server/payment/cohort-offer";
 
-async function findRedeemableEnrollmentInvite(
+export async function findRedeemableEnrollmentInvite(
   tx: Prisma.TransactionClient,
   token: string,
   now: Date,
 ) {
   const invite = await tx.enrollmentInvite.findUnique({
     where: { token },
-    include: { cohort: { select: { status: true, endsAt: true } } },
+    include: {
+      course: { select: { price: true } },
+      cohort: { select: { status: true, endsAt: true, price: true } },
+    },
   });
   if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
   if (
@@ -108,6 +112,14 @@ export async function redeemEnrollmentInvite(
     (existing.expiresAt === null || existing.expiresAt > input.now)
   ) {
     return result;
+  }
+
+  // Paid cohorts are joined through checkout; the invite only opens it.
+  if (invite.cohort && effectiveCohortPrice(invite.cohort, invite.course) > 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Group belajar ini berbayar. Lanjutkan ke pembayaran.",
+    });
   }
 
   await claimEnrollmentInviteUse(tx, invite, input.now);

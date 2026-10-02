@@ -6,10 +6,13 @@ import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 import {
   ArrowLeftIcon,
+  ArrowRightIcon,
   BookOpenIcon,
+  CalendarDaysIcon,
   CheckCircle2Icon,
   Layers3Icon,
   LockKeyholeIcon,
+  UsersIcon,
 } from "lucide-react";
 
 import { CatalogEnrollmentButton } from "~/components/catalog-enrollment-button";
@@ -37,6 +40,18 @@ function formatPrice(price: number, currency: string) {
   } catch {
     return `${currency} ${price.toLocaleString("id-ID")}`;
   }
+}
+
+const cohortDateFormatter = new Intl.DateTimeFormat("id-ID", {
+  dateStyle: "medium",
+});
+
+function formatCohortPeriod(startsAt: Date | null, endsAt: Date | null) {
+  if (startsAt && endsAt) {
+    return `${cohortDateFormatter.format(startsAt)} – ${cohortDateFormatter.format(endsAt)}`;
+  }
+  if (startsAt) return `Mulai ${cohortDateFormatter.format(startsAt)}`;
+  return "Jadwal menyusul";
 }
 
 export async function generateMetadata({
@@ -141,9 +156,11 @@ export default async function CatalogCoursePage({
                     className="size-4 shrink-0"
                     aria-hidden="true"
                   />
-                  {course.price > 0
-                    ? "Pendaftaran course berbayar belum tersedia."
-                    : "Course ini hanya dapat diakses melalui undangan."}
+                  {course.cohorts.length > 0
+                    ? "Pilih Group belajar di bawah untuk mendaftar."
+                    : course.price > 0
+                      ? "Belum ada Group belajar yang dibuka untuk course ini."
+                      : "Course ini hanya dapat diakses melalui undangan."}
                 </p>
               )}
             </div>
@@ -171,6 +188,89 @@ export default async function CatalogCoursePage({
           </div>
         </div>
       </section>
+
+      {course.cohorts.length > 0 ? (
+        <section aria-labelledby="cohorts-heading" className="max-w-4xl">
+          <div className="flex items-center gap-3">
+            <span className="bg-primary/10 text-primary grid size-10 place-items-center rounded-lg">
+              <UsersIcon className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 id="cohorts-heading" className="text-xl font-bold">
+                Group belajar
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                Belajar bersama pengajar dan teman sekelas.
+              </p>
+            </div>
+          </div>
+          <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+            {course.cohorts.map((cohort) => {
+              const checkoutPath = `/learn/checkout/${cohort.id}`;
+              const full = cohort.seatsLeft === 0;
+              return (
+                <li
+                  key={cohort.id}
+                  className="bg-card flex flex-col gap-4 rounded-xl border p-5"
+                >
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{cohort.name}</h3>
+                    {cohort.description ? (
+                      <p className="text-muted-foreground mt-1 line-clamp-3 text-sm leading-6">
+                        {cohort.description}
+                      </p>
+                    ) : null}
+                    <dl className="text-muted-foreground mt-3 space-y-1.5 text-sm">
+                      <div className="flex items-center gap-2">
+                        <CalendarDaysIcon
+                          className="size-4 shrink-0"
+                          aria-hidden="true"
+                        />
+                        <dt className="sr-only">Periode</dt>
+                        <dd>
+                          {formatCohortPeriod(cohort.startsAt, cohort.endsAt)}
+                        </dd>
+                      </div>
+                      {cohort.seatsLeft !== null ? (
+                        <div className="flex items-center gap-2">
+                          <UsersIcon
+                            className="size-4 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <dt className="sr-only">Kuota</dt>
+                          <dd>
+                            {full
+                              ? "Kuota penuh"
+                              : `Sisa ${cohort.seatsLeft} kursi`}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold">
+                      {formatPrice(cohort.price, "IDR")}
+                    </p>
+                    {full ? null : (
+                      <Link
+                        href={
+                          session?.user
+                            ? checkoutPath
+                            : `/auth?redirectTo=${encodeURIComponent(checkoutPath)}`
+                        }
+                        className={buttonVariants()}
+                      >
+                        Daftar
+                        <ArrowRightIcon data-icon="inline-end" />
+                      </Link>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <section aria-labelledby="curriculum-heading" className="max-w-4xl">
         <div className="flex items-center gap-3">

@@ -14,20 +14,24 @@ import {
 
 export function LearnerBreadcrumb() {
   const pathname = usePathname();
-  const currentLabel = pathname.includes("/attempts/")
-    ? "Tugas"
-    : pathname.startsWith("/learn/assessments") ||
-        pathname.startsWith("/learn/practice")
-      ? "Latihan"
-      : pathname.startsWith("/learn/vocabulary")
-        ? "Kosakata"
-        : pathname.includes("/items/")
-          ? "Aktivitas"
-          : pathname === "/learn"
-            ? "Hari ini"
-            : pathname === "/learn/courses"
-              ? "Belajar"
-              : "Course";
+  const currentLabel = pathname.startsWith("/learn/payments")
+    ? "Pembayaran"
+    : pathname.startsWith("/learn/checkout")
+      ? "Checkout"
+      : pathname.includes("/attempts/")
+        ? "Tugas"
+        : pathname.startsWith("/learn/assessments") ||
+            pathname.startsWith("/learn/practice")
+          ? "Latihan"
+          : pathname.startsWith("/learn/vocabulary")
+            ? "Kosakata"
+            : pathname.includes("/items/")
+              ? "Aktivitas"
+              : pathname === "/learn"
+                ? "Hari ini"
+                : pathname === "/learn/courses"
+                  ? "Belajar"
+                  : "Course";
 
   return (
     <Breadcrumb>

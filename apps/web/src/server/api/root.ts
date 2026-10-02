@@ -15,6 +15,7 @@ import { mobileSyncV2Router } from "~/server/api/routers/mobile-sync-v2";
 import { inviteRouter } from "~/server/api/routers/invite";
 import { notificationRouter } from "~/server/api/routers/notification";
 import { organizationRouter } from "~/server/api/routers/organization";
+import { paymentRouter } from "~/server/api/routers/payment";
 import { pdfBookRouter } from "~/server/api/routers/pdf-book";
 import { practiceRouter } from "~/server/api/routers/practice";
 import { storageRouter } from "~/server/api/routers/storage";
@@ -44,6 +45,7 @@ export const appRouter = createTRPCRouter({
   notification: notificationRouter,
   organization: organizationRouter,
   organizationLanding: organizationLandingRouter,
+  payment: paymentRouter,
   pdfBook: pdfBookRouter,
   practice: practiceRouter,
   storage: storageRouter,

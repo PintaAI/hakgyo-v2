@@ -21,6 +21,7 @@ import { withCourseCounts } from "~/server/course/counts";
 import { assertCoursePublishable } from "~/server/course/readiness-service";
 import { organizationBrandSelect } from "~/server/brand/context";
 import { db } from "~/server/db";
+import { listPublicCohorts } from "~/server/payment/checkout";
 import { generateCourseThumbnail } from "~/server/ai/course-thumbnail";
 import {
   createCourseThumbnailKey,
@@ -347,7 +348,8 @@ export const courseRouter = createTRPCRouter({
         },
       });
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
-      return course;
+      const cohorts = await listPublicCohorts(ctx.db, course, new Date());
+      return { ...course, cohorts };
     }),
   list: protectedProcedure
     .input(z.object({ organizationId: id }))
