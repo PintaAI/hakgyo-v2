@@ -1,8 +1,10 @@
+import { Headline } from "~/components/brand/typography";
+
 import { ConversationDemo } from "../demos/conversation";
 import { LearnerAppDemo } from "../demos/learner-app";
 import { Panel, SlidePanels } from "../panels";
 import { reveal } from "../reveal";
-import { CheckList, Headline, Slide, SlideHeading } from "../slide";
+import { CheckList, Slide, SlideHeading } from "../slide";
 
 const games = [
   {
@@ -83,7 +85,7 @@ export function LearnerAppSlide() {
           </p>
           <Headline
             as="h3"
-            revealOrder={0}
+            {...reveal(0)}
             title={`${games.length} game latihan`}
             muted="di aplikasi murid."
             className="hidden max-w-3xl lg:block"

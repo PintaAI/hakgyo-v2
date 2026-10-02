@@ -13,10 +13,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { Headline } from "~/components/brand/typography";
+
 import { slideLabel } from "../deck";
 import { Panel, SlidePanels } from "../panels";
 import { reveal } from "../reveal";
-import { Eyebrow, Headline, Slide } from "../slide";
+import { Eyebrow, Slide } from "../slide";
 
 type Problem = {
   icon: LucideIcon;
@@ -227,6 +229,7 @@ export function ProblemSlide() {
         <Panel>
           <Eyebrow slide="masalah" />
           <Headline
+            {...reveal(1)}
             id="masalah-title"
             title="Masalah yang Hakgyo"
             muted="coba selesaikan."

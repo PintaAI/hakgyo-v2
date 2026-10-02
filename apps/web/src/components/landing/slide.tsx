@@ -2,11 +2,12 @@ import type { ComponentProps, ReactNode } from "react";
 import Image from "next/image";
 import { CheckIcon } from "lucide-react";
 
+import { Headline, Kicker, leadText } from "~/components/brand/typography";
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
 import { slideLabel, slideNumber, type SlideId } from "./deck";
-import { headlineText, landingContainer } from "./layout";
+import { landingContainer } from "./layout";
 import { Panel, SlidePanels } from "./panels";
 import { reveal } from "./reveal";
 
@@ -52,57 +53,9 @@ export function Eyebrow({
   inverted?: boolean;
 }) {
   return (
-    <p
-      {...reveal(0)}
-      className={cn(
-        "flex items-center gap-2.5 font-mono text-[10px] tracking-[0.18em] uppercase sm:gap-3 sm:text-xs",
-        inverted ? "opacity-70" : "text-muted-foreground",
-      )}
-    >
-      <span
-        className={cn(
-          "h-px w-6 sm:w-8",
-          inverted ? "bg-primary-foreground" : "bg-primary",
-        )}
-      />
+    <Kicker {...reveal(0)} inverted={inverted}>
       {slideNumber(slide)} · {label}
-    </p>
-  );
-}
-
-/**
- * A two-tone heading: the title, then a muted second line. Takes the slide
- * heading's type scale unless `className` sets another.
- */
-export function Headline({
-  as: Heading = "h2",
-  id,
-  title,
-  muted,
-  revealOrder = 1,
-  className,
-}: {
-  as?: "h2" | "h3";
-  id?: string;
-  title: ReactNode;
-  muted?: ReactNode;
-  revealOrder?: number;
-  className?: string;
-}) {
-  return (
-    <Heading
-      {...reveal(revealOrder)}
-      id={id}
-      className={cn(headlineText, className)}
-    >
-      {title}
-      {muted ? (
-        <>
-          <br />
-          <span className="text-muted-foreground">{muted}</span>
-        </>
-      ) : null}
-    </Heading>
+    </Kicker>
   );
 }
 
@@ -127,6 +80,7 @@ export function SlideHeading({
     <div className={className}>
       <Eyebrow slide={id} />
       <Headline
+        {...reveal(1)}
         id={`${id}-title`}
         title={title}
         muted={muted}
@@ -136,7 +90,8 @@ export function SlideHeading({
         <p
           {...reveal(2)}
           className={cn(
-            "text-muted-foreground mt-3 max-w-xl text-[15px] leading-6 sm:mt-5 sm:text-base sm:leading-7 lg:text-lg lg:leading-8",
+            leadText,
+            "mt-3 sm:mt-5",
             !descriptionOnPhones && "hidden sm:block",
           )}
         >

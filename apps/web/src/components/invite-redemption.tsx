@@ -18,9 +18,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "~/components/ui/badge";
+import { FlowShell, surfaceCard } from "~/components/brand/flow-shell";
+import { Headline, Kicker, leadText } from "~/components/brand/typography";
 import { Button, buttonVariants } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { appHandoffPath } from "~/lib/mobile-app";
 import { formatRupiah } from "~/lib/payments/payment";
@@ -41,29 +41,15 @@ function errorMessage(error: unknown) {
   return "Invitation belum berhasil diterima. Silakan coba lagi.";
 }
 
+/** Intro, then materials; the action card sits beside both on large screens. */
+const inviteGrid =
+  "grid gap-6 sm:gap-10 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-x-14 xl:gap-x-20";
+
 const typeLabels = {
   ORGANIZATION: "Undangan organisasi",
   COURSE: "Undangan course",
   COHORT: "Undangan group belajar",
 } as const;
-
-function InviteBrand() {
-  return (
-    <header className="mb-5 flex items-center gap-2.5 sm:mb-8 sm:gap-3">
-      <span className="bg-foreground text-background grid size-8 place-items-center rounded-lg sm:size-9">
-        <BookOpenIcon className="size-4" />
-      </span>
-      <span className="leading-tight">
-        <span className="font-heading block text-base font-medium tracking-tight">
-          Hakgyo
-        </span>
-        <span className="text-muted-foreground block text-xs">
-          Ruang belajar
-        </span>
-      </span>
-    </header>
-  );
-}
 
 export function InviteRedemption({ token }: { token: string }) {
   const router = useRouter();
@@ -77,38 +63,35 @@ export function InviteRedemption({ token }: { token: string }) {
 
   if (invite.isPending || session.isPending) {
     return (
-      <main className="bg-background text-foreground min-h-screen px-3 py-4 sm:px-6 sm:py-10 lg:px-8">
-        <div className="mx-auto w-full max-w-5xl">
-          <InviteBrand />
-          <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.75fr)]">
-            <Skeleton className="min-h-[18rem] rounded-xl sm:min-h-[24rem]" />
-            <Skeleton className="h-72 rounded-xl" />
+      <FlowShell>
+        <div className={inviteGrid}>
+          <div className="pt-6 sm:pt-12">
+            <Skeleton className="h-3 w-40" />
+            <Skeleton className="mt-5 h-10 w-full max-w-md sm:h-14" />
+            <Skeleton className="mt-3 h-10 w-2/3 max-w-sm sm:h-14" />
           </div>
+          <Skeleton className="h-80 rounded-2xl lg:row-span-2 lg:mt-12" />
         </div>
-      </main>
+      </FlowShell>
     );
   }
 
   if (invite.isError) {
     return (
-      <main className="bg-background text-foreground min-h-screen px-3 py-4 sm:px-6 sm:py-10 lg:px-8">
-        <div className="mx-auto w-full max-w-5xl">
-          <InviteBrand />
-          <Card className="mx-auto max-w-lg rounded-xl">
-            <CardContent className="py-10 text-center sm:py-12">
-              <span className="bg-muted mx-auto grid size-10 place-items-center rounded-lg">
-                <KeyRoundIcon className="text-muted-foreground size-5" />
-              </span>
-              <h1 className="font-heading mt-4 text-2xl font-medium tracking-tight">
-                Undangan tidak ditemukan
-              </h1>
-              <p className="text-muted-foreground mx-auto mt-2 max-w-sm text-sm leading-relaxed">
-                Periksa kembali link atau minta undangan baru kepada pengirim.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <FlowShell>
+        <section className="max-w-2xl pt-6 sm:pt-14">
+          <Kicker>Undangan</Kicker>
+          <Headline
+            as="h1"
+            title="Undangan tidak ditemukan."
+            muted="Link ini sudah tidak berlaku."
+            className="mt-3 sm:mt-5"
+          />
+          <p className={cn(leadText, "mt-4 sm:mt-6")}>
+            Periksa kembali link atau minta undangan baru kepada pengirim.
+          </p>
+        </section>
+      </FlowShell>
     );
   }
 
@@ -175,152 +158,133 @@ export function InviteRedemption({ token }: { token: string }) {
     window.location.replace(authHref);
   }
 
-  return (
-    <main className="bg-background text-foreground min-h-screen px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-10 lg:px-8">
-      <div className="mx-auto w-full max-w-5xl">
-        <InviteBrand />
+  const statusTitle = unavailable
+    ? "Undangan tidak berlaku"
+    : session.data?.user
+      ? "Konfirmasi undangan"
+      : "Masuk untuk melanjutkan";
+  const statusText = unavailable
+    ? `Status undangan: ${data.status}. Mintalah link baru kepada pengirim.`
+    : emailMismatch
+      ? `Undangan ini ditujukan ke ${data.emailHint}. Masuklah dengan akun yang menggunakan email tersebut.`
+      : !session.data?.user
+        ? "Masuk atau buat akun untuk menerima akses. Link undangan ini tetap tersimpan selama proses masuk."
+        : paidCohortPrice !== null
+          ? "Group belajar ini berbayar. Selesaikan pembayaran untuk mengaktifkan akses belajar."
+          : "Akun Anda sudah siap. Terima undangan untuk mengaktifkan akses belajar.";
+  const details = [
+    ["Organisasi", data.organization.name],
+    ...(data.type !== "ORGANIZATION" ? [["Course", data.course.title]] : []),
+    ...(paidCohortPrice !== null
+      ? [["Biaya", formatRupiah(paidCohortPrice)]]
+      : []),
+    [
+      "Akses",
+      data.type === "COHORT"
+        ? "Course + group belajar"
+        : data.type === "COURSE"
+          ? "Course"
+          : data.role === "ADMIN"
+            ? "Admin"
+            : "Pengajar",
+    ],
+  ] as const;
+  const TypeIcon =
+    data.type === "ORGANIZATION"
+      ? Building2Icon
+      : data.type === "COHORT"
+        ? UsersIcon
+        : BookOpenIcon;
+  const action = "h-11 w-full";
 
-        <div className="grid items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.75fr)]">
-          <section className="relative flex min-h-[18rem] items-end overflow-hidden rounded-xl bg-neutral-950 p-4 text-white sm:min-h-[28rem] sm:p-8">
-            {thumbnailUrl ? (
+  return (
+    <FlowShell>
+      <div className={inviteGrid}>
+        <section className="pt-6 sm:pt-12">
+          <Kicker>
+            {typeLabels[data.type]} · {data.organization.name}
+          </Kicker>
+          <Headline
+            as="h1"
+            title={title}
+            muted={description}
+            className="mt-3 break-words sm:mt-5"
+          />
+          {data.type !== "ORGANIZATION" && data.course.description ? (
+            <p className={cn(leadText, "mt-4 line-clamp-4 sm:mt-6")}>
+              {data.course.description}
+            </p>
+          ) : null}
+          {data.type !== "ORGANIZATION" ? (
+            <ul className="mt-5 flex flex-wrap gap-2 sm:mt-8">
+              {[
+                {
+                  icon: UsersIcon,
+                  text: `${data.joinedCount} siswa bergabung`,
+                },
+                // The materials list below already says when nothing is out.
+                ...(data.course.itemCount > 0
+                  ? [
+                      {
+                        icon: Layers3Icon,
+                        text: `${data.course.moduleCount} bab · ${data.course.itemCount} materi`,
+                      },
+                    ]
+                  : []),
+              ].map(({ icon: Icon, text }) => (
+                <li
+                  key={text}
+                  className="border-border bg-card flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium tabular-nums sm:text-sm"
+                >
+                  <Icon className="size-3.5" aria-hidden="true" />
+                  {text}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+
+        <aside
+          className={cn(
+            surfaceCard,
+            "overflow-hidden lg:sticky lg:top-8 lg:row-span-2 lg:mt-12 lg:self-start",
+          )}
+        >
+          {thumbnailUrl ? (
+            <div className="bg-muted relative aspect-[16/9]">
               <Image
                 src={thumbnailUrl}
                 alt=""
                 fill
                 unoptimized
                 priority
-                sizes="(max-width: 1024px) 100vw, 640px"
+                sizes="(max-width: 1024px) 100vw, 384px"
                 className="object-cover"
               />
-            ) : null}
-            <div className="pointer-events-none absolute inset-0 bg-black/65" />
-            <div className="pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border border-current opacity-10" />
-            <div className="pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border border-current opacity-10" />
-            <div className="relative max-w-2xl">
-              <Badge className="border-white/20 bg-white/10 text-white">
-                {typeLabels[data.type]}
-              </Badge>
-              <p className="mt-4 text-[10px] font-semibold tracking-[0.18em] text-white/70 uppercase sm:mt-6 sm:text-[11px]">
-                {data.organization.name}
-              </p>
-              <h1 className="font-heading mt-2 text-2xl leading-tight font-medium tracking-tight sm:mt-3 sm:text-5xl">
-                {title}
-              </h1>
-              <p className="mt-3 flex items-center gap-2 text-xs leading-relaxed text-white/70 sm:mt-4 sm:text-sm">
-                {data.type === "ORGANIZATION" ? (
-                  <Building2Icon className="size-4" data-icon="inline-start" />
-                ) : data.type === "COHORT" ? (
-                  <UsersIcon className="size-4" data-icon="inline-start" />
-                ) : (
-                  <BookOpenIcon className="size-4" data-icon="inline-start" />
-                )}
-                {description}
-              </p>
-              {data.type !== "ORGANIZATION" && data.course.description ? (
-                <p className="mt-3 line-clamp-2 max-w-xl text-xs leading-relaxed text-white/70 sm:mt-4 sm:line-clamp-3 sm:text-sm">
-                  {data.course.description}
-                </p>
-              ) : null}
             </div>
-          </section>
+          ) : null}
+          <div className="p-5 sm:p-6">
+            <div className="flex items-center gap-3">
+              <span className="bg-primary text-primary-foreground grid size-10 shrink-0 place-items-center rounded-xl">
+                {unavailable ? (
+                  <KeyRoundIcon className="size-5" strokeWidth={1.5} />
+                ) : (
+                  <TypeIcon className="size-5" strokeWidth={1.5} />
+                )}
+              </span>
+              <h2 className="text-lg font-medium tracking-tight sm:text-xl">
+                {statusTitle}
+              </h2>
+            </div>
+            <p className="text-muted-foreground mt-3 text-sm leading-6">
+              {statusText}
+            </p>
 
-          <Card className="rounded-xl">
-            <CardHeader className="border-b">
-              <div className="flex items-center gap-3">
-                <span className="bg-muted text-muted-foreground grid size-9 shrink-0 place-items-center rounded-lg">
-                  {unavailable ? (
-                    <KeyRoundIcon className="size-4" />
-                  ) : (
-                    <CheckCircle2Icon className="size-4" />
-                  )}
-                </span>
-                <CardTitle className="font-heading text-lg font-medium tracking-tight sm:text-xl">
-                  {unavailable
-                    ? "Undangan tidak berlaku"
-                    : session.data?.user
-                      ? "Konfirmasi undangan"
-                      : "Masuk untuk melanjutkan"}
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4 sm:gap-5">
-              <p className="text-muted-foreground order-1 text-sm leading-relaxed">
-                {unavailable
-                  ? `Status undangan: ${data.status}. Mintalah link baru kepada pengirim.`
-                  : emailMismatch
-                    ? `Undangan ini ditujukan ke ${data.emailHint}. Masuklah dengan akun yang menggunakan email tersebut.`
-                    : !session.data?.user
-                      ? "Masuk atau buat akun untuk menerima akses. Link undangan ini tetap tersimpan selama proses masuk."
-                      : paidCohortPrice !== null
-                        ? "Group belajar ini berbayar. Selesaikan pembayaran untuk mengaktifkan akses belajar."
-                        : "Akun Anda sudah siap. Terima undangan untuk mengaktifkan akses belajar."}
-              </p>
-
-              <dl className="divide-border order-3 overflow-hidden rounded-lg border lg:order-2">
-                <div className="flex items-center justify-between gap-4 px-3 py-2.5">
-                  <dt className="text-muted-foreground text-xs">Organisasi</dt>
-                  <dd className="truncate text-xs font-medium">
-                    {data.organization.name}
-                  </dd>
-                </div>
-                {data.type !== "ORGANIZATION" ? (
-                  <div className="border-border flex items-center justify-between gap-4 border-t px-3 py-2.5">
-                    <dt className="text-muted-foreground text-xs">Course</dt>
-                    <dd className="truncate text-xs font-medium">
-                      {data.course.title}
-                    </dd>
-                  </div>
-                ) : null}
-                {paidCohortPrice !== null ? (
-                  <div className="border-border flex items-center justify-between gap-4 border-t px-3 py-2.5">
-                    <dt className="text-muted-foreground text-xs">Biaya</dt>
-                    <dd className="text-xs font-medium tabular-nums">
-                      {formatRupiah(paidCohortPrice)}
-                    </dd>
-                  </div>
-                ) : null}
-                <div className="border-border flex items-center justify-between gap-4 border-t px-3 py-2.5">
-                  <dt className="text-muted-foreground text-xs">Akses</dt>
-                  <dd className="text-xs font-medium">
-                    {data.type === "COHORT"
-                      ? "Course + group belajar"
-                      : data.type === "COURSE"
-                        ? "Course"
-                        : data.role === "ADMIN"
-                          ? "Admin"
-                          : "Pengajar"}
-                  </dd>
-                </div>
-                {data.type !== "ORGANIZATION" ? (
-                  <>
-                    <div className="border-border flex items-center justify-between gap-4 border-t px-3 py-2.5">
-                      <dt className="text-muted-foreground text-xs">
-                        Sudah bergabung
-                      </dt>
-                      <dd className="text-xs font-medium tabular-nums">
-                        {data.joinedCount} siswa
-                      </dd>
-                    </div>
-                    <div className="border-border flex items-center justify-between gap-4 border-t px-3 py-2.5">
-                      <dt className="text-muted-foreground text-xs">
-                        Kurikulum
-                      </dt>
-                      <dd className="text-xs font-medium tabular-nums">
-                        {data.course.moduleCount} bab · {data.course.itemCount}{" "}
-                        materi
-                      </dd>
-                    </div>
-                  </>
-                ) : null}
-              </dl>
-
+            <div className="mt-5">
               {!unavailable && !session.data?.user ? (
                 <Link
                   href={data.type === "ORGANIZATION" ? authHref : signUpHref}
-                  className={cn(
-                    buttonVariants({ size: "lg" }),
-                    "order-2 h-11 w-full lg:order-3 lg:h-10",
-                  )}
+                  className={cn(buttonVariants({ size: "lg" }), action)}
                 >
                   {data.type === "ORGANIZATION"
                     ? "Masuk atau buat akun"
@@ -335,10 +299,7 @@ export function InviteRedemption({ token }: { token: string }) {
               checkoutHref ? (
                 <Link
                   href={checkoutHref}
-                  className={cn(
-                    buttonVariants({ size: "lg" }),
-                    "order-2 h-11 w-full lg:order-3 lg:h-10",
-                  )}
+                  className={cn(buttonVariants({ size: "lg" }), action)}
                 >
                   Lanjut ke pembayaran
                   <ArrowRightIcon data-icon="inline-end" />
@@ -351,7 +312,7 @@ export function InviteRedemption({ token }: { token: string }) {
               paidCohortPrice === null ? (
                 <Button
                   size="lg"
-                  className="order-2 h-11 w-full lg:order-3 lg:h-10"
+                  className={action}
                   disabled={accept.isPending}
                   onClick={() => void acceptInvite()}
                 >
@@ -369,98 +330,103 @@ export function InviteRedemption({ token }: { token: string }) {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="order-2 h-11 w-full lg:order-3 lg:h-10"
+                  className={action}
                   onClick={() => void switchAccount()}
                 >
                   Gunakan akun lain
                 </Button>
               ) : null}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+
+            <dl className="divide-border border-border mt-5 divide-y border-t text-sm">
+              {details.map(([term, value]) => (
+                <div
+                  key={term}
+                  className="flex items-center justify-between gap-4 py-2.5"
+                >
+                  <dt className="text-muted-foreground">{term}</dt>
+                  <dd className="truncate font-medium">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </aside>
 
         {data.type !== "ORGANIZATION" ? (
-          <Card className="mt-3 rounded-xl sm:mt-4">
-            <CardHeader className="border-b">
-              <div className="flex items-center gap-3">
-                <span className="bg-muted text-muted-foreground grid size-9 shrink-0 place-items-center rounded-lg">
-                  <Layers3Icon className="size-4" />
-                </span>
-                <div>
-                  <CardTitle className="font-heading text-lg font-medium tracking-tight">
-                    List materi Tersedia!
-                  </CardTitle>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    Materi terpublikasi yang akan dipelajari dalam course ini.
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {data.course.items.length > 0 ? (
-                <>
-                  <ul className="grid gap-2 sm:grid-cols-2">
-                    {data.course.items.map((item, index) => (
+          <section className="lg:pt-4">
+            <Kicker>Yang akan dipelajari</Kicker>
+            <h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
+              Materi di course ini
+            </h2>
+            {data.course.items.length > 0 ? (
+              <>
+                <ol className="mt-5 grid gap-2 sm:mt-6 sm:grid-cols-2 sm:gap-3">
+                  {data.course.items.map((item, index) => {
+                    const ItemIcon =
+                      item.type === "ASSESSMENT"
+                        ? ClipboardCheckIcon
+                        : item.type === "VOCABULARY_SET"
+                          ? LanguagesIcon
+                          : FileTextIcon;
+                    return (
                       <li
                         key={item.id}
                         className={cn(
-                          "border-border min-w-0 items-center gap-3 rounded-lg border p-3",
+                          surfaceCard,
+                          "min-w-0 items-center gap-3 rounded-xl p-3",
                           index >= 3 ? "hidden sm:flex" : "flex",
                         )}
                       >
-                        <span className="bg-muted text-muted-foreground grid size-8 shrink-0 place-items-center rounded-md">
-                          {item.type === "ASSESSMENT" ? (
-                            <ClipboardCheckIcon className="size-4" />
-                          ) : item.type === "VOCABULARY_SET" ? (
-                            <LanguagesIcon className="size-4" />
-                          ) : (
-                            <FileTextIcon className="size-4" />
-                          )}
+                        <span className="bg-secondary grid size-9 shrink-0 place-items-center rounded-lg">
+                          <ItemIcon className="size-4" aria-hidden="true" />
                         </span>
-                        <span className="min-w-0">
-                          <span className="text-muted-foreground block truncate text-[11px]">
+                        <span className="min-w-0 flex-1">
+                          <span className="text-muted-foreground block truncate text-xs">
                             {item.moduleTitle}
                           </span>
-                          <span className="text-foreground block truncate text-sm font-medium">
+                          <span className="block truncate text-sm font-medium">
                             {item.title}
                           </span>
                         </span>
+                        <span className="text-muted-foreground font-mono text-[10px]">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
                       </li>
-                    ))}
-                  </ul>
-                  {data.course.itemCount > 3 ? (
-                    <p className="text-muted-foreground mt-3 text-xs sm:hidden">
-                      +{data.course.itemCount - 3} materi lainnya setelah
-                      bergabung.
-                    </p>
-                  ) : null}
-                  {data.course.itemCount > data.course.items.length ? (
-                    <p className="text-muted-foreground mt-3 hidden text-xs sm:block">
-                      +{data.course.itemCount - data.course.items.length} materi
-                      lainnya setelah bergabung.
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <div className="rounded-lg border border-dashed px-4 py-8 text-center">
-                  <Layers3Icon className="text-muted-foreground mx-auto size-5" />
-                  <p className="text-foreground mt-3 text-sm font-medium">
-                    Materi belum dipublikasikan
+                    );
+                  })}
+                </ol>
+                {data.course.itemCount > 3 ? (
+                  <p className="text-muted-foreground mt-3 text-xs sm:hidden">
+                    +{data.course.itemCount - 3} materi lainnya setelah
+                    bergabung.
                   </p>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Daftar materi akan muncul setelah pengajar menerbitkannya.
+                ) : null}
+                {data.course.itemCount > data.course.items.length ? (
+                  <p className="text-muted-foreground mt-3 hidden text-xs sm:block">
+                    +{data.course.itemCount - data.course.items.length} materi
+                    lainnya setelah bergabung.
                   </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                ) : null}
+              </>
+            ) : (
+              <div className="border-border mt-5 rounded-2xl border border-dashed px-4 py-8 text-center">
+                <Layers3Icon className="text-muted-foreground mx-auto size-5" />
+                <p className="mt-3 text-sm font-medium">
+                  Materi belum dipublikasikan
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Daftar materi akan muncul setelah pengajar menerbitkannya.
+                </p>
+              </div>
+            )}
+          </section>
         ) : null}
-
-        <p className="text-muted-foreground mt-6 px-3 text-center text-[11px] leading-relaxed sm:mt-8 sm:text-xs">
-          Dengan melanjutkan, Anda menerima akses sesuai undangan yang diberikan
-          oleh {data.organization.name}.
-        </p>
       </div>
-    </main>
+
+      <p className="text-muted-foreground mt-10 text-xs leading-relaxed sm:mt-14">
+        Dengan melanjutkan, Anda menerima akses sesuai undangan yang diberikan
+        oleh {data.organization.name}.
+      </p>
+    </FlowShell>
   );
 }
