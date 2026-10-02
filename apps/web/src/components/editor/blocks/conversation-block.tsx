@@ -364,6 +364,9 @@ function ConversationImage({
     }
   }
 
+  // The empty-state prompt is for authors; learners see nothing.
+  if (!assetId && !editable) return null;
+
   return (
     <div className="group bg-muted ring-foreground/10 relative aspect-[4/3] min-h-40 overflow-hidden rounded-xl ring-1">
       <input
@@ -610,7 +613,9 @@ export const conversationBlock = createReactBlockSpec(
             </div>
           </header>
 
-          <div className="grid min-w-0 gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_13rem]">
+          <div
+            className={`grid min-w-0 gap-5 p-4 sm:p-6 ${editable || block.props.assetId ? "lg:grid-cols-[minmax(0,1fr)_13rem]" : ""}`}
+          >
             <section className="divide-border min-w-0 divide-y">
               {lines.map((line, index) => (
                 <div
@@ -855,7 +860,9 @@ export const conversationBlock = createReactBlockSpec(
               </div>
             </div>
 
-            <div className="grid min-w-0 gap-4 sm:grid-cols-2 sm:items-start">
+            <div
+              className={`grid min-w-0 gap-4 sm:items-start ${editable || block.props.practiceAssetId ? "sm:grid-cols-2" : ""}`}
+            >
               <ConversationImage
                 assetId={block.props.practiceAssetId}
                 contextLabel="Speaking practice context"
