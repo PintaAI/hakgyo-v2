@@ -94,13 +94,15 @@ Kapasitas menyatakan jumlah peserta didik yang direncanakan. Dashboard cohort me
 Occupancy = peserta didik aktif / kapasitas x 100%
 ```
 
-Saat ini kapasitas berfungsi sebagai indikator operasional. Sistem belum otomatis menolak penambahan manual atau penggunaan undangan ketika kapasitas tercapai. Pengelola harus memantau jumlah peserta sebelum menambahkan peserta baru.
+Checkout mandiri dari katalog atau undangan Group belajar berbayar ditolak ketika kapasitas tercapai. Penambahan manual oleh pengelola dan persetujuan pembayaran tetap diizinkan, jadi pengelola tetap perlu memantau jumlah peserta.
 
 ### Harga
 
 Cohort dapat mengikuti harga kursus atau mempunyai harga sendiri. Harga cohort berguna ketika setiap batch memiliki paket, fasilitas, atau biaya yang berbeda.
 
-Pembayaran belum tersedia di Hakgyo. Nilai harga saat ini adalah metadata dan belum melakukan penagihan atau konfirmasi pembayaran otomatis.
+Group belajar dengan harga lebih dari 0 diikuti melalui checkout. Siswa memilih QRIS atau transfer bank yang diatur owner atau admin di **Pengaturan → Pembayaran**, membayar, lalu mengunggah bukti. Pengelola Group belajar memeriksa bukti di tab **Pembayaran** dan menyetujui atau menolaknya. Siswa baru mendapat akses setelah pembayaran disetujui.
+
+Isi harga 0 agar Group belajar gratis. Undangan ke Group belajar berbayar mengarahkan siswa ke checkout; menambahkan siswa secara manual lewat email tetap tidak memerlukan pembayaran.
 
 ### Grup WhatsApp
 
@@ -321,8 +323,7 @@ Sebuah organisasi membuka **Cohort September** untuk kursus Bahasa Korea Pemula.
 ## Batasan yang Perlu Diketahui
 
 - Kapasitas belum memblokir enrollment secara otomatis.
-- Payment dan penagihan harga cohort belum tersedia.
-- Open enrollment langsung ke cohort belum tersedia.
+- Pembayaran diperiksa manual oleh pengelola; payment gateway (Midtrans/Xendit) belum tersedia.
 - Status cohort tidak berubah otomatis berdasarkan tanggal.
 - Status meeting belum tersinkron otomatis dari aktivitas Zoom.
 - Assistant tidak dapat mengelola meeting, undangan, staff, atau review tugas.

@@ -12,6 +12,7 @@ import {
 import { getOrganizationCohortScope } from "~/server/authorization/cohort-scope";
 import { Prisma } from "../../../../generated/prisma/client";
 import { db } from "~/server/db";
+import { deleteR2Objects } from "~/server/r2";
 import {
   notifyInBackground,
   notifyMeetingCancelled,
@@ -369,7 +370,7 @@ export const cohortRouter = createTRPCRouter({
         where: { id: input.cohortId },
         include: {
           course: {
-            select: { id: true, title: true, thumbnailUrl: true },
+            select: { id: true, title: true, thumbnailUrl: true, price: true },
           },
           staff: {
             include: {
@@ -442,12 +443,36 @@ export const cohortRouter = createTRPCRouter({
         permission: "delete",
         userId: ctx.actorUserId,
       });
+      // Payments that took or may have taken money are kept as records, so
+      // such cohorts are cancelled instead of deleted.
+      const settledPayments = await ctx.db.payment.count({
+        where: {
+          cohortId: input.cohortId,
+          status: { in: ["PAID", "SUBMITTED"] },
+        },
+      });
+      if (settledPayments > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Group belajar ini punya pembayaran lunas atau menunggu verifikasi. Ubah statusnya menjadi Dibatalkan.",
+        });
+      }
+      const proofs = await ctx.db.payment.findMany({
+        where: { cohortId: input.cohortId, proofKey: { not: null } },
+        select: { proofKey: true },
+      });
       await ctx.db.$transaction(async (tx) => {
         await tx.cohortEnrollment.deleteMany({
           where: { cohortId: input.cohortId },
         });
+        await tx.payment.deleteMany({ where: { cohortId: input.cohortId } });
         await tx.cohort.delete({ where: { id: input.cohortId } });
       });
+      await deleteR2Objects(
+        proofs.flatMap(({ proofKey }) => (proofKey ? [proofKey] : [])),
+        "Failed to delete payment proof",
+      );
       return { deleted: true };
     }),
   addStaff: protectedProcedure

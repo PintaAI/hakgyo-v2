@@ -23,11 +23,16 @@ import {
   UserRoundCogIcon,
   UsersIcon,
   VideoIcon,
+  WalletIcon,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { CohortInvites } from "~/components/cohort-invites";
+import {
+  CohortPayments,
+  usePendingPaymentReviews,
+} from "~/components/cohort-payments";
 import { AssessmentEventManager } from "~/components/assessment-event-manager";
 import {
   AlertDialog,
@@ -89,6 +94,7 @@ import {
   parseZonedDateTimeInput,
 } from "~/lib/zoned-date-time";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import { formatRupiah } from "~/lib/payments/payment";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Cohort = RouterOutputs["cohort"]["get"];
@@ -98,6 +104,7 @@ type Meeting = RouterOutputs["cohort"]["listMeetings"]["items"][number];
 type CohortView =
   | "overview"
   | "learners"
+  | "payments"
   | "staff"
   | "meetings"
   | "assessments"
@@ -107,6 +114,7 @@ type CohortView =
 const views = [
   { value: "overview", label: "Ringkasan", icon: LayoutDashboardIcon },
   { value: "learners", label: "Siswa", icon: UsersIcon },
+  { value: "payments", label: "Pembayaran", icon: WalletIcon },
   { value: "staff", label: "Staff", icon: UserRoundCogIcon },
   { value: "meetings", label: "Pertemuan", icon: VideoIcon },
   { value: "assessments", label: "Event tugas", icon: ClipboardListIcon },
@@ -220,9 +228,11 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 export function CohortWorkspace({
   initialCohort,
   organizationSlug,
+  canManagePaymentSettings,
 }: {
   initialCohort: Cohort;
   organizationSlug: string;
+  canManagePaymentSettings: boolean;
 }) {
   const searchParams = useSearchParams();
   const cohortQuery = api.cohort.get.useQuery(
@@ -233,6 +243,7 @@ export function CohortWorkspace({
   const availableViews = views.filter(({ value }) => {
     if (value === "learners")
       return cohort.access.manageLearners || cohort.access.manageInvites;
+    if (value === "payments") return cohort.access.managePayments;
     if (value === "assessments") return cohort.access.reviewAssessments;
     if (value === "reviews") return cohort.access.reviewAssessments;
     if (value === "settings") return cohort.access.update;
@@ -279,8 +290,13 @@ export function CohortWorkspace({
   const meetingItems = meetings.data?.pages.flatMap((page) => page.items);
   const learnerActiveTotal = learners.data?.pages[0]?.activeTotal;
   const meetingTotal = meetings.data?.pages[0]?.total;
+  const paymentsToReview = usePendingPaymentReviews(
+    cohort.id,
+    cohort.access.managePayments,
+  );
   const viewCounts: Partial<Record<CohortView, number>> = {
     learners: learnerActiveTotal,
+    payments: paymentsToReview,
     staff: cohort.staff.length,
     meetings: meetingTotal,
   };
@@ -380,8 +396,19 @@ export function CohortWorkspace({
             meetings={meetingItems}
             meetingsPending={meetings.isPending}
             canManageMeetings={cohort.access.manageMeetings}
+            canManagePayments={cohort.access.managePayments}
+            paymentsToReview={paymentsToReview}
             onNavigate={navigate}
           />
+        </TabsContent>
+        <TabsContent value="payments">
+          {cohort.access.managePayments ? (
+            <CohortPayments
+              cohortId={cohort.id}
+              organizationSlug={organizationSlug}
+              canManageSettings={canManagePaymentSettings}
+            />
+          ) : null}
         </TabsContent>
         <TabsContent value="learners">
           <div className="space-y-10">
@@ -462,6 +489,8 @@ function Overview({
   meetings,
   meetingsPending,
   canManageMeetings,
+  canManagePayments,
+  paymentsToReview,
   onNavigate,
 }: {
   cohort: Cohort;
@@ -471,8 +500,11 @@ function Overview({
   meetings?: RouterOutputs["cohort"]["listMeetings"]["items"];
   meetingsPending: boolean;
   canManageMeetings: boolean;
+  canManagePayments: boolean;
+  paymentsToReview?: number;
   onNavigate: (view: CohortView) => void;
 }) {
+  const price = cohort.price ?? cohort.course.price;
   const active =
     learnersActiveTotal ??
     learners?.filter(({ status }) => status === "ACTIVE").length ??
@@ -529,9 +561,7 @@ function Overview({
               ],
               [
                 "Harga",
-                cohort.price === null
-                  ? "Ikuti course"
-                  : `IDR ${cohort.price.toLocaleString("id-ID")}`,
+                `${price > 0 ? formatRupiah(price) : "Gratis"}${cohort.price === null ? " (ikuti course)" : ""}`,
               ],
             ].map(([label, value]) => (
               <div
@@ -574,6 +604,17 @@ function Overview({
                 icon: UsersIcon,
                 label: "Kelola peserta didik dan status",
               },
+              ...(canManagePayments
+                ? [
+                    {
+                      target: "payments" as const,
+                      icon: WalletIcon,
+                      label: paymentsToReview
+                        ? `Verifikasi ${paymentsToReview} pembayaran`
+                        : "Kelola pembayaran siswa",
+                    },
+                  ]
+                : []),
               {
                 target: "staff" as const,
                 icon: UserRoundCogIcon,
@@ -1842,10 +1883,19 @@ function Settings({
                   id="settings-cohort-price"
                   type="number"
                   min={0}
-                  placeholder="Ikuti course"
+                  placeholder={
+                    cohort.course.price > 0
+                      ? `Ikuti course (${formatRupiah(cohort.course.price)})`
+                      : "Ikuti course (gratis)"
+                  }
                   value={price}
                   onChange={(event) => setPrice(event.target.value)}
                 />
+                <p className="text-muted-foreground text-xs">
+                  Isi 0 untuk gratis. Group belajar berbayar diikuti lewat
+                  checkout QRIS atau transfer bank, lalu diverifikasi di tab
+                  Pembayaran.
+                </p>
               </div>
             </div>
           </CardContent>

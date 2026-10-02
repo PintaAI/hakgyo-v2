@@ -144,6 +144,43 @@ describe("invite redemption", () => {
     expect(writes).toHaveLength(0);
   });
 
+  test("sends invites to a paid cohort to checkout without consuming a use", async () => {
+    let updateCount = 0;
+    const tx = {
+      $executeRaw: () => Promise.resolve(1),
+      enrollmentInvite: {
+        findUnique: () =>
+          Promise.resolve({
+            id: "invite-1",
+            courseId: "course-1",
+            cohortId: "cohort-1",
+            revokedAt: null,
+            expiresAt: null,
+            maxUses: null,
+            useCount: 0,
+            course: { price: 0 },
+            cohort: { status: "OPEN", endsAt: null, price: 350000 },
+          }),
+        updateMany: () => {
+          updateCount += 1;
+          return Promise.resolve({ count: 1 });
+        },
+      },
+      cohortEnrollment: { findFirst: () => Promise.resolve(null) },
+    } as unknown as Prisma.TransactionClient;
+
+    expect(
+      await rejectionCode(
+        redeemEnrollmentInvite(tx, {
+          token: "paid-cohort-token-long-enough",
+          userId: "user-1",
+          now,
+        }),
+      ),
+    ).toBe("PRECONDITION_FAILED");
+    expect(updateCount).toBe(0);
+  });
+
   test("consumes a use and joins the course's default cohort", async () => {
     const { tx, getUseCount } = createTransaction();
     const memberships: unknown[] = [];

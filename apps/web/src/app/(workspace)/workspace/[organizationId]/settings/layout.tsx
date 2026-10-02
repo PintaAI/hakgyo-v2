@@ -17,6 +17,7 @@ export default async function Layout({
       <Subnav
         nav={[
           { href: `${root}/general`, label: "Umum" },
+          { href: `${root}/payments`, label: "Pembayaran" },
           { href: `${root}/integrations`, label: "Integrasi" },
           { href: `${root}/mcp`, label: "MCP Server" },
         ]}

@@ -1043,8 +1043,9 @@ mutation({ courseId: string }): CohortEnrollment
 - Course wajib `PUBLISHED` dan mode efektif enrollment wajib `OPEN`.
 - Mode efektif memakai `course.enrollmentMode`, atau
   `organization.defaultEnrollmentMode` bila override course bernilai `null`.
-- Hanya course gratis (`price === 0`) yang dapat didaftarkan karena payment belum
-  tersedia. Course berbayar menghasilkan `PRECONDITION_FAILED`.
+- Hanya course gratis (`price === 0`) yang dapat didaftarkan langsung. Course
+  berbayar menghasilkan `PRECONDITION_FAILED`; learner bergabung lewat checkout
+  Group belajar (`payment.startCohortCheckout`, lihat `docs/payments.md`).
 - Learner masuk ke cohort default (belajar mandiri) course dengan status
   `ACTIVE` dan source `OPEN`.
 - Idempotent untuk keanggotaan `ACTIVE`/`COMPLETED` yang masih berlaku.
@@ -1791,7 +1792,8 @@ database:
 | Zoom connection metadata             | Read dan disconnect/revoke tersedia |
 | Zoom OAuth/token refresh             | Aktif untuk General App OAuth       |
 | Create/update/delete meeting di Zoom | Aktif melalui cohort meeting API    |
-| Payment                              | Belum tersedia                      |
+| Payment manual (QRIS, transfer bank) | Aktif, lihat `docs/payments.md`     |
+| Payment gateway (Midtrans/Xendit)    | Belum tersedia                      |
 
 Webhook meeting lifecycle belum tersedia. Perubahan status meeting yang dilakukan
 langsung di Zoom belum otomatis memperbarui `CohortMeeting.status`.

@@ -127,7 +127,7 @@ Field penting:
 | ------------------- | ------------------------------------------------------ |
 | `ownerMembershipId` | Anggota organisasi yang bertanggung jawab atas course  |
 | `slug`              | Unik di dalam organisasi                               |
-| `price`, `currency` | Harga publikasi; payment belum dimodelkan              |
+| `price`, `currency` | Harga default cohort; lihat `docs/payments.md`         |
 | `enrollmentMode`    | Override aturan enrollment organisasi, jika diperlukan |
 | `status`            | `DRAFT`, `PUBLISHED`, atau `ARCHIVED`                  |
 
@@ -417,6 +417,19 @@ IN_PROGRESS -> COMPLETED
 
 Satu user hanya memiliki satu progress row untuk setiap course item.
 
+## Pembayaran
+
+Model pembayaran manual Group belajar dijelaskan lengkap di
+[`docs/payments.md`](payments.md).
+
+- `OrganizationQris` menyimpan satu QRIS statis per organisasi.
+- `OrganizationBankAccount` menyimpan rekening tujuan transfer, dengan
+  `bankCode` berupa sandi bank Bank Indonesia atau `OTHER`.
+- `Payment` mencatat satu checkout learner untuk satu cohort: nominal,
+  metode, `provider` (`MANUAL` sekarang, `MIDTRANS`/`XENDIT` disiapkan),
+  status, snapshot instruksi bayar, bukti, dan hasil review staff. Payment
+  yang disetujui membuat `CohortEnrollment` dengan source `PURCHASE`.
+
 ## Asset dan BlockNote
 
 ```mermaid
@@ -541,7 +554,8 @@ divalidasi, seperti status, score, position, ownership, dan timestamp.
 ### Mengikuti cohort
 
 ```text
-1. User menerima invite atau mendaftar ke cohort.
+1. User menerima invite atau mendaftar ke cohort. Cohort berbayar melewati
+   checkout dan verifikasi pembayaran terlebih dahulu.
 2. Sistem membuat CohortEnrollment.
 3. User mendapat akses ke CourseItem yang sudah published, juga setelah cohort
    selesai.
