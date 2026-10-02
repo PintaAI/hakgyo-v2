@@ -362,6 +362,10 @@ function CourseItemContent({
                 courseId={courseId}
                 courseItemId={courseItemId}
                 completionMode="assessment"
+                assessmentState={{
+                  status: latestAttempt?.status ?? null,
+                  canReattempt: assessmentEntry.canReattempt,
+                }}
                 initialOutline={initialOutline.current}
               />
             ) : null}

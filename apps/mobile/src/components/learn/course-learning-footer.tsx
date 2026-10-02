@@ -19,6 +19,27 @@ type Milestone = NonNullable<ReturnType<typeof getLearningMilestone>>;
 type FooterIssue =
   { kind: "requirements" } | { kind: "error"; message: string };
 
+export type LearningAssessmentState = {
+  status: "IN_PROGRESS" | "SUBMITTED" | "IN_REVIEW" | "GRADED" | null;
+  canReattempt: boolean;
+};
+
+function assessmentGateMessage(state?: LearningAssessmentState) {
+  switch (state?.status) {
+    case "IN_PROGRESS":
+      return "Selesaikan dan kirim tugas ini untuk lanjut.";
+    case "SUBMITTED":
+    case "IN_REVIEW":
+      return "Jawabanmu sedang dinilai pengajar. Tunggu hasilnya untuk lanjut.";
+    case "GRADED":
+      return state.canReattempt
+        ? "Nilaimu belum cukup untuk lanjut. Kerjakan ulang tugas ini."
+        : "Nilaimu belum cukup untuk lanjut dan percobaan sudah habis. Hubungi pengajar.";
+    default:
+      return "Kerjakan tugas ini untuk lanjut ke aktivitas berikutnya.";
+  }
+}
+
 export type LearningRequirementAction = {
   id: string;
   type: "VOCABULARY_SET" | "ASSESSMENT";
@@ -33,6 +54,7 @@ export function CourseLearningFooter({
   completionMode = "manual",
   initialOutline,
   requirementActions = [],
+  assessmentState,
 }: {
   courseId: string;
   courseItemId: string;
@@ -40,6 +62,7 @@ export function CourseLearningFooter({
   completionMode?: "manual" | "assessment";
   initialOutline?: LearningPathCourse;
   requirementActions?: LearningRequirementAction[];
+  assessmentState?: LearningAssessmentState;
 }) {
   const queryClient = useQueryClient();
   const outline = useCourseOutline(courseId);
@@ -210,17 +233,25 @@ export function CourseLearningFooter({
     <View className="gap-6">
       <View className="gap-3">
         <View className="gap-1.5">
-          <Text className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
+          <Text
+            className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary"
+            numberOfLines={1}
+          >
             {path
-              ? `Bab ${path.moduleIndex + 1} · Aktivitas ${path.itemIndex + 1} dari ${path.module.items.length}`
+              ? `Bab ${path.moduleIndex + 1} · ${path.module.title}`
               : "Jalur belajar kamu"}
           </Text>
-          <Text className="text-[28px] font-black leading-8 tracking-tight text-foreground">
-            {path?.item.isCompleted ? "Kerja bagus" : "Siap lanjut?"}
-          </Text>
+          {/* An unfinished tugas has its own call to action above the footer,
+              so the footer only reports progress instead of inviting a
+              "continue" the learner can't take yet. */}
+          {assessmentIncomplete ? null : (
+            <Text className="text-[28px] font-black leading-8 tracking-tight text-foreground">
+              {path?.item.isCompleted ? "Kerja bagus" : "Siap lanjut?"}
+            </Text>
+          )}
           <Text className="text-sm leading-5 text-muted-foreground">
             {path
-              ? `${path.completedCount} dari ${path.module.items.length} aktivitas selesai di ${path.module.title}`
+              ? `${path.completedCount} dari ${path.module.items.length} aktivitas selesai`
               : "Jaga semangatmu, satu aktivitas demi satu aktivitas."}
           </Text>
         </View>
@@ -262,7 +293,7 @@ export function CourseLearningFooter({
               </View>
             </View>
             <Text
-              className="text-base font-bold leading-6 text-foreground"
+              className={`text-base font-bold leading-6 ${assessmentIncomplete ? "text-muted-foreground" : "text-foreground"}`}
               numberOfLines={2}
             >
               {path.nextItem.title}
@@ -272,15 +303,29 @@ export function CourseLearningFooter({
                 {path.nextModule?.title}
               </Text>
             ) : null}
+            {assessmentIncomplete ? (
+              <Text
+                accessibilityRole="alert"
+                className="mt-1 text-sm leading-5 text-muted-foreground"
+              >
+                {assessmentGateMessage(assessmentState)}
+              </Text>
+            ) : null}
           </View>
-          <Text className="text-2xl font-light text-primary">→</Text>
         </View>
+      ) : assessmentIncomplete ? (
+        <Text
+          accessibilityRole="alert"
+          className="border-t border-border pt-5 text-sm leading-5 text-muted-foreground"
+        >
+          {assessmentGateMessage(assessmentState)}
+        </Text>
       ) : path && !path.courseCompleted ? (
         <Text className="border-t border-border pt-5 text-sm leading-5 text-muted-foreground">
           Selesaikan langkah ini untuk membuka aktivitas berikutnya.
         </Text>
       ) : null}
-      {issue?.kind === "requirements" || assessmentIncomplete ? (
+      {issue?.kind === "requirements" ? (
         <View
           accessibilityRole="alert"
           className="gap-4 border-t border-border pt-5"
@@ -290,13 +335,11 @@ export function CourseLearningFooter({
               Sebelum melanjutkan
             </Text>
             <Text className="text-base font-black text-foreground">
-              {assessmentIncomplete
-                ? "Selesaikan tugas ini dulu"
-                : "Tinggal satu langkah lagi"}
+              Tinggal satu langkah lagi
             </Text>
             <Text className="text-sm leading-5 text-muted-foreground">
-              {assessmentIncomplete
-                ? "Lulus tugas ini, atau tunggu review dari pengajar jika masih dinilai."
+              {completionMode === "assessment"
+                ? assessmentGateMessage(assessmentState)
                 : requirementActions.length
                   ? "Selesaikan latihan di bawah untuk memantapkan yang sudah kamu pelajari. Progres materi kamu aman."
                   : "Selesaikan latihan wajib di materi ini, lalu kembali dan lanjutkan."}
@@ -382,7 +425,7 @@ export function CourseLearningFooter({
             : "Pertahankan semangatmu"}
         </Text>
         <Text className="text-center text-sm leading-5 text-muted-foreground">
-          You completed {milestone.moduleTitle}.
+          Kamu menyelesaikan {milestone.moduleTitle}.
         </Text>
       </View>
 
