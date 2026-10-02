@@ -335,3 +335,101 @@ html.dark:not(.bn-root) {
     }
   }
 }
+
+/*
+ * Platform landing page: every section fills the screen and snaps into
+ * place so the page can be presented like a slide deck. On phones, slides
+ * whose content would not fit move it into horizontal panels instead
+ * (see components/landing/panels.tsx).
+ * Elements marked with data-reveal fade in when their slide becomes active
+ * (the slide navigator sets data-active; the page adds .landing-motion).
+ */
+html:has([data-slide-deck]) {
+  scroll-snap-type: y mandatory;
+}
+
+[data-slide-deck] > [data-slide] {
+  scroll-snap-align: start;
+  /* The small viewport height keeps slides steady while mobile browser
+     toolbars collapse and expand. */
+  min-height: 100svh;
+}
+
+@media (min-width: 64rem) and (min-height: 40rem) {
+  [data-slide-deck] > [data-slide] {
+    min-height: 100dvh;
+  }
+}
+
+@media (min-width: 64rem) and (min-height: 40rem) and (prefers-reduced-motion: no-preference) {
+  html.landing-motion [data-slide]:not([data-active]) [data-reveal] {
+    opacity: 0;
+  }
+
+  html.landing-motion [data-slide][data-active] [data-reveal] {
+    animation: landing-reveal 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--reveal, 0) * 90ms);
+  }
+
+  /* Horizontal panels inside a slide replay the reveal as each one opens. */
+  html.landing-motion [data-panel]:not([data-panel-active]) [data-reveal] {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has([data-slide-deck]) {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-landing-float,
+  .animate-landing-drift,
+  .animate-landing-pan {
+    animation: none;
+  }
+}
+
+@keyframes landing-reveal {
+  from {
+    opacity: 0;
+    translate: 0 28px;
+    filter: blur(8px);
+  }
+}
+
+@theme {
+  --animate-landing-float: landing-float 6s ease-in-out infinite;
+  --animate-landing-drift: landing-drift 18s ease-in-out infinite;
+  --animate-landing-pan: landing-pan 22s ease-in-out infinite;
+
+  @keyframes landing-float {
+    50% {
+      translate: 0 -8px;
+    }
+  }
+
+  @keyframes landing-drift {
+    50% {
+      translate: -6rem 4rem;
+      scale: 1.15;
+    }
+  }
+
+  @keyframes landing-pan {
+    0%,
+    12% {
+      translate: 0 0;
+    }
+    48%,
+    60% {
+      translate: 0 calc(var(--pan-distance, 0px) * -1);
+    }
+    96%,
+    100% {
+      translate: 0 0;
+    }
+  }
+}
