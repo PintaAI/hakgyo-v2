@@ -36,7 +36,7 @@ export function createPaymentReference() {
 }
 
 /** Loads the payment, takes its learner lock and re-reads the status. */
-async function lockPayment(tx: Transaction, paymentId: string) {
+export async function lockPayment(tx: Transaction, paymentId: string) {
   const target = await tx.payment.findUnique({
     where: { id: paymentId },
     select: { cohortId: true, userId: true },
@@ -180,7 +180,7 @@ export async function rejectPayment(
           cohortId: payment.cohortId,
           userId: payment.userId,
           source: "PURCHASE",
-          status: "ACTIVE",
+          status: { in: ["ACTIVE", "COMPLETED"] },
         },
         data: { status: "CANCELLED" },
       });
