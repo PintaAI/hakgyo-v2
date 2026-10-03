@@ -56,9 +56,9 @@ import {
 import { api, type RouterOutputs } from "~/trpc/react";
 import { AssessmentReviewDetail } from "~/components/review-queue";
 import {
-  AssessmentPicker,
-  type AssessmentPickerOption,
-} from "~/components/assessment-picker";
+  ResourcePicker,
+  type ResourcePickerOption,
+} from "~/components/resource-picker";
 
 type EventSummary =
   RouterOutputs["assessmentEvent"]["listManageable"]["items"][number];
@@ -192,13 +192,13 @@ export function AssessmentEventManager({
     (item) => item.id === courseItemId,
   );
 
-  const assessmentOptions = useMemo<AssessmentPickerOption[]>(
+  const assessmentOptions = useMemo<ResourcePickerOption[]>(
     () =>
       assessmentItems.data?.map((item) => ({
         id: item.id,
         title: item.assessment?.title ?? "Tugas",
         description: item.assessment?.description,
-        questionCount: item.assessment?._count.questions,
+        count: item.assessment?._count.questions,
         timeLimitMinutes: item.assessment?.timeLimitMinutes,
         updatedAt: item.assessment?.updatedAt,
         group: item.module.title,
@@ -501,7 +501,8 @@ export function AssessmentEventManager({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="event-assessment">Tugas</Label>
-                <AssessmentPicker
+                <ResourcePicker
+                  kind="ASSESSMENT"
                   id="event-assessment"
                   options={assessmentOptions}
                   value={courseItemId}

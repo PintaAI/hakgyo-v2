@@ -33,9 +33,16 @@ export default async function KurikulumPage({
   }
   void api.content.listCoursePdfPageRanges.prefetch({ courseId });
   void api.content.getCurriculumReadiness.prefetch({ courseId });
-  const toOption = ({ id, title }: { id: string; title: string }) => ({
-    id,
-    title,
+  const toOption = (resource: {
+    id: string;
+    title: string;
+    description: string | null;
+    updatedAt: Date;
+  }) => ({
+    id: resource.id,
+    title: resource.title,
+    description: resource.description,
+    updatedAt: resource.updatedAt,
   });
 
   return (
@@ -44,15 +51,17 @@ export default async function KurikulumPage({
         <KurikulumEditor
           assessments={assessments.map((assessment) => ({
             ...toOption(assessment),
-            description: assessment.description,
-            questionCount: assessment._count.questions,
+            count: assessment._count.questions,
             timeLimitMinutes: assessment.timeLimitMinutes,
             updatedAt: assessment.updatedAt,
           }))}
           initialCourse={course}
           materials={materials.map(toOption)}
           organizationSlug={organizationSlug}
-          vocabularySets={vocabularySets.map(toOption)}
+          vocabularySets={vocabularySets.map((set) => ({
+            ...toOption(set),
+            count: set._count.entries,
+          }))}
         />
       </HydrateClient>
     </div>

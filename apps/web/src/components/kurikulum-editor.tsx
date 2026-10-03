@@ -73,9 +73,9 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
-  AssessmentPicker,
-  type AssessmentPickerOption,
-} from "~/components/assessment-picker";
+  ResourcePicker,
+  type ResourcePickerOption,
+} from "~/components/resource-picker";
 import {
   Select,
   SelectContent,
@@ -99,12 +99,13 @@ import { api, type RouterOutputs } from "~/trpc/react";
 type Course = RouterOutputs["course"]["get"];
 type CourseModule = Course["modules"][number];
 type CourseItem = CourseModule["items"][number];
-/** Library resources only need an id and title to be picked and labelled. */
-type ResourceOption = { id: string; title: string };
+/**
+ * Library resources with picker metadata. For a tugas, `count` is its question
+ * count, which also lets the add-item dialog tell an empty assessment apart.
+ */
+type ResourceOption = Omit<ResourcePickerOption, "group">;
 type Material = ResourceOption;
-/** Picker metadata; `questionCount` also lets the add-item dialog tell an empty assessment apart. */
-type Assessment = ResourceOption &
-  Omit<AssessmentPickerOption, "id" | "title" | "group">;
+type Assessment = ResourceOption;
 type VocabularySet = ResourceOption;
 type PdfPageRangesByMaterial = Partial<Record<string, PdfPageRange[]>>;
 type ItemType = CourseItem["type"];
@@ -1314,8 +1315,7 @@ function ItemDialog({
       type,
       questionCount:
         type === "ASSESSMENT"
-          ? assessments.find((resource) => resource.id === candidateId)
-              ?.questionCount
+          ? assessments.find((resource) => resource.id === candidateId)?.count
           : undefined,
       placementsInModule: (module?.items ?? [])
         .filter(
@@ -1477,40 +1477,14 @@ function ItemDialog({
 
             <div className="space-y-2">
               <Label htmlFor="item-resource">{itemMeta[type].label}</Label>
-              {type === "ASSESSMENT" ? (
-                <AssessmentPicker
-                  id="item-resource"
-                  options={assessments}
-                  value={resourceId || null}
-                  onValueChange={selectResource}
-                  defaultSortLabel="Urutan library"
-                />
-              ) : (
-                <Select
-                  value={resourceId || "NONE"}
-                  disabled={resources.length === 0}
-                  onValueChange={(value) => {
-                    if (value && value !== "NONE") selectResource(value);
-                  }}
-                >
-                  <SelectTrigger id="item-resource" className="h-10 w-full">
-                    <span className="flex min-w-0 flex-1 truncate text-left">
-                      {resources.find((resource) => resource.id === resourceId)
-                        ?.title ??
-                        (resources.length === 0
-                          ? `Belum ada ${resourceLabel} tersedia`
-                          : `Pilih ${resourceLabel}`)}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {resources.map((resource) => (
-                      <SelectItem key={resource.id} value={resource.id}>
-                        {resource.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <ResourcePicker
+                kind={type}
+                id="item-resource"
+                options={resources}
+                value={resourceId || null}
+                onValueChange={selectResource}
+                defaultSortLabel="Urutan library"
+              />
               {resources.length === 0 ? (
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                   <CircleOffIcon className="size-3.5" />

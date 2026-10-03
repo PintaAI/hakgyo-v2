@@ -15,6 +15,10 @@ import {
   Volume2Icon,
 } from "lucide-react";
 
+import {
+  ResourcePicker,
+  type ResourcePickerOption,
+} from "~/components/resource-picker";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -84,7 +88,7 @@ function EmbedReadinessHint({
   );
 }
 
-function ResourcePicker({
+function ResourceReferencePicker({
   resourceType,
   onSelect,
 }: {
@@ -93,15 +97,24 @@ function ResourcePicker({
 }) {
   const references = useResourceReferences();
   const callbackTokenRef = useRef<string | null>(null);
-  const [query, setQuery] = useState("");
-  const resources =
-    resourceType === "vocabulary"
-      ? (references?.vocabularySets ?? [])
-      : (references?.assessments ?? []);
-  const filtered = resources.filter((resource) =>
-    `${resource.title} ${resource.description ?? ""}`
-      .toLowerCase()
-      .includes(query.trim().toLowerCase()),
+  const options = useMemo<ResourcePickerOption[]>(
+    () =>
+      resourceType === "vocabulary"
+        ? (references?.vocabularySets ?? []).map((set) => ({
+            id: set.id,
+            title: set.title,
+            description: set.description,
+            count: set.entryCount,
+            updatedAt: set.updatedAt,
+          }))
+        : (references?.assessments ?? []).map((assessment) => ({
+            id: assessment.id,
+            title: assessment.title,
+            description: assessment.description,
+            count: assessment.questionCount,
+            updatedAt: assessment.updatedAt,
+          })),
+    [references?.assessments, references?.vocabularySets, resourceType],
   );
 
   useEffect(() => {
@@ -154,56 +167,14 @@ function ResourcePicker({
 
   return (
     <div className="bg-muted/20 space-y-3 rounded-xl border p-4">
-      <div className="relative">
-        <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-        <Input
-          aria-label={`Cari ${resourceType === "vocabulary" ? "set kosakata" : "tugas"}`}
-          className="pl-9"
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={
-            resourceType === "vocabulary"
-              ? "Cari set kosakata..."
-              : "Cari tugas..."
-          }
-          value={query}
-        />
-      </div>
-      <div className="max-h-64 space-y-2 overflow-y-auto">
-        {references.isLoading ? (
-          <p className="text-muted-foreground flex items-center gap-2 p-3 text-sm">
-            <LoaderCircleIcon className="size-4 animate-spin" /> Memuat library
-          </p>
-        ) : filtered.length ? (
-          filtered.map((resource) => (
-            <button
-              className="hover:bg-muted bg-background bg-background flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left transition"
-              key={resource.id}
-              onClick={() => onSelect(resource.id)}
-              type="button"
-            >
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold">
-                  {resource.title}
-                </span>
-                <span className="text-muted-foreground block truncate text-xs">
-                  {resource.description ?? "Tanpa deskripsi"}
-                </span>
-              </span>
-              {"questionCount" in resource ? (
-                resource.questionCount === 0 ? (
-                  <Badge variant="destructive">Belum ada soal</Badge>
-                ) : (
-                  <Badge variant="outline">{resource.questionCount} soal</Badge>
-                )
-              ) : null}
-            </button>
-          ))
-        ) : (
-          <p className="text-muted-foreground p-3 text-center text-sm">
-            Tidak ada resource yang cocok.
-          </p>
-        )}
-      </div>
+      <ResourcePicker
+        kind={resourceType === "vocabulary" ? "VOCABULARY_SET" : "ASSESSMENT"}
+        options={options}
+        value={null}
+        onValueChange={onSelect}
+        loading={references.isLoading}
+        defaultSortLabel="Urutan library"
+      />
       <p className="text-muted-foreground text-xs leading-relaxed">
         Pelajaran hanya bisa tayang jika{" "}
         {resourceType === "vocabulary" ? "set kosakata" : "tugas"} yang
@@ -273,7 +244,7 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
           ) : null}
 
           {!block.props.vocabularySetId || changing ? (
-            <ResourcePicker
+            <ResourceReferencePicker
               resourceType="vocabulary"
               onSelect={(vocabularySetId) => {
                 editor.updateBlock(block, { props: { vocabularySetId } });
@@ -452,7 +423,7 @@ export const assessmentReferenceBlock = createReactBlockSpec(
           ) : null}
 
           {!block.props.assessmentId || changing ? (
-            <ResourcePicker
+            <ResourceReferencePicker
               resourceType="assessment"
               onSelect={(assessmentId) => {
                 editor.updateBlock(block, { props: { assessmentId } });

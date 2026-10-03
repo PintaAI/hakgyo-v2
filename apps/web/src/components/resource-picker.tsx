@@ -2,11 +2,14 @@
 
 import { useDeferredValue, useMemo, useState } from "react";
 import {
+  BookOpenIcon,
   CheckIcon,
   ChevronsUpDownIcon,
   ClipboardCheckIcon,
   Clock3Icon,
+  FileTextIcon,
   SearchIcon,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
@@ -28,28 +31,56 @@ import {
 import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/utils";
 
-export type AssessmentPickerOption = {
-  /** Value reported by `onValueChange` (an assessment or course item id). */
+export type ResourcePickerKind = "MATERIAL" | "VOCABULARY_SET" | "ASSESSMENT";
+
+export type ResourcePickerOption = {
+  /** Value reported by `onValueChange` (a resource or course item id). */
   id: string;
   title: string;
   description?: string | null;
-  questionCount?: number;
+  /** Questions for a tugas, entries for a set kosakata. */
+  count?: number;
   timeLimitMinutes?: number | null;
   updatedAt?: Date | string | null;
   /** Optional grouping shown as a filter, for example the curriculum module. */
   group?: string;
 };
 
-type SortKey = "DEFAULT" | "TITLE_ASC" | "TITLE_DESC" | "QUESTIONS" | "UPDATED";
-type QuestionFilter = "ALL" | "READY" | "EMPTY";
+type SortKey = "DEFAULT" | "TITLE_ASC" | "TITLE_DESC" | "COUNT" | "UPDATED";
+type CountFilter = "ALL" | "READY" | "EMPTY";
 
 const ALL_GROUPS = "__all__";
 
-const questionFilterLabels: Record<QuestionFilter, string> = {
-  ALL: "Semua tugas",
-  READY: "Sudah ada soal",
-  EMPTY: "Belum ada soal",
-};
+const resourceKinds = {
+  MATERIAL: { noun: "materi", icon: FileTextIcon, count: null },
+  VOCABULARY_SET: {
+    noun: "set kosakata",
+    icon: BookOpenIcon,
+    count: {
+      unit: "kata",
+      empty: "Belum ada kata",
+      ready: "Sudah ada kata",
+      sort: "Kata terbanyak",
+    },
+  },
+  ASSESSMENT: {
+    noun: "tugas",
+    icon: ClipboardCheckIcon,
+    count: {
+      unit: "soal",
+      empty: "Belum ada soal",
+      ready: "Sudah ada soal",
+      sort: "Soal terbanyak",
+    },
+  },
+} satisfies Record<
+  ResourcePickerKind,
+  {
+    noun: string;
+    icon: LucideIcon;
+    count: { unit: string; empty: string; ready: string; sort: string } | null;
+  }
+>;
 
 const collator = new Intl.Collator("id-ID", {
   sensitivity: "base",
@@ -62,32 +93,34 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
 });
 
-function timestamp(value: AssessmentPickerOption["updatedAt"]) {
+function timestamp(value: ResourcePickerOption["updatedAt"]) {
   return value ? new Date(value).getTime() : 0;
 }
 
 /**
- * Select-style trigger that opens a searchable, sortable assessment list in a
- * sheet (bottom sheet on phones). Use it wherever a plain dropdown would grow
- * too long as the assessment library grows.
+ * Select-style trigger that opens a searchable, sortable list of materi, set
+ * kosakata or tugas in a sheet (bottom sheet on phones). Use it wherever a
+ * plain dropdown would grow too long as the library grows.
  */
-export function AssessmentPicker({
+export function ResourcePicker({
+  kind,
   id,
   options,
   value,
   onValueChange,
-  placeholder = "Pilih tugas",
-  emptyLabel = "Belum ada tugas tersedia",
-  title = "Pilih tugas",
-  description = "Cari dan urutkan tugas untuk menemukan yang Anda perlukan.",
+  placeholder = `Pilih ${resourceKinds[kind].noun}`,
+  emptyLabel = `Belum ada ${resourceKinds[kind].noun} tersedia`,
+  title = `Pilih ${resourceKinds[kind].noun}`,
+  description = `Cari dan urutkan ${resourceKinds[kind].noun} untuk menemukan yang Anda perlukan.`,
   defaultSortLabel = "Urutan bawaan",
   groupLabel = "Bab",
   disabled,
   loading,
   className,
 }: {
+  kind: ResourcePickerKind;
   id?: string;
-  options: AssessmentPickerOption[];
+  options: ResourcePickerOption[];
   value: string | null;
   onValueChange: (value: string) => void;
   placeholder?: string;
@@ -131,7 +164,11 @@ export function AssessmentPicker({
           </span>
         ) : (
           <span className="text-muted-foreground min-w-0 flex-1 truncate">
-            {loading ? "Memuat tugas…" : isEmpty ? emptyLabel : placeholder}
+            {loading
+              ? `Memuat ${resourceKinds[kind].noun}…`
+              : isEmpty
+                ? emptyLabel
+                : placeholder}
           </span>
         )}
         <ChevronsUpDownIcon className="text-muted-foreground size-4 shrink-0" />
@@ -143,7 +180,8 @@ export function AssessmentPicker({
         >
           {/* Mount the list only while open so search and filters reset on each visit. */}
           {open ? (
-            <AssessmentPickerPanel
+            <ResourcePickerPanel
+              kind={kind}
               options={options}
               value={value}
               title={title}
@@ -162,7 +200,8 @@ export function AssessmentPicker({
   );
 }
 
-function AssessmentPickerPanel({
+function ResourcePickerPanel({
+  kind,
   options,
   value,
   title,
@@ -171,7 +210,8 @@ function AssessmentPickerPanel({
   groupLabel,
   onSelect,
 }: {
-  options: AssessmentPickerOption[];
+  kind: ResourcePickerKind;
+  options: ResourcePickerOption[];
   value: string | null;
   title: string;
   description: string;
@@ -182,7 +222,8 @@ function AssessmentPickerPanel({
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("DEFAULT");
   const [group, setGroup] = useState(ALL_GROUPS);
-  const [questionFilter, setQuestionFilter] = useState<QuestionFilter>("ALL");
+  const [countFilter, setCountFilter] = useState<CountFilter>("ALL");
+  const { noun, icon: Icon, count: countLabels } = resourceKinds[kind];
   const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
 
   const groups = useMemo(
@@ -191,29 +232,34 @@ function AssessmentPickerPanel({
     ],
     [options],
   );
-  const hasQuestionCounts = options.some(
-    (option) => option.questionCount !== undefined,
-  );
-  // Only offer the question filter when both ready and empty tugas exist.
-  const showQuestionFilter =
-    hasQuestionCounts &&
-    options.some((option) => option.questionCount === 0) &&
-    options.some((option) => (option.questionCount ?? 0) > 0);
+  const hasCounts =
+    countLabels !== null &&
+    options.some((option) => option.count !== undefined);
+  // Only offer the count filter when both ready and empty resources exist.
+  const showCountFilter =
+    hasCounts &&
+    options.some((option) => option.count === 0) &&
+    options.some((option) => (option.count ?? 0) > 0);
+  const countFilterLabels: Record<CountFilter, string> = {
+    ALL: `Semua ${noun}`,
+    READY: countLabels?.ready ?? "",
+    EMPTY: countLabels?.empty ?? "",
+  };
   const hasUpdatedAt = options.some((option) => option.updatedAt);
 
   const sortLabels: Partial<Record<SortKey, string>> = {
     DEFAULT: defaultSortLabel,
     TITLE_ASC: "Judul A–Z",
     TITLE_DESC: "Judul Z–A",
-    ...(hasQuestionCounts ? { QUESTIONS: "Soal terbanyak" } : {}),
+    ...(hasCounts && countLabels ? { COUNT: countLabels.sort } : {}),
     ...(hasUpdatedAt ? { UPDATED: "Terakhir diperbarui" } : {}),
   };
 
   const visibleOptions = useMemo(() => {
     const filtered = options.filter((option) => {
       if (group !== ALL_GROUPS && option.group !== group) return false;
-      if (questionFilter === "READY" && !option.questionCount) return false;
-      if (questionFilter === "EMPTY" && option.questionCount !== 0) {
+      if (countFilter === "READY" && !option.count) return false;
+      if (countFilter === "EMPTY" && option.count !== 0) {
         return false;
       }
       if (!deferredSearch) return true;
@@ -230,24 +276,24 @@ function AssessmentPickerPanel({
           return collator.compare(a.title, b.title);
         case "TITLE_DESC":
           return collator.compare(b.title, a.title);
-        case "QUESTIONS":
+        case "COUNT":
           return (
-            (b.questionCount ?? 0) - (a.questionCount ?? 0) ||
+            (b.count ?? 0) - (a.count ?? 0) ||
             collator.compare(a.title, b.title)
           );
         case "UPDATED":
           return timestamp(b.updatedAt) - timestamp(a.updatedAt);
       }
     });
-  }, [options, group, questionFilter, deferredSearch, sort]);
+  }, [options, group, countFilter, deferredSearch, sort]);
 
   const filtersActive =
-    Boolean(deferredSearch) || group !== ALL_GROUPS || questionFilter !== "ALL";
+    Boolean(deferredSearch) || group !== ALL_GROUPS || countFilter !== "ALL";
 
   function resetFilters() {
     setSearch("");
     setGroup(ALL_GROUPS);
-    setQuestionFilter("ALL");
+    setCountFilter("ALL");
   }
 
   return (
@@ -260,7 +306,7 @@ function AssessmentPickerPanel({
         <div className="relative">
           <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
-            aria-label="Cari tugas"
+            aria-label={`Cari ${noun}`}
             className="h-9 pl-8"
             placeholder="Cari judul atau deskripsi"
             value={search}
@@ -297,23 +343,26 @@ function AssessmentPickerPanel({
               </SelectContent>
             </Select>
           ) : null}
-          {showQuestionFilter ? (
+          {showCountFilter && countLabels ? (
             <Select
-              value={questionFilter}
+              value={countFilter}
               onValueChange={(next) => {
-                if (next) setQuestionFilter(next);
+                if (next) setCountFilter(next);
               }}
             >
-              <SelectTrigger aria-label="Filter jumlah soal" className="flex-1">
+              <SelectTrigger
+                aria-label={`Filter jumlah ${countLabels.unit}`}
+                className="flex-1"
+              >
                 <span className="flex flex-1 text-left">
-                  {questionFilterLabels[questionFilter]}
+                  {countFilterLabels[countFilter]}
                 </span>
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(questionFilterLabels) as QuestionFilter[]).map(
+                {(Object.keys(countFilterLabels) as CountFilter[]).map(
                   (key) => (
                     <SelectItem key={key} value={key}>
-                      {questionFilterLabels[key]}
+                      {countFilterLabels[key]}
                     </SelectItem>
                   ),
                 )}
@@ -326,7 +375,7 @@ function AssessmentPickerPanel({
               if (next) setSort(next);
             }}
           >
-            <SelectTrigger aria-label="Urutkan tugas" className="flex-1">
+            <SelectTrigger aria-label={`Urutkan ${noun}`} className="flex-1">
               <span className="flex flex-1 text-left">{sortLabels[sort]}</span>
             </SelectTrigger>
             <SelectContent align="end">
@@ -341,7 +390,7 @@ function AssessmentPickerPanel({
       </div>
       <div className="text-muted-foreground flex min-h-10 items-center justify-between gap-3 px-4 text-xs">
         <span>
-          {visibleOptions.length} dari {options.length} tugas
+          {visibleOptions.length} dari {options.length} {noun}
         </span>
         {filtersActive ? (
           <Button size="xs" variant="ghost" onClick={resetFilters}>
@@ -378,7 +427,7 @@ function AssessmentPickerPanel({
                   {isSelected ? (
                     <CheckIcon className="size-4" />
                   ) : (
-                    <ClipboardCheckIcon className="size-4" />
+                    <Icon className="size-4" />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -408,14 +457,14 @@ function AssessmentPickerPanel({
                     ) : null}
                   </span>
                 </span>
-                {option.questionCount !== undefined ? (
-                  option.questionCount === 0 ? (
+                {countLabels && option.count !== undefined ? (
+                  option.count === 0 ? (
                     <Badge variant="destructive" className="shrink-0">
-                      Belum ada soal
+                      {countLabels.empty}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="shrink-0">
-                      {option.questionCount} soal
+                      {option.count} {countLabels.unit}
                     </Badge>
                   )
                 ) : null}
@@ -424,7 +473,7 @@ function AssessmentPickerPanel({
           })
         ) : (
           <p className="text-muted-foreground px-2 py-10 text-center text-sm">
-            Tidak ada tugas yang cocok.
+            Tidak ada {noun} yang cocok.
           </p>
         )}
       </div>

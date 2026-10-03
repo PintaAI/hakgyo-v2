@@ -27,6 +27,7 @@ export type VocabularyReferenceSummary = {
   title: string;
   description: string | null;
   entryCount: number;
+  updatedAt?: Date;
 };
 
 export type AssessmentReferenceResource = {
@@ -35,6 +36,7 @@ export type AssessmentReferenceResource = {
   description: string | null;
   questionCount: number;
   courseItemId?: string | null;
+  updatedAt?: Date;
 };
 
 export type LearnerReferenceResources = {
@@ -120,6 +122,7 @@ export function ResourceReferenceProvider({
           title: set.title,
           description: set.description,
           entryCount: set._count.entries,
+          updatedAt: set.updatedAt,
         })) ?? [],
       learnerVocabularySets: [],
       assessments:
@@ -128,6 +131,7 @@ export function ResourceReferenceProvider({
           title: assessment.title,
           description: assessment.description,
           questionCount: assessment._count.questions,
+          updatedAt: assessment.updatedAt,
         })) ?? [],
       refresh: async () => {
         await Promise.all([
