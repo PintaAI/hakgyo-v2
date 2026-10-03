@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 
 import { Button, buttonVariants } from "~/components/ui/button";
-import { Skeleton } from "~/components/ui/skeleton";
 import { isPracticeAnswerCorrect, randomSeed } from "~/lib/learner/practice";
 import { useVocabularyAttempts } from "~/lib/learner/use-vocabulary-attempts";
 import { cn } from "~/lib/utils";
@@ -13,6 +12,7 @@ import { api } from "~/trpc/react";
 import { CourseLearningFooter } from "../learn/course-learning-footer";
 import { EntryImage } from "../learn/entry-image";
 import { SegmentedControl } from "../segmented-control";
+import { FlipDeckSkeleton } from "../skeletons";
 import {
   FlipCardDeck,
   type FlipCardItem,
@@ -183,7 +183,7 @@ export function CardsSession({
 
   let body: React.ReactNode;
   if (progressQuery.isPending) {
-    body = <Skeleton className="h-72 w-full rounded-[20px]" />;
+    body = <FlipDeckSkeleton />;
   } else if (progressQuery.isError || !evidence) {
     body = (
       <p role="alert" className="text-destructive text-sm">

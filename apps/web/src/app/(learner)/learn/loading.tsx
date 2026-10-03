@@ -1,12 +1,13 @@
+import { PageSkeleton } from "~/components/learner/skeletons";
 import { Skeleton } from "~/components/ui/skeleton";
 
+// Shared fallback for learner pages without their own skeleton.
 export default function LearnLoading() {
   return (
-    <div className="flex w-full items-center justify-center py-24">
-      <div className="flex items-center gap-3">
-        <Skeleton className="size-5 rounded-full" />
-        <Skeleton className="h-4 w-32" />
-      </div>
-    </div>
+    <PageSkeleton width="2xl" label="Memuat halaman">
+      <Skeleton className="h-8 w-56" />
+      <Skeleton className="h-40 w-full rounded-[20px]" />
+      <Skeleton className="h-40 w-full rounded-[20px]" />
+    </PageSkeleton>
   );
 }

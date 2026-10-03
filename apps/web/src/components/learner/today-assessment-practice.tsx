@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 
-import { Skeleton } from "~/components/ui/skeleton";
 import { randomSeed } from "~/lib/learner/practice";
 import { api } from "~/trpc/react";
 import { QuizSession, type QuizQuestionItem } from "./practice/quiz-session";
 import { RichContent } from "./practice/rich-content";
+import { QuestionSkeleton } from "./skeletons";
 
 const QUESTION_COUNT = 5;
 
@@ -50,7 +50,7 @@ export function TodayAssessmentPractice() {
         Tugas hari ini
       </h2>
       {pool.isPending ? (
-        <Skeleton className="h-72 w-full rounded-2xl" />
+        <QuestionSkeleton />
       ) : pool.isError ? (
         <p role="alert" className="text-destructive text-sm">
           Latihan tugas belum bisa dimuat.{" "}

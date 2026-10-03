@@ -2,7 +2,7 @@
 
 import { FlameIcon } from "lucide-react";
 
-import { Skeleton } from "~/components/ui/skeleton";
+import { StreakSkeleton } from "./skeletons";
 import { cn } from "~/lib/utils";
 import { getStreakProgressDays } from "~/lib/learner/gamification";
 import { api } from "~/trpc/react";
@@ -24,7 +24,7 @@ export function WeeklyStreak() {
         </button>
       </p>
     ) : (
-      <Skeleton className="h-24 w-full rounded-2xl" />
+      <StreakSkeleton />
     );
   }
 

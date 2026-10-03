@@ -376,7 +376,10 @@ export function PracticeHub({
       </h1>
 
       {coursesQuery.isPending ? (
-        <Skeleton className="h-40 w-full rounded-[20px]" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-28 rounded-[20px]" />
+          <Skeleton className="h-28 rounded-[20px]" />
+        </div>
       ) : coursesQuery.isError ? (
         <p role="alert" className="text-destructive text-sm">
           Latihan belum bisa dimuat.{" "}

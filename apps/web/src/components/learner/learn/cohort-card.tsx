@@ -31,6 +31,7 @@ import {
 import { cn } from "~/lib/utils";
 import type { RouterOutputs } from "~/trpc/react";
 import { SegmentedControl } from "../segmented-control";
+import { OutlineSkeleton } from "../skeletons";
 import { CourseOutlineList } from "./course-outline-list";
 import {
   CohortMilestoneTimeline,
@@ -512,7 +513,7 @@ export function CohortCard({
                   showHeader={false}
                 />
               ) : (
-                <Skeleton className="h-40 w-full rounded-2xl" />
+                <OutlineSkeleton modules={1} />
               )
             ) : milestoneGroup && milestoneGroup.milestones.length > 0 ? (
               <CohortMilestoneTimeline

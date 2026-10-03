@@ -5,11 +5,11 @@ import Link from "next/link";
 import { CompassIcon } from "lucide-react";
 
 import { EmptyState } from "~/components/ui/empty-state";
-import { Skeleton } from "~/components/ui/skeleton";
 import { buttonVariants } from "~/components/ui/button";
 import { isStaleClosedOnDemandAssessment } from "~/lib/learner/assessment-state";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
+import { CohortCardSkeleton } from "../skeletons";
 import { CohortCard, type CohortEvent } from "./cohort-card";
 
 const storageKey = (userId: string) => `hakgyo:learn-cohort:v1:${userId}`;
@@ -54,7 +54,7 @@ export function LearnTab({ userId }: { userId: string }) {
   }, [eventsQuery.data, now]);
 
   if (cohortsQuery.isPending) {
-    return <Skeleton className="h-[32rem] w-full rounded-[20px]" />;
+    return <CohortCardSkeleton />;
   }
   if (cohortsQuery.isError) {
     return (

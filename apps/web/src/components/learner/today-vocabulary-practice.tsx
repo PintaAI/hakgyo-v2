@@ -14,6 +14,7 @@ import {
   type FlipCardItem,
   type FlipCardResult,
 } from "./practice/flip-card-deck";
+import { FlipDeckSkeleton } from "./skeletons";
 
 /** `ID` answers in Indonesian (receptive); `KR` answers in Korean (productive). */
 type Mode = "ID" | "KR";
@@ -171,7 +172,7 @@ export function TodayVocabularyPractice() {
       </div>
 
       {pool.isPending ? (
-        <Skeleton className="h-80 w-full rounded-2xl" />
+        <FlipDeckSkeleton />
       ) : pool.isError ? (
         <p role="alert" className="text-destructive text-sm">
           Kosakata belum bisa dimuat.{" "}
