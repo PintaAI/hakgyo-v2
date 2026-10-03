@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { LockIcon } from "lucide-react";
 
 import {
   assessmentAttemptPresentation,
@@ -100,24 +101,27 @@ export function CourseOutlineList({
                   <h3 className="truncate text-base font-bold">
                     {module.title}
                   </h3>
-                  {locked ? (
-                    <p className="text-muted-foreground text-xs">
-                      Selesaikan bab sebelumnya untuk membuka.
-                    </p>
-                  ) : null}
-                  {module.description ? (
-                    <p className="text-muted-foreground line-clamp-2 text-sm">
-                      {module.description}
+                  {/* One line only, so long descriptions never push the row. */}
+                  {locked || module.description ? (
+                    <p className="text-muted-foreground truncate text-sm">
+                      {locked
+                        ? "Selesaikan bab sebelumnya dulu."
+                        : module.description}
                     </p>
                   ) : null}
                 </div>
-                <span className="text-muted-foreground shrink-0 pt-1 text-[10px] font-bold tracking-[1px] uppercase">
-                  {module.isCompleted
-                    ? "Selesai"
-                    : locked
-                      ? "Terkunci"
+                {locked ? (
+                  <LockIcon
+                    className="text-muted-foreground mt-1 size-4 shrink-0"
+                    aria-label="Terkunci"
+                  />
+                ) : (
+                  <span className="text-muted-foreground shrink-0 pt-1 text-[10px] font-bold tracking-[1px] uppercase">
+                    {module.isCompleted
+                      ? "Selesai"
                       : `${done}/${module.items.length} selesai`}
-                </span>
+                  </span>
+                )}
               </div>
 
               {module.items.length === 0 ? (
@@ -139,8 +143,9 @@ export function CourseOutlineList({
                         : undefined;
                     const isCurrent = item.id === currentItemId;
                     const isNext = !currentItemId && item.id === resumeItem?.id;
+                    // Locked rows already show a lock, so they carry no status.
                     const status = locked
-                      ? "Terkunci"
+                      ? undefined
                       : (assessmentState?.detail ??
                         (item.isCompleted
                           ? "Selesai"
@@ -153,7 +158,10 @@ export function CourseOutlineList({
                         title={item.title}
                         type={item.type}
                         typeLabel={itemLabels[item.type]}
-                        statusText={`${status}${attempt && assessmentState?.action ? ` · ${assessmentState.action}` : ""}`}
+                        statusText={
+                          status &&
+                          `${status}${attempt && assessmentState?.action ? ` · ${assessmentState.action}` : ""}`
+                        }
                         completed={item.isCompleted}
                         locked={locked}
                         highlighted={Boolean(

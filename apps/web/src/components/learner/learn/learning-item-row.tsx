@@ -41,7 +41,7 @@ export function LearningItemRow({
   title: string;
   type: LearningItemType;
   typeLabel?: string;
-  statusText: string;
+  statusText?: string;
   completed: boolean;
   locked?: boolean;
   highlighted?: boolean;
@@ -67,8 +67,7 @@ export function LearningItemRow({
           <span className={cn("font-semibold", meta.textClass)}>
             {typeLabel ?? meta.label}
           </span>
-          {" · "}
-          {statusText}
+          {statusText ? ` · ${statusText}` : null}
         </span>
       </div>
       {showChevron ? (

@@ -1,3 +1,4 @@
+import { SymbolView } from "expo-symbols";
 import { Text, View } from "react-native";
 
 import {
@@ -40,7 +41,7 @@ export function CourseOutlineList({
   showActiveState?: boolean;
 }) {
   const { data: session } = authClient.useSession();
-  const { activeOrganizationId } = useAppTheme();
+  const { activeOrganizationId, colors } = useAppTheme();
   const { indicator, markEntitySeen } = useSidebarIndicators();
   const dashboard = useSyncIndex(activeOrganizationId);
   const outlineQuery = useCourseOutline(courseId, {
@@ -119,17 +120,15 @@ export function CourseOutlineList({
                   >
                     {module.title}
                   </Text>
-                  {locked ? (
-                    <Text className="text-xs leading-5 text-muted-foreground">
-                      Selesaikan bab sebelumnya untuk membuka.
-                    </Text>
-                  ) : null}
-                  {module.description ? (
+                  {/* One line only, so long descriptions never push the row. */}
+                  {hasSubtitle ? (
                     <Text
                       className="text-sm leading-5 text-muted-foreground"
-                      numberOfLines={2}
+                      numberOfLines={1}
                     >
-                      {module.description}
+                      {locked
+                        ? "Selesaikan bab sebelumnya dulu."
+                        : module.description}
                     </Text>
                   ) : null}
                 </View>
@@ -143,13 +142,25 @@ export function CourseOutlineList({
                       </Text>
                     </View>
                   ) : null}
-                  <Text className="text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground">
-                    {module.isCompleted
-                      ? "Selesai"
-                      : locked
-                        ? "Terkunci"
+                  {locked ? (
+                    <SymbolView
+                      accessibilityLabel="Terkunci"
+                      fallback={
+                        <Text className="text-xs text-muted-foreground">
+                          🔒
+                        </Text>
+                      }
+                      name="lock.fill"
+                      size={14}
+                      tintColor={colors.mutedForeground}
+                    />
+                  ) : (
+                    <Text className="text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground">
+                      {module.isCompleted
+                        ? "Selesai"
                         : `${module.items.filter((item) => item.isCompleted).length}/${module.items.length} selesai`}
-                  </Text>
+                    </Text>
+                  )}
                 </View>
               </View>
 
@@ -175,8 +186,9 @@ export function CourseOutlineList({
                     const isLast = itemIndex === module.items.length - 1;
                     const isCurrent = item.id === currentItemId;
                     const isNext = !currentItemId && item.id === resumeItem?.id;
+                    // Locked rows already show a lock, so they carry no status.
                     const status = locked
-                      ? "Terkunci"
+                      ? undefined
                       : (assessmentState?.detail ??
                         (item.isCompleted
                           ? "Selesai"
@@ -190,7 +202,10 @@ export function CourseOutlineList({
                         title={item.title}
                         type={item.type}
                         typeLabel={itemLabels[item.type]}
-                        statusText={`${status}${attempt && assessmentState?.action ? ` · ${assessmentState.action}` : ""}`}
+                        statusText={
+                          status &&
+                          `${status}${attempt && assessmentState?.action ? ` · ${assessmentState.action}` : ""}`
+                        }
                         completed={item.isCompleted}
                         locked={locked}
                         highlighted={Boolean(

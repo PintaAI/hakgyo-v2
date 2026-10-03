@@ -1,0 +1,23 @@
+{
+  "skill_name": "hakgyo-promo-video",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "bikin video reel tiktok 30 detik buat Hakgyo, fokus ke fitur tryout digital buat LPK, pakai voice over cewek indonesia, fast pace",
+      "expected_output": "Asks or states format (9:16, 30 s), speaks to the LPK owner, researches the tryout flow from code, writes a storyboard with voiceover first, checks ElevenLabs quota, renders stills before a full render, reports an outline with timestamps and side effects.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "di video demo kemarin bagian harga default kurang jelas, tambahin penjelasan kalau harga kelas bisa diubah per group belajar, terus render ulang",
+      "expected_output": "Edits only the storyboard line and graphic, regenerates only the changed voiceover line, deletes demo/parts, renders detached and resumable, audits every scene text against the new voiceover, does not re-record.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "kameranya zoom in zoom out terus pas ngikutin kursor, pusing liatnya, benerin",
+      "expected_output": "Uses the calm camera rules (held framings of at least 3 s, slow eased moves, zoom at most 1.25x), recomputes camera tracks with the camera script, measures movement, and re-renders without re-recording.",
+      "files": []
+    }
+  ]
+}

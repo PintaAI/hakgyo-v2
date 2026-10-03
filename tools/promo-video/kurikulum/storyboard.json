@@ -1,0 +1,1076 @@
+{
+ "chapters": [
+  {
+   "n": 1,
+   "title": "Buat course"
+  },
+  {
+   "n": 2,
+   "title": "Atur pengaturan course"
+  },
+  {
+   "n": 3,
+   "title": "Susun bab"
+  },
+  {
+   "n": 4,
+   "title": "Tambah learning item"
+  },
+  {
+   "n": 5,
+   "title": "Tulis materi"
+  },
+  {
+   "n": 6,
+   "title": "Buat set kosakata"
+  },
+  {
+   "n": 7,
+   "title": "Buat tugas"
+  },
+  {
+   "n": 8,
+   "title": "Impor dari buku PDF"
+  },
+  {
+   "n": 9,
+   "title": "Pakai ulang dari library"
+  },
+  {
+   "n": 10,
+   "title": "Tampilkan dan publikasikan"
+  },
+  {
+   "n": 11,
+   "title": "Atur progression"
+  },
+  {
+   "n": 12,
+   "title": "Lihat sebagai murid"
+  },
+  {
+   "n": 13,
+   "title": "Ringkasan"
+  }
+ ],
+ "segments": [
+  {
+   "id": "intro",
+   "v": {
+    "type": "intro",
+    "kicker": "Panduan lengkap Hakgyo",
+    "headline": "Cara membuat kurikulum, dari nol sampai tayang.",
+    "steps": [
+     [
+      "BookOpen",
+      "Buat course",
+      "course"
+     ],
+     [
+      "Layers",
+      "Susun bab",
+      "bab"
+     ],
+     [
+      "FileText",
+      "Isi materi, kosakata, dan tugas",
+      "kosakata"
+     ],
+     [
+      "BadgeCheck",
+      "Publikasikan",
+      "mempublikasikannya"
+     ]
+    ]
+   },
+   "vo": "Di video ini, kita bahas semua tentang membuat kurikulum di Hakgyo. Mulai dari membuat course, menyusun bab, mengisi materi, kosakata, dan tugas, sampai mempublikasikannya ke murid. Semuanya dijelaskan langkah demi langkah."
+  },
+  {
+   "id": "anatomy",
+   "v": {
+    "type": "anatomy"
+   },
+   "vo": "Pertama, pahami strukturnya. Satu kurikulum adalah satu course. Di dalamnya ada beberapa bab. Dan setiap bab berisi learning item, yaitu materi untuk dibaca, kosakata untuk dihafal, dan tugas untuk menguji pemahaman murid."
+  },
+  {
+   "id": "ch1",
+   "v": {
+    "type": "chapter",
+    "n": 1
+   },
+   "vo": "Satu. Buat course."
+  },
+  {
+   "id": "k1a",
+   "v": {
+    "type": "clip",
+    "clip": "01-create",
+    "from": "list",
+    "to": "form"
+   },
+   "vo": "Buka menu Courses, lalu klik Course baru."
+  },
+  {
+   "id": "k1b",
+   "v": {
+    "type": "clip",
+    "clip": "01-create",
+    "from": "form",
+    "to": "submit"
+   },
+   "vo": "Isi nama course dan gambaran singkatnya. Nama ini yang akan dilihat murid. Gambaran singkat membantu calon murid memahami isi kursusnya."
+  },
+  {
+   "id": "k1c",
+   "v": {
+    "type": "clip",
+    "clip": "01-create",
+    "from": "submit",
+    "to": "workspace"
+   },
+   "vo": "Klik Buat course. Course baru dibuat dalam keadaan belum dipublikasikan, jadi belum terlihat oleh murid. Anda akan kembali ke daftar course, lalu klik course tadi untuk membukanya."
+  },
+  {
+   "id": "k1d",
+   "v": {
+    "type": "clip",
+    "clip": "01-create",
+    "from": "workspace",
+    "to": "end"
+   },
+   "vo": "Ini ruang kerja course. Ada tab Ringkasan, Group belajar, Siswa, Hasil dan review, Tryout, dan Pengaturan."
+  },
+  {
+   "id": "ch2",
+   "v": {
+    "type": "chapter",
+    "n": 2
+   },
+   "vo": "Dua. Atur pengaturan course."
+  },
+  {
+   "id": "k2a",
+   "v": {
+    "type": "clip",
+    "clip": "02-settings",
+    "from": "info",
+    "to": "thumbnail"
+   },
+   "vo": "Di tab Pengaturan, Anda bisa mengubah nama dan deskripsi course kapan saja."
+  },
+  {
+   "id": "k2b",
+   "v": {
+    "type": "clip",
+    "clip": "02-settings",
+    "from": "thumbnail",
+    "to": "price"
+   },
+   "vo": "Unggah thumbnail supaya course terlihat menarik. Formatnya JPEG, PNG, WebP, atau GIF, maksimal lima megabyte."
+  },
+  {
+   "id": "k2c",
+   "v": {
+    "type": "clip",
+    "clip": "02-settings",
+    "from": "price",
+    "to": "access"
+   },
+   "vo": "Isi harga default kurikulum, lalu pilih mata uangnya. Tersedia rupiah dan tujuh mata uang lain. Isi nol kalau kursusnya gratis."
+  },
+  {
+   "id": "k2d",
+   "v": {
+    "type": "clip",
+    "clip": "02-settings",
+    "from": "access",
+    "to": "progression",
+    "callouts": [
+     {
+      "word": "^Ikuti",
+      "text": "Ikuti organisasi: pakai default lembaga",
+      "icon": "Building2"
+     },
+     {
+      "word": "^Public",
+      "text": "Public: bisa ditemukan siapa saja",
+      "icon": "Globe"
+     },
+     {
+      "word": "^Private",
+      "text": "Private: hanya murid yang diundang",
+      "icon": "Lock"
+     }
+    ]
+   },
+   "vo": "Tipe course menentukan siapa yang bisa bergabung. Ikuti organisasi memakai pengaturan default lembaga. Public bisa ditemukan dan diikuti siapa saja. Private hanya untuk murid yang diundang."
+  },
+  {
+   "id": "k2e",
+   "v": {
+    "type": "clip",
+    "clip": "02-settings",
+    "from": "progression",
+    "to": "save",
+    "callouts": [
+     {
+      "word": "^Terbuka",
+      "text": "Terbuka: semua bab bebas dibuka",
+      "icon": "LockOpen"
+     },
+     {
+      "word": "^Bertahap",
+      "text": "Bertahap: selesaikan bab sebelumnya",
+      "icon": "Lock"
+     }
+    ]
+   },
+   "vo": "Progression mengatur urutan belajar. Terbuka membebaskan murid membuka semua bab. Bertahap mengharuskan murid menyelesaikan bab sebelumnya. Kita bahas lebih jauh nanti."
+  },
+  {
+   "id": "k2f",
+   "v": {
+    "type": "clip",
+    "clip": "02-settings",
+    "from": "save",
+    "to": "ai-thumbnail"
+   },
+   "vo": "Klik Simpan perubahan. Pengaturan langsung tersimpan."
+  },
+  {
+   "id": "k2g",
+   "v": {
+    "type": "clip",
+    "clip": "02-settings",
+    "from": "ai-thumbnail",
+    "to": "end",
+    "cuts": [
+     [
+      "ai-start",
+      "ai-done"
+     ]
+    ]
+   },
+   "vo": "Tidak punya gambar? Klik Buat thumbnail dengan AI. Hakgyo membuat gambar sampul dari judul course, nama lembaga, dan warna tema Anda."
+  },
+  {
+   "id": "ch3",
+   "v": {
+    "type": "chapter",
+    "n": 3
+   },
+   "vo": "Tiga. Susun bab."
+  },
+  {
+   "id": "k3a",
+   "v": {
+    "type": "clip",
+    "clip": "03-structure",
+    "from": "workspace",
+    "to": "bab-1"
+   },
+   "vo": "Sekarang susun isinya. Klik Edit kurikulum untuk membuka pembuat kurikulum."
+  },
+  {
+   "id": "k3b",
+   "v": {
+    "type": "clip",
+    "clip": "03-structure",
+    "from": "bab-1",
+    "to": "bab-3"
+   },
+   "vo": "Kurikulum masih kosong. Mulai dari nol dengan Buat bab, atau impor dari buku PDF, yang kita bahas nanti. Beri judul dan deskripsi untuk setiap bab. Kita buat bab Mengenal Hangeul, lalu bab Angka."
+  },
+  {
+   "id": "k3c",
+   "v": {
+    "type": "clip",
+    "clip": "03-structure",
+    "from": "bab-3",
+    "to": "reorder"
+   },
+   "vo": "Tambah bab lagi dengan Tambah bab. Kita buat bab Perkenalan Diri."
+  },
+  {
+   "id": "k3d",
+   "v": {
+    "type": "clip",
+    "clip": "03-structure",
+    "from": "reorder",
+    "to": "edit"
+   },
+   "vo": "Urutannya salah? Cukup seret bab dengan ikon di sebelah kiri, lalu lepas di posisi yang benar. Bab Perkenalan Diri sekarang berada di atas bab Angka."
+  },
+  {
+   "id": "k3e",
+   "v": {
+    "type": "clip",
+    "clip": "03-structure",
+    "from": "edit",
+    "to": "temp"
+   },
+   "vo": "Untuk mengubah, klik ikon pensil. Kita ganti nama bab Angka menjadi Angka dan Waktu."
+  },
+  {
+   "id": "k3f",
+   "v": {
+    "type": "clip",
+    "clip": "03-structure",
+    "from": "temp",
+    "to": "progression"
+   },
+   "vo": "Untuk menghapus, klik ikon tempat sampah. Hakgyo menjelaskan dulu apa yang akan terhapus. Bab dan item di dalamnya dilepas dari kurikulum, tapi materi, kosakata, dan tugas aslinya tetap tersimpan di library."
+  },
+  {
+   "id": "ch4",
+   "v": {
+    "type": "chapter",
+    "n": 4
+   },
+   "vo": "Empat. Tambah learning item."
+  },
+  {
+   "id": "k4a",
+   "v": {
+    "type": "clip",
+    "clip": "04-materi",
+    "from": "bab",
+    "to": "dialog"
+   },
+   "vo": "Setiap bab berisi learning item. Klik Tambah learning item di bab yang Anda inginkan."
+  },
+  {
+   "id": "k4b",
+   "v": {
+    "type": "clip",
+    "clip": "04-materi",
+    "from": "dialog",
+    "to": "to-editor"
+   },
+   "vo": "Ada tiga jenis. Materi untuk bacaan dan pelajaran. Kosakata untuk daftar istilah. Dan Tugas untuk soal latihan. Anda bisa membuat yang baru dengan editor lengkap, atau memilih yang sudah ada dari library."
+  },
+  {
+   "id": "k4c",
+   "v": {
+    "type": "list",
+    "kicker": "Tiga jenis learning item",
+    "title": "Pilih yang sesuai tujuan belajar.",
+    "items": [
+     [
+      "FileText",
+      "Materi",
+      "bacaan dan pelajaran: teks, dialog, tata bahasa, halaman buku",
+      "^materi"
+     ],
+     [
+      "Languages",
+      "Kosakata",
+      "daftar istilah lengkap dengan contoh, gambar, dan audio",
+      "^kosakata"
+     ],
+     [
+      "ClipboardCheck",
+      "Tugas",
+      "soal latihan yang dinilai otomatis atau oleh pengajar",
+      "^tugas"
+     ]
+    ]
+   },
+   "vo": "Ingat, materi, kosakata, dan tugas yang dibuat dari sini otomatis ditambahkan ke bab tersebut, dan awalnya disembunyikan dari murid."
+  },
+  {
+   "id": "ch5",
+   "v": {
+    "type": "chapter",
+    "n": 5
+   },
+   "vo": "Lima. Tulis materi."
+  },
+  {
+   "id": "k5a",
+   "v": {
+    "type": "clip",
+    "clip": "04-materi",
+    "from": "to-editor",
+    "to": "write"
+   },
+   "vo": "Klik Buat materi. Isi judul dan deskripsinya. Deskripsi hanya terlihat oleh pengajar, untuk membantu memilih materi nanti."
+  },
+  {
+   "id": "k5b",
+   "v": {
+    "type": "clip",
+    "clip": "04-materi",
+    "from": "write",
+    "to": "slash"
+   },
+   "vo": "Lalu tulis isinya di editor. Ketik tanda pagar dan spasi untuk membuat judul, atau langsung ketik paragraf."
+  },
+  {
+   "id": "k5c",
+   "v": {
+    "type": "clip",
+    "clip": "04-materi",
+    "from": "slash",
+    "to": "conversation",
+    "callouts": [
+     {
+      "word": "^Callout",
+      "text": "Callout: catatan, tip, perhatian",
+      "icon": "Check"
+     }
+    ]
+   },
+   "vo": "Ketik garis miring untuk melihat semua blok yang tersedia. Ada Lesson page, Conversation, Grammar, Culture, Set kosakata, Tugas, Callout, dan halaman buku PDF. Kita pilih Callout untuk menulis tip belajar."
+  },
+  {
+   "id": "k5d",
+   "v": {
+    "type": "clip",
+    "clip": "04-materi",
+    "from": "conversation",
+    "to": "save",
+    "callouts": [
+     {
+      "word": "^Pratinjau",
+      "text": "Pratinjau: tampilan murid",
+      "icon": "Check"
+     }
+    ]
+   },
+   "vo": "Blok seperti Conversation datang dengan contoh teks bahasa Korea. Tinggal ganti dengan isi Anda sendiri, atau klik Kosongkan. Tombol Pratinjau menampilkan persis seperti yang dilihat murid."
+  },
+  {
+   "id": "k5e",
+   "v": {
+    "type": "clip",
+    "clip": "04-materi",
+    "from": "save",
+    "to": "end"
+   },
+   "vo": "Klik Simpan dan tambahkan. Materi masuk ke bab, dan masih disembunyikan. Setelah materi dibuat, perubahan berikutnya tersimpan otomatis."
+  },
+  {
+   "id": "ch6",
+   "v": {
+    "type": "chapter",
+    "n": 6
+   },
+   "vo": "Enam. Buat set kosakata."
+  },
+  {
+   "id": "k6a",
+   "v": {
+    "type": "clip",
+    "clip": "05-kosakata",
+    "from": "bab",
+    "to": "editor"
+   },
+   "vo": "Untuk kosakata, pilih jenis Kosakata di dialog, lalu klik Buat set kosakata. Beri judul, dan set langsung dibuat otomatis."
+  },
+  {
+   "id": "k6b",
+   "v": {
+    "type": "clip",
+    "clip": "05-kosakata",
+    "from": "editor",
+    "to": "expand"
+   },
+   "vo": "Tambah istilah dengan cepat. Ketik istilah, ketik artinya, lalu tekan Enter. Ulangi untuk istilah berikutnya."
+  },
+  {
+   "id": "k6c",
+   "v": {
+    "type": "clip",
+    "clip": "05-kosakata",
+    "from": "expand",
+    "to": "ai-examples"
+   },
+   "vo": "Klik sebuah istilah untuk membukanya. Di sini Anda bisa menulis contoh pemakaian, satu per baris."
+  },
+  {
+   "id": "k6d",
+   "v": {
+    "type": "clip",
+    "clip": "05-kosakata",
+    "from": "ai-examples",
+    "to": "media"
+   },
+   "vo": "Malas menulis contoh? Klik Tambah tiga sampai empat contoh dengan AI. Hakgyo menulis kalimat contoh dalam bahasa istilahnya."
+  },
+  {
+   "id": "k6e",
+   "v": {
+    "type": "clip",
+    "clip": "05-kosakata",
+    "from": "media",
+    "to": "import"
+   },
+   "vo": "Tambahkan juga ilustrasi, dan audio pelafalan. Gambar maksimal sepuluh megabyte, audio maksimal lima puluh megabyte."
+  },
+  {
+   "id": "k6f",
+   "v": {
+    "type": "clip",
+    "clip": "05-kosakata",
+    "from": "import",
+    "to": "import-review"
+   },
+   "vo": "Punya daftar kosakata di buku atau foto? Klik Impor AI, lalu pilih gambarnya. Hakgyo membaca istilah, romanisasi, dan artinya dalam bahasa Indonesia."
+  },
+  {
+   "id": "k6g",
+   "v": {
+    "type": "clip",
+    "clip": "05-kosakata",
+    "from": "import-review",
+    "to": "added"
+   },
+   "vo": "Periksa hasilnya sebelum disimpan. Istilah yang sudah ada tidak dicentang, jadi tidak terduplikasi. Klik Simpan, dan istilah baru masuk ke set."
+  },
+  {
+   "id": "ch7",
+   "v": {
+    "type": "chapter",
+    "n": 7
+   },
+   "vo": "Tujuh. Buat tugas."
+  },
+  {
+   "id": "k7a",
+   "v": {
+    "type": "clip",
+    "clip": "06-tugas",
+    "from": "bab",
+    "to": "editor"
+   },
+   "vo": "Untuk soal latihan, pilih jenis Tugas lalu klik Buat tugas. Isi judul dan deskripsinya."
+  },
+  {
+   "id": "k7b",
+   "v": {
+    "type": "clip",
+    "clip": "06-tugas",
+    "from": "editor",
+    "to": "q1"
+   },
+   "vo": "Tulis petunjuk pengerjaan untuk murid. Lalu klik Tambah soal."
+  },
+  {
+   "id": "k7c",
+   "v": {
+    "type": "clip",
+    "clip": "06-tugas",
+    "from": "q1",
+    "to": "correct",
+    "callouts": [
+     {
+      "word": "^tunggal",
+      "text": "Pilihan tunggal: satu jawaban benar",
+      "icon": "Check"
+     }
+    ]
+   },
+   "vo": "Soal pertama berjenis pilihan tunggal. Tulis pertanyaannya, lalu tambah opsi jawaban. Minimal dua opsi dan maksimal empat."
+  },
+  {
+   "id": "k7d",
+   "v": {
+    "type": "clip",
+    "clip": "06-tugas",
+    "from": "correct",
+    "to": "q2"
+   },
+   "vo": "Centang satu opsi yang benar, lalu tulis penjelasan jawaban yang akan dilihat murid setelah selesai."
+  },
+  {
+   "id": "k7e",
+   "v": {
+    "type": "clip",
+    "clip": "06-tugas",
+    "from": "q2",
+    "to": "q3",
+    "callouts": [
+     {
+      "word": "^ganda",
+      "text": "Pilihan ganda: semua jawaban benar harus dipilih",
+      "icon": "Check"
+     }
+    ]
+   },
+   "vo": "Soal kedua berjenis pilihan ganda. Anda boleh menandai lebih dari satu jawaban benar. Murid mendapat nilai penuh hanya kalau semua pilihannya tepat."
+  },
+  {
+   "id": "k7f",
+   "v": {
+    "type": "clip",
+    "clip": "06-tugas",
+    "from": "q3",
+    "to": "settings",
+    "callouts": [
+     {
+      "word": "^tertulis",
+      "text": "Jawaban tertulis: dinilai manual",
+      "icon": "Check"
+     }
+    ]
+   },
+   "vo": "Soal ketiga berjenis jawaban tertulis. Soal ini dinilai manual oleh pengajar, jadi murid menunggu nilainya. Atur poin setiap soal sesuai bobotnya."
+  },
+  {
+   "id": "k7g",
+   "v": {
+    "type": "clip",
+    "clip": "06-tugas",
+    "from": "settings",
+    "to": "map"
+   },
+   "vo": "Di panel samping, atur nilai lulus, maksimal percobaan, dan batas waktu. Aktifkan Acak soal atau Acak opsi supaya setiap percobaan berbeda."
+  },
+  {
+   "id": "k7h",
+   "v": {
+    "type": "clip",
+    "clip": "06-tugas",
+    "from": "map",
+    "to": "added"
+   },
+   "vo": "Peta soal membantu melompat ke soal mana pun. Semua perubahan tersimpan otomatis. Kalau sudah selesai, klik kembali ke kurikulum."
+  },
+  {
+   "id": "k7i",
+   "v": {
+    "type": "clip",
+    "clip": "06b-tugas-ai",
+    "from": "editor",
+    "to": "scan-wait"
+   },
+   "vo": "Punya soal di lembar kerja atau buku? Klik Impor AI di editor tugas, lalu pilih foto atau screenshot soalnya."
+  },
+  {
+   "id": "k7j",
+   "v": {
+    "type": "clip",
+    "clip": "06b-tugas-ai",
+    "from": "scan-wait",
+    "to": "ai-key",
+    "cuts": [
+     [
+      "scan-wait",
+      "scan-done"
+     ]
+    ],
+    "callouts": [
+     {
+      "word": "^gambar",
+      "text": "Kunci dari gambar: jawaban yang dilingkari",
+      "icon": "Check"
+     }
+    ]
+   },
+   "vo": "Hakgyo membaca pertanyaan, opsi jawaban, dan kunci jawabannya. Jawaban yang dilingkari di gambar langsung menjadi kunci."
+  },
+  {
+   "id": "k7k",
+   "v": {
+    "type": "clip",
+    "clip": "06b-tugas-ai",
+    "from": "ai-key",
+    "to": "end",
+    "callouts": [
+     {
+      "word": "^periksa",
+      "text": "Kunci dari AI: periksa dulu",
+      "icon": "Check"
+     }
+    ]
+   },
+   "vo": "Kalau kunci jawabannya tidak ada di gambar, AI mengusulkannya dengan label Kunci dari AI, periksa. Pastikan benar, lalu klik Tambah soal. Soal langsung masuk ke tugas."
+  },
+  {
+   "id": "ch8",
+   "v": {
+    "type": "chapter",
+    "n": 8
+   },
+   "vo": "Delapan. Impor dari buku PDF."
+  },
+  {
+   "id": "k8a",
+   "v": {
+    "type": "clip",
+    "clip": "07-pdf",
+    "from": "button",
+    "to": "upload"
+   },
+   "vo": "Sudah punya buku sendiri? Klik Buat dari PDF. Hakgyo mengubah buku Anda menjadi materi kurikulum."
+  },
+  {
+   "id": "k8b",
+   "v": {
+    "type": "clip",
+    "clip": "07-pdf",
+    "from": "upload",
+    "to": "page-one"
+   },
+   "vo": "Unggah file PDF-nya. Maksimal seratus megabyte dan seribu halaman. Halaman diproses langsung di browser Anda."
+  },
+  {
+   "id": "k8c",
+   "v": {
+    "type": "clip",
+    "clip": "07-pdf",
+    "from": "page-one",
+    "to": "map"
+   },
+   "vo": "Pilih halaman tempat nomor satu buku Anda berada, supaya nomor halaman di Hakgyo sama dengan nomor di buku."
+  },
+  {
+   "id": "k8d",
+   "v": {
+    "type": "clip",
+    "clip": "07-pdf",
+    "from": "map",
+    "to": "toc-ai"
+   },
+   "vo": "Cara tercepat adalah memakai daftar isi. Pilih halaman daftar isinya."
+  },
+  {
+   "id": "k8e",
+   "v": {
+    "type": "clip",
+    "clip": "07-pdf",
+    "from": "toc-ai",
+    "to": "toc-result"
+   },
+   "vo": "Klik Baca dengan AI. Hakgyo membaca judul bab dan nomor halamannya, lalu Anda periksa hasilnya."
+  },
+  {
+   "id": "k8f",
+   "v": {
+    "type": "clip",
+    "clip": "07-pdf",
+    "from": "toc-result",
+    "to": "create"
+   },
+   "vo": "Klik Buat bab. Rencana kurikulum terisi, lengkap dengan rentang halaman tiap bab. Lalu klik Tinjau."
+  },
+  {
+   "id": "k8g",
+   "v": {
+    "type": "clip",
+    "clip": "07-pdf",
+    "from": "create",
+    "to": "end"
+   },
+   "vo": "Klik Buat materi. Semua materi dibuat dalam keadaan disembunyikan, dan halaman buku tampil apa adanya. Setelah itu tambahkan kosakata dan tugas di setiap bab supaya murid bisa berlatih."
+  },
+  {
+   "id": "ch9",
+   "v": {
+    "type": "chapter",
+    "n": 9
+   },
+   "vo": "Sembilan. Pakai ulang dari library."
+  },
+  {
+   "id": "k9a",
+   "v": {
+    "type": "clip",
+    "clip": "08-library",
+    "from": "sidebar",
+    "to": "materi"
+   },
+   "vo": "Semua yang Anda buat tersimpan di Bahan ajar. Buka menu Bahan ajar di sidebar, lalu pilih Materi."
+  },
+  {
+   "id": "k9b",
+   "v": {
+    "type": "clip",
+    "clip": "08-library",
+    "from": "materi",
+    "to": "kosakata"
+   },
+   "vo": "Di sini ada semua materi milik organisasi Anda. Halaman Kosakata dan Tugas bekerja dengan cara yang sama."
+  },
+  {
+   "id": "k9c",
+   "v": {
+    "type": "clip",
+    "clip": "08-library",
+    "from": "kosakata",
+    "to": "reuse"
+   },
+   "vo": "Karena tersimpan di library, satu materi, kosakata, atau tugas bisa dipakai di bab mana pun, dan di course lain."
+  },
+  {
+   "id": "k9d",
+   "v": {
+    "type": "clip",
+    "clip": "08-library",
+    "from": "reuse",
+    "to": "reused"
+   },
+   "vo": "Caranya, klik Tambah learning item, pilih jenisnya, lalu pilih yang sudah ada dari daftar. Klik Tambahkan item. Tidak perlu membuat ulang dari awal."
+  },
+  {
+   "id": "ch10",
+   "v": {
+    "type": "chapter",
+    "n": 10
+   },
+   "vo": "Sepuluh. Tampilkan dan publikasikan."
+  },
+  {
+   "id": "k10a",
+   "v": {
+    "type": "clip",
+    "clip": "09-publish",
+    "from": "overview",
+    "to": "not-ready"
+   },
+   "vo": "Semua item baru awalnya disembunyikan dari murid. Di setiap bab, ringkasan menunjukkan berapa item yang tayang, disembunyikan, dan belum siap."
+  },
+  {
+   "id": "k10b",
+   "v": {
+    "type": "clip",
+    "clip": "09-publish",
+    "from": "not-ready",
+    "to": "show"
+   },
+   "vo": "Item berlabel Belum siap tidak bisa ditampilkan. Klik labelnya untuk melihat alasannya, misalnya tugas yang belum memiliki soal."
+  },
+  {
+   "id": "k10c",
+   "v": {
+    "type": "clip",
+    "clip": "09-publish",
+    "from": "show",
+    "to": "publish"
+   },
+   "vo": "Untuk item yang sudah siap, nyalakan saklar Tampil. Item itu baru terlihat oleh murid setelah course dipublikasikan."
+  },
+  {
+   "id": "k10d",
+   "v": {
+    "type": "clip",
+    "clip": "09-publish",
+    "from": "publish",
+    "to": "dialog"
+   },
+   "vo": "Kembali ke ruang kerja course, lalu klik Publikasikan."
+  },
+  {
+   "id": "k10e",
+   "v": {
+    "type": "clip",
+    "clip": "09-publish",
+    "from": "dialog",
+    "to": "confirm"
+   },
+   "vo": "Hakgyo menampilkan ringkasan lebih dulu: berapa item yang akan tayang, yang disembunyikan, dan yang belum siap. Item yang belum siap tetap disembunyikan."
+  },
+  {
+   "id": "k10f",
+   "v": {
+    "type": "clip",
+    "clip": "09-publish",
+    "from": "confirm",
+    "to": "published"
+   },
+   "vo": "Klik Publikasikan sekali lagi untuk mengonfirmasi. Sekarang course terlihat oleh murid."
+  },
+  {
+   "id": "k10g",
+   "v": {
+    "type": "clip",
+    "clip": "09-publish",
+    "from": "published",
+    "to": "progression"
+   },
+   "vo": "Perlu menarik kembali? Klik Batalkan publikasi. Hakgyo meminta konfirmasi dulu, lalu semua item disembunyikan lagi dari murid."
+  },
+  {
+   "id": "ch11",
+   "v": {
+    "type": "chapter",
+    "n": 11
+   },
+   "vo": "Sebelas. Atur progression."
+  },
+  {
+   "id": "k11a",
+   "v": {
+    "type": "compare"
+   },
+   "vo": "Progression punya dua mode. Terbuka, murid bebas membuka semua bab. Bertahap, bab berikutnya terkunci sampai murid menyelesaikan bab sebelumnya."
+  },
+  {
+   "id": "k11b",
+   "v": {
+    "type": "clip",
+    "clip": "09-publish",
+    "from": "progression",
+    "to": "end"
+   },
+   "vo": "Untuk mengubahnya, buka Edit kurikulum, lalu pilih Bertahap pada pengaturan progression."
+  },
+  {
+   "id": "ch12",
+   "v": {
+    "type": "chapter",
+    "n": 12
+   },
+   "vo": "Dua belas. Lihat sebagai murid."
+  },
+  {
+   "id": "k12a",
+   "v": {
+    "type": "clip",
+    "clip": "10-learner",
+    "from": "outline",
+    "to": "reading",
+    "device": "desktop"
+   },
+   "vo": "Begini tampilan course di sisi murid. Bab pertama terbuka, dan bab yang belum bisa dibuka ditandai Terkunci."
+  },
+  {
+   "id": "k12b",
+   "v": {
+    "type": "clip",
+    "clip": "10-learner",
+    "from": "reading",
+    "to": "end",
+    "device": "desktop"
+   },
+   "vo": "Materi yang selesai diberi tanda centang. Dengan progression Bertahap, bab berikutnya baru terbuka setelah murid menyelesaikan bab ini."
+  },
+  {
+   "id": "ch13",
+   "v": {
+    "type": "chapter",
+    "n": 13
+   },
+   "vo": "Tiga belas. Ringkasan."
+  },
+  {
+   "id": "r1",
+   "v": {
+    "type": "list",
+    "kicker": "Dibantu AI",
+    "title": "AI membantu menyusun kurikulum.",
+    "items": [
+     [
+      "Image",
+      "Thumbnail course",
+      "Buat thumbnail dengan AI dari judul dan warna tema lembaga",
+      "^thumbnail"
+     ],
+     [
+      "Languages",
+      "Contoh kosakata",
+      "Tambah tiga sampai empat contoh kalimat untuk setiap istilah",
+      "^contoh"
+     ],
+     [
+      "ScanLine",
+      "Impor kosakata",
+      "Baca istilah dan artinya dari foto atau gambar daftar kosakata",
+      "^impor"
+     ],
+     [
+      "ClipboardCheck",
+      "Impor soal tugas",
+      "Baca soal, opsi, dan kunci jawaban dari foto lembar soal",
+      "^soal"
+     ],
+     [
+      "ListOrdered",
+      "Daftar isi PDF",
+      "Baca judul bab dan nomor halaman dari buku PDF",
+      "^daftar"
+     ]
+    ]
+   },
+   "vo": "Beberapa langkah bisa dibantu AI. Buat thumbnail course, tambah contoh kalimat kosakata, impor kosakata dari gambar, impor soal tugas dari foto, dan baca daftar isi buku PDF."
+  },
+  {
+   "id": "r2",
+   "v": {
+    "type": "list",
+    "kicker": "Sebelum mempublikasikan",
+    "title": "Periksa empat hal ini.",
+    "items": [
+     [
+      "Eye",
+      "Item sudah ditampilkan",
+      "Nyalakan saklar Tampil di setiap item yang siap",
+      "^Pertama"
+     ],
+     [
+      "ClipboardCheck",
+      "Tugas sudah punya soal",
+      "Supaya tidak lagi berlabel Belum siap",
+      "^Kedua"
+     ],
+     [
+      "Layers",
+      "Progression sesuai kelas",
+      "Terbuka atau Bertahap",
+      "^Ketiga"
+     ],
+     [
+      "BadgeCheck",
+      "Course dipublikasikan",
+      "Klik Publikasikan di ruang kerja course",
+      "^Keempat"
+     ]
+    ]
+   },
+   "vo": "Sebelum mempublikasikan, periksa empat hal. Pertama, item sudah ditampilkan dengan saklar Tampil. Kedua, tugas sudah memiliki soal. Ketiga, progression sesuai kebutuhan kelas. Keempat, course sudah dipublikasikan."
+  },
+  {
+   "id": "outro",
+   "v": {
+    "type": "outro",
+    "endWord": "^Selamat",
+    "cta": "Mulai membuat kurikulum",
+    "tagline": "Panduan membuat kurikulum di Hakgyo",
+    "chips": [
+     [
+      "BookOpen",
+      "Course",
+      "^course"
+     ],
+     [
+      "Layers",
+      "Bab",
+      "^bab"
+     ],
+     [
+      "FileText",
+      "Materi",
+      "^materi"
+     ],
+     [
+      "Languages",
+      "Kosakata",
+      "^kosakata"
+     ],
+     [
+      "ClipboardCheck",
+      "Tugas",
+      "^tugas"
+     ],
+     [
+      "BadgeCheck",
+      "Dipublikasikan",
+      "^dipublikasikan"
+     ]
+    ]
+   },
+   "vo": "Itu dia cara membuat kurikulum di Hakgyo. Dari course, bab, materi, kosakata, dan tugas, sampai dipublikasikan ke murid. Selamat mulai membuat kurikulum Anda."
+  }
+ ]
+}

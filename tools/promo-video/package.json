@@ -1,0 +1,21 @@
+{
+  "name": "hakgyo-promo-video",
+  "private": true,
+  "type": "module",
+  "description": "Promo reel and product demo video for Hakgyo. Standalone: not a workspace of the monorepo.",
+  "scripts": {
+    "setup": "bun scripts/setup.mjs",
+    "demo:record": "bun demo/record.mjs",
+    "demo:camera": "python3 demo/camera.py",
+    "demo:voiceover": "python3 demo/voiceover.py",
+    "demo:stills": "bun demo/render.mjs --stills",
+    "demo:build": "bun demo/make.mjs --jobs 4",
+    "demo:build:nvenc": "bun demo/make.mjs --jobs 8 --encoder nvenc",
+    "reel:voiceover": "python3 reel/voiceover.py",
+    "reel:render": "bun reel/render.mjs",
+    "reel:audio": "python3 reel/audio.py"
+  },
+  "dependencies": {
+    "playwright-core": "1.58.2"
+  }
+}
