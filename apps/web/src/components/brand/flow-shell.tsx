@@ -27,7 +27,7 @@ export function FlowShell({
   children: ReactNode;
 }) {
   return (
-    <main className="bg-background text-foreground selection:bg-primary selection:text-primary-foreground relative min-h-dvh overflow-x-clip pb-[max(3rem,env(safe-area-inset-bottom))]">
+    <main className="bg-background text-foreground selection:bg-primary selection:text-primary-foreground relative min-h-dvh overflow-x-clip pb-[max(2rem,env(safe-area-inset-bottom))] sm:pb-12">
       <div
         className="bg-primary/10 animate-landing-drift pointer-events-none absolute -top-40 -right-40 size-[36rem] rounded-full blur-3xl"
         aria-hidden="true"

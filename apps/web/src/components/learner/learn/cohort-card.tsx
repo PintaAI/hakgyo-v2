@@ -140,8 +140,8 @@ function HeroBlock({ hero }: { hero: CohortHero }) {
   const content = (
     <div
       className={cn(
-        "bg-primary/10 flex items-center gap-3 rounded-[20px] px-5",
-        compact ? "py-4" : "py-5",
+        "bg-primary/10 flex items-center gap-3 rounded-[20px] px-4 sm:px-5",
+        compact ? "py-3 sm:py-4" : "py-3.5 sm:py-5",
         hero.target && "hover:bg-primary/15 transition-colors",
       )}
     >
@@ -162,7 +162,7 @@ function HeroBlock({ hero }: { hero: CohortHero }) {
         <span
           className={cn(
             "leading-7 font-black",
-            compact ? "text-lg leading-6" : "text-xl",
+            compact ? "text-base leading-6 sm:text-lg" : "text-lg sm:text-xl",
           )}
         >
           {hero.title}
@@ -396,8 +396,10 @@ export function CohortCard({
   }
 
   return (
-    <article className="bg-card ring-foreground/10 overflow-hidden rounded-[20px] ring-1">
-      <header className="bg-muted relative flex flex-wrap items-end gap-3 p-4 pt-8 sm:p-6 sm:pt-12">
+    // Phones drop the frame so the content gets the full width; the header
+    // keeps its own rounded block.
+    <article className="sm:bg-card sm:ring-foreground/10 sm:overflow-hidden sm:rounded-[20px] sm:ring-1">
+      <header className="bg-muted relative flex flex-wrap items-end gap-3 overflow-hidden rounded-2xl p-4 pt-5 sm:rounded-none sm:p-6 sm:pt-12">
         <CourseCover
           title={cohort.course.title}
           thumbnailUrl={cohort.course.thumbnailUrl}
@@ -416,7 +418,7 @@ export function CohortCard({
               </p>
             ) : null}
           </div>
-          <h2 className="text-2xl leading-7 font-black tracking-tight">
+          <h2 className="text-xl leading-7 font-black tracking-tight sm:text-2xl">
             {cohort.name}
           </h2>
           {cohort.staff.length > 0 ? (
@@ -457,7 +459,7 @@ export function CohortCard({
         ) : null}
       </header>
 
-      <div className="flex flex-col gap-4 p-4 sm:p-6">
+      <div className="flex flex-col gap-4 pt-4 sm:p-6">
         {hero ? <HeroBlock hero={hero} /> : null}
 
         {eventsPending ? (

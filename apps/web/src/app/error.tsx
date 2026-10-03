@@ -9,7 +9,7 @@ import { cn } from "~/lib/utils";
 
 export default function ErrorPage({ reset }: { reset: () => void }) {
   return (
-    <main className="grid min-h-[70svh] place-items-center px-5 py-16">
+    <main className="grid min-h-[60svh] place-items-center px-5 py-10 sm:min-h-[70svh] sm:py-16">
       <section className="w-full max-w-2xl text-center">
         <Kicker className="justify-center">Terjadi kendala</Kicker>
         <Headline

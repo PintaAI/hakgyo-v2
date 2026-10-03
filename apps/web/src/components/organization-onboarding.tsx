@@ -134,7 +134,7 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
 
   return (
     <FlowShell action={skip}>
-      <section className="max-w-3xl pt-6 sm:pt-14">
+      <section className="max-w-3xl pt-2 sm:pt-14">
         <Kicker>Mulai dengan Hakgyo</Kicker>
         <Headline
           as="h1"
@@ -142,20 +142,20 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
           muted="Mengajar, bergabung, atau belajar."
           className="mt-3 sm:mt-5"
         />
-        <p className={cn(leadText, "mt-4 sm:mt-6")}>
+        <p className={cn(leadText, "mt-6 hidden sm:block")}>
           Hakgyo memisahkan workspace organization dari ruang belajar. Pilih
           jalur yang sesuai sekarang; Anda tetap dapat membuat organization lain
           nanti.
         </p>
       </section>
 
-      <section className="mt-8 grid gap-3 sm:mt-12 sm:gap-4 lg:grid-cols-3">
+      <section className="mt-6 grid gap-3 sm:mt-12 sm:gap-4 lg:grid-cols-3">
         <PathCard
           number={1}
           icon={Building2Icon}
           audience="Untuk pendiri"
           title="Buat organization"
-          description="Siapkan workspace, atur kursus sebagai Public atau Private, dan kelola teacher, cohort, serta learner. Anda otomatis menjadi owner."
+          description="Siapkan workspace, atur kursus sebagai Public atau Private, dan kelola pengajar, Group belajar, serta siswa. Anda otomatis menjadi owner."
           featured
         >
           <Link
@@ -251,7 +251,7 @@ function PathCard({
   return (
     <article
       className={cn(
-        "flex flex-col p-5 sm:p-6",
+        "flex flex-col p-4 sm:p-6",
         featured
           ? "bg-primary text-primary-foreground rounded-2xl"
           : surfaceCard,
@@ -270,7 +270,7 @@ function PathCard({
         </span>
         <span className="font-mono text-xs opacity-60">0{number}</span>
       </div>
-      <Kicker inverted={featured} className="mt-6 sm:mt-10">
+      <Kicker inverted={featured} className="mt-4 sm:mt-10">
         {audience}
       </Kicker>
       <h2 className="mt-3 text-xl font-medium tracking-tight sm:text-2xl">
@@ -278,7 +278,7 @@ function PathCard({
       </h2>
       <p
         className={cn(
-          "mt-2 mb-6 flex-1 text-sm leading-6",
+          "mt-2 mb-4 flex-1 text-sm leading-6 sm:mb-6",
           featured ? "opacity-80" : "text-muted-foreground",
         )}
       >

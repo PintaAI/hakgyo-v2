@@ -72,7 +72,8 @@ export function PageHeader({
             </div>
           ) : null}
         </div>
-        {media}
+        {/* Decorative beside the title; phones keep the content first. */}
+        <div className="hidden sm:block">{media}</div>
       </header>
     );
   }

@@ -42,8 +42,9 @@ export default async function AuthPage({
 
   return (
     <FlowShell action={<ThemeToggle />}>
-      <div className="grid gap-8 pt-4 sm:pt-10 lg:min-h-[calc(100dvh-10rem)] lg:grid-cols-[minmax(0,1fr)_29rem] lg:items-center lg:gap-16 lg:pt-0 xl:gap-24">
-        <section>
+      <div className="grid gap-8 pt-2 sm:pt-10 lg:min-h-[calc(100dvh-10rem)] lg:grid-cols-[minmax(0,1fr)_29rem] lg:items-center lg:gap-16 lg:pt-0 xl:gap-24">
+        {/* Phones go straight to the form, which has its own heading. */}
+        <section className="hidden sm:block">
           <Kicker>Akun Hakgyo</Kicker>
           <Headline
             as="h1"
@@ -58,7 +59,7 @@ export default async function AuthPage({
         </section>
         <div>
           <AuthPanel redirectTo={redirectTo} initialMode={initialMode} />
-          <p className="text-muted-foreground mt-5 text-center text-xs leading-5">
+          <p className="text-muted-foreground mt-4 text-center text-xs leading-5 sm:mt-5">
             Dengan melanjutkan, Anda menyetujui penggunaan akun untuk mengakses
             layanan Hakgyo.
           </p>

@@ -65,7 +65,7 @@ export function InviteRedemption({ token }: { token: string }) {
     return (
       <FlowShell>
         <div className={inviteGrid}>
-          <div className="pt-6 sm:pt-12">
+          <div className="pt-2 sm:pt-12">
             <Skeleton className="h-3 w-40" />
             <Skeleton className="mt-5 h-10 w-full max-w-md sm:h-14" />
             <Skeleton className="mt-3 h-10 w-2/3 max-w-sm sm:h-14" />
@@ -79,7 +79,7 @@ export function InviteRedemption({ token }: { token: string }) {
   if (invite.isError) {
     return (
       <FlowShell>
-        <section className="max-w-2xl pt-6 sm:pt-14">
+        <section className="max-w-2xl pt-2 sm:pt-14">
           <Kicker>Undangan</Kicker>
           <Headline
             as="h1"
@@ -198,7 +198,7 @@ export function InviteRedemption({ token }: { token: string }) {
   return (
     <FlowShell>
       <div className={inviteGrid}>
-        <section className="pt-6 sm:pt-12">
+        <section className="pt-2 sm:pt-12">
           <Kicker>
             {typeLabels[data.type]} · {data.organization.name}
           </Kicker>
@@ -257,7 +257,7 @@ export function InviteRedemption({ token }: { token: string }) {
               className="aspect-video w-full"
             />
           ) : null}
-          <div className="p-5 sm:p-6">
+          <div className="p-4 sm:p-6">
             <div className="flex items-center gap-3">
               <span className="bg-primary text-primary-foreground grid size-10 shrink-0 place-items-center rounded-xl">
                 {unavailable ? (
@@ -417,7 +417,7 @@ export function InviteRedemption({ token }: { token: string }) {
         ) : null}
       </div>
 
-      <p className="text-muted-foreground mt-10 text-xs leading-relaxed sm:mt-14">
+      <p className="text-muted-foreground mt-8 text-xs leading-relaxed sm:mt-14">
         Dengan melanjutkan, Anda menerima akses sesuai undangan yang diberikan
         oleh {data.organization.name}.
       </p>

@@ -10,6 +10,12 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { getPostSignInPath } from "~/lib/access";
 import { cn } from "~/lib/utils";
+
+/** A card from `sm` up; on phones the form sits directly on the page. */
+const authSurface = cn(
+  surfaceCard,
+  "max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none sm:p-8",
+);
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
 
@@ -86,7 +92,7 @@ export function AuthPanel({
 
   if (session?.user) {
     return (
-      <section className={cn(surfaceCard, "p-6 sm:p-8")}>
+      <section className={authSurface}>
         <Kicker>Sesi terhubung</Kicker>
         <h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
           Selamat datang, {session.user.name}.
@@ -130,14 +136,14 @@ export function AuthPanel({
   }
 
   return (
-    <section className={cn(surfaceCard, "p-6 sm:p-8")}>
+    <section className={authSurface}>
       <div>
         <Kicker>
           {mode === "sign-in"
             ? "Selamat datang kembali"
             : "Mulai bersama Hakgyo"}
         </Kicker>
-        <h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
+        <h2 className="mt-3 text-3xl font-medium tracking-[-0.04em]">
           {mode === "sign-in" ? "Masuk ke akun" : "Buat akun baru"}
         </h2>
         <p className="text-muted-foreground mt-2 text-sm leading-6">
@@ -148,7 +154,7 @@ export function AuthPanel({
       </div>
 
       <div
-        className="bg-muted/70 border-border my-6 flex rounded-full border p-1"
+        className="bg-muted/70 border-border my-5 flex rounded-full border p-1 sm:my-6"
         role="group"
         aria-label="Pilih mode autentikasi"
       >
@@ -172,7 +178,7 @@ export function AuthPanel({
         ))}
       </div>
 
-      <form className="space-y-5" onSubmit={submitEmail}>
+      <form className="space-y-4 sm:space-y-5" onSubmit={submitEmail}>
         {mode === "sign-up" && (
           <div className="space-y-2">
             <Label htmlFor="auth-name" className="text-foreground">
@@ -181,7 +187,7 @@ export function AuthPanel({
             <Input
               id="auth-name"
               autoComplete="name"
-              className="focus-visible:ring-ring/15 h-12 rounded-xl px-4 text-base transition-colors md:text-sm"
+              className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 sm:h-12 text-base transition-colors md:text-sm"
               onChange={(event) => setName(event.target.value)}
               placeholder="Nama Anda"
               required
@@ -196,7 +202,7 @@ export function AuthPanel({
           <Input
             id="auth-email"
             autoComplete="email"
-            className="focus-visible:ring-ring/15 h-12 rounded-xl px-4 text-base transition-colors md:text-sm"
+            className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 sm:h-12 text-base transition-colors md:text-sm"
             onChange={(event) => setEmail(event.target.value)}
             placeholder="nama@email.com"
             required
@@ -218,7 +224,7 @@ export function AuthPanel({
               autoComplete={
                 mode === "sign-in" ? "current-password" : "new-password"
               }
-              className="focus-visible:ring-ring/15 h-12 rounded-xl px-4 pr-12 text-base transition-colors md:text-sm"
+              className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 sm:h-12 pr-12 text-base transition-colors md:text-sm"
               minLength={8}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Minimal 8 karakter"
@@ -259,7 +265,7 @@ export function AuthPanel({
         )}
 
         <button
-          className={cn(buttonVariants({ size: "lg" }), "h-12 w-full")}
+          className={cn(buttonVariants({ size: "lg" }), "h-11 w-full sm:h-12")}
           disabled={submitting}
           type="submit"
         >
@@ -279,7 +285,7 @@ export function AuthPanel({
         </button>
       </form>
 
-      <div className="my-5 flex items-center gap-3">
+      <div className="my-4 flex items-center gap-3 sm:my-5">
         <span className="bg-border h-px flex-1" />
         <span className="text-muted-foreground font-mono text-[10px] tracking-[0.18em] uppercase">
           atau
@@ -290,7 +296,7 @@ export function AuthPanel({
       <button
         className={cn(
           buttonVariants({ variant: "outline", size: "lg" }),
-          "h-12 w-full gap-3",
+          "h-11 w-full gap-3 sm:h-12",
         )}
         disabled={submitting}
         onClick={async () => {

@@ -34,7 +34,7 @@ export function StatStrip({
     <section
       aria-label={label}
       className={cn(
-        "border-border grid grid-cols-2 gap-x-4 gap-y-5 border-y py-5",
+        "border-border grid grid-cols-2 gap-x-4 gap-y-4 border-y py-4 sm:gap-y-5 sm:py-5",
         columns[Math.min(Math.max(items.length, 2), 4) as keyof typeof columns],
         className,
       )}

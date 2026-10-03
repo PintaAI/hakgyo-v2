@@ -4,8 +4,8 @@ import { cn } from "~/lib/utils";
 
 export default function OAuthConsentLoading() {
   return (
-    <FlowShell className="grid place-items-center pt-6 sm:pt-12">
-      <section className={cn(surfaceCard, "w-full max-w-lg p-6 sm:p-8")}>
+    <FlowShell className="grid place-items-center pt-2 sm:pt-12">
+      <section className={cn(surfaceCard, "w-full max-w-lg p-5 sm:p-8")}>
         <Skeleton className="h-3 w-40" />
         <Skeleton className="mt-4 h-9 w-3/4" />
         <Skeleton className="mt-3 h-4 w-full" />

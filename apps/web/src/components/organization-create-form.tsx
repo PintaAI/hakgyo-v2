@@ -60,7 +60,7 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="space-y-8 pt-2 sm:space-y-10">
+    <div className="space-y-6 sm:space-y-10">
       <Link
         href="/onboarding"
         className={cn(
@@ -91,7 +91,7 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
         <form
           onSubmit={submit}
           noValidate
-          className={cn(surfaceCard, "p-5 sm:p-7")}
+          className={cn(surfaceCard, "p-4 sm:p-7")}
         >
           <div className="space-y-2">
             <Label htmlFor="organization-name">Nama organization</Label>
@@ -183,7 +183,7 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
           </div>
         </form>
 
-        <aside className={cn(surfaceCard, "h-fit p-5 sm:p-6")}>
+        <aside className={cn(surfaceCard, "h-fit p-4 sm:p-6")}>
           <Kicker>Setelah workspace dibuat</Kicker>
           <ol className="text-muted-foreground mt-5 space-y-5 text-sm">
             {[

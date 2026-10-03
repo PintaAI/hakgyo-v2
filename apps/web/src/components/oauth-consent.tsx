@@ -43,8 +43,8 @@ export function OAuthConsent({
     "text-muted-foreground font-mono text-[10px] tracking-[0.18em] uppercase";
 
   return (
-    <FlowShell className="grid place-items-center pt-6 sm:pt-12">
-      <section className={cn(surfaceCard, "w-full max-w-lg p-6 sm:p-8")}>
+    <FlowShell className="grid place-items-center pt-2 sm:pt-12">
+      <section className={cn(surfaceCard, "w-full max-w-lg p-5 sm:p-8")}>
         <Kicker>Akses MCP Hakgyo</Kicker>
         <Headline
           as="h1"

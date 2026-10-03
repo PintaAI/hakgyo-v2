@@ -252,11 +252,12 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
             </span>
             <span
               aria-hidden="true"
-              className="text-muted-foreground font-normal"
+              className="text-muted-foreground font-normal max-sm:hidden"
             >
               ·
             </span>
-            <span className="inline-flex min-w-0 items-center gap-2">
+            {/* Phones show the organization; the eyebrow already names the role. */}
+            <span className="inline-flex min-w-0 items-center gap-2 max-sm:hidden">
               <Avatar className="size-8">
                 {data.userImage ? (
                   <AvatarImage src={data.userImage} alt="" />
@@ -314,7 +315,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
                     title={course.title}
                     thumbnailUrl={course.thumbnailUrl}
                     sizes="(min-width: 640px) 360px, 100vw"
-                    className="h-36 w-full"
+                    className="h-28 w-full sm:h-36"
                   />
                   <div className="p-6">
                     <div className="mb-3 flex items-center justify-between">
