@@ -25,7 +25,7 @@ const organizationInput = z.object({
   organizationId: z
     .string()
     .min(1)
-    .describe("Organization id from hakgyo.context.get (OWNER role required)"),
+    .describe("Organization id from get_current_user (OWNER role required)"),
 });
 
 const readOnly = {
@@ -109,7 +109,7 @@ const resultSchema = z.object({ result: z.unknown() });
 /** Owner-only tools for designing the organization landing page as one HTML file. */
 export function registerLandingTools(server: McpServer) {
   server.registerTool(
-    "hakgyo.landing.get_guidelines",
+    "get_landing_page_guidelines",
     {
       title: "Get landing page guidelines",
       description:
@@ -131,7 +131,7 @@ export function registerLandingTools(server: McpServer) {
   );
 
   server.registerTool(
-    "hakgyo.landing.get_context",
+    "get_landing_page_context",
     {
       title: "Get landing page context",
       description:
@@ -149,7 +149,7 @@ export function registerLandingTools(server: McpServer) {
   );
 
   server.registerTool(
-    "hakgyo.landing.get_draft",
+    "get_landing_page_draft",
     {
       title: "Get landing page draft",
       description:
@@ -167,7 +167,7 @@ export function registerLandingTools(server: McpServer) {
   );
 
   server.registerTool(
-    "hakgyo.landing.update_draft",
+    "update_landing_page_draft",
     {
       title: "Update landing page draft",
       description:
@@ -214,7 +214,7 @@ export function registerLandingTools(server: McpServer) {
   );
 
   server.registerTool(
-    "hakgyo.landing.list_revisions",
+    "list_landing_page_revisions",
     {
       title: "List landing page revisions",
       description:
@@ -235,7 +235,7 @@ export function registerLandingTools(server: McpServer) {
   );
 
   server.registerTool(
-    "hakgyo.landing.restore_revision",
+    "restore_landing_page_revision",
     {
       title: "Restore landing page revision",
       description:

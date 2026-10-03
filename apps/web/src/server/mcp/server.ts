@@ -4,14 +4,14 @@ import { z } from "zod";
 import { hakgyoBlockCatalog } from "~/lib/blocknote/block-catalog";
 
 import { requireMcpUserId } from "./auth";
-import { sanitizeMcpResult } from "./domain-actions";
+import { getMcpToolAnnotations, sanitizeMcpResult } from "./domain-actions";
 import { registerLandingTools } from "./landing-tools";
 import { getMcpCatalogCourse, listMcpCatalog } from "./services/catalog";
 import { getMcpContext } from "./services/context";
 import {
-  getMcpCapabilitySchemas,
+  getMcpActionInputSchema,
   invokeMcpDomainAction,
-  mcpDomainActions,
+  mcpDomainTools,
   type McpDomain,
 } from "./services/domains";
 
@@ -30,7 +30,8 @@ const catalogCourseSchema = z.object({
   price: z.number().int(),
   currency: z.string(),
   organization: organizationSchema,
-  _count: z.object({ modules: z.number().int(), cohorts: z.number().int() }),
+  moduleCount: z.number().int(),
+  cohortCount: z.number().int(),
 });
 
 const catalogCourseDetailSchema = z.object({
@@ -65,11 +66,11 @@ export const mcpHandler = createMcpHandler(
     const server = new McpServer({ name: "hakgyo", version: "0.1.0" });
 
     server.registerTool(
-      "hakgyo.context.get",
+      "get_current_user",
       {
-        title: "Get Hakgyo context",
+        title: "Get current user",
         description:
-          "Show the current Hakgyo user and their organization roles.",
+          "Show the signed-in Hakgyo user and their staff role (OWNER, ADMIN or TEACHER) in each organization. Call this first to find organization ids and membership ids.",
         outputSchema: z.object({
           id: z.string(),
           name: z.string(),
@@ -112,10 +113,11 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
-      "hakgyo.catalog.list_courses",
+      "list_catalog_courses",
       {
         title: "List published courses",
-        description: "Browse published courses in the Hakgyo catalog.",
+        description:
+          "Browse published courses anyone can find in the Hakgyo catalog, optionally within one organization. Results are paginated with cursor.",
         inputSchema: z.object({
           organizationId: z.string().min(1).optional(),
           limit: z.number().int().min(1).max(50).default(20),
@@ -133,7 +135,15 @@ export const mcpHandler = createMcpHandler(
         },
       },
       async (input) => {
-        const result = await listMcpCatalog(input);
+        const { courses, nextCursor } = await listMcpCatalog(input);
+        const result = {
+          courses: courses.map(({ _count, ...course }) => ({
+            ...course,
+            moduleCount: _count.modules,
+            cohortCount: _count.cohorts,
+          })),
+          nextCursor,
+        };
         return {
           content: [
             {
@@ -147,11 +157,11 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
-      "hakgyo.catalog.get_course",
+      "get_catalog_course",
       {
         title: "Get published course",
         description:
-          "Read published course details and its public kurikulum outline.",
+          "Read a published course's public details, price and kurikulum outline from the Hakgyo catalog.",
         inputSchema: z.object({ courseId: z.string().min(1) }),
         outputSchema: catalogCourseDetailSchema,
         annotations: {
@@ -176,11 +186,11 @@ export const mcpHandler = createMcpHandler(
     );
 
     server.registerTool(
-      "hakgyo.content.get_block_catalog",
+      "get_material_block_catalog",
       {
-        title: "Get Hakgyo BlockNote catalog",
+        title: "Get material block catalog",
         description:
-          "Return the current BlockNote document format, supported built-in blocks, and Hakgyo custom blocks. Call this before creating or updating material content.",
+          "Return the BlockNote document format and the built-in and Hakgyo custom blocks a learning material can contain. Call this before create_material or update_material.",
         inputSchema: z.object({}),
         outputSchema: z.object({ catalog: z.unknown() }),
         annotations: {
@@ -204,104 +214,51 @@ export const mcpHandler = createMcpHandler(
       },
     );
 
-    server.registerTool(
-      "hakgyo.capabilities.get",
-      {
-        title: "Get Hakgyo capability schemas",
-        description:
-          "List safe role-aware Hakgyo operations and their exact input schemas. Use this before calling a domain operation.",
-        inputSchema: z.object({
-          domain: z
-            .enum([
-              "account",
-              "organization",
-              "course",
-              "content",
-              "cohort",
-              "enrollment",
-              "learning",
-              "assessment",
-            ])
-            .optional(),
-          action: z.string().min(1).optional(),
-        }),
-        outputSchema: z.object({ capabilities: z.unknown() }),
-        annotations: {
-          readOnlyHint: true,
-          destructiveHint: false,
-          idempotentHint: true,
-          openWorldHint: false,
-        },
-      },
-      async (input, ctx) => {
-        requireMcpUserId(ctx.http?.authInfo);
-        const capabilities = getMcpCapabilitySchemas(input);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(capabilities, null, 2),
-            },
-          ],
-          structuredContent: { capabilities },
-        };
-      },
-    );
-
-    for (const [domain, actions] of Object.entries(mcpDomainActions)) {
-      const domainGuidance =
-        domain === "content"
-          ? " Before createMaterial or updateMaterial, call hakgyo.content.get_block_catalog and generate BlockNote editor.document JSON using its current catalog version."
-          : domain === "learning"
-            ? " Tugas (ASSESSMENT items) cannot be taken through MCP: do not answer them for the learner; share the item's appUrl so they open it in the Hakgyo mobile app."
-            : "";
-      server.registerTool(
-        `hakgyo.${domain}.manage`,
-        {
-          title: `Hakgyo ${domain} operations`,
-          description: `Run a safe ${domain} operation using the current user's live Hakgyo permissions. Call hakgyo.capabilities.get first for exact action input schemas.${domainGuidance} Destructive and secret-bearing operations are not available.`,
-          inputSchema: z.object({
-            action: z.enum(actions),
-            input: z.record(z.string(), z.unknown()).default({}),
-          }),
-          outputSchema: z.object({ result: z.unknown() }),
-          annotations: {
-            readOnlyHint: false,
-            destructiveHint: true,
-            idempotentHint: false,
-            openWorldHint: true,
+    for (const [domain, tools] of Object.entries(mcpDomainTools)) {
+      for (const tool of tools) {
+        server.registerTool(
+          tool.name,
+          {
+            title: tool.title,
+            description: tool.description,
+            inputSchema: getMcpActionInputSchema(
+              domain as McpDomain,
+              tool.action,
+            ),
+            outputSchema: z.object({ result: z.unknown() }),
+            annotations: getMcpToolAnnotations(tool),
           },
-        },
-        async ({ action, input }, ctx) => {
-          try {
-            const result = await invokeMcpDomainAction({
-              action,
-              actorUserId: requireMcpUserId(ctx.http?.authInfo),
-              domain: domain as McpDomain,
-              procedureInput: input,
-            });
-            const serialized = sanitizeMcpResult(result);
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(serialized, null, 2),
-                },
-              ],
-              structuredContent: { result: serialized },
-            };
-          } catch (error) {
-            const message =
-              error instanceof Error
-                ? error.message
-                : "Hakgyo operation failed";
-            return {
-              content: [{ type: "text", text: message }],
-              isError: true,
-            };
-          }
-        },
-      );
+          async (input, ctx) => {
+            try {
+              const result = await invokeMcpDomainAction({
+                action: tool.action,
+                actorUserId: requireMcpUserId(ctx.http?.authInfo),
+                domain: domain as McpDomain,
+                procedureInput: input,
+              });
+              const serialized = sanitizeMcpResult(result);
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(serialized, null, 2),
+                  },
+                ],
+                structuredContent: { result: serialized },
+              };
+            } catch (error) {
+              const message =
+                error instanceof Error
+                  ? error.message
+                  : "Hakgyo operation failed";
+              return {
+                content: [{ type: "text", text: message }],
+                isError: true,
+              };
+            }
+          },
+        );
+      }
     }
 
     registerLandingTools(server);

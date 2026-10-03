@@ -99,8 +99,8 @@ describe("landing HTML validation", () => {
       policy,
     );
     expect(result.errors.map((issue) => issue.message)).toEqual([
-      'Link "https://hakgyo.test/admin" is not a Hakgyo URL from hakgyo.landing.get_context',
-      'Link "/catalog" must be an absolute URL from hakgyo.landing.get_context',
+      'Link "https://hakgyo.test/admin" is not a Hakgyo URL from get_landing_page_context',
+      'Link "/catalog" must be an absolute URL from get_landing_page_context',
       'Link "#missing" points to a missing id',
       'Link "javascript:alert(1)" must use https://',
     ]);

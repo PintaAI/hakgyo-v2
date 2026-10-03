@@ -221,7 +221,7 @@ export function validateLandingHtml(
     }
     if (!assetOrigins.has(parsed.origin))
       error(
-        `${label} "${url}" is not from an allowed origin (${[...assetOrigins].join(", ")}). Use an uploaded image URL from hakgyo.landing.get_context`,
+        `${label} "${url}" is not from an allowed origin (${[...assetOrigins].join(", ")}). Use an uploaded image URL from get_landing_page_context`,
         node,
       );
   }
@@ -256,7 +256,7 @@ export function validateLandingHtml(
     const parsed = parseAbsoluteUrl(href);
     if (!parsed) {
       error(
-        `Link "${href}" must be an absolute URL from hakgyo.landing.get_context`,
+        `Link "${href}" must be an absolute URL from get_landing_page_context`,
         node,
       );
       return;
@@ -266,7 +266,7 @@ export function validateLandingHtml(
     if (isHakgyo) {
       if (!allowedLinks.has(normalizeLink(href)))
         error(
-          `Link "${href}" is not a Hakgyo URL from hakgyo.landing.get_context`,
+          `Link "${href}" is not a Hakgyo URL from get_landing_page_context`,
           node,
         );
       return;

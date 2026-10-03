@@ -9,7 +9,7 @@ is added or changed.
 
 The example custom block is `callout`. Authors can insert it from the BlockNote
 slash menu and AI clients discover it through
-`hakgyo.content.get_block_catalog`.
+`get_material_block_catalog`.
 
 ```json
 {
@@ -56,8 +56,8 @@ constants in the React block implementation and schema registration.
 The MCP tool itself has a stable schema and reads the shared catalog at runtime.
 After deploying a new block, AI clients can discover it without adding another
 MCP tool. Content prompts and tool descriptions must continue instructing the
-model to call `hakgyo.content.get_block_catalog` before `createMaterial` or
-`updateMaterial`.
+model to call `get_material_block_catalog` before `create_material` or
+`update_material`.
 
 ## Block Contract Rules
 
