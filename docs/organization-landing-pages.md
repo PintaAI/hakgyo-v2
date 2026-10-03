@@ -11,8 +11,8 @@ revisions, and publishes. Only organization owners can manage the page.
 1. The owner connects an MCP client (Claude, ChatGPT, Cursor, …) to Hakgyo and
    asks it to design the page. The editor's **Desain dengan AI** tab has a
    ready-made prompt.
-2. The AI reads `hakgyo.landing.get_guidelines` and `hakgyo.landing.get_context`,
-   then sends the full document to `hakgyo.landing.update_draft`.
+2. The AI reads `get_landing_page_guidelines` and `get_landing_page_context`,
+   then sends the full document to `update_landing_page_draft`.
 3. The server validates the document and returns a list of errors (with line
    numbers) for the AI to fix, or stores it as a new draft revision.
 4. The editor at `/workspace/{org-slug}/landing-page` polls
@@ -108,13 +108,13 @@ editor are not served until the owner publishes an HTML draft.
 
 ## MCP tools
 
-| Tool                              | Purpose                                             |
-| --------------------------------- | --------------------------------------------------- |
-| `hakgyo.landing.get_guidelines`   | Contract, allowed URLs rules, and do's and don'ts   |
-| `hakgyo.landing.get_context`      | Organization, courses, images, links, asset origins |
-| `hakgyo.landing.get_draft`        | Draft HTML, `revisionId`, and editable fields       |
-| `hakgyo.landing.update_draft`     | Validate and save a document as a new revision      |
-| `hakgyo.landing.list_revisions`   | Recent revisions                                    |
-| `hakgyo.landing.restore_revision` | Make an earlier revision the draft again            |
+| Tool                            | Purpose                                             |
+| ------------------------------- | --------------------------------------------------- |
+| `get_landing_page_guidelines`   | Contract, allowed URLs rules, and do's and don'ts   |
+| `get_landing_page_context`      | Organization, courses, images, links, asset origins |
+| `get_landing_page_draft`        | Draft HTML, `revisionId`, and editable fields       |
+| `update_landing_page_draft`     | Validate and save a document as a new revision      |
+| `list_landing_page_revisions`   | Recent revisions                                    |
+| `restore_landing_page_revision` | Make an earlier revision the draft again            |
 
 Every tool re-checks the caller's live OWNER role.

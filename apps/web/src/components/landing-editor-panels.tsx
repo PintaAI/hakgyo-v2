@@ -153,7 +153,7 @@ export function LandingAiPanel({
   draft: LandingDraft;
 }) {
   const connection = api.account.getMcpConnectionInfo.useQuery();
-  const prompt = `Desain ulang landing page ${draft.organization.name} dengan tool Hakgyo (organizationId: ${organizationId}). Baca hakgyo.landing.get_guidelines dan hakgyo.landing.get_context dulu, lalu simpan hasilnya dengan hakgyo.landing.update_draft.`;
+  const prompt = `Desain ulang landing page ${draft.organization.name} dengan tool Hakgyo (organizationId: ${organizationId}). Baca get_landing_page_guidelines dan get_landing_page_context dulu, lalu simpan hasilnya dengan update_landing_page_draft.`;
   return (
     <div className="grid gap-5 text-sm">
       <p className="text-muted-foreground">

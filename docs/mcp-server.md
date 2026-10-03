@@ -123,13 +123,36 @@ trigger step-up authorization.
 ## Learner Tugas
 
 Learners can read course outlines, materials, and kosakata through
-`hakgyo.learning.manage`, but Tugas are taken only in the mobile app. The MCP
-allowlist excludes learner attempt actions (`getForCourseItem`, `startAttempt`,
-`saveAnswers`, `submitAttempt`, `getMyAttempt`), so a model cannot read the
-questions or answer on the learner's behalf. Instead, `learning.getCourseOutline`
-and `learning.getCourseItem` add an `appUrl` deep link
+`get_my_course_outline` and `get_my_course_item`, but Tugas are taken only in the
+mobile app. The MCP allowlist excludes learner attempt actions
+(`getForCourseItem`, `startAttempt`, `saveAnswers`, `submitAttempt`,
+`getMyAttempt`), so a model cannot read the questions or answer on the learner's
+behalf. Instead, both tools add an `appUrl` deep link
 (`hakgyo://courses/{courseId}/items/{courseItemId}`) to every assessment item for
 the client to hand the learner.
+
+## Tools
+
+Every allowlisted tRPC action is its own tool, defined in `mcpDomainTools`
+(`src/server/mcp/domain-actions.ts`) with a verb-first `snake_case` name, a
+plain-language description, and an effect:
+
+| Effect   | Meaning                           | Annotations                    |
+| -------- | --------------------------------- | ------------------------------ |
+| `read`   | Reads only                        | `readOnlyHint`, idempotent     |
+| `add`    | Creates records, never overwrites | not read-only, not destructive |
+| `change` | Overwrites existing values        | `destructiveHint`, idempotent  |
+
+`openWorldHint` is set only for tools that reach an outside service (Zoom
+meetings). Each tool's input schema is generated from its tRPC input with
+`io: "input"`, so the published schema matches what the procedure accepts, and
+the procedure still parses and authorizes every call. These annotations and
+descriptions follow the ChatGPT app submission guidelines; keep them accurate
+when adding a tool.
+
+Results pass through `sanitizeMcpResult`, which drops secrets and record-keeping
+fields (`updatedAt`, `createdByMembershipId`, storage and Zoom identifiers) and
+renames Prisma `_count` to `counts`.
 
 ## Transport
 
@@ -214,6 +237,7 @@ Then test the public deployment with MCP Inspector and at least one launch clien
 | `src/server/mcp/auth.ts`                                           | Verified claims to SDK `AuthInfo` mapping    |
 | `src/server/mcp/security.ts`                                       | Host and Origin boundary checks              |
 | `src/server/mcp/server.ts`                                         | Per-request MCP server and tool registration |
+| `src/server/mcp/domain-actions.ts`                                 | Tool catalog, annotations, result sanitizing |
 | `src/server/mcp/landing-tools.ts`                                  | Owner-only landing page design tools         |
 
 ## Primary References

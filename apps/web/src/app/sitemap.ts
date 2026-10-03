@@ -25,6 +25,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.8,
     },
+    {
+      url: `${env.APP_URL}/privacy`,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
     ...landings
       .filter(
         (landing) =>

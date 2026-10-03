@@ -363,7 +363,7 @@ valid OAuth token with hakgyo:mcp
 -> execute bounded operation
 ```
 
-`hakgyo.context.get` mengembalikan current user dan seluruh membership aktif.
+`get_current_user` mengembalikan current user dan seluruh membership aktif.
 Setiap domain action tetap memvalidasi organization atau resource ID terhadap
 membership, ownership, assignment, atau enrollment terbaru di database.
 
@@ -376,13 +376,15 @@ ini. Hidden atau cached tools bukan security boundary.
 Jangan menyalin 104 procedure menjadi 104 tools. Tool surface harus curated,
 bounded, dan mudah dipilih model. Input MCP boleh lebih sempit daripada tRPC.
 
-Current implementation menyediakan tiga catalog/context tools,
-`hakgyo.capabilities.get`, dan delapan domain tools untuk 70 allowlisted actions.
+Current implementation menyediakan empat catalog/context tools dan satu tool per
+allowlisted action (69 action), masing-masing dengan nama `snake_case`, deskripsi,
+input schema, dan annotation sendiri; lihat [MCP Server](./mcp-server.md#tools).
+Tabel di bawah adalah rencana desain awal, bukan daftar nama tool saat ini.
 Domain tools memakai parser dan authorization tRPC yang sama dengan web app.
 Delete/remove/revoke/disconnect operations, raw invite tokens, signed storage
 URLs, dan internal storage/meeting credentials tidak tersedia melalui MCP.
 BlockNote built-ins dan custom blocks ditemukan melalui
-`hakgyo.content.get_block_catalog`; lihat [Custom Blocks](./custom-blocks.md).
+`get_material_block_catalog`; lihat [Custom Blocks](./custom-blocks.md).
 
 ### Phase A: Read-First Launch
 

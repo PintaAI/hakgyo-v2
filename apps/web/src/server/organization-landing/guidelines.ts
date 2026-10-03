@@ -8,7 +8,7 @@ import { MAX_LANDING_FIELD_LENGTH } from "~/lib/organization-landing";
 
 export const LANDING_GUIDELINES_VERSION = "2026-10-01";
 
-/** Served by `hakgyo.landing.get_guidelines`; the validator enforces the "must" rules. */
+/** Served by `get_landing_page_guidelines`; the validator enforces the "must" rules. */
 export const landingGuidelines = `# Hakgyo landing page guidelines (version ${LANDING_GUIDELINES_VERSION})
 
 You are designing the public landing page of one Hakgyo organization: a single
@@ -17,10 +17,10 @@ returns a list of errors to fix. The page is served in a sandboxed frame with
 no network access, so everything must be inline.
 
 ## Workflow
-1. Call hakgyo.landing.get_context for the organization's data, courses, images,
+1. Call get_landing_page_context for the organization's data, courses, images,
    and the exact URLs the page may link to.
-2. Call hakgyo.landing.get_draft to start from the current page when revising it.
-3. Send the complete document to hakgyo.landing.update_draft. Fix every returned
+2. Call get_landing_page_draft to start from the current page when revising it.
+3. Send the complete document to update_landing_page_draft. Fix every returned
    error and send it again.
 4. Share the returned editor URL. The owner reviews, edits copy, and publishes
    there. You cannot publish.

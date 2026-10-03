@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 
 import {
   addAssessmentAppLinks,
+  getMcpToolAnnotations,
   mcpDomainActions,
+  mcpDomainTools,
   normalizeMcpProcedureInput,
   sanitizeMcpResult,
 } from "./domain-actions";
@@ -34,6 +36,40 @@ describe("MCP domain action allowlist", () => {
     expect(actions.some((action) => action.includes("DownloadUrl"))).toBe(
       false,
     );
+  });
+
+  test("gives every action a unique snake_case tool name and description", () => {
+    const tools = Object.values(mcpDomainTools).flat();
+    const names = tools.map((tool) => tool.name);
+
+    expect(new Set(names).size).toBe(names.length);
+    for (const tool of tools) {
+      expect(tool.name).toMatch(/^[a-z][a-z0-9_]*$/);
+      expect(tool.description.length).toBeGreaterThan(20);
+    }
+  });
+
+  test("annotates reads, additive writes and overwrites", () => {
+    const tool = (domain: keyof typeof mcpDomainTools, action: string) =>
+      getMcpToolAnnotations(
+        mcpDomainTools[domain].find((entry) => entry.action === action)!,
+      );
+
+    expect(tool("course", "get")).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+    expect(tool("course", "create")).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+    });
+    expect(tool("course", "update")).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+    });
+    expect(tool("cohort", "createMeeting").openWorldHint).toBe(true);
   });
 
   test("keeps Tugas attempts in the mobile app", () => {
@@ -174,5 +210,20 @@ describe("MCP domain action allowlist", () => {
         },
       }),
     ).toEqual({ asset: { fileName: "lesson.pdf" } });
+    expect(
+      sanitizeMcpResult({
+        id: "c1",
+        createdAt: new Date("2026-08-16T12:00:00.000Z"),
+        updatedAt: new Date("2026-08-16T12:00:00.000Z"),
+        createdByMembershipId: "m1",
+        startsAt: new Date("2026-08-16T12:00:00.000Z"),
+        _count: { modules: 2 },
+      }),
+    ).toEqual({
+      id: "c1",
+      createdAt: "2026-08-16T12:00:00.000Z",
+      startsAt: "2026-08-16T12:00:00.000Z",
+      counts: { modules: 2 },
+    });
   });
 });

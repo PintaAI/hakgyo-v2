@@ -1,3 +1,6 @@
+import { fromJsonSchema } from "@modelcontextprotocol/server";
+import { z } from "zod";
+
 import { appRouter, createMcpCaller } from "~/server/api/root";
 import {
   addAssessmentAppLinks,
@@ -5,59 +8,37 @@ import {
   normalizeMcpProcedureInput,
   type McpDomain,
 } from "~/server/mcp/domain-actions";
-import { z } from "zod";
 
-export { mcpDomainActions } from "~/server/mcp/domain-actions";
+export { mcpDomainActions, mcpDomainTools } from "~/server/mcp/domain-actions";
 export type { McpDomain } from "~/server/mcp/domain-actions";
 
-export function getMcpCapabilitySchemas(filter?: {
-  action?: string;
-  domain?: McpDomain;
-}) {
+type ProcedureDefinitions = Record<
+  string,
+  { _def: { inputs: Array<{ toJSONSchema?: () => unknown }> } }
+>;
+
+/**
+ * The tool input schema for an allowlisted action, generated from its tRPC
+ * input so the published schema cannot drift from what the procedure accepts.
+ */
+export function getMcpActionInputSchema(domain: McpDomain, action: string) {
   const procedures = (
-    appRouter as unknown as {
-      _def: {
-        procedures: Record<
-          string,
-          {
-            _def: {
-              inputs: Array<{ toJSONSchema?: () => unknown }>;
-            };
-          }
-        >;
-      };
-    }
+    appRouter as unknown as { _def: { procedures: ProcedureDefinitions } }
   )._def.procedures;
-
-  return Object.fromEntries(
-    Object.entries(mcpDomainActions)
-      .filter(([domain]) => !filter?.domain || domain === filter.domain)
-      .map(([domain, actions]) => [
-        domain,
-        actions
-          .filter((action) => !filter?.action || action === filter.action)
-          .map((action) => ({
-            action,
-            inputSchema: getInputJsonSchema(
-              procedures[`${domain}.${action}`]?._def.inputs[0],
-            ),
-          })),
-      ]),
-  );
-}
-
-function getInputJsonSchema(input?: { toJSONSchema?: () => unknown }) {
-  if (!input) return { type: "object", properties: {} };
-
-  return z.toJSONSchema(input as z.ZodType, {
-    unrepresentable: "any",
-    override: (ctx) => {
-      if (ctx.zodSchema._zod.def.type === "date") {
-        ctx.jsonSchema.type = "string";
-        ctx.jsonSchema.format = "date-time";
-      }
-    },
-  });
+  const input = procedures[`${domain}.${action}`]?._def.inputs[0];
+  const schema: Record<string, unknown> = input
+    ? z.toJSONSchema(input as z.ZodType, {
+        io: "input",
+        unrepresentable: "any",
+        override: (ctx) => {
+          if (ctx.zodSchema._zod.def.type === "date") {
+            ctx.jsonSchema.type = "string";
+            ctx.jsonSchema.format = "date-time";
+          }
+        },
+      })
+    : { type: "object", properties: {} };
+  return fromJsonSchema<Record<string, unknown>>(schema);
 }
 
 export async function invokeMcpDomainAction(input: {
