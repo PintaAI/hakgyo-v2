@@ -1,13 +1,11 @@
 import { cache } from "react";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  BookOpenIcon,
   CalendarDaysIcon,
   CheckCircle2Icon,
   Layers3Icon,
@@ -15,6 +13,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 
+import { CourseCover } from "~/components/course-cover";
 import { CatalogEnrollmentButton } from "~/components/catalog-enrollment-button";
 import { buttonVariants } from "~/components/ui/button";
 import { getSession } from "~/server/better-auth/server";
@@ -114,7 +113,7 @@ export default async function CatalogCoursePage({
             </h1>
             <p className="text-muted-foreground mt-5 max-w-2xl text-base leading-7 sm:text-lg">
               {course.description ??
-                "Course ini siap membantu kamu belajar secara terarah, langkah demi langkah."}
+                "Kursus ini siap membantu kamu belajar secara terarah, langkah demi langkah."}
             </p>
 
             <dl className="mt-7 flex flex-wrap gap-x-8 gap-y-4 text-sm">
@@ -131,7 +130,7 @@ export default async function CatalogCoursePage({
                 </dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Isi course</dt>
+                <dt className="text-muted-foreground">Isi kursus</dt>
                 <dd className="mt-1 font-semibold">
                   {course.modules.length} bab, {itemCount} aktivitas
                 </dd>
@@ -159,33 +158,20 @@ export default async function CatalogCoursePage({
                   {course.cohorts.length > 0
                     ? "Pilih Group belajar di bawah untuk mendaftar."
                     : course.price > 0
-                      ? "Belum ada Group belajar yang dibuka untuk course ini."
-                      : "Course ini hanya dapat diakses melalui undangan."}
+                      ? "Belum ada Group belajar yang dibuka untuk kursus ini."
+                      : "Kursus ini hanya dapat diakses melalui undangan."}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="bg-muted relative min-h-64 lg:min-h-full">
-            {course.thumbnailUrl ? (
-              <Image
-                src={course.thumbnailUrl}
-                alt={`Sampul ${course.title}`}
-                fill
-                priority
-                unoptimized
-                sizes="(min-width: 1024px) 40vw, 100vw"
-                className="object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top_right,var(--primary),transparent_55%)]">
-                <BookOpenIcon
-                  className="text-muted-foreground size-20"
-                  aria-hidden="true"
-                />
-              </div>
-            )}
-          </div>
+          <CourseCover
+            title={course.title}
+            thumbnailUrl={course.thumbnailUrl}
+            priority
+            sizes="(min-width: 1024px) 40vw, 100vw"
+            className="min-h-64 lg:min-h-full"
+          />
         </div>
       </section>
 
@@ -279,7 +265,7 @@ export default async function CatalogCoursePage({
           </span>
           <div>
             <h2 id="curriculum-heading" className="text-xl font-bold">
-              Kurikulum course
+              Kurikulum kursus
             </h2>
             <p className="text-muted-foreground text-sm">
               Materi yang akan kamu pelajari.

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   CalendarIcon,
@@ -14,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { CourseCover } from "~/components/course-cover";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
   assessmentAttemptPresentation,
@@ -398,19 +398,13 @@ export function CohortCard({
   return (
     <article className="bg-card ring-foreground/10 overflow-hidden rounded-[20px] ring-1">
       <header className="bg-muted relative flex flex-wrap items-end gap-3 p-4 pt-8 sm:p-6 sm:pt-12">
-        {cohort.course.thumbnailUrl ? (
-          <>
-            <Image
-              src={cohort.course.thumbnailUrl}
-              alt=""
-              fill
-              unoptimized
-              sizes="(min-width: 768px) 768px, 100vw"
-              className="object-cover blur-[3px]"
-            />
-            <span className="bg-background/70 absolute inset-0" />
-          </>
-        ) : null}
+        <CourseCover
+          title={cohort.course.title}
+          thumbnailUrl={cohort.course.thumbnailUrl}
+          sizes="(min-width: 768px) 768px, 100vw"
+          className="absolute inset-0 blur-[3px]"
+        />
+        <span className="bg-background/70 absolute inset-0" />
         <div className="relative flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <p className="text-muted-foreground flex-1 truncate text-xs font-semibold tracking-[1px] uppercase">
@@ -449,7 +443,7 @@ export function CohortCard({
         {progress !== null ? (
           <div
             role="progressbar"
-            aria-label="Progres course"
+            aria-label="Progres kursus"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={progress}

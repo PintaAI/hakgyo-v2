@@ -26,6 +26,8 @@ type CenteredImageUploadProps = {
   placeholder?: ReactNode;
   uploadLabel?: string;
   replaceLabel?: string;
+  /** More buttons beside the upload button, such as generating an image. */
+  actions?: ReactNode;
 };
 
 function CenteredImageUpload({
@@ -40,6 +42,7 @@ function CenteredImageUpload({
   placeholder,
   uploadLabel = "Unggah gambar",
   replaceLabel = "Ganti gambar",
+  actions,
 }: CenteredImageUploadProps) {
   const { action, imageUrl, inputRef, previewUrl, remove, selectFile } =
     useImageUpload({ value, onUpload, onRemove });
@@ -97,24 +100,27 @@ function CenteredImageUpload({
         disabled={disabled}
         onChange={(event) => void selectFile(event)}
       />
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={disabled}
-        onClick={() => inputRef.current?.click()}
-      >
-        {action === "upload" ? (
-          <LoaderCircleIcon className="animate-spin" />
-        ) : (
-          <UploadIcon />
-        )}
-        {action === "upload"
-          ? "Mengunggah..."
-          : value
-            ? replaceLabel
-            : uploadLabel}
-      </Button>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={disabled}
+          onClick={() => inputRef.current?.click()}
+        >
+          {action === "upload" ? (
+            <LoaderCircleIcon className="animate-spin" />
+          ) : (
+            <UploadIcon />
+          )}
+          {action === "upload"
+            ? "Mengunggah..."
+            : value
+              ? replaceLabel
+              : uploadLabel}
+        </Button>
+        {actions}
+      </div>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -26,7 +25,7 @@ import {
   MailPlusIcon,
   PlusIcon,
   SearchIcon,
-  SparklesIcon,
+  ImageIcon,
   Settings2Icon,
   ShieldCheckIcon,
   Trash2Icon,
@@ -53,6 +52,9 @@ import {
   CoursePublicationControl,
   coursePublicationLabels,
 } from "~/components/course-readiness";
+import { CourseThumbnailField } from "~/components/course-thumbnail-field";
+import { PageHeader } from "~/components/ui/page-header";
+import { CourseCover } from "~/components/course-cover";
 import { ReviewQueue } from "~/components/review-queue";
 import {
   Avatar,
@@ -82,7 +84,6 @@ import {
 } from "~/components/ui/dialog";
 import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
-import { CenteredImageUpload } from "~/components/ui/centered-image-upload";
 import { Label } from "~/components/ui/label";
 import {
   Select,
@@ -92,6 +93,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
+import { StatStrip } from "~/components/ui/stat-strip";
 import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
@@ -108,13 +110,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { getErrorMessage } from "~/lib/error-message";
 import { cn } from "~/lib/utils";
-import {
-  courseThumbnailContentTypes,
-  getManagedCourseThumbnailKey,
-  MAX_COURSE_THUMBNAIL_SIZE,
-  type CourseThumbnailContentType,
-} from "~/lib/course-thumbnail";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { api, type RouterOutputs } from "~/trpc/react";
 
@@ -196,17 +193,8 @@ const views = [
 
 const validViews = new Set<CourseView>(views.map(({ value }) => value));
 
-function getErrorMessage(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return error.message;
-  }
-  return "Perubahan belum berhasil disimpan. Silakan coba lagi.";
-}
+/** The settings field that every thumbnail action leads to. */
+const courseThumbnailFieldId = "course-thumbnail";
 
 function getInitials(name: string) {
   return name
@@ -258,19 +246,6 @@ function QueryState({ error }: { error?: { message: string } | null }) {
       <Skeleton className="h-14 w-full" />
       <Skeleton className="h-14 w-full" />
       <Skeleton className="h-14 w-full" />
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="border-foreground/10 flex min-w-0 flex-col border-l pl-4 first:border-l-0 first:pl-0 sm:pl-6">
-      <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase sm:text-xs">
-        {label}
-      </span>
-      <span className="font-heading mt-1 text-2xl font-medium tracking-tight tabular-nums sm:text-3xl">
-        {value}
-      </span>
     </div>
   );
 }
@@ -383,25 +358,21 @@ export function CourseWorkspace({
   );
 
   const updateCourse = api.course.update.useMutation();
-  const generateThumbnail = api.course.generateThumbnail.useMutation();
 
   async function refreshWorkspace() {
     await utils.course.getWorkspaceOverview.invalidate(workspaceInput);
   }
 
-  async function createAiThumbnail() {
-    try {
-      await generateThumbnail.mutateAsync({ courseId: course.id });
-      await Promise.all([
-        refreshWorkspace(),
-        utils.course.get.invalidate({ courseId: course.id }),
-        utils.course.list.invalidate({ organizationId }),
-      ]);
-      router.refresh();
-      toast.success("Thumbnail course berhasil dibuat.");
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
+  // Every thumbnail action lives in the settings tab; this opens it there.
+  function editThumbnail() {
+    navigate("settings");
+    window.setTimeout(() => {
+      // The id is on the hidden file input; scroll to the visible field.
+      document
+        .getElementById(courseThumbnailFieldId)
+        ?.closest("[data-thumbnail-field]")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
   }
 
   async function changeCourseStatus(status: Course["status"]) {
@@ -420,8 +391,8 @@ export function CourseWorkspace({
       ]);
       toast.success(
         status === "PUBLISHED"
-          ? "Course dipublikasikan."
-          : "Publikasi course dibatalkan. Semua item disembunyikan dari learner.",
+          ? "Kursus dipublikasikan."
+          : "Publikasi kursus dibatalkan. Semua item disembunyikan dari siswa.",
       );
       router.refresh();
       return true;
@@ -441,75 +412,52 @@ export function CourseWorkspace({
         )}
       >
         <ArrowLeftIcon data-icon="inline-start" />
-        Semua courses
+        Semua kursus
       </Link>
 
-      <header className="border-border bg-background text-foreground relative overflow-hidden rounded-lg border px-5 py-6 sm:px-7 sm:py-8">
-        {course.thumbnailUrl ? (
-          <Image
-            src={course.thumbnailUrl}
-            alt=""
-            fill
-            unoptimized
-            priority
-            sizes="(max-width: 768px) 100vw, 1152px"
-            className="object-cover"
-          />
-        ) : null}
-        <div className="bg-background/85 pointer-events-none absolute inset-0 backdrop-blur-[2px]" />
-        <div className="border-border pointer-events-none absolute top-0 right-0 size-52 translate-x-16 -translate-y-20 rounded-full border" />
-        <div className="border-border pointer-events-none absolute top-0 right-0 size-36 translate-x-10 -translate-y-12 rounded-full border" />
-        {canManageCourse ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={generateThumbnail.isPending}
-            onClick={() => void createAiThumbnail()}
-            className="bg-background/90 relative z-10 mb-5 ml-auto flex w-fit backdrop-blur"
-          >
-            {generateThumbnail.isPending ? (
-              <LoaderCircleIcon
-                className="animate-spin"
-                data-icon="inline-start"
+      <PageHeader
+        eyebrow={`Kursus · ${courseStatus[course.status].label}`}
+        title={course.title}
+        description={
+          course.description ??
+          "Belum ada deskripsi. Tambahkan konteks kursus melalui Pengaturan."
+        }
+        media={
+          canManageCourse ? (
+            // The cover opens the one place every thumbnail action lives.
+            <button
+              type="button"
+              onClick={editThumbnail}
+              className="group/cover focus-visible:ring-ring relative block w-full overflow-hidden rounded-2xl outline-none focus-visible:ring-2"
+            >
+              <CourseCover
+                title={course.title}
+                thumbnailUrl={course.thumbnailUrl}
+                priority
+                sizes="352px"
+                className="aspect-video w-full transition-transform duration-500 group-hover/cover:scale-[1.02]"
               />
-            ) : (
-              <SparklesIcon data-icon="inline-start" />
-            )}
-            {generateThumbnail.isPending
-              ? "Membuat thumbnail..."
-              : "Buat thumbnail dengan AI"}
-          </Button>
-        ) : null}
-        <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
-                Workspace course
+              <span className="bg-background/90 absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur">
+                <ImageIcon className="size-3.5" aria-hidden="true" />
+                {course.thumbnailUrl ? "Ganti thumbnail" : "Tambah thumbnail"}
               </span>
-              <Badge
-                variant={courseStatus[course.status].variant}
-                className="border-border bg-muted text-muted-foreground"
-              >
-                {courseStatus[course.status].label}
-              </Badge>
-            </div>
-            <h1 className="text-foreground font-heading mt-4 text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
-              {course.title}
-            </h1>
-            <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
-              {course.description ??
-                "Belum ada deskripsi. Tambahkan konteks course melalui Pengaturan."}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+            </button>
+          ) : (
+            <CourseCover
+              title={course.title}
+              thumbnailUrl={course.thumbnailUrl}
+              priority
+              sizes="352px"
+              className="aspect-video w-full rounded-2xl"
+            />
+          )
+        }
+        actions={
+          <>
             {canManageContent ? (
               <Link
                 href={`${root}/kurikulum`}
-                className={cn(
-                  buttonVariants({ variant: "outline" }),
-                  "bg-background/70 hover:bg-accent hover:text-accent-foreground backdrop-blur",
-                )}
+                className={buttonVariants({ variant: "outline" })}
               >
                 <FilePenLineIcon data-icon="inline-start" />
                 Edit kurikulum
@@ -517,10 +465,7 @@ export function CourseWorkspace({
             ) : (
               <Link
                 href={`/learn/${course.id}`}
-                className={cn(
-                  buttonVariants({ variant: "outline" }),
-                  "bg-background/70 hover:bg-accent hover:text-accent-foreground backdrop-blur",
-                )}
+                className={buttonVariants({ variant: "outline" })}
               >
                 <Layers3Icon data-icon="inline-start" />
                 Lihat kurikulum
@@ -535,9 +480,9 @@ export function CourseWorkspace({
                 onChangeStatus={changeCourseStatus}
               />
             ) : null}
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <Tabs
         value={view}
@@ -547,7 +492,7 @@ export function CourseWorkspace({
         <div className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TabsList
             variant="line"
-            aria-label="Course management"
+            aria-label="Pengelolaan kursus"
             className="h-11 min-w-max justify-start rounded-none p-0"
           >
             {availableViews.map(({ value, label, icon: Icon }) => (
@@ -677,13 +622,13 @@ function OverviewSection({
   if (!canManageCourse) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="rounded-lg">
+        <Card>
           <CardHeader>
             <CardTitle className="font-heading text-lg font-medium">
-              Akses course bersama
+              Akses kursus bersama
             </CardTitle>
             <CardDescription>
-              Anda memiliki akses melalui assignment course atau cohort.
+              Anda memiliki akses melalui assignment kursus atau cohort.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -698,7 +643,7 @@ function OverviewSection({
             ) : (
               <div className="space-y-3">
                 <p className="text-muted-foreground text-sm">
-                  Curriculum tersedia sebagai referensi mengajar. Minta course
+                  Curriculum tersedia sebagai referensi mengajar. Minta kursus
                   manager menambahkan Anda sebagai editor bila perlu
                   mengubahnya.
                 </p>
@@ -713,9 +658,9 @@ function OverviewSection({
             )}
           </CardContent>
         </Card>
-        <Card className="rounded-lg">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Pemilik course</CardTitle>
+            <CardTitle className="text-sm">Pemilik kursus</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-3">
             <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
@@ -741,23 +686,21 @@ function OverviewSection({
 
   return (
     <div className="space-y-4">
-      <section
-        aria-label="Course summary"
-        className="grid grid-cols-2 gap-y-6 border-y py-5 sm:grid-cols-4"
-      >
-        <Stat label="Bab" value={stats.moduleCount} />
-        <Stat label="Group belajar" value={stats.cohortCount} />
-        <Stat label="Siswa aktif" value={stats.activeLearnerCount} />
-        <Stat label="Invite aktif" value={stats.activeInviteCount} />
-      </section>
+      <StatStrip
+        label="Ringkasan kursus"
+        items={[
+          { label: "Bab", value: stats.moduleCount },
+          { label: "Group belajar", value: stats.cohortCount },
+          { label: "Siswa aktif", value: stats.activeLearnerCount },
+          { label: "Undangan aktif", value: stats.activeInviteCount },
+        ]}
+      />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
-        <Card className="rounded-lg">
+        <Card>
           <CardHeader className="border-b">
             <div>
-              <CardTitle className="font-heading text-lg font-medium">
-                kurikulum
-              </CardTitle>
+              <CardTitle className="text-lg font-medium">Kurikulum</CardTitle>
               <CardDescription>
                 Struktur pembelajaran yang tersedia saat ini.
               </CardDescription>
@@ -825,7 +768,7 @@ function OverviewSection({
         </Card>
 
         <div className="grid gap-4">
-          <Card className="rounded-lg">
+          <Card>
             <CardHeader>
               <CardTitle className="font-heading text-lg font-medium">
                 Langkah berikutnya
@@ -849,7 +792,7 @@ function OverviewSection({
                 {
                   view: "settings" as const,
                   icon: Settings2Icon,
-                  label: "Atur akses course",
+                  label: "Atur akses kursus",
                 },
               ].map(({ view, icon: Icon, label }) => (
                 <button
@@ -866,9 +809,9 @@ function OverviewSection({
             </div>
           </Card>
 
-          <Card className="rounded-lg">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Pemilik course</CardTitle>
+              <CardTitle className="text-sm">Pemilik kursus</CardTitle>
             </CardHeader>
             <CardContent className="flex items-center gap-3">
               <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
@@ -979,7 +922,7 @@ function CohortsSection({
             Group belajar
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Kelola kelas, kapasitas, periode, dan staff course.
+            Kelola kelas, kapasitas, periode, dan staff kursus.
           </p>
         </div>
         {canCreate ? (
@@ -1105,7 +1048,7 @@ function CohortsSection({
 
       {isPending || error ? <QueryState error={error} /> : null}
       {!isPending && !error && data?.length === 0 ? (
-        <Card className="rounded-lg">
+        <Card>
           <CardContent>
             <EmptyState
               size="sm"
@@ -1118,7 +1061,7 @@ function CohortsSection({
               description={
                 hasActiveFilters
                   ? "Coba kata kunci atau status yang berbeda."
-                  : "Group belajar membantu mengatur periode belajar, pengajar, meeting, dan kelompok peserta didik."
+                  : "Group belajar membantu mengatur periode belajar, pengajar, meeting, dan kelompok siswa."
               }
               action={
                 canCreate && !hasActiveFilters ? (
@@ -1138,7 +1081,7 @@ function CohortsSection({
       ) : null}
       {!isPending && !error && data && data.length > 0 ? (
         <div className="space-y-3">
-          <Card className="gap-0 overflow-hidden rounded-xl py-0">
+          <Card className="gap-0 overflow-hidden py-0">
             <div className="divide-y">
               {data.map((cohort) => (
                 <Link
@@ -1221,7 +1164,7 @@ function CohortsSection({
               <DialogHeader>
                 <DialogTitle>Buat Group belajar</DialogTitle>
                 <DialogDescription>
-                  Buat Group belajar baru untuk course ini.
+                  Buat Group belajar baru untuk kursus ini.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-5 space-y-4">
@@ -1422,7 +1365,7 @@ function LearnersSection({
 
       {isPending || error ? <QueryState error={error} /> : null}
       {!isPending && !error && data?.length === 0 ? (
-        <Card className="rounded-lg">
+        <Card>
           <CardContent>
             <EmptyState
               size="sm"
@@ -1444,7 +1387,7 @@ function LearnersSection({
         </Card>
       ) : null}
       {!isPending && !error && data && data.length > 0 ? (
-        <Card className="rounded-lg">
+        <Card>
           <CardHeader className="gap-4 border-b sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
               <CardTitle>Belajar mandiri</CardTitle>
@@ -1583,7 +1526,7 @@ function LearnersSection({
             <DialogHeader>
               <DialogTitle>Tambah siswa</DialogTitle>
               <DialogDescription>
-                Masukkan email akun Hakgyo yang akan diberi akses ke course ini.
+                Masukkan email akun Hakgyo yang akan diberi akses ke kursus ini.
               </DialogDescription>
             </DialogHeader>
             <div className="mt-5 space-y-4">
@@ -1678,8 +1621,8 @@ function LearnersSection({
               Hapus {removing?.user.name} dari belajar mandiri?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Akses belajar mandiri siswa ke course ini dicabut. Jika siswa
-              masih terdaftar di Group belajar course ini, aksesnya tetap
+              Akses belajar mandiri siswa ke kursus ini dicabut. Jika siswa
+              masih terdaftar di Group belajar kursus ini, aksesnya tetap
               berlaku lewat group tersebut. Status lama tidak dapat dipulihkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1828,13 +1771,13 @@ function InvitesSection({
 
       {isPending || error ? <QueryState error={error} /> : null}
       {!isPending && !error && data?.length === 0 ? (
-        <Card className="rounded-lg">
+        <Card>
           <CardContent>
             <EmptyState
               size="sm"
               icon={MailPlusIcon}
               title="Belum ada invite"
-              description="Buat link terbatas untuk mengundang peserta didik ke course atau Group belajar."
+              description="Buat link terbatas untuk mengundang siswa ke kursus atau Group belajar."
               action={
                 <Button
                   className="mt-4"
@@ -1849,7 +1792,7 @@ function InvitesSection({
         </Card>
       ) : null}
       {!isPending && !error && data && data.length > 0 ? (
-        <Card className="rounded-lg">
+        <Card>
           <Table>
             <TableHeader>
               <TableRow>
@@ -1880,7 +1823,7 @@ function InvitesSection({
                         {cohort?.name ??
                           (invite.cohortId
                             ? "Group belajar"
-                            : "Seluruh course")}
+                            : "Seluruh kursus")}
                       </span>
                       <span className="text-muted-foreground block text-xs">
                         oleh {invite.createdBy.user.name}
@@ -2016,11 +1959,11 @@ function InvitesSection({
                     <SelectTrigger id="invite-cohort" className="w-full">
                       <span className="flex flex-1 text-left">
                         {cohorts?.find((cohort) => cohort.id === cohortId)
-                          ?.name ?? "Seluruh course"}
+                          ?.name ?? "Seluruh kursus"}
                       </span>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL">Seluruh course</SelectItem>
+                      <SelectItem value="ALL">Seluruh kursus</SelectItem>
                       {cohorts?.map((cohort) => (
                         <SelectItem key={cohort.id} value={cohort.id}>
                           {cohort.name}
@@ -2134,7 +2077,7 @@ function AccessSection({
       setTransferOpen(false);
       setOwnerMembershipId("");
       await refresh();
-      toast.success("Course manager utama diperbarui.");
+      toast.success("Kursus manager utama diperbarui.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -2166,16 +2109,16 @@ function AccessSection({
     <section className="space-y-6">
       <div className="max-w-2xl">
         <h2 className="font-heading text-2xl font-medium tracking-tight">
-          Akses course
+          Akses kursus
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Tentukan siapa yang mengelola course ini dan apa yang dapat mereka
+          Tentukan siapa yang mengelola kursus ini dan apa yang dapat mereka
           ubah.
         </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
-        <Card className="gap-0 rounded-lg py-0">
+        <Card className="gap-0 py-0">
           <CardHeader className="border-b">
             <CardTitle>Tim pengelola</CardTitle>
             <CardDescription>
@@ -2264,7 +2207,7 @@ function AccessSection({
               <Label htmlFor="new-course-editor">Tambah editor kurikulum</Label>
               <p className="text-muted-foreground mt-1 text-xs">
                 Editor dapat menyusun bab dan materi, tanpa akses ke siswa,
-                undangan, atau pengaturan course.
+                undangan, atau pengaturan kursus.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <Select
@@ -2309,7 +2252,7 @@ function AccessSection({
         </Card>
 
         <div className="space-y-4">
-          <Card className="rounded-lg">
+          <Card>
             <CardHeader className="border-b">
               <CardTitle>Hak akses</CardTitle>
               <CardDescription>
@@ -2325,7 +2268,7 @@ function AccessSection({
                   <p className="font-medium">Manager</p>
                   <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
                     Mengelola kurikulum, siswa, group belajar, undangan,
-                    pengaturan, dan status course.
+                    pengaturan, dan status kursus.
                   </p>
                 </div>
               </div>
@@ -2343,7 +2286,7 @@ function AccessSection({
             </CardContent>
           </Card>
 
-          <Card className="rounded-lg">
+          <Card>
             <CardHeader className="border-b">
               <CardTitle>Ganti manager</CardTitle>
               <CardDescription>
@@ -2360,7 +2303,7 @@ function AccessSection({
                 }}
               >
                 <SelectTrigger
-                  aria-label="Manager course baru"
+                  aria-label="Manager kursus baru"
                   className="w-full"
                 >
                   <span className="flex flex-1 text-left">
@@ -2400,7 +2343,7 @@ function AccessSection({
             <AlertDialogMedia>
               <CrownIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Ganti manager course?</AlertDialogTitle>
+            <AlertDialogTitle>Ganti manager kursus?</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedOwner?.user.name ?? "Member terpilih"} akan mendapat
               kontrol penuh atas course ini. Perubahan ini dapat menghilangkan
@@ -2467,7 +2410,6 @@ function SettingsSection({
   const loaded = courseSettingsValues(course);
   const [title, setTitle] = useState(loaded.title);
   const [description, setDescription] = useState(loaded.description);
-  const [thumbnailUrl, setThumbnailUrl] = useState(course.thumbnailUrl);
   const [price, setPrice] = useState(loaded.price);
   const [currency, setCurrency] = useState(loaded.currency);
   const selectedCurrency = courseCurrencies.find(
@@ -2502,16 +2444,7 @@ function SettingsSection({
   }
   const [deleteOpen, setDeleteOpen] = useState(false);
   const updateCourse = api.course.update.useMutation();
-  const createThumbnailUpload =
-    api.storage.createCourseThumbnailUploadUrl.useMutation();
-  const confirmThumbnailUpload =
-    api.storage.confirmCourseThumbnailUpload.useMutation();
-  const deleteThumbnail = api.storage.deleteCourseThumbnail.useMutation();
   const deleteCourse = api.course.delete.useMutation();
-  const thumbnailBusy =
-    createThumbnailUpload.isPending ||
-    confirmThumbnailUpload.isPending ||
-    deleteThumbnail.isPending;
 
   async function refreshCourse() {
     await Promise.all([
@@ -2520,84 +2453,6 @@ function SettingsSection({
       onWorkspaceChange(),
     ]);
     router.refresh();
-  }
-
-  async function uploadThumbnail(file: File) {
-    if (
-      !courseThumbnailContentTypes.includes(
-        file.type as CourseThumbnailContentType,
-      )
-    ) {
-      toast.error("Gunakan gambar JPEG, PNG, WebP, atau GIF.");
-      return;
-    }
-    if (file.size > MAX_COURSE_THUMBNAIL_SIZE) {
-      toast.error("Thumbnail maksimal 5 MB.");
-      return;
-    }
-
-    let uploadedKey: string | null = null;
-    const previousKey = getManagedCourseThumbnailKey(thumbnailUrl, course.id);
-    try {
-      const upload = await createThumbnailUpload.mutateAsync({
-        courseId: course.id,
-        contentType: file.type as CourseThumbnailContentType,
-        fileSize: file.size,
-      });
-      uploadedKey = upload.key;
-      const response = await fetch(upload.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: upload.headers,
-      });
-      if (!response.ok) {
-        throw new Error(`Upload thumbnail gagal (${response.status}).`);
-      }
-      const confirmed = await confirmThumbnailUpload.mutateAsync({
-        courseId: course.id,
-        key: upload.key,
-      });
-      await updateCourse.mutateAsync({
-        courseId: course.id,
-        thumbnailUrl: confirmed.thumbnailUrl,
-      });
-      uploadedKey = null;
-      setThumbnailUrl(confirmed.thumbnailUrl);
-      await refreshCourse();
-      if (previousKey && previousKey !== confirmed.key) {
-        await deleteThumbnail
-          .mutateAsync({ courseId: course.id, key: previousKey })
-          .catch(() => undefined);
-      }
-      toast.success("Thumbnail course diperbarui.");
-    } catch (error) {
-      if (uploadedKey) {
-        await deleteThumbnail
-          .mutateAsync({ courseId: course.id, key: uploadedKey })
-          .catch(() => undefined);
-      }
-      toast.error(getErrorMessage(error));
-    }
-  }
-
-  async function removeThumbnail() {
-    const key = getManagedCourseThumbnailKey(thumbnailUrl, course.id);
-    try {
-      await updateCourse.mutateAsync({
-        courseId: course.id,
-        thumbnailUrl: null,
-      });
-      if (key) {
-        await deleteThumbnail
-          .mutateAsync({ courseId: course.id, key })
-          .catch(() => undefined);
-      }
-      setThumbnailUrl(null);
-      await refreshCourse();
-      toast.success("Thumbnail course dihapus.");
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -2635,7 +2490,7 @@ function SettingsSection({
     try {
       await updateCourse.mutateAsync({ courseId: course.id, ...changes });
       await refreshCourse();
-      toast.success("Pengaturan course disimpan.");
+      toast.success("Pengaturan kursus disimpan.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -2645,7 +2500,7 @@ function SettingsSection({
     try {
       await deleteCourse.mutateAsync({ courseId: course.id });
       await utils.course.list.invalidate({ organizationId });
-      toast.success("Course berhasil dihapus.");
+      toast.success("Kursus berhasil dihapus.");
       router.replace(coursesHref);
       router.refresh();
     } catch (cause) {
@@ -2657,10 +2512,10 @@ function SettingsSection({
     <section className="space-y-5">
       <div>
         <h2 className="font-heading text-2xl font-medium tracking-tight">
-          Settings
+          Pengaturan
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Metadata, tipe course (public/private), dan lifecycle course.
+          Metadata, tipe kursus (public/private), dan lifecycle kursus.
         </p>
       </div>
 
@@ -2668,16 +2523,16 @@ function SettingsSection({
         onSubmit={submit}
         className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]"
       >
-        <Card className="rounded-lg">
+        <Card>
           <CardHeader className="border-b">
-            <CardTitle>Informasi course</CardTitle>
+            <CardTitle>Informasi kursus</CardTitle>
             <CardDescription>
               Informasi yang terlihat oleh pengelola dan siswa.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="settings-title">Nama course</Label>
+              <Label htmlFor="settings-title">Nama kursus</Label>
               <Input
                 id="settings-title"
                 maxLength={200}
@@ -2698,17 +2553,12 @@ function SettingsSection({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="settings-thumbnail">Thumbnail course</Label>
-                <CenteredImageUpload
-                  id="settings-thumbnail"
-                  value={thumbnailUrl}
-                  alt="Thumbnail course"
-                  accept={courseThumbnailContentTypes.join(",")}
-                  busy={thumbnailBusy || updateCourse.isPending}
-                  onUpload={uploadThumbnail}
-                  onRemove={removeThumbnail}
-                  uploadLabel="Unggah thumbnail"
-                  replaceLabel="Ganti thumbnail"
+                <Label htmlFor={courseThumbnailFieldId}>Thumbnail kursus</Label>
+                <CourseThumbnailField
+                  id={courseThumbnailFieldId}
+                  courseId={course.id}
+                  thumbnailUrl={course.thumbnailUrl}
+                  onChange={refreshCourse}
                 />
               </div>
             </div>
@@ -2763,15 +2613,15 @@ function SettingsSection({
         </Card>
 
         <div className="space-y-4">
-          <Card className="rounded-lg">
+          <Card>
             <CardHeader className="border-b">
               <CardTitle>Aturan akses</CardTitle>
             </CardHeader>
             <CardContent className="pt-2">
               <div className="flex items-center justify-between gap-4 py-4">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <Label htmlFor="settings-enrollment">Tipe course</Label>
-                  <FieldHelp content="Ikuti organisasi untuk memakai pengaturan default, atau timpa khusus course ini. Public bisa ditemukan dan diikuti siswa, private hanya untuk siswa yang diundang." />
+                  <Label htmlFor="settings-enrollment">Tipe kursus</Label>
+                  <FieldHelp content="Ikuti organisasi untuk memakai pengaturan default, atau timpa khusus kursus ini. Public bisa ditemukan dan diikuti siswa, private hanya untuk siswa yang diundang." />
                 </div>
                 <Select
                   value={enrollmentMode}
@@ -2781,29 +2631,29 @@ function SettingsSection({
                 >
                   <SelectTrigger
                     id="settings-enrollment"
-                    aria-label="Tipe course"
+                    aria-label="Tipe kursus"
                     className="w-44 shrink-0"
                   >
                     <span className="flex flex-1 text-left">
                       {
                         {
                           INHERIT: "Ikuti organisasi",
-                          OPEN: "Public course",
-                          INVITE_ONLY: "Private course",
+                          OPEN: "Kursus publik",
+                          INVITE_ONLY: "Kursus privat",
                         }[enrollmentMode]
                       }
                     </span>
                   </SelectTrigger>
                   <SelectContent align="end">
                     <SelectItem value="INHERIT">Ikuti organisasi</SelectItem>
-                    <SelectItem value="OPEN">Public course</SelectItem>
-                    <SelectItem value="INVITE_ONLY">Private course</SelectItem>
+                    <SelectItem value="OPEN">Kursus publik</SelectItem>
+                    <SelectItem value="INVITE_ONLY">Kursus privat</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center justify-between gap-4 border-t py-4">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <Label htmlFor="settings-progression">Progression</Label>
+                  <Label htmlFor="settings-progression">Alur belajar</Label>
                   <FieldHelp content="Terbuka membebaskan siswa membuka semua materi, bertahap mengharuskan menyelesaikan item sebelumnya secara berurutan." />
                 </div>
                 <Select
@@ -2814,7 +2664,7 @@ function SettingsSection({
                 >
                   <SelectTrigger
                     id="settings-progression"
-                    aria-label="Progression"
+                    aria-label="Alur belajar"
                     className="w-44 shrink-0"
                   >
                     <span className="flex flex-1 text-left">
@@ -2850,7 +2700,7 @@ function SettingsSection({
         </div>
       </form>
 
-      <Card className="border-destructive/20 rounded-lg ring-0">
+      <Card className="border-destructive/20 ring-0">
         <CardHeader className="border-b">
           <CardTitle className="text-destructive">Zona berbahaya</CardTitle>
           <CardDescription>
@@ -2860,9 +2710,9 @@ function SettingsSection({
         <div className="divide-border divide-y">
           <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">
             <div>
-              <p className="text-sm font-medium">Hapus course</p>
+              <p className="text-sm font-medium">Hapus kursus</p>
               <p className="text-muted-foreground mt-0.5 text-xs">
-                Penghapusan dapat ditolak bila course masih memiliki data
+                Penghapusan dapat ditolak bila kursus masih memiliki data
                 terkait.
               </p>
             </div>
@@ -2872,7 +2722,7 @@ function SettingsSection({
               onClick={() => setDeleteOpen(true)}
             >
               <Trash2Icon data-icon="inline-start" />
-              Hapus course
+              Hapus kursus
             </Button>
           </div>
         </div>
@@ -2886,7 +2736,7 @@ function SettingsSection({
             </AlertDialogMedia>
             <AlertDialogTitle>Hapus {course.title}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Action ini permanen. Batalkan publikasi course bila course mungkin
+              Action ini permanen. Batalkan publikasi kursus bila kursus mungkin
               diperlukan kembali.
             </AlertDialogDescription>
           </AlertDialogHeader>

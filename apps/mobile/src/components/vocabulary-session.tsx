@@ -789,7 +789,7 @@ export function VocabularySession({
             </View>
           </View>
         }
-        detail="Pengulangan penguasaan tetap tersedia tanpa menghambat course kamu."
+        detail="Pengulangan penguasaan tetap tersedia tanpa menghambat kursus kamu."
         gameKey="cards"
         onPrimary={beginRound}
         onSecondary={exit}

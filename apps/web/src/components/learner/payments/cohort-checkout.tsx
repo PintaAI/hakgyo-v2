@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CourseCover } from "~/components/course-cover";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -125,19 +125,13 @@ export function CohortCheckout({
   return (
     <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_22rem]">
       <Card className="gap-0 overflow-hidden py-0">
-        <div className="bg-muted relative aspect-[16/7]">
-          {data.course.thumbnailUrl ? (
-            <Image
-              src={data.course.thumbnailUrl}
-              alt=""
-              fill
-              unoptimized
-              priority
-              sizes="(min-width: 768px) 60vw, 100vw"
-              className="object-cover"
-            />
-          ) : null}
-        </div>
+        <CourseCover
+          title={data.course.title}
+          thumbnailUrl={data.course.thumbnailUrl}
+          priority
+          sizes="(min-width: 768px) 60vw, 100vw"
+          className="aspect-[16/7] w-full"
+        />
         <CardContent className="space-y-4 py-5">
           <div>
             <p className="text-primary text-sm font-semibold">
@@ -189,7 +183,7 @@ export function CohortCheckout({
                   href={`/learn/${data.course.id}`}
                   className={buttonVariants({ className: "w-full" })}
                 >
-                  Buka course
+                  Buka kursus
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
               ) : null}

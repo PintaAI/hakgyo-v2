@@ -7,7 +7,6 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   BookOpenIcon,
@@ -17,6 +16,7 @@ import {
   SmartphoneIcon,
 } from "lucide-react";
 
+import { CourseCover } from "~/components/course-cover";
 import { buttonVariants } from "~/components/ui/button";
 import {
   androidCourseIntent,
@@ -121,15 +121,13 @@ export function AppHandoff({
 
         <div className="grid items-start gap-3 sm:gap-4 md:grid-cols-[minmax(0,1fr)_20rem]">
           <section className="relative flex min-h-[15rem] flex-col justify-end overflow-hidden rounded-xl bg-neutral-950 p-5 text-white sm:min-h-[20rem] sm:p-8">
-            {course?.thumbnailUrl ? (
-              <Image
-                src={course.thumbnailUrl}
-                alt=""
-                fill
-                unoptimized
+            {course ? (
+              <CourseCover
+                title={course.title}
+                thumbnailUrl={course.thumbnailUrl}
                 priority
                 sizes="(max-width: 768px) 100vw, 560px"
-                className="object-cover"
+                className="absolute inset-0"
               />
             ) : null}
             <div className="pointer-events-none absolute inset-0 bg-black/65" />
@@ -231,7 +229,7 @@ export function AppHandoff({
             </ol>
 
             <p className="text-muted-foreground border-t pt-4 text-xs leading-relaxed">
-              Course ini otomatis muncul di tab Belajar setelah kamu masuk.
+              Kursus ini otomatis muncul di tab Belajar setelah kamu masuk.
             </p>
           </section>
         </div>

@@ -25,6 +25,8 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { PageHeader } from "~/components/ui/page-header";
+import { StatStrip } from "~/components/ui/stat-strip";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -70,7 +72,7 @@ const roleDetails: Record<
   },
   TEACHER: {
     label: "Pengajar",
-    description: "Mengelola course dan Group belajar sesuai mode akses",
+    description: "Mengelola kursus dan Group belajar sesuai mode akses",
   },
 };
 
@@ -250,52 +252,34 @@ export function OrganizationMembers({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div className="space-y-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <UsersIcon className="size-4" />
-            Akses organisasi
-          </div>
-          <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            Anggota
-          </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            Berikan akses secara sengaja. Pemilik mengendalikan organisasi,
-            admin mengelola operasional, dan pengajar mengelola ruang belajar
-            mereka.
-          </p>
-        </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <UserPlusIcon data-icon="inline-start" />
-          Undang anggota
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Akses organisasi"
+        title="Anggota"
+        description="Berikan akses secara sengaja. Pemilik mengendalikan organisasi, admin mengelola operasional, dan pengajar mengelola ruang belajar mereka."
+        actions={
+          <Button onClick={() => setAddOpen(true)}>
+            <UserPlusIcon data-icon="inline-start" />
+            Undang anggota
+          </Button>
+        }
+      />
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card size="sm">
-          <CardHeader>
-            <CardDescription>Total anggota</CardDescription>
-            <CardTitle className="text-2xl">{membersTotal}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card size="sm">
-          <CardHeader>
-            <CardDescription>Pemilik</CardDescription>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              {owners}
-              <CrownIcon className="size-4 text-amber-600 dark:text-amber-400" />
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card size="sm">
-          <CardHeader>
-            <CardDescription>Akses Anda</CardDescription>
-            <CardTitle className="text-2xl">
-              {roleDetails[currentRole].label}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
+      <StatStrip
+        label="Ringkasan anggota"
+        items={[
+          { label: "Total anggota", value: membersTotal },
+          {
+            label: "Pemilik",
+            value: (
+              <>
+                {owners}
+                <CrownIcon className="size-4 text-amber-600 dark:text-amber-400" />
+              </>
+            ),
+          },
+          { label: "Akses Anda", value: roleDetails[currentRole].label },
+        ]}
+      />
 
       <Card className="gap-0 py-0">
         <CardHeader className="border-b py-4">

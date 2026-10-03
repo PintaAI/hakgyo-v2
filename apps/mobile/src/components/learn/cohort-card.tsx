@@ -112,7 +112,7 @@ export async function openExternalLink(
   if (!url) {
     Alert.alert(
       "Link tidak tersedia",
-      "Minta link terbaru kepada kontak course kamu.",
+      "Minta link terbaru kepada kontak kursus kamu.",
     );
     return;
   }

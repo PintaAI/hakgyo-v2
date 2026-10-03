@@ -31,7 +31,7 @@ export function LearnerBreadcrumb() {
                 ? "Hari ini"
                 : pathname === "/learn/courses"
                   ? "Belajar"
-                  : "Course";
+                  : "Kursus";
 
   return (
     <Breadcrumb>

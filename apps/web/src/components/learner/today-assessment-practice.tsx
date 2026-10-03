@@ -64,14 +64,14 @@ export function TodayAssessmentPractice() {
         </p>
       ) : !pool.data.hasAvailableContent ? (
         <p className="text-muted-foreground bg-muted/50 rounded-xl p-4 text-sm">
-          Latihan tugas muncul jika course yang terbuka memiliki soal pilihan
+          Latihan tugas muncul jika kursus yang terbuka memiliki soal pilihan
           yang dipublikasikan.
         </p>
       ) : (
         <QuizSession
           key={seed}
           questions={questions}
-          finishNote="Latihan selesai. Nilai, percobaan, progres course, dan XP kamu tidak berubah."
+          finishNote="Latihan selesai. Nilai, percobaan, progres kursus, dan XP kamu tidak berubah."
           onRestart={() => setSeed(randomSeed())}
           grade={async (question, optionIds) => {
             const graded =

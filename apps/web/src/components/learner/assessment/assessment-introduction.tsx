@@ -70,7 +70,7 @@ export function AssessmentIntroduction({
           "text-muted-foreground -mb-2 -ml-2 self-start",
         )}
       >
-        <ArrowLeftIcon /> Kembali ke course
+        <ArrowLeftIcon /> Kembali ke kursus
       </Link>
 
       <StudyCard className="p-5 sm:p-6">

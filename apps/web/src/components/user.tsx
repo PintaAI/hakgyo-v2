@@ -139,7 +139,7 @@ function SidebarUserMenu({
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenSettings}>
               <SettingsIcon />
-              Settings
+              Pengaturan
             </DropdownMenuItem>
             <DropdownMenuItem render={<Link href="/organizations/new" />}>
               <Building2Icon />
@@ -324,7 +324,7 @@ export function User({ role, variant = "header" }: UserProps) {
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>
             <SettingsIcon />
-            Settings
+            Pengaturan
           </DropdownMenuItem>
           <DropdownMenuItem render={<Link href="/organizations/new" />}>
             <Building2Icon />

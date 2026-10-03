@@ -5,7 +5,6 @@ import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
 import {
   LanguagesIcon,
-  LibraryIcon,
   LoaderCircleIcon,
   PlusIcon,
   SearchIcon,
@@ -43,10 +42,9 @@ export function VocabularyLibrary({
   return (
     <div className="flex w-full flex-col gap-6">
       <PageHeader
-        icon={LibraryIcon}
         eyebrow="Bahan ajar"
         title="Kosakata"
-        description="Buat kumpulan kata dengan definisi dan contoh untuk pelajaran dan persyaratan course."
+        description="Buat kumpulan kata dengan definisi dan contoh untuk pelajaran dan persyaratan kursus."
         actions={
           <Link
             href={`/workspace/${organizationSlug}/library/vocabulary/new`}
@@ -142,7 +140,7 @@ export function VocabularyLibrary({
           description={
             debouncedSearch
               ? "Coba judul set, istilah, atau definisi yang berbeda."
-              : "Kelompokkan istilah terkait menjadi satu set yang dapat dipakai ulang lintas course."
+              : "Kelompokkan istilah terkait menjadi satu set yang dapat dipakai ulang lintas kursus."
           }
           action={
             debouncedSearch ? null : (

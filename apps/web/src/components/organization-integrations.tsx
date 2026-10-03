@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   ExternalLinkIcon,
   LoaderCircleIcon,
-  PlugZapIcon,
   UnplugIcon,
   VideoIcon,
 } from "lucide-react";
@@ -21,6 +20,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { PageHeader } from "~/components/ui/page-header";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import {
@@ -122,19 +122,11 @@ export function OrganizationIntegrations({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="space-y-1">
-        <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-          <PlugZapIcon className="size-4" />
-          Layanan terhubung
-        </div>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          Integrasi
-        </h1>
-        <p className="text-muted-foreground max-w-2xl text-sm">
-          Hubungkan layanan eksternal yang dipakai untuk menjalankan pengalaman
-          belajar langsung.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Layanan terhubung"
+        title="Integrasi"
+        description="Hubungkan layanan eksternal yang dipakai untuk menjalankan pengalaman belajar langsung."
+      />
 
       <Card>
         <CardHeader>

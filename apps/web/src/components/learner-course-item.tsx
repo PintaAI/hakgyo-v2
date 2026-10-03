@@ -82,7 +82,7 @@ export function LearnerCourseItem({
             "text-muted-foreground -ml-2",
           )}
         >
-          <ArrowLeftIcon /> Kembali ke course
+          <ArrowLeftIcon /> Kembali ke kursus
         </Link>
         <Link
           href="/learn"

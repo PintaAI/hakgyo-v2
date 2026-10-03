@@ -165,7 +165,7 @@ function ResourceLibrary({
   if (courses.length === 0) {
     return (
       <p className="text-muted-foreground bg-muted/50 rounded-xl p-4 text-sm">
-        Ikuti course untuk membuka latihan.
+        Ikuti kursus untuk membuka latihan.
       </p>
     );
   }
@@ -218,7 +218,7 @@ function ResourceLibrary({
 
       {courses.length > 1 ? (
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {[{ id: null, title: "Semua course" }, ...courses].map((course) => {
+          {[{ id: null, title: "Semua kursus" }, ...courses].map((course) => {
             const selected = courseFilter === course.id;
             return (
               <button

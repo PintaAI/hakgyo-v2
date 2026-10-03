@@ -3,9 +3,13 @@
 import { useState, type FormEvent } from "react";
 import { EyeIcon, EyeOffIcon, LoaderCircleIcon } from "lucide-react";
 
+import { surfaceCard } from "~/components/brand/flow-shell";
+import { Kicker } from "~/components/brand/typography";
+import { buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { getPostSignInPath } from "~/lib/access";
+import { cn } from "~/lib/utils";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
 
@@ -77,23 +81,19 @@ export function AuthPanel({
   };
 
   if (sessionPending) {
-    return (
-      <div className="border-border bg-card h-[35rem] animate-pulse rounded-[2rem] border" />
-    );
+    return <div className={cn(surfaceCard, "h-[32rem] animate-pulse")} />;
   }
 
   if (session?.user) {
     return (
-      <section className="bg-primary text-primary-foreground border-primary-foreground/10 rounded-[2rem] border p-7 shadow-2xl sm:p-9">
-        <p className="text-primary-foreground/70 text-xs font-bold tracking-[0.24em] uppercase">
-          Sesi terhubung
-        </p>
-        <h2 className="mt-5 text-3xl font-black tracking-tight">
+      <section className={cn(surfaceCard, "p-6 sm:p-8")}>
+        <Kicker>Sesi terhubung</Kicker>
+        <h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
           Selamat datang, {session.user.name}.
         </h2>
-        <div className="bg-card text-card-foreground mt-8 rounded-2xl p-5">
-          <p className="text-primary text-xs font-bold tracking-[0.18em] uppercase">
-            Respons tRPC terproteksi
+        <div className="bg-muted/60 mt-6 rounded-xl p-4">
+          <p className="text-muted-foreground text-xs font-medium">
+            Akun yang terhubung
           </p>
           {account.isPending ? (
             <p className="text-muted-foreground mt-4 text-sm">
@@ -105,7 +105,7 @@ export function AuthPanel({
             </p>
           ) : (
             <div className="mt-4">
-              <p className="font-black">{account.data?.name}</p>
+              <p className="font-medium">{account.data?.name}</p>
               <p className="text-muted-foreground mt-1 text-sm">
                 {account.data?.email}
               </p>
@@ -113,7 +113,10 @@ export function AuthPanel({
           )}
         </div>
         <button
-          className="border-primary-foreground/40 hover:bg-primary-foreground/10 mt-7 w-full rounded-full border px-5 py-3 font-bold transition"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "lg" }),
+            "mt-6 h-11 w-full",
+          )}
           onClick={async () => {
             await authClient.signOut();
             await refetch();
@@ -127,32 +130,32 @@ export function AuthPanel({
   }
 
   return (
-    <section className="bg-card/95 border-primary/15 rounded-[2rem] border p-6 shadow-2xl backdrop-blur-xl sm:p-9">
+    <section className={cn(surfaceCard, "p-6 sm:p-8")}>
       <div>
-        <p className="text-primary text-xs font-bold tracking-[0.18em] uppercase">
+        <Kicker>
           {mode === "sign-in"
             ? "Selamat datang kembali"
             : "Mulai bersama Hakgyo"}
-        </p>
-        <h2 className="text-card-foreground mt-3 text-3xl font-black tracking-[-0.03em]">
+        </Kicker>
+        <h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
           {mode === "sign-in" ? "Masuk ke akun" : "Buat akun baru"}
         </h2>
         <p className="text-muted-foreground mt-2 text-sm leading-6">
           {mode === "sign-in"
-            ? "Lanjutkan course dan progres belajarmu."
+            ? "Lanjutkan kursus dan progres belajarmu."
             : "Siapkan ruang belajarmu dalam beberapa langkah."}
         </p>
       </div>
 
       <div
-        className="bg-muted/70 border-border my-7 flex rounded-full border p-1"
+        className="bg-muted/70 border-border my-6 flex rounded-full border p-1"
         role="group"
         aria-label="Pilih mode autentikasi"
       >
         {(["sign-in", "sign-up"] as const).map((value) => (
           <button
             aria-pressed={mode === value}
-            className={`focus-visible:outline-ring flex-1 rounded-full px-4 py-2.5 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 ${
+            className={`focus-visible:outline-ring flex-1 rounded-full px-4 py-2 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 ${
               mode === value
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -178,7 +181,7 @@ export function AuthPanel({
             <Input
               id="auth-name"
               autoComplete="name"
-              className="border-input bg-muted/25 hover:bg-muted/40 focus-visible:border-ring focus-visible:bg-background focus-visible:ring-ring/15 h-12 rounded-xl px-4 text-base transition-colors md:text-sm"
+              className="focus-visible:ring-ring/15 h-12 rounded-xl px-4 text-base transition-colors md:text-sm"
               onChange={(event) => setName(event.target.value)}
               placeholder="Nama Anda"
               required
@@ -193,7 +196,7 @@ export function AuthPanel({
           <Input
             id="auth-email"
             autoComplete="email"
-            className="border-input bg-muted/25 hover:bg-muted/40 focus-visible:border-ring focus-visible:bg-background focus-visible:ring-ring/15 h-12 rounded-xl px-4 text-base transition-colors md:text-sm"
+            className="focus-visible:ring-ring/15 h-12 rounded-xl px-4 text-base transition-colors md:text-sm"
             onChange={(event) => setEmail(event.target.value)}
             placeholder="nama@email.com"
             required
@@ -215,7 +218,7 @@ export function AuthPanel({
               autoComplete={
                 mode === "sign-in" ? "current-password" : "new-password"
               }
-              className="border-input bg-muted/25 hover:bg-muted/40 focus-visible:border-ring focus-visible:bg-background focus-visible:ring-ring/15 h-12 rounded-xl px-4 pr-12 text-base transition-colors md:text-sm"
+              className="focus-visible:ring-ring/15 h-12 rounded-xl px-4 pr-12 text-base transition-colors md:text-sm"
               minLength={8}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Minimal 8 karakter"
@@ -256,7 +259,7 @@ export function AuthPanel({
         )}
 
         <button
-          className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-ring flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 font-black shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+          className={cn(buttonVariants({ size: "lg" }), "h-12 w-full")}
           disabled={submitting}
           type="submit"
         >
@@ -278,14 +281,17 @@ export function AuthPanel({
 
       <div className="my-5 flex items-center gap-3">
         <span className="bg-border h-px flex-1" />
-        <span className="text-muted-foreground text-xs font-bold uppercase">
+        <span className="text-muted-foreground font-mono text-[10px] tracking-[0.18em] uppercase">
           atau
         </span>
         <span className="bg-border h-px flex-1" />
       </div>
 
       <button
-        className="border-primary/15 bg-primary/5 text-foreground hover:border-primary/30 hover:bg-primary/10 focus-visible:outline-ring flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border px-5 font-bold transition focus-visible:outline-2 focus-visible:outline-offset-3 disabled:cursor-not-allowed disabled:opacity-50"
+        className={cn(
+          buttonVariants({ variant: "outline", size: "lg" }),
+          "h-12 w-full gap-3",
+        )}
         disabled={submitting}
         onClick={async () => {
           setError(null);

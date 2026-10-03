@@ -144,8 +144,8 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
         />
         <p className={cn(leadText, "mt-4 sm:mt-6")}>
           Hakgyo memisahkan workspace organization dari ruang belajar. Pilih
-          jalur yang sesuai sekarang; Anda tetap dapat membuat organization
-          lain nanti.
+          jalur yang sesuai sekarang; Anda tetap dapat membuat organization lain
+          nanti.
         </p>
       </section>
 
@@ -155,7 +155,7 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
           icon={Building2Icon}
           audience="Untuk pendiri"
           title="Buat organization"
-          description="Siapkan workspace, atur course sebagai Public atau Private, dan kelola teacher, cohort, serta learner. Anda otomatis menjadi owner."
+          description="Siapkan workspace, atur kursus sebagai Public atau Private, dan kelola teacher, cohort, serta learner. Anda otomatis menjadi owner."
           featured
         >
           <Link
@@ -202,9 +202,9 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
         <PathCard
           number={3}
           icon={BookOpenIcon}
-          audience="Untuk learner"
-          title="Jelajahi course"
-          description="Tidak perlu organization untuk mengikuti course dan melanjutkan progres belajar."
+          audience="Untuk siswa"
+          title="Jelajahi kursus"
+          description="Tidak perlu organization untuk mengikuti kursus dan melanjutkan progres belajar."
         >
           <Button
             type="button"

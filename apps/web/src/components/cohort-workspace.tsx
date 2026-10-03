@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -28,6 +27,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CourseCover } from "~/components/course-cover";
+import { PageHeader } from "~/components/ui/page-header";
 import { CohortInvites } from "~/components/cohort-invites";
 import {
   CohortPayments,
@@ -45,6 +46,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { StatStrip } from "~/components/ui/stat-strip";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { EmptyState } from "~/components/ui/empty-state";
@@ -88,6 +90,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Textarea } from "~/components/ui/textarea";
+import { getErrorMessage } from "~/lib/error-message";
 import { cn } from "~/lib/utils";
 import {
   formatZonedDateTimeInput,
@@ -115,7 +118,7 @@ const views = [
   { value: "overview", label: "Ringkasan", icon: LayoutDashboardIcon },
   { value: "learners", label: "Siswa", icon: UsersIcon },
   { value: "payments", label: "Pembayaran", icon: WalletIcon },
-  { value: "staff", label: "Staff", icon: UserRoundCogIcon },
+  { value: "staff", label: "Staf", icon: UserRoundCogIcon },
   { value: "meetings", label: "Pertemuan", icon: VideoIcon },
   { value: "assessments", label: "Event tugas", icon: ClipboardListIcon },
   { value: "reviews", label: "Hasil & review", icon: ClipboardCheckIcon },
@@ -174,18 +177,6 @@ function formatMeetingDateTime(value: Date, timeZone: string) {
   }
 }
 
-function getErrorMessage(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return error.message;
-  }
-  return "Perubahan belum berhasil disimpan. Silakan coba lagi.";
-}
-
 function getInitials(name: string) {
   return name
     .split(/\s+/)
@@ -208,19 +199,6 @@ function LoadingRows({ error }: { error?: { message: string } | null }) {
       <Skeleton className="h-16 w-full" />
       <Skeleton className="h-16 w-full" />
       <Skeleton className="h-16 w-full" />
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="border-foreground/10 flex flex-col border-l pl-4 first:border-l-0 first:pl-0 sm:pl-6">
-      <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase sm:text-xs">
-        {label}
-      </span>
-      <span className="font-heading mt-1 text-2xl font-medium tracking-tight tabular-nums sm:text-3xl">
-        {value}
-      </span>
     </div>
   );
 }
@@ -323,40 +301,23 @@ export function CohortWorkspace({
         Kembali ke {cohort.course.title}
       </Link>
 
-      <header className="border-border bg-background text-foreground relative overflow-hidden rounded-lg border px-5 py-6 sm:px-7 sm:py-8">
-        {cohort.course.thumbnailUrl ? (
-          <Image
-            src={cohort.course.thumbnailUrl}
-            alt=""
-            fill
-            unoptimized
+      <PageHeader
+        eyebrow={`${cohort.course.title} · Group belajar · ${statusLabels[cohort.status]}`}
+        title={cohort.name}
+        description={
+          cohort.description ??
+          "Kelola siswa, pengajar, dan jadwal Group belajar dari workspace ini."
+        }
+        media={
+          <CourseCover
+            title={cohort.course.title}
+            thumbnailUrl={cohort.course.thumbnailUrl}
             priority
-            sizes="(max-width: 768px) 100vw, 1152px"
-            className="object-cover"
+            sizes="352px"
+            className="aspect-video w-full rounded-2xl"
           />
-        ) : null}
-        <div className="bg-background/85 pointer-events-none absolute inset-0 backdrop-blur-[2px]" />
-        <div className="border-border pointer-events-none absolute top-0 right-0 size-48 translate-x-14 -translate-y-16 rounded-full border" />
-        <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
-                {cohort.course.title} · Group belajar
-              </span>
-              <Badge className="border-border bg-muted text-muted-foreground">
-                {statusLabels[cohort.status]}
-              </Badge>
-            </div>
-            <h1 className="text-foreground font-heading mt-4 text-3xl leading-tight font-medium tracking-tight sm:text-5xl">
-              {cohort.name}
-            </h1>
-            <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
-              {cohort.description ??
-                "Kelola peserta didik, pengajar, dan jadwal Group belajar dari workspace ini."}
-            </p>
-          </div>
-        </div>
-      </header>
+        }
+      />
 
       <Tabs
         value={view}
@@ -521,14 +482,20 @@ function Overview({
 
   return (
     <div className="space-y-4">
-      <section className="grid grid-cols-2 gap-y-6 border-y py-5 sm:grid-cols-4">
-        <Stat label="Siswa aktif" value={learnersPending ? "–" : active} />
-        <Stat label="Kapasitas" value={cohort.capacity ?? "∞"} />
-        <Stat label="Keterisian" value={learnersPending ? "–" : occupancy} />
-        <Stat label="Akan datang" value={meetingsPending ? "–" : upcoming} />
-      </section>
+      <StatStrip
+        label="Ringkasan Group belajar"
+        items={[
+          { label: "Siswa aktif", value: learnersPending ? "–" : active },
+          { label: "Kapasitas", value: cohort.capacity ?? "∞" },
+          { label: "Keterisian", value: learnersPending ? "–" : occupancy },
+          {
+            label: "Pertemuan mendatang",
+            value: meetingsPending ? "–" : upcoming,
+          },
+        ]}
+      />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
-        <Card className="gap-0 rounded-lg py-0">
+        <Card className="gap-0 py-0">
           <CardHeader className="border-b py-4">
             <CardTitle className="font-heading text-lg">
               Detail Group belajar
@@ -552,16 +519,16 @@ function Overview({
                   : "Belum diatur",
               ],
               [
-                "Enrollment",
+                "Pendaftaran",
                 cohort.enrollmentMode === "OPEN"
-                  ? "Open"
+                  ? "Daftar sendiri"
                   : cohort.enrollmentMode === "INVITE_ONLY"
-                    ? "Invite only"
-                    : "Ikuti course",
+                    ? "Lewat undangan"
+                    : "Ikuti kursus",
               ],
               [
                 "Harga",
-                `${price > 0 ? formatRupiah(price) : "Gratis"}${cohort.price === null ? " (ikuti course)" : ""}`,
+                `${price > 0 ? formatRupiah(price) : "Gratis"}${cohort.price === null ? " (ikuti kursus)" : ""}`,
               ],
             ].map(([label, value]) => (
               <div
@@ -590,7 +557,7 @@ function Overview({
             </div>
           ) : null}
         </Card>
-        <Card className="gap-0 rounded-lg py-0">
+        <Card className="gap-0 py-0">
           <CardHeader className="border-b py-4">
             <CardTitle className="font-heading text-lg">Operasi</CardTitle>
             <CardDescription>
@@ -602,7 +569,7 @@ function Overview({
               {
                 target: "learners" as const,
                 icon: UsersIcon,
-                label: "Kelola peserta didik dan status",
+                label: "Kelola siswa dan status",
               },
               ...(canManagePayments
                 ? [
@@ -640,7 +607,7 @@ function Overview({
           </div>
         </Card>
       </div>
-      <Card className="gap-0 rounded-lg py-0">
+      <Card className="gap-0 py-0">
         <CardHeader className="border-b py-4">
           <CardTitle className="font-heading text-lg">Aksi cepat</CardTitle>
           <CardDescription>
@@ -757,7 +724,7 @@ function Learners({
     <section className="space-y-5">
       <SectionHeading
         title="Siswa"
-        description="Kelola peserta didik yang tergabung langsung dalam Group belajar."
+        description="Kelola siswa yang tergabung langsung dalam Group belajar."
         action={
           <Button onClick={() => setOpen(true)}>
             <UserPlusIcon data-icon="inline-start" /> Tambah siswa
@@ -1004,8 +971,8 @@ function Learners({
             </AlertDialogTitle>
             <AlertDialogDescription>
               Siswa akan dikeluarkan dari Group belajar ini dan kehilangan akses
-              course yang berasal dari group ini. Akses lewat Group belajar lain
-              atau belajar mandiri pada course yang sama tetap berlaku.
+              kursus yang berasal dari group ini. Akses lewat Group belajar lain
+              atau belajar mandiri pada kursus yang sama tetap berlaku.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1078,7 +1045,7 @@ function Staff({ canManage, cohort }: { canManage: boolean; cohort: Cohort }) {
   return (
     <section className="space-y-5">
       <SectionHeading
-        title="Staff"
+        title="Staf"
         description="Instructor mengelola aktivitas kelas. Assistant membantu siswa dan melihat jadwal."
         action={
           canManage ? (
@@ -1114,7 +1081,7 @@ function Staff({ canManage, cohort }: { canManage: boolean; cohort: Cohort }) {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {cohort.staff.map((staff) => (
-            <Card key={staff.id} className="rounded-lg">
+            <Card key={staff.id}>
               <CardContent className="flex items-center gap-3">
                 <span className="bg-foreground text-background flex size-10 shrink-0 items-center justify-center rounded-full font-semibold">
                   {staff.organizationMember.user.name.slice(0, 1).toUpperCase()}
@@ -1385,7 +1352,7 @@ function Meetings({
       {!pending && !error && data && data.length > 0 ? (
         <div className="grid gap-3 md:grid-cols-2">
           {data.map((meeting) => (
-            <Card key={meeting.id} className="rounded-lg">
+            <Card key={meeting.id}>
               <CardHeader>
                 <div>
                   <Badge variant="outline">{meeting.status}</Badge>
@@ -1803,7 +1770,7 @@ function Settings({
         description="Perbarui informasi, periode, dan aturan Group belajar."
       />
       <form onSubmit={submit} className="space-y-4">
-        <Card className="gap-0 rounded-lg py-0">
+        <Card className="gap-0 py-0">
           <CardHeader className="border-b py-4">
             <CardTitle className="font-heading text-lg">
               Informasi umum
@@ -1837,7 +1804,7 @@ function Settings({
           </CardContent>
         </Card>
 
-        <Card className="gap-0 rounded-lg py-0">
+        <Card className="gap-0 py-0">
           <CardHeader className="border-b py-4">
             <CardTitle className="font-heading text-lg">
               Status & akses
@@ -1861,9 +1828,9 @@ function Settings({
                 value={enrollmentMode}
                 onChange={setEnrollmentMode}
                 options={[
-                  ["INHERIT", "Ikuti course"],
-                  ["OPEN", "Public course"],
-                  ["INVITE_ONLY", "Private course"],
+                  ["INHERIT", "Ikuti kursus"],
+                  ["OPEN", "Kursus publik"],
+                  ["INVITE_ONLY", "Kursus privat"],
                 ]}
               />
               <div className="space-y-2">
@@ -1885,8 +1852,8 @@ function Settings({
                   min={0}
                   placeholder={
                     cohort.course.price > 0
-                      ? `Ikuti course (${formatRupiah(cohort.course.price)})`
-                      : "Ikuti course (gratis)"
+                      ? `Ikuti kursus (${formatRupiah(cohort.course.price)})`
+                      : "Ikuti kursus (gratis)"
                   }
                   value={price}
                   onChange={(event) => setPrice(event.target.value)}
@@ -1901,7 +1868,7 @@ function Settings({
           </CardContent>
         </Card>
 
-        <Card className="gap-0 rounded-lg py-0">
+        <Card className="gap-0 py-0">
           <CardHeader className="border-b py-4">
             <CardTitle className="font-heading text-lg">
               Jadwal & tautan
@@ -1955,7 +1922,7 @@ function Settings({
       </form>
 
       {canDelete ? (
-        <Card className="border-destructive/20 gap-0 rounded-lg py-0">
+        <Card className="border-destructive/20 gap-0 py-0">
           <CardHeader className="border-b py-4">
             <CardTitle className="text-destructive font-heading text-lg">
               Zona berbahaya

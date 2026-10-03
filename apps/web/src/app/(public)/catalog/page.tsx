@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon, BookOpenIcon } from "lucide-react";
 
+import { CourseCover } from "~/components/course-cover";
 import { buttonVariants } from "~/components/ui/button";
 import { EmptyState } from "~/components/ui/empty-state";
 import { PageHeader } from "~/components/ui/page-header";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
-  title: "Katalog course | Hakgyo",
-  description: "Jelajahi semua course yang dipublikasikan di Hakgyo.",
+  title: "Katalog kursus | Hakgyo",
+  description: "Jelajahi semua kursus yang dipublikasikan di Hakgyo.",
 };
 
 const pageSize = 24;
@@ -47,11 +47,12 @@ export default async function CatalogPage({
     <section>
       <PageHeader
         className="mb-6"
-        title="Katalog course"
-        description="Jelajahi semua course yang dipublikasikan di Hakgyo."
+        eyebrow="Katalog"
+        title="Katalog kursus"
+        description="Jelajahi semua kursus yang dipublikasikan di Hakgyo."
         actions={
           <p className="text-muted-foreground text-sm">
-            Menampilkan {courses.length} course
+            Menampilkan {courses.length} kursus
           </p>
         }
       />
@@ -59,8 +60,8 @@ export default async function CatalogPage({
       {courses.length === 0 ? (
         <EmptyState
           icon={BookOpenIcon}
-          title="Belum ada course tersedia"
-          description="Course yang dipublikasikan akan muncul di sini."
+          title="Belum ada kursus tersedia"
+          description="Kursus yang dipublikasikan akan muncul di sini."
         />
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -69,22 +70,12 @@ export default async function CatalogPage({
               key={course.id}
               className="bg-card overflow-hidden rounded-xl border shadow-sm"
             >
-              <div className="bg-muted relative aspect-video">
-                {course.thumbnailUrl ? (
-                  <Image
-                    src={course.thumbnailUrl}
-                    alt=""
-                    fill
-                    unoptimized
-                    sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 90vw"
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="text-muted-foreground absolute inset-0 grid place-items-center text-sm">
-                    Tanpa thumbnail
-                  </div>
-                )}
-              </div>
+              <CourseCover
+                title={course.title}
+                thumbnailUrl={course.thumbnailUrl}
+                sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 90vw"
+                className="aspect-video w-full"
+              />
 
               <div className="p-5">
                 <p className="text-muted-foreground truncate text-xs font-medium">
@@ -105,12 +96,12 @@ export default async function CatalogPage({
                     </dd>
                   </div>
                   <div>
-                    <dt>Tipe</dt>
+                    <dt>Pendaftaran</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
                       {(course.enrollmentMode ??
                         course.organization.defaultEnrollmentMode) === "OPEN"
-                        ? "Terbuka"
-                        : "Undangan"}
+                        ? "Daftar sendiri"
+                        : "Lewat undangan"}
                     </dd>
                   </div>
                   <div>
@@ -131,7 +122,7 @@ export default async function CatalogPage({
                   href={`/catalog/${course.id}`}
                   className="mt-5 inline-flex text-sm font-medium underline-offset-4 hover:underline"
                 >
-                  Lihat course
+                  Lihat kursus
                 </Link>
               </div>
             </article>
@@ -145,7 +136,7 @@ export default async function CatalogPage({
             href={`/catalog?cursor=${encodeURIComponent(nextCursor)}`}
             className={buttonVariants({ variant: "outline", size: "lg" })}
           >
-            Course berikutnya
+            Kursus berikutnya
             <ArrowRightIcon aria-hidden="true" />
           </Link>
         </div>

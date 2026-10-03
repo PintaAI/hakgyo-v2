@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { surfaceCard } from "~/components/brand/flow-shell";
+import { Headline, Kicker, leadText } from "~/components/brand/typography";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -58,7 +60,7 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8">
+    <div className="space-y-8 pt-2 sm:space-y-10">
       <Link
         href="/onboarding"
         className={cn(
@@ -70,25 +72,26 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
         Kembali
       </Link>
 
-      <header className="max-w-2xl">
-        <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-          Workspace baru
-        </p>
-        <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
-          Buat workspace untuk tim Anda
-        </h1>
-        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-          Workspace mengelompokkan course, anggota, dan bahan ajar dalam satu
+      <header className="max-w-3xl">
+        <Kicker>Workspace baru</Kicker>
+        <Headline
+          as="h1"
+          title="Buat workspace"
+          muted="untuk program kelas Anda."
+          className="mt-3 sm:mt-5"
+        />
+        <p className={cn(leadText, "mt-4 sm:mt-6")}>
+          Workspace mengelompokkan kursus, anggota, dan bahan ajar dalam satu
           organisasi. Anda otomatis menjadi owner dan dapat mengundang tim
           setelah workspace siap.
         </p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
         <form
           onSubmit={submit}
           noValidate
-          className="bg-card ring-foreground/10 rounded-lg p-5 ring-1 sm:p-6"
+          className={cn(surfaceCard, "p-5 sm:p-7")}
         >
           <div className="space-y-2">
             <Label htmlFor="organization-name">Nama organization</Label>
@@ -104,38 +107,38 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
             />
             <p className="text-muted-foreground text-xs">
               Nama tampilan yang dilihat anggota dan siswa. Alamat workspace
-              akan dibuat otomatis dari nama dan dapat diubah nanti di Settings
-              → General.
+              akan dibuat otomatis dari nama dan dapat diubah nanti di
+              Pengaturan → Umum.
             </p>
           </div>
 
           <fieldset className="mt-8 grid gap-3">
-            <legend className="text-sm font-medium">Tipe course default</legend>
+            <legend className="text-sm font-medium">Tipe kursus default</legend>
             <p className="text-muted-foreground -mt-1 text-xs">
-              Pengaturan berlaku untuk course baru. Setiap course dapat menimpa
+              Pengaturan berlaku untuk kursus baru. Setiap kursus dapat menimpa
               pilihan ini.
             </p>
             {[
               {
                 value: "INVITE_ONLY" as const,
-                title: "Private course",
+                title: "Kursus privat",
                 description:
                   "Hanya siswa yang diundang atau ditambahkan manual yang bisa mengakses.",
               },
               {
                 value: "OPEN" as const,
-                title: "Public course",
+                title: "Kursus publik",
                 description:
-                  "Siapa pun dapat menemukan dan mendaftar sendiri ke course.",
+                  "Siapa pun dapat menemukan dan mendaftar sendiri ke kursus.",
               },
             ].map((option) => (
               <label
                 key={option.value}
                 className={cn(
-                  "cursor-pointer rounded-lg border p-4 transition-colors",
+                  "cursor-pointer rounded-xl border p-4 transition-colors",
                   enrollmentMode === option.value
-                    ? "border-foreground bg-muted/50"
-                    : "hover:bg-muted/50",
+                    ? "border-primary ring-primary ring-1"
+                    : "hover:bg-muted/60",
                 )}
               >
                 <input
@@ -163,6 +166,8 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
             </Link>
             <Button
               type="submit"
+              size="lg"
+              className="h-11"
               disabled={create.isPending || name.trim().length === 0}
             >
               {create.isPending ? (
@@ -178,8 +183,8 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
           </div>
         </form>
 
-        <aside className="bg-card ring-foreground/10 h-fit rounded-lg p-5 ring-1">
-          <p className="font-heading font-medium">Setelah workspace dibuat</p>
+        <aside className={cn(surfaceCard, "h-fit p-5 sm:p-6")}>
+          <Kicker>Setelah workspace dibuat</Kicker>
           <ol className="text-muted-foreground mt-5 space-y-5 text-sm">
             {[
               "Anda otomatis menjadi owner",
@@ -187,8 +192,8 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
               "Undang admin dan teacher setelah workspace siap",
             ].map((item, index) => (
               <li key={item} className="flex gap-3">
-                <span className="bg-muted text-foreground flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold">
-                  {index + 1}
+                <span className="text-foreground w-5 shrink-0 pt-0.5 font-mono text-xs">
+                  0{index + 1}
                 </span>
                 <span className="pt-0.5 leading-relaxed">{item}</span>
               </li>

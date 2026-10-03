@@ -13,12 +13,18 @@ import {
 } from "~/components/ui/breadcrumb";
 const sectionLabels: Record<string, string> = {
   "landing-page": "Landing page",
-  courses: "Courses",
+  courses: "Kursus",
   dashboard: "Dashboard",
   library: "Bahan ajar",
   members: "Anggota",
   reviews: "Review",
   settings: "Pengaturan",
+};
+
+/** Pages below a kursus, keyed by the path segment after its id. */
+const coursePageLabels: Record<string, string> = {
+  cohorts: "Group belajar",
+  kurikulum: "Kurikulum",
 };
 
 export function WorkspaceBreadcrumb({
@@ -27,9 +33,18 @@ export function WorkspaceBreadcrumb({
   organizationSlug: string;
 }) {
   const pathname = usePathname();
-  const section = pathname.split("/").filter(Boolean)[2];
-  const currentLabel = (section && sectionLabels[section]) ?? "Workspace";
+  const segments = pathname.split("/").filter(Boolean);
+  const section = segments[2];
+  const sectionLabel = (section && sectionLabels[section]) ?? "Workspace";
   const workspaceHome = `/workspace/${organizationSlug}/dashboard`;
+  // Inside a kursus, the section links back to the list and the page below
+  // it is named, e.g. Workspace › Kursus › Group belajar.
+  const inCourse = section === "courses" && segments.length > 3;
+  const pageLabel = !inCourse
+    ? null
+    : segments[3] === "new"
+      ? "Kursus baru"
+      : (coursePageLabels[segments[4] ?? ""] ?? "Detail kursus");
 
   return (
     <Breadcrumb>
@@ -40,9 +55,27 @@ export function WorkspaceBreadcrumb({
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator className="hidden md:block" />
-        <BreadcrumbItem>
-          <BreadcrumbPage>{currentLabel}</BreadcrumbPage>
-        </BreadcrumbItem>
+        {pageLabel ? (
+          <>
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                render={
+                  <Link href={`/workspace/${organizationSlug}/courses`} />
+                }
+              >
+                {sectionLabel}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{pageLabel}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        ) : (
+          <BreadcrumbItem>
+            <BreadcrumbPage>{sectionLabel}</BreadcrumbPage>
+          </BreadcrumbItem>
+        )}
       </BreadcrumbList>
     </Breadcrumb>
   );

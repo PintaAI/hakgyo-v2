@@ -74,8 +74,8 @@ export function LearnTab({ userId }: { userId: string }) {
     return (
       <EmptyState
         icon={CompassIcon}
-        title="Belum ada course"
-        description="Jelajahi katalog dan pilih course pertama untuk mulai membangun progress belajar."
+        title="Belum ada kursus"
+        description="Jelajahi katalog dan pilih kursus pertama untuk mulai membangun progress belajar."
         action={
           <Link
             href="/catalog"

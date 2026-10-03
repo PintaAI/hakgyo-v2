@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 
+import { CourseCover } from "~/components/course-cover";
 import { CourseOutlineList } from "~/components/learner/learn/course-outline-list";
 import { buttonVariants } from "~/components/ui/button";
 import { getCourseResumeItem } from "~/lib/learner/course-learning-path";
@@ -10,7 +10,7 @@ import { learningItemHref } from "~/lib/learner/hrefs";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/server";
 
-export const metadata: Metadata = { title: "Course" };
+export const metadata: Metadata = { title: "Kursus" };
 
 export default async function LearningCoursePage({
   params,
@@ -39,19 +39,13 @@ export default async function LearningCoursePage({
       </Link>
 
       <header className="bg-muted relative overflow-hidden rounded-[20px]">
-        {course.thumbnailUrl ? (
-          <>
-            <Image
-              src={course.thumbnailUrl}
-              alt=""
-              fill
-              unoptimized
-              sizes="(min-width: 768px) 768px, 100vw"
-              className="object-cover blur-[5px]"
-            />
-            <span className="bg-background/70 absolute inset-0" />
-          </>
-        ) : null}
+        <CourseCover
+          title={course.title}
+          thumbnailUrl={course.thumbnailUrl}
+          sizes="(min-width: 768px) 768px, 100vw"
+          className="absolute inset-0 blur-[5px]"
+        />
+        <span className="bg-background/70 absolute inset-0" />
         <div className="relative flex flex-col gap-2 px-5 pt-8 pb-7 sm:px-8">
           <p className="text-muted-foreground text-center text-xs font-semibold tracking-[1.5px] uppercase">
             {course.organization.name}
@@ -70,7 +64,7 @@ export default async function LearningCoursePage({
         </div>
         <div
           role="progressbar"
-          aria-label="Progres course"
+          aria-label="Progres kursus"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={progress}
@@ -104,7 +98,7 @@ export default async function LearningCoursePage({
         </Link>
       ) : allItems.length > 0 && completedCount === allItems.length ? (
         <div className="border-primary/30 bg-primary/10 flex flex-col gap-2 rounded-2xl border p-5">
-          <p className="text-xl font-black">🏆 Course selesai!</p>
+          <p className="text-xl font-black">🏆 Kursus selesai!</p>
           <p className="text-muted-foreground text-sm leading-6">
             Kamu berhasil! Semua aktivitas sudah selesai — buka lagi materi di
             bawah kapan pun kamu ingin mengulang.

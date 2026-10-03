@@ -77,7 +77,7 @@ const stateMeta: Record<
     dotClassName: "bg-muted-foreground/50",
   },
   HIDDEN_COURSE_UNPUBLISHED: {
-    label: "Tersembunyi · course belum dipublikasikan",
+    label: "Tersembunyi · kursus belum dipublikasikan",
     className:
       "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
     dotClassName: "bg-amber-500",
@@ -310,9 +310,9 @@ export function CoursePublicationControl({
         <AlertDialog open={unpublishOpen} onOpenChange={setUnpublishOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Batalkan publikasi course?</AlertDialogTitle>
+              <AlertDialogTitle>Batalkan publikasi kursus?</AlertDialogTitle>
               <AlertDialogDescription>
-                Semua item akan disembunyikan dari learner sampai course
+                Semua item akan disembunyikan dari siswa sampai kursus
                 dipublikasikan lagi. Pengaturan tampil tiap item tetap
                 tersimpan.
               </AlertDialogDescription>
@@ -344,7 +344,7 @@ export function CoursePublicationControl({
       <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Publikasikan course?</DialogTitle>
+            <DialogTitle>Publikasikan kursus?</DialogTitle>
             <DialogDescription>
               Item yang ditampilkan di kurikulum akan langsung terlihat oleh
               learner.
@@ -375,8 +375,8 @@ export function CoursePublicationControl({
               </dl>
               {preview.live.length === 0 && preview.blocking.length === 0 ? (
                 <p className="text-muted-foreground text-xs">
-                  Belum ada item yang ditampilkan. Course tetap bisa
-                  dipublikasikan, tetapi learner belum akan melihat materi.
+                  Belum ada item yang ditampilkan. Kursus tetap bisa
+                  dipublikasikan, tetapi siswa belum akan melihat materi.
                 </p>
               ) : null}
               {preview.blocking.length ? (

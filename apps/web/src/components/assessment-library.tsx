@@ -6,7 +6,6 @@ import {
   ArrowUpRightIcon,
   ClipboardCheckIcon,
   FileQuestionIcon,
-  LibraryIcon,
   LoaderCircleIcon,
   PlusIcon,
   SearchIcon,
@@ -73,10 +72,9 @@ export function AssessmentLibrary({
   return (
     <div className="flex w-full flex-col gap-6">
       <PageHeader
-        icon={LibraryIcon}
         eyebrow="Bahan ajar"
         title="Tugas"
-        description="Susun soal pilihan ganda dan jawaban tertulis yang dapat dipakai di course mana pun di workspace ini."
+        description="Susun soal pilihan ganda dan jawaban tertulis yang dapat dipakai di kursus mana pun di workspace ini."
         actions={
           <Link
             href={`/workspace/${organizationSlug}/library/assessments/new`}
@@ -176,7 +174,7 @@ export function AssessmentLibrary({
               description={
                 deferredSearch || status !== "ALL"
                   ? "Coba judul atau filter status yang berbeda."
-                  : "Buat tugas pertama untuk menambahkan evaluasi ke course."
+                  : "Buat tugas pertama untuk menambahkan evaluasi ke kursus."
               }
               action={
                 deferredSearch || status !== "ALL" ? null : (
@@ -238,8 +236,8 @@ function AssessmentRow({
             <span>{assessment._count.questions} soal</span>
             <span>
               {assessment._count.courseItems
-                ? `Dipakai di ${assessment._count.courseItems} item course`
-                : "Belum dipakai di course"}
+                ? `Dipakai di ${assessment._count.courseItems} item kursus`
+                : "Belum dipakai di kursus"}
             </span>
             <span>Diperbarui {dateFormatter.format(assessment.updatedAt)}</span>
           </div>

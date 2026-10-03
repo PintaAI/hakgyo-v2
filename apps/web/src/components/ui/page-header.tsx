@@ -1,23 +1,82 @@
-import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { Kicker } from "~/components/brand/typography";
 import { cn } from "~/lib/utils";
 
+function HeaderText({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+}) {
+  return (
+    <>
+      {eyebrow ? <Kicker>{eyebrow}</Kicker> : null}
+      <h1
+        className={cn(
+          "text-3xl leading-[1.1] font-medium tracking-[-0.04em] sm:text-4xl",
+          eyebrow && "mt-3",
+        )}
+      >
+        {title}
+      </h1>
+      {description ? (
+        <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-6 sm:text-base sm:leading-7">
+          {description}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * A page's eyebrow, title, description, and actions, in the brand style.
+ * With `media`, such as a kursus cover, the media sits beside the text on
+ * large screens and the actions move under the description.
+ */
 export function PageHeader({
-  icon: Icon,
   eyebrow,
   title,
   description,
   actions,
+  media,
   className,
 }: {
-  icon?: LucideIcon;
   eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  media?: ReactNode;
   className?: string;
 }) {
+  if (media) {
+    return (
+      <header
+        className={cn(
+          "grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:items-center lg:gap-10",
+          className,
+        )}
+      >
+        <div className="min-w-0">
+          <HeaderText
+            eyebrow={eyebrow}
+            title={title}
+            description={description}
+          />
+          {actions ? (
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              {actions}
+            </div>
+          ) : null}
+        </div>
+        {media}
+      </header>
+    );
+  }
+
   return (
     <header
       className={cn(
@@ -25,21 +84,8 @@ export function PageHeader({
         className,
       )}
     >
-      <div className="min-w-0 space-y-1">
-        {eyebrow ? (
-          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            {Icon ? <Icon className="size-4" /> : null}
-            {eyebrow}
-          </div>
-        ) : null}
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          {title}
-        </h1>
-        {description ? (
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            {description}
-          </p>
-        ) : null}
+      <div className="min-w-0">
+        <HeaderText eyebrow={eyebrow} title={title} description={description} />
       </div>
       {actions ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2">

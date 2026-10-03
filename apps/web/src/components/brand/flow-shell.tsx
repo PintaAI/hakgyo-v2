@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { cardSurface } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
 
 import { BrandLink } from "./brand-link";
@@ -7,9 +8,8 @@ import { BrandLink } from "./brand-link";
 /** Container width of standalone flows. */
 export const flowContainer = "mx-auto w-full max-w-6xl px-5 sm:px-10";
 
-/** A bordered card on the page background, as on the landing page. */
-export const surfaceCard =
-  "border-border bg-card rounded-2xl border shadow-[0_1px_2px_rgb(0_0_0/0.04)]";
+/** The card surface, for cards built without the `Card` component. */
+export const surfaceCard = cardSurface;
 
 /**
  * Page chrome for standalone flows outside the workspace, such as onboarding

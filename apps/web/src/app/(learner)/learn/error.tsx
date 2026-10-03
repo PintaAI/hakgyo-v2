@@ -16,7 +16,7 @@ export default function LearningError({ reset }: { reset: () => void }) {
           Ruang belajar belum dapat dimuat
         </h1>
         <p className="text-muted-foreground mx-auto mt-2 max-w-md">
-          Koneksi mungkin terputus atau akses course berubah. Coba muat ulang
+          Koneksi mungkin terputus atau akses kursus berubah. Coba muat ulang
           halaman ini.
         </p>
         <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">

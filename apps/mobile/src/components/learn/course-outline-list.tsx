@@ -70,7 +70,7 @@ export function CourseOutlineList({
       {showHeader ? (
         <View className="flex-row items-center justify-between gap-4">
           <Text className="text-xl font-bold text-foreground">
-            Materi course
+            Materi kursus
           </Text>
           <Text className="text-xs font-semibold text-muted-foreground">
             {course.modules.length} bab

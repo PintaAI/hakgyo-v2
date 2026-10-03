@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CourseCover } from "~/components/course-cover";
 import { FlowShell, surfaceCard } from "~/components/brand/flow-shell";
 import { Headline, Kicker, leadText } from "~/components/brand/typography";
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -47,7 +47,7 @@ const inviteGrid =
 
 const typeLabels = {
   ORGANIZATION: "Undangan organisasi",
-  COURSE: "Undangan course",
+  COURSE: "Undangan kursus",
   COHORT: "Undangan group belajar",
 } as const;
 
@@ -107,12 +107,10 @@ export function InviteRedemption({ token }: { token: string }) {
       ? `Bergabung sebagai ${data.role === "ADMIN" ? "Admin" : "Pengajar"}`
       : data.type === "COHORT"
         ? `Group belajar untuk ${data.course.title}`
-        : "Akses langsung ke course";
+        : "Akses langsung ke kursus";
   const unavailable = data.status !== "PENDING";
   const emailMismatch =
     data.type === "ORGANIZATION" && data.emailMatches === false;
-  const thumbnailUrl =
-    data.type === "ORGANIZATION" ? null : data.course.thumbnailUrl;
   // Paid cohorts are joined through checkout; the invite opens it.
   const paidCohortPrice =
     data.type === "COHORT" && data.cohort.price > 0 ? data.cohort.price : null;
@@ -136,7 +134,7 @@ export function InviteRedemption({ token }: { token: string }) {
           ? `Berhasil bergabung ke ${result.organization.name}.`
           : result.type === "COHORT"
             ? "Berhasil bergabung ke Group belajar."
-            : "Course berhasil ditambahkan ke ruang belajar.",
+            : "Kursus berhasil ditambahkan ke ruang belajar.",
       );
 
       // Learning happens in the app, so learners are handed over to it
@@ -174,16 +172,16 @@ export function InviteRedemption({ token }: { token: string }) {
           : "Akun Anda sudah siap. Terima undangan untuk mengaktifkan akses belajar.";
   const details = [
     ["Organisasi", data.organization.name],
-    ...(data.type !== "ORGANIZATION" ? [["Course", data.course.title]] : []),
+    ...(data.type !== "ORGANIZATION" ? [["Kursus", data.course.title]] : []),
     ...(paidCohortPrice !== null
       ? [["Biaya", formatRupiah(paidCohortPrice)]]
       : []),
     [
       "Akses",
       data.type === "COHORT"
-        ? "Course + group belajar"
+        ? "Kursus + group belajar"
         : data.type === "COURSE"
-          ? "Course"
+          ? "Kursus"
           : data.role === "ADMIN"
             ? "Admin"
             : "Pengajar",
@@ -250,18 +248,14 @@ export function InviteRedemption({ token }: { token: string }) {
             "overflow-hidden lg:sticky lg:top-8 lg:row-span-2 lg:mt-12 lg:self-start",
           )}
         >
-          {thumbnailUrl ? (
-            <div className="bg-muted relative aspect-[16/9]">
-              <Image
-                src={thumbnailUrl}
-                alt=""
-                fill
-                unoptimized
-                priority
-                sizes="(max-width: 1024px) 100vw, 384px"
-                className="object-cover"
-              />
-            </div>
+          {data.type !== "ORGANIZATION" ? (
+            <CourseCover
+              title={data.course.title}
+              thumbnailUrl={data.course.thumbnailUrl}
+              priority
+              sizes="(max-width: 1024px) 100vw, 384px"
+              className="aspect-video w-full"
+            />
           ) : null}
           <div className="p-5 sm:p-6">
             <div className="flex items-center gap-3">
@@ -356,7 +350,7 @@ export function InviteRedemption({ token }: { token: string }) {
           <section className="lg:pt-4">
             <Kicker>Yang akan dipelajari</Kicker>
             <h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
-              Materi di course ini
+              Materi di kursus ini
             </h2>
             {data.course.items.length > 0 ? (
               <>

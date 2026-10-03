@@ -123,7 +123,7 @@ export function CurriculumDemo() {
               variant={live ? "default" : "outline"}
               className="transition-colors"
             >
-              {live ? "Course terbit" : "Draft"}
+              {live ? "Kursus terbit" : "Draft"}
             </Badge>
           </div>
           <div className="bg-muted/40 mt-5 hidden grid-cols-3 divide-x rounded-xl border py-3 sm:grid">
@@ -395,7 +395,7 @@ export function AssistantDemo() {
           shown={step >= 3}
           className="bg-muted max-w-[90%] rounded-2xl rounded-bl-md px-4 py-3 text-sm leading-6"
         >
-          <p>Selesai. Ini yang saya tambahkan ke course Anda:</p>
+          <p>Selesai. Ini yang saya tambahkan ke kursus Anda:</p>
           <ul className="mt-2 grid gap-1.5">
             {assistantSteps.map((text, index) => (
               <li

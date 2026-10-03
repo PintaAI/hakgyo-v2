@@ -1,20 +1,19 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookMarkedIcon,
-  BookOpenIcon,
   CompassIcon,
-  GraduationCapIcon,
   HouseIcon,
   LayoutDashboardIcon,
   ReceiptIcon,
   TrophyIcon,
 } from "lucide-react";
 
+import { CourseCover } from "~/components/course-cover";
+import { BrandMark } from "~/components/brand/brand-link";
 import { User } from "~/components/user";
 import {
   Sidebar,
@@ -60,9 +59,7 @@ export function LearnerSidebar({
               tooltip="Hakgyo Learn"
               render={<Link href="/learn" onClick={closeMobile} />}
             >
-              <span className="bg-sidebar-primary text-sidebar-primary-foreground flex size-8 items-center justify-center rounded-lg">
-                <GraduationCapIcon className="size-4.5" />
-              </span>
+              <BrandMark className="size-8" />
               <span className="grid min-w-0 flex-1 text-left leading-tight">
                 <span className="truncate font-semibold">Hakgyo Learn</span>
                 <span className="text-sidebar-foreground/60 truncate text-xs">
@@ -114,11 +111,11 @@ export function LearnerSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={isActive(pathname, "/catalog")}
-                  tooltip="Jelajahi course"
+                  tooltip="Jelajahi kursus"
                   render={<Link href="/catalog" onClick={closeMobile} />}
                 >
                   <CompassIcon />
-                  <span>Jelajahi course</span>
+                  <span>Jelajahi kursus</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -137,7 +134,7 @@ export function LearnerSidebar({
 
         {courses.length ? (
           <SidebarGroup>
-            <SidebarGroupLabel>Course saya</SidebarGroupLabel>
+            <SidebarGroupLabel>Kursus saya</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {courses.map((course) => {
@@ -156,20 +153,12 @@ export function LearnerSidebar({
                           />
                         }
                       >
-                        {course.thumbnailUrl ? (
-                          <Image
-                            src={course.thumbnailUrl}
-                            alt=""
-                            width={24}
-                            height={24}
-                            unoptimized
-                            className="size-6 rounded-md object-cover"
-                          />
-                        ) : (
-                          <span className="bg-sidebar-accent text-sidebar-accent-foreground flex size-6 items-center justify-center rounded-md">
-                            <BookOpenIcon className="size-3.5" />
-                          </span>
-                        )}
+                        <CourseCover
+                          title={course.title}
+                          thumbnailUrl={course.thumbnailUrl}
+                          sizes="24px"
+                          className="size-6 rounded-md"
+                        />
                         <span className="min-w-0">
                           <span className="block truncate">{course.title}</span>
                           <span className="text-sidebar-foreground/50 block truncate text-[0.65rem] group-data-[collapsible=icon]:hidden">

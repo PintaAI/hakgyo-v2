@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { FlowShell } from "~/components/brand/flow-shell";
 import { OrganizationCreateForm } from "~/components/organization-create-form";
 import { requireSession } from "~/server/auth/dal";
 
@@ -11,8 +12,8 @@ export const metadata: Metadata = {
 export default async function NewOrganizationPage() {
   const session = await requireSession();
   return (
-    <main className="bg-background min-h-screen p-4 md:p-6 lg:p-8">
+    <FlowShell>
       <OrganizationCreateForm userId={session.user.id} />
-    </main>
+    </FlowShell>
   );
 }

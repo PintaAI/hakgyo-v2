@@ -14,7 +14,7 @@ import {
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { Input, inputSurface } from "~/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -149,7 +149,8 @@ export function ResourcePicker({
         aria-expanded={open}
         onClick={() => setOpen(true)}
         className={cn(
-          "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 hover:bg-muted/50 flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border bg-transparent py-2 pr-2 pl-2.5 text-left text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
+          inputSurface,
+          "border-input focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border py-2 pr-2 pl-2.5 text-left text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
           className,
         )}
       >

@@ -63,13 +63,13 @@ export default function CourseDetailScreen() {
         <View className="flex-1 items-center justify-center gap-3 bg-background">
           <ActivityIndicator color={colors.primary} />
           <Text className="text-sm text-muted-foreground">
-            Membuka course kamu…
+            Membuka kursus kamu…
           </Text>
         </View>
       ) : courseQuery.isPending && !course ? (
         <View className="flex-1 items-center justify-center gap-3 bg-background">
           <ActivityIndicator color={colors.primary} />
-          <Text className="text-sm text-muted-foreground">Memuat course…</Text>
+          <Text className="text-sm text-muted-foreground">Memuat kursus…</Text>
         </View>
       ) : courseQuery.error || !course ? (
         <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
@@ -78,10 +78,10 @@ export default function CourseDetailScreen() {
           </View>
           <View className="items-center gap-2">
             <Text className="text-xl font-black text-foreground">
-              Course tidak tersedia
+              Kursus tidak tersedia
             </Text>
             <Text className="text-center text-sm leading-5 text-muted-foreground">
-              Akses kamu mungkin sudah berakhir, atau course ini tidak lagi
+              Akses kamu mungkin sudah berakhir, atau kursus ini tidak lagi
               dipublikasikan.
             </Text>
           </View>
@@ -201,7 +201,7 @@ export default function CourseDetailScreen() {
           ) : allItems.length > 0 && completedCount === allItems.length ? (
             <View className="gap-2 rounded-2xl border border-primary/30 bg-primary/10 p-5">
               <Text className="text-xl font-black text-foreground">
-                🏆 Course selesai!
+                🏆 Kursus selesai!
               </Text>
               <Text className="text-sm leading-6 text-muted-foreground">
                 Kamu berhasil! Semua aktivitas sudah selesai — buka lagi materi

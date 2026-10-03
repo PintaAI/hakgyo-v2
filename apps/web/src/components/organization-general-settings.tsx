@@ -6,11 +6,11 @@ import {
   Building2Icon,
   LoaderCircleIcon,
   SaveIcon,
-  Settings2Icon,
   ShieldCheckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { PageHeader } from "~/components/ui/page-header";
 import { Button } from "~/components/ui/button";
 import { OrganizationThemeSettings } from "~/components/organization-theme-settings";
 import {
@@ -298,19 +298,11 @@ export function OrganizationGeneralSettings({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="space-y-1">
-        <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-          <Settings2Icon className="size-4" />
-          Konfigurasi organisasi
-        </div>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          Pengaturan umum
-        </h1>
-        <p className="text-muted-foreground max-w-2xl text-sm">
-          Kelola identitas workspace, tampilan, pendaftaran course, dan hak
-          akses member.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Konfigurasi organisasi"
+        title="Pengaturan umum"
+        description="Kelola identitas workspace, tampilan, pendaftaran kursus, dan hak akses member."
+      />
 
       {/* Profil */}
       <Card>
@@ -398,8 +390,8 @@ export function OrganizationGeneralSettings({
             <div className="grid gap-1">
               <CardTitle>Pendaftaran &amp; hak akses</CardTitle>
               <CardDescription>
-                Visibilitas default course baru dan siapa yang dapat mengelola
-                course serta konten.
+                Visibilitas default kursus baru dan siapa yang dapat mengelola
+                kursus serta konten.
               </CardDescription>
             </div>
           </div>
@@ -408,32 +400,32 @@ export function OrganizationGeneralSettings({
           <div className="flex items-center justify-between gap-6 py-4">
             <div className="grid gap-0.5">
               <Label htmlFor="open-enrollment">
-                Public course secara default
+                Kursus publik secara default
               </Label>
               <p className="text-muted-foreground text-xs">
                 {effectiveEnrollmentMode === "OPEN"
-                  ? "Course baru bisa ditemukan dan diikuti siswa."
-                  : "Course baru hanya untuk siswa yang diundang."}
+                  ? "Kursus baru bisa ditemukan dan diikuti siswa."
+                  : "Kursus baru hanya untuk siswa yang diundang."}
               </p>
             </div>
             <Switch
               id="open-enrollment"
               checked={effectiveEnrollmentMode === "OPEN"}
               disabled={preferencesBusy}
-              onCheckedChange={(checked) => void handleEnrollmentChange(checked)}
-              aria-label="Jadikan course publik secara default"
+              onCheckedChange={(checked) =>
+                void handleEnrollmentChange(checked)
+              }
+              aria-label="Jadikan kursus publik secara default"
             />
           </div>
 
           <div className="flex items-center justify-between gap-6 border-t py-4">
             <div className="grid gap-0.5">
-              <Label htmlFor="advanced-permissions">
-                Permission lanjutan
-              </Label>
+              <Label htmlFor="advanced-permissions">Permission lanjutan</Label>
               <p className="text-muted-foreground text-xs">
                 {effectivePermissionMode === "ADVANCED"
-                  ? "Akses course diatur per role dan assignment."
-                  : "Semua member dapat mengelola semua course."}
+                  ? "Akses kursus diatur per role dan assignment."
+                  : "Semua member dapat mengelola semua kursus."}
               </p>
             </div>
             {isOwner ? (
@@ -456,10 +448,10 @@ export function OrganizationGeneralSettings({
             <div className="flex items-center justify-between gap-6 border-t py-4">
               <div className="grid gap-0.5">
                 <Label htmlFor="teacher-create-course">
-                  Teacher boleh membuat course
+                  Teacher boleh membuat kursus
                 </Label>
                 <p className="text-muted-foreground text-xs">
-                  Pembuat course otomatis menjadi manager-nya.
+                  Pembuat kursus otomatis menjadi manager-nya.
                 </p>
               </div>
               <Switch

@@ -573,7 +573,7 @@ function MaterialEditorForm({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Hapus materi ini?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Tindakan ini permanen. Semua penempatan materi di course,
+                    Tindakan ini permanen. Semua penempatan materi di kursus,
                     progres siswa, dan aktivitas XP terkait akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -697,7 +697,7 @@ function MaterialEditorForm({
               />
               <p className="text-muted-foreground text-xs">
                 Ditampilkan kepada penulis saat memilih konten untuk sebuah
-                course.
+                kursus.
               </p>
             </div>
             <div className="grid gap-2 border-t pt-5">

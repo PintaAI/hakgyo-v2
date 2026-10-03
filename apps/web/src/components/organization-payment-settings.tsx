@@ -10,10 +10,10 @@ import {
   PlusIcon,
   QrCodeIcon,
   Trash2Icon,
-  WalletIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { PageHeader } from "~/components/ui/page-header";
 import { BankBadge } from "~/components/payments/bank-badge";
 import { BankPicker } from "~/components/payments/bank-picker";
 import { decodeQrImage } from "~/components/payments/decode-qr-image";
@@ -68,20 +68,11 @@ export function OrganizationPaymentSettings({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="space-y-1">
-        <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-          <WalletIcon className="size-4" />
-          Penerimaan pembayaran
-        </div>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          Pembayaran
-        </h1>
-        <p className="text-muted-foreground max-w-2xl text-sm">
-          Siswa membayar Group belajar berbayar ke QRIS atau rekening di bawah
-          ini. Pengelola Group belajar memeriksa setiap pembayaran secara manual
-          sebelum siswa mendapat akses.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Penerimaan pembayaran"
+        title="Pembayaran"
+        description="Siswa membayar Group belajar berbayar ke QRIS atau rekening di bawah ini. Pengelola Group belajar memeriksa setiap pembayaran secara manual sebelum siswa mendapat akses."
+      />
 
       {settings.error ? (
         <Card>

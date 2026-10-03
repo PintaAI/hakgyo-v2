@@ -23,6 +23,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { PageHeader } from "~/components/ui/page-header";
 import { Badge } from "~/components/ui/badge";
 import { CopyButton } from "~/components/ui/copy-button";
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -72,19 +73,11 @@ export function McpServerSettings({ endpoint }: { endpoint: string }) {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="space-y-1">
-        <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-          <ServerCogIcon className="size-4" />
-          Model Context Protocol
-        </div>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          MCP Server
-        </h1>
-        <p className="text-muted-foreground max-w-2xl text-sm">
-          Hubungkan asisten AI ke Hakgyo dan kelola aplikasi yang memiliki akses
-          atas nama akun Anda.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Model Context Protocol"
+        title="MCP Server"
+        description="Hubungkan asisten AI ke Hakgyo dan kelola aplikasi yang memiliki akses atas nama akun Anda."
+      />
 
       <Card className="relative overflow-hidden">
         <div className="pointer-events-none absolute -top-20 -right-16 size-52 rounded-full bg-emerald-500/10 blur-3xl" />

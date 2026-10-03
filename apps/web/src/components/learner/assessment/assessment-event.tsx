@@ -97,7 +97,7 @@ export function AssessmentEvent({
         {invalidated ? (
           <p className="text-destructive text-sm">
             {event.participants[0]?.invalidationReason ??
-              "Partisipasi tidak tersedia. Hubungi tim course kamu."}
+              "Partisipasi tidak tersedia. Hubungi tim kursus kamu."}
           </p>
         ) : null}
 

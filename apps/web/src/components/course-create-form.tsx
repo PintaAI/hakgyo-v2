@@ -16,20 +16,11 @@ import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
+import { getErrorMessage } from "~/lib/error-message";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
-function getErrorMessage(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return error.message;
-  }
-  return "Course belum berhasil dibuat. Silakan coba lagi.";
-}
+const createErrorMessage = "Kursus belum berhasil dibuat. Silakan coba lagi.";
 
 export function CourseCreateForm({
   organizationId,
@@ -52,7 +43,7 @@ export function CourseCreateForm({
     event.preventDefault();
     const cleanTitle = title.trim();
     if (!cleanTitle) {
-      setError("Masukkan nama course terlebih dahulu.");
+      setError("Masukkan nama kursus terlebih dahulu.");
       return;
     }
 
@@ -65,13 +56,13 @@ export function CourseCreateForm({
         description: description.trim() || null,
       });
       await utils.course.list.invalidate({ organizationId });
-      toast.success("Course berhasil dibuat.");
+      toast.success("Kursus berhasil dibuat.");
       router.replace(coursesHref);
       router.refresh();
     } catch (cause) {
-      const message = getErrorMessage(cause);
+      const message = getErrorMessage(cause, createErrorMessage);
       setError(message);
-      toast.error("Course belum berhasil dibuat.");
+      toast.error("Kursus belum berhasil dibuat.");
     }
   }
 
@@ -85,19 +76,19 @@ export function CourseCreateForm({
         )}
       >
         <ArrowLeftIcon data-icon="inline-start" />
-        Kembali ke courses
+        Kembali ke kursus
       </Link>
 
       <header className="max-w-2xl">
         <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-          Course baru
+          Kursus baru
         </p>
         <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
           Apa yang ingin Anda ajarkan?
         </h1>
         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
           Mulai dari nama dan gambaran singkat. Materi, peserta, serta jadwal
-          dapat ditambahkan setelah course dibuat.
+          dapat ditambahkan setelah kursus dibuat.
         </p>
       </header>
 
@@ -108,7 +99,7 @@ export function CourseCreateForm({
           noValidate
         >
           <div className="space-y-2">
-            <Label htmlFor="course-title">Nama course</Label>
+            <Label htmlFor="course-title">Nama kursus</Label>
             <Input
               id="course-title"
               autoFocus
@@ -128,7 +119,7 @@ export function CourseCreateForm({
               id="course-title-help"
               className="text-muted-foreground text-xs leading-relaxed"
             >
-              Pilih nama yang langsung menjelaskan isi course.
+              Pilih nama yang langsung menjelaskan isi kursus.
             </p>
           </div>
 
@@ -172,7 +163,7 @@ export function CourseCreateForm({
               ) : (
                 <BookOpenIcon data-icon="inline-start" />
               )}
-              {createCourse.isPending ? "Membuat course..." : "Buat course"}
+              {createCourse.isPending ? "Membuat kursus..." : "Buat kursus"}
               {!createCourse.isPending ? (
                 <ArrowRightIcon data-icon="inline-end" />
               ) : null}
@@ -181,7 +172,7 @@ export function CourseCreateForm({
         </form>
 
         <aside className="bg-card ring-foreground/10 h-fit rounded-lg p-5 ring-1">
-          <p className="font-heading font-medium">Setelah course dibuat</p>
+          <p className="font-heading font-medium">Setelah kursus dibuat</p>
           <ol className="text-muted-foreground mt-5 space-y-5 text-sm">
             {[
               "Susun bab dan materi",
@@ -199,7 +190,7 @@ export function CourseCreateForm({
           <div className="mt-6 flex items-start gap-2.5 border-t pt-5 text-xs leading-relaxed">
             <CheckIcon className="text-foreground mt-0.5 size-4 shrink-0" />
             <p className="text-muted-foreground">
-              Course dibuat dalam keadaan belum dipublikasikan. Peserta belum
+              Kursus dibuat dalam keadaan belum dipublikasikan. Peserta belum
               dapat melihatnya sampai Anda mempublikasikannya.
             </p>
           </div>

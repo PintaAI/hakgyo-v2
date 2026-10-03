@@ -1,33 +1,23 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowUpRight,
   BookOpen,
-  ClipboardCheck,
   FileText,
-  Inbox,
   Layers,
   Plus,
   Users,
-  UserRound,
-  type LucideIcon,
 } from "lucide-react";
 import { type ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import { CourseCover } from "~/components/course-cover";
+import { StatStrip } from "~/components/ui/stat-strip";
+import { Kicker } from "~/components/brand/typography";
 import styles from "./studio-dashboard.module.css";
 
 export type StatIcon = "course" | "cohort" | "member" | "material" | "review";
-
-const STAT_ICONS: Record<StatIcon, LucideIcon> = {
-  course: BookOpen,
-  cohort: Users,
-  member: UserRound,
-  material: FileText,
-  review: ClipboardCheck,
-};
 
 export type StudioDashboardData = {
   name: string;
@@ -158,24 +148,12 @@ function Groups({ data }: { data: StudioDashboardData }) {
                 href={`${data.root}/courses/${group.courseId}/cohorts/${group.id}`}
                 className="hover:bg-muted/50 flex items-center gap-3 py-4"
               >
-                <span
-                  aria-hidden="true"
-                  className="bg-accent text-accent-foreground relative size-10 shrink-0 overflow-hidden rounded-md border"
-                >
-                  {group.course.thumbnailUrl ? (
-                    <Image
-                      src={group.course.thumbnailUrl}
-                      alt=""
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <span className="grid size-full place-items-center font-serif text-lg">
-                      {group.course.title.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </span>
+                <CourseCover
+                  title={group.course.title}
+                  thumbnailUrl={group.course.thumbnailUrl}
+                  sizes="40px"
+                  className="size-10 rounded-md border"
+                />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">
                     {group.name}
@@ -198,7 +176,7 @@ function Groups({ data }: { data: StudioDashboardData }) {
         </ul>
       ) : (
         <Empty>
-          Belum ada Group belajar. Buka course untuk menyiapkan kelompok
+          Belum ada Group belajar. Buka kursus untuk menyiapkan kelompok
           pertama.
         </Empty>
       )}
@@ -253,10 +231,10 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
     .toUpperCase();
   return (
     <div className="min-w-0 space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-5 border-b pb-8">
+      <header className="flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
-          <p className={styles.eyebrow}>Workspace / {data.role}</p>
-          <h1 className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
+          <Kicker>Workspace · {data.role}</Kicker>
+          <h1 className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-3xl font-medium tracking-[-0.04em] sm:text-4xl">
             <span className="inline-flex min-w-0 items-center gap-2">
               <Avatar className="size-8 rounded-lg after:rounded-lg">
                 {data.organizationLogoUrl ? (
@@ -302,57 +280,28 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
           primary
         >
           <Plus className="size-4" />
-          {data.canCreateCourse ? "Buat course" : "Tulis materi"}
+          {data.canCreateCourse ? "Buat kursus" : "Tulis materi"}
         </Action>
       </header>
-      <section
-        aria-label="Ringkasan workspace"
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
-      >
-        {data.stats.map((stat) => {
-          const StatIcon = STAT_ICONS[stat.icon];
-          const isAttention = stat.icon === "review" && stat.value > 0;
-          return (
-            <Link
-              key={stat.label}
-              href={stat.href}
-              className="bg-card hover:border-primary rounded-lg border p-6 shadow-xs transition-shadow hover:shadow-sm"
-            >
-              <div className="text-muted-foreground flex items-center justify-between gap-2 text-xs">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "grid size-7 shrink-0 place-items-center rounded-md border",
-                      isAttention
-                        ? "bg-primary text-primary-foreground border-transparent"
-                        : "bg-muted text-foreground",
-                    )}
-                  >
-                    <StatIcon className="size-3.5" />
-                  </span>
-                  <span className="truncate">{stat.label}</span>
-                </span>
-                <ArrowUpRight className="size-3.5 shrink-0" />
-              </div>
-              <p className="mt-5 text-4xl font-medium tracking-tight tabular-nums">
-                {stat.value}
-                <span className="bg-primary ml-2 inline-block size-1.5 rounded-full" />
-              </p>
-            </Link>
-          );
-        })}
-      </section>
+      <StatStrip
+        label="Ringkasan workspace"
+        items={data.stats.map(({ label, value, href, icon }) => ({
+          label,
+          value,
+          href,
+          attention: icon === "review" && value > 0,
+        }))}
+      />
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
         <section>
           <Title
             number="01"
-            title="Course Anda"
+            title="Kursus Anda"
             href={`${data.root}/courses`}
           />
           {data.courses.length ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              {data.courses.slice(0, 4).map((course, index) => (
+              {data.courses.slice(0, 4).map((course) => (
                 <Link
                   key={course.id}
                   href={`${data.root}/courses/${course.id}`}
@@ -361,29 +310,12 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
                     "bg-card group overflow-hidden rounded-lg border shadow-xs hover:shadow-sm",
                   )}
                 >
-                  <div
-                    aria-hidden="true"
-                    className={cn(
-                      styles.courseArt,
-                      index % 2 === 1 && styles.alternateArt,
-                    )}
-                  >
-                    {course.thumbnailUrl ? (
-                      <Image
-                        src={course.thumbnailUrl}
-                        alt=""
-                        fill
-                        sizes="(min-width: 640px) 360px, 100vw"
-                        className="object-cover"
-                      />
-                    ) : null}
-                    <span className="relative z-10 font-serif text-6xl opacity-80">
-                      {["가", "나", "다", "라"][index]}
-                    </span>
-                    <span className="absolute right-4 bottom-3 text-[10px] tracking-[0.2em] uppercase">
-                      Hakgyo / {String(index + 1).padStart(2, "0")}
-                    </span>
-                  </div>
+                  <CourseCover
+                    title={course.title}
+                    thumbnailUrl={course.thumbnailUrl}
+                    sizes="(min-width: 640px) 360px, 100vw"
+                    className="h-36 w-full"
+                  />
                   <div className="p-6">
                     <div className="mb-3 flex items-center justify-between">
                       <Status kind="course" value={course.status} />
@@ -410,7 +342,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
               ))}
             </div>
           ) : (
-            <Empty>Mulai cerita belajar Anda dengan course pertama.</Empty>
+            <Empty>Mulai cerita belajar Anda dengan kursus pertama.</Empty>
           )}
           <div className="mt-8">
             <Title
@@ -424,10 +356,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
         <aside className="space-y-7">
           <Activity data={data} />
           <section className="bg-muted rounded-lg border p-6 shadow-xs">
-            <p className={cn(styles.eyebrow, "flex items-center gap-1.5")}>
-              <Inbox className="size-3.5" />
-              Butuh perhatian
-            </p>
+            <Kicker>Butuh perhatian</Kicker>
             <div className="my-5 flex items-end gap-3">
               <span className="text-5xl font-medium tracking-tight">
                 {data.pendingReviews}

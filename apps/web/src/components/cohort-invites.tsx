@@ -142,7 +142,7 @@ export function CohortInvites({
             Invite {cohortName}
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Siapa pun yang menebus link akan masuk ke course dan Group belajar
+            Siapa pun yang menebus link akan masuk ke kursus dan Group belajar
             ini.
           </p>
         </div>
@@ -166,7 +166,7 @@ export function CohortInvites({
           <Skeleton className="h-24 w-full rounded-lg" />
         </div>
       ) : invites.isError ? (
-        <Card className="rounded-lg">
+        <Card>
           <CardContent className="py-10 text-center">
             <p className="text-destructive text-sm">
               {errorMessage(invites.error)}
@@ -182,7 +182,7 @@ export function CohortInvites({
         </Card>
       ) : (invites.data?.pages.flatMap((page) => page.items) ?? []).length ===
         0 ? (
-        <Card className="rounded-lg border-dashed">
+        <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <span className="bg-muted mx-auto flex size-12 items-center justify-center rounded-full">
               <MailPlusIcon className="text-muted-foreground size-5" />
@@ -229,7 +229,7 @@ export function CohortInvites({
                         : "Aktif";
 
               return (
-                <Card key={invite.id} className="rounded-lg py-0">
+                <Card key={invite.id} className="py-0">
                   <CardContent className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">

@@ -118,7 +118,7 @@ export function CourseLearningFooter({
         setIssue({
           kind: "error",
           message:
-            "Buka daftar isi course untuk melihat apa yang masih perlu diselesaikan sebelum melanjutkan.",
+            "Buka daftar isi kursus untuk melihat apa yang masih perlu diselesaikan sebelum melanjutkan.",
         });
       return;
     }
@@ -128,12 +128,12 @@ export function CourseLearningFooter({
     setIssue(undefined);
     try {
       const before = outline.data;
-      if (!before) throw new Error("Data course tidak tersedia.");
+      if (!before) throw new Error("Data kursus tidak tersedia.");
       baseline.current ??= before;
       const current = getLearningPath(before, courseItemId);
       if (!current)
         throw new Error(
-          "Aktivitas ini tidak lagi tersedia. Cek daftar isi course untuk langkah berikutnya.",
+          "Aktivitas ini tidak lagi tersedia. Cek daftar isi kursus untuk langkah berikutnya.",
         );
       if (!current.item.isCompleted) {
         if (completionMode === "assessment") {
@@ -167,7 +167,7 @@ export function CourseLearningFooter({
           setIssue({
             kind: "error",
             message:
-              "Progres kamu tersimpan. Buka daftar isi course untuk melihat apa yang masih perlu diselesaikan.",
+              "Progres kamu tersimpan. Buka daftar isi kursus untuk melihat apa yang masih perlu diselesaikan.",
           });
         return;
       }
@@ -202,7 +202,7 @@ export function CourseLearningFooter({
         <MilestoneTrophy />
         <div className="flex flex-col items-center gap-2 text-center">
           <Eyebrow>
-            {milestone.courseCompleted ? "Course selesai" : "Bab selesai"}
+            {milestone.courseCompleted ? "Kursus selesai" : "Bab selesai"}
           </Eyebrow>
           <h2 className="text-[28px] leading-8 font-black tracking-tight">
             {milestone.courseCompleted
@@ -225,12 +225,12 @@ export function CourseLearningFooter({
         ) : null}
         <div className="flex flex-col gap-2">
           <Button size="lg" onClick={() => navigate(milestone.nextItem)}>
-            {milestone.nextItem ? "Lanjutkan belajar" : "Lihat progres course"}
+            {milestone.nextItem ? "Lanjutkan belajar" : "Lihat progres kursus"}
             <ArrowRightIcon data-icon="inline-end" />
           </Button>
           {milestone.nextItem ? (
             <Button variant="ghost" onClick={() => navigate()}>
-              Kembali ke course
+              Kembali ke kursus
             </Button>
           ) : null}
         </div>
@@ -371,7 +371,7 @@ export function CourseLearningFooter({
           {busy
             ? "Menyimpan progres kamu…"
             : path?.courseCompleted && !path.nextItem
-              ? "Selesaikan course"
+              ? "Selesaikan kursus"
               : path?.item.isCompleted || completionMode === "assessment"
                 ? "Lanjutkan belajar"
                 : finishingModule

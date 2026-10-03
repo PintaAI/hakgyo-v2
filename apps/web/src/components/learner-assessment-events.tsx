@@ -60,7 +60,7 @@ export function LearnerAssessmentEvents({
         <EmptyState
           icon={TrophyIcon}
           title="Belum ada event untuk kamu"
-          description="Event akan tampil setelah pengajar membukanya untuk Group belajar atau course kamu."
+          description="Event akan tampil setelah pengajar membukanya untuk Group belajar atau kursus kamu."
         />
       </div>
     );
@@ -91,7 +91,7 @@ export function LearnerAssessmentEvents({
               ? `${attempt.score}/${attempt.maxScore}`
               : null;
           return (
-            <Card key={event.id} className="rounded-lg">
+            <Card key={event.id}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div>

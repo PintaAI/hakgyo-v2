@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { CheckIcon } from "lucide-react";
 
+import { FlowShell, surfaceCard } from "~/components/brand/flow-shell";
+import { Headline, Kicker } from "~/components/brand/typography";
+import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 import { authClient } from "~/server/better-auth/client";
 
 export function OAuthConsent({
@@ -34,44 +39,51 @@ export function OAuthConsent({
     }
   };
 
+  const label =
+    "text-muted-foreground font-mono text-[10px] tracking-[0.18em] uppercase";
+
   return (
-    <main className="bg-background text-foreground relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
-      <div className="bg-primary/10 pointer-events-none absolute -top-24 -right-20 size-72 rounded-full blur-3xl" />
-      <div className="bg-primary/5 pointer-events-none absolute -bottom-24 -left-20 size-80 rounded-full blur-3xl" />
-      <section className="border-primary/15 bg-card/95 relative w-full max-w-lg rounded-[2rem] border p-8 shadow-2xl backdrop-blur-xl">
-        <p className="text-primary text-xs font-bold tracking-[0.24em] uppercase">
-          Akses MCP Hakgyo
-        </p>
-        <h1 className="mt-4 text-3xl font-black tracking-tight">
-          Hubungkan {clientName}
-        </h1>
+    <FlowShell className="grid place-items-center pt-6 sm:pt-12">
+      <section className={cn(surfaceCard, "w-full max-w-lg p-6 sm:p-8")}>
+        <Kicker>Akses MCP Hakgyo</Kicker>
+        <Headline
+          as="h1"
+          title={`Hubungkan ${clientName}`}
+          className="mt-3 text-2xl sm:mt-4 sm:text-4xl xl:text-4xl"
+        />
         <p className="text-muted-foreground mt-3 text-sm leading-6">
           Klien AI ini akan memakai Hakgyo sesuai role Anda saat ini. Setiap
-          izin course, Group belajar, dan organisasi diperiksa kembali setiap
+          izin kursus, Group belajar, dan organisasi diperiksa kembali setiap
           kali sebuah tool dijalankan.
         </p>
 
-        <div className="border-border bg-muted/25 mt-6 rounded-2xl border p-4">
-          <p className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
-            Klien
-          </p>
-          <p className="mt-1 text-sm font-bold break-all">{clientId}</p>
-          <p className="text-muted-foreground mt-4 text-xs font-bold tracking-wide uppercase">
-            Akses yang diminta
-          </p>
-          <ul className="mt-2 space-y-2 text-sm">
+        <div className="bg-muted/60 mt-6 rounded-xl p-4">
+          <p className={label}>Klien</p>
+          <p className="mt-1 text-sm font-medium break-all">{clientId}</p>
+          <p className={cn(label, "mt-4")}>Akses yang diminta</p>
+          <ul className="mt-2 space-y-1.5 text-sm">
             {scopes.map((scope) => (
-              <li key={scope}>• {scope}</li>
+              <li key={scope} className="flex items-start gap-2">
+                <CheckIcon
+                  className="mt-0.5 size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                {scope}
+              </li>
             ))}
           </ul>
           {userInfoClaims.length > 0 && (
             <>
-              <p className="text-muted-foreground mt-4 text-xs font-bold tracking-wide uppercase">
-                Bidang profile yang diminta
-              </p>
-              <ul className="mt-2 space-y-2 text-sm">
+              <p className={cn(label, "mt-4")}>Bidang profile yang diminta</p>
+              <ul className="mt-2 space-y-1.5 text-sm">
                 {userInfoClaims.map((claim) => (
-                  <li key={claim}>• {claim}</li>
+                  <li key={claim} className="flex items-start gap-2">
+                    <CheckIcon
+                      className="mt-0.5 size-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                    {claim}
+                  </li>
                 ))}
               </ul>
             </>
@@ -85,24 +97,25 @@ export function OAuthConsent({
         )}
 
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            className="border-primary/15 bg-primary/5 hover:border-primary/30 hover:bg-primary/10 rounded-2xl border px-5 py-3 font-bold transition disabled:opacity-50"
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-11"
             disabled={pending}
             onClick={() => void submit(false)}
-            type="button"
           >
             Tolak
-          </button>
-          <button
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl px-5 py-3 font-black transition disabled:opacity-50"
+          </Button>
+          <Button
+            size="lg"
+            className="h-11"
             disabled={pending}
             onClick={() => void submit(true)}
-            type="button"
           >
             {pending ? "Mohon tunggu..." : "Izinkan"}
-          </button>
+          </Button>
         </div>
       </section>
-    </main>
+    </FlowShell>
   );
 }

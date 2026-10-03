@@ -204,7 +204,7 @@ function CourseItemContent({
     <>
       {/* Sidebar trigger replaces the back chevron: the drawer carries the
           course contents, so learners navigate without leaving the screen. */}
-      <SidebarToolbarButton accessibilityLabel="Buka daftar isi course" />
+      <SidebarToolbarButton accessibilityLabel="Buka daftar isi kursus" />
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon={toolbarIcons.home}

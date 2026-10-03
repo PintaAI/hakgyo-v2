@@ -24,7 +24,7 @@ export async function generateMetadata({
         ? "Bergabung dengan organisasi di Hakgyo."
         : invite.type === "COHORT"
           ? `Bergabung dengan cohort ${invite.course.title} di Hakgyo.`
-          : `Bergabung dengan course ${invite.course.title} di Hakgyo.`;
+          : `Bergabung dengan kursus ${invite.course.title} di Hakgyo.`;
     const thumbnailUrl =
       invite.type === "ORGANIZATION" ? null : invite.course.thumbnailUrl;
 

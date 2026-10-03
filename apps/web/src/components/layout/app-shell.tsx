@@ -1,6 +1,4 @@
-import Link from "next/link";
-import { GraduationCapIcon } from "lucide-react";
-
+import { BrandLink } from "~/components/brand/brand-link";
 import { NotificationBell } from "~/components/notifications/notification-bell";
 import { User, type UserProps } from "~/components/user";
 import { NavLinks } from "./nav-links";
@@ -22,16 +20,7 @@ export function AppShell({
     <div className="bg-muted/30 flex min-h-screen flex-col">
       <header className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 border-b backdrop-blur-xl">
         <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
-          <Link
-            href="/"
-            className="group flex items-center gap-2.5"
-            aria-label="Beranda Hakgyo"
-          >
-            <span className="bg-primary text-primary-foreground grid size-8 place-items-center rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-6">
-              <GraduationCapIcon className="size-4.5" />
-            </span>
-            <span className="text-lg font-bold tracking-tight">Hakgyo</span>
-          </Link>
+          <BrandLink className="text-lg" markClassName="size-8" />
 
           <span
             className="bg-border/70 hidden h-6 w-px sm:block"

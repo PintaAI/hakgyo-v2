@@ -89,6 +89,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { getErrorMessage } from "~/lib/error-message";
 import { cn } from "~/lib/utils";
 import {
   defaultCourseItemPublished,
@@ -188,18 +189,6 @@ function resourceHref(
     return `/workspace/${organizationSlug}/courses/${courseId}/kurikulum/${moduleId}/vocabulary/${item.vocabularySetId}`;
   }
   return null;
-}
-
-function getErrorMessage(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return error.message;
-  }
-  return "Perubahan belum berhasil disimpan. Silakan coba lagi.";
 }
 
 export function KurikulumEditor({
@@ -468,8 +457,8 @@ export function KurikulumEditor({
         checked
           ? course.status === "PUBLISHED"
             ? "Item ditampilkan untuk learner."
-            : "Item akan tampil setelah course dipublikasikan."
-          : "Item disembunyikan dari learner.",
+            : "Item akan tampil setelah kursus dipublikasikan."
+          : "Item disembunyikan dari siswa.",
       );
     } catch (error) {
       // Readiness may have changed since it was loaded; refresh the badges.
@@ -529,7 +518,7 @@ export function KurikulumEditor({
           )}
         >
           <ArrowLeftIcon data-icon="inline-start" />
-          Workspace course
+          Workspace kursus
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           {readinessQuery.data ? (
@@ -614,9 +603,9 @@ export function KurikulumEditor({
 
       {course.status !== "PUBLISHED" && itemCount > 0 ? (
         <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-3 text-xs leading-relaxed">
-          Course belum dipublikasikan, jadi belum ada item yang terlihat oleh
-          learner. Item yang ditampilkan akan tayang setelah course
-          dipublikasikan dari workspace course.
+          Kursus belum dipublikasikan, jadi belum ada item yang terlihat oleh
+          learner. Item yang ditampilkan akan tayang setelah kursus
+          dipublikasikan dari workspace kursus.
         </p>
       ) : null}
 
@@ -1508,7 +1497,7 @@ function ItemDialog({
                     ? `${notReadyReason} Item ditambahkan dalam keadaan tersembunyi; tampilkan setelah lengkap.`
                     : courseStatus === "PUBLISHED"
                       ? "Item langsung terlihat oleh learner. Item yang belum siap tetap disembunyikan."
-                      : "Item akan terlihat oleh learner setelah course dipublikasikan."}
+                      : "Item akan terlihat oleh siswa setelah kursus dipublikasikan."}
                 </p>
               </div>
               <Switch

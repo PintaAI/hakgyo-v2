@@ -131,7 +131,7 @@ export default function AssessmentEventScreen() {
               {invalidated ? (
                 <Text className="text-sm text-destructive">
                   {event.participants[0]?.invalidationReason ??
-                    "Partisipasi tidak tersedia. Hubungi tim course kamu."}
+                    "Partisipasi tidak tersedia. Hubungi tim kursus kamu."}
                 </Text>
               ) : null}
 

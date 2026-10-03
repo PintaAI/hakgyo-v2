@@ -1,7 +1,6 @@
 "use client";
 
 import { useDeferredValue, useState, type ComponentType } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUpRightIcon,
@@ -15,6 +14,7 @@ import {
   XIcon,
 } from "lucide-react";
 
+import { CourseCover } from "~/components/course-cover";
 import { PageHeader } from "~/components/ui/page-header";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -83,20 +83,13 @@ function FilterStat({
   );
 }
 
-function StatusChip({
-  status,
-  inverted = false,
-}: {
-  status: Course["status"];
-  inverted?: boolean;
-}) {
+function StatusChip({ status }: { status: Course["status"] }) {
   const meta = statusMeta[status];
   return (
     <span
       className={cn(
         "inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-[11px] font-medium",
         meta.className,
-        inverted && "border-white/40 text-white",
       )}
     >
       {meta.label}
@@ -142,19 +135,18 @@ export function CoursesLibrary({
   return (
     <div className="flex w-full flex-col gap-6">
       <PageHeader
-        icon={BookOpenIcon}
         eyebrow="Workspace"
-        title="Courses"
+        title="Kursus"
         description={
           role === "TEACHER"
-            ? "Temukan dan kelola course yang menjadi tanggung jawab Anda."
+            ? "Temukan dan kelola kursus yang menjadi tanggung jawab Anda."
             : "Kelola kurikulum, Group belajar, dan peserta dari satu tempat."
         }
         actions={
           canCreate ? (
             <Link href={`${root}/new`} className={buttonVariants()}>
               <PlusIcon data-icon="inline-start" />
-              Course baru
+              Kursus baru
             </Link>
           ) : null
         }
@@ -163,8 +155,8 @@ export function CoursesLibrary({
       {courses.length === 0 ? (
         <EmptyState
           icon={BookOpenIcon}
-          title="Belum ada course"
-          description="Course menyatukan materi, Group belajar, dan peserta agar semuanya mudah ditemukan."
+          title="Belum ada kursus"
+          description="Kursus menyatukan materi, Group belajar, dan peserta agar semuanya mudah ditemukan."
           action={
             canCreate ? (
               <Link
@@ -172,7 +164,7 @@ export function CoursesLibrary({
                 className={buttonVariants({ className: "mt-4" })}
               >
                 <PlusIcon data-icon="inline-start" />
-                Course baru
+                Kursus baru
               </Link>
             ) : null
           }
@@ -180,14 +172,14 @@ export function CoursesLibrary({
       ) : (
         <>
           <section
-            aria-label="Ringkasan course"
+            aria-label="Ringkasan kursus"
             className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
           >
             <FilterStat
               active={filter === "ALL"}
               count={counts.ALL}
               icon={BookOpenIcon}
-              label="Semua course"
+              label="Semua kursus"
               onClick={() => setFilter("ALL")}
             />
             <FilterStat
@@ -206,18 +198,18 @@ export function CoursesLibrary({
             />
           </section>
 
-          <Card className="gap-0 rounded-lg py-0">
+          <Card className="gap-0 py-0">
             <CardHeader className="gap-4 border-b py-4 sm:grid-cols-[1fr_auto] sm:items-center">
               <CardTitle className="font-heading text-lg font-medium">
-                Daftar course
+                Daftar kursus
               </CardTitle>
               <div className="relative w-full sm:w-72">
                 <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
                 <Input
-                  aria-label="Cari course"
+                  aria-label="Cari kursus"
                   className="pr-8 pl-8"
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari course"
+                  placeholder="Cari kursus"
                   value={search}
                 />
                 {search ? (
@@ -243,76 +235,33 @@ export function CoursesLibrary({
                   <li key={course.id}>
                     <Link
                       href={`${root}/${course.id}`}
-                      className={cn(
-                        "group/row focus-visible:ring-ring relative flex min-h-28 items-center gap-3 overflow-hidden px-4 py-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset sm:gap-4",
-                        course.thumbnailUrl
-                          ? "bg-black text-white"
-                          : "hover:bg-muted/50 focus-visible:bg-muted/50",
-                      )}
+                      className="group/row focus-visible:ring-ring hover:bg-muted/50 focus-visible:bg-muted/50 flex items-center gap-3 px-4 py-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset sm:gap-4"
                     >
-                      {course.thumbnailUrl ? (
-                        <span className="absolute inset-0">
-                          <Image
-                            src={course.thumbnailUrl}
-                            alt=""
-                            fill
-                            unoptimized
-                            sizes="(max-width: 1152px) 100vw, 1152px"
-                            className="object-cover transition-transform duration-500 group-hover/row:scale-[1.02]"
-                          />
-                          <span className="absolute inset-0 bg-black/65 transition-colors group-hover/row:bg-black/60" />
-                        </span>
-                      ) : null}
-                      <span className="relative z-10 min-w-0 flex-1">
+                      <CourseCover
+                        title={course.title}
+                        thumbnailUrl={course.thumbnailUrl}
+                        sizes="128px"
+                        className="aspect-video w-24 rounded-lg sm:w-32"
+                      />
+                      <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2">
                           <span className="truncate text-sm font-medium">
                             {course.title}
                           </span>
-                          <StatusChip
-                            status={course.status}
-                            inverted={Boolean(course.thumbnailUrl)}
-                          />
-                          <span
-                            className={cn(
-                              "rounded-full border px-2 py-0.5 text-[10px] font-medium",
-                              course.thumbnailUrl
-                                ? "border-white/25 text-white/80"
-                                : "border-border text-muted-foreground",
-                            )}
-                          >
+                          <StatusChip status={course.status} />
+                          <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-medium">
                             {accessLabels[course.accessRole]}
                           </span>
                         </span>
-                        <span
-                          className={cn(
-                            "mt-1 block truncate text-xs",
-                            course.thumbnailUrl
-                              ? "text-white/70"
-                              : "text-muted-foreground",
-                          )}
-                        >
+                        <span className="text-muted-foreground mt-1 block truncate text-xs">
                           {course.description ?? "Belum ada deskripsi."}
                         </span>
-                        <span
-                          className={cn(
-                            "mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs sm:hidden",
-                            course.thumbnailUrl
-                              ? "text-white/70"
-                              : "text-muted-foreground",
-                          )}
-                        >
+                        <span className="text-muted-foreground mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs sm:hidden">
                           <span>{course._count.modules} bab</span>
                           <span>{course._count.cohorts} Group belajar</span>
                         </span>
                       </span>
-                      <span
-                        className={cn(
-                          "relative z-10 hidden shrink-0 items-center gap-4 text-xs sm:flex",
-                          course.thumbnailUrl
-                            ? "text-white/70"
-                            : "text-muted-foreground",
-                        )}
-                      >
+                      <span className="text-muted-foreground hidden shrink-0 items-center gap-4 text-xs sm:flex">
                         <span className="inline-flex items-center gap-1.5">
                           <Layers3Icon className="size-3.5" />
                           {course._count.modules} bab
@@ -322,24 +271,10 @@ export function CoursesLibrary({
                           {course._count.cohorts} Group belajar
                         </span>
                       </span>
-                      <span
-                        className={cn(
-                          "relative z-10 hidden w-32 shrink-0 truncate text-right text-xs lg:block",
-                          course.thumbnailUrl
-                            ? "text-white/70"
-                            : "text-muted-foreground",
-                        )}
-                      >
+                      <span className="text-muted-foreground hidden w-32 shrink-0 truncate text-right text-xs lg:block">
                         {course.owner.user.name}
                       </span>
-                      <ArrowUpRightIcon
-                        className={cn(
-                          "relative z-10 size-4 shrink-0 transition-all group-hover/row:translate-x-0.5 group-hover/row:-translate-y-0.5",
-                          course.thumbnailUrl
-                            ? "text-white/70 group-hover/row:text-white"
-                            : "text-muted-foreground group-hover/row:text-foreground",
-                        )}
-                      />
+                      <ArrowUpRightIcon className="text-muted-foreground group-hover/row:text-foreground size-4 shrink-0 transition-all group-hover/row:translate-x-0.5 group-hover/row:-translate-y-0.5" />
                     </Link>
                   </li>
                 ))}
@@ -349,10 +284,10 @@ export function CoursesLibrary({
                 <div className="rounded-md border border-dashed px-4 py-10 text-center">
                   <SearchIcon className="text-muted-foreground mx-auto size-6" />
                   <p className="mt-3 text-sm font-medium">
-                    Course tidak ditemukan
+                    Kursus tidak ditemukan
                   </p>
                   <p className="text-muted-foreground mx-auto mt-1 max-w-xs text-xs leading-relaxed">
-                    Coba kata lain atau tampilkan kembali semua course.
+                    Coba kata lain atau tampilkan kembali semua kursus.
                   </p>
                   <Button
                     className="mt-4"

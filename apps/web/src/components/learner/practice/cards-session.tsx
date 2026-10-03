@@ -284,7 +284,7 @@ export function CardsSession({
           </span>
         </div>
         <p className="text-muted-foreground text-sm">
-          Pengulangan penguasaan tetap tersedia tanpa menghambat course kamu.
+          Pengulangan penguasaan tetap tersedia tanpa menghambat kursus kamu.
         </p>
         <Button size="lg" onClick={beginRound}>
           Mulai latihan · {ready.length} kata

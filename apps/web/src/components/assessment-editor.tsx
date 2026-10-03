@@ -595,7 +595,7 @@ export function AssessmentEditor({
                 });
                 await utils.assessment.list.invalidate({ organizationId });
                 toast.success(
-                  "Salinan dibuat di library. Salinan belum dipakai di course mana pun.",
+                  "Salinan dibuat di library. Salinan belum dipakai di kursus mana pun.",
                 );
                 router.push(
                   `/workspace/${organizationSlug}/library/assessments/${copy.assessmentId}`,
@@ -1643,7 +1643,7 @@ function AssessmentEditorForm({
               <AlertDialogHeader>
                 <AlertDialogTitle>Hapus tugas ini?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tindakan ini permanen. Semua soal, penempatan di course,
+                  Tindakan ini permanen. Semua soal, penempatan di kursus,
                   event, jawaban, hasil, dan progres siswa akan ikut dihapus.
                 </AlertDialogDescription>
               </AlertDialogHeader>

@@ -8,7 +8,6 @@ import {
   BookOpenIcon,
   CalendarClockIcon,
   FileTextIcon,
-  LibraryIcon,
   LoaderCircleIcon,
   PlusIcon,
   SearchIcon,
@@ -133,10 +132,9 @@ export function MaterialLibrary({
   return (
     <div className="flex w-full flex-col gap-6">
       <PageHeader
-        icon={LibraryIcon}
         eyebrow="Bahan ajar"
         title="Materi"
-        description="Susun pelajaran yang dapat dipakai ulang di BlockNote, lalu tambahkan ke course mana pun di workspace ini."
+        description="Susun pelajaran yang dapat dipakai ulang di BlockNote, lalu tambahkan ke kursus mana pun di workspace ini."
         actions={
           <Link
             href={`/workspace/${organizationSlug}/library/materials/new`}
@@ -185,7 +183,7 @@ export function MaterialLibrary({
             {courseOptions.length ? (
               <div>
                 <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.12em] uppercase">
-                  Berdasarkan course
+                  Berdasarkan kursus
                 </p>
                 <div className="grid gap-1">
                   {courseOptions.map((course) => (

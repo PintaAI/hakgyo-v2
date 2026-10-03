@@ -14,8 +14,8 @@ export function CatalogEnrollmentButton({ courseId }: { courseId: string }) {
     onError: (error) => {
       toast.error(
         error.data?.code === "CONFLICT"
-          ? "Pendaftaran course sedang diproses. Coba lagi."
-          : error.message || "Course belum dapat diikuti.",
+          ? "Pendaftaran kursus sedang diproses. Coba lagi."
+          : error.message || "Kursus belum dapat diikuti.",
       );
     },
   });

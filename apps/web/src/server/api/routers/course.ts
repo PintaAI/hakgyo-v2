@@ -243,7 +243,7 @@ export const courseRouter = createTRPCRouter({
         if (updated.count !== 1) {
           throw new TRPCError({
             code: "CONFLICT",
-            message: "Thumbnail course berubah. Silakan coba lagi.",
+            message: "Thumbnail kursus berubah. Silakan coba lagi.",
           });
         }
       } catch (error) {

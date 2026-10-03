@@ -2,7 +2,6 @@
 
 import { useState, type ComponentProps, type ComponentType } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   BookOpenIcon,
@@ -25,6 +24,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "~/components/ui/collapsible";
+import { CourseCover } from "~/components/course-cover";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   Sidebar,
@@ -153,14 +153,12 @@ function CollapsibleNavigationItem({
                     />
                   }
                 >
-                  {child.thumbnailUrl ? (
-                    <Image
-                      src={child.thumbnailUrl}
-                      alt=""
-                      width={24}
-                      height={24}
-                      unoptimized
-                      className="size-6 shrink-0 rounded-sm object-cover"
+                  {child.thumbnailUrl !== undefined ? (
+                    <CourseCover
+                      title={child.title}
+                      thumbnailUrl={child.thumbnailUrl}
+                      sizes="24px"
+                      className="size-6 rounded-sm"
                     />
                   ) : child.icon ? (
                     <child.icon />
@@ -215,7 +213,7 @@ export function AppSidebar({
       icon: LayoutDashboardIcon,
     },
     {
-      title: "Courses",
+      title: "Kursus",
       href: `${workspaceRoot}/courses`,
       icon: BookOpenIcon,
       items: recentCourses.map((course) => ({
@@ -382,18 +380,12 @@ export function AppSidebar({
                           />
                         }
                       >
-                        {cohort.course.thumbnailUrl ? (
-                          <Image
-                            src={cohort.course.thumbnailUrl}
-                            alt=""
-                            width={24}
-                            height={24}
-                            unoptimized
-                            className="size-6 shrink-0 rounded-md object-cover"
-                          />
-                        ) : (
-                          <UsersIcon />
-                        )}
+                        <CourseCover
+                          title={cohort.course.title}
+                          thumbnailUrl={cohort.course.thumbnailUrl}
+                          sizes="24px"
+                          className="size-6 rounded-md"
+                        />
                         <span className="min-w-0">
                           <span className="block truncate">{cohort.name}</span>
                           <span className="text-sidebar-foreground/50 block truncate text-[0.65rem] group-data-[collapsible=icon]:hidden">

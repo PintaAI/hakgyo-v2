@@ -1,22 +1,21 @@
 import Link from "next/link";
-import { ArrowLeftIcon, SearchXIcon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 
+import { Headline, Kicker, leadText } from "~/components/brand/typography";
 import { buttonVariants } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 export default function NotFoundPage() {
   return (
     <main className="grid min-h-[70svh] place-items-center px-5 py-16">
-      <section className="w-full max-w-xl text-center">
-        <span className="bg-muted text-muted-foreground mx-auto grid size-14 place-items-center rounded-2xl">
-          <SearchXIcon className="size-7" aria-hidden="true" />
-        </span>
-        <p className="text-primary mt-6 text-sm font-bold tracking-widest uppercase">
-          404
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-          Halaman tidak ditemukan
-        </h1>
-        <p className="text-muted-foreground mx-auto mt-3 max-w-md leading-7">
+      <section className="w-full max-w-2xl text-center">
+        <Kicker className="justify-center">404</Kicker>
+        <Headline
+          as="h1"
+          title="Halaman tidak ditemukan."
+          className="mt-3 sm:mt-5"
+        />
+        <p className={cn(leadText, "mx-auto mt-4")}>
           Tautan mungkin sudah berubah, atau konten yang kamu cari tidak lagi
           tersedia.
         </p>

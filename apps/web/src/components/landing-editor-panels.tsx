@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
 import { CopyButton } from "~/components/ui/copy-button";
 import { Button } from "~/components/ui/button";
+import { Kicker } from "~/components/brand/typography";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import {
@@ -38,9 +39,55 @@ export function formatTime(value: Date) {
   });
 }
 
-/** Human label for a copy key such as `hero.title` → "Hero · title". */
-function fieldLabel(key: string) {
-  return key.split(".").join(" · ");
+const sectionNames: Record<string, string> = {
+  seo: "SEO (hasil pencarian)",
+  nav: "Navigasi",
+  hero: "Bagian pembuka",
+  about: "Tentang lembaga",
+  courses: "Daftar kursus",
+  features: "Keunggulan",
+  testimonials: "Testimoni",
+  faq: "FAQ",
+  cta: "Ajakan",
+  contact: "Kontak",
+  footer: "Footer",
+};
+
+const fieldNames: Record<string, string> = {
+  title: "Judul",
+  heading: "Judul",
+  subtitle: "Subjudul",
+  description: "Deskripsi",
+  body: "Isi teks",
+  text: "Teks",
+  eyebrow: "Label kecil di atas judul",
+  cta: "Tombol",
+  button: "Tombol",
+  brand: "Nama brand",
+  label: "Label",
+  name: "Nama",
+  quote: "Kutipan",
+};
+
+/** "starting-price" → "Starting price", for keys outside the known names. */
+function readable(part: string) {
+  const words = part.replace(/[-_]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+  return words.charAt(0).toUpperCase() + words.slice(1).toLowerCase();
+}
+
+/**
+ * The section and field of a copy key such as `hero.title`, named for
+ * people: "Bagian pembuka" and "Judul".
+ */
+function describeKey(key: string) {
+  const [section = "", ...rest] = key.split(".");
+  const field = rest.join(".");
+  return {
+    section: sectionNames[section] ?? readable(section),
+    field: field
+      ? (fieldNames[field] ?? readable(field.split(".").join(" ")))
+      : "Teks",
+  };
 }
 
 export function LandingCopyPanel({
@@ -64,15 +111,20 @@ export function LandingCopyPanel({
     );
   return (
     <div className="grid gap-4">
-      {fields.map((field) => {
+      {fields.map((field, index) => {
         const value = edits[field.key] ?? field.text;
+        const { section, field: name } = describeKey(field.key);
+        // Fields come in page order; name each section where it starts.
+        const startsSection =
+          index === 0 ||
+          describeKey(fields[index - 1]!.key).section !== section;
         return (
           <div key={field.key} className="grid gap-1.5">
-            <Label
-              htmlFor={`copy-${field.key}`}
-              className="text-muted-foreground font-mono text-xs"
-            >
-              {fieldLabel(field.key)}
+            {startsSection ? (
+              <Kicker className={cn(index > 0 && "mt-4")}>{section}</Kicker>
+            ) : null}
+            <Label htmlFor={`copy-${field.key}`} className="text-xs">
+              {name}
             </Label>
             <Textarea
               id={`copy-${field.key}`}

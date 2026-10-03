@@ -97,7 +97,7 @@ function PickerBody({
           <DialogTitle>Pilih buku PDF</DialogTitle>
           <DialogDescription>
             Pilih buku yang sudah diunggah atau unggah PDF baru. Buku bisa
-            dipakai ulang di semua course organisasi.
+            dipakai ulang di semua kursus organisasi.
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto p-5">

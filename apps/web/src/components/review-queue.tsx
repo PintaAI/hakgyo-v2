@@ -5,7 +5,6 @@ import {
   CheckCircle2Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ClipboardCheckIcon,
   InboxIcon,
   LoaderCircleIcon,
   SearchIcon,
@@ -55,7 +54,7 @@ const kindLabel = {
   ALL: "Semua jenis",
   CHAPTER: "Tugas bab",
   QUICK_ASSESSMENT: "On-demand · Group belajar",
-  TRYOUT: "Tryout · course",
+  TRYOUT: "Tryout · kursus",
 } as const;
 const date = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
@@ -199,7 +198,7 @@ function AttemptDetail({
         </p>
         <p className="text-muted-foreground text-sm">
           {attempt.context.course.title} ·{" "}
-          {attempt.context.cohort?.name ?? "Course"} · Bab:{" "}
+          {attempt.context.cohort?.name ?? "Kursus"} · Bab:{" "}
           {attempt.context.moduleTitle}
         </p>
         <p className="text-muted-foreground text-xs">
@@ -416,7 +415,7 @@ export function ReviewQueue({
     (c) => !(courseId ?? course) || c.courseId === (courseId ?? course),
   );
   const courseLabel =
-    courses.find((c) => c.id === course)?.title ?? "Semua course";
+    courses.find((c) => c.id === course)?.title ?? "Semua kursus";
   const cohortLabel =
     cohorts.find((c) => c.id === cohort)?.name ?? "Semua Group belajar";
   const embedded = Boolean(courseId ?? cohortId);
@@ -428,7 +427,6 @@ export function ReviewQueue({
         <p className="text-muted-foreground text-sm">{description}</p>
       ) : (
         <PageHeader
-          icon={ClipboardCheckIcon}
           eyebrow="Workspace"
           title={cohortName ? `Tugas · ${cohortName}` : "Hasil & review tugas"}
           description={description}
@@ -513,13 +511,13 @@ export function ReviewQueue({
                   }
                 }}
               >
-                <SelectTrigger aria-label="Course" className="max-w-56">
+                <SelectTrigger aria-label="Kursus" className="max-w-56">
                   <span className="flex flex-1 truncate text-left">
                     {courseLabel}
                   </span>
                 </SelectTrigger>
                 <SelectContent align="end">
-                  <SelectItem value="ALL">Semua course</SelectItem>
+                  <SelectItem value="ALL">Semua kursus</SelectItem>
                   {courses.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.title}
@@ -628,7 +626,7 @@ export function ReviewQueue({
                     <p className="mt-1 font-medium">{attempt.context.title}</p>
                     <p className="text-muted-foreground text-xs">
                       {attempt.context.course.title} ·{" "}
-                      {attempt.context.cohort?.name ?? "Course"} ·{" "}
+                      {attempt.context.cohort?.name ?? "Kursus"} ·{" "}
                       {attempt.context.moduleTitle}
                     </p>
                     <p className="text-muted-foreground text-xs">

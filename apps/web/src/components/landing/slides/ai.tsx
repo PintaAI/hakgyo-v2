@@ -14,7 +14,7 @@ const builtInAi = [
   { icon: ImageIcon, text: "Soal dan kosakata dari foto" },
   { icon: ListTreeIcon, text: "Daftar isi otomatis dari buku PDF" },
   { icon: PaletteIcon, text: "Tema warna dari logo lembaga" },
-  { icon: ImageIcon, text: "Thumbnail course" },
+  { icon: ImageIcon, text: "Thumbnail kursus" },
 ];
 
 /** The AI assistant over MCP and the AI built into Hakgyo. */

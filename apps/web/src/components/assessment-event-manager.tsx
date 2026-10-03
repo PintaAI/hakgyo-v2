@@ -397,12 +397,12 @@ export function AssessmentEventManager({
           <h2 className="font-heading mt-1 text-2xl font-medium tracking-tight">
             {cohortId
               ? `Event ${cohortName ?? "Group belajar"}`
-              : "Tryout course"}
+              : "Tryout kursus"}
           </h2>
           <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
             {cohortId
               ? "Jalankan tugas on-demand untuk siswa aktif cohort. Hasil dan review tersedia per siswa."
-              : "Jalankan tryout untuk semua peserta aktif course dan bandingkan hasilnya."}
+              : "Jalankan tryout untuk semua peserta aktif kursus dan bandingkan hasilnya."}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -445,7 +445,7 @@ export function AssessmentEventManager({
           <TrophyIcon className="text-muted-foreground mx-auto size-7" />
           <h3 className="mt-3 font-medium">Belum ada event tugas</h3>
           <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-            Buat event pertama dari tugas yang sudah dipublish di course.
+            Buat event pertama dari tugas yang sudah dipublish di kursus.
           </p>
         </div>
       )}
@@ -484,7 +484,7 @@ export function AssessmentEventManager({
               <p className="text-muted-foreground text-sm">
                 {cohortId
                   ? "Tugas on-demand · Group belajar"
-                  : "Tryout · course"}
+                  : "Tryout · kursus"}
               </p>
               <div className="space-y-2">
                 <Label htmlFor="event-title">Judul</Label>
@@ -494,7 +494,7 @@ export function AssessmentEventManager({
                   maxLength={200}
                   required
                   placeholder={
-                    cohortId ? "Tugas cepat pekan 1" : "Tryout akhir course"
+                    cohortId ? "Tugas cepat pekan 1" : "Tryout akhir kursus"
                   }
                   onChange={(event) => setTitle(event.target.value)}
                 />
@@ -508,7 +508,7 @@ export function AssessmentEventManager({
                   value={courseItemId}
                   onValueChange={setCourseItemId}
                   loading={assessmentItems.isPending}
-                  emptyLabel="Belum ada tugas yang siap di course ini"
+                  emptyLabel="Belum ada tugas yang siap di kursus ini"
                   description="Hanya tugas yang tampil di kurikulum dan sudah memiliki soal."
                   defaultSortLabel="Urutan kurikulum"
                 />
@@ -629,7 +629,7 @@ function EventCard({
   onSelect: () => void;
 }) {
   return (
-    <Card className="rounded-lg">
+    <Card>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>

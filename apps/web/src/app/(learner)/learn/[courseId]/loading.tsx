@@ -4,7 +4,7 @@ export default function LearningCourseLoading() {
   return (
     <div
       className="mx-auto w-full max-w-6xl space-y-8"
-      aria-label="Memuat course"
+      aria-label="Memuat kursus"
     >
       <Skeleton className="h-8 w-28" />
       <Skeleton className="h-64 rounded-lg" />
