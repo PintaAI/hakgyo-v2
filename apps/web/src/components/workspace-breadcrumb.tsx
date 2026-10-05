@@ -17,6 +17,7 @@ const sectionLabels: Record<string, string> = {
   dashboard: "Dashboard",
   library: "Bahan ajar",
   members: "Anggota",
+  "quiz-publik": "Quiz publik",
   reviews: "Review",
   settings: "Pengaturan",
 };

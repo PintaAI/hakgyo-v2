@@ -18,6 +18,7 @@ import { organizationRouter } from "~/server/api/routers/organization";
 import { paymentRouter } from "~/server/api/routers/payment";
 import { pdfBookRouter } from "~/server/api/routers/pdf-book";
 import { practiceRouter } from "~/server/api/routers/practice";
+import { publicQuizRouter } from "~/server/api/routers/public-quiz";
 import { storageRouter } from "~/server/api/routers/storage";
 import { superadminRouter } from "~/server/api/routers/superadmin";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
@@ -48,6 +49,7 @@ export const appRouter = createTRPCRouter({
   payment: paymentRouter,
   pdfBook: pdfBookRouter,
   practice: practiceRouter,
+  publicQuiz: publicQuizRouter,
   storage: storageRouter,
   superadmin: superadminRouter,
 });

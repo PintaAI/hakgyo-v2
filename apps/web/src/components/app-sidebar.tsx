@@ -16,6 +16,7 @@ import {
   LibraryIcon,
   BookMarkedIcon,
   Settings2Icon,
+  TrophyIcon,
   UsersIcon,
 } from "lucide-react";
 
@@ -250,6 +251,11 @@ export function AppSidebar({
       title: "Review",
       href: `${workspaceRoot}/reviews`,
       icon: ClipboardCheckIcon,
+    },
+    {
+      title: "Quiz publik",
+      href: `${workspaceRoot}/quiz-publik`,
+      icon: TrophyIcon,
     },
   ];
   const organizationNavigation: NavigationItem[] = [
