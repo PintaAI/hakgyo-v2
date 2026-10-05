@@ -61,8 +61,8 @@ export default function PrivacyPage() {
         <Section title="Peran Hakgyo dan lembaga">
           <p>
             Setiap kelas di Hakgyo dijalankan oleh sebuah lembaga (organisasi).
-            Lembaga menentukan siapa yang terdaftar di kursus dan group belajar
-            mereka serta mengelola materi, tugas, dan penilaian. Hakgyo
+            Lembaga menentukan siapa yang terdaftar di kurikulum dan group
+            belajar mereka serta mengelola materi, tugas, dan penilaian. Hakgyo
             menyimpan dan memproses data tersebut untuk menjalankan layanan bagi
             lembaga dan penggunanya. Untuk pertanyaan tentang data Anda di kelas
             tertentu, Anda juga dapat menghubungi lembaga penyelenggaranya.
@@ -81,8 +81,8 @@ export default function PrivacyPage() {
               <strong className="text-foreground">
                 Keanggotaan dan kelas:
               </strong>{" "}
-              peran Anda di lembaga (pemilik, admin, pengajar), kursus dan group
-              belajar yang Anda ikuti, serta status pendaftaran.
+              peran Anda di lembaga (pemilik, admin, pengajar), kurikulum dan
+              group belajar yang Anda ikuti, serta status pendaftaran.
             </li>
             <li>
               <strong className="text-foreground">Aktivitas belajar:</strong>{" "}
@@ -121,7 +121,7 @@ export default function PrivacyPage() {
         <Section title="Cara kami memakai data">
           <List>
             <li>
-              Menjalankan layanan: menampilkan kursus, menyimpan progres,
+              Menjalankan layanan: menampilkan kurikulum, menyimpan progres,
               menilai tugas, dan menyinkronkan aplikasi mobile.
             </li>
             <li>
