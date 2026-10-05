@@ -394,8 +394,8 @@ function LiveAssessmentBanner({
           </p>
           <p className="text-xs leading-relaxed">
             Learner sedang bisa mengerjakannya, jadi soal dan pengaturan
-            dikunci. Sembunyikan item di kurikulum, atau buat duplikat untuk
-            diubah tanpa mengganggu learner.
+            dikunci. Sembunyikan item di materi kurikulum, atau buat duplikat
+            untuk diubah tanpa mengganggu learner.
           </p>
         </div>
       </div>
@@ -426,7 +426,7 @@ function LiveAssessmentBanner({
               )}
             >
               <EyeOffIcon data-icon="inline-start" />
-              Sembunyikan di kurikulum
+              Sembunyikan di materi kurikulum
             </Link>
           </li>
         ))}
@@ -615,7 +615,7 @@ export function AssessmentEditor({
                 });
                 await utils.assessment.list.invalidate({ organizationId });
                 toast.success(
-                  "Salinan dibuat di library. Salinan belum dipakai di kursus mana pun.",
+                  "Salinan dibuat di library. Salinan belum dipakai di kurikulum mana pun.",
                 );
                 router.push(
                   `/workspace/${organizationSlug}/library/assessments/${copy.assessmentId}`,
@@ -1681,7 +1681,7 @@ function AssessmentEditorForm({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Hapus tugas ini?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Tindakan ini permanen. Semua soal, penempatan di kursus,
+                    Tindakan ini permanen. Semua soal, penempatan di kurikulum,
                     event, jawaban, hasil, dan progres siswa akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>

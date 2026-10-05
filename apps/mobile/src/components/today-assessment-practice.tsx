@@ -139,7 +139,7 @@ export function TodayAssessmentPractice({
     <View className="gap-4">
       {!pool.hasAvailableContent ? (
         <Empty>
-          Latihan tugas muncul jika kursus yang terbuka memiliki soal pilihan
+          Latihan tugas muncul jika kurikulum yang terbuka memiliki soal pilihan
           yang dipublikasikan.
         </Empty>
       ) : finished ? (
@@ -148,8 +148,8 @@ export function TodayAssessmentPractice({
             {score} dari {questions.length} benar
           </Text>
           <Text className="text-sm leading-5 text-muted-foreground">
-            Latihan selesai. Nilai, percobaan, progres kursus, dan XP kamu tidak
-            berubah.
+            Latihan selesai. Nilai, percobaan, progres kurikulum, dan XP kamu
+            tidak berubah.
           </Text>
           <StudyAction secondary onPress={openQuestions}>
             Tinjau soal

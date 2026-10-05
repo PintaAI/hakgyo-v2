@@ -74,7 +74,7 @@ export function AssessmentLibrary({
       <PageHeader
         eyebrow="Bahan ajar"
         title="Tugas"
-        description="Susun soal pilihan ganda dan jawaban tertulis yang dapat dipakai di kursus mana pun di workspace ini."
+        description="Susun soal pilihan ganda dan jawaban tertulis yang dapat dipakai di kurikulum mana pun di workspace ini."
         actions={
           <Link
             href={`/workspace/${organizationSlug}/library/assessments/new`}
@@ -136,8 +136,7 @@ export function AssessmentLibrary({
 
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-muted-foreground text-xs">
-              {visibleAssessments.length} dari {allAssessments.length}{" "}
-              assessment
+              {visibleAssessments.length} dari {allAssessments.length} tugas
             </p>
             {status !== "ALL" || deferredSearch ? (
               <Button
@@ -154,7 +153,7 @@ export function AssessmentLibrary({
           </div>
 
           {visibleAssessments.length ? (
-            <div className="grid gap-3">
+            <div className="grid gap-3 max-sm:-mx-4 max-sm:gap-0 max-sm:divide-y max-sm:border-y">
               {visibleAssessments.map((assessment) => (
                 <AssessmentRow
                   key={assessment.id}
@@ -174,7 +173,7 @@ export function AssessmentLibrary({
               description={
                 deferredSearch || status !== "ALL"
                   ? "Coba judul atau filter status yang berbeda."
-                  : "Buat tugas pertama untuk menambahkan evaluasi ke kursus."
+                  : "Buat tugas pertama untuk menambahkan evaluasi ke kurikulum."
               }
               action={
                 deferredSearch || status !== "ALL" ? null : (
@@ -205,11 +204,11 @@ function AssessmentRow({
   return (
     <Link
       href={`/workspace/${organizationSlug}/library/assessments/${assessment.id}`}
-      className="group bg-card focus-visible:ring-ring/50 hover:border-foreground/20 hover:bg-muted/20 grid gap-4 rounded-xl border p-4 transition-colors outline-none focus-visible:ring-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      className="group focus-visible:ring-ring/50 hover:bg-muted/20 sm:bg-card sm:hover:border-foreground/20 grid gap-4 p-4 transition-colors outline-none focus-visible:ring-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:rounded-xl sm:border"
     >
       <div className="flex min-w-0 items-start gap-3">
-        <span className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg">
-          <FileQuestionIcon className="size-5" />
+        <span className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10">
+          <FileQuestionIcon className="size-4 sm:size-5" />
         </span>
         <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -225,25 +224,30 @@ function AssessmentRow({
                   aria-hidden="true"
                   className="size-1.5 rounded-full bg-emerald-500"
                 />
-                Tayang di {Math.max(assessment._count.liveCourses, 1)} course
+                Tayang di {Math.max(assessment._count.liveCourses, 1)} kurikulum
               </Badge>
             ) : null}
           </div>
-          <p className="text-muted-foreground line-clamp-2 text-sm">
+          <p
+            className={cn(
+              "text-muted-foreground line-clamp-2 text-sm",
+              !assessment.description && "max-sm:hidden",
+            )}
+          >
             {assessment.description ?? "Belum ada deskripsi."}
           </p>
           <div className="text-muted-foreground mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
             <span>{assessment._count.questions} soal</span>
             <span>
               {assessment._count.courseItems
-                ? `Dipakai di ${assessment._count.courseItems} item kursus`
-                : "Belum dipakai di kursus"}
+                ? `Dipakai di ${assessment._count.courseItems} item kurikulum`
+                : "Belum dipakai di kurikulum"}
             </span>
             <span>Diperbarui {dateFormatter.format(assessment.updatedAt)}</span>
           </div>
         </div>
       </div>
-      <span className="text-muted-foreground flex items-center justify-end gap-1 text-sm sm:justify-start">
+      <span className="text-muted-foreground flex items-center justify-end gap-1 text-sm max-sm:hidden sm:justify-start">
         Buka
         <ArrowUpRightIcon
           className={cn(

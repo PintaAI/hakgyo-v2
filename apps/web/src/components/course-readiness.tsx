@@ -77,7 +77,7 @@ const stateMeta: Record<
     dotClassName: "bg-muted-foreground/50",
   },
   HIDDEN_COURSE_UNPUBLISHED: {
-    label: "Tersembunyi · kursus belum dipublikasikan",
+    label: "Tersembunyi · kurikulum belum dipublikasikan",
     className:
       "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
     dotClassName: "bg-amber-500",
@@ -310,9 +310,9 @@ export function CoursePublicationControl({
         <AlertDialog open={unpublishOpen} onOpenChange={setUnpublishOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Batalkan publikasi kursus?</AlertDialogTitle>
+              <AlertDialogTitle>Batalkan publikasi kurikulum?</AlertDialogTitle>
               <AlertDialogDescription>
-                Semua item akan disembunyikan dari siswa sampai kursus
+                Semua item akan disembunyikan dari siswa sampai kurikulum
                 dipublikasikan lagi. Pengaturan tampil tiap item tetap
                 tersimpan.
               </AlertDialogDescription>
@@ -344,20 +344,21 @@ export function CoursePublicationControl({
       <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Publikasikan kursus?</DialogTitle>
+            <DialogTitle>Publikasikan kurikulum?</DialogTitle>
             <DialogDescription>
-              Item yang ditampilkan di kurikulum akan langsung terlihat oleh
-              learner.
+              Item yang ditampilkan di materi kurikulum akan langsung terlihat
+              oleh learner.
             </DialogDescription>
           </DialogHeader>
           {readiness.isPending ? (
             <p className="text-muted-foreground flex items-center gap-2 py-4 text-sm">
               <LoaderCircleIcon className="size-4 animate-spin" />
-              Memeriksa kesiapan kurikulum…
+              Memeriksa kesiapan materi kurikulum…
             </p>
           ) : readiness.error || !preview ? (
             <p className="text-destructive py-2 text-sm">
-              {readiness.error?.message ?? "Kesiapan kurikulum gagal dimuat."}
+              {readiness.error?.message ??
+                "Kesiapan materi kurikulum gagal dimuat."}
             </p>
           ) : (
             <div className="grid gap-4">
@@ -375,7 +376,7 @@ export function CoursePublicationControl({
               </dl>
               {preview.live.length === 0 && preview.blocking.length === 0 ? (
                 <p className="text-muted-foreground text-xs">
-                  Belum ada item yang ditampilkan. Kursus tetap bisa
+                  Belum ada item yang ditampilkan. Kurikulum tetap bisa
                   dipublikasikan, tetapi siswa belum akan melihat materi.
                 </p>
               ) : null}
@@ -407,7 +408,7 @@ export function CoursePublicationControl({
               href={curriculumHref}
               className={buttonVariants({ variant: "outline" })}
             >
-              Buka kurikulum
+              Buka materi kurikulum
             </Link>
             <Button
               disabled={pending || !preview || preview.blocking.length > 0}

@@ -9,7 +9,7 @@ export default function CoursesError({ reset }: { reset: () => void }) {
     <div className="flex min-h-80 w-full flex-col items-center justify-center rounded-lg border border-dashed px-6 text-center">
       <AlertCircleIcon className="text-destructive size-7" />
       <h1 className="font-heading mt-4 text-xl font-semibold">
-        Kursus belum dapat dimuat
+        Kurikulum belum dapat dimuat
       </h1>
       <p className="text-muted-foreground mt-2 max-w-sm text-sm">
         Periksa koneksi Anda, lalu coba lagi.

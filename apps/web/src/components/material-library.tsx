@@ -134,7 +134,7 @@ export function MaterialLibrary({
       <PageHeader
         eyebrow="Bahan ajar"
         title="Materi"
-        description="Susun pelajaran yang dapat dipakai ulang di BlockNote, lalu tambahkan ke kursus mana pun di workspace ini."
+        description="Susun pelajaran yang dapat dipakai ulang di BlockNote, lalu tambahkan ke kurikulum mana pun di workspace ini."
         actions={
           <Link
             href={`/workspace/${organizationSlug}/library/materials/new`}
@@ -160,12 +160,13 @@ export function MaterialLibrary({
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start">
-          <aside className="space-y-5 lg:sticky lg:top-6">
-            <div>
-              <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.12em] uppercase">
+          {/* Below lg the filters collapse into one scrolling chip row. */}
+          <aside className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] max-sm:-mx-4 max-sm:px-4 lg:sticky lg:top-6 lg:block lg:space-y-5 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+            <div className="contents lg:block">
+              <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.12em] uppercase max-lg:sr-only">
                 Tampilan
               </p>
-              <div className="grid grid-cols-2 gap-1 lg:grid-cols-1">
+              <div className="contents lg:grid lg:grid-cols-1 lg:gap-1">
                 <ScopeButton
                   active={scope === "all"}
                   count={allMaterials.length}
@@ -181,11 +182,11 @@ export function MaterialLibrary({
               </div>
             </div>
             {courseOptions.length ? (
-              <div>
-                <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.12em] uppercase">
-                  Berdasarkan kursus
+              <div className="contents lg:block">
+                <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.12em] uppercase max-lg:sr-only">
+                  Berdasarkan kurikulum
                 </p>
-                <div className="grid gap-1">
+                <div className="contents lg:grid lg:gap-1">
                   {courseOptions.map((course) => (
                     <ScopeButton
                       key={course.id}
@@ -250,7 +251,7 @@ export function MaterialLibrary({
             </div>
 
             {visibleMaterials.length ? (
-              <div className="grid gap-3">
+              <div className="grid gap-3 max-sm:-mx-4 max-sm:gap-0 max-sm:divide-y max-sm:border-y">
                 {visibleMaterials.map((material) => (
                   <MaterialRow
                     key={material.id}
@@ -313,9 +314,10 @@ function ScopeButton({
     <button
       type="button"
       className={cn(
-        "flex min-w-0 items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+        "flex min-w-0 items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors max-lg:h-9 max-lg:max-w-56 max-lg:shrink-0 max-lg:rounded-full max-lg:border",
+        isCourse && "max-lg:pl-1.5",
         active
-          ? "bg-foreground text-background"
+          ? "bg-foreground text-background border-foreground"
           : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
       onClick={onClick}
@@ -324,6 +326,7 @@ function ScopeButton({
         {isCourse ? (
           <CourseThumbnail
             active={active}
+            className="max-lg:size-6 max-lg:rounded-full"
             thumbnailUrl={thumbnailUrl ?? null}
           />
         ) : null}
@@ -351,17 +354,22 @@ function MaterialRow({
   return (
     <Link
       href={`/workspace/${organizationSlug}/library/materials/${material.id}`}
-      className="group bg-card focus-visible:ring-ring/50 hover:border-foreground/20 hover:bg-muted/20 grid gap-4 rounded-xl border p-4 transition-colors outline-none focus-visible:ring-3 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.8fr)_auto] sm:items-center"
+      className="group focus-visible:ring-ring/50 hover:bg-muted/20 sm:bg-card sm:hover:border-foreground/20 grid gap-2 p-4 transition-colors outline-none focus-visible:ring-3 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.8fr)_auto] sm:items-center sm:gap-4 sm:rounded-xl sm:border"
     >
       <div className="min-w-0">
         <h2 className="font-heading flex min-w-0 items-center gap-2 truncate font-semibold">
           <FileTextIcon className="text-muted-foreground size-4 shrink-0" />
           {material.title}
         </h2>
-        <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+        <p
+          className={cn(
+            "text-muted-foreground mt-1 line-clamp-2 text-sm",
+            !material.description && "max-sm:hidden",
+          )}
+        >
           {material.description ?? "Belum ada deskripsi."}
         </p>
-        <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:mt-3">
           <span className="flex items-center gap-1.5">
             <CalendarClockIcon className="size-3.5" />
             {dateFormatter.format(new Date(material.updatedAt))}
@@ -373,7 +381,7 @@ function MaterialRow({
         </div>
       </div>
 
-      <div className="min-w-0 border-t pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
+      <div className="min-w-0 sm:border-l sm:pl-4">
         {visibleUsages.length ? (
           <div className="space-y-2">
             {visibleUsages.map((usage) => (
@@ -389,7 +397,7 @@ function MaterialRow({
             ))}
             {usages.length > visibleUsages.length ? (
               <p className="text-muted-foreground pl-10 text-[11px]">
-                +{usages.length - visibleUsages.length} course lainnya
+                +{usages.length - visibleUsages.length} kurikulum lainnya
               </p>
             ) : null}
           </div>
@@ -405,9 +413,11 @@ function MaterialRow({
 
 function CourseThumbnail({
   active = false,
+  className,
   thumbnailUrl,
 }: {
   active?: boolean;
+  className?: string;
   thumbnailUrl: string | null;
 }) {
   return thumbnailUrl ? (
@@ -417,7 +427,10 @@ function CourseThumbnail({
       width={32}
       height={32}
       unoptimized
-      className="size-8 shrink-0 rounded-md border object-cover"
+      className={cn(
+        "size-8 shrink-0 rounded-md border object-cover",
+        className,
+      )}
     />
   ) : (
     <span
@@ -425,6 +438,7 @@ function CourseThumbnail({
       className={cn(
         "flex size-8 shrink-0 items-center justify-center rounded-md border",
         active ? "border-background/15 bg-background/10" : "bg-muted",
+        className,
       )}
     >
       <BookOpenIcon className="size-3.5" />

@@ -214,7 +214,7 @@ export function AppSidebar({
       icon: LayoutDashboardIcon,
     },
     {
-      title: "Kursus",
+      title: "Kurikulum",
       href: `${workspaceRoot}/courses`,
       icon: BookOpenIcon,
       items: recentCourses.map((course) => ({

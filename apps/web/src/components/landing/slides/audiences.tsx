@@ -23,7 +23,7 @@ const audiences = [
   },
   {
     icon: Building2Icon,
-    name: "Lembaga kursus",
+    name: "Lembaga kurikulum",
     points: [
       "Banyak pengajar, kelas, dan angkatan",
       "Role Owner, Admin, Pengajar, Instruktur, Asisten",

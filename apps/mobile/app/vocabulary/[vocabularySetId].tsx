@@ -66,7 +66,7 @@ export default function VocabularySetScreen() {
             retry={() => void query.refetch()}
           />
           {!vocabularySetId || !sourceCourseItemId ? (
-            <Empty>Buka set kosakata dari kursus atau materi.</Empty>
+            <Empty>Buka set kosakata dari kurikulum atau materi.</Empty>
           ) : null}
         </View>
       )}

@@ -374,7 +374,7 @@ export async function notifyEnrollmentAdded(userId: string, cohortId: string) {
     type: "enrollment",
     title: `Kamu terdaftar di ${cohort.course.title}`,
     body: cohort.defaultForCourseId
-      ? "Kursus ini sekarang bisa kamu pelajari."
+      ? "Kurikulum ini sekarang bisa kamu pelajari."
       : `Kamu bergabung dengan kelas ${cohort.name}.`,
     organizationId: cohort.organizationId,
     data: { cohortId, courseId: cohort.courseId },
@@ -404,7 +404,7 @@ export async function notifyEnrollmentRemoved(
     type: "enrollment",
     title: `Akses ${cohort.course.title} berakhir`,
     body: cohort.defaultForCourseId
-      ? "Pengelola kursus menghapus akses belajar mandirimu."
+      ? "Pengelola kurikulum menghapus akses belajar mandirimu."
       : `Kamu tidak lagi terdaftar di kelas ${cohort.name}.`,
     organizationId: cohort.organizationId,
     data: { cohortId, courseId: cohort.courseId },

@@ -16,6 +16,7 @@ import { EmptyState } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { PageHeader } from "~/components/ui/page-header";
+import { StatStrip } from "~/components/ui/stat-strip";
 import { Textarea } from "~/components/ui/textarea";
 import {
   Dialog,
@@ -38,7 +39,6 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Detail = RouterOutputs["assessment"]["getReviewAttempt"];
@@ -54,7 +54,7 @@ const kindLabel = {
   ALL: "Semua jenis",
   CHAPTER: "Tugas bab",
   QUICK_ASSESSMENT: "On-demand · Group belajar",
-  TRYOUT: "Tryout · kursus",
+  TRYOUT: "Tryout · kurikulum",
 } as const;
 const date = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
@@ -198,7 +198,7 @@ function AttemptDetail({
         </p>
         <p className="text-muted-foreground text-sm">
           {attempt.context.course.title} ·{" "}
-          {attempt.context.cohort?.name ?? "Kursus"} · Bab:{" "}
+          {attempt.context.cohort?.name ?? "Kurikulum"} · Bab:{" "}
           {attempt.context.moduleTitle}
         </p>
         <p className="text-muted-foreground text-xs">
@@ -410,53 +410,50 @@ export function ReviewQueue({
     { enabled: !cohortScoped },
   );
   const data = query.data;
+  type Attempt = NonNullable<typeof data>["items"][number];
+  const attemptStatus = (attempt: Attempt) =>
+    attempt.invalidated
+      ? "Tidak valid"
+      : attempt.assessmentEvent?.status === "CANCELLED"
+        ? "Dibatalkan"
+        : statusLabel[attempt.status];
+  const needsReview = (attempt: Attempt) =>
+    attempt.status === "IN_REVIEW" &&
+    !attempt.invalidated &&
+    attempt.assessmentEvent?.status !== "CANCELLED";
   const courses = filters.data?.courses ?? [];
   const cohorts = (filters.data?.cohorts ?? []).filter(
     (c) => !(courseId ?? course) || c.courseId === (courseId ?? course),
   );
   const courseLabel =
-    courses.find((c) => c.id === course)?.title ?? "Semua kursus";
+    courses.find((c) => c.id === course)?.title ?? "Semua kurikulum";
   const cohortLabel =
     cohorts.find((c) => c.id === cohort)?.name ?? "Semua Group belajar";
   const embedded = Boolean(courseId ?? cohortId);
-  const description =
-    "Pantau semua pengerjaan, lihat hasil otomatis, dan review jawaban tertulis. Data diperbarui setiap 30 detik.";
   return (
     <div className="flex w-full flex-col gap-6">
-      {embedded ? (
-        <p className="text-muted-foreground text-sm">{description}</p>
-      ) : (
+      {embedded ? null : (
         <PageHeader
           eyebrow="Workspace"
           title={cohortName ? `Tugas · ${cohortName}` : "Hasil & review tugas"}
-          description={description}
+          description="Pantau semua pengerjaan, lihat hasil otomatis, dan review jawaban tertulis. Data diperbarui setiap 30 detik."
         />
       )}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {(["IN_REVIEW", "GRADED", "IN_PROGRESS"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={status === value}
-            onClick={() => {
+      <StatStrip
+        label="Ringkasan pengerjaan"
+        items={(["IN_REVIEW", "GRADED", "IN_PROGRESS"] as const).map(
+          (value) => ({
+            label: statusLabel[value],
+            value: data?.counts[value] ?? "—",
+            attention: value === "IN_REVIEW" && (data?.counts[value] ?? 0) > 0,
+            selected: status === value,
+            onSelect: () => {
               setStatus(value);
               setPage(1);
-            }}
-            className={cn(
-              "bg-card hover:bg-muted/40 focus-visible:ring-ring/50 rounded-xl border p-4 text-left transition-colors outline-none focus-visible:ring-3",
-              status === value &&
-                "border-primary bg-primary/5 hover:bg-primary/5",
-            )}
-          >
-            <span className="text-muted-foreground text-xs">
-              {statusLabel[value]}
-            </span>
-            <strong className="font-heading mt-1 block text-2xl font-semibold tabular-nums">
-              {data?.counts[value] ?? "—"}
-            </strong>
-          </button>
-        ))}
-      </div>
+            },
+          }),
+        )}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <form
           role="search"
@@ -511,13 +508,13 @@ export function ReviewQueue({
                   }
                 }}
               >
-                <SelectTrigger aria-label="Kursus" className="max-w-56">
+                <SelectTrigger aria-label="Kurikulum" className="max-w-56">
                   <span className="flex flex-1 truncate text-left">
                     {courseLabel}
                   </span>
                 </SelectTrigger>
                 <SelectContent align="end">
-                  <SelectItem value="ALL">Semua kursus</SelectItem>
+                  <SelectItem value="ALL">Semua kurikulum</SelectItem>
                   {courses.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.title}
@@ -598,90 +595,130 @@ export function ReviewQueue({
           }
         />
       ) : (
-        <div className="rounded-xl border">
-          <Table>
-            <TableHeader className="bg-muted/40">
-              <TableRow>
-                <TableHead className="px-3">Siswa</TableHead>
-                <TableHead className="px-3">Tugas & konteks</TableHead>
-                <TableHead className="px-3">Status</TableHead>
-                <TableHead className="px-3">Nilai</TableHead>
-                <TableHead className="px-3">Waktu</TableHead>
-                <TableHead className="px-3">
-                  <span className="sr-only">Aksi</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.items.map((attempt) => (
-                <TableRow key={attempt.id}>
-                  <TableCell className="p-3">
-                    <p className="font-medium">{attempt.user.name}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {attempt.user.email}
-                    </p>
-                  </TableCell>
-                  <TableCell className="min-w-56 p-3 whitespace-normal">
-                    <Badge variant="outline">{attempt.context.label}</Badge>
-                    <p className="mt-1 font-medium">{attempt.context.title}</p>
-                    <p className="text-muted-foreground text-xs">
+        <>
+          {/* Phones get tappable rows; the table returns from sm. */}
+          <ul className="divide-y border-y max-sm:-mx-4 sm:hidden">
+            {data.items.map((attempt) => (
+              <li key={attempt.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelected(attempt.id)}
+                  className="hover:bg-muted/50 flex w-full items-start gap-3 px-4 py-3 text-left transition-colors"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-medium">
+                        {attempt.user.name}
+                      </span>
+                      <span className="text-muted-foreground shrink-0 text-xs">
+                        {date.format(attempt.submittedAt ?? attempt.startedAt)}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block truncate text-sm">
+                      {attempt.context.title}
+                    </span>
+                    <span className="text-muted-foreground block truncate text-xs">
                       {attempt.context.course.title} ·{" "}
-                      {attempt.context.cohort?.name ?? "Kursus"} ·{" "}
-                      {attempt.context.moduleTitle}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      Percobaan #{attempt.attemptNumber}
-                    </p>
-                  </TableCell>
-                  <TableCell className="p-3">
-                    <Badge variant="secondary">
-                      {attempt.invalidated
-                        ? "Tidak valid"
-                        : attempt.assessmentEvent?.status === "CANCELLED"
-                          ? "Dibatalkan"
-                          : statusLabel[attempt.status]}
-                    </Badge>
-                    {attempt.status === "GRADED" ? (
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        {attempt.grading === "AUTOMATIC"
-                          ? "Dinilai otomatis"
-                          : "Review pengajar"}
-                      </p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="p-3 tabular-nums">
-                    {attempt.score !== null ? (
-                      <>
-                        {attempt.score}/{attempt.maxScore}
-                        <p className="text-muted-foreground text-xs">
+                      {attempt.context.cohort?.name ?? "Kurikulum"}
+                    </span>
+                    <span className="mt-2 flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant={needsReview(attempt) ? "default" : "secondary"}
+                      >
+                        {attemptStatus(attempt)}
+                      </Badge>
+                      {attempt.score !== null ? (
+                        <span className="text-muted-foreground text-xs tabular-nums">
+                          {attempt.score}/{attempt.maxScore} ·{" "}
                           {attempt.passed ? "Lulus" : "Belum lulus"}
-                        </p>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground p-3 text-xs">
-                    {date.format(attempt.submittedAt ?? attempt.startedAt)}
-                  </TableCell>
-                  <TableCell className="p-3 text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelected(attempt.id)}
-                    >
-                      {attempt.status === "IN_REVIEW" &&
-                      !attempt.invalidated &&
-                      attempt.assessmentEvent?.status !== "CANCELLED"
-                        ? "Review"
-                        : "Lihat detail"}
-                    </Button>
-                  </TableCell>
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
+                  <ChevronRightIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="rounded-xl border max-sm:hidden">
+            <Table>
+              <TableHeader className="bg-muted/40">
+                <TableRow>
+                  <TableHead className="px-3">Siswa</TableHead>
+                  <TableHead className="px-3">Tugas & konteks</TableHead>
+                  <TableHead className="px-3">Status</TableHead>
+                  <TableHead className="px-3">Nilai</TableHead>
+                  <TableHead className="px-3">Waktu</TableHead>
+                  <TableHead className="px-3">
+                    <span className="sr-only">Aksi</span>
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {data.items.map((attempt) => (
+                  <TableRow key={attempt.id}>
+                    <TableCell className="p-3">
+                      <p className="font-medium">{attempt.user.name}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {attempt.user.email}
+                      </p>
+                    </TableCell>
+                    <TableCell className="min-w-56 p-3 whitespace-normal">
+                      <Badge variant="outline">{attempt.context.label}</Badge>
+                      <p className="mt-1 font-medium">
+                        {attempt.context.title}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {attempt.context.course.title} ·{" "}
+                        {attempt.context.cohort?.name ?? "Kurikulum"} ·{" "}
+                        {attempt.context.moduleTitle}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        Percobaan #{attempt.attemptNumber}
+                      </p>
+                    </TableCell>
+                    <TableCell className="p-3">
+                      <Badge variant="secondary">
+                        {attemptStatus(attempt)}
+                      </Badge>
+                      {attempt.status === "GRADED" ? (
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {attempt.grading === "AUTOMATIC"
+                            ? "Dinilai otomatis"
+                            : "Review pengajar"}
+                        </p>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="p-3 tabular-nums">
+                      {attempt.score !== null ? (
+                        <>
+                          {attempt.score}/{attempt.maxScore}
+                          <p className="text-muted-foreground text-xs">
+                            {attempt.passed ? "Lulus" : "Belum lulus"}
+                          </p>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground p-3 text-xs">
+                      {date.format(attempt.submittedAt ?? attempt.startedAt)}
+                    </TableCell>
+                    <TableCell className="p-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelected(attempt.id)}
+                      >
+                        {needsReview(attempt) ? "Review" : "Lihat detail"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
       <div className="flex items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">

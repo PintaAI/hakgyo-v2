@@ -1,15 +1,15 @@
-# Konsep Utama Kursus di Hakgyo
+# Konsep Utama Kurikulum di Hakgyo
 
-Kursus adalah ruang belajar terstruktur yang menghubungkan konten, pengajar, dan peserta didik. Sebuah kursus bukan hanya halaman berisi materi. Kursus menentukan urutan belajar, aturan akses, cara peserta didik menyelesaikan konten, dan kapan bagian berikutnya dapat dibuka.
+Kurikulum adalah ruang belajar terstruktur yang menghubungkan konten, pengajar, dan peserta didik. Sebuah kurikulum bukan hanya halaman berisi materi. Kurikulum menentukan urutan belajar, aturan akses, cara peserta didik menyelesaikan konten, dan kapan bagian berikutnya dapat dibuka.
 
-Dokumen ini menjelaskan hubungan antara **kursus**, **bab**, **bahan ajar**, **Pustaka Konten**, **gabung kursus**, dan **progress**.
+Dokumen ini menjelaskan hubungan antara **kurikulum**, **bab**, **bahan ajar**, **Pustaka Konten**, **gabung kurikulum**, dan **progress**.
 
-## Struktur Dasar Kursus
+## Struktur Dasar Kurikulum
 
-Setiap kursus tersusun dari beberapa bab. Setiap bab berisi bahan ajar yang menunjuk ke sebuah konten di Pustaka Konten.
+Setiap kurikulum tersusun dari beberapa bab. Setiap bab berisi bahan ajar yang menunjuk ke sebuah konten di Pustaka Konten.
 
 <div class="my-6 max-w-xl rounded-xl border p-4">
-    <div class="font-heading font-semibold">Kursus</div>
+    <div class="font-heading font-semibold">Kurikulum</div>
   <div class="ml-3 mt-3 grid gap-4 border-l pl-4">
     <div>
       <div class="mb-2 text-sm font-medium">Bab 1</div>
@@ -29,12 +29,12 @@ Setiap kursus tersusun dari beberapa bab. Setiap bab berisi bahan ajar yang menu
   </div>
 </div>
 
-Pemisahan ini membuat struktur kursus tetap rapi:
+Pemisahan ini membuat struktur kurikulum tetap rapi:
 
-- **Kursus** menyimpan identitas dan aturan belajar secara keseluruhan.
+- **Kurikulum** menyimpan identitas dan aturan belajar secara keseluruhan.
 - **Bab** mengelompokkan satu tahap atau topik pembelajaran.
 - **Bahan ajar** menentukan konten yang digunakan dan urutannya dalam bab.
-- **Pustaka Konten** menyimpan konten yang dapat dipakai ulang di beberapa kursus.
+- **Pustaka Konten** menyimpan konten yang dapat dipakai ulang di beberapa kurikulum.
 
 ## Tiga Jenis Konten
 
@@ -59,10 +59,10 @@ Pertanyaan pilihan dapat dinilai otomatis. Jawaban tertulis masuk ke antrean pem
 | Jenis konten        | Cara selesai                                                |
 | ------------------- | ----------------------------------------------------------- |
 | Materi Pembelajaran | Peserta didik menandai selesai dan seluruh syarat terpenuhi |
-| Kumpulan Kosakata  | Peserta didik menandai progress sebagai selesai             |
+| Kumpulan Kosakata   | Peserta didik menandai progress sebagai selesai             |
 | Tugas               | Pengerjaan dinilai dan mencapai nilai kelulusan             |
 
-## Pustaka Konten dan Item Kursus
+## Pustaka Konten dan Item Kurikulum
 
 Membuat konten di Pustaka Konten belum membuatnya terlihat oleh peserta didik. Pengelola harus memasang konten tersebut sebagai bahan ajar di sebuah bab.
 
@@ -89,35 +89,35 @@ Membuat konten di Pustaka Konten belum membuatnya terlihat oleh peserta didik. P
   <div class="pl-5 text-muted-foreground">↓</div>
   <div class="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-sm">
     <span class="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">5</span>
-    Terbitkan kursus
+    Terbitkan kurikulum
   </div>
 </div>
 
 Bahan ajar hanya boleh menunjuk ke satu konten: materi pembelajaran, kumpulan kosakata, atau tugas. Urutan bahan ajar di dalam bab menentukan urutan yang ditampilkan kepada peserta didik.
 
-Konten di Pustaka Konten dapat digunakan kembali. Sebagai contoh, kumpulan kosakata "Salam Dasar" dapat dipasang pada kursus Bahasa Jepang Pemula dan kursus Persiapan Percakapan tanpa menduplikasi data.
+Konten di Pustaka Konten dapat digunakan kembali. Sebagai contoh, kumpulan kosakata "Salam Dasar" dapat dipasang pada kurikulum Bahasa Jepang Pemula dan kurikulum Persiapan Percakapan tanpa menduplikasi data.
 
 ## Status dan Publication
 
-Kursus mempunyai status `DRAFT`, `PUBLISHED`, atau `ARCHIVED`. Peserta didik hanya dapat belajar pada kursus berstatus `PUBLISHED`.
+Kurikulum mempunyai status `DRAFT`, `PUBLISHED`, atau `ARCHIVED`. Peserta didik hanya dapat belajar pada kurikulum berstatus `PUBLISHED`.
 
-Bahan ajar juga mempunyai status publication sendiri. Karena itu, pengelola dapat menyiapkan bahan ajar baru di kursus yang sudah aktif tanpa langsung memperlihatkannya kepada peserta didik.
+Bahan ajar juga mempunyai status publication sendiri. Karena itu, pengelola dapat menyiapkan bahan ajar baru di kurikulum yang sudah aktif tanpa langsung memperlihatkannya kepada peserta didik.
 
 Sebuah item dapat diakses peserta didik jika:
 
-1. Kursus berstatus `PUBLISHED`.
+1. Kurikulum berstatus `PUBLISHED`.
 2. Bahan ajar sudah published.
-3. Peserta didik sudah gabung kursus dan aksesnya masih aktif.
+3. Peserta didik sudah gabung kurikulum dan aksesnya masih aktif.
 4. Bab tersebut sudah tersedia untuk peserta didik sesuai cara belajar yang dipilih.
 
-## Gabung Kursus dan Group belajar
+## Gabung Kurikulum dan Group belajar
 
-Gabung kursus adalah cara peserta didik mendapatkan akses ke kursus. Peserta didik dapat bergabung melalui pendaftaran terbuka, undangan, ditambahkan oleh pengelola, atau melalui Group belajar.
+Gabung kurikulum adalah cara peserta didik mendapatkan akses ke kurikulum. Peserta didik dapat bergabung melalui pendaftaran terbuka, undangan, ditambahkan oleh pengelola, atau melalui Group belajar.
 
-Group belajar adalah kelompok pelaksanaan untuk kursus yang sama. Satu kursus dapat mempunyai beberapa batch dengan peserta didik, pengajar, jadwal, dan meeting yang berbeda.
+Group belajar adalah kelompok pelaksanaan untuk kurikulum yang sama. Satu kurikulum dapat mempunyai beberapa batch dengan peserta didik, pengajar, jadwal, dan meeting yang berbeda.
 
 <div class="my-6 max-w-xl rounded-xl border p-4">
-  <div class="font-heading font-semibold">Kursus: Bahasa Jepang Pemula</div>
+  <div class="font-heading font-semibold">Kurikulum: Bahasa Jepang Pemula</div>
   <div class="ml-3 mt-3 grid gap-4 border-l pl-4">
     <div>
       <div class="text-sm font-medium">Gabung langsung</div>
@@ -134,13 +134,13 @@ Group belajar adalah kelompok pelaksanaan untuk kursus yang sama. Satu kursus da
   </div>
 </div>
 
-Kursus menyimpan kurikulum, sedangkan Group belajar menyimpan konteks pelaksanaannya.
+Kurikulum menyimpan materi kurikulum, sedangkan Group belajar menyimpan konteks pelaksanaannya.
 
 - **Gabung langsung** cocok untuk peserta didik yang belajar mandiri dan tidak memerlukan kelompok atau jadwal tertentu.
-- **Gabung melalui batch** menghubungkan peserta didik ke kursus sekaligus ke kelompok, pengajar, meeting, dan periode belajar tertentu.
-- Kedua cara bergabung memberi akses ke kurikulum kursus yang sama. Perbedaannya berada pada cara akses diberikan dan konteks pelaksanaannya.
+- **Gabung melalui batch** menghubungkan peserta didik ke kurikulum sekaligus ke kelompok, pengajar, meeting, dan periode belajar tertentu.
+- Kedua cara bergabung memberi akses ke materi kurikulum yang sama. Perbedaannya berada pada cara akses diberikan dan konteks pelaksanaannya.
 
-## Cara Belajar dalam Kursus
+## Cara Belajar dalam Kurikulum
 
 Hakgyo menyediakan dua cara untuk mengatur urutan belajar. Nama teknisnya tetap ada di sistem, tetapi maksudnya sederhana:
 
@@ -150,7 +150,7 @@ Semua bab yang sudah tersedia dapat langsung dibuka. Peserta didik bebas memilih
 
 Cara ini cocok untuk:
 
-- Kursus yang bisa dipelajari dengan urutan bebas.
+- Kurikulum yang bisa dipelajari dengan urutan bebas.
 - Materi referensi atau kumpulan pengetahuan.
 - Peserta didik yang ingin mengatur jadwal dan urutan belajarnya sendiri.
 
@@ -162,7 +162,7 @@ Bab dipelajari secara berurutan. Bab berikutnya baru terbuka setelah semua bahan
 
 Cara ini cocok untuk:
 
-- Kursus yang materinya saling menjadi dasar.
+- Kurikulum yang materinya saling menjadi dasar.
 - Pelajaran yang dimulai dari konsep sederhana lalu berkembang ke topik yang lebih sulit.
 - Program belajar yang ingin memastikan peserta didik mengikuti tahapan yang sudah disusun pengajar.
 
@@ -189,9 +189,9 @@ Completion bersifat monotonic. Setelah sebuah item selesai, statusnya tidak kemb
 
 Bab dianggap selesai setelah seluruh bahan ajar yang sudah published di dalamnya selesai. Bab kosong tidak dianggap selesai.
 
-## Contoh Kursus dari Awal sampai Selesai
+## Contoh Kurikulum dari Awal sampai Selesai
 
-Bayangkan sebuah kursus bernama **Bahasa Jepang untuk Pemula**.
+Bayangkan sebuah kurikulum bernama **Bahasa Jepang untuk Pemula**.
 
 ```text
 Bab 1: Perkenalan

@@ -35,7 +35,7 @@ const SLIDES: Slide[] = [
     eyebrow: "MULAI DARI NOL",
     title: "Kuasai Hangeul lebih dulu",
     description:
-      "Setiap akun baru langsung mendapat kursus Hangeul Mastery. Belajar membaca dan menulis huruf Korea langkah demi langkah.",
+      "Setiap akun baru langsung mendapat kurikulum Hangeul Mastery. Belajar membaca dan menulis huruf Korea langkah demi langkah.",
   },
   {
     key: "vocabulary",
@@ -127,7 +127,7 @@ function CoursePreview() {
     <PreviewCard>
       <View className="gap-1">
         <Text className="text-xs font-bold uppercase tracking-[1.5px] text-primary">
-          Kursus gratis
+          Kurikulum gratis
         </Text>
         <Text className="text-xl font-black text-foreground">
           Hangeul Mastery

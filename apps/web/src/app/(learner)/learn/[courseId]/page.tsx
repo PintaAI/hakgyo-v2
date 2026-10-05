@@ -10,7 +10,7 @@ import { learningItemHref } from "~/lib/learner/hrefs";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/server";
 
-export const metadata: Metadata = { title: "Kursus" };
+export const metadata: Metadata = { title: "Kurikulum" };
 
 export default async function LearningCoursePage({
   params,
@@ -64,7 +64,7 @@ export default async function LearningCoursePage({
         </div>
         <div
           role="progressbar"
-          aria-label="Progres kursus"
+          aria-label="Progres kurikulum"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={progress}
@@ -98,7 +98,7 @@ export default async function LearningCoursePage({
         </Link>
       ) : allItems.length > 0 && completedCount === allItems.length ? (
         <div className="border-primary/30 bg-primary/10 flex flex-col gap-2 rounded-2xl border p-5">
-          <p className="text-xl font-black">🏆 Kursus selesai!</p>
+          <p className="text-xl font-black">🏆 Kurikulum selesai!</p>
           <p className="text-muted-foreground text-sm leading-6">
             Kamu berhasil! Semua aktivitas sudah selesai — buka lagi materi di
             bawah kapan pun kamu ingin mengulang.

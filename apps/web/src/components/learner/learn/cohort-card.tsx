@@ -446,7 +446,7 @@ export function CohortCard({
         {progress !== null ? (
           <div
             role="progressbar"
-            aria-label="Progres kursus"
+            aria-label="Progres kurikulum"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={progress}
@@ -492,10 +492,10 @@ export function CohortCard({
         {outline || milestoneGroup ? (
           <section className="flex flex-col gap-3">
             <h3 className="text-muted-foreground text-xs font-bold tracking-[1.2px] uppercase">
-              Kurikulum pembelajaran
+              Materi kurikulum
             </h3>
             <SegmentedControl
-              label="Tampilan kurikulum"
+              label="Tampilan materi kurikulum"
               className="w-full"
               value={segment}
               onChange={setSegment}

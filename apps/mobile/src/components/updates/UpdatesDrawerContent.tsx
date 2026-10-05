@@ -367,7 +367,7 @@ export function UpdatesDrawerContent({
       meeting?.title ??
       "Pembaruan belajar";
     const detail = courseModule
-      ? `${course?.title ?? "Kursus"} · ${courseModule.items.length} aktivitas`
+      ? `${course?.title ?? "Kurikulum"} · ${courseModule.items.length} aktivitas`
       : event
         ? `${event.course.title} · Tugas`
         : meeting && cohort

@@ -13,7 +13,7 @@ import {
 } from "~/components/ui/breadcrumb";
 const sectionLabels: Record<string, string> = {
   "landing-page": "Landing page",
-  courses: "Kursus",
+  courses: "Kurikulum",
   dashboard: "Dashboard",
   library: "Bahan ajar",
   members: "Anggota",
@@ -22,10 +22,10 @@ const sectionLabels: Record<string, string> = {
   settings: "Pengaturan",
 };
 
-/** Pages below a kursus, keyed by the path segment after its id. */
+/** Pages below a kurikulum, keyed by the path segment after its id. */
 const coursePageLabels: Record<string, string> = {
   cohorts: "Group belajar",
-  kurikulum: "Kurikulum",
+  kurikulum: "Materi kurikulum",
 };
 
 export function WorkspaceBreadcrumb({
@@ -38,14 +38,14 @@ export function WorkspaceBreadcrumb({
   const section = segments[2];
   const sectionLabel = (section && sectionLabels[section]) ?? "Workspace";
   const workspaceHome = `/workspace/${organizationSlug}/dashboard`;
-  // Inside a kursus, the section links back to the list and the page below
-  // it is named, e.g. Workspace › Kursus › Group belajar.
+  // Inside a kurikulum, the section links back to the list and the page below
+  // it is named, e.g. Workspace › Kurikulum › Group belajar.
   const inCourse = section === "courses" && segments.length > 3;
   const pageLabel = !inCourse
     ? null
     : segments[3] === "new"
-      ? "Kursus baru"
-      : (coursePageLabels[segments[4] ?? ""] ?? "Detail kursus");
+      ? "Kurikulum baru"
+      : (coursePageLabels[segments[4] ?? ""] ?? "Detail kurikulum");
 
   return (
     <Breadcrumb>

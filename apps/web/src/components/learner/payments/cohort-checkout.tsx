@@ -183,7 +183,7 @@ export function CohortCheckout({
                   href={`/learn/${data.course.id}`}
                   className={buttonVariants({ className: "w-full" })}
                 >
-                  Buka kursus
+                  Buka kurikulum
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
               ) : null}

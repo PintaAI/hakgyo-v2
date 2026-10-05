@@ -129,7 +129,7 @@ export function CourseLearningFooter({
         setIssue({
           kind: "error",
           message:
-            "Buka daftar isi kursus untuk melihat apa yang masih perlu diselesaikan sebelum melanjutkan.",
+            "Buka daftar isi kurikulum untuk melihat apa yang masih perlu diselesaikan sebelum melanjutkan.",
         });
       return;
     }
@@ -142,12 +142,12 @@ export function CourseLearningFooter({
         readCourseOutline(queryClient, courseId, activeOrganizationId) ??
         outline.data;
       if (!before)
-        throw new Error("Data kursus tidak tersedia di perangkat ini.");
+        throw new Error("Data kurikulum tidak tersedia di perangkat ini.");
       baseline.current ??= before;
       const current = getLearningPath(before, courseItemId);
       if (!current)
         throw new Error(
-          "Aktivitas ini tidak lagi tersedia. Cek daftar isi kursus untuk langkah berikutnya.",
+          "Aktivitas ini tidak lagi tersedia. Cek daftar isi kurikulum untuk langkah berikutnya.",
         );
       if (!current.item.isCompleted) {
         if (completionMode === "assessment") {
@@ -177,7 +177,7 @@ export function CourseLearningFooter({
         );
         if (!after) {
           throw new Error(
-            "Penyelesaian sudah disinkronkan, tetapi kursus terbaru gagal dimuat.",
+            "Penyelesaian sudah disinkronkan, tetapi kurikulum terbaru gagal dimuat.",
           );
         }
         if (!mounted.current) return;
@@ -199,7 +199,7 @@ export function CourseLearningFooter({
           setIssue({
             kind: "error",
             message:
-              "Progres kamu tersimpan. Buka daftar isi kursus untuk melihat apa yang masih perlu diselesaikan.",
+              "Progres kamu tersimpan. Buka daftar isi kurikulum untuk melihat apa yang masih perlu diselesaikan.",
           });
         return;
       }
@@ -374,7 +374,7 @@ export function CourseLearningFooter({
             {busy
               ? "Menyimpan progres kamu…"
               : path?.courseCompleted && !path.nextItem
-                ? "Selesaikan kursus"
+                ? "Selesaikan kurikulum"
                 : path?.item.isCompleted || completionMode === "assessment"
                   ? "Lanjutkan belajar →"
                   : finishingModule
@@ -414,7 +414,7 @@ export function CourseLearningFooter({
     <View className="gap-6">
       <View className="items-center gap-2">
         <Text className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-          {milestone.courseCompleted ? "Kursus selesai" : "Bab selesai"}
+          {milestone.courseCompleted ? "Kurikulum selesai" : "Bab selesai"}
         </Text>
         <Text
           accessibilityRole="header"
@@ -442,7 +442,9 @@ export function CourseLearningFooter({
 
       <View className="gap-2">
         <StudyAction onPress={() => navigate(milestone.nextItem)}>
-          {milestone.nextItem ? "Lanjutkan belajar →" : "Lihat progres kursus"}
+          {milestone.nextItem
+            ? "Lanjutkan belajar →"
+            : "Lihat progres kurikulum"}
         </StudyAction>
         {milestone.nextItem ? (
           <Pressable
@@ -451,7 +453,7 @@ export function CourseLearningFooter({
             onPress={() => navigate()}
           >
             <Text className="font-semibold text-muted-foreground">
-              Kembali ke kursus
+              Kembali ke kurikulum
             </Text>
           </Pressable>
         ) : null}

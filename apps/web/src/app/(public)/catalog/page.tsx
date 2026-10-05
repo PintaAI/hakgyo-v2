@@ -9,8 +9,8 @@ import { PageHeader } from "~/components/ui/page-header";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
-  title: "Katalog kursus | Hakgyo",
-  description: "Jelajahi semua kursus yang dipublikasikan di Hakgyo.",
+  title: "Katalog kurikulum | Hakgyo",
+  description: "Jelajahi semua kurikulum yang dipublikasikan di Hakgyo.",
 };
 
 const pageSize = 24;
@@ -48,11 +48,11 @@ export default async function CatalogPage({
       <PageHeader
         className="mb-6"
         eyebrow="Katalog"
-        title="Katalog kursus"
-        description="Jelajahi semua kursus yang dipublikasikan di Hakgyo."
+        title="Katalog kurikulum"
+        description="Jelajahi semua kurikulum yang dipublikasikan di Hakgyo."
         actions={
           <p className="text-muted-foreground text-sm">
-            Menampilkan {courses.length} kursus
+            Menampilkan {courses.length} kurikulum
           </p>
         }
       />
@@ -60,8 +60,8 @@ export default async function CatalogPage({
       {courses.length === 0 ? (
         <EmptyState
           icon={BookOpenIcon}
-          title="Belum ada kursus tersedia"
-          description="Kursus yang dipublikasikan akan muncul di sini."
+          title="Belum ada kurikulum tersedia"
+          description="Kurikulum yang dipublikasikan akan muncul di sini."
         />
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -122,7 +122,7 @@ export default async function CatalogPage({
                   href={`/catalog/${course.id}`}
                   className="mt-5 inline-flex text-sm font-medium underline-offset-4 hover:underline"
                 >
-                  Lihat kursus
+                  Lihat kurikulum
                 </Link>
               </div>
             </article>
@@ -136,7 +136,7 @@ export default async function CatalogPage({
             href={`/catalog?cursor=${encodeURIComponent(nextCursor)}`}
             className={buttonVariants({ variant: "outline", size: "lg" })}
           >
-            Kursus berikutnya
+            Kurikulum berikutnya
             <ArrowRightIcon aria-hidden="true" />
           </Link>
         </div>

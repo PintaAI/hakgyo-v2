@@ -11,7 +11,7 @@ export function StarterMaterialsSlide() {
       muted="Materinya sudah siap."
       description="Mulai dari materi yang sudah jadi, lalu kembangkan sesuai gaya mengajar Anda."
       points={[
-        "Kursus Hangeul Mastery gratis untuk setiap murid",
+        "Kurikulum Hangeul Mastery gratis untuk setiap murid",
         "Salinan buku standar EPS-TOPIK dari HRD Korea di ruang lembaga Anda",
         "Urutan dan isi materi tetap bisa Anda sesuaikan",
       ]}

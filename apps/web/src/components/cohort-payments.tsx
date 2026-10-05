@@ -256,20 +256,20 @@ export function CohortPayments({
             <TableHeader>
               <TableRow>
                 <TableHead>Siswa</TableHead>
-                <TableHead>Kode</TableHead>
+                <TableHead className="max-sm:hidden">Kode</TableHead>
                 <TableHead className="text-right">Nominal</TableHead>
-                <TableHead>Metode</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Waktu</TableHead>
+                <TableHead className="max-sm:hidden">Metode</TableHead>
+                <TableHead className="max-sm:hidden">Status</TableHead>
+                <TableHead className="max-sm:hidden">Waktu</TableHead>
                 <TableHead className="sr-only">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((payment) => (
                 <TableRow key={payment.id}>
-                  <TableCell>
+                  <TableCell className="max-sm:max-w-40 max-sm:whitespace-normal">
                     <div className="flex items-center gap-2.5">
-                      <Avatar className="size-8">
+                      <Avatar className="size-8 max-sm:hidden">
                         {payment.user.image ? (
                           <AvatarImage src={payment.user.image} alt="" />
                         ) : null}
@@ -284,22 +284,36 @@ export function CohortPayments({
                         <p className="text-muted-foreground truncate text-xs">
                           {payment.user.email}
                         </p>
+                        {/* Phones fold status, method and time in here. */}
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:hidden">
+                          <Badge variant={statusBadgeVariants[payment.status]}>
+                            {paymentStatusLabels[payment.status]}
+                          </Badge>
+                          <span className="text-muted-foreground">
+                            {paymentMethodLabels[payment.method]} ·{" "}
+                            {dateTimeFormatter.format(
+                              payment.submittedAt ?? payment.createdAt,
+                            )}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-xs">
+                  <TableCell className="font-mono text-xs max-sm:hidden">
                     {payment.reference}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {formatRupiah(payment.amount)}
                   </TableCell>
-                  <TableCell>{paymentMethodLabels[payment.method]}</TableCell>
-                  <TableCell>
+                  <TableCell className="max-sm:hidden">
+                    {paymentMethodLabels[payment.method]}
+                  </TableCell>
+                  <TableCell className="max-sm:hidden">
                     <Badge variant={statusBadgeVariants[payment.status]}>
                       {paymentStatusLabels[payment.status]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
+                  <TableCell className="text-muted-foreground text-xs max-sm:hidden">
                     {dateTimeFormatter.format(
                       payment.submittedAt ?? payment.createdAt,
                     )}

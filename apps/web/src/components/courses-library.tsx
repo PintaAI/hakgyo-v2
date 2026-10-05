@@ -57,26 +57,26 @@ function FilterStat({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "group/stat bg-card focus-visible:ring-ring flex min-w-0 flex-col gap-3 rounded-lg p-4 text-left ring-1 transition-colors outline-none sm:p-5",
+        "group/stat bg-card focus-visible:ring-ring flex min-w-0 flex-col justify-between gap-2 rounded-lg p-3 text-left ring-1 transition-colors outline-none sm:gap-3 sm:p-5",
         active
           ? "ring-foreground/40"
           : "ring-foreground/10 hover:bg-muted/60 hover:ring-foreground/20",
       )}
     >
-      <span className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
+      <span className="flex items-start justify-between gap-2">
+        <span className="text-muted-foreground text-xs leading-snug font-medium sm:font-semibold sm:tracking-[0.14em] sm:uppercase">
           {label}
         </span>
         <Icon
           className={cn(
-            "size-4 transition-colors",
+            "size-4 shrink-0 transition-colors max-sm:hidden",
             active
               ? "text-foreground"
               : "text-muted-foreground group-hover/stat:text-foreground",
           )}
         />
       </span>
-      <span className="font-heading text-3xl font-medium tracking-tight tabular-nums sm:text-4xl">
+      <span className="font-heading text-2xl font-medium tracking-tight tabular-nums sm:text-4xl">
         {count}
       </span>
     </button>
@@ -136,17 +136,17 @@ export function CoursesLibrary({
     <div className="flex w-full flex-col gap-6">
       <PageHeader
         eyebrow="Workspace"
-        title="Kursus"
+        title="Kurikulum"
         description={
           role === "TEACHER"
-            ? "Temukan dan kelola kursus yang menjadi tanggung jawab Anda."
+            ? "Temukan dan kelola kurikulum yang menjadi tanggung jawab Anda."
             : "Kelola kurikulum, Group belajar, dan peserta dari satu tempat."
         }
         actions={
           canCreate ? (
             <Link href={`${root}/new`} className={buttonVariants()}>
               <PlusIcon data-icon="inline-start" />
-              Kursus baru
+              Kurikulum baru
             </Link>
           ) : null
         }
@@ -155,8 +155,8 @@ export function CoursesLibrary({
       {courses.length === 0 ? (
         <EmptyState
           icon={BookOpenIcon}
-          title="Belum ada kursus"
-          description="Kursus menyatukan materi, Group belajar, dan peserta agar semuanya mudah ditemukan."
+          title="Belum ada kurikulum"
+          description="Kurikulum menyatukan materi, Group belajar, dan peserta agar semuanya mudah ditemukan."
           action={
             canCreate ? (
               <Link
@@ -164,7 +164,7 @@ export function CoursesLibrary({
                 className={buttonVariants({ className: "mt-4" })}
               >
                 <PlusIcon data-icon="inline-start" />
-                Kursus baru
+                Kurikulum baru
               </Link>
             ) : null
           }
@@ -172,14 +172,14 @@ export function CoursesLibrary({
       ) : (
         <>
           <section
-            aria-label="Ringkasan kursus"
-            className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
+            aria-label="Ringkasan kurikulum"
+            className="grid grid-cols-3 gap-2 sm:gap-4"
           >
             <FilterStat
               active={filter === "ALL"}
               count={counts.ALL}
               icon={BookOpenIcon}
-              label="Semua kursus"
+              label="Semua kurikulum"
               onClick={() => setFilter("ALL")}
             />
             <FilterStat
@@ -201,15 +201,15 @@ export function CoursesLibrary({
           <Card className="gap-0 py-0">
             <CardHeader className="gap-4 border-b py-4 sm:grid-cols-[1fr_auto] sm:items-center">
               <CardTitle className="font-heading text-lg font-medium">
-                Daftar kursus
+                Daftar kurikulum
               </CardTitle>
               <div className="relative w-full sm:w-72">
                 <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
                 <Input
-                  aria-label="Cari kursus"
+                  aria-label="Cari kurikulum"
                   className="pr-8 pl-8"
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari kursus"
+                  placeholder="Cari kurikulum"
                   value={search}
                 />
                 {search ? (
@@ -284,10 +284,10 @@ export function CoursesLibrary({
                 <div className="rounded-md border border-dashed px-4 py-10 text-center">
                   <SearchIcon className="text-muted-foreground mx-auto size-6" />
                   <p className="mt-3 text-sm font-medium">
-                    Kursus tidak ditemukan
+                    Kurikulum tidak ditemukan
                   </p>
                   <p className="text-muted-foreground mx-auto mt-1 max-w-xs text-xs leading-relaxed">
-                    Coba kata lain atau tampilkan kembali semua kursus.
+                    Coba kata lain atau tampilkan kembali semua kurikulum.
                   </p>
                   <Button
                     className="mt-4"

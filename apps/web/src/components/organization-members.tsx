@@ -72,7 +72,7 @@ const roleDetails: Record<
   },
   TEACHER: {
     label: "Pengajar",
-    description: "Mengelola kursus dan Group belajar sesuai mode akses",
+    description: "Mengelola kurikulum dan Group belajar sesuai mode akses",
   },
 };
 
@@ -331,9 +331,9 @@ export function OrganizationMembers({
                 return (
                   <div
                     key={member.id}
-                    className="hover:bg-muted/30 grid gap-4 p-4 transition-colors sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
+                    className="hover:bg-muted/30 grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-3 p-4 transition-colors sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
+                    <div className="col-span-2 flex min-w-0 items-center gap-3 sm:col-span-1">
                       <Avatar size="lg">
                         {member.user.image ? (
                           <AvatarImage
@@ -358,7 +358,7 @@ export function OrganizationMembers({
                           {member.user.email}
                         </p>
                         <p className="text-muted-foreground mt-1 text-xs">
-                          {member._count.ownedCourses} course dikelola ·{" "}
+                          {member._count.ownedCourses} kurikulum dikelola ·{" "}
                           {member._count.courseCollaborations} akses kurikulum ·{" "}
                           {member._count.cohortStaffMemberships} Group belajar
                         </p>
@@ -450,12 +450,14 @@ export function OrganizationMembers({
               {inviteItems.map((invite) => (
                 <div
                   key={invite.id}
-                  className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
+                  className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
                 >
-                  <div className="min-w-0">
+                  <div className="col-span-2 min-w-0 sm:col-span-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate font-medium">{invite.email}</p>
-                      <Badge variant="outline">{invite.role}</Badge>
+                      <Badge variant="outline">
+                        {roleDetails[invite.role].label}
+                      </Badge>
                       <Badge
                         variant={
                           invite.status === "PENDING" ? "secondary" : "outline"

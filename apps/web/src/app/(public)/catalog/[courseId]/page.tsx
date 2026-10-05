@@ -113,7 +113,7 @@ export default async function CatalogCoursePage({
             </h1>
             <p className="text-muted-foreground mt-5 max-w-2xl text-base leading-7 sm:text-lg">
               {course.description ??
-                "Kursus ini siap membantu kamu belajar secara terarah, langkah demi langkah."}
+                "Kurikulum ini siap membantu kamu belajar secara terarah, langkah demi langkah."}
             </p>
 
             <dl className="mt-7 flex flex-wrap gap-x-8 gap-y-4 text-sm">
@@ -130,7 +130,7 @@ export default async function CatalogCoursePage({
                 </dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Isi kursus</dt>
+                <dt className="text-muted-foreground">Isi kurikulum</dt>
                 <dd className="mt-1 font-semibold">
                   {course.modules.length} bab, {itemCount} aktivitas
                 </dd>
@@ -158,8 +158,8 @@ export default async function CatalogCoursePage({
                   {course.cohorts.length > 0
                     ? "Pilih Group belajar di bawah untuk mendaftar."
                     : course.price > 0
-                      ? "Belum ada Group belajar yang dibuka untuk kursus ini."
-                      : "Kursus ini hanya dapat diakses melalui undangan."}
+                      ? "Belum ada Group belajar yang dibuka untuk kurikulum ini."
+                      : "Kurikulum ini hanya dapat diakses melalui undangan."}
                 </p>
               )}
             </div>
@@ -265,7 +265,7 @@ export default async function CatalogCoursePage({
           </span>
           <div>
             <h2 id="curriculum-heading" className="text-xl font-bold">
-              Kurikulum kursus
+              Materi kurikulum
             </h2>
             <p className="text-muted-foreground text-sm">
               Materi yang akan kamu pelajari.
@@ -275,7 +275,7 @@ export default async function CatalogCoursePage({
 
         {course.modules.length === 0 ? (
           <div className="bg-card text-muted-foreground mt-5 rounded-xl border p-6 text-sm">
-            Kurikulum belum dipublikasikan.
+            Materi kurikulum belum dipublikasikan.
           </div>
         ) : (
           <ol className="mt-5 space-y-3">

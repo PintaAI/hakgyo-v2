@@ -81,7 +81,7 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
           className="mt-3 sm:mt-5"
         />
         <p className={cn(leadText, "mt-4 sm:mt-6")}>
-          Workspace mengelompokkan kursus, anggota, dan bahan ajar dalam satu
+          Workspace mengelompokkan kurikulum, anggota, dan bahan ajar dalam satu
           organisasi. Anda otomatis menjadi owner dan dapat mengundang tim
           setelah workspace siap.
         </p>
@@ -113,23 +113,25 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
           </div>
 
           <fieldset className="mt-8 grid gap-3">
-            <legend className="text-sm font-medium">Tipe kursus default</legend>
+            <legend className="text-sm font-medium">
+              Tipe kurikulum default
+            </legend>
             <p className="text-muted-foreground -mt-1 text-xs">
-              Pengaturan berlaku untuk kursus baru. Setiap kursus dapat menimpa
-              pilihan ini.
+              Pengaturan berlaku untuk kurikulum baru. Setiap kurikulum dapat
+              menimpa pilihan ini.
             </p>
             {[
               {
                 value: "INVITE_ONLY" as const,
-                title: "Kursus privat",
+                title: "Kurikulum privat",
                 description:
                   "Hanya siswa yang diundang atau ditambahkan manual yang bisa mengakses.",
               },
               {
                 value: "OPEN" as const,
-                title: "Kursus publik",
+                title: "Kurikulum publik",
                 description:
-                  "Siapa pun dapat menemukan dan mendaftar sendiri ke kursus.",
+                  "Siapa pun dapat menemukan dan mendaftar sendiri ke kurikulum.",
               },
             ].map((option) => (
               <label

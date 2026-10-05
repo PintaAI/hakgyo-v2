@@ -17,6 +17,7 @@ import { Button, buttonVariants } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 export function VocabularyLibrary({
@@ -44,7 +45,7 @@ export function VocabularyLibrary({
       <PageHeader
         eyebrow="Bahan ajar"
         title="Kosakata"
-        description="Buat kumpulan kata dengan definisi dan contoh untuk pelajaran dan persyaratan kursus."
+        description="Buat kumpulan kata dengan definisi dan contoh untuk pelajaran dan persyaratan kurikulum."
         actions={
           <Link
             href={`/workspace/${organizationSlug}/library/vocabulary/new`}
@@ -82,7 +83,7 @@ export function VocabularyLibrary({
           </Button>
         </div>
       ) : visibleSets.length ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 max-sm:gap-0 md:grid-cols-2 xl:grid-cols-3 max-sm:[&>*+*]:-mt-px">
           {visibleSets.map((set) => (
             <Link
               href={`/workspace/${organizationSlug}/library/vocabulary/${set.id}`}
@@ -90,10 +91,10 @@ export function VocabularyLibrary({
               className="group focus-visible:ring-ring/50 rounded-xl outline-none focus-visible:ring-3"
             >
               <Card className="group-hover:border-foreground/20 group-hover:bg-muted/20 h-full transition-colors">
-                <CardContent className="flex h-full flex-col gap-5">
+                <CardContent className="flex h-full flex-col gap-3 sm:gap-5">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg border">
-                      <LanguagesIcon className="size-5" />
+                    <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg border sm:size-10">
+                      <LanguagesIcon className="size-4 sm:size-5" />
                     </div>
                     <Badge variant="outline">
                       {set._count.entries} istilah
@@ -103,11 +104,16 @@ export function VocabularyLibrary({
                     <h2 className="font-heading truncate font-semibold">
                       {set.title}
                     </h2>
-                    <p className="text-muted-foreground line-clamp-2 min-h-10 text-sm">
+                    <p
+                      className={cn(
+                        "text-muted-foreground line-clamp-2 text-sm sm:min-h-10",
+                        !set.description && "max-sm:hidden",
+                      )}
+                    >
                       {set.description ?? "Belum ada deskripsi."}
                     </p>
                   </div>
-                  <div className="mt-auto flex min-h-7 flex-wrap gap-1.5 border-t pt-4">
+                  <div className="mt-auto flex min-h-7 flex-wrap gap-1.5 sm:border-t sm:pt-4">
                     {set.entries.slice(0, 3).map((entry) => (
                       <Badge key={entry.id} variant="secondary">
                         {entry.term}
@@ -140,7 +146,7 @@ export function VocabularyLibrary({
           description={
             debouncedSearch
               ? "Coba judul set, istilah, atau definisi yang berbeda."
-              : "Kelompokkan istilah terkait menjadi satu set yang dapat dipakai ulang lintas kursus."
+              : "Kelompokkan istilah terkait menjadi satu set yang dapat dipakai ulang lintas kurikulum."
           }
           action={
             debouncedSearch ? null : (

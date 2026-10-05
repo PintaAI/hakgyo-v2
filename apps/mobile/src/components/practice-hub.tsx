@@ -565,7 +565,7 @@ export function ResourceLibrary({
   const activeFilter = statusFilters.find((option) => option.key === status)!;
 
   if (courses.length === 0) {
-    return <Empty>Ikuti kursus untuk membuka latihan.</Empty>;
+    return <Empty>Ikuti kurikulum untuk membuka latihan.</Empty>;
   }
 
   return (
@@ -715,7 +715,7 @@ export function ResourceLibrary({
               <Text
                 className={`text-xs font-bold ${courseFilter === null ? "text-primary-foreground" : "text-foreground"}`}
               >
-                Semua kursus
+                Semua kurikulum
               </Text>
             </View>
           </Pressable>

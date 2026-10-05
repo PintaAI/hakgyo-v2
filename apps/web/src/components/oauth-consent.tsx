@@ -53,7 +53,7 @@ export function OAuthConsent({
         />
         <p className="text-muted-foreground mt-3 text-sm leading-6">
           Klien AI ini akan memakai Hakgyo sesuai role Anda saat ini. Setiap
-          izin kursus, Group belajar, dan organisasi diperiksa kembali setiap
+          izin kurikulum, Group belajar, dan organisasi diperiksa kembali setiap
           kali sebuah tool dijalankan.
         </p>
 
