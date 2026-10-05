@@ -148,7 +148,7 @@ export function AuthPanel({
         </h2>
         <p className="text-muted-foreground mt-2 text-sm leading-6">
           {mode === "sign-in"
-            ? "Lanjutkan kursus dan progres belajarmu."
+            ? "Lanjutkan kurikulum dan progres belajarmu."
             : "Siapkan ruang belajarmu dalam beberapa langkah."}
         </p>
       </div>
@@ -187,7 +187,7 @@ export function AuthPanel({
             <Input
               id="auth-name"
               autoComplete="name"
-              className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 sm:h-12 text-base transition-colors md:text-sm"
+              className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 text-base transition-colors sm:h-12 md:text-sm"
               onChange={(event) => setName(event.target.value)}
               placeholder="Nama Anda"
               required
@@ -202,7 +202,7 @@ export function AuthPanel({
           <Input
             id="auth-email"
             autoComplete="email"
-            className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 sm:h-12 text-base transition-colors md:text-sm"
+            className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 text-base transition-colors sm:h-12 md:text-sm"
             onChange={(event) => setEmail(event.target.value)}
             placeholder="nama@email.com"
             required
@@ -224,7 +224,7 @@ export function AuthPanel({
               autoComplete={
                 mode === "sign-in" ? "current-password" : "new-password"
               }
-              className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 sm:h-12 pr-12 text-base transition-colors md:text-sm"
+              className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 pr-12 text-base transition-colors sm:h-12 md:text-sm"
               minLength={8}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Minimal 8 karakter"

@@ -176,7 +176,7 @@ function Groups({ data }: { data: StudioDashboardData }) {
         </ul>
       ) : (
         <Empty>
-          Belum ada Group belajar. Buka kursus untuk menyiapkan kelompok
+          Belum ada Group belajar. Buka kurikulum untuk menyiapkan kelompok
           pertama.
         </Empty>
       )}
@@ -268,7 +268,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
               <Badge variant="secondary">{data.role}</Badge>
             </span>
           </h1>
-          <p className="text-muted-foreground mt-3 text-sm">
+          <p className="text-muted-foreground mt-3 text-sm max-sm:hidden">
             Semua yang Anda perlukan untuk mengajar lebih baik.
           </p>
         </div>
@@ -281,7 +281,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
           primary
         >
           <Plus className="size-4" />
-          {data.canCreateCourse ? "Buat kursus" : "Tulis materi"}
+          {data.canCreateCourse ? "Buat kurikulum" : "Tulis materi"}
         </Action>
       </header>
       <StatStrip
@@ -297,35 +297,36 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
         <section>
           <Title
             number="01"
-            title="Kursus Anda"
+            title="Kurikulum Anda"
             href={`${data.root}/courses`}
           />
           {data.courses.length ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="max-sm:-mx-4 max-sm:divide-y max-sm:border-y sm:grid sm:grid-cols-2 sm:gap-4">
               {data.courses.slice(0, 4).map((course) => (
                 <Link
                   key={course.id}
                   href={`${data.root}/courses/${course.id}`}
                   className={cn(
                     styles.courseCard,
-                    "bg-card group overflow-hidden rounded-lg border shadow-xs hover:shadow-sm",
+                    // Phones list the courses as rows; cards return from sm.
+                    "group hover:bg-muted/50 sm:bg-card sm:hover:bg-card flex items-center gap-3 px-4 py-3 sm:block sm:overflow-hidden sm:rounded-lg sm:border sm:p-0 sm:shadow-xs sm:hover:shadow-sm",
                   )}
                 >
                   <CourseCover
                     title={course.title}
                     thumbnailUrl={course.thumbnailUrl}
-                    sizes="(min-width: 640px) 360px, 100vw"
-                    className="h-28 w-full sm:h-36"
+                    sizes="(min-width: 640px) 360px, 48px"
+                    className="size-12 shrink-0 rounded-md border sm:h-36 sm:w-full sm:rounded-none sm:border-0"
                   />
-                  <div className="p-6">
-                    <div className="mb-3 flex items-center justify-between">
+                  <div className="min-w-0 flex-1 sm:p-6">
+                    <div className="mb-3 flex items-center justify-between max-sm:hidden">
                       <Status kind="course" value={course.status} />
                       <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-1" />
                     </div>
-                    <h3 className="truncate text-base font-semibold">
+                    <h3 className="truncate text-sm font-semibold sm:text-base">
                       {course.title}
                     </h3>
-                    <p className="text-muted-foreground mt-2 flex items-center gap-1.5 text-xs">
+                    <p className="text-muted-foreground mt-1 flex items-center gap-1.5 text-xs sm:mt-2">
                       <span className="inline-flex items-center gap-1">
                         <Layers className="size-3" />
                         {course._count.modules} bab
@@ -333,17 +334,22 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
                       <span aria-hidden="true" className="mx-1">
                         /
                       </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Users className="size-3" />
-                        {course._count.cohorts} Group belajar
+                      <span className="inline-flex min-w-0 items-center gap-1">
+                        <Users className="size-3 shrink-0" />
+                        <span className="truncate">
+                          {course._count.cohorts} Group belajar
+                        </span>
                       </span>
                     </p>
+                    <span className="mt-2 flex sm:hidden">
+                      <Status kind="course" value={course.status} />
+                    </span>
                   </div>
                 </Link>
               ))}
             </div>
           ) : (
-            <Empty>Mulai cerita belajar Anda dengan kursus pertama.</Empty>
+            <Empty>Mulai cerita belajar Anda dengan kurikulum pertama.</Empty>
           )}
           <div className="mt-8">
             <Title
@@ -356,7 +362,8 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
         </section>
         <aside className="space-y-7">
           <Activity data={data} />
-          <section className="bg-muted rounded-lg border p-6 shadow-xs">
+          {/* Phones already flag reviews in the stat strip and bottom nav. */}
+          <section className="bg-muted rounded-lg border p-6 shadow-xs max-sm:hidden">
             <Kicker>Butuh perhatian</Kicker>
             <div className="my-5 flex items-end gap-3">
               <span className="text-5xl font-medium tracking-tight">
@@ -372,7 +379,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
               Buka antrean <ArrowUpRight className="size-4" />
             </Action>
           </section>
-          <div>
+          <div className="max-sm:hidden">
             <Action href={`${data.root}/library/materials`}>
               <BookOpen className="size-4" />
               Jelajahi bahan ajar

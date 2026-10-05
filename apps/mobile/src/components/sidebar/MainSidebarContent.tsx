@@ -353,13 +353,13 @@ export function MainSidebarContent({
       {standaloneCourses.length ? (
         <View className="rounded-2xl px-1 py-2" style={{ marginBottom: 10 }}>
           <SectionHeader
-            label="Kursus mandiri"
+            label="Kurikulum mandiri"
             count={standaloneCourses.length}
           />
           <View style={{ gap: 1 }}>
             {standaloneCourses.map((course) => (
               <CourseRow
-                accessibilityHint="Membuka detail kursus"
+                accessibilityHint="Membuka detail kurikulum"
                 key={course.id}
                 onPress={() =>
                   onNavigate(() =>

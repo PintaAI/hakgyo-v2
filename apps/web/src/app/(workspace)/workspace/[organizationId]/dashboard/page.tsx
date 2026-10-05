@@ -64,7 +64,7 @@ async function TeacherDashboard({
         pendingReviews,
         stats: [
           {
-            label: "Kursus saya",
+            label: "Kurikulum saya",
             value: courses.length,
             href: `${root}/courses`,
             icon: "course",
@@ -143,7 +143,7 @@ export default async function DashboardPage({
         })),
         stats: [
           {
-            label: "Total kursus",
+            label: "Total kurikulum",
             value: analytics.courses.total,
             href: `${root}/courses`,
             icon: "course",

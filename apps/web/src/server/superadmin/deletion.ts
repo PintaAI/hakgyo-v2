@@ -116,6 +116,7 @@ async function deleteOrganizationCourses(
   });
   await tx.assessmentAnswer.deleteMany({ where: { organizationId } });
   await tx.assessmentAttempt.deleteMany({ where: { organizationId } });
+  await tx.assessmentEvent.deleteMany({ where: { organizationId } });
   await tx.contentProgress.deleteMany({
     where: { courseItem: { organizationId } },
   });
@@ -155,6 +156,7 @@ async function deleteCourseChildren(
     where: { attemptId: { in: attemptIds } },
   });
   await tx.assessmentAttempt.deleteMany({ where: { id: { in: attemptIds } } });
+  await tx.assessmentEvent.deleteMany({ where: { courseId: input.courseId } });
   await tx.contentProgress.deleteMany({
     where: { courseItemId: { in: input.itemIds } },
   });

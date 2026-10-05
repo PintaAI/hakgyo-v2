@@ -822,7 +822,7 @@ function VocabularySetForm({
               <AlertDialogHeader>
                 <AlertDialogTitle>Hapus set kosakata ini?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tindakan ini permanen. Semua entri, penempatan di kursus,
+                  Tindakan ini permanen. Semua entri, penempatan di kurikulum,
                   progres siswa, aktivitas XP, dan kaitan prasyarat materi akan
                   ikut dihapus.
                 </AlertDialogDescription>
@@ -1081,7 +1081,7 @@ function QuickAddForm({
   return (
     <form
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg transition-shadow",
+        "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg transition-shadow sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]",
         dragActive && "ring-primary/60 ring-2 ring-offset-2",
       )}
       onDragLeave={(event) => {
@@ -1102,7 +1102,7 @@ function QuickAddForm({
       <Input
         aria-label="Istilah baru"
         autoFocus={autoFocus}
-        className="bg-card h-9"
+        className="bg-card col-span-3 h-9 sm:col-span-1"
         maxLength={500}
         onChange={(event) => setTerm(event.target.value)}
         placeholder="Istilah baru (mis. 안녕하세요)"

@@ -486,7 +486,7 @@ export async function assertCoursePublishable(
   if (blocking.length) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: `Kursus belum bisa dipublikasikan karena item ${joinTitles(
+      message: `Kurikulum belum bisa dipublikasikan karena item ${joinTitles(
         blocking.map((item) => itemTitle(snapshot, item.courseItemId)),
       )} belum lengkap. Lengkapi atau sembunyikan item tersebut terlebih dahulu.`,
     });

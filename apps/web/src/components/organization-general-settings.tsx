@@ -301,7 +301,7 @@ export function OrganizationGeneralSettings({
       <PageHeader
         eyebrow="Konfigurasi organisasi"
         title="Pengaturan umum"
-        description="Kelola identitas workspace, tampilan, pendaftaran kursus, dan hak akses member."
+        description="Kelola identitas workspace, tampilan, pendaftaran kurikulum, dan hak akses member."
       />
 
       {/* Profil */}
@@ -390,8 +390,8 @@ export function OrganizationGeneralSettings({
             <div className="grid gap-1">
               <CardTitle>Pendaftaran &amp; hak akses</CardTitle>
               <CardDescription>
-                Visibilitas default kursus baru dan siapa yang dapat mengelola
-                kursus serta konten.
+                Visibilitas default kurikulum baru dan siapa yang dapat
+                mengelola kurikulum serta konten.
               </CardDescription>
             </div>
           </div>
@@ -400,12 +400,12 @@ export function OrganizationGeneralSettings({
           <div className="flex items-center justify-between gap-6 py-4">
             <div className="grid gap-0.5">
               <Label htmlFor="open-enrollment">
-                Kursus publik secara default
+                Kurikulum publik secara default
               </Label>
               <p className="text-muted-foreground text-xs">
                 {effectiveEnrollmentMode === "OPEN"
-                  ? "Kursus baru bisa ditemukan dan diikuti siswa."
-                  : "Kursus baru hanya untuk siswa yang diundang."}
+                  ? "Kurikulum baru bisa ditemukan dan diikuti siswa."
+                  : "Kurikulum baru hanya untuk siswa yang diundang."}
               </p>
             </div>
             <Switch
@@ -415,7 +415,7 @@ export function OrganizationGeneralSettings({
               onCheckedChange={(checked) =>
                 void handleEnrollmentChange(checked)
               }
-              aria-label="Jadikan kursus publik secara default"
+              aria-label="Jadikan kurikulum publik secara default"
             />
           </div>
 
@@ -424,8 +424,8 @@ export function OrganizationGeneralSettings({
               <Label htmlFor="advanced-permissions">Permission lanjutan</Label>
               <p className="text-muted-foreground text-xs">
                 {effectivePermissionMode === "ADVANCED"
-                  ? "Akses kursus diatur per role dan assignment."
-                  : "Semua member dapat mengelola semua kursus."}
+                  ? "Akses kurikulum diatur per role dan assignment."
+                  : "Semua member dapat mengelola semua kurikulum."}
               </p>
             </div>
             {isOwner ? (
@@ -448,10 +448,10 @@ export function OrganizationGeneralSettings({
             <div className="flex items-center justify-between gap-6 border-t py-4">
               <div className="grid gap-0.5">
                 <Label htmlFor="teacher-create-course">
-                  Teacher boleh membuat kursus
+                  Teacher boleh membuat kurikulum
                 </Label>
                 <p className="text-muted-foreground text-xs">
-                  Pembuat kursus otomatis menjadi manager-nya.
+                  Pembuat kurikulum otomatis menjadi manager-nya.
                 </p>
               </div>
               <Switch

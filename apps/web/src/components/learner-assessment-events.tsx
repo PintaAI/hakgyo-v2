@@ -60,7 +60,7 @@ export function LearnerAssessmentEvents({
         <EmptyState
           icon={TrophyIcon}
           title="Belum ada event untuk kamu"
-          description="Event akan tampil setelah pengajar membukanya untuk Group belajar atau kursus kamu."
+          description="Event akan tampil setelah pengajar membukanya untuk Group belajar atau kurikulum kamu."
         />
       </div>
     );

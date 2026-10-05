@@ -229,7 +229,7 @@ export function AppHandoff({
             </ol>
 
             <p className="text-muted-foreground border-t pt-4 text-xs leading-relaxed">
-              Kursus ini otomatis muncul di tab Belajar setelah kamu masuk.
+              Kurikulum ini otomatis muncul di tab Belajar setelah kamu masuk.
             </p>
           </section>
         </div>

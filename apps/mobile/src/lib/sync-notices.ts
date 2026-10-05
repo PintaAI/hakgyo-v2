@@ -168,7 +168,7 @@ export function describeSyncNotice(notice: SyncNotice): {
     case "COURSE_ADDED":
       return {
         title: notice.courseTitle,
-        detail: "Kursus baru tersedia",
+        detail: "Kurikulum baru tersedia",
         icon: "book.closed.fill",
       };
     case "COHORT_ADDED":

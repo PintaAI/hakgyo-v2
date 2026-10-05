@@ -34,7 +34,7 @@ function HeaderText({
 
 /**
  * A page's eyebrow, title, description, and actions, in the brand style.
- * With `media`, such as a kursus cover, the media sits beside the text on
+ * With `media`, such as a kurikulum cover, the media sits beside the text on
  * large screens and the actions move under the description.
  */
 export function PageHeader({

@@ -65,7 +65,7 @@ export function LocalDataReport({
         {stats ? (
           <>
             <Line
-              label="Paket kursus"
+              label="Paket kurikulum"
               value={`${stats.bundles.count} · ${formatBytes(stats.bundles.bytes)}`}
             />
             <Line
@@ -114,7 +114,7 @@ export function LocalDataReport({
             value={formatDuration(report.indexMs)}
           />
           <Line
-            label={`Paket kursus (${downloaded?.length ?? 0}, ${formatBytes(downloadedBytes)})`}
+            label={`Paket kurikulum (${downloaded?.length ?? 0}, ${formatBytes(downloadedBytes)})`}
             value={formatDuration(report.bundlesMs)}
           />
           {report.bundles.map((bundle, position) => (
@@ -132,7 +132,7 @@ export function LocalDataReport({
             </View>
           ))}
           <Text className="pt-1 text-xs text-muted-foreground">
-            Per kursus: unduh (build server + jaringan) + simpan ke SQLite.
+            Per kurikulum: unduh (build server + jaringan) + simpan ke SQLite.
           </Text>
         </View>
       ) : (

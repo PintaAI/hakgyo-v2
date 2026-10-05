@@ -11,6 +11,10 @@ export type StatItem = {
   href?: string;
   /** Marks a figure that needs action, such as answers waiting for review. */
   attention?: boolean;
+  /** Makes the figure a filter button; pair with `selected`. */
+  onSelect?: () => void;
+  /** Highlights the figure whose filter is active. */
+  selected?: boolean;
 };
 
 const columns = {
@@ -39,40 +43,68 @@ export function StatStrip({
         className,
       )}
     >
-      {items.map(({ label: itemLabel, value, href, attention }) => {
-        const content = (
-          <>
-            <span className="text-muted-foreground flex items-center gap-2 font-mono text-[10px] tracking-[0.18em] uppercase sm:text-xs">
-              <span className="truncate">{itemLabel}</span>
-              {href ? (
-                <ArrowUpRightIcon className="ml-auto size-3.5 shrink-0 transition-transform group-hover/stat:translate-x-0.5 group-hover/stat:-translate-y-0.5" />
-              ) : null}
-            </span>
-            <span className="mt-1.5 flex items-center gap-2 text-2xl font-medium tracking-[-0.03em] tabular-nums sm:text-3xl">
-              {value}
-              {attention ? (
-                <span className="bg-primary size-2 rounded-full" />
-              ) : null}
-            </span>
-          </>
-        );
-        // Hairlines only where the figures share one row.
-        const cell =
-          "border-border flex min-w-0 flex-col pr-2 sm:border-l sm:pl-6 sm:first:border-l-0 sm:first:pl-0";
-        return href ? (
-          <Link
-            key={itemLabel}
-            href={href}
-            className={cn(cell, "group/stat hover:text-foreground")}
-          >
-            {content}
-          </Link>
-        ) : (
-          <div key={itemLabel} className={cell}>
-            {content}
-          </div>
-        );
-      })}
+      {items.map(
+        ({ label: itemLabel, value, href, attention, onSelect, selected }) => {
+          const content = (
+            <>
+              <span
+                className={cn(
+                  "text-muted-foreground flex items-center gap-2 font-mono text-[10px] tracking-[0.18em] uppercase sm:text-xs",
+                  selected && "text-primary",
+                )}
+              >
+                <span className="truncate">{itemLabel}</span>
+                {href ? (
+                  <ArrowUpRightIcon className="ml-auto size-3.5 shrink-0 transition-transform group-hover/stat:translate-x-0.5 group-hover/stat:-translate-y-0.5" />
+                ) : null}
+              </span>
+              <span
+                className={cn(
+                  "mt-1.5 flex items-center gap-2 text-2xl font-medium tracking-[-0.03em] tabular-nums transition-colors sm:text-3xl",
+                  onSelect && !selected && "text-muted-foreground",
+                )}
+              >
+                {value}
+                {attention ? (
+                  <span className="bg-primary size-2 rounded-full" />
+                ) : null}
+              </span>
+            </>
+          );
+          // Hairlines only where the figures share one row.
+          const cell =
+            "border-border flex min-w-0 flex-col pr-2 sm:border-l sm:pl-6 sm:first:border-l-0 sm:first:pl-0";
+          if (onSelect) {
+            return (
+              <button
+                key={itemLabel}
+                type="button"
+                aria-pressed={selected}
+                onClick={onSelect}
+                className={cn(
+                  cell,
+                  "focus-visible:ring-ring/50 [&:hover>span:last-child]:text-foreground text-left outline-none focus-visible:ring-3",
+                )}
+              >
+                {content}
+              </button>
+            );
+          }
+          return href ? (
+            <Link
+              key={itemLabel}
+              href={href}
+              className={cn(cell, "group/stat hover:text-foreground")}
+            >
+              {content}
+            </Link>
+          ) : (
+            <div key={itemLabel} className={cell}>
+              {content}
+            </div>
+          );
+        },
+      )}
     </section>
   );
 }

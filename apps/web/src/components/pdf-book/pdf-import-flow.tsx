@@ -218,7 +218,7 @@ export function PdfImportFlow({
           )}
         >
           <ArrowLeftIcon data-icon="inline-start" />
-          Kembali ke kurikulum
+          Kembali ke materi kurikulum
         </Link>
       </div>
       <header className="space-y-4">
@@ -834,7 +834,7 @@ function MapStep({
         ) : null}
         <div className="bg-card rounded-xl border">
           <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
-            <h2 className="font-medium">Rencana kurikulum</h2>
+            <h2 className="font-medium">Rencana materi kurikulum</h2>
             {lessons.length > 0 ? (
               <Button
                 size="sm"

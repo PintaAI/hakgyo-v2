@@ -7,6 +7,7 @@ import {
   CheckCircle2Icon,
   CircleAlertIcon,
   FileTextIcon,
+  ListChecksIcon,
   LoaderCircleIcon,
   SaveIcon,
   Trash2Icon,
@@ -18,7 +19,6 @@ import {
   DynamicBlockNoteEditor,
   type EditorAssetStorageOptions,
 } from "~/components/editor";
-import { EditorSidebar } from "~/components/editor-sidebar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,8 +31,6 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -40,12 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-} from "~/components/ui/sidebar";
-import { Textarea } from "~/components/ui/textarea";
 import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
 import { api, type RouterInputs } from "~/trpc/react";
 
@@ -494,7 +486,7 @@ function MaterialEditorForm({
       className="mx-auto flex w-full max-w-6xl flex-col gap-6"
       onSubmit={handleSubmit}
     >
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Button
             type="button"
@@ -522,43 +514,42 @@ function MaterialEditorForm({
             <ArrowLeftIcon />
           </Button>
           <div className="min-w-0">
-            <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
-              <FileTextIcon className="size-3.5" />
-              {contextLabel ?? (materialId ? "Edit materi" : "Materi baru")}
-            </div>
-            <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
-              {title.trim() || "Materi tanpa judul"}
-            </h1>
+            <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
+              <FileTextIcon className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {contextLabel ?? (materialId ? "Materi" : "Materi baru")}
+              </span>
+            </p>
+            {materialId && (
+              <p
+                aria-live="polite"
+                className={`mt-0.5 flex items-center gap-1.5 text-xs ${
+                  autosaveStatus === "error"
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {autosaveStatus === "saving" ? (
+                  <LoaderCircleIcon className="size-3.5 animate-spin" />
+                ) : autosaveStatus === "error" ? (
+                  <CircleAlertIcon className="size-3.5" />
+                ) : autosaveStatus === "saved" ? (
+                  <CheckCircle2Icon className="size-3.5" />
+                ) : (
+                  <SaveIcon className="size-3.5" />
+                )}
+                {autosaveStatus === "saving"
+                  ? "Menyimpan..."
+                  : autosaveStatus === "error"
+                    ? "Gagal menyimpan otomatis"
+                    : autosaveStatus === "saved"
+                      ? "Disimpan otomatis"
+                      : "Perubahan belum disimpan"}
+              </p>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {materialId && (
-            <span
-              aria-live="polite"
-              className={`flex items-center gap-1.5 text-xs ${
-                autosaveStatus === "error"
-                  ? "text-destructive"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {autosaveStatus === "saving" ? (
-                <LoaderCircleIcon className="size-3.5 animate-spin" />
-              ) : autosaveStatus === "error" ? (
-                <CircleAlertIcon className="size-3.5" />
-              ) : autosaveStatus === "saved" ? (
-                <CheckCircle2Icon className="size-3.5" />
-              ) : (
-                <SaveIcon className="size-3.5" />
-              )}
-              {autosaveStatus === "saving"
-                ? "Menyimpan..."
-                : autosaveStatus === "error"
-                  ? "Gagal menyimpan otomatis"
-                  : autosaveStatus === "saved"
-                    ? "Disimpan otomatis"
-                    : "Perubahan belum disimpan"}
-            </span>
-          )}
+        <div className="flex shrink-0 items-center gap-2">
           {materialId && canDelete && (
             <AlertDialog>
               <AlertDialogTrigger
@@ -573,7 +564,7 @@ function MaterialEditorForm({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Hapus materi ini?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Tindakan ini permanen. Semua penempatan materi di kursus,
+                    Tindakan ini permanen. Semua penempatan materi di kurikulum,
                     progres siswa, dan aktivitas XP terkait akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -607,6 +598,93 @@ function MaterialEditorForm({
             )}
             {saveLabel ?? (materialId ? "Simpan perubahan" : "Buat materi")}
           </Button>
+        </div>
+      </header>
+
+      <div className="grid gap-1">
+        <input
+          aria-label="Judul materi"
+          autoFocus={!materialId}
+          className="font-heading placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 -mx-2 w-full min-w-0 rounded-md bg-transparent px-2 py-1 text-3xl font-semibold tracking-tight transition-colors outline-none"
+          maxLength={200}
+          onChange={(event) => {
+            const nextTitle = event.target.value;
+            setTitle(nextTitle);
+            if (materialId) {
+              trackDraft({
+                title: nextTitle,
+                description,
+                content,
+                requirementPolicy,
+              });
+            }
+          }}
+          placeholder="Materi tanpa judul"
+          value={title}
+        />
+        <textarea
+          aria-label="Deskripsi materi"
+          className="text-muted-foreground placeholder:text-muted-foreground/40 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:text-foreground -mx-2 field-sizing-content max-h-48 w-full resize-none rounded-md bg-transparent px-2 py-1 text-sm transition-colors outline-none"
+          maxLength={10000}
+          onChange={(event) => {
+            const nextDescription = event.target.value;
+            setDescription(nextDescription);
+            if (materialId) {
+              trackDraft({
+                title,
+                description: nextDescription,
+                content,
+                requirementPolicy,
+              });
+            }
+          }}
+          placeholder="Tambahkan deskripsi singkat (opsional)…"
+          rows={1}
+          value={description}
+        />
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          <label
+            className="text-muted-foreground flex items-center gap-1.5"
+            htmlFor="requirement-policy"
+          >
+            <ListChecksIcon className="size-4" />
+            Penyelesaian
+          </label>
+          <Select
+            value={requirementPolicy}
+            items={{
+              ALL: "Penuhi semua requirement",
+              ANY: "Penuhi salah satu requirement",
+            }}
+            onValueChange={(value) => {
+              if (value === "ALL" || value === "ANY") {
+                setRequirementPolicy(value);
+                if (materialId) {
+                  trackDraft({
+                    title,
+                    description,
+                    content,
+                    requirementPolicy: value,
+                  });
+                }
+              }
+            }}
+          >
+            <SelectTrigger
+              className="hover:bg-muted/40 border-transparent bg-transparent shadow-none dark:bg-transparent"
+              id="requirement-policy"
+              size="sm"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Penuhi semua requirement</SelectItem>
+              <SelectItem value="ANY">Penuhi salah satu requirement</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-muted-foreground/70 text-xs">
+            Berlaku ketika tugas atau kosakata dipasang sebagai requirement.
+          </span>
         </div>
       </div>
 
@@ -642,103 +720,6 @@ function MaterialEditorForm({
           />
         </div>
       </section>
-
-      <EditorSidebar
-        title="Pengaturan materi"
-        description="Identitas dan penyelesaian"
-      >
-        <SidebarGroup>
-          <SidebarGroupLabel>Informasi materi</SidebarGroupLabel>
-          <SidebarGroupContent className="grid gap-5">
-            <div className="grid gap-2">
-              <Label htmlFor="material-title">Judul</Label>
-              <Input
-                autoFocus={!materialId}
-                form="material-editor-form"
-                id="material-title"
-                maxLength={200}
-                onChange={(event) => {
-                  const nextTitle = event.target.value;
-                  setTitle(nextTitle);
-                  if (materialId) {
-                    trackDraft({
-                      title: nextTitle,
-                      description,
-                      content,
-                      requirementPolicy,
-                    });
-                  }
-                }}
-                placeholder="Mis. Memperkenalkan diri"
-                value={title}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="material-description">Deskripsi</Label>
-              <Textarea
-                form="material-editor-form"
-                id="material-description"
-                maxLength={10000}
-                onChange={(event) => {
-                  const nextDescription = event.target.value;
-                  setDescription(nextDescription);
-                  if (materialId) {
-                    trackDraft({
-                      title,
-                      description: nextDescription,
-                      content,
-                      requirementPolicy,
-                    });
-                  }
-                }}
-                placeholder="Apa yang akan dikerjakan siswa?"
-                rows={6}
-                value={description}
-              />
-              <p className="text-muted-foreground text-xs">
-                Ditampilkan kepada penulis saat memilih konten untuk sebuah
-                kursus.
-              </p>
-            </div>
-            <div className="grid gap-2 border-t pt-5">
-              <Label htmlFor="requirement-policy">Kebijakan penyelesaian</Label>
-              <Select
-                value={requirementPolicy}
-                items={{
-                  ALL: "Penuhi semua requirement",
-                  ANY: "Penuhi salah satu requirement",
-                }}
-                onValueChange={(value) => {
-                  if (value === "ALL" || value === "ANY") {
-                    setRequirementPolicy(value);
-                    if (materialId) {
-                      trackDraft({
-                        title,
-                        description,
-                        content,
-                        requirementPolicy: value,
-                      });
-                    }
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full" id="requirement-policy">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Penuhi semua requirement</SelectItem>
-                  <SelectItem value="ANY">
-                    Penuhi salah satu requirement
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-muted-foreground text-xs">
-                Berlaku ketika tugas atau requirement kosakata dipasang.
-              </p>
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </EditorSidebar>
     </form>
   );
 }

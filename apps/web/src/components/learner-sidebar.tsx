@@ -111,11 +111,11 @@ export function LearnerSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={isActive(pathname, "/catalog")}
-                  tooltip="Jelajahi kursus"
+                  tooltip="Jelajahi kurikulum"
                   render={<Link href="/catalog" onClick={closeMobile} />}
                 >
                   <CompassIcon />
-                  <span>Jelajahi kursus</span>
+                  <span>Jelajahi kurikulum</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -134,7 +134,7 @@ export function LearnerSidebar({
 
         {courses.length ? (
           <SidebarGroup>
-            <SidebarGroupLabel>Kursus saya</SidebarGroupLabel>
+            <SidebarGroupLabel>Kurikulum saya</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {courses.map((course) => {

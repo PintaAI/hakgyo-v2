@@ -10,6 +10,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "~/components/ui/sidebar";
+import { WorkspaceBottomNav } from "~/components/workspace-bottom-nav";
 import { WorkspaceBreadcrumb } from "~/components/workspace-breadcrumb";
 import { parseOrganizationTheme } from "~/lib/organization-theme";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
@@ -71,11 +72,12 @@ export default async function WorkspaceLayout({
           />
           <SidebarInset>
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear">
-              <div className="flex items-center gap-2 px-4">
-                <SidebarTrigger className="-ml-1" />
+              <div className="flex min-w-0 items-center gap-2 px-4">
+                {/* Phones reach the sidebar through the bottom nav's Menu tab. */}
+                <SidebarTrigger className="-ml-1 max-md:hidden" />
                 <Separator
                   orientation="vertical"
-                  className="mr-2 data-vertical:h-4 data-vertical:self-center"
+                  className="mr-2 data-vertical:h-4 data-vertical:self-center max-md:hidden"
                 />
                 <WorkspaceBreadcrumb organizationSlug={organizationSlug} />
               </div>
@@ -87,9 +89,13 @@ export default async function WorkspaceLayout({
                 />
               </div>
             </header>
-            <div className="flex-1 p-4 md:p-6 lg:p-8">
+            <div
+              data-workspace-main
+              className="flex-1 p-4 max-md:pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 lg:p-8"
+            >
               <div className="mx-auto w-full max-w-7xl">{children}</div>
             </div>
+            <WorkspaceBottomNav organizationSlug={organizationSlug} />
           </SidebarInset>
           <div id="workspace-editor-sidebar-outlet" className="contents" />
         </SidebarProvider>

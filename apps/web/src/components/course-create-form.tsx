@@ -20,7 +20,8 @@ import { getErrorMessage } from "~/lib/error-message";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
-const createErrorMessage = "Kursus belum berhasil dibuat. Silakan coba lagi.";
+const createErrorMessage =
+  "Kurikulum belum berhasil dibuat. Silakan coba lagi.";
 
 export function CourseCreateForm({
   organizationId,
@@ -43,7 +44,7 @@ export function CourseCreateForm({
     event.preventDefault();
     const cleanTitle = title.trim();
     if (!cleanTitle) {
-      setError("Masukkan nama kursus terlebih dahulu.");
+      setError("Masukkan nama kurikulum terlebih dahulu.");
       return;
     }
 
@@ -56,13 +57,13 @@ export function CourseCreateForm({
         description: description.trim() || null,
       });
       await utils.course.list.invalidate({ organizationId });
-      toast.success("Kursus berhasil dibuat.");
+      toast.success("Kurikulum berhasil dibuat.");
       router.replace(coursesHref);
       router.refresh();
     } catch (cause) {
       const message = getErrorMessage(cause, createErrorMessage);
       setError(message);
-      toast.error("Kursus belum berhasil dibuat.");
+      toast.error("Kurikulum belum berhasil dibuat.");
     }
   }
 
@@ -76,19 +77,19 @@ export function CourseCreateForm({
         )}
       >
         <ArrowLeftIcon data-icon="inline-start" />
-        Kembali ke kursus
+        Kembali ke kurikulum
       </Link>
 
       <header className="max-w-2xl">
         <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-          Kursus baru
+          Kurikulum baru
         </p>
         <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
           Apa yang ingin Anda ajarkan?
         </h1>
         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
           Mulai dari nama dan gambaran singkat. Materi, peserta, serta jadwal
-          dapat ditambahkan setelah kursus dibuat.
+          dapat ditambahkan setelah kurikulum dibuat.
         </p>
       </header>
 
@@ -99,7 +100,7 @@ export function CourseCreateForm({
           noValidate
         >
           <div className="space-y-2">
-            <Label htmlFor="course-title">Nama kursus</Label>
+            <Label htmlFor="course-title">Nama kurikulum</Label>
             <Input
               id="course-title"
               autoFocus
@@ -119,7 +120,7 @@ export function CourseCreateForm({
               id="course-title-help"
               className="text-muted-foreground text-xs leading-relaxed"
             >
-              Pilih nama yang langsung menjelaskan isi kursus.
+              Pilih nama yang langsung menjelaskan isi kurikulum.
             </p>
           </div>
 
@@ -163,7 +164,9 @@ export function CourseCreateForm({
               ) : (
                 <BookOpenIcon data-icon="inline-start" />
               )}
-              {createCourse.isPending ? "Membuat kursus..." : "Buat kursus"}
+              {createCourse.isPending
+                ? "Membuat kurikulum..."
+                : "Buat kurikulum"}
               {!createCourse.isPending ? (
                 <ArrowRightIcon data-icon="inline-end" />
               ) : null}
@@ -172,7 +175,7 @@ export function CourseCreateForm({
         </form>
 
         <aside className="bg-card ring-foreground/10 h-fit rounded-lg p-5 ring-1">
-          <p className="font-heading font-medium">Setelah kursus dibuat</p>
+          <p className="font-heading font-medium">Setelah kurikulum dibuat</p>
           <ol className="text-muted-foreground mt-5 space-y-5 text-sm">
             {[
               "Susun bab dan materi",
@@ -190,7 +193,7 @@ export function CourseCreateForm({
           <div className="mt-6 flex items-start gap-2.5 border-t pt-5 text-xs leading-relaxed">
             <CheckIcon className="text-foreground mt-0.5 size-4 shrink-0" />
             <p className="text-muted-foreground">
-              Kursus dibuat dalam keadaan belum dipublikasikan. Peserta belum
+              Kurikulum dibuat dalam keadaan belum dipublikasikan. Peserta belum
               dapat melihatnya sampai Anda mempublikasikannya.
             </p>
           </div>

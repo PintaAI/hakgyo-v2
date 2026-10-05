@@ -142,8 +142,8 @@ export function CohortInvites({
             Invite {cohortName}
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Siapa pun yang menebus link akan masuk ke kursus dan Group belajar
-            ini.
+            Siapa pun yang menebus link akan masuk ke kurikulum dan Group
+            belajar ini.
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>

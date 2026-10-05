@@ -115,11 +115,9 @@ function errorMessage(error: unknown) {
 export function AssessmentEventManager({
   courseId,
   cohortId,
-  cohortName,
 }: {
   courseId: string;
   cohortId?: string;
-  cohortName?: string;
 }) {
   const utils = api.useUtils();
   const [createOpen, setCreateOpen] = useState(false);
@@ -391,22 +389,18 @@ export function AssessmentEventManager({
       {dialogs}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
-            Event tugas
-          </p>
-          <h2 className="font-heading mt-1 text-2xl font-medium tracking-tight">
-            {cohortId
-              ? `Event ${cohortName ?? "Group belajar"}`
-              : "Tryout kursus"}
+          <h2 className="font-heading text-2xl font-medium tracking-tight">
+            {cohortId ? "Event tugas" : "Tryout"}
           </h2>
-          <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
+          <p className="text-muted-foreground mt-1 text-sm">
             {cohortId
-              ? "Jalankan tugas on-demand untuk siswa aktif cohort. Hasil dan review tersedia per siswa."
-              : "Jalankan tryout untuk semua peserta aktif kursus dan bandingkan hasilnya."}
+              ? "Jalankan tugas on-demand untuk siswa aktif Group belajar."
+              : "Jalankan tryout untuk semua siswa aktif kurikulum dan bandingkan hasilnya."}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
-          <PlusIcon /> Buat event
+          <PlusIcon data-icon="inline-start" />
+          Buat event
         </Button>
       </div>
 
@@ -445,7 +439,7 @@ export function AssessmentEventManager({
           <TrophyIcon className="text-muted-foreground mx-auto size-7" />
           <h3 className="mt-3 font-medium">Belum ada event tugas</h3>
           <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-            Buat event pertama dari tugas yang sudah dipublish di kursus.
+            Buat event pertama dari tugas yang sudah dipublish di kurikulum.
           </p>
         </div>
       )}
@@ -484,7 +478,7 @@ export function AssessmentEventManager({
               <p className="text-muted-foreground text-sm">
                 {cohortId
                   ? "Tugas on-demand · Group belajar"
-                  : "Tryout · kursus"}
+                  : "Tryout · kurikulum"}
               </p>
               <div className="space-y-2">
                 <Label htmlFor="event-title">Judul</Label>
@@ -494,7 +488,7 @@ export function AssessmentEventManager({
                   maxLength={200}
                   required
                   placeholder={
-                    cohortId ? "Tugas cepat pekan 1" : "Tryout akhir kursus"
+                    cohortId ? "Tugas cepat pekan 1" : "Tryout akhir kurikulum"
                   }
                   onChange={(event) => setTitle(event.target.value)}
                 />
@@ -508,8 +502,8 @@ export function AssessmentEventManager({
                   value={courseItemId}
                   onValueChange={setCourseItemId}
                   loading={assessmentItems.isPending}
-                  emptyLabel="Belum ada tugas yang siap di kursus ini"
-                  description="Hanya tugas yang tampil di kurikulum dan sudah memiliki soal."
+                  emptyLabel="Belum ada tugas yang siap di kurikulum ini"
+                  description="Hanya tugas yang tampil di materi kurikulum dan sudah memiliki soal."
                   defaultSortLabel="Urutan kurikulum"
                 />
                 {selectedItem ? (
@@ -821,9 +815,9 @@ function EventResults({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-16">Rank</TableHead>
+              <TableHead className="w-10 sm:w-16">Rank</TableHead>
               <TableHead>Peserta</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="max-sm:hidden">Status</TableHead>
               <TableHead>Nilai</TableHead>
               <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
@@ -856,8 +850,14 @@ function EventResults({
                     <p className="text-muted-foreground text-xs">
                       {participant.user.email}
                     </p>
+                    <Badge
+                      variant={invalidated ? "destructive" : "outline"}
+                      className="mt-1 sm:hidden"
+                    >
+                      {resultStatus}
+                    </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="max-sm:hidden">
                     <Badge variant={invalidated ? "destructive" : "outline"}>
                       {resultStatus}
                     </Badge>

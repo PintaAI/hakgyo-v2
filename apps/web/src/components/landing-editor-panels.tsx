@@ -44,7 +44,7 @@ const sectionNames: Record<string, string> = {
   nav: "Navigasi",
   hero: "Bagian pembuka",
   about: "Tentang lembaga",
-  courses: "Daftar kursus",
+  courses: "Daftar kurikulum",
   features: "Keunggulan",
   testimonials: "Testimoni",
   faq: "FAQ",

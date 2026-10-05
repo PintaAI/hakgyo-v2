@@ -140,7 +140,7 @@ export function StarterMaterialsDemo() {
     <div
       ref={ref}
       role="img"
-      aria-label="Kursus Hangeul Mastery dan buku standar EPS-TOPIK dari HRD Korea, siap dipakai di ruang lembaga."
+      aria-label="Kurikulum Hangeul Mastery dan buku standar EPS-TOPIK dari HRD Korea, siap dipakai di ruang lembaga."
       className="grid gap-3 sm:gap-4"
     >
       <div className={card}>
@@ -151,7 +151,7 @@ export function StarterMaterialsDemo() {
           <div className="min-w-0">
             <p className="text-sm font-semibold">Hangeul Mastery</p>
             <p className="text-muted-foreground text-xs">
-              Kursus dasar, gratis untuk setiap murid
+              Kurikulum dasar, gratis untuk setiap murid
             </p>
           </div>
         </div>

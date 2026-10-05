@@ -165,7 +165,7 @@ function ResourceLibrary({
   if (courses.length === 0) {
     return (
       <p className="text-muted-foreground bg-muted/50 rounded-xl p-4 text-sm">
-        Ikuti kursus untuk membuka latihan.
+        Ikuti kurikulum untuk membuka latihan.
       </p>
     );
   }
@@ -218,29 +218,31 @@ function ResourceLibrary({
 
       {courses.length > 1 ? (
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {[{ id: null, title: "Semua kursus" }, ...courses].map((course) => {
-            const selected = courseFilter === course.id;
-            return (
-              <button
-                key={course.id ?? "all"}
-                type="button"
-                aria-pressed={selected}
-                onClick={() =>
-                  setCourseFilter(
-                    course.id === null || selected ? null : course.id,
-                  )
-                }
-                className={cn(
-                  "min-h-9 max-w-52 shrink-0 truncate rounded-full px-3.5 text-xs font-bold",
-                  selected
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground",
-                )}
-              >
-                {course.title}
-              </button>
-            );
-          })}
+          {[{ id: null, title: "Semua kurikulum" }, ...courses].map(
+            (course) => {
+              const selected = courseFilter === course.id;
+              return (
+                <button
+                  key={course.id ?? "all"}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() =>
+                    setCourseFilter(
+                      course.id === null || selected ? null : course.id,
+                    )
+                  }
+                  className={cn(
+                    "min-h-9 max-w-52 shrink-0 truncate rounded-full px-3.5 text-xs font-bold",
+                    selected
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground",
+                  )}
+                >
+                  {course.title}
+                </button>
+              );
+            },
+          )}
         </div>
       ) : null}
 

@@ -1,18 +1,18 @@
 # Konsep Utama Group belajar di Hakgyo
 
-Group belajar (**cohort**) adalah satu pelaksanaan terjadwal dari sebuah kursus. Kursus menyimpan kurikulum yang dipelajari, sedangkan Group belajar menyimpan konteks bagaimana kurikulum tersebut dijalankan untuk kelompok tertentu.
+Group belajar (**cohort**) adalah satu pelaksanaan terjadwal dari sebuah kurikulum. Kurikulum menyimpan materi kurikulum yang dipelajari, sedangkan Group belajar menyimpan konteks bagaimana materi kurikulum tersebut dijalankan untuk kelompok tertentu.
 
-Satu kursus dapat memiliki banyak Group belajar. Setiap batch dapat mempunyai periode, peserta didik, instructor, assistant, kapasitas, harga, grup WhatsApp, undangan, dan jadwal meeting yang berbeda tanpa menduplikasi kurikulum kursus.
+Satu kurikulum dapat memiliki banyak Group belajar. Setiap batch dapat mempunyai periode, peserta didik, instructor, assistant, kapasitas, harga, grup WhatsApp, undangan, dan jadwal meeting yang berbeda tanpa menduplikasi materi kurikulum.
 
-Dokumen ini menjelaskan hubungan antara **kursus**, **Group belajar**, **peserta didik**, **staff**, **undangan**, **meeting**, dan **akses belajar**. Di dalam sistem, istilah teknisnya tetap `cohort`.
+Dokumen ini menjelaskan hubungan antara **kurikulum**, **Group belajar**, **peserta didik**, **staff**, **undangan**, **meeting**, dan **akses belajar**. Di dalam sistem, istilah teknisnya tetap `cohort`.
 
 ## Gambaran Dasar
 
-Bayangkan sebuah kursus bernama **Bahasa Korea untuk Pemula**. Kurikulum kursus tersebut dapat dijalankan beberapa kali untuk kelompok yang berbeda.
+Bayangkan sebuah kurikulum bernama **Bahasa Korea untuk Pemula**. Materi kurikulum tersebut dapat dijalankan beberapa kali untuk kelompok yang berbeda.
 
 <div class="my-6 max-w-2xl rounded-xl border p-4">
-  <div class="font-heading font-semibold">Kursus: Bahasa Korea untuk Pemula</div>
-  <div class="mt-2 text-xs text-muted-foreground">Kurikulum, bab, bahan ajar, dan cara belajar</div>
+  <div class="font-heading font-semibold">Kurikulum: Bahasa Korea untuk Pemula</div>
+  <div class="mt-2 text-xs text-muted-foreground">Materi kurikulum, bab, bahan ajar, dan cara belajar</div>
   <div class="ml-3 mt-4 grid gap-4 border-l pl-4">
     <div class="rounded-lg bg-muted p-3">
       <div class="text-sm font-medium">Batch September</div>
@@ -29,16 +29,16 @@ Bayangkan sebuah kursus bernama **Bahasa Korea untuk Pemula**. Kurikulum kursus 
   </div>
 </div>
 
-Ketiga batch menggunakan kurikulum yang sama. Perubahan pada susunan kursus berlaku untuk seluruh batch karena batch tidak menyimpan salinan materi.
+Ketiga batch menggunakan materi kurikulum yang sama. Perubahan pada susunan kurikulum berlaku untuk seluruh batch karena batch tidak menyimpan salinan materi.
 
-| Disimpan pada kursus                  | Disimpan pada cohort                    |
-| ------------------------------------- | --------------------------------------- |
-| Judul dan deskripsi kursus            | Nama dan deskripsi batch                |
-| Bab dan bahan ajar                    | Periode mulai dan selesai               |
-| Urutan belajar                        | Peserta didik cohort                    |
-| Publication bahan ajar                | Instructor dan assistant                |
-| Cara belajar open atau sequential     | Meeting dan link Zoom                   |
-| Aturan enrollment dasar dan kurikulum | Kapasitas, harga, dan aturan enrollment |
+| Disimpan pada kurikulum                      | Disimpan pada cohort                    |
+| -------------------------------------------- | --------------------------------------- |
+| Judul dan deskripsi kurikulum                | Nama dan deskripsi batch                |
+| Bab dan bahan ajar                           | Periode mulai dan selesai               |
+| Urutan belajar                               | Peserta didik cohort                    |
+| Publication bahan ajar                       | Instructor dan assistant                |
+| Cara belajar open atau sequential            | Meeting dan link Zoom                   |
+| Aturan enrollment dasar dan materi kurikulum | Kapasitas, harga, dan aturan enrollment |
 
 ## Kapan Menggunakan Group belajar
 
@@ -50,20 +50,20 @@ Gunakan Group belajar ketika sebuah program belajar membutuhkan satu atau lebih 
 - Live session atau meeting terjadwal.
 - Kapasitas peserta didik.
 - Grup komunikasi seperti WhatsApp.
-- Harga atau aturan enrollment yang berbeda dari kursus.
+- Harga atau aturan enrollment yang berbeda dari kurikulum.
 
-Group belajar tidak wajib digunakan untuk semua kursus. Kursus belajar mandiri dapat memberikan akses langsung kepada peserta didik tanpa memasukkannya ke batch.
+Group belajar tidak wajib digunakan untuk semua kurikulum. Kurikulum belajar mandiri dapat memberikan akses langsung kepada peserta didik tanpa memasukkannya ke batch.
 
-### Kursus Langsung atau Group belajar
+### Kurikulum Langsung atau Group belajar
 
-| Kebutuhan                                           | Pilihan yang disarankan |
-| --------------------------------------------------- | ----------------------- |
-| Belajar mandiri tanpa jadwal                        | Akses kursus langsung   |
-| Program dengan tanggal mulai dan selesai            | Cohort                  |
-| Semua peserta mengikuti live session yang sama      | Cohort                  |
-| Peserta dikelompokkan berdasarkan level atau jadwal | Beberapa cohort         |
-| Akses seumur hidup tanpa kelompok                   | Akses kursus langsung   |
-| Teacher berbeda untuk setiap pelaksanaan            | Beberapa cohort         |
+| Kebutuhan                                           | Pilihan yang disarankan  |
+| --------------------------------------------------- | ------------------------ |
+| Belajar mandiri tanpa jadwal                        | Akses kurikulum langsung |
+| Program dengan tanggal mulai dan selesai            | Cohort                   |
+| Semua peserta mengikuti live session yang sama      | Cohort                   |
+| Peserta dikelompokkan berdasarkan level atau jadwal | Beberapa cohort          |
+| Akses seumur hidup tanpa kelompok                   | Akses kurikulum langsung |
+| Teacher berbeda untuk setiap pelaksanaan            | Beberapa cohort          |
 
 ## Identitas dan Pengaturan Cohort
 
@@ -98,7 +98,7 @@ Checkout mandiri dari katalog atau undangan Group belajar berbayar ditolak ketik
 
 ### Harga
 
-Cohort dapat mengikuti harga kursus atau mempunyai harga sendiri. Harga cohort berguna ketika setiap batch memiliki paket, fasilitas, atau biaya yang berbeda.
+Cohort dapat mengikuti harga kurikulum atau mempunyai harga sendiri. Harga cohort berguna ketika setiap batch memiliki paket, fasilitas, atau biaya yang berbeda.
 
 Group belajar dengan harga lebih dari 0 diikuti melalui checkout. Siswa memilih QRIS atau transfer bank yang diatur owner atau admin di **Pengaturan → Pembayaran**, membayar, lalu mengunggah bukti. Pengelola Group belajar memeriksa bukti di tab **Pembayaran** dan menyetujui atau menolaknya. Siswa baru mendapat akses setelah pembayaran disetujui.
 
@@ -134,7 +134,7 @@ Perubahan status dilakukan oleh pengelola. Tanggal, meeting, dan progress pesert
 
 Cohort mempunyai aturan enrollment sendiri dan dapat memilih salah satu dari tiga perilaku:
 
-- **Ikuti kursus**: cohort tidak mempunyai override dan menggunakan aturan dasar kursus.
+- **Ikuti kurikulum**: cohort tidak mempunyai override dan menggunakan aturan dasar kurikulum.
 - **Open**: cohort ditandai untuk pendaftaran terbuka.
 - **Invite only**: peserta masuk melalui undangan atau ditambahkan pengelola.
 
@@ -145,18 +145,18 @@ Saat ini penambahan peserta cohort yang tersedia di workspace dilakukan dengan d
 
 Alur pendaftaran terbuka langsung ke cohort belum tersedia. Nilai `Open` sudah dapat disimpan sebagai kebijakan cohort, tetapi flow peserta untuk memilih dan masuk ke cohort terbuka masih akan dikembangkan.
 
-## Peserta Didik dan Akses Kursus
+## Peserta Didik dan Akses Kurikulum
 
-Ketika peserta didik aktif di sebuah cohort, Hakgyo juga memastikan peserta tersebut mempunyai akses ke kursus induknya.
+Ketika peserta didik aktif di sebuah cohort, Hakgyo juga memastikan peserta tersebut mempunyai akses ke kurikulum induknya.
 
 <div class="my-6 grid max-w-xl gap-2 rounded-xl border p-4">
   <div class="rounded-lg bg-muted px-3 py-2 text-sm">Peserta ditambahkan ke cohort</div>
   <div class="pl-5 text-muted-foreground">↓</div>
   <div class="rounded-lg bg-muted px-3 py-2 text-sm">Enrollment cohort menjadi aktif</div>
   <div class="pl-5 text-muted-foreground">↓</div>
-  <div class="rounded-lg bg-muted px-3 py-2 text-sm">Hakgyo memastikan akses ke kursus induk</div>
+  <div class="rounded-lg bg-muted px-3 py-2 text-sm">Hakgyo memastikan akses ke kurikulum induk</div>
   <div class="pl-5 text-muted-foreground">↓</div>
-  <div class="rounded-lg bg-muted px-3 py-2 text-sm">Peserta dapat membuka kurikulum kursus</div>
+  <div class="rounded-lg bg-muted px-3 py-2 text-sm">Peserta dapat membuka materi kurikulum</div>
 </div>
 
 Peserta harus sudah memiliki akun Hakgyo sebelum dapat ditambahkan melalui email. Email dinormalisasi menjadi lowercase dan harus cocok dengan akun yang terdaftar.
@@ -170,26 +170,26 @@ Peserta harus sudah memiliki akun Hakgyo sebelum dapat ditambahkan melalui email
 | `COMPLETED` | Peserta telah menyelesaikan konteks enrollment tersebut. |
 | `CANCELLED` | Enrollment cohort dibatalkan.                            |
 
-Mengubah enrollment cohort menjadi `ACTIVE` atau `COMPLETED` memastikan entitlement kursus tetap aktif.
+Mengubah enrollment cohort menjadi `ACTIVE` atau `COMPLETED` memastikan entitlement kurikulum tetap aktif.
 
-Ketika enrollment cohort dibatalkan, Hakgyo hanya mencabut entitlement kursus yang memang berasal dari cohort dan tidak lagi didukung cohort aktif lain. Akses mandiri dari undangan kursus, open enrollment, atau penambahan manual tidak ikut dicabut.
+Ketika enrollment cohort dibatalkan, Hakgyo hanya mencabut entitlement kurikulum yang memang berasal dari cohort dan tidak lagi didukung cohort aktif lain. Akses mandiri dari undangan kurikulum, open enrollment, atau penambahan manual tidak ikut dicabut.
 
 ### Satu Peserta di Beberapa Cohort
 
-Peserta dapat tergabung dalam beberapa cohort untuk kursus yang sama. Hal ini berguna jika peserta berpindah batch atau mengikuti kelompok tambahan.
+Peserta dapat tergabung dalam beberapa cohort untuk kurikulum yang sama. Hal ini berguna jika peserta berpindah batch atau mengikuti kelompok tambahan.
 
-Jika satu enrollment cohort dibatalkan tetapi peserta masih aktif pada cohort lain di kursus yang sama, akses kursus tetap aktif.
+Jika satu enrollment cohort dibatalkan tetapi peserta masih aktif pada cohort lain di kurikulum yang sama, akses kurikulum tetap aktif.
 
 ## Undangan Cohort
 
-Undangan cohort menghubungkan peserta ke kursus sekaligus cohort yang dituju.
+Undangan cohort menghubungkan peserta ke kurikulum sekaligus cohort yang dituju.
 
 ```text
 Pengelola membuat undangan cohort
 -> link dibagikan kepada peserta
 -> peserta login atau membuat akun
 -> peserta membuka link
--> enrollment kursus dan cohort dibuat
+-> enrollment kurikulum dan cohort dibuat
 ```
 
 Undangan dapat mempunyai:
@@ -262,20 +262,20 @@ Gunakan join URL untuk membuka meeting. Link tersebut berasal dari Zoom dan tida
 
 ## Hubungan Cohort dan Progress
 
-Progress belajar tetap melekat pada peserta dan bahan ajar kursus, bukan pada salinan kurikulum cohort. Artinya:
+Progress belajar tetap melekat pada peserta dan bahan ajar kurikulum, bukan pada salinan materi kurikulum cohort. Artinya:
 
 - Peserta dari cohort berbeda mengerjakan bahan ajar yang sama.
 - Setiap peserta tetap mempunyai progress sendiri.
-- Perpindahan cohort tidak menghapus progress kursus.
+- Perpindahan cohort tidak menghapus progress kurikulum.
 - Pembatalan enrollment cohort tidak menghapus jawaban, nilai, atau progress yang sudah tercatat.
 
-Cara belajar `OPEN` atau `SEQUENTIAL` berasal dari kursus dan berlaku bagi peserta seluruh cohort.
+Cara belajar `OPEN` atau `SEQUENTIAL` berasal dari kurikulum dan berlaku bagi peserta seluruh cohort.
 
 ## Workflow Operasional yang Disarankan
 
-### 1. Siapkan Kursus
+### 1. Siapkan Kurikulum
 
-Pastikan judul, kurikulum, bahan ajar, dan cara belajar kursus sudah sesuai. Cohort tidak menggantikan proses penyusunan kurikulum.
+Pastikan judul, materi kurikulum, bahan ajar, dan cara belajar kurikulum sudah sesuai. Cohort tidak menggantikan proses penyusunan materi kurikulum.
 
 ### 2. Buat Cohort sebagai Draft
 
@@ -291,7 +291,7 @@ Pastikan Zoom organization sudah terhubung. Buat meeting sesuai jadwal program d
 
 ### 5. Buka Cohort
 
-Ubah status menjadi `OPEN` ketika cohort siap menerima peserta. Tentukan apakah cohort mengikuti aturan kursus atau menggunakan kebijakan enrollment sendiri.
+Ubah status menjadi `OPEN` ketika cohort siap menerima peserta. Tentukan apakah cohort mengikuti aturan kurikulum atau menggunakan kebijakan enrollment sendiri.
 
 ### 6. Tambahkan Peserta
 
@@ -307,7 +307,7 @@ Setelah program selesai, ubah status menjadi `COMPLETED`. Riwayat peserta, meeti
 
 ## Contoh End-to-End
 
-Sebuah organisasi membuka **Cohort September** untuk kursus Bahasa Korea Pemula.
+Sebuah organisasi membuka **Cohort September** untuk kurikulum Bahasa Korea Pemula.
 
 1. Pengelola membuat cohort berstatus `DRAFT` dengan kapasitas 20 peserta.
 2. Periode diatur dari 1 September sampai 30 November.
@@ -317,7 +317,7 @@ Sebuah organisasi membuka **Cohort September** untuk kursus Bahasa Korea Pemula.
 6. Sepuluh peserta ditambahkan melalui email dan delapan peserta masuk melalui undangan cohort.
 7. Dashboard menunjukkan 18 peserta aktif dan occupancy 90%.
 8. Cohort diubah menjadi `IN_PROGRESS` ketika kelas pertama dimulai.
-9. Peserta mengikuti kurikulum yang sama, tetapi progress masing-masing disimpan terpisah.
+9. Peserta mengikuti materi kurikulum yang sama, tetapi progress masing-masing disimpan terpisah.
 10. Setelah program berakhir, cohort diubah menjadi `COMPLETED`.
 
 ## Batasan yang Perlu Diketahui

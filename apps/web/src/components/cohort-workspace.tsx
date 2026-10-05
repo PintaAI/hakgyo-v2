@@ -8,9 +8,12 @@ import {
   ArrowRightIcon,
   CalendarDaysIcon,
   CheckIcon,
+  ChevronDownIcon,
+  CircleDotIcon,
   ClipboardCheckIcon,
   ClipboardListIcon,
   ExternalLinkIcon,
+  InfoIcon,
   LayoutDashboardIcon,
   LoaderCircleIcon,
   PencilIcon,
@@ -68,6 +71,13 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { DatePicker } from "~/components/ui/date-picker";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { Checkbox } from "~/components/ui/checkbox";
 import { useDialogs } from "~/components/ui/use-dialogs";
@@ -90,7 +100,14 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Textarea } from "~/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { getErrorMessage } from "~/lib/error-message";
+import { TabRail } from "~/components/ui/tab-rail";
+import { enrollmentSourceLabels } from "~/lib/enrollment-labels";
 import { cn } from "~/lib/utils";
 import {
   formatZonedDateTimeInput,
@@ -119,9 +136,9 @@ const views = [
   { value: "learners", label: "Siswa", icon: UsersIcon },
   { value: "payments", label: "Pembayaran", icon: WalletIcon },
   { value: "staff", label: "Staf", icon: UserRoundCogIcon },
-  { value: "meetings", label: "Pertemuan", icon: VideoIcon },
+  { value: "meetings", label: "Jadwal kelas", icon: VideoIcon },
   { value: "assessments", label: "Event tugas", icon: ClipboardListIcon },
-  { value: "reviews", label: "Hasil & review", icon: ClipboardCheckIcon },
+  { value: "reviews", label: "Hasil & review tugas", icon: ClipboardCheckIcon },
   { value: "settings", label: "Pengaturan", icon: Settings2Icon },
 ] satisfies Array<{ value: CohortView; label: string; icon: LucideIcon }>;
 
@@ -203,6 +220,59 @@ function LoadingRows({ error }: { error?: { message: string } | null }) {
   );
 }
 
+/** The cohort's lifecycle status, changed straight from the page header. */
+function CohortStatusControl({ cohort }: { cohort: Cohort }) {
+  const utils = api.useUtils();
+  const router = useRouter();
+  const update = api.cohort.update.useMutation();
+
+  async function changeStatus(status: Cohort["status"]) {
+    if (status === cohort.status) return;
+    try {
+      await update.mutateAsync({ cohortId: cohort.id, status });
+      await Promise.all([
+        utils.cohort.get.invalidate({ cohortId: cohort.id }),
+        utils.cohort.list.invalidate({ courseId: cohort.courseId }),
+      ]);
+      router.refresh();
+      toast.success(`Status diubah menjadi ${statusLabels[status]}.`);
+    } catch (cause) {
+      toast.error(getErrorMessage(cause));
+    }
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={update.isPending}
+        render={<Button variant="outline" />}
+      >
+        {update.isPending ? (
+          <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
+        ) : (
+          <CircleDotIcon data-icon="inline-start" />
+        )}
+        Status: {statusLabels[cohort.status]}
+        <ChevronDownIcon data-icon="inline-end" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44">
+        <DropdownMenuRadioGroup
+          value={cohort.status}
+          onValueChange={(value) =>
+            void changeStatus(value as Cohort["status"])
+          }
+        >
+          {Object.entries(statusLabels).map(([value, label]) => (
+            <DropdownMenuRadioItem key={value} value={value}>
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function CohortWorkspace({
   initialCohort,
   organizationSlug,
@@ -218,10 +288,13 @@ export function CohortWorkspace({
     { initialData: initialCohort },
   );
   const cohort = cohortQuery.data;
+  // Free Group belajar have nothing to pay, so the payments tab stays hidden.
+  const showPayments =
+    cohort.access.managePayments && (cohort.price ?? cohort.course.price) > 0;
   const availableViews = views.filter(({ value }) => {
     if (value === "learners")
       return cohort.access.manageLearners || cohort.access.manageInvites;
-    if (value === "payments") return cohort.access.managePayments;
+    if (value === "payments") return showPayments;
     if (value === "assessments") return cohort.access.reviewAssessments;
     if (value === "reviews") return cohort.access.reviewAssessments;
     if (value === "settings") return cohort.access.update;
@@ -268,10 +341,7 @@ export function CohortWorkspace({
   const meetingItems = meetings.data?.pages.flatMap((page) => page.items);
   const learnerActiveTotal = learners.data?.pages[0]?.activeTotal;
   const meetingTotal = meetings.data?.pages[0]?.total;
-  const paymentsToReview = usePendingPaymentReviews(
-    cohort.id,
-    cohort.access.managePayments,
-  );
+  const paymentsToReview = usePendingPaymentReviews(cohort.id, showPayments);
   const viewCounts: Partial<Record<CohortView, number>> = {
     learners: learnerActiveTotal,
     payments: paymentsToReview,
@@ -317,6 +387,9 @@ export function CohortWorkspace({
             className="aspect-video w-full rounded-2xl"
           />
         }
+        actions={
+          cohort.access.update ? <CohortStatusControl cohort={cohort} /> : null
+        }
       />
 
       <Tabs
@@ -324,7 +397,7 @@ export function CohortWorkspace({
         onValueChange={(nextView) => navigate(nextView as CohortView)}
         className="gap-8"
       >
-        <div className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <TabRail activeKey={view}>
           <TabsList
             variant="line"
             aria-label="Pengelolaan Group belajar"
@@ -346,7 +419,7 @@ export function CohortWorkspace({
               </TabsTrigger>
             ))}
           </TabsList>
-        </div>
+        </TabRail>
 
         <TabsContent value="overview">
           <Overview
@@ -357,13 +430,13 @@ export function CohortWorkspace({
             meetings={meetingItems}
             meetingsPending={meetings.isPending}
             canManageMeetings={cohort.access.manageMeetings}
-            canManagePayments={cohort.access.managePayments}
+            canManagePayments={showPayments}
             paymentsToReview={paymentsToReview}
             onNavigate={navigate}
           />
         </TabsContent>
         <TabsContent value="payments">
-          {cohort.access.managePayments ? (
+          {showPayments ? (
             <CohortPayments
               cohortId={cohort.id}
               organizationSlug={organizationSlug}
@@ -427,7 +500,6 @@ export function CohortWorkspace({
           <AssessmentEventManager
             courseId={cohort.courseId}
             cohortId={cohort.id}
-            cohortName={cohort.name}
           />
         </TabsContent>
         <TabsContent value="settings">
@@ -489,7 +561,7 @@ function Overview({
           { label: "Kapasitas", value: cohort.capacity ?? "∞" },
           { label: "Keterisian", value: learnersPending ? "–" : occupancy },
           {
-            label: "Pertemuan mendatang",
+            label: "Kelas mendatang",
             value: meetingsPending ? "–" : upcoming,
           },
         ]}
@@ -524,11 +596,11 @@ function Overview({
                   ? "Daftar sendiri"
                   : cohort.enrollmentMode === "INVITE_ONLY"
                     ? "Lewat undangan"
-                    : "Ikuti kursus",
+                    : "Ikuti kurikulum",
               ],
               [
                 "Harga",
-                `${price > 0 ? formatRupiah(price) : "Gratis"}${cohort.price === null ? " (ikuti kursus)" : ""}`,
+                `${price > 0 ? formatRupiah(price) : "Gratis"}${cohort.price === null ? " (ikuti kurikulum)" : ""}`,
               ],
             ].map(([label, value]) => (
               <div
@@ -775,8 +847,8 @@ function Learners({
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-4">Siswa</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Terdaftar</TableHead>
+                  <TableHead className="max-sm:hidden">Sumber</TableHead>
+                  <TableHead className="max-sm:hidden">Terdaftar</TableHead>
                   <TableHead className="text-right">Status</TableHead>
                   <TableHead className="pr-4 text-right">
                     <span className="sr-only">Aksi</span>
@@ -786,7 +858,7 @@ function Learners({
               <TableBody>
                 {visible.map((enrollment) => (
                   <TableRow key={enrollment.id}>
-                    <TableCell className="pl-4">
+                    <TableCell className="max-w-48 pl-4 whitespace-normal sm:max-w-64">
                       <div className="flex items-center gap-3">
                         <Avatar className="shrink-0">
                           {enrollment.user.image ? (
@@ -803,16 +875,24 @@ function Learners({
                           <span className="block font-medium">
                             {enrollment.user.name}
                           </span>
-                          <span className="text-muted-foreground block text-xs">
+                          <span className="text-muted-foreground block truncate text-xs">
                             {enrollment.user.email}
+                          </span>
+                          <span className="text-muted-foreground mt-0.5 block text-xs sm:hidden">
+                            {enrollmentSourceLabels[enrollment.source] ??
+                              enrollment.source}{" "}
+                            · {dateFormatter.format(enrollment.enrolledAt)}
                           </span>
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{enrollment.source}</Badge>
+                    <TableCell className="max-sm:hidden">
+                      <Badge variant="outline">
+                        {enrollmentSourceLabels[enrollment.source] ??
+                          enrollment.source}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
+                    <TableCell className="text-muted-foreground text-xs max-sm:hidden">
                       {dateFormatter.format(enrollment.enrolledAt)}
                     </TableCell>
                     <TableCell className="text-right">
@@ -971,8 +1051,8 @@ function Learners({
             </AlertDialogTitle>
             <AlertDialogDescription>
               Siswa akan dikeluarkan dari Group belajar ini dan kehilangan akses
-              kursus yang berasal dari group ini. Akses lewat Group belajar lain
-              atau belajar mandiri pada kursus yang sama tetap berlaku.
+              kurikulum yang berasal dari group ini. Akses lewat Group belajar
+              lain atau belajar mandiri pada kurikulum yang sama tetap berlaku.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1323,7 +1403,7 @@ function Meetings({
   return (
     <section className="space-y-5">
       <SectionHeading
-        title="Meetings"
+        title="Jadwal kelas"
         description="Jadwal live session melalui Zoom atau Google Meet."
         action={renderMeetingAction()}
       />
@@ -1670,7 +1750,6 @@ function Settings({
   const loaded = cohortSettingsValues(cohort);
   const [name, setName] = useState(loaded.name);
   const [description, setDescription] = useState(loaded.description);
-  const [status, setStatus] = useState(loaded.status);
   const [capacity, setCapacity] = useState(loaded.capacity);
   const [price, setPrice] = useState(loaded.price);
   const [startsAt, setStartsAt] = useState(loaded.startsAt);
@@ -1693,7 +1772,6 @@ function Settings({
     if (loaded.description !== source.description) {
       setDescription(loaded.description);
     }
-    if (loaded.status !== source.status) setStatus(loaded.status);
     if (loaded.capacity !== source.capacity) setCapacity(loaded.capacity);
     if (loaded.price !== source.price) setPrice(loaded.price);
     if (loaded.startsAt !== source.startsAt) setStartsAt(loaded.startsAt);
@@ -1715,7 +1793,6 @@ function Settings({
       ...(description.trim() !== source.description.trim()
         ? { description: description.trim() || null }
         : {}),
-      ...(status !== source.status ? { status } : {}),
       ...(capacity !== source.capacity
         ? { capacity: capacity ? Number(capacity) : null }
         : {}),
@@ -1804,121 +1881,130 @@ function Settings({
           </CardContent>
         </Card>
 
-        <Card className="gap-0 py-0">
-          <CardHeader className="border-b py-4">
-            <CardTitle className="font-heading text-lg">
-              Status & akses
-            </CardTitle>
-            <CardDescription>
-              Atur visibilitas, enrollment, kapasitas, dan harga cohort.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 py-5">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FieldSelect
-                id="settings-cohort-status"
-                label="Status"
-                value={status}
-                onChange={(value) => setStatus(value as Cohort["status"])}
-                options={Object.entries(statusLabels)}
-              />
-              <FieldSelect
-                id="settings-cohort-enrollment"
-                label="Tipe akses"
-                value={enrollmentMode}
-                onChange={setEnrollmentMode}
-                options={[
-                  ["INHERIT", "Ikuti kursus"],
-                  ["OPEN", "Kursus publik"],
-                  ["INVITE_ONLY", "Kursus privat"],
-                ]}
-              />
-              <div className="space-y-2">
-                <Label htmlFor="settings-cohort-capacity">Kapasitas</Label>
-                <Input
-                  id="settings-cohort-capacity"
-                  type="number"
-                  min={1}
-                  placeholder="Tidak terbatas"
-                  value={capacity}
-                  onChange={(event) => setCapacity(event.target.value)}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="gap-0 py-0">
+            <CardHeader className="border-b py-4">
+              <CardTitle className="font-heading text-lg">Akses</CardTitle>
+              <CardDescription>
+                Atur enrollment, kapasitas, dan harga Group belajar.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 py-5">
+              <div className="grid gap-4">
+                <FieldSelect
+                  id="settings-cohort-enrollment"
+                  label="Tipe akses"
+                  value={enrollmentMode}
+                  onChange={setEnrollmentMode}
+                  options={[
+                    ["INHERIT", "Ikuti kurikulum"],
+                    ["OPEN", "Kurikulum publik"],
+                    ["INVITE_ONLY", "Kurikulum privat"],
+                  ]}
                 />
+                <div className="space-y-2">
+                  <Label htmlFor="settings-cohort-capacity">Kapasitas</Label>
+                  <Input
+                    id="settings-cohort-capacity"
+                    type="number"
+                    min={1}
+                    placeholder="Tidak terbatas"
+                    value={capacity}
+                    onChange={(event) => setCapacity(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="settings-cohort-price">Harga (IDR)</Label>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-3"
+                          />
+                        }
+                        aria-label="Info harga"
+                      >
+                        <InfoIcon className="size-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Isi 0 untuk gratis. Group belajar berbayar diikuti lewat
+                        checkout QRIS atau transfer bank, lalu diverifikasi di
+                        tab Pembayaran.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Input
+                    id="settings-cohort-price"
+                    type="number"
+                    min={0}
+                    placeholder={
+                      cohort.course.price > 0
+                        ? `Ikuti kurikulum (${formatRupiah(cohort.course.price)})`
+                        : "Ikuti kurikulum (gratis)"
+                    }
+                    value={price}
+                    onChange={(event) => setPrice(event.target.value)}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="settings-cohort-price">Harga (IDR)</Label>
-                <Input
-                  id="settings-cohort-price"
-                  type="number"
-                  min={0}
-                  placeholder={
-                    cohort.course.price > 0
-                      ? `Ikuti kursus (${formatRupiah(cohort.course.price)})`
-                      : "Ikuti kursus (gratis)"
-                  }
-                  value={price}
-                  onChange={(event) => setPrice(event.target.value)}
-                />
-                <p className="text-muted-foreground text-xs">
-                  Isi 0 untuk gratis. Group belajar berbayar diikuti lewat
-                  checkout QRIS atau transfer bank, lalu diverifikasi di tab
-                  Pembayaran.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="gap-0 py-0">
-          <CardHeader className="border-b py-4">
-            <CardTitle className="font-heading text-lg">
-              Jadwal & tautan
-            </CardTitle>
-            <CardDescription>
-              Periode Group belajar dan tautan komunitas.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 py-5">
-            <div className="space-y-2">
-              <Label htmlFor="settings-cohort-whatsapp">WhatsApp URL</Label>
-              <Input
-                id="settings-cohort-whatsapp"
-                type="url"
-                placeholder="https://chat.whatsapp.com/..."
-                value={whatsapp}
-                onChange={(event) => setWhatsapp(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <Card className="gap-0 py-0">
+            <CardHeader className="border-b py-4">
+              <CardTitle className="font-heading text-lg">
+                Jadwal & tautan
+              </CardTitle>
+              <CardDescription>
+                Periode Group belajar dan tautan komunitas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 py-5">
               <div className="space-y-2">
-                <Label htmlFor="settings-cohort-start">Mulai</Label>
-                <DatePicker
-                  id="settings-cohort-start"
-                  value={startsAt}
-                  onChange={setStartsAt}
+                <Label htmlFor="settings-cohort-whatsapp">WhatsApp URL</Label>
+                <Input
+                  id="settings-cohort-whatsapp"
+                  type="url"
+                  placeholder="https://chat.whatsapp.com/..."
+                  value={whatsapp}
+                  onChange={(event) => setWhatsapp(event.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="settings-cohort-end">Selesai</Label>
-                <DatePicker
-                  id="settings-cohort-end"
-                  min={startsAt || undefined}
-                  value={endsAt}
-                  onChange={setEndsAt}
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="settings-cohort-start">Mulai</Label>
+                  <DatePicker
+                    id="settings-cohort-start"
+                    value={startsAt}
+                    onChange={setStartsAt}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="settings-cohort-end">Selesai</Label>
+                  <DatePicker
+                    id="settings-cohort-end"
+                    min={startsAt || undefined}
+                    value={endsAt}
+                    onChange={setEndsAt}
+                  />
+                </div>
               </div>
-            </div>
-          </CardContent>
-          <div className="flex justify-end border-t px-4 py-3">
-            <Button type="submit" disabled={!name.trim() || update.isPending}>
-              {update.isPending ? (
-                <LoaderCircleIcon className="animate-spin" />
-              ) : (
-                <CheckIcon />
-              )}
-              Simpan pengaturan
-            </Button>
-          </div>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex justify-end">
+          <Button type="submit" disabled={!name.trim() || update.isPending}>
+            {update.isPending ? (
+              <LoaderCircleIcon className="animate-spin" />
+            ) : (
+              <CheckIcon />
+            )}
+            Simpan pengaturan
+          </Button>
+        </div>
       </form>
 
       {canDelete ? (

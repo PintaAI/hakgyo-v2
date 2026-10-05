@@ -21,6 +21,7 @@ import { withCourseCounts } from "~/server/course/counts";
 import { assertCoursePublishable } from "~/server/course/readiness-service";
 import { organizationBrandSelect } from "~/server/brand/context";
 import { db } from "~/server/db";
+import { deleteCourseTree } from "~/server/superadmin/deletion";
 import { listPublicCohorts } from "~/server/payment/checkout";
 import { generateCourseThumbnail } from "~/server/ai/course-thumbnail";
 import {
@@ -243,7 +244,7 @@ export const courseRouter = createTRPCRouter({
         if (updated.count !== 1) {
           throw new TRPCError({
             code: "CONFLICT",
-            message: "Thumbnail kursus berubah. Silakan coba lagi.",
+            message: "Thumbnail kurikulum berubah. Silakan coba lagi.",
           });
         }
       } catch (error) {
@@ -695,7 +696,8 @@ export const courseRouter = createTRPCRouter({
         permission: "course.manage",
         userId: ctx.actorUserId,
       });
-      await db.course.delete({ where: { id: input.courseId } });
+      const deleted = await deleteCourseTree(input.courseId, ctx.actorUserId);
+      if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       return { deleted: true };
     }),
 });

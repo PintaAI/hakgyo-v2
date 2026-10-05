@@ -54,7 +54,7 @@ export function CourseOutlineList({
     <div className="flex flex-col gap-5">
       {showHeader ? (
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-bold">{header ?? "Materi kursus"}</h2>
+          <h2 className="text-xl font-bold">{header ?? "Materi kurikulum"}</h2>
           <span className="text-muted-foreground text-xs font-semibold">
             {modules.length} bab
           </span>

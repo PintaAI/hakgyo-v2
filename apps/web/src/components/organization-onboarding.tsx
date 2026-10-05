@@ -155,7 +155,7 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
           icon={Building2Icon}
           audience="Untuk pendiri"
           title="Buat organization"
-          description="Siapkan workspace, atur kursus sebagai Public atau Private, dan kelola pengajar, Group belajar, serta siswa. Anda otomatis menjadi owner."
+          description="Siapkan workspace, atur kurikulum sebagai Public atau Private, dan kelola pengajar, Group belajar, serta siswa. Anda otomatis menjadi owner."
           featured
         >
           <Link
@@ -203,8 +203,8 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
           number={3}
           icon={BookOpenIcon}
           audience="Untuk siswa"
-          title="Jelajahi kursus"
-          description="Tidak perlu organization untuk mengikuti kursus dan melanjutkan progres belajar."
+          title="Jelajahi kurikulum"
+          description="Tidak perlu organization untuk mengikuti kurikulum dan melanjutkan progres belajar."
         >
           <Button
             type="button"

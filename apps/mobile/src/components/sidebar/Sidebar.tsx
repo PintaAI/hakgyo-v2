@@ -45,7 +45,7 @@ export const Sidebar = memo(function Sidebar({
     enabled: Boolean(session && isCourseMode),
   });
   const course = outlineQuery.data;
-  const courseTitle = course?.title ?? "Kursus";
+  const courseTitle = course?.title ?? "Kurikulum";
   const courseThumbnail = course?.thumbnailUrl ?? null;
   const courseOrgName = course?.organization.name;
   const courseInitial = courseTitle.trim().charAt(0).toUpperCase() || "C";

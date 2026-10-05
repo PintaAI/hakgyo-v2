@@ -23,11 +23,11 @@ export const metadata: Metadata = {
     template: "%s | Hakgyo",
   },
   description:
-    "Platform belajar untuk mengelola kursus, materi, tugas, cohort, dan perkembangan peserta dalam satu tempat.",
+    "Platform belajar untuk mengelola kurikulum, materi, tugas, cohort, dan perkembangan peserta dalam satu tempat.",
   keywords: [
     "platform belajar online",
     "learning management system",
-    "kursus online",
+    "kurikulum online",
     "kelas online",
     "Hakgyo",
   ],

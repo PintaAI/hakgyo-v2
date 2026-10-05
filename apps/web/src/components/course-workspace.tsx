@@ -25,7 +25,6 @@ import {
   MailPlusIcon,
   PlusIcon,
   SearchIcon,
-  ImageIcon,
   Settings2Icon,
   ShieldCheckIcon,
   Trash2Icon,
@@ -52,7 +51,7 @@ import {
   CoursePublicationControl,
   coursePublicationLabels,
 } from "~/components/course-readiness";
-import { CourseThumbnailField } from "~/components/course-thumbnail-field";
+import { CourseCoverEditor } from "~/components/course-cover-editor";
 import { PageHeader } from "~/components/ui/page-header";
 import { CourseCover } from "~/components/course-cover";
 import { ReviewQueue } from "~/components/review-queue";
@@ -71,6 +70,7 @@ import {
   CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
@@ -111,6 +111,8 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { getErrorMessage } from "~/lib/error-message";
+import { TabRail } from "~/components/ui/tab-rail";
+import { enrollmentSourceLabels } from "~/lib/enrollment-labels";
 import { cn } from "~/lib/utils";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -181,7 +183,7 @@ const views = [
   { value: "overview", label: "Ringkasan", icon: LayoutDashboardIcon },
   { value: "cohorts", label: "Group belajar", icon: CalendarDaysIcon },
   { value: "learners", label: "Siswa", icon: UsersIcon },
-  { value: "reviews", label: "Hasil & review", icon: ClipboardCheckIcon },
+  { value: "reviews", label: "Hasil & review tugas", icon: ClipboardCheckIcon },
   { value: "tryouts", label: "Tryout", icon: TrophyIcon },
   { value: "access", label: "Akses", icon: ShieldCheckIcon },
   { value: "settings", label: "Pengaturan", icon: Settings2Icon },
@@ -192,9 +194,6 @@ const views = [
 }>;
 
 const validViews = new Set<CourseView>(views.map(({ value }) => value));
-
-/** The settings field that every thumbnail action leads to. */
-const courseThumbnailFieldId = "course-thumbnail";
 
 function getInitials(name: string) {
   return name
@@ -363,16 +362,13 @@ export function CourseWorkspace({
     await utils.course.getWorkspaceOverview.invalidate(workspaceInput);
   }
 
-  // Every thumbnail action lives in the settings tab; this opens it there.
-  function editThumbnail() {
-    navigate("settings");
-    window.setTimeout(() => {
-      // The id is on the hidden file input; scroll to the visible field.
-      document
-        .getElementById(courseThumbnailFieldId)
-        ?.closest("[data-thumbnail-field]")
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 50);
+  async function refreshThumbnail() {
+    await Promise.all([
+      utils.course.get.invalidate({ courseId: course.id }),
+      utils.course.list.invalidate({ organizationId }),
+      refreshWorkspace(),
+    ]);
+    router.refresh();
   }
 
   async function changeCourseStatus(status: Course["status"]) {
@@ -391,8 +387,8 @@ export function CourseWorkspace({
       ]);
       toast.success(
         status === "PUBLISHED"
-          ? "Kursus dipublikasikan."
-          : "Publikasi kursus dibatalkan. Semua item disembunyikan dari siswa.",
+          ? "Kurikulum dipublikasikan."
+          : "Publikasi kurikulum dibatalkan. Semua item disembunyikan dari siswa.",
       );
       router.refresh();
       return true;
@@ -412,36 +408,24 @@ export function CourseWorkspace({
         )}
       >
         <ArrowLeftIcon data-icon="inline-start" />
-        Semua kursus
+        Semua kurikulum
       </Link>
 
       <PageHeader
-        eyebrow={`Kursus · ${courseStatus[course.status].label}`}
+        eyebrow={`Kurikulum · ${courseStatus[course.status].label}`}
         title={course.title}
         description={
           course.description ??
-          "Belum ada deskripsi. Tambahkan konteks kursus melalui Pengaturan."
+          "Belum ada deskripsi. Tambahkan konteks kurikulum melalui Pengaturan."
         }
         media={
           canManageCourse ? (
-            // The cover opens the one place every thumbnail action lives.
-            <button
-              type="button"
-              onClick={editThumbnail}
-              className="group/cover focus-visible:ring-ring relative block w-full overflow-hidden rounded-2xl outline-none focus-visible:ring-2"
-            >
-              <CourseCover
-                title={course.title}
-                thumbnailUrl={course.thumbnailUrl}
-                priority
-                sizes="352px"
-                className="aspect-video w-full transition-transform duration-500 group-hover/cover:scale-[1.02]"
-              />
-              <span className="bg-background/90 absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur">
-                <ImageIcon className="size-3.5" aria-hidden="true" />
-                {course.thumbnailUrl ? "Ganti thumbnail" : "Tambah thumbnail"}
-              </span>
-            </button>
+            <CourseCoverEditor
+              courseId={course.id}
+              title={course.title}
+              thumbnailUrl={course.thumbnailUrl}
+              onChange={refreshThumbnail}
+            />
           ) : (
             <CourseCover
               title={course.title}
@@ -460,7 +444,7 @@ export function CourseWorkspace({
                 className={buttonVariants({ variant: "outline" })}
               >
                 <FilePenLineIcon data-icon="inline-start" />
-                Edit kurikulum
+                Edit materi kurikulum
               </Link>
             ) : (
               <Link
@@ -468,7 +452,7 @@ export function CourseWorkspace({
                 className={buttonVariants({ variant: "outline" })}
               >
                 <Layers3Icon data-icon="inline-start" />
-                Lihat kurikulum
+                Lihat materi kurikulum
               </Link>
             )}
             {canManageCourse ? (
@@ -489,10 +473,10 @@ export function CourseWorkspace({
         onValueChange={(nextView) => navigate(nextView as CourseView)}
         className="gap-8"
       >
-        <div className="max-w-full overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <TabRail activeKey={view}>
           <TabsList
             variant="line"
-            aria-label="Pengelolaan kursus"
+            aria-label="Pengelolaan kurikulum"
             className="h-11 min-w-max justify-start rounded-none p-0"
           >
             {availableViews.map(({ value, label, icon: Icon }) => (
@@ -511,7 +495,7 @@ export function CourseWorkspace({
               </TabsTrigger>
             ))}
           </TabsList>
-        </div>
+        </TabRail>
 
         <TabsContent value="overview">
           <OverviewSection
@@ -625,10 +609,10 @@ function OverviewSection({
         <Card>
           <CardHeader>
             <CardTitle className="font-heading text-lg font-medium">
-              Akses kursus bersama
+              Akses kurikulum bersama
             </CardTitle>
             <CardDescription>
-              Anda memiliki akses melalui assignment kursus atau cohort.
+              Anda memiliki akses melalui assignment kurikulum atau cohort.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -638,13 +622,13 @@ function OverviewSection({
                 className={buttonVariants({ variant: "outline" })}
               >
                 <FilePenLineIcon data-icon="inline-start" />
-                Edit kurikulum
+                Edit materi kurikulum
               </Link>
             ) : (
               <div className="space-y-3">
                 <p className="text-muted-foreground text-sm">
-                  Curriculum tersedia sebagai referensi mengajar. Minta kursus
-                  manager menambahkan Anda sebagai editor bila perlu
+                  Curriculum tersedia sebagai referensi mengajar. Minta
+                  kurikulum manager menambahkan Anda sebagai editor bila perlu
                   mengubahnya.
                 </p>
                 <Link
@@ -652,7 +636,7 @@ function OverviewSection({
                   className={buttonVariants({ variant: "outline" })}
                 >
                   <Layers3Icon data-icon="inline-start" />
-                  Lihat kurikulum
+                  Lihat materi kurikulum
                 </Link>
               </div>
             )}
@@ -660,7 +644,7 @@ function OverviewSection({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Pemilik kursus</CardTitle>
+            <CardTitle className="text-sm">Pemilik kurikulum</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-3">
             <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
@@ -683,11 +667,14 @@ function OverviewSection({
   if (!overview) return null;
 
   const { modules, stats } = overview;
+  const curriculumHref = canManageContent
+    ? `${root}/kurikulum`
+    : `/learn/${course.id}`;
 
   return (
     <div className="space-y-4">
       <StatStrip
-        label="Ringkasan kursus"
+        label="Ringkasan kurikulum"
         items={[
           { label: "Bab", value: stats.moduleCount },
           { label: "Group belajar", value: stats.cohortCount },
@@ -700,7 +687,9 @@ function OverviewSection({
         <Card>
           <CardHeader className="border-b">
             <div>
-              <CardTitle className="text-lg font-medium">Kurikulum</CardTitle>
+              <CardTitle className="text-lg font-medium">
+                Materi kurikulum
+              </CardTitle>
               <CardDescription>
                 Struktur pembelajaran yang tersedia saat ini.
               </CardDescription>
@@ -720,7 +709,7 @@ function OverviewSection({
               <EmptyState
                 size="sm"
                 icon={Layers3Icon}
-                title="Kurikulum masih kosong"
+                title="Materi kurikulum masih kosong"
                 description="Susun bab pertama, lalu hubungkan bahan ajar."
                 action={
                   <Link
@@ -738,13 +727,10 @@ function OverviewSection({
           ) : (
             <ol className="divide-border divide-y">
               {modules.map((module, index) => {
-                const href = canManageContent
-                  ? `${root}/kurikulum`
-                  : `/learn/${course.id}`;
                 return (
                   <li key={module.id}>
                     <Link
-                      href={href}
+                      href={curriculumHref}
                       className="hover:bg-muted/50 flex items-center gap-4 px-4 py-3 transition-colors"
                     >
                       <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-semibold tabular-nums">
@@ -763,6 +749,17 @@ function OverviewSection({
                   </li>
                 );
               })}
+              {stats.moduleCount > modules.length ? (
+                <li>
+                  <Link
+                    href={curriculumHref}
+                    className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors"
+                  >
+                    Lihat {stats.moduleCount - modules.length} bab selengkapnya
+                    <ArrowRightIcon className="size-4" />
+                  </Link>
+                </li>
+              ) : null}
             </ol>
           )}
         </Card>
@@ -792,14 +789,14 @@ function OverviewSection({
                 {
                   view: "settings" as const,
                   icon: Settings2Icon,
-                  label: "Atur akses kursus",
+                  label: "Atur akses kurikulum",
                 },
               ].map(({ view, icon: Icon, label }) => (
                 <button
                   type="button"
                   key={view}
                   onClick={() => onNavigate(view)}
-                  className="hover:bg-muted/50 flex items-center gap-3 px-4 py-3 text-sm transition-colors"
+                  className="hover:bg-muted/50 flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors"
                 >
                   <Icon className="text-muted-foreground size-4" />
                   <span className="flex-1">{label}</span>
@@ -811,7 +808,7 @@ function OverviewSection({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Pemilik kursus</CardTitle>
+              <CardTitle className="text-sm">Pemilik kurikulum</CardTitle>
             </CardHeader>
             <CardContent className="flex items-center gap-3">
               <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
@@ -922,7 +919,7 @@ function CohortsSection({
             Group belajar
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Kelola kelas, kapasitas, periode, dan staff kursus.
+            Kelola kelas, kapasitas, periode, dan staff kurikulum.
           </p>
         </div>
         {canCreate ? (
@@ -933,7 +930,7 @@ function CohortsSection({
         ) : null}
       </div>
 
-      <div className="bg-card flex flex-col gap-3 rounded-xl border p-3 lg:flex-row lg:items-center">
+      <div className="sm:bg-card flex flex-col gap-2 sm:gap-3 sm:rounded-xl sm:border sm:p-3 lg:flex-row lg:items-center">
         <form
           className="flex min-w-0 flex-1 gap-2"
           onSubmit={(event) => {
@@ -956,7 +953,7 @@ function CohortsSection({
             Cari
           </Button>
         </form>
-        <div className="grid gap-2 sm:flex">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 sm:flex">
           <Select
             value={statusFilter}
             items={{ ALL: "Semua status", ...cohortStatus }}
@@ -966,7 +963,7 @@ function CohortsSection({
           >
             <SelectTrigger
               aria-label="Filter status"
-              className="w-full sm:w-40"
+              className="w-full sm:w-40 max-sm:[&>svg:first-child]:hidden"
             >
               <ListFilterIcon className="text-muted-foreground" />
               <SelectValue />
@@ -993,7 +990,7 @@ function CohortsSection({
           >
             <SelectTrigger
               aria-label="Urutkan Group belajar"
-              className="w-full sm:w-44"
+              className="w-full sm:w-44 max-sm:[&>svg:first-child]:hidden"
             >
               {sort === "name" ? (
                 <ArrowDownAZIcon className="text-muted-foreground" />
@@ -1025,7 +1022,7 @@ function CohortsSection({
           >
             <SelectTrigger
               aria-label="Arah pengurutan"
-              className="w-full sm:w-36"
+              className="sm:w-36 max-sm:[&>[data-slot=select-value]]:sr-only"
             >
               {sortDirection === "asc" ? (
                 <ArrowUpIcon className="text-muted-foreground" />
@@ -1164,7 +1161,7 @@ function CohortsSection({
               <DialogHeader>
                 <DialogTitle>Buat Group belajar</DialogTitle>
                 <DialogDescription>
-                  Buat Group belajar baru untuk kursus ini.
+                  Buat Group belajar baru untuk kurikulum ini.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-5 space-y-4">
@@ -1409,8 +1406,8 @@ function LearnersSection({
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-4">Siswa</TableHead>
-                  <TableHead>Sumber</TableHead>
-                  <TableHead>Terdaftar</TableHead>
+                  <TableHead className="max-sm:hidden">Sumber</TableHead>
+                  <TableHead className="max-sm:hidden">Terdaftar</TableHead>
                   <TableHead className="text-right">Status</TableHead>
                   <TableHead className="pr-4 text-right">
                     <span className="sr-only">Aksi</span>
@@ -1420,7 +1417,7 @@ function LearnersSection({
               <TableBody>
                 {visible.map((enrollment) => (
                   <TableRow key={enrollment.id}>
-                    <TableCell className="max-w-64 pl-4 whitespace-normal">
+                    <TableCell className="max-w-48 pl-4 whitespace-normal sm:max-w-64">
                       <div className="flex items-center gap-3">
                         <Avatar className="shrink-0">
                           {enrollment.user.image ? (
@@ -1440,13 +1437,21 @@ function LearnersSection({
                           <span className="text-muted-foreground block truncate text-xs">
                             {enrollment.user.email}
                           </span>
+                          <span className="text-muted-foreground mt-0.5 block text-xs sm:hidden">
+                            {enrollmentSourceLabels[enrollment.source] ??
+                              enrollment.source}{" "}
+                            · {dateFormatter.format(enrollment.enrolledAt)}
+                          </span>
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{enrollment.source}</Badge>
+                    <TableCell className="max-sm:hidden">
+                      <Badge variant="outline">
+                        {enrollmentSourceLabels[enrollment.source] ??
+                          enrollment.source}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
+                    <TableCell className="text-muted-foreground text-xs max-sm:hidden">
                       {dateFormatter.format(enrollment.enrolledAt)}
                     </TableCell>
                     <TableCell className="text-right">
@@ -1526,7 +1531,8 @@ function LearnersSection({
             <DialogHeader>
               <DialogTitle>Tambah siswa</DialogTitle>
               <DialogDescription>
-                Masukkan email akun Hakgyo yang akan diberi akses ke kursus ini.
+                Masukkan email akun Hakgyo yang akan diberi akses ke kurikulum
+                ini.
               </DialogDescription>
             </DialogHeader>
             <div className="mt-5 space-y-4">
@@ -1621,8 +1627,8 @@ function LearnersSection({
               Hapus {removing?.user.name} dari belajar mandiri?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Akses belajar mandiri siswa ke kursus ini dicabut. Jika siswa
-              masih terdaftar di Group belajar kursus ini, aksesnya tetap
+              Akses belajar mandiri siswa ke kurikulum ini dicabut. Jika siswa
+              masih terdaftar di Group belajar kurikulum ini, aksesnya tetap
               berlaku lewat group tersebut. Status lama tidak dapat dipulihkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1752,7 +1758,7 @@ function InvitesSection({
             Invites
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Buat link akses untuk kursus atau Group belajar tertentu.
+            Buat link akses untuk kurikulum atau Group belajar tertentu.
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>
@@ -1777,7 +1783,7 @@ function InvitesSection({
               size="sm"
               icon={MailPlusIcon}
               title="Belum ada invite"
-              description="Buat link terbatas untuk mengundang siswa ke kursus atau Group belajar."
+              description="Buat link terbatas untuk mengundang siswa ke kurikulum atau Group belajar."
               action={
                 <Button
                   className="mt-4"
@@ -1797,8 +1803,8 @@ function InvitesSection({
             <TableHeader>
               <TableRow>
                 <TableHead className="pl-4">Target</TableHead>
-                <TableHead>Pemakaian</TableHead>
-                <TableHead>Berakhir</TableHead>
+                <TableHead className="max-sm:hidden">Pemakaian</TableHead>
+                <TableHead className="max-sm:hidden">Berakhir</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="pr-4 text-right">
                   <span className="sr-only">Aksi</span>
@@ -1823,16 +1829,22 @@ function InvitesSection({
                         {cohort?.name ??
                           (invite.cohortId
                             ? "Group belajar"
-                            : "Seluruh kursus")}
+                            : "Seluruh kurikulum")}
                       </span>
                       <span className="text-muted-foreground block text-xs">
                         oleh {invite.createdBy.user.name}
                       </span>
+                      <span className="text-muted-foreground mt-0.5 block text-xs tabular-nums sm:hidden">
+                        {invite.useCount} / {invite.maxUses ?? "∞"} dipakai ·{" "}
+                        {invite.expiresAt
+                          ? `s.d. ${dateFormatter.format(invite.expiresAt)}`
+                          : "tanpa batas"}
+                      </span>
                     </TableCell>
-                    <TableCell className="tabular-nums">
+                    <TableCell className="tabular-nums max-sm:hidden">
                       {invite.useCount} / {invite.maxUses ?? "∞"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
+                    <TableCell className="text-muted-foreground text-xs max-sm:hidden">
                       {invite.expiresAt
                         ? dateFormatter.format(invite.expiresAt)
                         : "Tidak dibatasi"}
@@ -1959,11 +1971,11 @@ function InvitesSection({
                     <SelectTrigger id="invite-cohort" className="w-full">
                       <span className="flex flex-1 text-left">
                         {cohorts?.find((cohort) => cohort.id === cohortId)
-                          ?.name ?? "Seluruh kursus"}
+                          ?.name ?? "Seluruh kurikulum"}
                       </span>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL">Seluruh kursus</SelectItem>
+                      <SelectItem value="ALL">Seluruh kurikulum</SelectItem>
                       {cohorts?.map((cohort) => (
                         <SelectItem key={cohort.id} value={cohort.id}>
                           {cohort.name}
@@ -2077,7 +2089,7 @@ function AccessSection({
       setTransferOpen(false);
       setOwnerMembershipId("");
       await refresh();
-      toast.success("Kursus manager utama diperbarui.");
+      toast.success("Kurikulum manager utama diperbarui.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -2109,10 +2121,10 @@ function AccessSection({
     <section className="space-y-6">
       <div className="max-w-2xl">
         <h2 className="font-heading text-2xl font-medium tracking-tight">
-          Akses kursus
+          Akses kurikulum
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Tentukan siapa yang mengelola kursus ini dan apa yang dapat mereka
+          Tentukan siapa yang mengelola kurikulum ini dan apa yang dapat mereka
           ubah.
         </p>
       </div>
@@ -2207,7 +2219,7 @@ function AccessSection({
               <Label htmlFor="new-course-editor">Tambah editor kurikulum</Label>
               <p className="text-muted-foreground mt-1 text-xs">
                 Editor dapat menyusun bab dan materi, tanpa akses ke siswa,
-                undangan, atau pengaturan kursus.
+                undangan, atau pengaturan kurikulum.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <Select
@@ -2267,8 +2279,8 @@ function AccessSection({
                 <div>
                   <p className="font-medium">Manager</p>
                   <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                    Mengelola kurikulum, siswa, group belajar, undangan,
-                    pengaturan, dan status kursus.
+                    Mengelola materi kurikulum, siswa, group belajar, undangan,
+                    pengaturan, dan status kurikulum.
                   </p>
                 </div>
               </div>
@@ -2279,7 +2291,7 @@ function AccessSection({
                 <div>
                   <p className="font-medium">Editor kurikulum</p>
                   <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                    Hanya menyusun bab, materi, dan tugas di kurikulum.
+                    Hanya menyusun bab, materi, dan tugas di materi kurikulum.
                   </p>
                 </div>
               </div>
@@ -2303,7 +2315,7 @@ function AccessSection({
                 }}
               >
                 <SelectTrigger
-                  aria-label="Manager kursus baru"
+                  aria-label="Manager kurikulum baru"
                   className="w-full"
                 >
                   <span className="flex flex-1 text-left">
@@ -2343,7 +2355,7 @@ function AccessSection({
             <AlertDialogMedia>
               <CrownIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Ganti manager kursus?</AlertDialogTitle>
+            <AlertDialogTitle>Ganti manager kurikulum?</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedOwner?.user.name ?? "Member terpilih"} akan mendapat
               kontrol penuh atas course ini. Perubahan ini dapat menghilangkan
@@ -2490,7 +2502,7 @@ function SettingsSection({
     try {
       await updateCourse.mutateAsync({ courseId: course.id, ...changes });
       await refreshCourse();
-      toast.success("Pengaturan kursus disimpan.");
+      toast.success("Pengaturan kurikulum disimpan.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -2500,7 +2512,7 @@ function SettingsSection({
     try {
       await deleteCourse.mutateAsync({ courseId: course.id });
       await utils.course.list.invalidate({ organizationId });
-      toast.success("Kursus berhasil dihapus.");
+      toast.success("Kurikulum berhasil dihapus.");
       router.replace(coursesHref);
       router.refresh();
     } catch (cause) {
@@ -2515,24 +2527,21 @@ function SettingsSection({
           Pengaturan
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Metadata, tipe kursus (public/private), dan lifecycle kursus.
+          Metadata, tipe kurikulum (public/private), dan lifecycle kurikulum.
         </p>
       </div>
 
-      <form
-        onSubmit={submit}
-        className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]"
-      >
+      <form onSubmit={submit}>
         <Card>
           <CardHeader className="border-b">
-            <CardTitle>Informasi kursus</CardTitle>
+            <CardTitle>Informasi kurikulum</CardTitle>
             <CardDescription>
               Informasi yang terlihat oleh pengelola dan siswa.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="settings-title">Nama kursus</Label>
+              <Label htmlFor="settings-title">Nama kurikulum</Label>
               <Input
                 id="settings-title"
                 maxLength={200}
@@ -2541,26 +2550,15 @@ function SettingsSection({
                 onChange={(event) => setTitle(event.target.value)}
               />
             </div>
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="space-y-2">
-                <Label htmlFor="settings-description">Deskripsi</Label>
-                <Textarea
-                  id="settings-description"
-                  className="min-h-28"
-                  maxLength={10000}
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor={courseThumbnailFieldId}>Thumbnail kursus</Label>
-                <CourseThumbnailField
-                  id={courseThumbnailFieldId}
-                  courseId={course.id}
-                  thumbnailUrl={course.thumbnailUrl}
-                  onChange={refreshCourse}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="settings-description">Deskripsi</Label>
+              <Textarea
+                id="settings-description"
+                className="min-h-28"
+                maxLength={10000}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -2610,18 +2608,17 @@ function SettingsSection({
               </div>
             </div>
           </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle>Aturan akses</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <div className="flex items-center justify-between gap-4 py-4">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <Label htmlFor="settings-enrollment">Tipe kursus</Label>
-                  <FieldHelp content="Ikuti organisasi untuk memakai pengaturan default, atau timpa khusus kursus ini. Public bisa ditemukan dan diikuti siswa, private hanya untuk siswa yang diundang." />
+          <CardContent className="border-t pt-5">
+            <h3 className="font-heading font-medium">Aturan akses</h3>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              Siapa yang bisa mengikuti kurikulum dan bagaimana siswa membuka
+              materinya.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="settings-enrollment">Tipe kurikulum</Label>
+                  <FieldHelp content="Ikuti organisasi untuk memakai pengaturan default, atau timpa khusus kurikulum ini. Public bisa ditemukan dan diikuti siswa, private hanya untuk siswa yang diundang." />
                 </div>
                 <Select
                   value={enrollmentMode}
@@ -2631,28 +2628,30 @@ function SettingsSection({
                 >
                   <SelectTrigger
                     id="settings-enrollment"
-                    aria-label="Tipe kursus"
-                    className="w-44 shrink-0"
+                    aria-label="Tipe kurikulum"
+                    className="w-full"
                   >
                     <span className="flex flex-1 text-left">
                       {
                         {
                           INHERIT: "Ikuti organisasi",
-                          OPEN: "Kursus publik",
-                          INVITE_ONLY: "Kursus privat",
+                          OPEN: "Kurikulum publik",
+                          INVITE_ONLY: "Kurikulum privat",
                         }[enrollmentMode]
                       }
                     </span>
                   </SelectTrigger>
-                  <SelectContent align="end">
+                  <SelectContent>
                     <SelectItem value="INHERIT">Ikuti organisasi</SelectItem>
-                    <SelectItem value="OPEN">Kursus publik</SelectItem>
-                    <SelectItem value="INVITE_ONLY">Kursus privat</SelectItem>
+                    <SelectItem value="OPEN">Kurikulum publik</SelectItem>
+                    <SelectItem value="INVITE_ONLY">
+                      Kurikulum privat
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center justify-between gap-4 border-t py-4">
-                <div className="flex min-w-0 items-center gap-1.5">
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
                   <Label htmlFor="settings-progression">Alur belajar</Label>
                   <FieldHelp content="Terbuka membebaskan siswa membuka semua materi, bertahap mengharuskan menyelesaikan item sebelumnya secara berurutan." />
                 </div>
@@ -2665,7 +2664,7 @@ function SettingsSection({
                   <SelectTrigger
                     id="settings-progression"
                     aria-label="Alur belajar"
-                    className="w-44 shrink-0"
+                    className="w-full"
                   >
                     <span className="flex flex-1 text-left">
                       {progressionMode === "SEQUENTIAL"
@@ -2673,31 +2672,32 @@ function SettingsSection({
                         : "Terbuka"}
                     </span>
                   </SelectTrigger>
-                  <SelectContent align="end">
+                  <SelectContent>
                     <SelectItem value="OPEN">Terbuka</SelectItem>
                     <SelectItem value="SEQUENTIAL">Bertahap</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </CardContent>
-          </Card>
-          <Button
-            className="w-full"
-            type="submit"
-            disabled={
-              updateCourse.isPending ||
-              !title.trim() ||
-              currency.trim().length !== 3
-            }
-          >
-            {updateCourse.isPending ? (
-              <LoaderCircleIcon className="animate-spin" />
-            ) : (
-              <CheckIcon />
-            )}
-            Simpan perubahan
-          </Button>
-        </div>
+            </div>
+          </CardContent>
+          <CardFooter className="justify-end border-t">
+            <Button
+              type="submit"
+              disabled={
+                updateCourse.isPending ||
+                !title.trim() ||
+                currency.trim().length !== 3
+              }
+            >
+              {updateCourse.isPending ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : (
+                <CheckIcon />
+              )}
+              Simpan perubahan
+            </Button>
+          </CardFooter>
+        </Card>
       </form>
 
       <Card className="border-destructive/20 ring-0">
@@ -2710,9 +2710,9 @@ function SettingsSection({
         <div className="divide-border divide-y">
           <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">
             <div>
-              <p className="text-sm font-medium">Hapus kursus</p>
+              <p className="text-sm font-medium">Hapus kurikulum</p>
               <p className="text-muted-foreground mt-0.5 text-xs">
-                Penghapusan dapat ditolak bila kursus masih memiliki data
+                Penghapusan dapat ditolak bila kurikulum masih memiliki data
                 terkait.
               </p>
             </div>
@@ -2722,7 +2722,7 @@ function SettingsSection({
               onClick={() => setDeleteOpen(true)}
             >
               <Trash2Icon data-icon="inline-start" />
-              Hapus kursus
+              Hapus kurikulum
             </Button>
           </div>
         </div>
@@ -2736,8 +2736,8 @@ function SettingsSection({
             </AlertDialogMedia>
             <AlertDialogTitle>Hapus {course.title}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Action ini permanen. Batalkan publikasi kursus bila kursus mungkin
-              diperlukan kembali.
+              Action ini permanen. Batalkan publikasi kurikulum bila kurikulum
+              mungkin diperlukan kembali.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

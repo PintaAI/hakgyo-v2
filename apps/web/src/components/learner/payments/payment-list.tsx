@@ -51,7 +51,7 @@ export function PaymentList() {
               href="/catalog"
               className={buttonVariants({ className: "mt-4" })}
             >
-              Jelajahi kursus
+              Jelajahi kurikulum
             </Link>
           }
         />

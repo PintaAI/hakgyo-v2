@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Hakgyo | Ruang belajar yang tumbuh bersama",
     short_name: "Hakgyo",
     description:
-      "Platform belajar untuk mengelola kursus, materi, tugas, cohort, dan perkembangan peserta dalam satu tempat.",
+      "Platform belajar untuk mengelola kurikulum, materi, tugas, cohort, dan perkembangan peserta dalam satu tempat.",
     start_url: "/",
     scope: "/",
     display: "standalone",

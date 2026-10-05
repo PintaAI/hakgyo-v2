@@ -457,7 +457,7 @@ export function KurikulumEditor({
         checked
           ? course.status === "PUBLISHED"
             ? "Item ditampilkan untuk learner."
-            : "Item akan tampil setelah kursus dipublikasikan."
+            : "Item akan tampil setelah kurikulum dipublikasikan."
           : "Item disembunyikan dari siswa.",
       );
     } catch (error) {
@@ -493,7 +493,7 @@ export function KurikulumEditor({
         toast.success("Bab dihapus.");
       } else {
         await deleteItem.mutateAsync({ itemId: deleteTarget.id });
-        toast.success("Item dihapus dari kurikulum.");
+        toast.success("Item dihapus dari materi kurikulum.");
       }
       setDeleteTarget(null);
       await refreshCourse({ publishesAssessments: true });
@@ -518,7 +518,7 @@ export function KurikulumEditor({
           )}
         >
           <ArrowLeftIcon data-icon="inline-start" />
-          Workspace kursus
+          Workspace kurikulum
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           {readinessQuery.data ? (
@@ -540,13 +540,13 @@ export function KurikulumEditor({
           <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
             {course.title}
           </h1>
-          <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
+          <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed max-sm:hidden">
             Susun alur belajar menjadi bab, lalu buat atau hubungkan materi,
             tugas, dan kosakata tanpa perlu membuka library.
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="space-y-1.5">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
+          <div className="col-span-2 space-y-1.5">
             <Label
               htmlFor="kurikulum-progression"
               className="text-muted-foreground text-xs"
@@ -563,7 +563,7 @@ export function KurikulumEditor({
               <SelectTrigger
                 id="kurikulum-progression"
                 aria-label="Progression"
-                className="min-w-48"
+                className="w-full sm:w-auto sm:min-w-48"
               >
                 <span className="flex flex-1 text-left">
                   {progressionMode === "OPEN" ? "Terbuka" : "Bertahap"}
@@ -590,7 +590,7 @@ export function KurikulumEditor({
       </header>
 
       <section
-        aria-label="Kurikulum summary"
+        aria-label="Ringkasan materi kurikulum"
         className="bg-card grid grid-cols-3 divide-x rounded-lg border py-4"
       >
         <SummaryStat label="Bab" value={modules.length} />
@@ -603,9 +603,9 @@ export function KurikulumEditor({
 
       {course.status !== "PUBLISHED" && itemCount > 0 ? (
         <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-3 text-xs leading-relaxed">
-          Kursus belum dipublikasikan, jadi belum ada item yang terlihat oleh
-          learner. Item yang ditampilkan akan tayang setelah kursus
-          dipublikasikan dari workspace kursus.
+          Kurikulum belum dipublikasikan, jadi belum ada item yang terlihat oleh
+          learner. Item yang ditampilkan akan tayang setelah kurikulum
+          dipublikasikan dari workspace kurikulum.
         </p>
       ) : null}
 
@@ -864,7 +864,7 @@ function SortableModuleCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card overflow-hidden rounded-xl border",
+        "bg-card overflow-hidden border-y max-sm:-mx-4 sm:rounded-xl sm:border",
         isDragging && "z-10 shadow-lg",
       )}
     >
@@ -1023,7 +1023,8 @@ function SortableItemRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group target:bg-muted/60 flex scroll-mt-24 items-center gap-3 px-4 py-3 sm:px-5",
+        // Phones give the title the full row and drop the status badge below it.
+        "group target:bg-muted/60 grid scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 sm:flex sm:px-5",
         isDragging && "bg-background z-10 shadow-lg",
       )}
     >
@@ -1051,20 +1052,22 @@ function SortableItemRow({
           <Icon className="text-muted-foreground size-4" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{title}</span>
+          <span className="block text-sm font-medium max-sm:line-clamp-2 sm:truncate">
+            {title}
+          </span>
           <span className="text-muted-foreground mt-0.5 block text-[11px] tracking-wide uppercase">
             {pdfLabel ?? meta.label}
           </span>
         </span>
       </Link>
-      <div className="flex shrink-0 items-center gap-1">
-        {readiness ? (
-          <ReadinessBadge
-            readiness={readiness}
-            itemHref={itemAnchorHref}
-            className="mr-1 max-w-56"
-          />
-        ) : null}
+      {readiness ? (
+        <ReadinessBadge
+          readiness={readiness}
+          itemHref={itemAnchorHref}
+          className="col-start-2 row-start-2 ml-12 max-w-56 justify-self-start sm:mr-1 sm:ml-0 sm:shrink-0"
+        />
+      ) : null}
+      <div className="col-start-3 row-start-1 flex shrink-0 items-center gap-1">
         <VisibilitySwitch
           item={item}
           isPending={isPending}
@@ -1228,7 +1231,7 @@ function ModuleDialog({
               {state.module ? "Edit bab" : "Tambah bab"}
             </DialogTitle>
             <DialogDescription>
-              Bab membagi kurikulum menjadi tahapan belajar yang terurut.
+              Bab membagi materi kurikulum menjadi tahapan belajar yang terurut.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-5 space-y-4">
@@ -1497,7 +1500,7 @@ function ItemDialog({
                     ? `${notReadyReason} Item ditambahkan dalam keadaan tersembunyi; tampilkan setelah lengkap.`
                     : courseStatus === "PUBLISHED"
                       ? "Item langsung terlihat oleh learner. Item yang belum siap tetap disembunyikan."
-                      : "Item akan terlihat oleh siswa setelah kursus dipublikasikan."}
+                      : "Item akan terlihat oleh siswa setelah kurikulum dipublikasikan."}
                 </p>
               </div>
               <Switch

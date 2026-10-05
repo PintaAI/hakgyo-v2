@@ -14,7 +14,7 @@ export default function CourseWorkspaceLoading() {
         </div>
       </header>
 
-      <nav aria-label="Pengelolaan kursus" className="border-b">
+      <nav aria-label="Pengelolaan kurikulum" className="border-b">
         <div className="flex min-w-max items-center gap-1">
           {Array.from({ length: 5 }).map((_, index) => (
             <Skeleton key={index} className="h-11 w-28 rounded-none" />

@@ -47,7 +47,7 @@ const inviteGrid =
 
 const typeLabels = {
   ORGANIZATION: "Undangan organisasi",
-  COURSE: "Undangan kursus",
+  COURSE: "Undangan kurikulum",
   COHORT: "Undangan group belajar",
 } as const;
 
@@ -107,7 +107,7 @@ export function InviteRedemption({ token }: { token: string }) {
       ? `Bergabung sebagai ${data.role === "ADMIN" ? "Admin" : "Pengajar"}`
       : data.type === "COHORT"
         ? `Group belajar untuk ${data.course.title}`
-        : "Akses langsung ke kursus";
+        : "Akses langsung ke kurikulum";
   const unavailable = data.status !== "PENDING";
   const emailMismatch =
     data.type === "ORGANIZATION" && data.emailMatches === false;
@@ -134,7 +134,7 @@ export function InviteRedemption({ token }: { token: string }) {
           ? `Berhasil bergabung ke ${result.organization.name}.`
           : result.type === "COHORT"
             ? "Berhasil bergabung ke Group belajar."
-            : "Kursus berhasil ditambahkan ke ruang belajar.",
+            : "Kurikulum berhasil ditambahkan ke ruang belajar.",
       );
 
       // Learning happens in the app, so learners are handed over to it
@@ -172,16 +172,16 @@ export function InviteRedemption({ token }: { token: string }) {
           : "Akun Anda sudah siap. Terima undangan untuk mengaktifkan akses belajar.";
   const details = [
     ["Organisasi", data.organization.name],
-    ...(data.type !== "ORGANIZATION" ? [["Kursus", data.course.title]] : []),
+    ...(data.type !== "ORGANIZATION" ? [["Kurikulum", data.course.title]] : []),
     ...(paidCohortPrice !== null
       ? [["Biaya", formatRupiah(paidCohortPrice)]]
       : []),
     [
       "Akses",
       data.type === "COHORT"
-        ? "Kursus + group belajar"
+        ? "Kurikulum + group belajar"
         : data.type === "COURSE"
-          ? "Kursus"
+          ? "Kurikulum"
           : data.role === "ADMIN"
             ? "Admin"
             : "Pengajar",
@@ -350,7 +350,7 @@ export function InviteRedemption({ token }: { token: string }) {
           <section className="lg:pt-4">
             <Kicker>Yang akan dipelajari</Kicker>
             <h2 className="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
-              Materi di kursus ini
+              Materi di kurikulum ini
             </h2>
             {data.course.items.length > 0 ? (
               <>
