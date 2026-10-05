@@ -24,6 +24,7 @@ import {
   ClipboardCheckIcon,
   CopyIcon,
   EyeOffIcon,
+  GlobeIcon,
   FileQuestionIcon,
   LockIcon,
   ListIcon,
@@ -368,11 +369,13 @@ function changedAssessmentFields(
 function LiveAssessmentBanner({
   live,
   organizationSlug,
+  publicQuizHref,
   duplicating,
   onDuplicate,
 }: {
   live: AssessmentLiveStatus;
   organizationSlug: string;
+  publicQuizHref: string;
   duplicating: boolean;
   onDuplicate: () => Promise<void>;
 }) {
@@ -425,6 +428,22 @@ function LiveAssessmentBanner({
               <EyeOffIcon data-icon="inline-start" />
               Sembunyikan di kurikulum
             </Link>
+          </li>
+        ))}
+        {live.openPublicQuizzes.map((quiz) => (
+          <li
+            key={quiz.quizId}
+            className="flex flex-wrap items-center gap-x-2 gap-y-1"
+          >
+            <Link
+              href={publicQuizHref}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              Quiz publik: {quiz.title}
+            </Link>
+            <Badge variant="outline" className="border-current/30">
+              Quiz sedang dibuka
+            </Badge>
           </li>
         ))}
         {live.openEvents.map((event) => (
@@ -586,6 +605,7 @@ export function AssessmentEditor({
           <LiveAssessmentBanner
             live={live}
             organizationSlug={organizationSlug}
+            publicQuizHref={`/workspace/${organizationSlug}/library/assessments/${assessmentId}/quiz-publik`}
             duplicating={duplicateAssessment.isPending}
             onDuplicate={async () => {
               if (!assessmentId) return;
@@ -612,6 +632,11 @@ export function AssessmentEditor({
         attachTo ? `Tugas untuk ${attachTo.moduleTitle}` : undefined
       }
       canDelete={canDelete && !readOnly}
+      publicQuizHref={
+        assessmentId
+          ? `/workspace/${organizationSlug}/library/assessments/${assessmentId}/quiz-publik`
+          : undefined
+      }
       isDeleting={deleteAssessment.isPending}
       onBack={() => {
         if (attachTo) {
@@ -886,6 +911,7 @@ function AssessmentEditorForm({
   liveBanner,
   draftScope,
   canDelete,
+  publicQuizHref,
   contextLabel,
   isDeleting,
   onBack,
@@ -909,6 +935,8 @@ function AssessmentEditorForm({
   liveBanner: ReactNode;
   draftScope?: ContentDbScope;
   canDelete: boolean;
+  /** Where the assessment is shared as a no-signup public quiz. */
+  publicQuizHref?: string;
   contextLabel?: string;
   isDeleting: boolean;
   onBack: () => void;
@@ -1625,47 +1653,60 @@ function AssessmentEditorForm({
             </p>
           </div>
         </div>
-        {assessment && canDelete ? (
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  aria-label="Hapus tugas"
-                  variant="destructive"
-                  size="icon"
-                />
-              }
+        <div className="flex shrink-0 items-center gap-2">
+          {assessment && publicQuizHref ? (
+            <Link
+              href={publicQuizHref}
+              className={buttonVariants({ variant: "outline" })}
             >
-              <Trash2Icon />
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Hapus tugas ini?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tindakan ini permanen. Semua soal, penempatan di kursus,
-                  event, jawaban, hasil, dan progres siswa akan ikut dihapus.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={isDeleting}
-                  onClick={() => {
-                    cancelSettingsSave();
-                    void flushSettingsSave()
-                      .then(onDelete)
-                      .catch(() => undefined);
-                  }}
-                  variant="destructive"
-                >
-                  {isDeleting && <LoaderCircleIcon className="animate-spin" />}
-                  Hapus
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : null}
+              <GlobeIcon data-icon="inline-start" />
+              Quiz publik
+            </Link>
+          ) : null}
+          {assessment && canDelete ? (
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    type="button"
+                    aria-label="Hapus tugas"
+                    variant="destructive"
+                    size="icon"
+                  />
+                }
+              >
+                <Trash2Icon />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus tugas ini?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tindakan ini permanen. Semua soal, penempatan di kursus,
+                    event, jawaban, hasil, dan progres siswa akan ikut dihapus.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isDeleting}
+                    onClick={() => {
+                      cancelSettingsSave();
+                      void flushSettingsSave()
+                        .then(onDelete)
+                        .catch(() => undefined);
+                    }}
+                    variant="destructive"
+                  >
+                    {isDeleting && (
+                      <LoaderCircleIcon className="animate-spin" />
+                    )}
+                    Hapus
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
+        </div>
       </header>
 
       {liveBanner}

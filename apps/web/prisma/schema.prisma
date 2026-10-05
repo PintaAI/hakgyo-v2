@@ -597,6 +597,7 @@ model Organization {
   qris                     OrganizationQris?
   bankAccounts             OrganizationBankAccount[]
   payments                 Payment[]
+  publicQuizzes            PublicQuiz[]
 }
 
 /// A durable read receipt for one version of a learner-facing sidebar item.
@@ -959,6 +960,7 @@ model Assessment {
   attempts              AssessmentAttempt[]
   materialRequirements  MaterialRequirement[]
   assets                AssessmentAsset[]
+  publicQuiz            PublicQuiz?
 
   @@unique([id, organizationId])
   @@index([organizationId, updatedAt])
@@ -1567,4 +1569,66 @@ model Payment {
   @@index([organizationId, status, createdAt])
   @@index([reviewedByUserId])
   @@index([enrollmentInviteId])
+}
+
+enum PublicQuizStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+/// A no-signup quiz shared publicly as a promotion. It runs on an existing
+/// assessment (choice questions only) and ranks visitors on a public
+/// leaderboard; an OPEN quiz keeps its assessment live (read-only).
+model PublicQuiz {
+  id             String              @id @default(cuid())
+  organizationId String
+  assessmentId   String              @unique
+  slug           String
+  title          String
+  description    String?
+  status         PublicQuizStatus    @default(DRAFT)
+  closesAt       DateTime?
+  openedAt       DateTime?
+  /// Page views of the public quiz page (link-preview crawlers excluded).
+  viewCount      Int                 @default(0)
+  /// Clicks on the end-of-quiz call to action.
+  ctaClickCount  Int                 @default(0)
+  /// Resetting the leaderboard starts a new round; earlier rounds stay in staff results.
+  round          Int                 @default(1)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assessment     Assessment          @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  attempts       PublicQuizAttempt[]
+
+  @@unique([assessmentId, organizationId])
+  @@unique([organizationId, slug])
+}
+
+/// One visitor's run of a public quiz. The browser keeps `token`; only its
+/// hash is stored. `answers` holds `{ questionId, optionIds }[]` as submitted.
+model PublicQuizAttempt {
+  id              String     @id @default(cuid())
+  quizId          String
+  round           Int        @default(1)
+  tokenHash       String     @unique
+  displayName     String?
+  /// Only stored when the visitor agreed to be contacted.
+  contact         String?
+  contactConsent  Boolean    @default(false)
+  ipHash          String?
+  answers         Json?
+  score           Int?
+  maxScore        Int?
+  durationSeconds Int?
+  startedAt       DateTime   @default(now())
+  submittedAt     DateTime?
+  /// Set by staff to remove an entry (e.g. an offensive name) from the public leaderboard.
+  hiddenAt        DateTime?
+  quiz            PublicQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, round, score(sort: Desc), durationSeconds])
+  @@index([quizId, ipHash, startedAt])
+  @@index([quizId, startedAt])
 }

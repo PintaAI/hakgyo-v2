@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import { api } from "~/trpc/react";
 
@@ -90,9 +90,28 @@ export function loadAssetDownloadUrl(
   return url;
 }
 
+/**
+ * Replaces the signed-in asset loader for a subtree, e.g. public quiz pages where visitors have
+ * no session and media is signed through the quiz instead.
+ */
+export const AssetUrlLoaderContext = createContext<
+  ((assetId: string) => Promise<string>) | null
+>(null);
+
+/** The loader every media block uses: the context override, else the signed-in loader. */
+export function useAssetUrlLoader() {
+  const utils = api.useUtils();
+  const override = useContext(AssetUrlLoaderContext);
+  return (
+    override ??
+    ((assetId: string) => loadAssetDownloadUrl(utils.client, assetId))
+  );
+}
+
 /** Inline download URL for `assetId`, fetched once `enabled` is true. */
 export function useAssetDownloadUrl(assetId: string, enabled = true) {
   const utils = api.useUtils();
+  const override = useContext(AssetUrlLoaderContext);
   const [state, setState] = useState<{
     assetId: string;
     url: string | null;
@@ -102,7 +121,7 @@ export function useAssetDownloadUrl(assetId: string, enabled = true) {
   useEffect(() => {
     if (!enabled || !assetId) return;
     let active = true;
-    loadAssetDownloadUrl(utils.client, assetId)
+    (override ? override(assetId) : loadAssetDownloadUrl(utils.client, assetId))
       .then((url) => {
         if (active) setState({ assetId, url, failed: false });
       })
@@ -112,7 +131,7 @@ export function useAssetDownloadUrl(assetId: string, enabled = true) {
     return () => {
       active = false;
     };
-  }, [assetId, enabled, utils.client]);
+  }, [assetId, enabled, override, utils.client]);
 
   const current = state?.assetId === assetId ? state : null;
   return {
