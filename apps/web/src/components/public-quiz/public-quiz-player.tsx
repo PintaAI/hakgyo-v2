@@ -1,20 +1,26 @@
 "use client";
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import Link from "next/link";
 import {
   ArrowRightIcon,
+  BookOpenIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ClockIcon,
-  ListChecksIcon,
+  CopyIcon,
   LoaderCircleIcon,
-  TrophyIcon,
-  UsersIcon,
+  Share2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,14 +42,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { Button, buttonVariants } from "~/components/ui/button";
+import { headlineText, Kicker, leadText } from "~/components/brand/typography";
+import { Button } from "~/components/ui/button";
+import { cardSurface } from "~/components/ui/card";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import {
-  nextUnansweredQuestion,
-  type QuestionStatus,
-} from "~/lib/learner/question-progress";
+import { type QuestionStatus } from "~/lib/learner/question-progress";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
@@ -108,7 +113,7 @@ function useStoredAttempt(quizId: string) {
 function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
-  return minutes ? `${minutes}m ${rest}d` : `${rest}d`;
+  return minutes ? `${minutes} mnt ${rest} dtk` : `${rest} dtk`;
 }
 
 function formatRemaining(seconds: number) {
@@ -217,43 +222,88 @@ export function PublicQuizPlayer({
     );
   }
 
+  const answering = Boolean(
+    token && attemptQuery.data && !attemptQuery.data.submitted,
+  );
+  // The floating call to action shows on the result and on a closed quiz.
+  const ctaShown =
+    quiz.organization.landingPublished &&
+    !answering &&
+    (Boolean(attemptQuery.data?.submitted) || !quiz.isOpen);
+
   return (
     <AssetUrlLoaderContext value={loadAsset}>
-      <div className="mx-auto flex min-h-svh w-full max-w-2xl flex-col gap-5 px-4 py-6 sm:py-10">
-        <header className="flex items-center gap-3">
-          {quiz.organization.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={quiz.organization.logoUrl}
-              alt=""
-              className="size-10 rounded-xl object-cover"
-            />
-          ) : (
-            <span className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-xl text-lg font-black">
-              {quiz.organization.name.slice(0, 1).toUpperCase()}
-            </span>
+      <main className="bg-background text-foreground selection:bg-primary selection:text-primary-foreground relative flex min-h-dvh flex-col overflow-x-clip">
+        {answering ? null : (
+          <div
+            className="bg-primary/10 animate-landing-drift pointer-events-none absolute -top-40 -right-40 size-[36rem] rounded-full blur-3xl"
+            aria-hidden="true"
+          />
+        )}
+        <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col px-5 sm:px-6">
+          {/* While answering, the screen belongs to the question. */}
+          {answering ? null : (
+            <header className="flex h-16 items-center gap-2.5 sm:h-20">
+              {quiz.organization.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={quiz.organization.logoUrl}
+                  alt=""
+                  className="size-8 rounded-lg object-cover"
+                />
+              ) : (
+                <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg text-sm font-semibold">
+                  {quiz.organization.name.slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <p className="min-w-0 truncate text-sm font-medium">
+                {quiz.organization.name}
+              </p>
+            </header>
           )}
-          <div className="min-w-0">
-            <p className="truncate font-bold">{quiz.organization.name}</p>
-            <p className="text-muted-foreground text-xs">Quiz online</p>
-          </div>
-        </header>
-        {body}
-        <footer className="text-muted-foreground mt-auto pt-6 text-center text-xs">
-          Dibuat dengan{" "}
-          <Link
-            href="/"
-            className="font-semibold underline-offset-4 hover:underline"
-          >
-            Hakgyo
-          </Link>
-        </footer>
-      </div>
+          <div className="flex flex-1 flex-col gap-8">{body}</div>
+          {answering ? null : (
+            <footer
+              className={cn(
+                "text-muted-foreground py-8 text-center text-xs",
+                // Room for the floating call to action at the end of the page.
+                ctaShown && "pb-28",
+              )}
+            >
+              Dibuat dengan{" "}
+              <Link
+                href="/"
+                className="text-foreground font-medium underline-offset-4 hover:underline"
+              >
+                Hakgyo
+              </Link>
+            </footer>
+          )}
+        </div>
+      </main>
     </AssetUrlLoaderContext>
   );
 }
 
 type QuizRef = { organizationSlug: string; slug: string };
+
+/** A card from `sm` up; on phones it dissolves into the page like the auth screens. */
+const surface = cn(
+  cardSurface,
+  "p-6 sm:p-8 max-sm:rounded-none max-sm:border-0 max-sm:border-t max-sm:bg-transparent max-sm:px-0 max-sm:pt-8 max-sm:pb-0 max-sm:shadow-none",
+);
+
+const fieldClass =
+  "focus-visible:ring-ring/15 h-11 rounded-xl px-4 text-base transition-colors sm:h-12 md:text-sm";
+
+/** Pins its children to the bottom of the screen on phones, above the safe area. */
+function BottomBar({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-background/95 border-border sticky bottom-0 z-10 -mx-5 mt-auto border-t px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:-mx-6 sm:px-6">
+      {children}
+    </div>
+  );
+}
 
 function QuizIntro({
   quiz,
@@ -265,104 +315,139 @@ function QuizIntro({
   onStarted: (started: RouterOutputs["publicQuiz"]["start"]) => void;
 }) {
   const [name, setName] = useState("");
+  const [wantsUpdates, setWantsUpdates] = useState(false);
   const [contact, setContact] = useState("");
-  const [consent, setConsent] = useState(false);
   const start = api.publicQuiz.start.useMutation({
     onSuccess: onStarted,
     onError: (error) => toast.error(error.message || "Quiz gagal dimulai."),
   });
+  const facts = [
+    `${quiz.questionCount} soal`,
+    quiz.timeLimitMinutes
+      ? `${quiz.timeLimitMinutes} menit`
+      : "Tanpa batas waktu",
+    `${quiz.participants} peserta`,
+  ];
+  const steps = [
+    "Tulis nama untuk leaderboard",
+    quiz.timeLimitMinutes
+      ? `Jawab ${quiz.questionCount} soal dalam ${quiz.timeLimitMinutes} menit`
+      : `Jawab ${quiz.questionCount} soal pilihan ganda`,
+    "Lihat skor, peringkat, dan pembahasan",
+  ];
+
+  function begin() {
+    if (start.isPending) return;
+    const trimmedContact = contact.trim();
+    if (wantsUpdates && !trimmedContact) {
+      toast.error("Isi email atau nomor WhatsApp, atau matikan pilihan ini.");
+      return;
+    }
+    start.mutate({
+      ...quizRef,
+      displayName: name.trim() || null,
+      contact: wantsUpdates ? trimmedContact : null,
+      contactConsent: wantsUpdates,
+    });
+  }
 
   return (
     <>
-      <StudyCard className="gap-5 p-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-black tracking-tight">{quiz.title}</h1>
-          {quiz.description ? (
-            <p className="text-muted-foreground leading-6 whitespace-pre-wrap">
-              {quiz.description}
+      <section className="flex flex-col pt-2 sm:pt-6">
+        <Kicker>Quiz online</Kicker>
+        <h1 className={cn(headlineText, "mt-4 text-balance")}>{quiz.title}</h1>
+        {quiz.description ? (
+          <p className={cn(leadText, "mt-4 whitespace-pre-wrap")}>
+            {quiz.description}
+          </p>
+        ) : null}
+        <p className="text-muted-foreground mt-5 font-mono text-[11px] tracking-[0.12em] uppercase">
+          {facts.join("  ·  ")}
+        </p>
+      </section>
+
+      {quiz.isOpen ? (
+        <form
+          className="flex flex-1 flex-col gap-7"
+          onSubmit={(event) => {
+            event.preventDefault();
+            begin();
+          }}
+        >
+          <section aria-labelledby="public-quiz-steps">
+            <Kicker id="public-quiz-steps">Cara main</Kicker>
+            <ol className="divide-border border-border mt-3 divide-y border-y">
+              {steps.map((step, index) => (
+                <li
+                  key={step}
+                  className="flex items-baseline gap-4 py-3 text-sm"
+                >
+                  <span className="text-primary font-mono text-xs tabular-nums">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <div className="space-y-2">
+            <Label htmlFor="public-quiz-name" className="text-foreground">
+              Nama kamu
+            </Label>
+            <Input
+              id="public-quiz-name"
+              value={name}
+              maxLength={40}
+              autoComplete="nickname"
+              enterKeyHint="go"
+              placeholder="Contoh: Dewi"
+              className={fieldClass}
+              onChange={(event) => setName(event.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">
+              Tampil di leaderboard. Kosongkan untuk tampil sebagai Anonim.
             </p>
-          ) : null}
-        </div>
-        <ul className="text-muted-foreground flex flex-wrap gap-x-5 gap-y-2 text-sm">
-          <li className="flex items-center gap-1.5">
-            <ListChecksIcon className="size-4" /> {quiz.questionCount} soal
-          </li>
-          {quiz.timeLimitMinutes ? (
-            <li className="flex items-center gap-1.5">
-              <ClockIcon className="size-4" /> {quiz.timeLimitMinutes} menit
-            </li>
-          ) : null}
-          <li className="flex items-center gap-1.5">
-            <UsersIcon className="size-4" /> {quiz.participants} peserta
-          </li>
-        </ul>
-        {quiz.isOpen ? (
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (start.isPending) return;
-              const trimmedContact = contact.trim();
-              if (trimmedContact && !consent) {
-                toast.error(
-                  "Centang persetujuan di bawah kontak, atau kosongkan kontak.",
-                );
-                return;
-              }
-              start.mutate({
-                ...quizRef,
-                displayName: name.trim() || null,
-                contact: trimmedContact || null,
-                contactConsent: Boolean(trimmedContact) && consent,
-              });
-            }}
-          >
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="public-quiz-name">Nama di leaderboard</Label>
-              <Input
-                id="public-quiz-name"
-                value={name}
-                maxLength={40}
-                autoComplete="nickname"
-                placeholder="Kosongkan untuk tampil sebagai Anonim"
-                onChange={(event) => setName(event.target.value)}
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-foreground items-start gap-3 font-normal">
+              <Checkbox
+                className="mt-0.5"
+                checked={wantsUpdates}
+                onCheckedChange={setWantsUpdates}
               />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="public-quiz-contact">
-                Email atau WhatsApp (opsional)
-              </Label>
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  Kabari aku info kelas dari {quiz.organization.name}
+                </span>
+                <span className="text-muted-foreground text-xs leading-5">
+                  Opsional. Kontakmu tidak tampil di leaderboard.
+                </span>
+              </span>
+            </Label>
+            {wantsUpdates ? (
               <Input
-                id="public-quiz-contact"
+                aria-label="Email atau nomor WhatsApp"
                 value={contact}
                 maxLength={100}
                 autoComplete="email"
-                placeholder={`Agar ${quiz.organization.name} bisa mengabari kamu`}
+                inputMode="email"
+                placeholder="Email atau nomor WhatsApp"
+                className={fieldClass}
+                autoFocus
                 onChange={(event) => setContact(event.target.value)}
               />
-              {contact.trim() ? (
-                <Label
-                  htmlFor="public-quiz-consent"
-                  className="items-start gap-2 text-xs leading-5 font-normal"
-                >
-                  <Checkbox
-                    id="public-quiz-consent"
-                    className="mt-0.5"
-                    checked={consent}
-                    onCheckedChange={setConsent}
-                  />
-                  Saya setuju dihubungi oleh {quiz.organization.name} tentang
-                  kelas dan info belajar. Kontak tidak ditampilkan di
-                  leaderboard.
-                </Label>
-              ) : (
-                <p className="text-muted-foreground text-xs">
-                  Tidak ditampilkan di leaderboard. Hanya{" "}
-                  {quiz.organization.name} yang bisa melihatnya.
-                </p>
-              )}
-            </div>
-            <Button size="lg" type="submit" disabled={start.isPending}>
+            ) : null}
+          </div>
+
+          <BottomBar>
+            <Button
+              size="lg"
+              type="submit"
+              className="h-11 w-full text-base sm:h-12"
+              disabled={start.isPending}
+            >
               {start.isPending ? (
                 <LoaderCircleIcon
                   data-icon="inline-start"
@@ -370,27 +455,30 @@ function QuizIntro({
                 />
               ) : null}
               {start.isPending ? "Memulai…" : "Mulai quiz"}
+              {start.isPending ? null : (
+                <ArrowRightIcon data-icon="inline-end" />
+              )}
             </Button>
-            <p className="text-muted-foreground text-center text-xs">
-              Tanpa daftar akun. Quiz hanya bisa dikerjakan sekali di perangkat
-              ini.
+            <p className="text-muted-foreground mt-2 text-center text-[11px]">
+              Tanpa daftar akun · Sekali main per perangkat
             </p>
-          </form>
-        ) : (
-          <p className="font-semibold">
+          </BottomBar>
+        </form>
+      ) : (
+        <>
+          <p className="border-border border-y py-4 text-sm">
             Quiz ini sudah ditutup. Lihat hasil peserta di leaderboard.
           </p>
-        )}
-      </StudyCard>
-      {!quiz.isOpen ? (
-        <>
           <Leaderboard quizRef={quizRef} />
           <OrganizationCta quiz={quiz} />
         </>
-      ) : null}
+      )}
     </>
   );
 }
+
+// Long enough to see the selection land before the next question slides in.
+const AUTO_ADVANCE_MS = 350;
 
 function QuizRunner({
   quiz,
@@ -414,6 +502,7 @@ function QuizRunner({
   const [current, setCurrent] = useState(0);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submit = api.publicQuiz.submit.useMutation({
     onSuccess: onSubmitted,
     onError: (error) =>
@@ -449,6 +538,19 @@ function QuizRunner({
       send();
   }, [expired, send, submit.isError, submit.isPending, submit.isSuccess]);
 
+  useEffect(
+    () => () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    },
+    [],
+  );
+
+  const goTo = useCallback((index: number) => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    setCurrent(index);
+    window.scrollTo({ top: 0 });
+  }, []);
+
   const statuses: QuestionStatus[] = questions.map((question) =>
     answers[question.id]?.length ? "answered" : "unanswered",
   );
@@ -459,101 +561,138 @@ function QuizRunner({
   if (!question) return null;
   const selected = answers[question.id] ?? [];
   const isLast = current === questions.length - 1;
-  const nextUnanswered = nextUnansweredQuestion(statuses, current);
+  const allAnswered = answeredCount === questions.length;
   const busy = submit.isPending;
+  const multiple = question.type === "MULTIPLE_CHOICE";
 
   function choose(optionId: string) {
     if (!question || busy || expired) return;
-    const next =
-      question.type === "MULTIPLE_CHOICE"
-        ? selected.includes(optionId)
-          ? selected.filter((id) => id !== optionId)
-          : [...selected, optionId]
-        : [optionId];
+    const next = multiple
+      ? selected.includes(optionId)
+        ? selected.filter((id) => id !== optionId)
+        : [...selected, optionId]
+      : [optionId];
     const updated = { ...answers, [question.id]: next };
     setAnswers(updated);
     onAnswersChange(updated);
+    // One tap answers a single-choice question; move on like a quiz game.
+    if (!multiple && !isLast) {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+      const target = current + 1;
+      advanceTimer.current = setTimeout(() => goTo(target), AUTO_ADVANCE_MS);
+    }
   }
 
+  const submitting = isLast || allAnswered || expired;
+  const primaryLabel = submitting
+    ? busy
+      ? "Mengirim…"
+      : allAnswered
+        ? "Kirim jawaban"
+        : `Kirim · ${answeredCount}/${questions.length} dijawab`
+    : selected.length
+      ? "Lanjut"
+      : "Lewati";
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="truncate font-bold">{quiz.title}</p>
-        {secondsLeft !== null ? (
-          <p
-            aria-live={expired ? "polite" : "off"}
-            className={cn(
-              "shrink-0 text-sm font-bold tabular-nums",
-              secondsLeft < 60 ? "text-destructive" : "text-primary",
-            )}
+    <div className="flex flex-1 flex-col">
+      <div className="bg-background/95 border-border sticky top-0 z-10 -mx-4 flex flex-col gap-3 border-b px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setNavigatorOpen(true)}
+            aria-label={`Soal ${current + 1} dari ${questions.length}. Buka daftar soal`}
+            className="hover:bg-muted -ml-2 flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium"
           >
-            {expired
-              ? "Waktu habis"
-              : `${formatRemaining(secondsLeft)} tersisa`}
-          </p>
-        ) : null}
-      </div>
-
-      <AssessmentQuestion
-        current={current}
-        total={questions.length}
-        answered={answeredCount}
-        onOpen={() => setNavigatorOpen(true)}
-        disabled={busy}
-      >
-        <RichContent content={question.prompt} />
-      </AssessmentQuestion>
-
-      <p className="text-sm font-bold">
-        {question.type === "MULTIPLE_CHOICE"
-          ? "Pilih semua jawaban yang benar"
-          : "Pilih satu jawaban"}
-      </p>
-      <div
-        role={question.type === "SINGLE_CHOICE" ? "radiogroup" : "group"}
-        className="flex flex-col gap-3"
-      >
-        {question.options.map((option, index) => (
-          <AssessmentOption
-            key={option.id}
-            index={index}
-            selected={selected.includes(option.id)}
-            multiple={question.type === "MULTIPLE_CHOICE"}
-            disabled={busy || expired}
-            onPress={() => choose(option.id)}
-          >
-            <RichContent content={option.content} />
-          </AssessmentOption>
-        ))}
-      </div>
-
-      <div className="border-border flex flex-col gap-3 border-t pt-4">
-        <div className="flex gap-3">
-          {current > 0 ? (
-            <Button
-              variant="secondary"
-              className="flex-1"
-              disabled={busy}
-              onClick={() => setCurrent(current - 1)}
+            Soal {current + 1}
+            <span className="text-muted-foreground">/{questions.length}</span>
+            <ChevronDownIcon className="text-muted-foreground size-4" />
+          </button>
+          {secondsLeft !== null ? (
+            <span
+              aria-live={expired ? "polite" : "off"}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-xs tabular-nums",
+                secondsLeft < 60
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-muted",
+              )}
             >
-              Sebelumnya
-            </Button>
-          ) : null}
-          {!isLast || (nextUnanswered >= 0 && nextUnanswered !== current) ? (
-            <Button
-              className="flex-1"
-              disabled={busy}
-              onClick={() => setCurrent(isLast ? nextUnanswered : current + 1)}
-            >
-              {isLast ? "Soal belum dijawab berikutnya →" : "Berikutnya →"}
-            </Button>
-          ) : null}
+              <ClockIcon className="size-3.5" />
+              {expired ? "Waktu habis" : formatRemaining(secondsLeft)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground font-mono text-[11px] tracking-[0.12em] uppercase">
+              {answeredCount} dijawab
+            </span>
+          )}
         </div>
-        {isLast || answeredCount === questions.length || expired ? (
+        <div className="flex gap-1" aria-hidden>
+          {statuses.map((status, index) => (
+            <span
+              key={index}
+              className={cn(
+                "h-1.5 flex-1 rounded-full transition-colors",
+                index === current
+                  ? "bg-primary"
+                  : status === "answered"
+                    ? "bg-primary/40"
+                    : "bg-muted",
+              )}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div key={question.id} className="flex flex-col gap-4 py-5">
+        <div className="[&_.bn-inline-content]:text-xl [&_.bn-inline-content]:leading-8 [&_.bn-inline-content]:font-medium [&_.bn-inline-content]:tracking-[-0.02em]">
+          <RichContent content={question.prompt} />
+        </div>
+        <p className="text-muted-foreground font-mono text-[11px] tracking-[0.12em] uppercase">
+          {multiple ? "Pilih semua yang benar" : "Pilih satu jawaban"}
+        </p>
+        <div
+          role={multiple ? "group" : "radiogroup"}
+          className="flex flex-col gap-2.5"
+        >
+          {question.options.map((option, index) => (
+            <AssessmentOption
+              key={option.id}
+              index={index}
+              selected={selected.includes(option.id)}
+              multiple={multiple}
+              disabled={busy || expired}
+              onPress={() => choose(option.id)}
+            >
+              <RichContent content={option.content} />
+            </AssessmentOption>
+          ))}
+        </div>
+      </div>
+
+      <BottomBar>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon-lg"
+            className="size-12 shrink-0"
+            aria-label="Soal sebelumnya"
+            disabled={busy || current === 0}
+            onClick={() => goTo(current - 1)}
+          >
+            <ChevronLeftIcon />
+          </Button>
           <Button
             size="lg"
+            className="h-12 flex-1 text-base"
+            variant={!submitting && !selected.length ? "secondary" : "default"}
             disabled={busy}
-            onClick={() => (expired ? send() : setConfirmOpen(true))}
+            onClick={() => {
+              if (!submitting) goTo(current + 1);
+              else if (expired) send();
+              else setConfirmOpen(true);
+            }}
           >
             {busy ? (
               <LoaderCircleIcon
@@ -561,14 +700,13 @@ function QuizRunner({
                 className="animate-spin"
               />
             ) : null}
-            {busy
-              ? "Mengirim…"
-              : answeredCount === questions.length
-                ? "Kirim jawaban"
-                : `Kirim · ${answeredCount}/${questions.length} dijawab`}
+            {primaryLabel}
+            {!busy && !submitting ? (
+              <ChevronRightIcon data-icon="inline-end" />
+            ) : null}
           </Button>
-        ) : null}
-      </div>
+        </div>
+      </BottomBar>
 
       <QuestionNavigator
         open={navigatorOpen}
@@ -578,7 +716,7 @@ function QuizRunner({
         statuses={statuses}
         onSelect={(index) => {
           if (busy) return false;
-          setCurrent(index);
+          goTo(index);
           return true;
         }}
       />
@@ -587,8 +725,9 @@ function QuizRunner({
           <AlertDialogHeader>
             <AlertDialogTitle>Kirim jawaban?</AlertDialogTitle>
             <AlertDialogDescription>
-              {answeredCount} dari {questions.length} soal dijawab. Jawaban yang
-              dikirim tidak dapat diubah.
+              {allAnswered
+                ? "Semua soal sudah dijawab. Jawaban yang dikirim tidak dapat diubah."
+                : `Masih ada ${questions.length - answeredCount} soal yang belum dijawab. Jawaban yang dikirim tidak dapat diubah.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -649,51 +788,122 @@ function QuizResult({
     }
   }
 
+  const stats = [
+    {
+      label: "Peringkat",
+      value: result.rank ? String(result.rank) : "–",
+      detail: `dari ${result.participants}`,
+    },
+    {
+      label: "Benar",
+      value: `${result.score}/${result.maxScore}`,
+      detail: "poin",
+    },
+    {
+      label: "Waktu",
+      value: formatDuration(result.durationSeconds),
+      detail: "pengerjaan",
+    },
+  ];
+
   return (
     <>
-      <StudyCard emphasized className="items-center gap-3 p-6 text-center">
-        <TrophyIcon className="text-primary size-8" />
-        <p className="text-muted-foreground text-sm">
-          {attempt.displayName}, skor kamu
-        </p>
-        <p className="text-6xl font-black tabular-nums">{percentage}</p>
-        <p className="text-muted-foreground text-sm tabular-nums">
-          {result.score}/{result.maxScore} poin ·{" "}
-          {formatDuration(result.durationSeconds)}
-          {result.rank ? ` · peringkat #${result.rank}` : ""}
-        </p>
-        <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row">
-          <Button
-            variant="secondary"
-            className="flex-1"
-            onClick={() => setShowReview((value) => !value)}
-          >
-            {showReview ? "Tutup pembahasan" : "Lihat pembahasan"}
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
+      <section
+        className={cn(
+          surface,
+          "flex flex-col items-center gap-6 text-center max-sm:border-t-0 max-sm:pt-2",
+        )}
+      >
+        <div className="flex flex-col items-center gap-4">
+          <ScoreRing value={percentage} />
+          <div className="flex flex-col gap-1">
+            <p className="text-2xl font-medium tracking-[-0.03em]">
+              {attempt.displayName}
+            </p>
+            <p className="text-muted-foreground text-sm">{quiz.title}</p>
+          </div>
+        </div>
+        <dl className="divide-border border-border grid w-full grid-cols-3 divide-x border-y py-4">
+          {stats.map((stat) => (
+            <div key={stat.label} className="flex flex-col gap-0.5 px-2">
+              <dt className="text-muted-foreground font-mono text-[10px] tracking-[0.14em] uppercase">
+                {stat.label}
+              </dt>
+              <dd className="mt-1 text-xl font-medium tracking-tight tabular-nums">
+                {stat.value}
+              </dd>
+              <dd className="text-muted-foreground text-xs">{stat.detail}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="grid w-full grid-cols-2 gap-2">
+          <button
+            type="button"
+            className={actionTile}
+            aria-label="Bagikan skor"
             onClick={() => void share()}
           >
-            Ajak teman
-          </Button>
-        </div>
-        {result.rank !== null ? (
-          <a
-            href={storyImageUrl}
-            download="skor-quiz.png"
-            className="text-primary text-xs font-semibold underline-offset-4 hover:underline"
+            <Share2Icon />
+            Bagikan
+          </button>
+          <button
+            type="button"
+            aria-expanded={showReview}
+            className={actionTile}
+            onClick={() => setShowReview((value) => !value)}
           >
-            Simpan gambar skor untuk Story
-          </a>
-        ) : null}
-      </StudyCard>
+            <BookOpenIcon />
+            Pembahasan
+          </button>
+        </div>
+      </section>
 
       {showReview ? <QuizReview quizRef={quizRef} token={token} /> : null}
 
-      <Leaderboard quizRef={quizRef} token={token} />
+      <Leaderboard quizRef={quizRef} token={token} inviteUrl={shareUrl} />
       <OrganizationCta quiz={quiz} />
     </>
+  );
+}
+
+/** Icon-over-label action used in the result card. */
+const actionTile =
+  "border-border bg-background hover:bg-muted aria-expanded:bg-primary/10 aria-expanded:border-primary/40 aria-expanded:text-primary focus-visible:ring-ring/50 flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-xs font-medium transition-colors outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-[18px]";
+
+function ScoreRing({ value }: { value: number }) {
+  const radius = 52;
+  const circumference = 2 * Math.PI * radius;
+  return (
+    <div className="relative size-36">
+      <svg viewBox="0 0 120 120" className="size-full -rotate-90" aria-hidden>
+        <circle
+          cx="60"
+          cy="60"
+          r={radius}
+          fill="none"
+          strokeWidth="10"
+          className="stroke-muted"
+        />
+        <circle
+          cx="60"
+          cy="60"
+          r={radius}
+          fill="none"
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={`${(circumference * value) / 100} ${circumference}`}
+          className="stroke-primary transition-[stroke-dasharray] duration-700"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-4xl font-medium tracking-[-0.04em] tabular-nums">
+          {value}
+        </span>
+        <span className="text-muted-foreground font-mono text-[10px] tracking-[0.18em] uppercase">
+          Skor
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -715,7 +925,7 @@ function QuizReview({ quizRef, token }: { quizRef: QuizRef; token: string }) {
   }
   return (
     <section className="flex flex-col gap-6">
-      <h2 className="text-xl font-black">Pembahasan</h2>
+      <Kicker>Pembahasan</Kicker>
       {review.data.map((question, index) => (
         <div key={question.id} className="flex flex-col gap-3">
           <AssessmentQuestion
@@ -742,7 +952,7 @@ function QuizReview({ quizRef, token }: { quizRef: QuizRef; token: string }) {
           ))}
           {question.explanation ? (
             <StudyCard>
-              <p className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+              <p className="text-muted-foreground font-mono text-[10px] tracking-[0.14em] uppercase">
                 Penjelasan
               </p>
               <RichContent content={question.explanation} />
@@ -754,7 +964,80 @@ function QuizReview({ quizRef, token }: { quizRef: QuizRef; token: string }) {
   );
 }
 
-function Leaderboard({ quizRef, token }: { quizRef: QuizRef; token?: string }) {
+// How long the invite stays after copying, then how long it takes to fade out.
+const INVITE_LINGER_MS = 2500;
+const INVITE_FADE_MS = 300;
+
+/**
+ * A quiet nudge under the participant's own row: copy the quiz link for a friend. It says
+ * thanks and steps aside once used.
+ */
+function InviteRow({ url }: { url: string }) {
+  const [phase, setPhase] = useState<"idle" | "copied" | "fading" | "gone">(
+    "idle",
+  );
+  useEffect(() => {
+    if (phase === "copied") {
+      const timer = setTimeout(() => setPhase("fading"), INVITE_LINGER_MS);
+      return () => clearTimeout(timer);
+    }
+    if (phase === "fading") {
+      const timer = setTimeout(() => setPhase("gone"), INVITE_FADE_MS);
+      return () => clearTimeout(timer);
+    }
+  }, [phase]);
+  if (phase === "gone") return null;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link tersalin", { duration: 1500 });
+      setPhase("copied");
+    } catch {
+      toast.error("Link tidak dapat disalin.");
+    }
+  }
+
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-2 pt-2 pb-3 transition-opacity duration-300",
+        phase === "fading" && "opacity-0",
+      )}
+    >
+      <p className="text-muted-foreground min-w-0 flex-1 text-xs leading-5">
+        {phase === "idle"
+          ? "Pengen ajak temen kerjain juga? Copy dan bagikan link ini."
+          : "Sip! Tinggal tempel di chat temanmu."}
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="shrink-0"
+        aria-label="Copy link quiz"
+        onClick={() => void copy()}
+      >
+        {phase === "idle" ? (
+          <CopyIcon data-icon="inline-start" />
+        ) : (
+          <CheckIcon data-icon="inline-start" />
+        )}
+        {phase === "idle" ? "Link" : "Tersalin"}
+      </Button>
+    </li>
+  );
+}
+
+function Leaderboard({
+  quizRef,
+  token,
+  inviteUrl,
+}: {
+  quizRef: QuizRef;
+  token?: string;
+  /** Shown under the participant's own row so they can invite friends. */
+  inviteUrl?: string;
+}) {
   const leaderboard = api.publicQuiz.leaderboard.useQuery(
     { ...quizRef, token },
     { refetchInterval: 30_000 },
@@ -763,27 +1046,27 @@ function Leaderboard({ quizRef, token }: { quizRef: QuizRef; token?: string }) {
   const mineListed = data?.entries.some((entry) => entry.isMine);
 
   return (
-    <StudyCard>
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-xl font-black">Leaderboard</h2>
+    <section className={cn(surface, "flex flex-col gap-3")}>
+      <div className="flex items-center justify-between gap-3">
+        <Kicker>Leaderboard</Kicker>
         {data ? (
-          <p className="text-muted-foreground text-xs">{data.total} peserta</p>
+          <p className="text-muted-foreground font-mono text-[11px] tabular-nums">
+            {data.total} peserta
+          </p>
         ) : null}
       </div>
       <p className="text-muted-foreground text-sm">
-        Skor tertinggi di atas. Skor seri ditentukan oleh waktu pengerjaan
-        tercepat.
+        Skor seri diurutkan dari waktu tercepat.
       </p>
       {!data ? (
         <LoaderCircleIcon className="text-muted-foreground size-5 animate-spin" />
       ) : data.entries.length ? (
         <ol>
           {data.entries.map((entry) => (
-            <LeaderboardRow
-              key={entry.rank}
-              entry={entry}
-              mine={entry.isMine}
-            />
+            <Fragment key={entry.rank}>
+              <LeaderboardRow entry={entry} mine={entry.isMine} />
+              {entry.isMine && inviteUrl ? <InviteRow url={inviteUrl} /> : null}
+            </Fragment>
           ))}
           {data.mine && !mineListed ? (
             <>
@@ -794,6 +1077,7 @@ function Leaderboard({ quizRef, token }: { quizRef: QuizRef; token?: string }) {
                 ⋯
               </li>
               <LeaderboardRow entry={data.mine} mine />
+              {inviteUrl ? <InviteRow url={inviteUrl} /> : null}
             </>
           ) : null}
         </ol>
@@ -802,7 +1086,7 @@ function Leaderboard({ quizRef, token }: { quizRef: QuizRef; token?: string }) {
           Belum ada peserta. Jadilah yang pertama!
         </p>
       )}
-    </StudyCard>
+    </section>
   );
 }
 
@@ -828,13 +1112,13 @@ function LeaderboardRow({
     >
       <span
         className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums",
+          "flex size-7 shrink-0 items-center justify-center rounded-full font-mono text-xs tabular-nums",
           entry.rank <= 3 ? "bg-primary text-primary-foreground" : "bg-muted",
         )}
       >
         {entry.rank}
       </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">
         {entry.name}
         {mine ? " (kamu)" : ""}
       </span>
@@ -845,21 +1129,96 @@ function LeaderboardRow({
   );
 }
 
+// Scroll distance that counts as a deliberate direction change, and how close to the end
+// of the page counts as "reached the bottom".
+const SCROLL_INTENT_PX = 8;
+const BOTTOM_SLACK_PX = 96;
+// The bar rises in shortly after the result appears, once the score has been seen.
+const CTA_ENTRANCE_MS = 900;
+
+/**
+ * Shows the bar on entrance, when scrolling back up and at the end of the page; hides it while
+ * scrolling down so it never covers the leaderboard someone is reading.
+ */
+function useScrollReveal() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let frame = 0;
+    let entered = false;
+    const entrance = setTimeout(() => {
+      entered = true;
+      setVisible(true);
+    }, CTA_ENTRANCE_MS);
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const atBottom =
+          window.innerHeight + y >=
+          document.documentElement.scrollHeight - BOTTOM_SLACK_PX;
+        if (atBottom) setVisible(true);
+        else if (y > lastY + SCROLL_INTENT_PX) setVisible(false);
+        else if (y < lastY - SCROLL_INTENT_PX && entered) setVisible(true);
+        if (Math.abs(y - lastY) > SCROLL_INTENT_PX) lastY = y;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(entrance);
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+  return visible;
+}
+
+/** The invitation to the organization's landing page, floating above the page. */
 function OrganizationCta({ quiz }: { quiz: Quiz }) {
+  const visible = useScrollReveal();
   if (!quiz.organization.landingPublished) return null;
   return (
-    <StudyCard emphasized className="gap-3">
-      <p className="text-lg font-black">Mau belajar lebih banyak?</p>
-      <p className="text-muted-foreground text-sm leading-6">
-        Lihat kelas dan materi lain dari {quiz.organization.name}.
-      </p>
-      <a
-        href={`/api/public-quiz/${quiz.id}/cta`}
-        className={buttonVariants({ size: "lg" })}
-      >
-        Kunjungi {quiz.organization.name}
-        <ArrowRightIcon data-icon="inline-end" />
-      </a>
-    </StudyCard>
+    <>
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <aside
+          aria-label={`Kelas dari ${quiz.organization.name}`}
+          className={cn(
+            "bg-foreground text-background pointer-events-auto mx-auto flex max-w-xl items-center gap-3 rounded-2xl p-2.5 pl-3 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.45)] transition-[translate,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+            visible
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-[calc(100%+2rem)] opacity-0",
+          )}
+          inert={!visible}
+        >
+          {quiz.organization.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={quiz.organization.logoUrl}
+              alt=""
+              className="size-10 shrink-0 rounded-xl bg-white object-cover"
+            />
+          ) : (
+            <span className="bg-background text-foreground flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold">
+              {quiz.organization.name.slice(0, 1).toUpperCase()}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              Mau belajar lebih banyak?
+            </p>
+            <p className="truncate text-xs opacity-70">
+              Lihat kelas dari {quiz.organization.name}
+            </p>
+          </div>
+          <a
+            href={`/api/public-quiz/${quiz.id}/cta`}
+            className="bg-background text-foreground hover:bg-background/90 flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-medium transition-colors"
+          >
+            Lihat
+            <ArrowRightIcon className="size-4" />
+          </a>
+        </aside>
+      </div>
+    </>
   );
 }

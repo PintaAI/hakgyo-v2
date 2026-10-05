@@ -11,7 +11,7 @@ export default async function Page({
   const { organizationId: organizationSlug } = await params;
   const membership =
     await requireOrganizationMembershipBySlug(organizationSlug);
-  void api.publicQuiz.listForOrganization.prefetch({
+  await api.publicQuiz.listForOrganization.prefetch({
     organizationId: membership.organizationId,
   });
 
