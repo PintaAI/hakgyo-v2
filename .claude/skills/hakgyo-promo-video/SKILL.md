@@ -34,20 +34,22 @@ Two projects share that folder:
 
 Do the steps in order; each one removes a class of rework from the next.
 
-1. **Check the state.** `git status`; does `tools/promo-video/demo/clips/` exist; are the fetched
-   assets there (`bun run setup` in `tools/promo-video` if not).
+1. **Check the state.** `git status`; `bun pv.mjs status` in `tools/promo-video` (disk, GPU worker,
+   projects); fetched assets present (`bun run setup` if not).
 2. **Research the real flows from the code, read-only.** Routes, exact Indonesian UI labels, seed
    data, rules in `docs/`. Use one Explore agent at most. The script must describe what the product
    actually does: for example the landing page says the WhatsApp integration is still being prepared,
    so do not promise it.
-3. **Write the storyboard before anything else.** One entry per beat: voiceover line plus its visual.
-   Schema and graphic types are in `references/storyboard-and-recording.md`. Keep lines short
-   (speech runs about 14 characters a second) so scenes stay brisk.
-4. **Record only the stages you need**, with `--dry` first when you wrote new selectors. Name marks
-   after the on-screen moment, because the storyboard cuts clips between marks.
-5. **Camera, voiceover, stills, build.** Voiceover first on two lines to prove the pipeline, then all
-   lines. Render stills at a handful of timestamps before committing to a full render.
-6. **Verify and report** (see below).
+3. **Scaffold, then write the storyboard first.** `bun pv.mjs new <name> --like=<project>`; edit
+   `<name>/storyboard.py` (never the JSON). Schema and scene types are in
+   `references/storyboard-and-recording.md`. Keep lines short (about 14 characters a second).
+4. **Record** with `bun pv.mjs record <name> --dry` first for new selectors, then without `--dry`.
+   Stages use `demo/lib/stage.mjs`; name marks after the on-screen moment.
+5. **`bun pv.mjs prep <name>`** (storyboard, camera, voiceover, labelled contact sheets in
+   `<name>/stills/sheet-NN.jpg`). Look at every sheet before rendering; fix and re-run `check`.
+6. **`bun pv.mjs render <name>`** (GPU worker when up, video downloaded; audio normalised to -14 LUFS),
+   then `bun pv.mjs backup <file>` and delete the local copy once the backup is confirmed.
+7. **Verify and report** (see below).
 
 ## Rules that came from real mistakes
 
