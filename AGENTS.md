@@ -100,6 +100,7 @@ bun run --cwd apps/mobile typecheck
 - Keep database access on the server through `src/server/db.ts`; do not import Prisma into client components.
 - Use the `~/` path alias for imports within the web app.
 - Keep links as semantic anchors. To make a Next.js `Link` or `<a>` look like a button, apply `buttonVariants` from `~/components/ui/button`; do not render links through Base UI `Button`, including with `nativeButton={false}`.
+- On phone widths, use fewer cards and use all of the available space. Let sections run edge to edge and separate them with hairline borders instead of nesting cards, then restore card surfaces from `sm` up. Follow the auth route (`src/app/auth`, `AuthPanel`): `cardSurface` with `max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none`. Keep primary actions within thumb reach (a sticky bottom bar when the page scrolls), and prefer list rows over tables. Check every UI change at 390px wide.
 - Keep authentication changes aligned across `src/server/better-auth/config.ts`, `server.ts`, `client.ts`, and the auth route.
 - The shared tRPC endpoint is `/api/trpc`. Mobile authentication works by forwarding the Better Auth cookie returned by `authClient.getCookie()`.
 
