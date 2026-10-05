@@ -1,8 +1,0 @@
-{
-  "voice": {
-    "provider": "gemini",
-    "model": "gemini-3.8-flash-tts",
-    "voice": "Leda",
-    "style": "warm, friendly and clear, like a product tutorial presenter, at a lively medium pace"
-  }
-}
