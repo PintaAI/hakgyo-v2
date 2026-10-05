@@ -24,3 +24,6 @@ client_secret_*.json
 # generated (prisma generate output)
 generated/
 .vercel
+
+# Local production tooling (promo videos), kept out of the repository
+tools/

@@ -19,10 +19,13 @@ export default async function Image({
       organizationSlug: orgSlug,
       slug: quizSlug,
     });
-    return renderPublicQuizPreview({
+    return await renderPublicQuizPreview({
       title: quiz.title,
       organizationName: quiz.organization.name,
+      logoUrl: quiz.organization.logoUrl,
       questionCount: quiz.questionCount,
+      timeLimitMinutes: quiz.timeLimitMinutes,
+      participants: quiz.participants,
       theme: quiz.organization.theme,
     });
   } catch (error) {

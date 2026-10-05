@@ -352,7 +352,12 @@ export async function getPublicQuizStats(
       select: { answers: true },
     }),
     db.publicQuizAttempt.count({
-      where: { quizId, contactConsent: true, contact: { not: null } },
+      where: {
+        quizId,
+        submittedAt: { not: null },
+        contactConsent: true,
+        contact: { not: null },
+      },
     }),
     db.assessmentQuestion.findMany({
       where: { assessmentId: managed.assessmentId, type: { not: "WRITTEN" } },
@@ -421,6 +426,7 @@ export async function listOrganizationPublicQuizzes(
     by: ["quizId"],
     where: {
       quizId: { in: quizzes.map((quiz) => quiz.id) },
+      submittedAt: { not: null },
       contactConsent: true,
       contact: { not: null },
     },
@@ -560,14 +566,23 @@ export async function getPublicQuizResultCard(
     select: visitorAttemptSelect,
   });
   if (!attempt) return null;
+  const currentRound = attempt.round === quiz.round;
+  const [rank, participants] = await Promise.all([
+    currentRound ? rankOf(db, attempt) : null,
+    db.publicQuizAttempt.count({ where: leaderboardWhere(quiz) }),
+  ]);
   return {
     quizTitle: quiz.title,
     organizationName: quiz.organization.name,
+    logoUrl: quiz.organization.logoUrl,
     theme: quiz.organization.themeEnabled ? quiz.organization.theme : null,
     name: attempt.displayName ?? PUBLIC_QUIZ_ANONYMOUS_NAME,
     score: attempt.score ?? 0,
     maxScore: attempt.maxScore ?? 0,
-    rank: attempt.round === quiz.round ? await rankOf(db, attempt) : null,
+    durationSeconds: attempt.durationSeconds ?? 0,
+    rank,
+    participants,
+    quizLink: `${new URL(env.APP_URL).host}/${quiz.organization.slug}/quiz/${quiz.slug}`,
   };
 }
 
@@ -667,6 +682,9 @@ async function shapeVisitorAttempt(
           maxScore: attempt.maxScore ?? 0,
           durationSeconds: attempt.durationSeconds ?? 0,
           rank: await rankOf(db, attempt),
+          participants: await db.publicQuizAttempt.count({
+            where: leaderboardWhere(quiz),
+          }),
         }
       : null,
     questions: submitted

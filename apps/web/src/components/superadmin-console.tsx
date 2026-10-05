@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
+import { FilmIcon } from "lucide-react";
 
-import { Button } from "~/components/ui/button";
+import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { api, type RouterOutputs } from "~/trpc/react";
 
@@ -57,6 +59,13 @@ export function SuperadminConsole({ initialData }: { initialData: Dashboard }) {
         <p className="text-muted-foreground mt-3 max-w-2xl">
           Account operations and sign-in visibility. Every mutation is recorded.
         </p>
+        <Link
+          href="/superadmin/media"
+          className={buttonVariants({ variant: "outline", className: "mt-5" })}
+        >
+          <FilmIcon data-icon="inline-start" />
+          Media Hakgyo
+        </Link>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2">

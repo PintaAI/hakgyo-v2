@@ -10,7 +10,7 @@ export default async function Page({
 }) {
   const { organizationId: organizationSlug, assessmentId } = await params;
   await requireOrganizationMembershipBySlug(organizationSlug);
-  void api.publicQuiz.getForAssessment.prefetch({ assessmentId });
+  await api.publicQuiz.getForAssessment.prefetch({ assessmentId });
 
   return (
     <HydrateClient>
