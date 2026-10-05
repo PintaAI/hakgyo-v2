@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type { Metadata } from "next";
 
+import { LandingAtmosphere } from "~/components/landing/atmosphere";
 import { slides, type SlideId } from "~/components/landing/deck";
 import { LandingHeader } from "~/components/landing/header";
 import { SlideNavigator } from "~/components/landing/slide-navigator";
@@ -93,6 +94,7 @@ export default function Home() {
       >
         Lewati navigasi
       </a>
+      <LandingAtmosphere />
       <LandingHeader />
       <SlideNavigator slides={slides} />
       <main id="isi" data-slide-deck>
