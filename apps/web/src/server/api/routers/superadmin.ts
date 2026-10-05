@@ -8,6 +8,14 @@ import {
   deleteCourseTree,
   deleteOrganizationTree,
 } from "~/server/superadmin/deletion";
+import {
+  createMediaUpload,
+  deleteMedia,
+  listMedia,
+  MAX_MEDIA_BYTES,
+  MEDIA_FOLDERS,
+  mediaDownloadUrl,
+} from "~/server/superadmin/media";
 import { revokeUserAccess } from "~/server/superadmin/user-access";
 
 const pageInput = z.object({
@@ -180,6 +188,54 @@ export const superadminRouter = createTRPCRouter({
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       return { deleted: true };
     }),
+
+  media: createTRPCRouter({
+    list: superadminProcedure.query(() => listMedia()),
+
+    createUpload: superadminProcedure
+      .input(
+        z.object({
+          folder: z.enum(MEDIA_FOLDERS),
+          filename: z.string().trim().min(1).max(200),
+          contentType: z.string().max(200),
+          size: z.number().int().min(1).max(MAX_MEDIA_BYTES),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const upload = await createMediaUpload(input);
+        await audit(ctx.db, {
+          actorUserId: ctx.actorUserId,
+          targetId: upload.key,
+          targetType: "media",
+          action: "media.upload",
+        });
+        return upload;
+      }),
+
+    downloadUrl: superadminProcedure
+      .input(
+        z.object({
+          key: z.string().min(1).max(500),
+          disposition: z.enum(["attachment", "inline"]).default("attachment"),
+        }),
+      )
+      .mutation(async ({ input }) => ({
+        url: await mediaDownloadUrl(input.key, input.disposition),
+      })),
+
+    delete: superadminProcedure
+      .input(z.object({ key: z.string().min(1).max(500) }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteMedia(input.key);
+        await audit(ctx.db, {
+          actorUserId: ctx.actorUserId,
+          targetId: input.key,
+          targetType: "media",
+          action: "media.delete",
+        });
+        return { deleted: true };
+      }),
+  }),
 
   deleteOrganization: superadminProcedure
     .input(z.object({ organizationId: z.string().min(1) }))
