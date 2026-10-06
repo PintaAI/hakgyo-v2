@@ -547,6 +547,38 @@ mutation(CourseFields & {
 - Owner membership wajib berasal dari organization yang sama.
 - Teacher hanya dapat membuat course dengan dirinya sebagai owner.
 
+### `course.listStarterCourses`
+
+```ts
+query(): {
+  id: string;
+  title: string;
+  description: string | null;
+  thumbnailUrl: string | null;
+  moduleCount: number;
+  itemCount: number; // hanya item yang dipublikasikan
+}[]
+```
+
+- Auth: protected.
+- Course berstatus `PUBLISHED` milik organization sistem Hakgyo (`hakgyo-system`), yang dapat disalin organization mana pun.
+
+### `course.cloneStarterCourse`
+
+```ts
+mutation({ organizationId: string; sourceCourseId: string }): {
+  id: string;
+  title: string;
+  slug: string;
+  thumbnailUrl: string | null;
+}
+```
+
+- Scope: owner/admin/teacher organization yang boleh membuat course. Pemanggil menjadi owner course salinan.
+- Menyalin modul dan item yang dipublikasikan beserta materi, tugas, set kosakata, dan buku PDF yang dipakai. Berkas disalin di dalam R2 sehingga organization tujuan memiliki objeknya sendiri, dan isi materi diarahkan ke salinan.
+- Hasilnya berstatus `DRAFT`. Cohort, enrollment, dan progres tidak ikut disalin.
+- Gagal dengan `NOT_FOUND` jika sumber bukan course `PUBLISHED` milik organization sistem.
+
 ### `course.update`
 
 ```ts

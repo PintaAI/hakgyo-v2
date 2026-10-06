@@ -24,6 +24,30 @@ export function hasPermission(role: OrganizationRole, permission: Permission) {
   return (rolePermissions[role] as readonly Permission[]).includes(permission);
 }
 
+/**
+ * Whether a member may create courses: the role grants `course.create`,
+ * except for SIMPLE-mode admins and, unless the organization allows it,
+ * ADVANCED-mode teachers.
+ */
+export function canCreateCourse(member: {
+  role: OrganizationRole;
+  organization: {
+    permissionMode: OrganizationPermissionMode;
+    teacherCanCreateCourse: boolean;
+  };
+}) {
+  const { permissionMode, teacherCanCreateCourse } = member.organization;
+  return (
+    hasPermission(member.role, "course.create") &&
+    !(permissionMode === "SIMPLE" && member.role === "ADMIN") &&
+    !(
+      permissionMode === "ADVANCED" &&
+      member.role === "TEACHER" &&
+      !teacherCanCreateCourse
+    )
+  );
+}
+
 export type CourseScope = {
   organizationRole?: OrganizationRole;
   permissionMode?: OrganizationPermissionMode;

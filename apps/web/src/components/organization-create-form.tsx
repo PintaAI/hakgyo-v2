@@ -48,11 +48,16 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
         name: name.trim(),
         defaultEnrollmentMode: enrollmentMode,
       });
-      const destination = `/workspace/${organization.slug}/dashboard`;
-      completeOnboarding(window.localStorage, userId, destination);
+      // The workspace is the destination once onboarding is done; the
+      // optional first-kurikulum step comes before it.
+      completeOnboarding(
+        window.localStorage,
+        userId,
+        `/workspace/${organization.slug}/dashboard`,
+      );
       await utils.organization.list.invalidate();
       toast.success(`${organization.name} siap digunakan.`);
-      router.replace(destination);
+      router.replace(`/organizations/${organization.slug}/kurikulum-pertama`);
       router.refresh();
     } catch (error) {
       toast.error(errorMessage(error));
@@ -73,7 +78,7 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
       </Link>
 
       <header className="max-w-3xl">
-        <Kicker>Workspace baru</Kicker>
+        <Kicker>Langkah 1 dari 2</Kicker>
         <Headline
           as="h1"
           title="Buat workspace"
@@ -191,6 +196,7 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
             {[
               "Anda otomatis menjadi owner",
               "Permission sederhana aktif secara default",
+              "Pilih kurikulum pertama: salin dari Hakgyo, impor PDF, atau mulai dari nol (opsional)",
               "Undang admin dan teacher setelah workspace siap",
             ].map((item, index) => (
               <li key={item} className="flex gap-3">

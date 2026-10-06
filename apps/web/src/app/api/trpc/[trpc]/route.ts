@@ -6,6 +6,10 @@ import { env } from "~/env";
 import { appRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 
+// Copying a starter kurikulum duplicates every file it uses inside R2, which
+// takes a while for PDF books with hundreds of pages.
+export const maxDuration = 300;
+
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
  * handling a HTTP request (e.g. when you make requests from Client Components).

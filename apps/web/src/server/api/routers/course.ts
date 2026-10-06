@@ -16,6 +16,7 @@ import {
   requireOrganizationMembership,
   requireOrganizationPermission,
 } from "~/server/authorization";
+import { cloneStarterCourse, listStarterCourses } from "~/server/course/clone";
 import { getCourseWorkspaceOverview } from "~/server/course/workspace-overview";
 import { withCourseCounts } from "~/server/course/counts";
 import { assertCoursePublishable } from "~/server/course/readiness-service";
@@ -587,6 +588,23 @@ export const courseRouter = createTRPCRouter({
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
       return { removed: true };
+    }),
+  /** Hakgyo's published courses, which any organization can copy. */
+  listStarterCourses: protectedProcedure.query(() => listStarterCourses(db)),
+  cloneStarterCourse: protectedProcedure
+    .input(z.object({ organizationId: id, sourceCourseId: id }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await requireOrganizationPermission({
+        organizationId: input.organizationId,
+        permission: "course.create",
+        userId: ctx.actorUserId,
+      });
+      return cloneStarterCourse(db, {
+        ...input,
+        actorUserId: ctx.actorUserId,
+        ownerMembershipId: member.id,
+        createSlug: (title) => uniqueSlug(input.organizationId, title),
+      });
     }),
   create: protectedProcedure
     .input(fields.extend({ organizationId: id, ownerMembershipId: id }))
