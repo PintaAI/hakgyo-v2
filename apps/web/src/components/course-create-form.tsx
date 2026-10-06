@@ -23,6 +23,55 @@ import { api } from "~/trpc/react";
 const createErrorMessage =
   "Kurikulum belum berhasil dibuat. Silakan coba lagi.";
 
+/**
+ * Creates a kurikulum owned by `ownerMembershipId`, keeping the validation
+ * and error message in one place for every form that creates one.
+ * `create` resolves to the new course, or null with `error` set.
+ */
+export function useCreateCourse({
+  organizationId,
+  ownerMembershipId,
+}: {
+  organizationId: string;
+  ownerMembershipId: string;
+}) {
+  const utils = api.useUtils();
+  const createCourse = api.course.create.useMutation();
+  const [error, setError] = useState<string | null>(null);
+
+  async function create(input: { title: string; description?: string }) {
+    const title = input.title.trim();
+    if (!title) {
+      setError("Masukkan nama kurikulum terlebih dahulu.");
+      return null;
+    }
+    const description = input.description?.trim() ?? "";
+    setError(null);
+    try {
+      const course = await createCourse.mutateAsync({
+        organizationId,
+        ownerMembershipId,
+        title,
+        description: description.length > 0 ? description : null,
+      });
+      await utils.course.list.invalidate({ organizationId });
+      toast.success("Kurikulum berhasil dibuat.");
+      return course;
+    } catch (cause) {
+      setError(getErrorMessage(cause, createErrorMessage));
+      toast.error("Kurikulum belum berhasil dibuat.");
+      return null;
+    }
+  }
+
+  return {
+    create,
+    error,
+    clearError: () => setError(null),
+    isPending: createCourse.isPending,
+  };
+}
+
 export function CourseCreateForm({
   organizationId,
   organizationSlug,
@@ -33,38 +82,18 @@ export function CourseCreateForm({
   ownerMembershipId: string;
 }) {
   const router = useRouter();
-  const utils = api.useUtils();
-  const createCourse = api.course.create.useMutation();
+  const createCourse = useCreateCourse({ organizationId, ownerMembershipId });
+  const { error } = createCourse;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const coursesHref = `/workspace/${organizationSlug}/courses`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const cleanTitle = title.trim();
-    if (!cleanTitle) {
-      setError("Masukkan nama kurikulum terlebih dahulu.");
-      return;
-    }
-
-    setError(null);
-    try {
-      await createCourse.mutateAsync({
-        organizationId,
-        ownerMembershipId,
-        title: cleanTitle,
-        description: description.trim() || null,
-      });
-      await utils.course.list.invalidate({ organizationId });
-      toast.success("Kurikulum berhasil dibuat.");
-      router.replace(coursesHref);
-      router.refresh();
-    } catch (cause) {
-      const message = getErrorMessage(cause, createErrorMessage);
-      setError(message);
-      toast.error("Kurikulum belum berhasil dibuat.");
-    }
+    const course = await createCourse.create({ title, description });
+    if (!course) return;
+    router.replace(coursesHref);
+    router.refresh();
   }
 
   return (
@@ -113,7 +142,7 @@ export function CourseCreateForm({
               aria-describedby="course-title-help"
               onChange={(event) => {
                 setTitle(event.target.value);
-                if (error) setError(null);
+                if (error) createCourse.clearError();
               }}
             />
             <p

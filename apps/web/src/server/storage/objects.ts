@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
@@ -55,6 +56,20 @@ export async function signDownloadUrl(
 
 export async function deleteObject(key: string) {
   await r2.send(new DeleteObjectCommand({ Bucket: r2Bucket, Key: key }));
+}
+
+/** Copies an object inside the bucket on the R2 side, keeping its metadata. */
+export async function copyObject(sourceKey: string, destinationKey: string) {
+  await r2.send(
+    new CopyObjectCommand({
+      Bucket: r2Bucket,
+      CopySource: encodeURIComponent(`${r2Bucket}/${sourceKey}`).replaceAll(
+        "%2F",
+        "/",
+      ),
+      Key: destinationKey,
+    }),
+  );
 }
 
 /** Deletes `key`, logging instead of throwing when R2 fails. */

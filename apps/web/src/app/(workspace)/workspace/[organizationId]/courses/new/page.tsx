@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { CourseCreateForm } from "~/components/course-create-form";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
+import { canCreateCourse } from "~/server/authorization";
 
 export default async function NewCoursePage({
   params,
@@ -11,17 +12,7 @@ export default async function NewCoursePage({
   const { organizationId: organizationSlug } = await params;
   const membership =
     await requireOrganizationMembershipBySlug(organizationSlug);
-  if (
-    membership.role === "ADMIN" &&
-    membership.organization.permissionMode === "SIMPLE"
-  ) {
-    redirect(`/workspace/${organizationSlug}/courses`);
-  }
-  if (
-    membership.role === "TEACHER" &&
-    membership.organization.permissionMode === "ADVANCED" &&
-    !membership.organization.teacherCanCreateCourse
-  ) {
+  if (!canCreateCourse(membership)) {
     redirect(`/workspace/${organizationSlug}/courses`);
   }
 

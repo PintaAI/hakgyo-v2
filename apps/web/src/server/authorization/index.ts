@@ -8,6 +8,7 @@ import { getCourseOutlineForUser } from "~/server/learning/course-outline";
 import { memoizeForRequest } from "~/server/request-cache";
 import {
   canAccessLearningContent,
+  canCreateCourse,
   canManageContent,
   evaluateCourseAccess,
   getCohortCapabilities,
@@ -16,7 +17,7 @@ import {
   type Permission,
 } from "./permissions";
 
-export { hasPermission, type Permission } from "./permissions";
+export { canCreateCourse, hasPermission, type Permission } from "./permissions";
 
 export const activeEnrollmentStatuses = [
   EnrollmentStatus.ACTIVE,
@@ -67,14 +68,9 @@ export async function requireOrganizationPermission(input: {
   const membership = await requireOrganizationMembership(input);
 
   if (
-    !hasPermission(membership.role, input.permission) ||
-    (membership.organization.permissionMode === "SIMPLE" &&
-      membership.role === "ADMIN" &&
-      input.permission === "course.create") ||
-    (membership.organization.permissionMode === "ADVANCED" &&
-      membership.role === "TEACHER" &&
-      input.permission === "course.create" &&
-      !membership.organization.teacherCanCreateCourse)
+    input.permission === "course.create"
+      ? !canCreateCourse(membership)
+      : !hasPermission(membership.role, input.permission)
   ) {
     return forbidden();
   }
