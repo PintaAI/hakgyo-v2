@@ -35,6 +35,10 @@ export const env = createEnv({
       ),
     BETTER_AUTH_GOOGLE_CLIENT_ID: z.string(),
     BETTER_AUTH_GOOGLE_CLIENT_SECRET: z.string(),
+    // Sign in with Apple key, used to revoke Apple tokens when an account is deleted.
+    APPLE_TEAM_ID: z.string().min(1).optional(),
+    APPLE_KEY_ID: z.string().min(1).optional(),
+    APPLE_PRIVATE_KEY: z.string().min(1).optional(),
     SUPERADMIN_EMAILS: z.string().default(""),
     OPENAI_API_KEY: z.string().min(1).optional(),
     ELEVENLABS_API_KEY: z.string().min(1).optional(),
@@ -81,6 +85,9 @@ export const env = createEnv({
     BETTER_AUTH_GOOGLE_CLIENT_ID: process.env.BETTER_AUTH_GOOGLE_CLIENT_ID,
     BETTER_AUTH_GOOGLE_CLIENT_SECRET:
       process.env.BETTER_AUTH_GOOGLE_CLIENT_SECRET,
+    APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+    APPLE_KEY_ID: process.env.APPLE_KEY_ID,
+    APPLE_PRIVATE_KEY: process.env.APPLE_PRIVATE_KEY,
     SUPERADMIN_EMAILS: process.env.SUPERADMIN_EMAILS,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,

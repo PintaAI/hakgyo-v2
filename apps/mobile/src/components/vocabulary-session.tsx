@@ -137,7 +137,7 @@ export function VocabularySession({
         prompt: mode === "KR" ? word.definition : word.term,
         answer: mode === "KR" ? word.term : word.definition,
         imageAssetId: word.imageAssetId,
-        imageAccessibilityLabel: `${word.term} illustration`,
+        imageAccessibilityLabel: `Ilustrasi ${word.term}`,
       })),
     [mode, queue],
   );
@@ -153,7 +153,7 @@ export function VocabularySession({
         prompt: mode === "KR" ? word.definition : word.term,
         answer: mode === "KR" ? word.term : word.definition,
         imageAssetId: word.imageAssetId,
-        imageAccessibilityLabel: `${word.term} illustration`,
+        imageAccessibilityLabel: `Ilustrasi ${word.term}`,
       })),
     [mode, readyWords],
   );

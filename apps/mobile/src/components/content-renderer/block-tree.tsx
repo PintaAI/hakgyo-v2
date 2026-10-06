@@ -7,17 +7,11 @@ import type { ContentBlock } from "./types";
 function UnsupportedBlock({ block }: { block: ContentBlock }) {
   const text = inlinePlainText(block.content);
 
-  if (text) {
-    return <Text className="text-base leading-7 text-foreground">{text}</Text>;
-  }
-
-  return (
-    <View className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3">
-      <Text className="text-sm text-muted-foreground">
-        Jenis konten ini belum tersedia di aplikasi mobile.
-      </Text>
-    </View>
-  );
+  // Unknown blocks without text (for example a new embed type) are skipped
+  // rather than shown as a placeholder.
+  return text ? (
+    <Text className="text-base leading-7 text-foreground">{text}</Text>
+  ) : null;
 }
 
 export function BlockTree({

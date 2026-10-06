@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getAccountDeletionBlockers } from "~/server/account/deletion";
+import {
+  appleBundleIds,
+  revokeAppleAuthorization,
+} from "~/server/better-auth/apple";
 import { mcpResource, mcpScope } from "~/server/mcp/config";
 
 export const accountRouter = createTRPCRouter({
@@ -14,6 +18,17 @@ export const accountRouter = createTRPCRouter({
   deletionBlockers: protectedProcedure.query(({ ctx }) =>
     getAccountDeletionBlockers(ctx.actorUserId),
   ),
+  /** Called by the iOS app right before deleting an Apple-linked account. */
+  revokeAppleAuthorization: protectedProcedure
+    .input(
+      z.object({
+        authorizationCode: z.string().min(1),
+        clientId: z.enum(appleBundleIds),
+      }),
+    )
+    .mutation(({ input }) =>
+      revokeAppleAuthorization(input.authorizationCode, input.clientId),
+    ),
   listMcpAuthorizations: protectedProcedure.query(async ({ ctx }) => {
     const consents = await ctx.db.oauthConsent.findMany({
       where: {

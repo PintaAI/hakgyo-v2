@@ -741,13 +741,13 @@ export const assessmentEventRouter = createTRPCRouter({
             ) {
               throw new TRPCError({
                 code: "PRECONDITION_FAILED",
-                message: "This assessment event is no longer open",
+                message: "Tugas atau tryout ini sudah ditutup.",
               });
             }
             if (!event.courseItem.isPublished || !event.courseItem.assessment) {
               throw new TRPCError({
                 code: "PRECONDITION_FAILED",
-                message: "The assessment is no longer available",
+                message: "Tugas ini sudah tidak tersedia.",
               });
             }
             const current = await tx.assessmentAttempt.findFirst({
@@ -780,7 +780,7 @@ export const assessmentEventRouter = createTRPCRouter({
             ) {
               throw new TRPCError({
                 code: "FORBIDDEN",
-                message: "Maximum attempts reached",
+                message: "Batas jumlah pengerjaan sudah tercapai.",
               });
             }
             // max + 1 (not count + 1): numbers stay unique after an event's attempts are deleted.

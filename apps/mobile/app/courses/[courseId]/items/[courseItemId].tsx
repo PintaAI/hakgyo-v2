@@ -19,6 +19,7 @@ import { VocabularySetDetail } from "../../../../src/components/learn/vocabulary
 import { CourseLearningFooter } from "../../../../src/components/learn/course-learning-footer";
 import { assessmentAttemptPresentation } from "../../../../src/lib/assessment-state";
 import { authClient } from "../../../../src/lib/auth-client";
+import { userErrorMessage } from "../../../../src/lib/error-message";
 import { api } from "../../../../src/lib/trpc";
 import type { LearningPathCourse } from "../../../../src/lib/course-learning-path";
 import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
@@ -352,7 +353,10 @@ function CourseItemContent({
               ) : null}
               {startAssessment.isError ? (
                 <Text className="text-center text-sm text-destructive">
-                  {startAssessment.error.message}
+                  {userErrorMessage(
+                    startAssessment.error,
+                    "Tugas tidak dapat dimulai.",
+                  )}
                 </Text>
               ) : null}
             </StudyGlass>
@@ -386,7 +390,8 @@ function CourseItemContent({
       ) : !material ? (
         <View className="flex-1 items-center justify-center bg-background px-6">
           <Text className="text-center text-sm text-muted-foreground">
-            Aktivitas ini belum tersedia di aplikasi mobile.
+            Materi ini belum tersimpan di perangkat. Sambungkan ke internet,
+            lalu sinkronkan dari Profil &gt; Pengaturan.
           </Text>
         </View>
       ) : (

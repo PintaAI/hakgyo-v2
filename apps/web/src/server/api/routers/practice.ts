@@ -487,14 +487,14 @@ export const practiceRouter = createTRPCRouter({
       ) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "This question is not configured for automatic practice",
+          message: "Soal ini tidak dapat dipakai untuk latihan otomatis.",
         });
       }
       const result = gradePracticeChoice(question.options, input.optionIds);
       if (!result) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "The answer contains an option from another question",
+          message: "Jawaban berisi pilihan dari soal lain.",
         });
       }
 

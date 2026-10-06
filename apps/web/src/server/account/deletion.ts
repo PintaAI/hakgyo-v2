@@ -53,13 +53,13 @@ export async function getAccountDeletionBlockers(userId: string) {
       membership.organization.members.length === 1
     ) {
       blockers.add(
-        `Transfer ownership of ${membership.organization.name} to another member first.`,
+        `Pindahkan kepemilikan ${membership.organization.name} ke anggota lain terlebih dahulu.`,
       );
     }
 
     if (membershipsWithContent.has(membership.id)) {
       blockers.add(
-        "Reassign courses, content, invitations, meetings, reviews, and integrations you created first.",
+        "Alihkan kurikulum, konten, undangan, pertemuan, penilaian, dan integrasi yang kamu buat ke anggota lain terlebih dahulu.",
       );
     }
   }

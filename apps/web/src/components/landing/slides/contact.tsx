@@ -53,6 +53,12 @@ export function ContactSlide() {
             <Link href="/privacy" className="hover:opacity-100">
               Privasi
             </Link>
+            <Link href="/terms" className="hover:opacity-100">
+              Ketentuan
+            </Link>
+            <Link href="/support" className="hover:opacity-100">
+              Bantuan
+            </Link>
             <Link href="/auth" className="hover:opacity-100">
               Masuk
             </Link>

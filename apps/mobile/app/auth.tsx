@@ -1,5 +1,6 @@
+import * as AppleAuthentication from "expo-apple-authentication";
 import { router, Stack, useLocalSearchParams, type Href } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -11,17 +12,19 @@ import {
 } from "react-native";
 
 import { authClient } from "../src/lib/auth-client";
+import { userErrorMessage as errorMessage } from "../src/lib/error-message";
 import { useAppTheme } from "../src/providers/AppThemeProvider";
 
-type SignInMethod = "email" | "google";
+type SignInMethod = "email" | "google" | "apple";
 type AuthMode = "sign-in" | "sign-up";
 
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
-
 export default function AuthScreen() {
-  const { colors } = useAppTheme();
+  const { colors, colorScheme } = useAppTheme();
+  const [isAppleAvailable, setIsAppleAvailable] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    void AppleAuthentication.isAvailableAsync().then(setIsAppleAvailable);
+  }, []);
   const params = useLocalSearchParams<{
     redirectTo?: string | string[];
     mode?: string | string[];
@@ -92,7 +95,7 @@ export default function AuthScreen() {
           });
 
       if (result.error) {
-        setError(result.error.message || failureMessage);
+        setError(errorMessage(result.error, failureMessage));
         return;
       }
 
@@ -115,13 +118,64 @@ export default function AuthScreen() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Gagal masuk dengan Google.");
+        setError(errorMessage(result.error, "Gagal masuk dengan Google."));
         return;
       }
 
       router.replace(postSignInPath);
     } catch (cause) {
       setError(errorMessage(cause, "Gagal masuk dengan Google."));
+    } finally {
+      setPendingMethod(null);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setError(null);
+    setPendingMethod("apple");
+
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) {
+        setError("Apple tidak mengembalikan data masuk.");
+        return;
+      }
+
+      // Apple only shares the name on the first sign-in, so pass it along.
+      const result = await authClient.signIn.social({
+        provider: "apple",
+        idToken: {
+          token: credential.identityToken,
+          user: {
+            email: credential.email ?? undefined,
+            name: credential.fullName
+              ? {
+                  firstName: credential.fullName.givenName ?? undefined,
+                  lastName: credential.fullName.familyName ?? undefined,
+                }
+              : undefined,
+          },
+        },
+      });
+
+      if (result.error) {
+        setError(errorMessage(result.error, "Gagal masuk dengan Apple."));
+        return;
+      }
+
+      router.replace(postSignInPath);
+    } catch (cause) {
+      const canceled =
+        !!cause &&
+        typeof cause === "object" &&
+        "code" in cause &&
+        cause.code === "ERR_REQUEST_CANCELED";
+      if (!canceled) setError(errorMessage(cause, "Gagal masuk dengan Apple."));
     } finally {
       setPendingMethod(null);
     }
@@ -217,6 +271,28 @@ export default function AuthScreen() {
               </Text>
             )}
           </Pressable>
+          {isAppleAvailable ? (
+            <View
+              pointerEvents={isPending ? "none" : "auto"}
+              style={{ opacity: isPending ? 0.6 : 1 }}
+            >
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={
+                  isSignUp
+                    ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
+                    : AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
+                }
+                buttonStyle={
+                  colorScheme === "dark"
+                    ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                    : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                }
+                cornerRadius={999}
+                onPress={() => void handleAppleSignIn()}
+                style={{ height: 52, width: "100%" }}
+              />
+            </View>
+          ) : null}
           <Pressable
             className="items-center rounded-full border border-border px-5 py-4"
             disabled={isPending}

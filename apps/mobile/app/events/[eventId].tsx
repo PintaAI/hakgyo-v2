@@ -7,6 +7,7 @@ import { QueryState, Row, StudyScreen } from "../../src/components/learning-ui";
 import { StudyAction, StudyGlass } from "../../src/components/study-glass";
 import { assessmentAttemptPresentation } from "../../src/lib/assessment-state";
 import { dateLabel } from "../../src/lib/study";
+import { userErrorMessage } from "../../src/lib/error-message";
 import { api } from "../../src/lib/trpc";
 import { useSidebarIndicators } from "../../src/lib/sidebar-indicators";
 import { useMobileSyncActions } from "../../src/providers/MobileSyncProvider";
@@ -176,7 +177,7 @@ export default function AssessmentEventScreen() {
                   accessibilityRole="alert"
                   className="text-sm text-destructive"
                 >
-                  {start.error.message}
+                  {userErrorMessage(start.error, "Tryout tidak dapat dimulai.")}
                 </Text>
               ) : null}
             </StudyGlass>

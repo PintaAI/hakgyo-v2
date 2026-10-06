@@ -121,13 +121,13 @@ export const enrollmentRouter = createTRPCRouter({
       if (rejection === "INVITE_REQUIRED") {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "This course requires an invite",
+          message: "Kurikulum ini memerlukan undangan.",
         });
       }
       if (rejection === "PAYMENT_REQUIRED") {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Paid enrollment is not available yet",
+          message: "Pendaftaran berbayar belum tersedia.",
         });
       }
 

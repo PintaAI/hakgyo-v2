@@ -21,6 +21,7 @@ import {
   GestureDetector,
   type NativeGesture,
 } from "react-native-gesture-handler";
+import { userErrorMessage } from "../lib/error-message";
 import { useAppTheme } from "../providers/AppThemeProvider";
 
 export function StudyScreen({
@@ -375,7 +376,7 @@ export function QueryState({
     return (
       <View className="gap-3 py-4">
         <Text accessibilityRole="alert" className="text-sm text-destructive">
-          {error.message}
+          {userErrorMessage(error, "Data tidak dapat dimuat.")}
         </Text>
         <Action secondary onPress={retry}>
           Coba lagi
