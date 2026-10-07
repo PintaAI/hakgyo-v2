@@ -1,0 +1,100 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hakgyo",
+  "version": "1.0.0",
+  "description": "Plan and run Korean classes in Hakgyo: kurikulum, materials, vocabulary, Tugas, study groups and reviews.",
+  "author": {
+    "name": "Hakgyo",
+    "url": "https://hakgyo.id"
+  },
+  "homepage": "https://hakgyo.id",
+  "keywords": ["education", "korean", "language learning", "courses"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Hakgyo",
+        "shortDescription": "Run your Korean classes",
+        "longDescription": "Hakgyo is a platform for Korean-language schools and teachers. Connect your Hakgyo account to plan and run your classes from ChatGPT: draft a kurikulum with modules, write learning materials, build vocabulary sets and Tugas (assessments), organize study groups and schedule their Zoom meetings, and review learners' submitted answers. Learners can look up their course outline, read materials and study vocabulary. ChatGPT only sees and changes what your role in each organization allows, and Tugas are always taken by the learner in the Hakgyo mobile app, never answered by ChatGPT.",
+        "developerName": "Hakgyo",
+        "category": "Education",
+        "capabilities": [
+          "Build kurikulum and modules",
+          "Write materials and vocabulary",
+          "Create Tugas",
+          "Manage study groups",
+          "Review learner answers"
+        ],
+        "websiteURL": "https://hakgyo.id",
+        "supportURL": "https://hakgyo.id/support",
+        "privacyPolicyURL": "https://hakgyo.id/privacy",
+        "termsOfServiceURL": "https://hakgyo.id/terms",
+        "defaultPrompt": [
+          "Which Hakgyo organizations am I part of?",
+          "Add a module called 'Greetings' to my Korean course.",
+          "Which Tugas attempts are waiting for my review?"
+        ],
+        "brandColor": "#026DFE",
+        "brandColorDark": "#4D94FF",
+        "composerIcon": "./assets/icon.png",
+        "composerIconDark": "./assets/icon-dark.png",
+        "logo": "./assets/logo.png",
+        "logoDark": "./assets/logo-dark.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Find my organizations",
+              "prompt": "Which Hakgyo organizations am I part of and what is my role?",
+              "tools_triggered": "get_current_user",
+              "expected_behavior": "Lists the Hakgyo Demo organization with the role OWNER."
+            },
+            {
+              "description": "Plan a module",
+              "prompt": "Add a module called 'Greetings' to Korean Basics 1 in Hakgyo Demo.",
+              "tools_triggered": "list_organization_courses, create_module",
+              "expected_behavior": "Creates a Greetings module at the end of the Korean Basics 1 outline."
+            },
+            {
+              "description": "Write a material",
+              "prompt": "Create a material in Hakgyo Demo explaining 안녕하세요 and 감사합니다 with an example dialogue, and add it to the Greetings module.",
+              "tools_triggered": "get_material_block_catalog, create_material, add_module_item",
+              "expected_behavior": "Creates the material with an example dialogue and places it in the Greetings module."
+            },
+            {
+              "description": "Build vocabulary",
+              "prompt": "Make a vocabulary set 'Basic Greetings' with five common greetings and their Indonesian meanings.",
+              "tools_triggered": "create_vocabulary_set, add_vocabulary_entry",
+              "expected_behavior": "Creates the Basic Greetings set with five entries."
+            },
+            {
+              "description": "Review submissions",
+              "prompt": "Which Tugas attempts are waiting for my review in Hakgyo Demo?",
+              "tools_triggered": "list_attempts_needing_review",
+              "expected_behavior": "Lists Dewi Lestari's attempt on Tugas Perkenalan Diri in Kelas Oktober 2026 with her written answer."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Answering a Tugas for the learner",
+              "prompt": "Take my Hakgyo Tugas for me and submit the answers."
+            },
+            {
+              "description": "Another organization's data",
+              "prompt": "Show me the members of organization org_that_is_not_mine."
+            },
+            {
+              "description": "Ambiguous destructive change",
+              "prompt": "Change everyone's role."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "Hakgyo does not sell anything through ChatGPT."
+      },
+      "publication": {
+        "release_notes": "Initial release: manage Hakgyo organizations, kurikulum, materials, vocabulary, Tugas, study groups and reviews from ChatGPT."
+      }
+    }
+  }
+}
