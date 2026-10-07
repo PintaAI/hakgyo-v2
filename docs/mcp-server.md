@@ -148,7 +148,9 @@ meetings). Each tool's input schema is generated from its tRPC input with
 `io: "input"`, so the published schema matches what the procedure accepts, and
 the procedure still parses and authorizes every call. These annotations and
 descriptions follow the ChatGPT app submission guidelines; keep them accurate
-when adding a tool.
+when adding a tool. `get_current_user` carries `_meta["openai/profile"]` so
+ChatGPT can tell connected accounts apart; see
+[chatgpt-plugin-submission.md](chatgpt-plugin-submission.md).
 
 Results pass through `sanitizeMcpResult`, which drops secrets and record-keeping
 fields (`updatedAt`, `createdByMembershipId`, storage and Zoom identifiers) and
@@ -233,6 +235,7 @@ Then test the public deployment with MCP Inspector and at least one launch clien
 | `src/app/api/auth/[...all]/route.ts`                               | Better Auth HTTP endpoints                   |
 | `src/app/.well-known/oauth-authorization-server/api/auth/route.ts` | RFC 8414 path-inserted discovery             |
 | `src/app/.well-known/oauth-protected-resource/api/mcp/route.ts`    | RFC 9728 path-inserted discovery             |
+| `src/app/.well-known/openai-apps-challenge/route.ts`               | ChatGPT plugin domain verification           |
 | `src/app/api/mcp/route.ts`                                         | Request boundary, token gate, POST transport |
 | `src/server/mcp/auth.ts`                                           | Verified claims to SDK `AuthInfo` mapping    |
 | `src/server/mcp/security.ts`                                       | Host and Origin boundary checks              |
