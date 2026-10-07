@@ -8,12 +8,7 @@
     "url": "https://hakgyo.id"
   },
   "homepage": "https://hakgyo.id",
-  "keywords": [
-    "education",
-    "korean",
-    "language learning",
-    "courses"
-  ],
+  "keywords": ["education", "korean", "language learning", "courses"],
   "extensions": {
     "com.openai": {
       "interface": {
