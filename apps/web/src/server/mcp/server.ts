@@ -74,6 +74,7 @@ export const mcpHandler = createMcpHandler(
         outputSchema: z.object({
           id: z.string(),
           name: z.string(),
+          email: z.string(),
           organizations: z.array(
             z.object({
               membershipId: z.string(),
@@ -88,12 +89,16 @@ export const mcpHandler = createMcpHandler(
           idempotentHint: true,
           openWorldHint: false,
         },
+        // ChatGPT reads this tool to tell apart the Hakgyo accounts a user
+        // connects; `id` must stay stable across token refresh and reconnects.
+        _meta: { "openai/profile": true },
       },
       async (ctx) => {
         const user = await getMcpContext(requireMcpUserId(ctx.http?.authInfo));
         const result = {
           id: user.id,
           name: user.name,
+          email: user.email,
           organizations: user.organizationMemberships.map((membership) => ({
             membershipId: membership.id,
             role: membership.role,

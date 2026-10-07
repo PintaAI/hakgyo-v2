@@ -40,6 +40,9 @@ export const env = createEnv({
     APPLE_KEY_ID: z.string().min(1).optional(),
     APPLE_PRIVATE_KEY: z.string().min(1).optional(),
     SUPERADMIN_EMAILS: z.string().default(""),
+    // Token from the OpenAI plugin dashboard, served at /.well-known/openai-apps-challenge to
+    // verify that we own the MCP server domain. The route returns 404 until set.
+    OPENAI_APPS_CHALLENGE_TOKEN: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     ELEVENLABS_API_KEY: z.string().min(1).optional(),
     DATABASE_URL: z.string().url(),
@@ -89,6 +92,7 @@ export const env = createEnv({
     APPLE_KEY_ID: process.env.APPLE_KEY_ID,
     APPLE_PRIVATE_KEY: process.env.APPLE_PRIVATE_KEY,
     SUPERADMIN_EMAILS: process.env.SUPERADMIN_EMAILS,
+    OPENAI_APPS_CHALLENGE_TOKEN: process.env.OPENAI_APPS_CHALLENGE_TOKEN,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
     DATABASE_URL: process.env.DATABASE_URL,

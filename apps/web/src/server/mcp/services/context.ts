@@ -6,6 +6,7 @@ export async function getMcpContext(userId: string) {
     select: {
       id: true,
       name: true,
+      email: true,
       organizationMemberships: {
         orderBy: { organization: { name: "asc" } },
         select: {
