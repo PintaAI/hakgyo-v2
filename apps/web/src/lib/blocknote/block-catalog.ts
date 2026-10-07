@@ -1,6 +1,10 @@
 import { PDF_PAGES_BLOCK_TYPE } from "@hakgyo/shared";
 
-import { cultureSectionsDefault } from "./culture-content";
+import {
+  cultureImageAspects,
+  cultureImageFits,
+  cultureSectionsDefault,
+} from "./culture-content";
 
 export const calloutBlockType = "callout";
 export const assetAudioBlockType = "assetAudio";
@@ -260,7 +264,7 @@ const lessonPageTextProps = Object.fromEntries(
 );
 
 export const hakgyoBlockCatalog = {
-  catalogVersion: 11,
+  catalogVersion: 12,
   editor: "BlockNote",
   format: {
     description:
@@ -275,6 +279,8 @@ export const hakgyoBlockCatalog = {
       "Block IDs may be omitted when creating new material content.",
       "Use only built-in BlockNote blocks or custom blocks listed in this catalog.",
       "Simple text content may be supplied as a string and BlockNote will normalize it.",
+      "Props marked as JSON in guidance.jsonProps are strings containing serialized JSON (use JSON.stringify), not nested objects.",
+      "Content is validated on save: unknown block types, props of the wrong type and values outside a prop's enum are rejected.",
     ],
   },
   builtInBlocks: [
@@ -283,6 +289,10 @@ export const hakgyoBlockCatalog = {
     { type: "bulletListItem", purpose: "An unordered list item." },
     { type: "numberedListItem", purpose: "An ordered list item." },
     { type: "checkListItem", purpose: "A checklist item." },
+    {
+      type: "toggleListItem",
+      purpose: "A collapsible item whose children stay hidden until opened.",
+    },
     { type: "quote", purpose: "A quotation or emphasized excerpt." },
     { type: "codeBlock", purpose: "Source code or other preformatted text." },
     { type: "table", purpose: "Tabular content using BlockNote TableContent." },
@@ -290,6 +300,7 @@ export const hakgyoBlockCatalog = {
     { type: "video", purpose: "A video block referencing an available URL." },
     { type: "audio", purpose: "An audio block referencing an available URL." },
     { type: "file", purpose: "A downloadable file reference." },
+    { type: "divider", purpose: "A horizontal rule between sections." },
   ],
   customBlocks: [
     {
@@ -559,8 +570,7 @@ export const hakgyoBlockCatalog = {
           "The material benefits from bilingual explanation and visual examples.",
         ],
         jsonProps: {
-          sections:
-            "Ordered JSON array of culture sections. Supported types: text ({ id, type, ko, en }), media ({ id, type, columns, images }, with 1, 2, or 3 columns), and split ({ id, type, mediaSide, mediaWidth, mediaStack, ko, en, images }). Images contain assetId, fileName, contentType, alt, caption, aspect, and fit.",
+          sections: `Ordered JSON array of up to 20 culture sections, each with a unique string id. Supported types: text ({ id, type: "text", ko, en }); media ({ id, type: "media", columns, images }, where columns is 1, 2, or 3 and images holds one image per column); and split ({ id, type: "split", mediaSide, mediaWidth, mediaStack, ko, en, images }, where mediaSide is "left" or "right", mediaWidth is "small", "medium", or "large", and mediaStack is "row" with one image or "column" with two). Images are { id, assetId, fileName, contentType, alt, caption, aspect, fit }, where aspect is ${cultureImageAspects.map((value) => `"${value}"`).join(", ")} and fit is ${cultureImageFits.map((value) => `"${value}"`).join(" or ")}.`,
           checklistItems:
             "JSON array of { ko, en } objects. The editor can add and remove checklist rows.",
         },

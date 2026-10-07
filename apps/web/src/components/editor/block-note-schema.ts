@@ -8,6 +8,7 @@ import {
   conversationBlockType,
   cultureBlockType,
   grammarBlockType,
+  type hakgyoBlockCatalog,
   lessonPageBlockType,
   pdfPagesBlockType,
   vocabularyReferenceBlockType,
@@ -45,3 +46,20 @@ export type HakgyoBlockNoteEditor =
   typeof hakgyoBlockNoteSchema.BlockNoteEditor;
 export type HakgyoBlock = typeof hakgyoBlockNoteSchema.Block;
 export type HakgyoPartialBlock = typeof hakgyoBlockNoteSchema.PartialBlock;
+
+type CatalogBlockType =
+  | (typeof hakgyoBlockCatalog.builtInBlocks)[number]["type"]
+  | (typeof hakgyoBlockCatalog.customBlocks)[number]["type"];
+type BlockTypeMissingFromCatalog = Exclude<
+  keyof typeof hakgyoBlockNoteSchema.blockSpecs,
+  CatalogBlockType
+>;
+
+// MCP agents only learn about blocks from hakgyoBlockCatalog, and saved
+// content is validated against it. Adding a block here without describing it
+// there fails typecheck with the missing type name.
+export const catalogDescribesEveryBlock: [BlockTypeMissingFromCatalog] extends [
+  never,
+]
+  ? true
+  : BlockTypeMissingFromCatalog = true;
