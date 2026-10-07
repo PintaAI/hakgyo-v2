@@ -46,7 +46,14 @@ export function LearnerBlockNoteDocument({
   const document = (
     <div className="[&_.bn-container]:mx-auto [&_.bn-container]:max-w-none [&_.bn-editor]:px-0">
       <AssetUploadProvider value={null}>
-        <BlockNoteView editable={false} editor={editor} theme={theme} />
+        {/* Read-only, the toolbar only offers a file download button that pops over
+            images, which gets in the way when an image is a tappable answer option. */}
+        <BlockNoteView
+          editable={false}
+          editor={editor}
+          formattingToolbar={false}
+          theme={theme}
+        />
       </AssetUploadProvider>
     </div>
   );
