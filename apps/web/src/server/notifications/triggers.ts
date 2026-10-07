@@ -469,6 +469,7 @@ export async function notifyPaymentSubmitted(paymentId: string) {
       data: { paymentId: payment.id, cohortId: payment.cohortId },
       path: `/workspace/${payment.organization.slug}/courses/${payment.cohort.courseId}/cohorts/${payment.cohortId}?view=payments`,
       tag: `payment-review:${payment.id}`,
+      webOnly: true,
     },
   );
 }
@@ -507,5 +508,6 @@ export async function notifyPaymentRejected(paymentId: string) {
     data: { paymentId: payment.id },
     path: `/learn/payments/${payment.id}`,
     tag: `payment:${payment.id}`,
+    webOnly: true,
   });
 }

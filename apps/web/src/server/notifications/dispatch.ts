@@ -21,6 +21,11 @@ export type NotifyContent = {
   organizationId?: string;
   /** Collapse key; same-tag notifications replace each other per device. */
   tag?: string;
+  /**
+   * Skip the mobile app, which is learner-only: staff work and payment
+   * follow-ups happen on the web, so their pushes go to browsers only.
+   */
+  webOnly?: boolean;
 };
 
 export type NotifyArgs = NotifyContent & { userId: string };
@@ -98,6 +103,7 @@ export async function notifyUsers(
   const perUser = new Map<string, number>();
   const sends: Array<{ target: PushTargetRef; payload: NotifyPayload }> = [];
   for (const target of allTargets) {
+    if (content.webOnly && target.platform !== "web") continue;
     const count = perUser.get(target.userId) ?? 0;
     if (count >= MAX_ACTIVE_TARGETS_PER_USER) continue;
     perUser.set(target.userId, count + 1);

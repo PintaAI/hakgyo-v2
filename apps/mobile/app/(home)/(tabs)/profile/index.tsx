@@ -1,7 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { supportEmail } from "@hakgyo/shared";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import * as Updates from "expo-updates";
+import * as WebBrowser from "expo-web-browser";
 import { useUpdates } from "expo-updates";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Text } from "react-native";
@@ -24,6 +26,7 @@ import {
   SettingsToggleRow,
 } from "../../../../src/components/settings-ui";
 import { WeeklyStreak } from "../../../../src/components/weekly-streak";
+import { apiUrl } from "../../../../src/config";
 import { authClient } from "../../../../src/lib/auth-client";
 import { api } from "../../../../src/lib/trpc";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
@@ -50,6 +53,21 @@ const PUSH_STATUS_DETAIL: Record<PushStatus, string | undefined> = {
   unregistered: "Belum terhubung, coba lagi saat online",
   enabled: "Tugas, tryout, dan pertemuan kelas",
 };
+
+function openWebPage(path: string) {
+  void WebBrowser.openBrowserAsync(`${apiUrl}${path}`).catch(() =>
+    Alert.alert("Tidak dapat membuka halaman", `${apiUrl}${path}`),
+  );
+}
+
+function contactSupport() {
+  const url = `mailto:${supportEmail}?subject=${encodeURIComponent(
+    `Bantuan Hakgyo v${APP_VERSION}`,
+  )}`;
+  void Linking.openURL(url).catch(() =>
+    Alert.alert("Hubungi dukungan", `Kirim email ke ${supportEmail}.`),
+  );
+}
 
 export default function ProfileTab() {
   const queryClient = useQueryClient();
@@ -449,15 +467,29 @@ export default function ProfileTab() {
 
             <SettingsSection title="Bantuan">
               <SettingsRow
-                label="Kirim masukan"
-                symbol="paperplane.fill"
-                fallback="✈"
-                onPress={() =>
-                  Alert.alert(
-                    "Bantuan",
-                    "Kontak bantuan belum diatur. Silakan hubungi admin organisasi kamu.",
-                  )
-                }
+                label="Pusat bantuan"
+                symbol="questionmark.circle"
+                fallback="?"
+                onPress={() => openWebPage("/support")}
+              />
+              <SettingsRow
+                label="Hubungi dukungan"
+                detail={supportEmail}
+                symbol="envelope.fill"
+                fallback="@"
+                onPress={contactSupport}
+              />
+              <SettingsRow
+                label="Kebijakan privasi"
+                symbol="hand.raised.fill"
+                fallback="i"
+                onPress={() => openWebPage("/privacy")}
+              />
+              <SettingsRow
+                label="Syarat dan ketentuan"
+                symbol="doc.text"
+                fallback="§"
+                onPress={() => openWebPage("/terms")}
               />
             </SettingsSection>
 

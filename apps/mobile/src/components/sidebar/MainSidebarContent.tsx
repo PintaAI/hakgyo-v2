@@ -282,7 +282,7 @@ export function MainSidebarContent({
                   unread={indicator("MEETING", meeting.id)?.unread ?? false}
                   onPress={() => {
                     markEntitySeen("MEETING", meeting.id);
-                    openMeeting(meeting, cohort.course.id);
+                    openMeeting(meeting);
                   }}
                 />
               );

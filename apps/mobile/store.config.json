@@ -1,0 +1,57 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "copyright": "2026 Hakgyo",
+    "categories": ["EDUCATION", "REFERENCE"],
+    "info": {
+      "id": {
+        "title": "Hakgyo",
+        "subtitle": "Belajar bahasa Korea",
+        "description": "Hakgyo adalah aplikasi murid untuk kelas bahasa Korea yang dijalankan lembaga dan pengajar di Hakgyo.\n\nSetiap akun baru langsung mendapat kurikulum gratis Hangeul Mastery untuk belajar membaca dan menulis 한글 dari nol.\n\nDi aplikasi kamu bisa:\n• Mempelajari materi kurikulum dan Group belajar dari lembagamu\n• Mengerjakan tugas dan tryout, lalu melihat nilai dan umpan balik pengajar\n• Melatih kosakata dengan kartu, kuis, dan permainan, termasuk menjawab dengan suara\n• Melihat jadwal pertemuan kelas dan bergabung ke Zoom atau Google Meet\n• Belajar tanpa internet: materi tersimpan di perangkat dan progres disinkronkan saat online\n• Menjaga streak harian dan mengumpulkan XP\n\nKelas di luar Hangeul Mastery diberikan oleh lembaga yang memakai Hakgyo.",
+        "keywords": [
+          "korea",
+          "bahasa korea",
+          "hangeul",
+          "hangul",
+          "kosakata",
+          "TOPIK",
+          "EPS-TOPIK",
+          "tryout",
+          "kursus"
+        ],
+        "promoText": "Belajar Hangeul gratis, latih kosakata, dan ikuti kelas bahasa Korea dari lembagamu.",
+        "marketingUrl": "https://hakgyo.id",
+        "supportUrl": "https://hakgyo.id/support",
+        "privacyPolicyUrl": "https://hakgyo.id/privacy"
+      }
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "unrestrictedWebAccess": false
+    },
+    "release": {
+      "automaticRelease": false,
+      "phasedRelease": true
+    },
+    "review": {
+      "firstName": "Hakgyo",
+      "lastName": "Support",
+      "email": "rorezxez@gmail.com",
+      "phone": "",
+      "demoRequired": true,
+      "notes": "Hakgyo is the learner app for Korean-language schools that run their classes on Hakgyo. Teachers and administrators manage courses on the web; this app is for learners only. Every new account is enrolled in the free Hangeul Mastery course, and further classes are assigned by the learner's school. Nothing is sold in the app.\n\nThe demo account below is enrolled in a study group with materials, an open assignment and vocabulary practice.\n\nAccount deletion: Profil > Pengaturan > Detail akun > Hapus akun.\nSign in with Apple is available on the sign-in screen."
+    }
+  }
+}

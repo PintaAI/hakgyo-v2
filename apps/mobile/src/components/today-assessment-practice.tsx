@@ -2,6 +2,7 @@ import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { api } from "../lib/trpc";
+import { userErrorMessage } from "../lib/error-message";
 import { localSample } from "../lib/local-sample";
 import {
   nextUnansweredQuestion,
@@ -232,7 +233,7 @@ export function TodayAssessmentPractice({
               accessibilityRole="alert"
               className="text-sm text-destructive"
             >
-              {grade.error.message}
+              {userErrorMessage(grade.error, "Jawaban tidak dapat diperiksa.")}
             </Text>
           ) : null}
           {!result &&

@@ -135,7 +135,7 @@ export function UpdatesDrawerContent({
       (candidate) => candidate.id === item.entityId,
     );
     if (cohort && meeting) {
-      onNavigate(() => void openMeeting(meeting, cohort.course.id));
+      onNavigate(() => openMeeting(meeting));
       return;
     }
     onClose();

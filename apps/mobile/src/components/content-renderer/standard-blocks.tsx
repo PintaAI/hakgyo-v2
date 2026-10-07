@@ -204,6 +204,8 @@ export const standardBlockRenderers: Readonly<
   heading: Heading,
   bulletListItem: BulletListItem,
   numberedListItem: NumberedListItem,
+  // Toggle content is shown expanded; nested blocks render below it.
+  toggleListItem: BulletListItem,
   checkListItem: CheckListItem,
   quote: Quote,
   codeBlock: CodeBlock,

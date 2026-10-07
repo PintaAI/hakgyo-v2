@@ -18,9 +18,8 @@ const androidPackage = isDev ? "com.rorez.hakgyo.dev" : "com.rorez.hakgyo";
 const googleServicesFile =
   process.env.GOOGLE_SERVICES_JSON ??
   (existsSync("./google-services.json") ? "./google-services.json" : undefined);
-const appGroup = isDev
-  ? "group.com.rorez.hakgyo.dev"
-  : "group.com.rorez.hakgyo";
+const microphonePermission =
+  "Hakgyo memakai mikrofon agar kamu bisa menjawab latihan kosakata dan melatih pelafalan dengan suara.";
 
 export default {
   expo: {
@@ -45,8 +44,55 @@ export default {
         dark: "./assets/ios-icon-dark.png",
         tinted: "./assets/ios-icon-tinted.png",
       },
+      usesAppleSignIn: true,
       config: {
         usesNonExemptEncryption: false,
+      },
+      infoPlist: {
+        CFBundleDevelopmentRegion: "id",
+        CFBundleLocalizations: ["id"],
+      },
+      // Data Hakgyo itself collects plus the required-reason APIs used by
+      // React Native and Expo modules. Nothing is used for tracking.
+      privacyManifests: {
+        NSPrivacyTracking: false,
+        NSPrivacyTrackingDomains: [],
+        NSPrivacyCollectedDataTypes: [
+          "NSPrivacyCollectedDataTypeName",
+          "NSPrivacyCollectedDataTypeEmailAddress",
+          "NSPrivacyCollectedDataTypeUserID",
+          "NSPrivacyCollectedDataTypeDeviceID",
+          "NSPrivacyCollectedDataTypeOtherUserContent",
+          "NSPrivacyCollectedDataTypeProductInteraction",
+        ].map((type) => ({
+          NSPrivacyCollectedDataType: type,
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality",
+          ],
+        })),
+        NSPrivacyAccessedAPITypes: [
+          {
+            NSPrivacyAccessedAPIType:
+              "NSPrivacyAccessedAPICategoryUserDefaults",
+            NSPrivacyAccessedAPITypeReasons: ["CA92.1"],
+          },
+          {
+            NSPrivacyAccessedAPIType:
+              "NSPrivacyAccessedAPICategoryFileTimestamp",
+            NSPrivacyAccessedAPITypeReasons: ["C617.1", "0A2A.1", "3B52.1"],
+          },
+          {
+            NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryDiskSpace",
+            NSPrivacyAccessedAPITypeReasons: ["E174.1", "85F4.1"],
+          },
+          {
+            NSPrivacyAccessedAPIType:
+              "NSPrivacyAccessedAPICategorySystemBootTime",
+            NSPrivacyAccessedAPITypeReasons: ["35F9.1"],
+          },
+        ],
       },
     },
     android: {
@@ -65,10 +111,7 @@ export default {
     plugins: [
       "expo-secure-store",
       "expo-sqlite",
-      "expo-background-task",
-      "expo-quick-actions",
-      "expo-widgets",
-      "expo-sharing",
+      "expo-apple-authentication",
       "expo-router",
       [
         "expo-splash-screen",
@@ -83,41 +126,35 @@ export default {
           },
         },
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          microphonePermission,
+          // Only short pronunciation clips play; nothing continues in the
+          // background, so do not declare the audio background mode.
+          enableBackgroundPlayback: false,
+        },
+      ],
       [
         "expo-notifications",
         {
           icon: "./assets/notification-icon.png",
           color: "#171717",
           defaultChannel: "default",
+          mode: isDev ? "development" : "production",
         },
       ],
       [
         "expo-speech-recognition",
         {
-          microphonePermission: "Izinkan $(PRODUCT_NAME) menggunakan mikrofon.",
+          microphonePermission,
           speechRecognitionPermission:
-            "Izinkan $(PRODUCT_NAME) menggunakan pengenalan suara.",
+            "Hakgyo mengubah ucapanmu menjadi teks untuk memeriksa jawaban latihan kosakata dan pelafalan.",
         },
       ],
     ],
     extra: {
       eas: {
-        build: {
-          experimental: {
-            ios: {
-              appExtensions: [
-                {
-                  targetName: "ExpoWidgetsTarget",
-                  bundleIdentifier: `${bundleIdentifier}.ExpoWidgetsTarget`,
-                  entitlements: {
-                    "com.apple.security.application-groups": [appGroup],
-                  },
-                },
-              ],
-            },
-          },
-        },
         projectId: "942928d2-590a-4ca4-831f-247fa79f83e7",
       },
       router: {},

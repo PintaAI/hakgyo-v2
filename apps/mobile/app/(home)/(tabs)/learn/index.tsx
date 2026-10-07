@@ -16,6 +16,7 @@ import {
 } from "../../../../src/components/learn/cohort-card";
 import type { CohortMilestoneGroup } from "../../../../src/components/learn/milestone-section";
 import {
+  Empty,
   QueryState,
   StudyScreen,
 } from "../../../../src/components/learning-ui";
@@ -289,6 +290,12 @@ export default function LearnTab() {
               userId={session!.user.id}
             />
           </View>
+        ) : dashboard.data && !dashboard.error ? (
+          <Empty>
+            Belum ada Group belajar di organisasi ini. Group belajar muncul di
+            sini setelah lembaga mendaftarkan kamu. Sementara itu, lanjutkan
+            latihan Hangeul dan kosakata dari tab Hari Ini.
+          </Empty>
         ) : null}
       </StudyScreen>
     </>

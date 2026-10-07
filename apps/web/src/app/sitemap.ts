@@ -25,11 +25,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.8,
     },
-    {
-      url: `${env.APP_URL}/privacy`,
-      changeFrequency: "yearly",
+    ...["/privacy", "/terms", "/support"].map((path) => ({
+      url: `${env.APP_URL}${path}`,
+      changeFrequency: "yearly" as const,
       priority: 0.3,
-    },
+    })),
     ...landings
       .filter(
         (landing) =>

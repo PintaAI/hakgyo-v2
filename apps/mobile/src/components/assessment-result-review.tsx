@@ -62,7 +62,7 @@ export function AssessmentResultReview({
       })
     : [];
   const openQuestions = useQuestionNavigator({
-    title: "Review · " + assessment.title,
+    title: "Pembahasan · " + assessment.title,
     current: index,
     statuses,
     onSelect: (next) => {

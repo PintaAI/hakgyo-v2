@@ -155,7 +155,7 @@ export async function startAttempt(
         if (!item?.assessment) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Assessment is not available",
+            message: "Tugas ini tidak tersedia.",
           });
         }
         const eligibleWhere = eligibleCohortEnrollmentWhere(
@@ -178,13 +178,13 @@ export async function startAttempt(
         if (input.cohortId && cohortEnrollments.length === 0) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "You are not actively enrolled in this study group",
+            message: "Kamu tidak terdaftar aktif di Group belajar ini.",
           });
         }
         if (!input.cohortId && cohortEnrollments.length > 1) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Select a study group before starting this assessment",
+            message: "Pilih Group belajar sebelum memulai tugas ini.",
           });
         }
         const cohortId =
@@ -202,7 +202,7 @@ export async function startAttempt(
           if (current.cohortId && cohortId && current.cohortId !== cohortId) {
             throw new TRPCError({
               code: "CONFLICT",
-              message: "This attempt belongs to another study group",
+              message: "Pengerjaan ini milik Group belajar lain.",
             });
           }
           if (!current.cohortId && cohortId) {
@@ -234,7 +234,7 @@ export async function startAttempt(
         ) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "Maximum attempts reached",
+            message: "Batas jumlah pengerjaan sudah tercapai.",
           });
         }
         await tx.contentProgress.upsert({
@@ -275,11 +275,17 @@ function assertAnswersMatchQuestions(
   for (const answer of answers) {
     const question = questionsById.get(answer.questionId);
     if (!question) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid question" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Soal tidak valid.",
+      });
     }
     const validOptions = new Set(question.options.map(({ id }) => id));
     if (answer.optionIds.some((optionId) => !validOptions.has(optionId))) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid option" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Pilihan jawaban tidak valid.",
+      });
     }
     if (
       question.type === "WRITTEN"
@@ -288,13 +294,13 @@ function assertAnswersMatchQuestions(
     ) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Answer shape does not match question",
+        message: "Format jawaban tidak sesuai dengan soal.",
       });
     }
     if (question.type === "SINGLE_CHOICE" && answer.optionIds.length > 1) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Select at most one option",
+        message: "Pilih paling banyak satu jawaban.",
       });
     }
   }
@@ -337,7 +343,7 @@ export async function saveAnswers(
   ) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Duplicate questions",
+      message: "Ada soal yang dijawab lebih dari sekali.",
     });
   }
   return withTransactionRetry(() =>
@@ -367,7 +373,7 @@ export async function saveAnswers(
       ) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "This assessment event is no longer open",
+          message: "Tugas atau tryout ini sudah ditutup.",
         });
       }
       if (
@@ -381,7 +387,7 @@ export async function saveAnswers(
       ) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "The assessment time limit has expired",
+          message: "Waktu pengerjaan sudah habis.",
         });
       }
 

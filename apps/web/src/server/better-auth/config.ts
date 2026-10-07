@@ -10,6 +10,7 @@ import { jwt } from "better-auth/plugins";
 import { env } from "~/env";
 import { getManagedProfileImageKey } from "~/lib/profile-image";
 import { getAccountDeletionBlockers } from "~/server/account/deletion";
+import { appleBundleIds } from "~/server/better-auth/apple";
 import { db } from "~/server/db";
 import { ensureHangeulMasteryEnrollment } from "~/server/foundation/hangeul-mastery";
 
@@ -42,7 +43,7 @@ export const auth = betterAuth({
           });
           if (user?.suspendedAt || user?.deletedAt) {
             throw new APIError("FORBIDDEN", {
-              message: "This account is not active",
+              message: "Akun ini tidak aktif.",
             });
           }
         },
@@ -93,6 +94,14 @@ export const auth = betterAuth({
     google: {
       clientId: env.BETTER_AUTH_GOOGLE_CLIENT_ID,
       clientSecret: env.BETTER_AUTH_GOOGLE_CLIENT_SECRET,
+    },
+    // Native Sign in with Apple only: the iOS app sends Apple's identity
+    // token, which is verified against the app bundle IDs. No web redirect
+    // flow, so no client secret is needed here.
+    apple: {
+      clientId: appleBundleIds[0],
+      clientSecret: "",
+      audience: [...appleBundleIds],
     },
   },
   trustedOrigins: [

@@ -26,7 +26,6 @@ import {
   safeExternalUrl,
   timeLabel,
 } from "../../lib/study";
-import { apiUrl } from "../../config";
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
@@ -112,7 +111,7 @@ export async function openExternalLink(
   if (!url) {
     Alert.alert(
       "Link tidak tersedia",
-      "Minta link terbaru kepada kontak kurikulum kamu.",
+      "Minta link terbaru kepada pengajar kamu.",
     );
     return;
   }
@@ -126,21 +125,8 @@ export async function openExternalLink(
   }
 }
 
-export async function openMeetingOnWeb(courseId: string) {
-  const url = `${apiUrl}/learn/${encodeURIComponent(courseId)}`;
-  try {
-    await Linking.openURL(url);
-  } catch {
-    Alert.alert(
-      "Link tidak dapat dibuka",
-      "Pastikan browser tersedia, lalu coba lagi.",
-    );
-  }
-}
-
 export function openMeeting(
   meeting: Pick<CohortMeeting, "joinUrl" | "provider">,
-  courseId: string,
 ) {
   if (meeting.joinUrl) {
     void openExternalLink(
@@ -149,7 +135,10 @@ export function openMeeting(
     );
     return;
   }
-  void openMeetingOnWeb(courseId);
+  Alert.alert(
+    "Link belum tersedia",
+    "Pengajar belum membagikan link pertemuan ini. Link akan muncul di sini sebelum kelas dimulai.",
+  );
 }
 
 function eventSummary(events: CohortEvent[]) {
@@ -589,11 +578,11 @@ export function CohortCard({
         nextState === "live"
           ? `Berakhir ${timeLabel(endsAt)} · ${next.durationMinutes} menit${next.module ? ` · ${next.module.title}` : ""}`
           : `Mulai ${timeLabel(next.startsAt)} · ${next.durationMinutes} menit${next.module ? ` · ${next.module.title}` : ""}`,
-      pill: joinUrl ? "Gabung" : "Detail",
+      pill: joinUrl ? "Gabung" : "Info",
       pillIcon: joinUrl && next.provider === "ZOOM" ? zoomBrandIcon : undefined,
       onPress: () => {
         markEntitySeen("MEETING", next.id);
-        openMeeting(next, cohort.course.id);
+        openMeeting(next);
       },
     };
   } else if (featured && featuredActionable && featuredUrgent) {
@@ -643,10 +632,10 @@ export function CohortCard({
       title: next.title,
       detail: joinUrl
         ? `${dateLabel(next.startsAt)} · ${next.durationMinutes} menit${next.module ? ` · ${next.module.title}` : ""} · Ketuk untuk bergabung`
-        : `${dateLabel(next.startsAt)} · ${next.durationMinutes} menit · Detail di web`,
+        : `${dateLabel(next.startsAt)} · ${next.durationMinutes} menit · Link menyusul`,
       onPress: () => {
         markEntitySeen("MEETING", next.id);
-        openMeeting(next, cohort.course.id);
+        openMeeting(next);
       },
     });
   }
@@ -733,7 +722,7 @@ export function CohortCard({
                 className="text-xs font-semibold text-muted-foreground"
                 numberOfLines={1}
               >
-                Mentored by {cohort.facilitators.map((f) => f.name).join(", ")}
+                Pengajar: {cohort.facilitators.map((f) => f.name).join(", ")}
               </Text>
             ) : null}
           </View>
@@ -750,7 +739,7 @@ export function CohortCard({
                     transition={0}
                   />
                 }
-                label="Grup"
+                label="Group"
                 onPress={() =>
                   cohort.whatsappGroupUrl &&
                   void openExternalLink(cohort.whatsappGroupUrl, "whatsapp")
