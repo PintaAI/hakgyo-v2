@@ -17,7 +17,7 @@ export type McpDomainTool = {
   title: string;
   description: string;
   effect: McpToolEffect;
-  /** Reaches a service outside Hakgyo, such as Zoom. */
+  /** Reaches a service outside Hakgyo, such as Zoom, or publishes to the public web. */
   external?: boolean;
 };
 
@@ -146,16 +146,18 @@ export const mcpDomainTools = {
       name: "create_course",
       title: "Create course",
       description:
-        "Create a course in an organization. ownerMembershipId is the owning teacher's membershipId from get_current_user or list_organization_members.",
+        "Create a course in an organization. ownerMembershipId is the owning teacher's membershipId from get_current_user or list_organization_members. Courses start as DRAFT; status PUBLISHED lists the course, its thumbnail and price on Hakgyo's public catalog and the organization's public pages. Price is what learners pay the organization in Hakgyo; nothing is sold through this tool. Confirm with the user before publishing.",
       effect: "add",
+      external: true,
     },
     {
       action: "update",
       name: "update_course",
       title: "Update course",
       description:
-        "Change a course's title, description, price, enrollment mode, progression mode, owner, or DRAFT/PUBLISHED status. Only the fields you send are changed.",
+        "Change a course's title, description, price, enrollment mode, progression mode, owner, or DRAFT/PUBLISHED status. Only the fields you send are changed. Publishing, or editing a published course, changes what anyone can see on Hakgyo's public catalog and the organization's public pages, so confirm with the user first.",
       effect: "change",
+      external: true,
     },
   ],
   content: [
@@ -485,8 +487,8 @@ export const mcpDomainTools = {
       name: "mark_item_progress",
       title: "Mark item progress",
       description:
-        "Record that the signed-in learner started (IN_PROGRESS) or finished (COMPLETED) a material or kosakata item. COMPLETED is only accepted once the item's requirements are met and is never undone. Does not apply to Tugas.",
-      effect: "add",
+        "Record that the signed-in learner started (IN_PROGRESS) or finished (COMPLETED) a material or kosakata item. COMPLETED is only accepted once the item's requirements are met and cannot be undone, so confirm with the learner before marking an item COMPLETED. Does not apply to Tugas.",
+      effect: "change",
     },
     {
       action: "setProgressionMode",

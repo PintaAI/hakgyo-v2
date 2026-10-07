@@ -143,8 +143,12 @@ plain-language description, and an effect:
 | `add`    | Creates records, never overwrites | not read-only, not destructive |
 | `change` | Overwrites existing values        | `destructiveHint`, idempotent  |
 
-`openWorldHint` is set only for tools that reach an outside service (Zoom
-meetings). Each tool's input schema is generated from its tRPC input with
+`openWorldHint` is set for tools that reach an outside service (Zoom meetings)
+or publish to the public web (`create_course` and `update_course` can list a
+course on the public catalog). A tool whose effect cannot be undone, such as
+`mark_item_progress` completing an item, uses `change` so it carries
+`destructiveHint`. OpenAI's tool scan flags annotations that understate a
+tool's reach or permanence. Each tool's input schema is generated from its tRPC input with
 `io: "input"`, so the published schema matches what the procedure accepts, and
 the procedure still parses and authorizes every call. These annotations and
 descriptions follow the ChatGPT app submission guidelines; keep them accurate
