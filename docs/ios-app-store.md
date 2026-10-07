@@ -22,7 +22,7 @@ What the Hakgyo iOS app needs to pass App Review, what the code already covers, 
 2. **Vercel (production env)**: set `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (the `.p8` contents, newlines escaped as `\n`), then redeploy. Without them deletion still works but Apple tokens are not revoked, which App Review requires.
 3. **App Store Connect**
    - Create the app record for `com.rorez.hakgyo`, then put its Apple ID in `apps/mobile/eas.json` under `submit.production.ios.ascAppId`.
-   - Privacy Policy URL: `https://<APP_URL>/privacy`. Support URL: `https://<APP_URL>/support`.
+   - Privacy Policy URL: `https://hakgyo.id/privacy`. Support URL: `https://hakgyo.id/support`.
    - App Privacy: name, email, user ID, device ID (push token), other user content (answers), product interaction (learning progress). All linked to the user, none used for tracking, purpose *App Functionality*. Audio is turned into text by Apple's speech recognition; Hakgyo never receives recordings.
    - Age rating: answer the current questionnaire (including the social-media question). No user-to-user messaging; account creation is available.
    - iPad screenshots are required because `supportsTablet` is true.
