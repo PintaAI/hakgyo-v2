@@ -106,6 +106,21 @@ describe("velocity-driven card flight", () => {
     }
   });
 
+  test("a sideways throw leaves the side of the deck, not the top", () => {
+    for (const side of [-1, 1]) {
+      let flight = start(side * 90, -6, side * 1200, 0, 328, 224, 24, 0.3);
+      expect(flight.pullX).toBe(side * 3600);
+      expect(flight.pullY).toBe(0);
+      let steps = 0;
+      while (!flight.behind && steps++ < 1000) flight = step(flight, 1 / 240);
+      expect(flight.behind).toBeTrue();
+      expect(Math.sign(flight.x)).toBe(side);
+      expect(flight.y).toBeGreaterThan(-224);
+      const result = simulate(flight);
+      expect(result.state.settled).toBeTrue();
+    }
+  });
+
   test("shrinks monotonically without a scale bounce", () => {
     let flight = start(0, -80, 200, -900, 328, 224, 24, 0.3);
     for (let frame = 0; frame < 400 && !flight.settled; frame++) {

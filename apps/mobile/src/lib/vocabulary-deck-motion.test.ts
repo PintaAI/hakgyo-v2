@@ -118,11 +118,33 @@ describe("vocabulary deck choreography", () => {
 
 describe("independent upward swipe", () => {
   const height = DECK_CARD_HEIGHT;
+  const width = 328;
+  const swipe = (
+    translationX: number,
+    translationY: number,
+    velocityX: number,
+    velocityY: number,
+  ) =>
+    vocabularyDeckSwipe(
+      translationX,
+      translationY,
+      velocityX,
+      velocityY,
+      width,
+      height,
+    );
   const motion: VocabularySwipeMotion = {
     ordinal: 0,
     x: 12,
     y: -80,
-    releaseProgress: vocabularyDeckSwipe(-80, -800, height).progress,
+    releaseProgress: vocabularyDeckSwipe(
+      12,
+      -80,
+      0,
+      -800,
+      328,
+      DECK_CARD_HEIGHT,
+    ).progress,
     flight: null,
     status: "dragging",
   };
@@ -140,17 +162,28 @@ describe("independent upward swipe", () => {
   });
 
   test("accepts a deliberate pull or quick flick, but rejects jitter and pullback", () => {
-    expect(vocabularyDeckSwipe(-70, 0, height).commit).toBeTrue();
-    expect(vocabularyDeckSwipe(-25, -700, height).commit).toBeTrue();
-    expect(vocabularyDeckSwipe(-25, 0, height).commit).toBeFalse();
-    expect(vocabularyDeckSwipe(-8, -2000, height).commit).toBeFalse();
-    expect(vocabularyDeckSwipe(-90, 400, height).commit).toBeFalse();
-    expect(vocabularyDeckSwipe(20, 0, height).commit).toBeFalse();
+    expect(swipe(0, -70, 0, 0).commit).toBeTrue();
+    expect(swipe(0, -25, 0, -700).commit).toBeTrue();
+    expect(swipe(0, -25, 0, 0).commit).toBeFalse();
+    expect(swipe(0, -8, 0, -2000).commit).toBeFalse();
+    expect(swipe(0, -90, 0, 400).commit).toBeFalse();
+    expect(swipe(0, 20, 0, 0).commit).toBeFalse();
+  });
+
+  test("advances on a left or right swipe, but never on a downward one", () => {
+    for (const side of [-1, 1]) {
+      expect(swipe(side * 90, 0, 0, 0).commit).toBeTrue();
+      expect(swipe(side * 30, 4, side * 900, 0).commit).toBeTrue();
+      expect(swipe(side * 30, 0, 0, 0).commit).toBeFalse();
+      // Pulling back toward the deck before release cancels the throw.
+      expect(swipe(side * 110, 0, -side * 600, 0).commit).toBeFalse();
+    }
+    expect(swipe(0, 120, 0, 900).commit).toBeFalse();
   });
 
   test("keeps a held card in front until release, even on a long drag", () => {
     for (const distance of [8, 80, 200, 1000]) {
-      const pull = vocabularyDeckSwipe(-distance, 0, height);
+      const pull = swipe(0, -distance, 0, 0);
       expect(pull.progress).toBeLessThan(0.5);
       expect(vocabularyDeckPose(0, 24, pull.progress).zIndex).toBe(24);
     }
