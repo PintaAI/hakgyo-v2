@@ -71,15 +71,26 @@ creates a module and a material.
 ## Reviewer Account
 
 Reviewers sign in through the normal OAuth flow, so the account must use email
-and password with no MFA, email code, magic link or VPN. Use a dedicated
-production account with sample data, never a real customer's account:
+and password with no MFA, email code, magic link or VPN. The account and its
+sample data come from `prisma/seed-reviewer.ts`:
 
-- account `reviewer@hakgyo.id`, OWNER of an organization named **Hakgyo Demo**;
-- one published course, **Korean Basics 1**, with two modules, a material, a
-  vocabulary set and a Tugas;
-- one cohort with the reviewer also enrolled as a learner in a second course,
-  so the learner tools return data;
-- one submitted Tugas attempt waiting for review.
+```bash
+REVIEWER_PASSWORD='...' bun run --cwd apps/web db:seed:reviewer
+```
+
+It is safe to re-run: rows have fixed `reviewer-` ids, and each run resets the
+password and puts the sample attempt back in the review queue. It creates:
+
+- `reviewer@hakgyo.id` (Hakgyo Reviewer), OWNER of **Hakgyo Demo**
+  (`hakgyo-demo`);
+- **Korean Basics 1** with two modules, a material, a kosakata set and a
+  written Tugas, and the cohort **Kelas Oktober 2026** with the reviewer as
+  instructor;
+- the learner Dewi Lestari (`demo-learner@hakgyo.id`, no password) in that
+  cohort, with a submitted Tugas attempt waiting for review;
+- **Korean Conversation Practice**, which the reviewer studies as a learner, so
+  `list_my_courses` and `get_my_course_item` return data, including a Tugas
+  with an `appUrl`.
 
 Enter the credentials only in the dashboard's secure reviewer form. Sign-in
 instructions: open the connection, choose email sign-in at `/auth`, enter the
@@ -106,8 +117,8 @@ reviewer can observe.
    `create_vocabulary_set`, `add_vocabulary_entry`. Result: the set lists five
    entries.
 5. **Review submissions.** "Which Tugas attempts are waiting for my review in
-   Hakgyo Demo?" Tools: `list_attempts_needing_review`. Result: the seeded
-   attempt with the learner's name and Tugas title.
+   Hakgyo Demo?" Tools: `list_attempts_needing_review`. Result: Dewi Lestari's
+   attempt on Tugas Perkenalan Diri in Kelas Oktober 2026.
 
 ### Negative
 

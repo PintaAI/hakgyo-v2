@@ -17,6 +17,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
+    "db:seed:reviewer": "bun prisma/seed-reviewer.ts",
     "db:clean-progress": "bun scripts/clean-user-progress.ts",
     "vocab:generate-audio": "bun scripts/generate-vocabulary-audio.ts",
     "db:studio": "prisma studio",
