@@ -370,7 +370,7 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
     [advanceFromButton],
   );
 
-  const throwUpward = useCallback(
+  const throwCard = useCallback(
     (velocityX: number, velocityY: number) => {
       "worklet";
       interaction.value = "advancing";
@@ -452,12 +452,12 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
         .enabled(!disabled && index < count)
         .shouldCancelWhenOutside(false)
         // The parent must wait while this card decides whether a touch is an
-        // upward swipe. Downward/sideways touches fail below and release scrolling.
+        // upward or sideways swipe. Downward touches fail and release scrolling.
         .blocksExternalGesture(scrollGesture)
         .maxPointers(1)
         .activeOffsetY(-8)
+        .activeOffsetX([-10, 10])
         .failOffsetY(8)
-        .failOffsetX([-18, 18])
         .onStart(() => {
           if (interaction.value !== "idle") return;
           swipeMotion.value = {
@@ -478,16 +478,16 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
             return;
           }
           const pull = vocabularyDeckSwipe(
+            event.translationX,
             event.translationY,
+            event.velocityX,
             event.velocityY,
+            width.value,
             cardHeight,
           );
           swipeMotion.value = {
             ...swipeMotion.value,
-            x: Math.max(
-              -width.value * 0.3,
-              Math.min(width.value * 0.3, event.translationX),
-            ),
+            x: event.translationX,
             y:
               event.translationY < 0
                 ? event.translationY
@@ -498,12 +498,15 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
         .onEnd((event, success) => {
           if (interaction.value !== "dragging") return;
           const pull = vocabularyDeckSwipe(
+            event.translationX,
             event.translationY,
+            event.velocityX,
             event.velocityY,
+            width.value,
             cardHeight,
           );
           if (success && pull.commit)
-            throwUpward(event.velocityX, event.velocityY);
+            throwCard(event.velocityX, event.velocityY);
           else settleBack();
         })
         .onFinalize(() => {
@@ -521,7 +524,7 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
       scrollGesture,
       settleBack,
       swipeMotion,
-      throwUpward,
+      throwCard,
       turn,
       width,
     ],

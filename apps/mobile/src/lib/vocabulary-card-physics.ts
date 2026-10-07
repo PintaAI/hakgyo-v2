@@ -9,6 +9,11 @@ export type VocabularyCardFlight = {
   targetScale: number;
   scale: number;
   direction: number;
+  /** Pre-capture pull: up for upward throws, sideways for side throws. */
+  pullX: number;
+  pullY: number;
+  /** Return-arc strength; side throws leave the deck without curling. */
+  curl: number;
   behind: boolean;
   capture: number;
   captureDistance: number;
@@ -31,6 +36,11 @@ export function startVocabularyCardFlight(
   "worklet";
   const depth = Math.min(count - 1, 3);
   const targetScale = 1 - depth * 0.035;
+  // Classify by where the card is heading a moment after release, so a slow
+  // drag to the side and a quick sideways flick both leave sideways.
+  const leadX = x + velocityX * 0.1;
+  const leadY = Math.min(0, y + velocityY * 0.1);
+  const sideways = Math.abs(leadX) > Math.abs(leadY);
   return {
     x,
     y,
@@ -42,6 +52,9 @@ export function startVocabularyCardFlight(
     targetScale,
     scale: 1,
     direction: Math.abs(velocityX) > 40 ? Math.sign(velocityX) : x < 0 ? -1 : 1,
+    pullX: sideways ? Math.sign(leadX) * 3600 : 0,
+    pullY: sideways ? 0 : -3600,
+    curl: sideways ? 0 : 4.2,
     behind: false,
     capture: 0,
     captureDistance: 0,
@@ -85,15 +98,16 @@ export function stepVocabularyCardFlight(
     const spring = 150 * capture;
     // A perpendicular force bends upward momentum into a return arc. It fades
     // as the spring takes over, avoiding a wobble or repeated orbit at landing.
-    const curl = 4.2 * (1 - capture);
+    const curl = next.curl * (1 - capture);
     const ax =
       -drag * next.velocityX -
-      spring * next.x -
+      spring * next.x +
+      next.pullX * (1 - capture) -
       next.direction * curl * next.velocityY;
     const ay =
       -drag * next.velocityY -
-      spring * (next.y - next.targetY) -
-      3600 * (1 - capture) +
+      spring * (next.y - next.targetY) +
+      next.pullY * (1 - capture) +
       next.direction * curl * next.velocityX;
     next.velocityX += ax * dt;
     next.velocityY += ay * dt;

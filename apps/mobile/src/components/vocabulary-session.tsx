@@ -510,8 +510,8 @@ export function VocabularySession({
   const idleHint = showFinish
     ? "Jawaban kamu tersimpan. Muat ulang untuk memuat kata yang tersisa."
     : isStudyMode
-      ? "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."
-      : "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati.";
+      ? "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."
+      : "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati.";
 
   return (
     <View className="min-h-0 flex-1">
@@ -657,27 +657,27 @@ export function VocabularySession({
                 : listening
                   ? "Mendengarkan bahasa Indonesia… ketuk mikrofon untuk berhenti."
                   : revealed
-                    ? "Jawaban ditampilkan. Geser ke atas atau ketuk Lanjut."
+                    ? "Jawaban ditampilkan. Geser ke atas atau samping atau ketuk Lanjut."
                     : feedback
                       ? feedback.correct
-                        ? "Benar dan tersimpan. Geser ke atas atau ketuk Lanjut."
-                        : "Disimpan untuk diulang. Geser ke atas atau ketuk Lanjut."
-                      : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."
+                        ? "Benar dan tersimpan. Geser ke atas atau samping atau ketuk Lanjut."
+                        : "Disimpan untuk diulang. Geser ke atas atau samping atau ketuk Lanjut."
+                      : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."
               : moving
                 ? "Menyiapkan kartu berikutnya…"
                 : listening
                   ? "Mendengarkan bahasa Korea… ketuk mikrofon untuk berhenti."
                   : revealed
-                    ? "Jawaban ditampilkan. Geser ke atas atau ketuk Lanjut."
+                    ? "Jawaban ditampilkan. Geser ke atas atau samping atau ketuk Lanjut."
                     : feedback
                       ? !feedback.saved
                         ? feedback.correct
                           ? "Benar — menyimpan…"
                           : "Kita ulang kata ini nanti — menyimpan…"
                         : feedback.correct
-                          ? "Benar dan tersimpan. Geser ke atas atau ketuk Lanjut."
-                          : "Disimpan untuk diulang lebih cepat. Geser ke atas atau ketuk Lanjut."
-                      : "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."}
+                          ? "Benar dan tersimpan. Geser ke atas atau samping atau ketuk Lanjut."
+                          : "Disimpan untuk diulang lebih cepat. Geser ke atas atau samping atau ketuk Lanjut."
+                      : "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."}
         </Text>
         {speech.errorMessage && !feedback && !revealed ? (
           <Text

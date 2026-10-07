@@ -451,14 +451,14 @@ export function TodayVocabularyPractice({
                       ? "Mendengarkan bahasa Korea… ketuk mikrofon untuk berhenti."
                       : "Mendengarkan bahasa Indonesia… ketuk mikrofon untuk berhenti."
                     : revealed
-                      ? "Hanya belajar · XP dan streak tidak berubah. Geser ke atas atau ketuk Lanjut."
+                      ? "Hanya belajar · XP dan streak tidak berubah. Geser ke atas atau samping atau ketuk Lanjut."
                       : feedback
                         ? feedback.saved
-                          ? "Geser ke atas atau ketuk Lanjut jika sudah siap."
+                          ? "Geser ke atas atau samping atau ketuk Lanjut jika sudah siap."
                           : "Menyimpan jawaban kamu…"
                         : mode === "KR"
-                          ? "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."
-                          : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas untuk melewati."}
+                          ? "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."
+                          : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."}
               </Text>
               {speech.errorMessage && !feedback && !revealed ? (
                 <Text

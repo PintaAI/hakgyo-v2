@@ -30,24 +30,36 @@ export function vocabularyDeckOrdinals(
   return [...ordinals].sort((a, b) => a - b);
 }
 
-/** Promote the underlying cards as the front card is pulled upward. */
+/** Promote the underlying cards as the front card is pulled up or sideways. */
 export function vocabularyDeckSwipe(
+  translationX: number,
   translationY: number,
+  velocityX: number,
   velocityY: number,
+  cardWidth: number,
   cardHeight: number,
 ) {
   "worklet";
-  const distance = Math.max(0, -translationY);
+  // Downward travel never counts: that direction belongs to the parent scroll.
+  const up = Math.max(0, -translationY);
+  const distance = Math.hypot(translationX, up);
   const resistance = cardHeight * 0.55;
   const attenuation = Math.exp(-distance / resistance);
+  // Measure release speed along the drag so a pull back toward the deck
+  // cancels, whichever way the card was pulled.
+  const towardX = distance > 0 ? translationX / distance : 0;
+  const towardY = distance > 0 ? -up / distance : -1;
+  const speed = velocityX * towardX + velocityY * towardY;
+  const sideways = Math.abs(translationX) > up;
+  const threshold = sideways ? cardWidth * 0.25 : cardHeight * 0.28;
   return {
     // Stay before the stacking-order handoff until the user releases.
     progress: 0.38 * (1 - attenuation),
     // A short flick counts; a tiny touch or a deliberate pull back does not.
     commit:
       distance >= 18 &&
-      velocityY <= 200 &&
-      distance + Math.max(0, -velocityY) * 0.12 >= cardHeight * 0.28,
+      speed >= -200 &&
+      distance + Math.max(0, speed) * 0.12 >= threshold,
   };
 }
 

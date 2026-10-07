@@ -2,6 +2,11 @@ import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import {
+  Gesture,
+  GestureDetector,
+  type NativeGesture,
+} from "react-native-gesture-handler";
 import Animated, {
   interpolate,
   runOnJS,
@@ -14,6 +19,16 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LearningItemRow } from "../../src/components/learn/learning-item-row";
+import {
+  DeckTutorialCoach,
+  DeckTutorialOverlay,
+  type DeckTutorialStep,
+} from "../../src/components/onboarding-deck-tutorial";
+import {
+  VocabularyPracticeDeck,
+  type VocabularyPracticeDeckCard,
+  type VocabularyPracticeDeckHandle,
+} from "../../src/components/vocabulary-practice-deck";
 import type { LearningItemType } from "../../src/lib/learning-item-type";
 import {
   hasSeenOnboarding,
@@ -42,7 +57,7 @@ const SLIDES: Slide[] = [
     eyebrow: "KOSAKATA",
     title: "Hafalkan kata dengan kartu",
     description:
-      "Latih kosakata dengan kartu yang bisa dibalik, didengarkan, dan diulang sampai benar-benar hafal.",
+      "Coba sekarang: begini cara berlatih kosakata sampai benar-benar hafal.",
   },
   {
     key: "streak",
@@ -87,6 +102,13 @@ const SAMPLE_COURSE_ITEMS: {
     completed: false,
     locked: true,
   },
+];
+
+const SAMPLE_DECK_CARDS: VocabularyPracticeDeckCard[] = [
+  { id: "onboarding-annyeong", prompt: "안녕하세요", answer: "Halo" },
+  { id: "onboarding-gamsa", prompt: "감사합니다", answer: "Terima kasih" },
+  { id: "onboarding-hakgyo", prompt: "학교", answer: "Sekolah" },
+  { id: "onboarding-chingu", prompt: "친구", answer: "Teman" },
 ];
 
 function toDateKey(date: Date) {
@@ -153,30 +175,59 @@ function CoursePreview() {
   );
 }
 
-function VocabularyPreview() {
+function VocabularyPreview({
+  scrollGesture,
+}: {
+  scrollGesture: NativeGesture;
+}) {
+  const deckRef = useRef<VocabularyPracticeDeckHandle>(null);
+  const [round, setRound] = useState(0);
+  const [index, setIndex] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // Either gesture can be tried first; the coach asks for whichever is left.
+  const [peeled, setPeeled] = useState(false);
+  const [swiped, setSwiped] = useState(false);
+  const step: DeckTutorialStep = !peeled ? "peel" : !swiped ? "swipe" : "done";
+  const finished = index >= SAMPLE_DECK_CARDS.length;
+
+  useEffect(() => {
+    if (!finished) return;
+    // Deal the sample deck again after the real "round complete" card shows.
+    const timer = setTimeout(() => {
+      setRound((current) => current + 1);
+      setIndex(0);
+    }, 1600);
+    return () => clearTimeout(timer);
+  }, [finished]);
+
   return (
-    <PreviewCard>
-      <View className="items-center gap-2 rounded-2xl bg-primary/10 px-4 py-8">
-        <Text className="text-4xl font-black text-foreground">안녕하세요</Text>
-        <Text className="text-sm font-semibold text-muted-foreground">
-          annyeonghaseyo
-        </Text>
+    <View className="gap-3">
+      <View>
+        <VocabularyPracticeDeck
+          cards={SAMPLE_DECK_CARDS}
+          correct={undefined}
+          index={index}
+          key={round}
+          onAdvanceComplete={() => {
+            setSwiped(true);
+            setRevealed(false);
+            setIndex((current) => current + 1);
+          }}
+          onInteractionChange={setBusy}
+          onReveal={() => {
+            setPeeled(true);
+            setRevealed(true);
+          }}
+          ref={deckRef}
+          revealed={revealed}
+          scrollGesture={scrollGesture}
+        />
+        {/* Step aside while the learner's own finger is on the card. */}
+        {!busy && !finished ? <DeckTutorialOverlay step={step} /> : null}
       </View>
-      <View className="items-center gap-1">
-        <Text className="text-xs font-bold uppercase tracking-[1.5px] text-muted-foreground">
-          Arti
-        </Text>
-        <Text className="text-2xl font-bold text-foreground">Halo</Text>
-      </View>
-      <View className="flex-row gap-3">
-        <View className="flex-1 items-center rounded-full border border-border px-4 py-3">
-          <Text className="font-bold text-foreground">Belum hafal</Text>
-        </View>
-        <View className="flex-1 items-center rounded-full bg-primary px-4 py-3">
-          <Text className="font-bold text-primary-foreground">Sudah hafal</Text>
-        </View>
-      </View>
-    </PreviewCard>
+      <DeckTutorialCoach step={step} />
+    </View>
   );
 }
 
@@ -226,9 +277,16 @@ function StreakPreview() {
   );
 }
 
-function SlidePreview({ slide }: { slide: Slide }) {
+function SlidePreview({
+  slide,
+  scrollGesture,
+}: {
+  slide: Slide;
+  scrollGesture: NativeGesture;
+}) {
   if (slide.key === "course") return <CoursePreview />;
-  if (slide.key === "vocabulary") return <VocabularyPreview />;
+  if (slide.key === "vocabulary")
+    return <VocabularyPreview scrollGesture={scrollGesture} />;
   return <StreakPreview />;
 }
 
@@ -266,6 +324,9 @@ export default function OnboardingScreen() {
   const initialPage = useRef(hasSeenOnboarding() ? lastPage : 0).current;
   const [page, setPage] = useState(initialPage);
   const scrollX = useSharedValue(initialPage * width);
+  // The deck slide claims upward swipes and the peel corner; horizontal
+  // touches fail there and fall through to the pager.
+  const [scrollGesture] = useState(() => Gesture.Native());
   const isLastPage = page === lastPage;
 
   useEffect(() => {
@@ -330,38 +391,40 @@ export default function OnboardingScreen() {
         </View>
       </View>
 
-      <Animated.FlatList
-        className="flex-1"
-        data={SLIDES}
-        getItemLayout={(_, index) => ({
-          length: width,
-          offset: width * index,
-          index,
-        })}
-        horizontal
-        initialScrollIndex={initialPage}
-        keyExtractor={(slide) => slide.key}
-        onScroll={scrollHandler}
-        pagingEnabled
-        ref={pagerRef}
-        renderItem={({ item: slide }) => (
-          <View className="flex-1 gap-8 px-6 pt-8" style={{ width }}>
-            <View className="gap-3">
-              <Text className="text-xs font-bold tracking-[2px] text-primary">
-                {slide.eyebrow}
-              </Text>
-              <Text className="text-4xl font-black leading-tight tracking-tight text-foreground">
-                {slide.title}
-              </Text>
-              <Text className="text-base leading-6 text-muted-foreground">
-                {slide.description}
-              </Text>
+      <GestureDetector gesture={scrollGesture}>
+        <Animated.FlatList
+          className="flex-1"
+          data={SLIDES}
+          getItemLayout={(_, index) => ({
+            length: width,
+            offset: width * index,
+            index,
+          })}
+          horizontal
+          initialScrollIndex={initialPage}
+          keyExtractor={(slide) => slide.key}
+          onScroll={scrollHandler}
+          pagingEnabled
+          ref={pagerRef}
+          renderItem={({ item: slide }) => (
+            <View className="flex-1 gap-8 px-6 pt-8" style={{ width }}>
+              <View className="gap-3">
+                <Text className="text-xs font-bold tracking-[2px] text-primary">
+                  {slide.eyebrow}
+                </Text>
+                <Text className="text-4xl font-black leading-tight tracking-tight text-foreground">
+                  {slide.title}
+                </Text>
+                <Text className="text-base leading-6 text-muted-foreground">
+                  {slide.description}
+                </Text>
+              </View>
+              <SlidePreview scrollGesture={scrollGesture} slide={slide} />
             </View>
-            <SlidePreview slide={slide} />
-          </View>
-        )}
-        showsHorizontalScrollIndicator={false}
-      />
+          )}
+          showsHorizontalScrollIndicator={false}
+        />
+      </GestureDetector>
 
       <View className="gap-2 px-6">
         {isLastPage ? (
