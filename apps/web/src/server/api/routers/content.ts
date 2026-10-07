@@ -24,6 +24,7 @@ import {
   readinessChanges,
 } from "~/server/course/readiness-service";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
+import { findBlockNoteDocumentIssues } from "~/lib/blocknote/document-validation";
 import {
   extractVocabularyFromImage,
   type ExtractedVocabularyEntry,
@@ -41,6 +42,11 @@ const blockNoteDocument = z
   .array(z.record(z.string(), z.unknown()))
   .min(1)
   .max(5000)
+  .superRefine((document, ctx) => {
+    for (const issue of findBlockNoteDocumentIssues(document)) {
+      ctx.addIssue({ code: "custom", ...issue });
+    }
+  })
   .transform((value) => value as Prisma.InputJsonValue);
 const itemRelation = z.discriminatedUnion("type", [
   z.object({ type: z.literal("MATERIAL"), materialId: id }),
