@@ -24,18 +24,18 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowLeftIcon,
-  BookOpenIcon,
   CheckCircle2Icon,
   CircleOffIcon,
   FileStackIcon,
   FileTextIcon,
   GripVerticalIcon,
   Layers3Icon,
+  LanguagesIcon,
   LightbulbIcon,
-  ListChecksIcon,
   LoaderCircleIcon,
   PencilIcon,
   PlusIcon,
+  SquareCheckBigIcon,
   Trash2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -90,6 +90,7 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { getErrorMessage } from "~/lib/error-message";
+import { getLearningItemTypeMeta } from "~/lib/learner/learning-item-type";
 import { cn } from "~/lib/utils";
 import {
   defaultCourseItemPublished,
@@ -111,11 +112,16 @@ type VocabularySet = ResourceOption;
 type PdfPageRangesByMaterial = Partial<Record<string, PdfPageRange[]>>;
 type ItemType = CourseItem["type"];
 
-const itemMeta = {
-  MATERIAL: { label: "Materi", icon: FileTextIcon },
-  ASSESSMENT: { label: "Tugas", icon: ListChecksIcon },
-  VOCABULARY_SET: { label: "Kosakata", icon: BookOpenIcon },
-} satisfies Record<ItemType, { label: string; icon: typeof FileTextIcon }>;
+const itemIcons = {
+  MATERIAL: FileTextIcon,
+  ASSESSMENT: SquareCheckBigIcon,
+  VOCABULARY_SET: LanguagesIcon,
+} satisfies Record<ItemType, typeof FileTextIcon>;
+
+// Same per-type colors, icons and labels as the learner's material list.
+function getItemMeta(type: ItemType) {
+  return { ...getLearningItemTypeMeta(type), icon: itemIcons[type] };
+}
 
 function getDragData(value: unknown) {
   if (typeof value !== "object" || value === null) return {};
@@ -1008,7 +1014,7 @@ function SortableItemRow({
     data: { kind: "item", moduleId },
   });
   const style = { transform: CSS.Transform.toString(transform), transition };
-  const meta = itemMeta[item.type];
+  const meta = getItemMeta(item.type);
   const Icon = pdfLabel ? FileStackIcon : meta.icon;
   // A hidden item that is not ready cannot be shown; a visible one that is
   // not ready (legacy data) can still be hidden.
@@ -1048,14 +1054,25 @@ function SortableItemRow({
           !href && "pointer-events-none",
         )}
       >
-        <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
-          <Icon className="text-muted-foreground size-4" />
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-full border",
+            meta.borderClass,
+            meta.softClass,
+          )}
+        >
+          <Icon className={cn("size-4", meta.textClass)} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-medium max-sm:line-clamp-2 sm:truncate">
             {title}
           </span>
-          <span className="text-muted-foreground mt-0.5 block text-[11px] tracking-wide uppercase">
+          <span
+            className={cn(
+              "mt-0.5 block text-[11px] font-semibold tracking-wide uppercase",
+              meta.textClass,
+            )}
+          >
             {pdfLabel ?? meta.label}
           </span>
         </span>
@@ -1390,7 +1407,7 @@ function ItemDialog({
             : "vocabulary"
       }/new`
     : "#";
-  const resourceLabel = itemMeta[type].label.toLowerCase();
+  const resourceLabel = getItemMeta(type).label.toLowerCase();
   const createLabel =
     type === "MATERIAL"
       ? "Buat materi"
@@ -1415,7 +1432,7 @@ function ItemDialog({
               <div className="grid grid-cols-3 gap-2">
                 {(["MATERIAL", "VOCABULARY_SET", "ASSESSMENT"] as const).map(
                   (itemType) => {
-                    const meta = itemMeta[itemType];
+                    const meta = getItemMeta(itemType);
                     const Icon = meta.icon;
                     return (
                       <button
@@ -1425,7 +1442,12 @@ function ItemDialog({
                         className={cn(
                           "hover:bg-muted flex min-w-0 flex-col items-center gap-2 rounded-lg border px-2 py-3 text-center text-xs font-medium transition-colors sm:flex-row sm:px-3 sm:text-left sm:text-sm",
                           type === itemType &&
-                            "border-primary bg-primary/5 text-primary ring-primary/20 ring-2",
+                            cn(
+                              meta.borderClass,
+                              meta.softClass,
+                              "ring-2 ring-current/20",
+                              meta.textClass,
+                            ),
                         )}
                         onClick={() => changeType(itemType)}
                       >
@@ -1468,7 +1490,7 @@ function ItemDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-resource">{itemMeta[type].label}</Label>
+              <Label htmlFor="item-resource">{getItemMeta(type).label}</Label>
               <ResourcePicker
                 kind={type}
                 id="item-resource"

@@ -18,7 +18,9 @@ Two projects share that folder:
 ## Decide first (ask only what the answer changes)
 
 - **Format and length.** A walkthrough or tutorial is `demo/` and has no length cap unless the user
-  sets one. A TikTok/Reels/Shorts clip is `reel/` (30 s unless told otherwise).
+  sets one. A TikTok/Reels/Shorts clip is `reel/` (30 s unless told otherwise). A music-only motion
+  piece (no voiceover, cut to the beat) uses `"page": "showreel.html"` as the model; see
+  `references/motion-techniques.md`.
 - **Audience.** Hakgyo's paying customer is the institution or individual who runs Korean classes,
   not the learner. Copy speaks to them: their problem, their workflow, their students.
 - **Language and terms.** Indonesian, common English loanwords kept. In speech and on screen:
@@ -49,7 +51,43 @@ Do the steps in order; each one removes a class of rework from the next.
    `<name>/stills/sheet-NN.jpg`). Look at every sheet before rendering; fix and re-run `check`.
 6. **`bun pv.mjs render <name>`** (GPU worker when up, video downloaded; audio normalised to -14 LUFS),
    then `bun pv.mjs backup <file>` and delete the local copy once the backup is confirmed.
-7. **Verify and report** (see below).
+7. **`bun pv.mjs lint <name>`**: shot rhythm, how many scene changes carry an element across, and
+   after a render the loudness and true peak. Fix its warnings or say why one stays.
+8. **Verify and report** (see below).
+
+## Default look for shorts: editorial (`demo/editorial.html`)
+
+The user approved this look (short-02c) after rejecting a game-show page as "cringe, not professional,
+cheap". Start every new short from it (`"page": "editorial.html"`, `--like=short-02c`):
+
+- The landing page's monochrome palette on an off-white stage. Colour comes only from the app UI.
+- One numbered label and one short title per beat (`01 · Bagikan`), revealed through a mask.
+- The real recording is the hero, in a clean window or phone frame with a soft shadow.
+- A focus ring slides over the element the voice names, keyed to the clip clock (recording marks),
+  not to spoken words.
+- Eased moves with no overshoot. No camera shake, confetti, stamps, bulbs, neon or slot counters.
+- A calm voice and quiet music without drums.
+
+Being creative means composition and motion, not novelty props. Check stills against this bar before
+a full render.
+
+## Motion in shorts (`demo/short.html`, `demo/motion.js`)
+
+The ideas come from studying continuous-take motion films; the code is our own (the onetake repository
+that inspired it is noncommercial-only, so never copy its code or assets into this tooling).
+
+- **Carry, not fade.** A scene change should keep something on screen: when two scenes mark an element
+  with the same `it.carry` key (`card` for photo, screen and phone cards and the closing logo; `logo`
+  for reveal and cta), the element flies from its place in the old scene to its place in the new one.
+  Otherwise ad style uses a whip and soft style a short fade. Force one with `v.enter`
+  (`carry`, `whip`, `fade`, `cut`) and pick the key with `v.carryKey`.
+- **Springs.** Entrances use `M.spring` (one small overshoot, then a dead rest), not CSS-style eases.
+- **Camera.** Ad style jolts the camera on `impact` and `boom` hits; soft style never moves it, which
+  keeps screen recordings calm.
+- **Motion blur.** Shorts render 6 captures per moving frame over a 180-degree shutter, averaged in
+  linear light (`"motionBlur": N` in project.json; 1 turns it off). Still frames cost one capture, so a
+  short renders about 3x slower than without blur. Stills and `check` are never blurred.
+- **Sound.** Effects share one room reverb and the music dips under them.
 
 ## Rules that came from real mistakes
 
@@ -71,6 +109,10 @@ Do the steps in order; each one removes a class of rework from the next.
   early or never; capture the PID and loop on `kill -0`.
 - **Do not guess at timing; measure.** The assumption that video seeking was the slow part was wrong:
   the screenshot step was. Profile (`demo/perf/profile.mjs`) before optimizing.
+- **`tools/` is untracked, so git can delete it.** It was tracked on `main` once; a fast-forward of
+  `main` past the commit that stopped tracking it deleted every engine file that had not changed.
+  Recover from the T3 checkpoint refs (`git for-each-ref refs/t3`, newest commit that has the file)
+  or from the GPU worker's job workspaces, and check `bun pv.mjs status` after branch switches.
 - **Delete by explicit names.** A wildcard `rm` is blocked by a safety check; list what you created
   and remove those paths.
 
@@ -127,6 +169,10 @@ commit or open a PR unless asked.
 - `references/storyboard-and-recording.md`: storyboard schema, graphic types, how to add a recording
   stage or a motion graphic, the reel's timing model.
 - `references/troubleshooting.md`: selectors that bit before, stale servers, render and worker pitfalls.
+- `references/motion-techniques.md`: the catalogue of what the engine can animate (20 techniques and
+  9 transitions in `demo/showreel.html`, the `drive` music style, the `pipeline`/`carrydemo`/`terminal`
+  scenes) and how to lift a technique into another video. Read it before designing motion graphics,
+  and show `showreel/hakgyo-showreel.mp4` when the user asks what is possible.
 
 ## Projects, Gemini voice and long tutorials
 

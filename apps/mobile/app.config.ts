@@ -34,7 +34,7 @@ export default {
       url: "https://u.expo.dev/942928d2-590a-4ca4-831f-247fa79f83e7",
     },
     runtimeVersion: {
-      policy: "fingerprint",
+      policy: "appVersion",
     },
     ios: {
       supportsTablet: true,
