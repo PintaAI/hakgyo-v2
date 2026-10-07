@@ -20,6 +20,7 @@ describe("MCP domain action allowlist", () => {
       "enrollment",
       "learning",
       "organization",
+      "storage",
     ]);
   });
 
@@ -28,6 +29,7 @@ describe("MCP domain action allowlist", () => {
 
     expect(actions).not.toContain("removeMember");
     expect(actions).not.toContain("disconnectZoom");
+    expect(actions).not.toContain("createUploadUrl");
     expect(actions).not.toContain("revokeInvite");
     expect(actions).not.toContain("createInvite");
     expect(actions).not.toContain("redeemInvite");

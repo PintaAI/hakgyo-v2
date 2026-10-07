@@ -45,6 +45,23 @@ export async function createUploadUrl(
   };
 }
 
+/** Stores bytes the server already holds, returning the object's ETag. */
+export async function putObject(
+  key: string,
+  body: Uint8Array,
+  contentType: string,
+) {
+  const result = await r2.send(
+    new PutObjectCommand({
+      Bucket: r2Bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }),
+  );
+  return result.ETag ?? null;
+}
+
 export async function signDownloadUrl(
   key: string,
   disposition: "attachment" | "inline",

@@ -1,4 +1,5 @@
 import type { Prisma } from "../../../generated/prisma/client";
+import { collectMaterialAssetIds } from "~/lib/blocknote/material-assets";
 import {
   collectMaterialReferenceIds,
   removeInvalidMaterialReferences,
@@ -47,6 +48,38 @@ export async function sanitizeMaterialContent(
     }),
   );
   return (cleaned.length ? cleaned : emptyDocument) as Prisma.InputJsonValue;
+}
+
+/**
+ * Links the organization files a lesson's content shows to the material, so
+ * learners who can open the lesson may load them. Unknown ids and other
+ * organizations' files are skipped; links are only added, never removed,
+ * because attached files share the same table.
+ */
+export async function linkMaterialContentAssets(
+  db: DatabaseClient,
+  input: { materialId: string; organizationId: string; content: unknown },
+) {
+  const assetIds = [...collectMaterialAssetIds(input.content)];
+  if (!assetIds.length) return;
+  const assets = await db.asset.findMany({
+    where: {
+      id: { in: assetIds },
+      organizationId: input.organizationId,
+      confirmedAt: { not: null },
+      deletedAt: null,
+    },
+    select: { id: true },
+  });
+  if (!assets.length) return;
+  await db.materialAsset.createMany({
+    data: assets.map(({ id }) => ({
+      materialId: input.materialId,
+      assetId: id,
+      organizationId: input.organizationId,
+    })),
+    skipDuplicates: true,
+  });
 }
 
 type ReferenceSource = {

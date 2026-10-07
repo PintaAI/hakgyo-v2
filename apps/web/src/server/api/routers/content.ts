@@ -14,7 +14,10 @@ import {
   deleteMaterialWithProgress,
   deleteVocabularySetWithProgress,
 } from "~/server/content/resource-deletion";
-import { sanitizeMaterialContent } from "~/server/content/material-references";
+import {
+  linkMaterialContentAssets,
+  sanitizeMaterialContent,
+} from "~/server/content/material-references";
 import {
   assertMaterialChangeKeepsReadiness,
   assertPlacementsRemovable,
@@ -647,6 +650,11 @@ export const contentRouter = createTRPCRouter({
           organizationId: input.organizationId,
           content,
         });
+        await linkMaterialContentAssets(tx, {
+          materialId: material.id,
+          organizationId: input.organizationId,
+          content,
+        });
         return material;
       });
     }),
@@ -727,6 +735,11 @@ export const contentRouter = createTRPCRouter({
           },
         });
         await syncMaterialPdfPageAssets(tx, {
+          materialId: material.id,
+          organizationId: courseModule.organizationId,
+          content,
+        });
+        await linkMaterialContentAssets(tx, {
           materialId: material.id,
           organizationId: courseModule.organizationId,
           content,
@@ -905,6 +918,11 @@ export const contentRouter = createTRPCRouter({
         });
         if (updated.count && content !== undefined) {
           await syncMaterialPdfPageAssets(tx, {
+            materialId,
+            organizationId,
+            content,
+          });
+          await linkMaterialContentAssets(tx, {
             materialId,
             organizationId,
             content,

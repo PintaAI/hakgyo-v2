@@ -264,7 +264,7 @@ const lessonPageTextProps = Object.fromEntries(
 );
 
 export const hakgyoBlockCatalog = {
-  catalogVersion: 12,
+  catalogVersion: 13,
   editor: "BlockNote",
   format: {
     description:
@@ -281,6 +281,9 @@ export const hakgyoBlockCatalog = {
       "Simple text content may be supplied as a string and BlockNote will normalize it.",
       "Props marked as JSON in guidance.jsonProps are strings containing serialized JSON (use JSON.stringify), not nested objects.",
       "Content is validated on save: unknown block types, props of the wrong type and values outside a prop's enum are rejected.",
+      "File props (assetId and practiceAssetId, plus images inside culture sections) take a file from the organization library. Get one with import_material_file (a public https URL, or a file the user shared in ChatGPT) or reuse one from list_organization_files, then copy its assetId, fileName and contentType into the props.",
+      'Built-in image, audio, video and file blocks show a library file when props.url is "hakgyo-asset:<assetId>"; any other https URL is shown as is.',
+      "Library files used in the content are attached to the material automatically when it is saved, so learners can load them.",
     ],
   },
   builtInBlocks: [
