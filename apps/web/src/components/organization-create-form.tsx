@@ -7,18 +7,36 @@ import {
   ArrowLeftIcon,
   Building2Icon,
   CheckIcon,
+  GlobeIcon,
   LoaderCircleIcon,
+  LockIcon,
+  ShieldCheckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { surfaceCard } from "~/components/brand/flow-shell";
-import { Headline, Kicker, leadText } from "~/components/brand/typography";
+import { Kicker } from "~/components/brand/typography";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { completeOnboarding } from "~/lib/onboarding";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
+
+const ENROLLMENT_OPTIONS = [
+  {
+    value: "INVITE_ONLY" as const,
+    icon: LockIcon,
+    title: "Kurikulum privat",
+    description: "Hanya siswa yang diundang atau ditambahkan.",
+  },
+  {
+    value: "OPEN" as const,
+    icon: GlobeIcon,
+    title: "Kurikulum publik",
+    description: "Siapa pun bisa menemukan dan mendaftar sendiri.",
+  },
+];
 
 function errorMessage(error: unknown) {
   if (
@@ -65,7 +83,7 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-10">
+    <div className="mx-auto max-w-xl space-y-6 sm:space-y-8">
       <Link
         href="/onboarding"
         className={cn(
@@ -77,145 +95,132 @@ export function OrganizationCreateForm({ userId }: { userId: string }) {
         Kembali
       </Link>
 
-      <header className="max-w-3xl">
-        <Kicker>Langkah 1 dari 2</Kicker>
-        <Headline
-          as="h1"
-          title="Buat workspace"
-          muted="untuk program kelas Anda."
-          className="mt-3 sm:mt-5"
-        />
-        <p className={cn(leadText, "mt-4 sm:mt-6")}>
-          Workspace mengelompokkan kurikulum, anggota, dan bahan ajar dalam satu
-          organisasi. Anda otomatis menjadi owner dan dapat mengundang tim
-          setelah workspace siap.
-        </p>
+      <header className="flex items-start gap-4">
+        <span className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-2xl">
+          <Building2Icon className="size-6" />
+        </span>
+        <div>
+          <Kicker>Langkah 1 dari 2</Kicker>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+            Buat workspace
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+            Tempat kurikulum, anggota, dan bahan ajar Anda.
+          </p>
+        </div>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
-        <form
-          onSubmit={submit}
-          noValidate
-          className={cn(surfaceCard, "p-4 sm:p-7")}
-        >
-          <div className="space-y-2">
-            <Label htmlFor="organization-name">Nama organization</Label>
-            <Input
-              id="organization-name"
-              value={name}
-              maxLength={120}
-              placeholder="Hakgyo Academy"
-              autoFocus
-              required
-              className="h-11 px-3 text-base md:text-base"
-              onChange={(event) => setName(event.target.value)}
-            />
-            <p className="text-muted-foreground text-xs">
-              Nama tampilan yang dilihat anggota dan siswa. Alamat workspace
-              akan dibuat otomatis dari nama dan dapat diubah nanti di
-              Pengaturan → Umum.
-            </p>
-          </div>
+      <form
+        onSubmit={submit}
+        noValidate
+        className={cn(
+          surfaceCard,
+          "space-y-6 p-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:p-7",
+        )}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="organization-name">Nama organization</Label>
+          <Input
+            id="organization-name"
+            value={name}
+            maxLength={120}
+            placeholder="Hakgyo Academy"
+            autoFocus
+            required
+            className="h-11 px-3 text-base md:text-base"
+            onChange={(event) => setName(event.target.value)}
+          />
+          <p className="text-muted-foreground text-xs">
+            Alamat workspace dibuat otomatis dan bisa diubah nanti.
+          </p>
+        </div>
 
-          <fieldset className="mt-8 grid gap-3">
-            <legend className="text-sm font-medium">
-              Tipe kurikulum default
-            </legend>
-            <p className="text-muted-foreground -mt-1 text-xs">
-              Pengaturan berlaku untuk kurikulum baru. Setiap kurikulum dapat
-              menimpa pilihan ini.
-            </p>
-            {[
-              {
-                value: "INVITE_ONLY" as const,
-                title: "Kurikulum privat",
-                description:
-                  "Hanya siswa yang diundang atau ditambahkan manual yang bisa mengakses.",
-              },
-              {
-                value: "OPEN" as const,
-                title: "Kurikulum publik",
-                description:
-                  "Siapa pun dapat menemukan dan mendaftar sendiri ke kurikulum.",
-              },
-            ].map((option) => (
-              <label
-                key={option.value}
-                className={cn(
-                  "cursor-pointer rounded-xl border p-4 transition-colors",
-                  enrollmentMode === option.value
-                    ? "border-primary ring-primary ring-1"
-                    : "hover:bg-muted/60",
-                )}
-              >
-                <input
-                  type="radio"
-                  name="enrollmentMode"
-                  value={option.value}
-                  checked={enrollmentMode === option.value}
-                  className="sr-only"
-                  onChange={() => setEnrollmentMode(option.value)}
-                />
-                <span className="text-sm font-medium">{option.title}</span>
-                <span className="text-muted-foreground mt-1 block text-xs leading-relaxed">
-                  {option.description}
-                </span>
-              </label>
-            ))}
-          </fieldset>
-
-          <div className="mt-7 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-end">
-            <Link
-              href="/onboarding"
-              className={buttonVariants({ variant: "ghost" })}
-            >
-              Batal
-            </Link>
-            <Button
-              type="submit"
-              size="lg"
-              className="h-11"
-              disabled={create.isPending || name.trim().length === 0}
-            >
-              {create.isPending ? (
-                <LoaderCircleIcon
-                  className="animate-spin"
-                  data-icon="inline-start"
-                />
-              ) : (
-                <Building2Icon data-icon="inline-start" />
-              )}
-              {create.isPending ? "Membuat workspace..." : "Buat organization"}
-            </Button>
+        <fieldset className="space-y-2">
+          <legend className="mb-2 text-sm font-medium">
+            Tipe kurikulum default
+          </legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {ENROLLMENT_OPTIONS.map((option) => {
+              const selected = enrollmentMode === option.value;
+              return (
+                <label
+                  key={option.value}
+                  className={cn(
+                    "has-focus-visible:ring-ring/50 relative flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-focus-visible:ring-3",
+                    selected
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted/60",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="enrollmentMode"
+                    value={option.value}
+                    checked={selected}
+                    className="sr-only"
+                    onChange={() => setEnrollmentMode(option.value)}
+                  />
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                      selected
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <option.icon className="size-4.5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">
+                      {option.title}
+                    </span>
+                    <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
+                      {option.description}
+                    </span>
+                  </span>
+                  {selected ? (
+                    <CheckIcon className="text-primary absolute top-3 right-3 size-4" />
+                  ) : null}
+                </label>
+              );
+            })}
           </div>
-        </form>
+          <p className="text-muted-foreground pt-1 text-xs">
+            Bisa diubah per kurikulum.
+          </p>
+        </fieldset>
 
-        <aside className={cn(surfaceCard, "h-fit p-4 sm:p-6")}>
-          <Kicker>Setelah workspace dibuat</Kicker>
-          <ol className="text-muted-foreground mt-5 space-y-5 text-sm">
-            {[
-              "Anda otomatis menjadi owner",
-              "Permission sederhana aktif secara default",
-              "Pilih kurikulum pertama: salin dari Hakgyo, impor PDF, atau mulai dari nol (opsional)",
-              "Undang admin dan teacher setelah workspace siap",
-            ].map((item, index) => (
-              <li key={item} className="flex gap-3">
-                <span className="text-foreground w-5 shrink-0 pt-0.5 font-mono text-xs">
-                  0{index + 1}
-                </span>
-                <span className="pt-0.5 leading-relaxed">{item}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-6 flex items-start gap-2.5 border-t pt-5 text-xs leading-relaxed">
-            <CheckIcon className="text-foreground mt-0.5 size-4 shrink-0" />
-            <p className="text-muted-foreground">
-              Workspace dapat diubah kapan saja melalui Pengaturan → Umum: nama,
-              slug, logo, dan mode permission.
-            </p>
-          </div>
-        </aside>
-      </div>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+          <Link
+            href="/onboarding"
+            className={cn(buttonVariants({ variant: "ghost" }), "max-sm:h-11")}
+          >
+            Batal
+          </Link>
+          <Button
+            type="submit"
+            size="lg"
+            className="h-11"
+            disabled={create.isPending || name.trim().length === 0}
+          >
+            {create.isPending ? (
+              <LoaderCircleIcon
+                className="animate-spin"
+                data-icon="inline-start"
+              />
+            ) : (
+              <Building2Icon data-icon="inline-start" />
+            )}
+            {create.isPending ? "Membuat workspace..." : "Buat organization"}
+          </Button>
+        </div>
+      </form>
+
+      <p className="text-muted-foreground flex items-center justify-center gap-2 text-xs">
+        <ShieldCheckIcon className="size-4 shrink-0" />
+        Anda otomatis menjadi owner. Berikutnya pilih kurikulum pertama
+        (opsional), lalu undang tim.
+      </p>
     </div>
   );
 }
