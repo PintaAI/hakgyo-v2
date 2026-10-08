@@ -45,7 +45,7 @@ The route returns `404` while the variable is unset.
 | ----------------- | -------------------------------------- |
 | Display name (30) | Hakgyo                                 |
 | Subtitle (30)     | Run your Korean classes                |
-| Category          | Education                              |
+| Category          | Education & Research                   |
 | Developer name    | Hakgyo                                 |
 | Website           | `https://hakgyo.id`                    |
 | Support           | `https://hakgyo.id/support`            |
@@ -53,16 +53,24 @@ The route returns `404` while the variable is unset.
 | Terms of service  | `https://hakgyo.id/terms`              |
 | Commerce          | No purchases happen through the plugin |
 
-Long description:
+Long description (the `plugin.json` copy is authoritative):
 
-> Hakgyo is a platform for Korean-language schools and teachers. Connect your
-> Hakgyo account to plan and run your classes from ChatGPT: draft a kurikulum
-> with modules, write learning materials, build vocabulary sets and Tugas
-> (assessments), organize study groups and schedule their Zoom meetings, and
-> review learners' submitted answers. Learners can look up their course
-> outline, read materials and study vocabulary. ChatGPT only sees and changes
-> what your role in each organization allows, and Tugas are always taken by
-> the learner in the Hakgyo mobile app, never answered by ChatGPT.
+> Hakgyo is a course platform for Korean language schools and teachers. Connect your Hakgyo account to manage your classes directly from ChatGPT.
+>
+> With Hakgyo in ChatGPT, teachers and school administrators can:
+>
+> - Plan courses: create courses, add modules, and arrange lessons in order.
+> - Write lesson materials, such as grammar explanations and example dialogues.
+> - Build vocabulary sets with Korean words, meanings, and example sentences.
+> - Create assignments and quizzes with multiple-choice and written questions.
+> - Organize study groups, manage enrollments, and schedule Zoom class meetings.
+> - Review students' written answers and see which submissions still need grading.
+>
+> Students can view their course outline, read lesson materials, and study vocabulary. Assignments are always completed by the student in the Hakgyo mobile app; ChatGPT never answers them on the student's behalf.
+>
+> ChatGPT can only see and change what your role in each school allows. Changes that publish a course or cannot be undone are confirmed with you first.
+
+The category must be one of OpenAI's fixed values; Hakgyo uses `Education & Research`.
 
 Assets: a square logo (at least 48×48, PNG or SVG, max 5 MiB) with a dark
 variant, a composer icon, and optional screenshots of a conversation that
