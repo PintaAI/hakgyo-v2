@@ -570,7 +570,7 @@ describe.skipIf(!enabled)("mobile sync compose ≙ online procedures", () => {
         courseItemId: fixtureId("i-quiz"),
         createdByMembershipId: ownerMembershipId,
         type: "QUICK_ASSESSMENT",
-        scope: "COURSE",
+        allCohorts: true,
         title: "Quick check",
         durationMinutes: 10,
         status: "CLOSED",

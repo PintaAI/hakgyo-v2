@@ -75,17 +75,28 @@ export default function AssessmentEventScreen() {
     }
   }
 
-  const primaryAction = event?.entry.canStart
-    ? "Mulai tugas berwaktu"
-    : event?.entry.canReattempt
-      ? "Kerjakan ulang tugas"
-      : null;
+  // A scheduled event can be started from its opening time; the server opens
+  // it on the first start. The cached detail may predate that moment.
+  const opensAt = event?.status === "SCHEDULED" ? event.opensAt : null;
+  const dueNow =
+    !!opensAt &&
+    opensAt.getTime() <= Date.now() &&
+    !!event?.closesAt &&
+    event.closesAt.getTime() > Date.now() &&
+    !attempt &&
+    !invalidated;
+  const primaryAction =
+    event?.entry.canStart || dueNow
+      ? "Mulai tugas berwaktu"
+      : event?.entry.canReattempt
+        ? "Kerjakan ulang tugas"
+        : null;
 
   return (
     <>
       <Stack.Screen options={{ headerBackButtonDisplayMode: "minimal" }} />
       <StudyScreen
-        title={event?.title ?? "Event tugas"}
+        title={event?.title ?? "Latihan & tryout"}
         refreshing={query.isRefetching}
         onRefresh={() => void query.refetch()}
       >
@@ -105,7 +116,7 @@ export default function AssessmentEventScreen() {
           <>
             <StudyGlass>
               <Text className="text-xs font-black uppercase tracking-[1.5px] text-primary">
-                {event.type === "TRYOUT" ? "Tryout" : "Tugas cepat"} ·{" "}
+                {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
                 {event.cohort?.name ?? event.course.title}
               </Text>
               <Text className="text-2xl font-black leading-8 text-foreground">
@@ -123,6 +134,7 @@ export default function AssessmentEventScreen() {
                 {assessment?.passingScore != null
                   ? ` · lulus ${assessment.passingScore}%`
                   : ""}
+                {opensAt ? `\nDibuka ${dateLabel(opensAt)}` : ""}
                 {event.closesAt ? `\nDitutup ${dateLabel(event.closesAt)}` : ""}
                 {assessment?.maxAttempts != null
                   ? `\n${event.attemptCount} dari ${assessment.maxAttempts} percobaan terpakai`
@@ -168,7 +180,9 @@ export default function AssessmentEventScreen() {
                 <Text className="text-sm font-semibold text-muted-foreground">
                   {event.status === "CANCELLED"
                     ? "Event ini dibatalkan."
-                    : "Event ini belum dibuka untuk dikerjakan."}
+                    : opensAt
+                      ? `Dibuka ${dateLabel(opensAt)}. Kamu bisa mulai mengerjakan saat itu.`
+                      : "Event ini belum dibuka untuk dikerjakan."}
                 </Text>
               ) : null}
 

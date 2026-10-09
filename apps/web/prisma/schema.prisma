@@ -518,22 +518,20 @@ enum AssessmentEventType {
   TRYOUT
 }
 
-enum AssessmentEventScope {
-  COHORT
-  COURSE
-}
-
 enum AssessmentEventStatus {
   DRAFT
+  SCHEDULED
   OPEN
   CLOSED
   CANCELLED
 }
 
 enum AssessmentEventAuditAction {
+  SCHEDULED
   OPENED
   CLOSED
   CANCELLED
+  COHORTS_ADDED
   ATTEMPT_INVALIDATED
   RESULT_ADJUSTED
 }
@@ -746,7 +744,8 @@ model Cohort {
   payments           Payment[]
   meetings           CohortMeeting[]
   assessmentAttempts AssessmentAttempt[]
-  assessmentEvents   AssessmentEvent[]
+  assessmentEvents   AssessmentEventCohort[]
+  eventParticipants  AssessmentEventParticipant[]
 
   @@unique([id, courseId])
   @@unique([id, organizationId])
@@ -1197,51 +1196,75 @@ model AssessmentEvent {
   id                    String                       @id @default(cuid())
   organizationId        String
   courseId              String
-  cohortId              String?
   courseItemId          String
   createdByMembershipId String
   type                  AssessmentEventType
-  scope                 AssessmentEventScope
   title                 String
   durationMinutes       Int
   status                AssessmentEventStatus        @default(DRAFT)
+  /// Targets every class of the course; the classes active at opening are stored as targets.
+  allCohorts            Boolean                      @default(false)
   shuffleQuestions      Boolean                      @default(true)
+  /// Planned opening of a SCHEDULED event (the lifecycle cron opens it).
+  opensAt               DateTime?
+  /// Push learners when a SCHEDULED event opens.
+  notifyOnOpen          Boolean                      @default(true)
   openedAt              DateTime?
   closesAt              DateTime?
   closedAt              DateTime?
   cancelledAt           DateTime?
+  /// Set once every attempt left in progress at closing has been graded.
+  attemptsFinalizedAt   DateTime?
   /// Set once the "closing soon" push went out (notifications cron).
   closingReminderSentAt DateTime?
   createdAt             DateTime                     @default(now())
   updatedAt             DateTime                     @updatedAt
   organization          Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   course                Course                       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  cohort                Cohort?                      @relation(fields: [cohortId], references: [id], onDelete: Restrict)
   courseItem            CourseItem                   @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
   createdBy             OrganizationMember           @relation("AssessmentEventCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  cohorts               AssessmentEventCohort[]
   participants          AssessmentEventParticipant[]
   attempts              AssessmentAttempt[]
   audits                AssessmentEventAudit[]
 
   @@unique([id, organizationId])
-  @@index([courseId, cohortId, createdAt])
-  @@index([cohortId, status, createdAt])
+  @@index([courseId, createdAt])
+  @@index([status, opensAt])
+  @@index([status, closesAt])
+  @@index([status, attemptsFinalizedAt])
   @@index([courseItemId])
   @@index([createdByMembershipId])
+}
+
+/// A class (cohort) an assessment event is for. Every event targets at least one class of its course.
+model AssessmentEventCohort {
+  eventId   String
+  cohortId  String
+  createdAt DateTime        @default(now())
+  event     AssessmentEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  cohort    Cohort          @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+
+  @@id([eventId, cohortId])
+  @@index([cohortId, eventId])
 }
 
 model AssessmentEventParticipant {
   eventId                   String
   userId                    String
+  /// The targeted class the learner takes part through.
+  cohortId                  String?
   invalidatedAt             DateTime?
   invalidationReason        String?
   invalidatedByMembershipId String?
   createdAt                 DateTime            @default(now())
   event                     AssessmentEvent     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user                      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cohort                    Cohort?             @relation(fields: [cohortId], references: [id], onDelete: SetNull)
   invalidatedBy             OrganizationMember? @relation("AssessmentEventParticipantInvalidator", fields: [invalidatedByMembershipId], references: [id], onDelete: Restrict)
 
   @@id([eventId, userId])
+  @@index([eventId, cohortId])
   @@index([userId, createdAt])
   @@index([invalidatedByMembershipId])
 }

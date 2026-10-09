@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, LoaderCircleIcon } from "lucide-react";
@@ -17,7 +18,7 @@ function formatDuration(milliseconds: number) {
   return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
 }
 
-/** An assessment event (tryout or on-demand tugas): details, start / retake, and the leaderboard. */
+/** An assessment event (tryout or latihan): details, start / retake, and the leaderboard. */
 export function AssessmentEvent({
   event,
 }: {
@@ -32,6 +33,16 @@ export function AssessmentEvent({
   const assessment = event.courseItem.assessment;
   const attemptHref = (attemptId: string) =>
     `/learn/${event.course.id}/items/${event.courseItem.id}/attempts/${attemptId}`;
+  const opensAt = event.status === "SCHEDULED" ? event.opensAt : null;
+
+  // A scheduled event becomes startable at its opening time.
+  useEffect(() => {
+    if (!opensAt) return;
+    const wait = opensAt.getTime() - Date.now();
+    if (wait <= 0 || wait > 24 * 60 * 60_000) return;
+    const timer = window.setTimeout(() => router.refresh(), wait + 1000);
+    return () => window.clearTimeout(timer);
+  }, [opensAt, router]);
 
   async function begin() {
     if (invalidated) return;
@@ -64,7 +75,7 @@ export function AssessmentEvent({
 
       <StudyCard>
         <p className="text-primary text-xs font-black tracking-[1.5px] uppercase">
-          {event.type === "TRYOUT" ? "Tryout" : "Tugas cepat"} ·{" "}
+          {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
           {event.cohort?.name ?? event.course.title}
         </p>
         <h1 className="text-2xl leading-8 font-black">
@@ -82,6 +93,12 @@ export function AssessmentEvent({
           {assessment?.passingScore != null
             ? ` · lulus ${assessment.passingScore}%`
             : ""}
+          {opensAt ? (
+            <>
+              <br />
+              Dibuka {dateLabel(opensAt)}
+            </>
+          ) : null}
           {event.closesAt ? (
             <>
               <br />
@@ -139,7 +156,9 @@ export function AssessmentEvent({
               ? "Event ini dibatalkan."
               : event.status === "CLOSED"
                 ? "Event telah ditutup. Tidak ada attempt yang tercatat."
-                : "Event ini belum dibuka untuk dikerjakan."}
+                : opensAt
+                  ? `Dibuka ${dateLabel(opensAt)}. Kamu bisa mulai mengerjakan saat itu.`
+                  : "Event ini belum dibuka untuk dikerjakan."}
           </p>
         ) : null}
       </StudyCard>

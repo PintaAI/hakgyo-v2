@@ -26,6 +26,7 @@ import { isGameKey, type GameKey } from "../games/catalog";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { GlassBox } from "./GlassBox";
+import { dateLabel } from "../lib/study";
 import { closesLabel } from "./learn/cohort-card";
 import { LearningItemRow } from "./learn/learning-item-row";
 import { Action, Empty, Eyebrow, QueryState } from "./learning-ui";
@@ -384,7 +385,13 @@ function AssessmentQueue({ events, now }: { events: Event[]; now: number }) {
               </Text>
               <Text className="text-xs text-muted-foreground" numberOfLines={1}>
                 {event.course.title}
-                {event.closesAt ? ` · ${closesLabel(event.closesAt, now)}` : ""}
+                {event.status === "SCHEDULED" &&
+                event.opensAt &&
+                event.opensAt.getTime() > now
+                  ? ` · dibuka ${dateLabel(event.opensAt)}`
+                  : event.closesAt
+                    ? ` · ${closesLabel(event.closesAt, now)}`
+                    : ""}
               </Text>
             </View>
             <Text className="text-lg text-muted-foreground">›</Text>

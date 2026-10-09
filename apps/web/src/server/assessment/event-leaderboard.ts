@@ -110,17 +110,31 @@ export async function getAssessmentEventLeaderboard(
   });
 }
 
-/** Status of each participant's latest attempt, keyed by status. */
+/**
+ * Status of each participant's latest attempt, keyed by status; optionally only for the
+ * participants of the given classes.
+ */
 export async function countLatestAssessmentEventAttemptStatuses(
   db: Db,
   eventId: string,
+  cohortIds?: string[] | null,
 ) {
+  const cohortFilter = cohortIds
+    ? Prisma.sql`
+        AND EXISTS (
+          SELECT 1 FROM "AssessmentEventParticipant" AS participant
+          WHERE participant."eventId" = attempt."assessmentEventId"
+            AND participant."userId" = attempt."userId"
+            AND participant."cohortId" IN (${cohortIds.length ? Prisma.join(cohortIds) : Prisma.sql`NULL`})
+        )`
+    : Prisma.empty;
   const rows = await db.$queryRaw<Array<{ status: string; count: number }>>`
     SELECT latest."status"::text AS "status", COUNT(*)::int AS "count"
     FROM (
       SELECT DISTINCT ON (attempt."userId") attempt."status"
       FROM "AssessmentAttempt" AS attempt
       WHERE attempt."assessmentEventId" = ${eventId}
+        ${cohortFilter}
       ORDER BY attempt."userId", attempt."attemptNumber" DESC
     ) AS latest
     GROUP BY latest."status"

@@ -137,7 +137,7 @@ const views = [
   { value: "payments", label: "Pembayaran", icon: WalletIcon },
   { value: "staff", label: "Staf", icon: UserRoundCogIcon },
   { value: "meetings", label: "Jadwal kelas", icon: VideoIcon },
-  { value: "assessments", label: "Event tugas", icon: ClipboardListIcon },
+  { value: "assessments", label: "Latihan & tryout", icon: ClipboardListIcon },
   { value: "reviews", label: "Hasil & review tugas", icon: ClipboardCheckIcon },
   { value: "settings", label: "Pengaturan", icon: Settings2Icon },
 ] satisfies Array<{ value: CohortView; label: string; icon: LucideIcon }>;
@@ -288,7 +288,7 @@ export function CohortWorkspace({
     { initialData: initialCohort },
   );
   const cohort = cohortQuery.data;
-  // Free Group belajar have nothing to pay, so the payments tab stays hidden.
+  // Free classes have nothing to pay, so the payments tab stays hidden.
   const showPayments =
     cohort.access.managePayments && (cohort.price ?? cohort.course.price) > 0;
   const availableViews = views.filter(({ value }) => {
@@ -372,11 +372,11 @@ export function CohortWorkspace({
       </Link>
 
       <PageHeader
-        eyebrow={`${cohort.course.title} · Group belajar · ${statusLabels[cohort.status]}`}
+        eyebrow={`${cohort.course.title} · Kelas · ${statusLabels[cohort.status]}`}
         title={cohort.name}
         description={
           cohort.description ??
-          "Kelola siswa, pengajar, dan jadwal Group belajar dari workspace ini."
+          "Kelola siswa, pengajar, dan jadwal kelas dari workspace ini."
         }
         media={
           <CourseCover
@@ -400,7 +400,7 @@ export function CohortWorkspace({
         <TabRail activeKey={view}>
           <TabsList
             variant="line"
-            aria-label="Pengelolaan Group belajar"
+            aria-label="Pengelolaan kelas"
             className="h-11 min-w-max justify-start rounded-none p-0"
           >
             {availableViews.map(({ value, label, icon: Icon }) => (
@@ -555,7 +555,7 @@ function Overview({
   return (
     <div className="space-y-4">
       <StatStrip
-        label="Ringkasan Group belajar"
+        label="Ringkasan kelas"
         items={[
           { label: "Siswa aktif", value: learnersPending ? "–" : active },
           { label: "Kapasitas", value: cohort.capacity ?? "∞" },
@@ -569,11 +569,9 @@ function Overview({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
         <Card className="gap-0 py-0">
           <CardHeader className="border-b py-4">
-            <CardTitle className="font-heading text-lg">
-              Detail Group belajar
-            </CardTitle>
+            <CardTitle className="font-heading text-lg">Detail kelas</CardTitle>
             <CardDescription>
-              Periode dan aturan Group belajar saat ini.
+              Periode dan aturan kelas saat ini.
             </CardDescription>
           </CardHeader>
           <dl className="divide-border divide-y">
@@ -633,7 +631,7 @@ function Overview({
           <CardHeader className="border-b py-4">
             <CardTitle className="font-heading text-lg">Operasi</CardTitle>
             <CardDescription>
-              Kelola bagian Group belajar tanpa berpindah halaman.
+              Kelola bagian kelas tanpa berpindah halaman.
             </CardDescription>
           </CardHeader>
           <div className="divide-border divide-y">
@@ -683,7 +681,7 @@ function Overview({
         <CardHeader className="border-b py-4">
           <CardTitle className="font-heading text-lg">Aksi cepat</CardTitle>
           <CardDescription>
-            Akses tindakan yang paling sering digunakan untuk Group belajar ini.
+            Akses tindakan yang paling sering digunakan untuk kelas ini.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2 p-4">
@@ -784,9 +782,7 @@ function Learners({
         utils.cohort.get.invalidate({ cohortId }),
       ]);
       setRemoving(null);
-      toast.success(
-        `Siswa ${enrollment.user.name} dihapus dari Group belajar.`,
-      );
+      toast.success(`Siswa ${enrollment.user.name} dihapus dari kelas.`);
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -796,7 +792,7 @@ function Learners({
     <section className="space-y-5">
       <SectionHeading
         title="Siswa"
-        description="Kelola siswa yang tergabung langsung dalam Group belajar."
+        description="Kelola siswa yang tergabung langsung dalam kelas."
         action={
           <Button onClick={() => setOpen(true)}>
             <UserPlusIcon data-icon="inline-start" /> Tambah siswa
@@ -829,7 +825,7 @@ function Learners({
         <Card className="gap-0 py-0">
           <CardHeader className="border-b py-4 sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
-              <CardTitle>Peserta Group belajar</CardTitle>
+              <CardTitle>Peserta kelas</CardTitle>
               <CardDescription>{data.length} siswa terdaftar</CardDescription>
             </div>
             <div className="relative w-full sm:w-64">
@@ -925,7 +921,7 @@ function Learners({
                     </TableCell>
                     <TableCell className="pr-4 text-right">
                       <Button
-                        aria-label={`Hapus ${enrollment.user.name} dari Group belajar`}
+                        aria-label={`Hapus ${enrollment.user.name} dari kelas`}
                         size="icon-sm"
                         variant="ghost"
                         className="text-muted-foreground hover:text-destructive"
@@ -1047,12 +1043,12 @@ function Learners({
               <Trash2Icon />
             </AlertDialogMedia>
             <AlertDialogTitle>
-              Hapus {removing?.user.name} dari Group belajar?
+              Hapus {removing?.user.name} dari kelas?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Siswa akan dikeluarkan dari Group belajar ini dan kehilangan akses
-              kurikulum yang berasal dari group ini. Akses lewat Group belajar
-              lain atau belajar mandiri pada kurikulum yang sama tetap berlaku.
+              Siswa akan dikeluarkan dari kelas ini dan kehilangan akses
+              kurikulum yang berasal dari kelas ini. Akses lewat kelas lain atau
+              belajar mandiri pada kurikulum yang sama tetap berlaku.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1117,7 +1113,7 @@ function Staff({ canManage, cohort }: { canManage: boolean; cohort: Cohort }) {
     try {
       await remove.mutateAsync({ cohortId: cohort.id, staffId });
       await refresh();
-      toast.success("Staff dihapus dari Group belajar.");
+      toast.success("Staff dihapus dari kelas.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -1417,9 +1413,9 @@ function Meetings({
               title="Belum ada meeting"
               description={
                 !canManage
-                  ? "Belum ada live session yang dijadwalkan untuk Group belajar ini."
+                  ? "Belum ada live session yang dijadwalkan untuk kelas ini."
                   : integration.data?.isConnected
-                    ? "Jadwalkan live session pertama untuk Group belajar ini."
+                    ? "Jadwalkan live session pertama untuk kelas ini."
                     : integration.data?.canConfigure
                       ? `Hubungkan ${integration.data?.provider === "GOOGLE_MEET" ? "Google Meet" : "Zoom"} di pengaturan integrasi sebelum menjadwalkan live session.`
                       : "Layanan meeting pilihan organisasi belum terhubung. Hubungi owner atau admin organisasi."
@@ -1824,7 +1820,7 @@ function Settings({
     try {
       await update.mutateAsync({ cohortId: cohort.id, ...changes });
       await utils.cohort.get.invalidate({ cohortId: cohort.id });
-      toast.success("Group belajar diperbarui.");
+      toast.success("Kelas diperbarui.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -1833,7 +1829,7 @@ function Settings({
     try {
       await remove.mutateAsync({ cohortId: cohort.id });
       await utils.cohort.list.invalidate({ courseId: cohort.courseId });
-      toast.success("Group belajar dihapus.");
+      toast.success("Kelas dihapus.");
       router.replace(`${courseRoot}?view=cohorts`);
       router.refresh();
     } catch (cause) {
@@ -1844,7 +1840,7 @@ function Settings({
     <section className="space-y-5">
       <SectionHeading
         title="Pengaturan"
-        description="Perbarui informasi, periode, dan aturan Group belajar."
+        description="Perbarui informasi, periode, dan aturan kelas."
       />
       <form onSubmit={submit} className="space-y-4">
         <Card className="gap-0 py-0">
@@ -1858,7 +1854,7 @@ function Settings({
           </CardHeader>
           <CardContent className="space-y-4 py-5">
             <div className="space-y-2">
-              <Label htmlFor="settings-cohort-name">Nama Group belajar</Label>
+              <Label htmlFor="settings-cohort-name">Nama kelas</Label>
               <Input
                 id="settings-cohort-name"
                 required
@@ -1870,7 +1866,7 @@ function Settings({
               <Label htmlFor="settings-cohort-description">Deskripsi</Label>
               <Textarea
                 id="settings-cohort-description"
-                placeholder="Jelaskan tujuan dan aktivitas Group belajar ini."
+                placeholder="Jelaskan tujuan dan aktivitas kelas ini."
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
               />
@@ -1886,7 +1882,7 @@ function Settings({
             <CardHeader className="border-b py-4">
               <CardTitle className="font-heading text-lg">Akses</CardTitle>
               <CardDescription>
-                Atur enrollment, kapasitas, dan harga Group belajar.
+                Atur enrollment, kapasitas, dan harga kelas.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 py-5">
@@ -1929,7 +1925,7 @@ function Settings({
                         <InfoIcon className="size-3.5" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        Isi 0 untuk gratis. Group belajar berbayar diikuti lewat
+                        Isi 0 untuk gratis. Kelas berbayar diikuti lewat
                         checkout QRIS atau transfer bank, lalu diverifikasi di
                         tab Pembayaran.
                       </TooltipContent>
@@ -1958,7 +1954,7 @@ function Settings({
                 Jadwal & tautan
               </CardTitle>
               <CardDescription>
-                Periode Group belajar dan tautan komunitas.
+                Periode kelas dan tautan komunitas.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 py-5">
@@ -2014,8 +2010,8 @@ function Settings({
               Zona berbahaya
             </CardTitle>
             <CardDescription>
-              Hapus Group belajar beserta siswa, staff, invite, dan meeting
-              terkait. Tindakan ini permanen.
+              Hapus kelas beserta siswa, staff, invite, dan meeting terkait.
+              Tindakan ini permanen.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -2026,7 +2022,7 @@ function Settings({
               onClick={() => setDeleteOpen(true)}
             >
               <Trash2Icon />
-              Hapus Group belajar
+              Hapus kelas
             </Button>
           </CardContent>
         </Card>

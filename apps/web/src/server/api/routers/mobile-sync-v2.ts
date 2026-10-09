@@ -110,6 +110,8 @@ export const mobileSyncV2Router = createTRPCRouter({
         protocol,
         organizationId,
         knownIndexToken: z.string().min(1).optional(),
+        /** Set by app versions that can show scheduled (upcoming) assessment events. */
+        includeScheduledEvents: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }): Promise<SyncIndexResult<LearnerIndex>> => {

@@ -1,8 +1,8 @@
 # Panduan Role dan Akses di Hakgyo
 
-Role menentukan apa yang dapat dilihat dan dikerjakan seseorang di Hakgyo. Supaya mudah dipahami, akses dibagi menjadi tiga tingkat: **organisasi**, **kurikulum**, dan **Group belajar**.
+Role menentukan apa yang dapat dilihat dan dikerjakan seseorang di Hakgyo. Supaya mudah dipahami, akses dibagi menjadi tiga tingkat: **organisasi**, **kurikulum**, dan **Kelas**.
 
-Satu orang dapat memiliki beberapa role sekaligus. Sebagai contoh, Siti dapat menjadi **Teacher** di organisasi, **Curriculum Editor** pada Kurikulum Bahasa Korea, dan **Instructor** pada Group belajar September.
+Satu orang dapat memiliki beberapa role sekaligus. Sebagai contoh, Siti dapat menjadi **Teacher** di organisasi, **Curriculum Editor** pada Kurikulum Bahasa Korea, dan **Instructor** pada kelas September.
 
 ## Cara Mudah Memahami Akses
 
@@ -10,7 +10,7 @@ Gunakan tiga pertanyaan berikut:
 
 1. Apa role orang tersebut di organisasi?
 2. Kurikulum apa yang dia kelola atau edit?
-3. Group belajar apa yang dia ajar atau bantu?
+3. Kelas apa yang dia ajar atau bantu?
 
 <div class="my-6 grid max-w-2xl gap-3 rounded-xl border p-4 sm:grid-cols-3">
   <div class="rounded-lg bg-muted p-3">
@@ -22,25 +22,25 @@ Gunakan tiga pertanyaan berikut:
     <div class="mt-1 text-xs text-muted-foreground">Mengatur materi kurikulum dan settings kurikulum</div>
   </div>
   <div class="rounded-lg bg-muted p-3">
-    <div class="text-sm font-semibold">Group belajar</div>
+    <div class="text-sm font-semibold">Kelas</div>
     <div class="mt-1 text-xs text-muted-foreground">Mengatur pelaksanaan kelas</div>
   </div>
 </div>
 
-Role organisasi tidak perlu dipakai untuk mengatur setiap kurikulum. Role kurikulum dan Group belajar diberikan hanya pada tempat yang memang menjadi tanggung jawab orang tersebut.
+Role organisasi tidak perlu dipakai untuk mengatur setiap kurikulum. Role kurikulum dan kelas diberikan hanya pada tempat yang memang menjadi tanggung jawab orang tersebut.
 
 ## Ringkasan Semua Role
 
-| Tingkat       | Role              | Penjelasan singkat                                          |
-| ------------- | ----------------- | ----------------------------------------------------------- |
-| Organisasi    | Owner             | Pemilik workspace dengan kontrol tertinggi                  |
-| Organisasi    | Admin             | Mengelola seluruh operasional organisasi                    |
-| Organisasi    | Teacher           | Member pengajar yang mendapat akses melalui assignment      |
-| Kurikulum     | Course Manager    | Mengelola seluruh bagian sebuah kurikulum                   |
-| Kurikulum     | Curriculum Editor | Mengubah materi kurikulum tanpa mengatur settings kurikulum |
-| Group belajar | Instructor        | Menjalankan kegiatan belajar pada satu Group belajar        |
-| Group belajar | Assistant         | Membantu pengelolaan peserta dan melihat jadwal             |
-| Pembelajaran  | Peserta didik     | Mengikuti konten yang sudah diterbitkan melalui enrollment  |
+| Tingkat      | Role              | Penjelasan singkat                                          |
+| ------------ | ----------------- | ----------------------------------------------------------- |
+| Organisasi   | Owner             | Pemilik workspace dengan kontrol tertinggi                  |
+| Organisasi   | Admin             | Mengelola seluruh operasional organisasi                    |
+| Organisasi   | Teacher           | Member pengajar yang mendapat akses melalui assignment      |
+| Kurikulum    | Course Manager    | Mengelola seluruh bagian sebuah kurikulum                   |
+| Kurikulum    | Curriculum Editor | Mengubah materi kurikulum tanpa mengatur settings kurikulum |
+| Kelas        | Instructor        | Menjalankan kegiatan belajar pada satu kelas                |
+| Kelas        | Assistant         | Membantu pengelolaan peserta dan melihat jadwal             |
+| Pembelajaran | Peserta didik     | Mengikuti konten yang sudah diterbitkan melalui enrollment  |
 
 ## Role Tingkat Organisasi
 
@@ -57,9 +57,9 @@ Owner dapat:
 - Menambahkan atau menghapus Admin dan Teacher.
 - Menambahkan Owner lain atau mengubah role Owner.
 - Menghubungkan integration organisasi seperti Zoom.
-- Melihat dan mengelola seluruh kurikulum, materi kurikulum, dan Group belajar.
+- Melihat dan mengelola seluruh kurikulum, materi kurikulum, dan kelas.
 - Mengatur Course Manager dan Curriculum Editor.
-- Menghapus kurikulum atau Group belajar.
+- Menghapus kurikulum atau kelas.
 
 Owner tidak boleh dihapus langsung selama masih memegang role Owner. Ubah atau pindahkan ownership terlebih dahulu agar organisasi selalu mempunyai setidaknya satu Owner.
 
@@ -74,7 +74,7 @@ Admin dapat:
 - Mengubah pengaturan organisasi.
 - Mengelola Admin dan Teacher.
 - Menghubungkan integration organisasi seperti Zoom.
-- Melihat dan mengelola seluruh kurikulum dan Group belajar.
+- Melihat dan mengelola seluruh kurikulum dan kelas.
 - Mengatur Course Manager, Curriculum Editor, dan staff cohort.
 - Mengelola peserta, undangan, meeting, dan review tugas.
 - Membuat, menerbitkan, mengarsipkan, atau menghapus kurikulum.
@@ -95,7 +95,7 @@ Teacher dapat:
 
 - Membuat dan mengelola konten miliknya sendiri di Pustaka Konten.
 - Membuka kurikulum yang dia miliki atau yang ditugaskan kepadanya.
-- Membuka Group belajar tempat dia menjadi Instructor atau Assistant.
+- Membuka kelas tempat dia menjadi Instructor atau Assistant.
 - Membaca seluruh materi kurikulum, termasuk bahan yang masih disiapkan, pada kurikulum yang dia ajar.
 - Membuat kurikulum baru jika kebijakan organisasi mengizinkannya.
 
@@ -104,7 +104,7 @@ Teacher tidak otomatis dapat:
 - Melihat semua kurikulum organisasi.
 - Mengubah materi kurikulum semua kurikulum.
 - Mengelola member atau settings organisasi.
-- Mengatur staff atau menghapus Group belajar.
+- Mengatur staff atau menghapus kelas.
 
 Ketika Teacher membuat kurikulum baru, dia otomatis menjadi **Course Manager** untuk kurikulum tersebut. Untuk kurikulum milik orang lain, berikan assignment yang sesuai.
 
@@ -123,7 +123,7 @@ Course Manager dapat:
 - Mengubah nama, deskripsi, harga, enrollment, dan progression kurikulum.
 - Membuat dan mengubah materi kurikulum.
 - Membuat, menerbitkan, mengarsipkan, atau menghapus kurikulum.
-- Membuat dan mengelola seluruh Group belajar di dalam kurikulum.
+- Membuat dan mengelola seluruh kelas di dalam kurikulum.
 - Mengelola peserta dan undangan tingkat kurikulum.
 - Menambahkan atau menghapus Curriculum Editor.
 - Memindahkan tanggung jawab Course Manager kepada member lain.
@@ -148,38 +148,38 @@ Curriculum Editor tidak dapat:
 
 - Mengubah settings, harga, status, atau manager kurikulum.
 - Menghapus atau mengarsipkan kurikulum.
-- Membuat atau menghapus Group belajar.
+- Membuat atau menghapus kelas.
 - Mengelola peserta, undangan, staff, atau meeting hanya karena menjadi editor.
 
-Jika Curriculum Editor juga perlu mengajar kelas, tambahkan dia sebagai **Instructor** pada Group belajar yang sesuai.
+Jika Curriculum Editor juga perlu mengajar kelas, tambahkan dia sebagai **Instructor** pada kelas yang sesuai.
 
 **Cocok untuk:** penyusun silabus, instructional designer, atau pengajar yang membantu menyiapkan materi kurikulum.
 
-## Role Tingkat Group belajar
+## Role Tingkat Kelas
 
-Role Group belajar hanya berlaku pada satu pelaksanaan kelas. Role ini dikelola dari tab **Group belajar > Staff**.
+Role kelas hanya berlaku pada satu pelaksanaan kelas. Role ini dikelola dari tab **Kelas > Staff**.
 
-Menjadi staff Group belajar otomatis memberi akses untuk membuka kurikulum induk dan membaca seluruh materi kurikulum sebagai referensi mengajar. Assignment ini tidak otomatis memberi izin mengubah materi kurikulum.
+Menjadi staff kelas otomatis memberi akses untuk membuka kurikulum induk dan membaca seluruh materi kurikulum sebagai referensi mengajar. Assignment ini tidak otomatis memberi izin mengubah materi kurikulum.
 
 ### Instructor
 
-Instructor adalah pengajar utama pada satu Group belajar.
+Instructor adalah pengajar utama pada satu kelas.
 
 Instructor dapat:
 
 - Membuka kurikulum dan membaca seluruh materi kurikulum.
-- Mengubah informasi operasional Group belajar.
+- Mengubah informasi operasional kelas.
 - Menambahkan dan memperbarui status peserta.
-- Membuat dan mencabut undangan Group belajar.
+- Membuat dan mencabut undangan kelas.
 - Membuat, mengubah, dan menghapus meeting Zoom.
-- Melihat dan memeriksa tugas peserta Group belajar.
+- Melihat dan memeriksa tugas peserta kelas.
 - Melihat daftar staff yang bertugas.
 
 Instructor tidak dapat:
 
 - Mengubah materi kurikulum kecuali juga menjadi Curriculum Editor.
-- Menambahkan, mengubah, atau menghapus staff Group belajar.
-- Menghapus Group belajar.
+- Menambahkan, mengubah, atau menghapus staff kelas.
+- Menghapus kelas.
 - Mengubah settings atau status kurikulum induk.
 
 **Cocok untuk:** pengajar utama atau mentor yang menjalankan kelas.
@@ -191,24 +191,24 @@ Assistant membantu pekerjaan peserta tanpa memegang kontrol penuh terhadap pelak
 Assistant dapat:
 
 - Membuka kurikulum dan membaca seluruh materi kurikulum.
-- Melihat informasi dan jadwal Group belajar.
+- Melihat informasi dan jadwal kelas.
 - Melihat daftar staff.
 - Menambahkan peserta dan memperbarui status peserta.
 
 Assistant tidak dapat:
 
-- Mengubah informasi Group belajar.
+- Mengubah informasi kelas.
 - Membuat atau mencabut undangan.
 - Membuat, mengubah, atau menghapus meeting.
 - Memeriksa tugas tertulis.
-- Mengatur staff atau menghapus Group belajar.
+- Mengatur staff atau menghapus kelas.
 - Mengubah materi kurikulum atau settings kurikulum.
 
 **Cocok untuk:** asisten pengajar, customer support kelas, atau staf administrasi peserta.
 
 ## Peserta Didik
 
-Peserta didik bukan role pengelola organisasi. Akses belajar diperoleh melalui enrollment langsung ke kurikulum atau melalui Group belajar.
+Peserta didik bukan role pengelola organisasi. Akses belajar diperoleh melalui enrollment langsung ke kurikulum atau melalui kelas.
 
 Peserta didik dapat:
 
@@ -246,7 +246,7 @@ Assignment selalu dibatasi oleh organisasi. Role pada satu organisasi tidak memb
 4. Pilih role `Admin` atau `Teacher`.
 5. Simpan.
 
-Menambahkan seseorang sebagai Teacher belum otomatis memasukkannya ke kurikulum atau Group belajar.
+Menambahkan seseorang sebagai Teacher belum otomatis memasukkannya ke kurikulum atau kelas.
 
 ### Memberikan Akses Edit Materi Kurikulum
 
@@ -264,16 +264,16 @@ Hapus editor dari halaman yang sama ketika akses tersebut tidak lagi dibutuhkan.
 3. Pilih **Transfer**.
 4. Pastikan manager lama masih mempunyai assignment lain bila masih perlu terlibat.
 
-### Menambahkan Staff Group belajar
+### Menambahkan Staff Kelas
 
-1. Buka course dan pilih Group belajar.
+1. Buka course dan pilih kelas.
 2. Buka tab **Staff**.
 3. Pilih **Tambah staff**.
 4. Masukkan email organization member.
 5. Pilih `Instructor` atau `Assistant`.
 6. Simpan.
 
-Hanya Course Manager, Owner, atau Admin yang dapat mengatur staff Group belajar.
+Hanya Course Manager, Owner, atau Admin yang dapat mengatur staff kelas.
 
 ## Panduan Memilih Role
 
@@ -284,7 +284,7 @@ Gunakan pertanyaan berikut sebelum memberikan akses:
 | Mengelola seluruh organisasi                        | Owner atau Admin     |
 | Bertanggung jawab penuh terhadap satu kurikulum     | Course Manager       |
 | Hanya membantu menyusun materi kurikulum            | Curriculum Editor    |
-| Mengajar dan menjalankan satu Group belajar         | Instructor           |
+| Mengajar dan menjalankan satu kelas                 | Instructor           |
 | Membantu peserta tanpa mengelola meeting atau tugas | Assistant            |
 | Hanya mengikuti pembelajaran                        | Peserta didik        |
 
@@ -292,13 +292,13 @@ Jangan memberikan Admin hanya agar seseorang dapat mengedit satu materi kurikulu
 
 ## Contoh Pengaturan Tim
 
-Sebuah organisasi memiliki Kurikulum Bahasa Korea Pemula dan Group belajar September.
+Sebuah organisasi memiliki Kurikulum Bahasa Korea Pemula dan kelas September.
 
 1. Rina adalah pemilik lembaga, sehingga mendapat role **Owner**.
 2. Budi mengelola operasional semua program, sehingga mendapat role **Admin**.
 3. Siti menyusun dan mengajar kurikulum. Dia menjadi **Teacher**, **Curriculum Editor**, dan **Instructor**.
-4. Andi hanya membantu peserta Group belajar September. Dia menjadi **Teacher** dan **Assistant**.
-5. Peserta kelas memperoleh akses melalui enrollment Group belajar, tanpa menjadi member organisasi.
+4. Andi hanya membantu peserta kelas September. Dia menjadi **Teacher** dan **Assistant**.
+5. Peserta kelas memperoleh akses melalui enrollment kelas, tanpa menjadi member organisasi.
 
 Dengan susunan ini, setiap orang mendapat akses sesuai pekerjaannya tanpa memperoleh kontrol yang tidak diperlukan.
 
@@ -308,7 +308,7 @@ Owner atau Admin sebaiknya melakukan pemeriksaan rutin:
 
 - Buka **Anggota** untuk melihat role organisasi dan jumlah assignment setiap member.
 - Buka **Course > Access** untuk memeriksa manager dan editor.
-- Buka **Group belajar > Staff** untuk memeriksa Instructor dan Assistant.
+- Buka **Kelas > Staff** untuk memeriksa Instructor dan Assistant.
 - Cabut assignment ketika seseorang tidak lagi bertanggung jawab.
 - Hindari menggunakan satu akun bersama untuk beberapa orang.
 

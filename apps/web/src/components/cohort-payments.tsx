@@ -151,7 +151,7 @@ export function CohortPayments({
         </div>
         {firstPage ? (
           <div className="text-right text-sm">
-            <p className="text-muted-foreground text-xs">Harga Group belajar</p>
+            <p className="text-muted-foreground text-xs">Harga kelas</p>
             <p className="font-medium tabular-nums">
               {firstPage.price > 0 ? formatRupiah(firstPage.price) : "Gratis"}
             </p>
@@ -182,8 +182,8 @@ export function CohortPayments({
       ) : null}
       {firstPage?.price === 0 ? (
         <p className="text-muted-foreground bg-muted/40 rounded-lg p-4 text-sm">
-          Group belajar ini gratis. Atur harga di tab Pengaturan agar siswa
-          membayar sebelum bergabung.
+          Kelas ini gratis. Atur harga di tab Pengaturan agar siswa membayar
+          sebelum bergabung.
         </p>
       ) : null}
 
@@ -248,7 +248,7 @@ export function CohortPayments({
               ? "Tidak ada pembayaran yang perlu diverifikasi"
               : "Belum ada pembayaran"
           }
-          description="Pembayaran muncul di sini setelah siswa checkout Group belajar ini."
+          description="Pembayaran muncul di sini setelah siswa checkout kelas ini."
         />
       ) : (
         <div className="overflow-hidden rounded-lg border">
@@ -393,14 +393,14 @@ function PaymentReviewDialog({
   async function approvePayment() {
     const confirmed = await confirm({
       title: `Setujui pembayaran ${payment.reference}?`,
-      description: `Pastikan ${formatRupiah(payment.amount)} sudah masuk. ${payment.user.name} akan langsung terdaftar di Group belajar ini.`,
+      description: `Pastikan ${formatRupiah(payment.amount)} sudah masuk. ${payment.user.name} akan langsung terdaftar di kelas ini.`,
       confirmLabel: "Setujui pembayaran",
     });
     if (!confirmed) return;
     try {
       await approve.mutateAsync({ paymentId: payment.id });
       await refresh();
-      toast.success(`${payment.user.name} terdaftar di Group belajar.`);
+      toast.success(`${payment.user.name} terdaftar di kelas.`);
       onClose();
     } catch (error) {
       toast.error(errorMessage(error));

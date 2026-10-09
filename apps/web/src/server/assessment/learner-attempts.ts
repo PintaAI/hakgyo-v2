@@ -178,13 +178,13 @@ export async function startAttempt(
         if (input.cohortId && cohortEnrollments.length === 0) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "Kamu tidak terdaftar aktif di Group belajar ini.",
+            message: "Kamu tidak terdaftar aktif di kelas ini.",
           });
         }
         if (!input.cohortId && cohortEnrollments.length > 1) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Pilih Group belajar sebelum memulai tugas ini.",
+            message: "Pilih kelas sebelum memulai tugas ini.",
           });
         }
         const cohortId =
@@ -202,7 +202,7 @@ export async function startAttempt(
           if (current.cohortId && cohortId && current.cohortId !== cohortId) {
             throw new TRPCError({
               code: "CONFLICT",
-              message: "Pengerjaan ini milik Group belajar lain.",
+              message: "Pengerjaan ini milik kelas lain.",
             });
           }
           if (!current.cohortId && cohortId) {
@@ -583,7 +583,6 @@ export async function getMyAttempt(
           id: true,
           title: true,
           type: true,
-          scope: true,
           status: true,
           participants: {
             where: { userId },

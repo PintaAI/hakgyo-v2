@@ -30,9 +30,14 @@ const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
   minute: "2-digit",
 });
 
+const typeLabel = { QUICK_ASSESSMENT: "Latihan", TRYOUT: "Tryout" } as const;
+
 function eventState(event: LearnerEvent) {
   const attempt = event.attempts[0];
   if (event.participants[0]?.invalidatedAt) return "Attempt invalid";
+  if (event.status === "SCHEDULED" && !event.entry.canStart) {
+    return "Belum dibuka";
+  }
   if (attempt?.status === "GRADED") return "Sudah dinilai";
   if (attempt?.status === "IN_REVIEW") return "Sedang direview";
   if (attempt?.status === "IN_PROGRESS")
@@ -51,16 +56,16 @@ export function LearnerAssessmentEvents({
       <div className="mx-auto w-full max-w-6xl space-y-8">
         <header>
           <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-            Event tugas
+            Asesmen kelas
           </p>
           <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
-            Tugas cepat & tryout
+            Latihan & tryout
           </h1>
         </header>
         <EmptyState
           icon={TrophyIcon}
-          title="Belum ada event untuk kamu"
-          description="Event akan tampil setelah pengajar membukanya untuk Group belajar atau kurikulum kamu."
+          title="Belum ada latihan atau tryout"
+          description="Latihan dan tryout tampil di sini setelah pengajar menjadwalkan atau membukanya untuk kelas kamu."
         />
       </div>
     );
@@ -70,13 +75,14 @@ export function LearnerAssessmentEvents({
     <div className="mx-auto w-full max-w-6xl space-y-8">
       <header>
         <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-          Event tugas
+          Asesmen kelas
         </p>
         <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
-          Tugas cepat & tryout
+          Latihan & tryout
         </h1>
         <p className="text-muted-foreground mt-3 max-w-2xl text-sm">
-          Kerjakan event aktif dan lihat leaderboard setelah event ditutup.
+          Kerjakan yang sedang dibuka, lihat jadwal berikutnya, dan cek
+          leaderboard setelah ditutup.
         </p>
       </header>
       <div className="grid gap-4 md:grid-cols-2">
@@ -101,11 +107,13 @@ export function LearnerAssessmentEvents({
                           event.status === "OPEN" ? "default" : "outline"
                         }
                       >
-                        {event.status === "OPEN" ? "Dibuka" : "Selesai"}
+                        {event.status === "OPEN"
+                          ? "Dibuka"
+                          : event.status === "SCHEDULED"
+                            ? "Terjadwal"
+                            : "Selesai"}
                       </Badge>
-                      <Badge variant="secondary">
-                        {event.type === "TRYOUT" ? "Tryout" : "Tugas cepat"}
-                      </Badge>
+                      <Badge variant="secondary">{typeLabel[event.type]}</Badge>
                     </div>
                     <CardTitle>{event.title}</CardTitle>
                     <CardDescription className="mt-1">
@@ -132,9 +140,11 @@ export function LearnerAssessmentEvents({
                     <p className="text-sm font-medium">{eventState(event)}</p>
                     <p className="text-muted-foreground text-xs">
                       {score ??
-                        (event.closesAt
-                          ? `Tutup ${dateTimeFormatter.format(event.closesAt)}`
-                          : "")}
+                        (event.status === "SCHEDULED" && event.opensAt
+                          ? `Dibuka ${dateTimeFormatter.format(event.opensAt)}`
+                          : event.closesAt
+                            ? `Tutup ${dateTimeFormatter.format(event.closesAt)}`
+                            : "")}
                     </p>
                   </div>
                   <Link href={href} className={buttonVariants({ size: "sm" })}>

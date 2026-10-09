@@ -14,10 +14,11 @@ export type AssessmentLiveStatus = {
     moduleId: string;
     moduleTitle: string;
   }>;
-  /** OPEN assessment events (tryouts/exams) running on the assessment. */
+  /** SCHEDULED or OPEN assessment events (tryouts/exams) on the assessment. */
   openEvents: Array<{
     eventId: string;
     title: string;
+    scheduled: boolean;
     courseId: string;
     courseTitle: string;
     courseItemId: string;
@@ -28,7 +29,7 @@ export type AssessmentLiveStatus = {
 
 /**
  * An assessment is live while learners can take it: a visible item of a published course places
- * it, an OPEN assessment event runs on it, or an open public quiz uses it. Live assessments cannot be edited; authors hide the
+ * it, a SCHEDULED or OPEN assessment event uses it, or an open public quiz uses it. Live assessments cannot be edited; authors hide the
  * item(s) or duplicate the assessment instead.
  */
 export async function getAssessmentLiveStatus(
@@ -56,11 +57,16 @@ export async function getAssessmentLiveStatus(
       },
     }),
     db.assessmentEvent.findMany({
-      where: { status: "OPEN", courseItem: { assessmentId } },
+      // Scheduled events open automatically, so they lock the assessment as well.
+      where: {
+        status: { in: ["SCHEDULED", "OPEN"] },
+        courseItem: { assessmentId },
+      },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
         title: true,
+        status: true,
         courseItemId: true,
         course: { select: { id: true, title: true } },
       },
@@ -84,6 +90,7 @@ export async function getAssessmentLiveStatus(
   const openEvents = events.map((event) => ({
     eventId: event.id,
     title: event.title,
+    scheduled: event.status === "SCHEDULED",
     courseId: event.course.id,
     courseTitle: event.course.title,
     courseItemId: event.courseItemId,
@@ -109,7 +116,8 @@ export function describeLiveLocations(status: AssessmentLiveStatus) {
       (placement) => `${placement.courseTitle} › ${placement.moduleTitle}`,
     ),
     ...status.openEvents.map(
-      (event) => `${event.courseTitle} › ${event.title} (sedang berlangsung)`,
+      (event) =>
+        `${event.courseTitle} › ${event.title} (${event.scheduled ? "terjadwal" : "sedang berlangsung"})`,
     ),
     ...status.openPublicQuizzes.map((quiz) => `quiz publik "${quiz.title}"`),
   ];

@@ -46,9 +46,9 @@ export function HeroSlide() {
           className="mt-5 flex flex-col justify-between gap-6 sm:mt-9 sm:gap-8 lg:flex-row lg:items-end"
         >
           <p className="text-muted-foreground max-w-xl text-[15px] leading-6 sm:text-lg sm:leading-8">
-            Kurikulum, group belajar, aplikasi untuk murid, halaman promosi,
-            serta tryout dan tugas dalam satu platform siap pakai. Tanpa
-            membangun sistem sendiri.
+            Kurikulum, kelas, aplikasi untuk murid, halaman promosi, serta
+            tryout dan tugas dalam satu platform siap pakai. Tanpa membangun
+            sistem sendiri.
           </p>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:pb-1">
             <WhatsAppLink className="h-11 px-5 sm:h-12 sm:px-6" />

@@ -191,8 +191,7 @@ export function CohortInvites({
               Belum ada link invite
             </h3>
             <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">
-              Buat link pertama untuk mengundang siswa langsung ke Group belajar
-              ini.
+              Buat link pertama untuk mengundang siswa langsung ke kelas ini.
             </p>
           </CardContent>
         </Card>

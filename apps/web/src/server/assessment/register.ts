@@ -120,7 +120,7 @@ export const attemptSummarySelect = {
   },
   cohort: { select: { id: true, name: true } },
   assessmentEvent: {
-    select: { id: true, title: true, type: true, scope: true, status: true },
+    select: { id: true, title: true, type: true, status: true },
   },
 } satisfies Prisma.AssessmentAttemptSelect;
 
@@ -134,7 +134,6 @@ export function assessmentContext(attempt: {
     id: string;
     title: string;
     type: "QUICK_ASSESSMENT" | "TRYOUT";
-    scope: "COHORT" | "COURSE";
   } | null;
 }) {
   const event = attempt.assessmentEvent;
@@ -146,12 +145,13 @@ export function assessmentContext(attempt: {
         ? "Tugas bab"
         : kind === "TRYOUT"
           ? "Tryout"
-          : "Tugas on-demand",
+          : "Latihan",
     title: event?.title ?? attempt.assessment.title,
     course: attempt.courseItem.module.course,
     moduleTitle: attempt.courseItem.module.title,
     cohort: attempt.cohort,
-    scope: event?.scope ?? "CHAPTER",
+    // Events always target classes; kept for app versions that read it.
+    scope: event ? ("COHORT" as const) : ("CHAPTER" as const),
     eventId: event?.id ?? null,
   };
 }

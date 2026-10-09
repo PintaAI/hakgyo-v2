@@ -6,6 +6,8 @@ import { api } from "~/trpc/server";
 export const metadata: Metadata = { title: "Semua event tugas" };
 
 export default async function AssessmentEventsPage() {
-  const events = await api.assessmentEvent.listForLearner();
+  const events = await api.assessmentEvent.listForLearner({
+    includeScheduled: true,
+  });
   return <LearnerAssessmentEvents events={events} />;
 }

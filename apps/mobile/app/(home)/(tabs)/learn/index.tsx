@@ -302,9 +302,9 @@ export default function LearnTab() {
           </View>
         ) : dashboard.data && !dashboard.error ? (
           <Empty>
-            Belum ada Group belajar di organisasi ini. Group belajar muncul di
-            sini setelah lembaga mendaftarkan kamu. Sementara itu, lanjutkan
-            latihan Hangeul dan kosakata dari tab Hari Ini.
+            Belum ada kelas di organisasi ini. Kelas muncul di sini setelah
+            lembaga mendaftarkan kamu. Sementara itu, lanjutkan latihan Hangeul
+            dan kosakata dari tab Hari Ini.
           </Empty>
         ) : null}
       </StudyScreen>

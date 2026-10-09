@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BanIcon,
+  CalendarClockIcon,
   CheckCircle2Icon,
   ClipboardCheckIcon,
   Clock3Icon,
@@ -35,8 +36,6 @@ import {
 } from "~/components/ui/dialog";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
-import { DateTimePicker } from "~/components/ui/datetime-picker";
-import { Label } from "~/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -56,16 +55,16 @@ import {
 import { api, type RouterOutputs } from "~/trpc/react";
 import { AssessmentReviewDetail } from "~/components/review-queue";
 import {
-  ResourcePicker,
-  type ResourcePickerOption,
-} from "~/components/resource-picker";
+  CreateAssessmentEventSheet,
+  eventTypeLabel,
+} from "~/components/assessment-event-create";
 
 type EventSummary =
   RouterOutputs["assessmentEvent"]["listManageable"]["items"][number];
 
 const statusLabel = {
-  // Event DRAFT: scheduled, learners cannot start it yet.
-  DRAFT: "Belum dibuka",
+  DRAFT: "Draft",
+  SCHEDULED: "Terjadwal",
   OPEN: "Dibuka",
   CLOSED: "Selesai",
   CANCELLED: "Dibatalkan",
@@ -73,10 +72,27 @@ const statusLabel = {
 
 const statusVariant = {
   DRAFT: "secondary",
+  SCHEDULED: "secondary",
   OPEN: "default",
   CLOSED: "outline",
   CANCELLED: "destructive",
 } as const;
+
+/** "Semua kelas", or the first classes by name. */
+function targetSummary(event: {
+  allCohorts: boolean;
+  targets: Array<{ name: string }>;
+}) {
+  if (event.allCohorts) {
+    return event.targets.length
+      ? `Semua kelas (${event.targets.length})`
+      : "Semua kelas";
+  }
+  const names = event.targets.map((target) => target.name);
+  return names.length > 2
+    ? `${names.slice(0, 2).join(", ")} +${names.length - 2} kelas`
+    : names.join(", ") || "Belum ada kelas";
+}
 
 const participantStatusLabels = {
   ALL: "Semua status",
@@ -93,11 +109,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-function toLocalDateTimeInput(date: Date) {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-}
 
 function formatDuration(milliseconds: number) {
   const seconds = Math.round(milliseconds / 1000);
@@ -128,22 +139,12 @@ export function AssessmentEventManager({
   const [participantStatus, setParticipantStatus] = useState<
     "IN_PROGRESS" | "IN_REVIEW" | "GRADED" | "NOT_STARTED" | undefined
   >();
-  const [title, setTitle] = useState("");
-  const [courseItemId, setCourseItemId] = useState<string | null>(null);
-  const type = cohortId ? "QUICK_ASSESSMENT" : "TRYOUT";
-  const [durationMinutes, setDurationMinutes] = useState("30");
-  const [notifyLearners, setNotifyLearners] = useState(true);
-  const [closesAt, setClosesAt] = useState(() =>
-    toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60_000)),
-  );
+  const [participantCohortId, setParticipantCohortId] = useState<string>();
+  const [addCohortsEvent, setAddCohortsEvent] = useState<EventSummary>();
   const input = { courseId, cohortId, page: eventPage };
   // The event list sits behind the results dialog, so only one of the two polls at a time.
   const events = api.assessmentEvent.listManageable.useQuery(input, {
     refetchInterval: selectedEventId ? false : 30_000,
-  });
-  const assessmentItems = api.assessmentEvent.listAssessmentItems.useQuery({
-    courseId,
-    cohortId,
   });
   // Query the participant search after typing pauses instead of on every keystroke.
   const [appliedParticipantSearch, setAppliedParticipantSearch] = useState("");
@@ -160,6 +161,7 @@ export function AssessmentEventManager({
       page: participantPage,
       search: appliedParticipantSearch || undefined,
       status: participantStatus,
+      cohortId: participantCohortId,
     },
     {
       enabled: Boolean(selectedEventId),
@@ -169,7 +171,6 @@ export function AssessmentEventManager({
         previous?.id === selectedEventId ? previous : undefined,
     },
   );
-  const create = api.assessmentEvent.create.useMutation();
   const open = api.assessmentEvent.open.useMutation();
   const close = api.assessmentEvent.close.useMutation();
   const cancel = api.assessmentEvent.cancel.useMutation();
@@ -178,31 +179,12 @@ export function AssessmentEventManager({
   const adjust = api.assessmentEvent.adjustResult.useMutation();
   const { confirm, prompt, dialogs } = useDialogs();
   const pending =
-    create.isPending ||
     open.isPending ||
     close.isPending ||
     cancel.isPending ||
     deleteEvent.isPending ||
     invalidate.isPending ||
     adjust.isPending;
-
-  const selectedItem = assessmentItems.data?.find(
-    (item) => item.id === courseItemId,
-  );
-
-  const assessmentOptions = useMemo<ResourcePickerOption[]>(
-    () =>
-      assessmentItems.data?.map((item) => ({
-        id: item.id,
-        title: item.assessment?.title ?? "Tugas",
-        description: item.assessment?.description,
-        count: item.assessment?._count.questions,
-        timeLimitMinutes: item.assessment?.timeLimitMinutes,
-        updatedAt: item.assessment?.updatedAt,
-        group: item.module.title,
-      })) ?? [],
-    [assessmentItems.data],
-  );
 
   async function refresh(eventId?: string) {
     await Promise.all([
@@ -213,42 +195,17 @@ export function AssessmentEventManager({
     ]);
   }
 
-  async function createEvent(event: FormEvent) {
-    event.preventDefault();
-    const duration = Number(durationMinutes);
-    const closeDate = new Date(closesAt);
-    if (!courseItemId || !Number.isInteger(duration) || duration < 1) return;
-    if (Number.isNaN(closeDate.getTime())) return;
-    try {
-      const created = await create.mutateAsync({
-        courseId,
-        cohortId,
-        courseItemId,
-        type: cohortId ? type : "TRYOUT",
-        scope: cohortId ? "COHORT" : "COURSE",
-        title: title.trim(),
-        durationMinutes: duration,
-        closesAt: closeDate,
-      });
-      const opened = await open.mutateAsync({
-        eventId: created.id,
-        notify: notifyLearners,
-      });
-      toast.success(`Event dibuka untuk ${opened.participantCount} peserta.`);
-      setCreateOpen(false);
-      setTitle("");
-      setCourseItemId(null);
-      await refresh();
-    } catch (error) {
-      toast.error(errorMessage(error));
-      await refresh();
-    }
-  }
-
   async function openEvent(eventId: string) {
+    const confirmed = await confirm({
+      title: "Buka sekarang?",
+      description:
+        "Learner di kelas yang dipilih bisa langsung mengerjakan dan mendapat notifikasi.",
+      confirmLabel: "Buka sekarang",
+    });
+    if (!confirmed) return;
     try {
       const result = await open.mutateAsync({ eventId });
-      toast.success(`Event dibuka untuk ${result.participantCount} peserta.`);
+      toast.success(`Event dibuka untuk ${result.participantCount} learner.`);
       await refresh(eventId);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -390,17 +347,17 @@ export function AssessmentEventManager({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-heading text-2xl font-medium tracking-tight">
-            {cohortId ? "Event tugas" : "Tryout"}
+            Latihan & tryout
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {cohortId
-              ? "Jalankan tugas on-demand untuk siswa aktif Group belajar."
-              : "Jalankan tryout untuk semua siswa aktif kurikulum dan bandingkan hasilnya."}
+              ? "Latihan dan tryout untuk kelas ini, termasuk yang dibuat dari course."
+              : "Jalankan latihan atau tryout untuk satu, beberapa, atau semua kelas."}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
           <PlusIcon data-icon="inline-start" />
-          Buat event
+          Buat latihan / tryout
         </Button>
       </div>
 
@@ -414,12 +371,16 @@ export function AssessmentEventManager({
           {events.error.message}
         </div>
       ) : events.data.items.length ? (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 max-sm:-mx-4 max-sm:gap-0 max-sm:border-t lg:grid-cols-2">
           {events.data.items.map((event) => (
             <EventCard
               key={event.id}
               event={event}
+              fromCourse={Boolean(cohortId) && !event.canManage}
               pending={pending}
+              onAddCohorts={
+                cohortId ? undefined : () => setAddCohortsEvent(event)
+              }
               onOpen={() => openEvent(event.id)}
               onClose={() => closeEvent(event.id)}
               onCancel={() => cancelEvent(event.id)}
@@ -430,6 +391,7 @@ export function AssessmentEventManager({
                 setParticipantSearch("");
                 setAppliedParticipantSearch("");
                 setParticipantStatus(undefined);
+                setParticipantCohortId(undefined);
               }}
             />
           ))}
@@ -437,9 +399,9 @@ export function AssessmentEventManager({
       ) : (
         <div className="rounded-md border border-dashed px-5 py-14 text-center">
           <TrophyIcon className="text-muted-foreground mx-auto size-7" />
-          <h3 className="mt-3 font-medium">Belum ada event tugas</h3>
+          <h3 className="mt-3 font-medium">Belum ada latihan atau tryout</h3>
           <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-            Buat event pertama dari tugas yang sudah dipublish di kurikulum.
+            Buat dari tugas yang sudah tampil di kurikulum, lalu pilih kelasnya.
           </p>
         </div>
       )}
@@ -465,104 +427,21 @@ export function AssessmentEventManager({
           </Button>
         </div>
       </div>
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <form onSubmit={createEvent}>
-            <DialogHeader>
-              <DialogTitle>Buat event tugas</DialogTitle>
-              <DialogDescription>
-                Event langsung dibuka dan peserta di-snapshot setelah dibuat.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-5 py-5">
-              <p className="text-muted-foreground text-sm">
-                {cohortId
-                  ? "Tugas on-demand · Group belajar"
-                  : "Tryout · kurikulum"}
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="event-title">Judul</Label>
-                <Input
-                  id="event-title"
-                  value={title}
-                  maxLength={200}
-                  required
-                  placeholder={
-                    cohortId ? "Tugas cepat pekan 1" : "Tryout akhir kurikulum"
-                  }
-                  onChange={(event) => setTitle(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="event-assessment">Tugas</Label>
-                <ResourcePicker
-                  kind="ASSESSMENT"
-                  id="event-assessment"
-                  options={assessmentOptions}
-                  value={courseItemId}
-                  onValueChange={setCourseItemId}
-                  loading={assessmentItems.isPending}
-                  emptyLabel="Belum ada tugas yang siap di kurikulum ini"
-                  description="Hanya tugas yang tampil di materi kurikulum dan sudah memiliki soal."
-                  defaultSortLabel="Urutan kurikulum"
-                />
-                {selectedItem ? (
-                  <p className="text-muted-foreground text-xs">
-                    {selectedItem.assessment?._count.questions} soal
-                  </p>
-                ) : null}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="event-duration">Durasi (menit)</Label>
-                  <Input
-                    id="event-duration"
-                    type="number"
-                    min={1}
-                    max={480}
-                    required
-                    value={durationMinutes}
-                    onChange={(event) => setDurationMinutes(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="event-closes">Ditutup pada</Label>
-                  <DateTimePicker
-                    id="event-closes"
-                    min={toLocalDateTimeInput(new Date())}
-                    required
-                    value={closesAt}
-                    onChange={setClosesAt}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="event-notify"
-                  checked={notifyLearners}
-                  onCheckedChange={setNotifyLearners}
-                />
-                <Label htmlFor="event-notify">
-                  Beri tahu peserta lewat notifikasi
-                </Label>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCreateOpen(false)}
-              >
-                Batal
-              </Button>
-              <Button type="submit" disabled={pending || !courseItemId}>
-                {pending ? <LoaderCircleIcon className="animate-spin" /> : null}
-                Buat dan buka
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <CreateAssessmentEventSheet
+        courseId={courseId}
+        cohortId={cohortId}
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => refresh()}
+      />
+      {addCohortsEvent ? (
+        <AddCohortsDialog
+          event={addCohortsEvent}
+          courseId={courseId}
+          onClose={() => setAddCohortsEvent(undefined)}
+          onAdded={() => refresh(addCohortsEvent.id)}
+        />
+      ) : null}
 
       <Dialog
         open={Boolean(selectedEventId)}
@@ -572,6 +451,9 @@ export function AssessmentEventManager({
           <DialogHeader>
             <DialogTitle>{detail.data?.title ?? "Hasil event"}</DialogTitle>
             <DialogDescription>
+              {detail.data
+                ? `${eventTypeLabel[detail.data.type]} · ${targetSummary(detail.data)}. `
+                : ""}
               Peserta yang belum mengirim tidak masuk leaderboard.
             </DialogDescription>
           </DialogHeader>
@@ -594,6 +476,11 @@ export function AssessmentEventManager({
                 setParticipantStatus(value);
                 setParticipantPage(1);
               }}
+              cohortFilter={participantCohortId}
+              onCohortFilter={(value) => {
+                setParticipantCohortId(value);
+                setParticipantPage(1);
+              }}
               pending={pending}
               onInvalidate={invalidateAttempt}
               onAdjust={adjustResult}
@@ -607,7 +494,9 @@ export function AssessmentEventManager({
 
 function EventCard({
   event,
+  fromCourse,
   pending,
+  onAddCohorts,
   onOpen,
   onClose,
   onCancel,
@@ -615,67 +504,94 @@ function EventCard({
   onSelect,
 }: {
   event: EventSummary;
+  /** Shown on a class page for an event its staff do not manage. */
+  fromCourse: boolean;
   pending: boolean;
+  onAddCohorts?: () => void;
   onOpen: () => void;
   onClose: () => void;
   onCancel: () => void;
   onDelete: () => void;
   onSelect: () => void;
 }) {
+  const manage = event.canManage;
+  const active =
+    event.status === "DRAFT" ||
+    event.status === "SCHEDULED" ||
+    event.status === "OPEN";
   return (
-    <Card>
+    <Card className="max-sm:rounded-none max-sm:border-x-0 max-sm:border-t-0 max-sm:bg-transparent max-sm:shadow-none">
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <div className="mb-2 flex flex-wrap gap-2">
               <Badge variant={statusVariant[event.status]}>
                 {statusLabel[event.status]}
               </Badge>
-              <Badge variant="outline">
-                {event.type === "TRYOUT" ? "Tryout" : "Tugas cepat"}
-              </Badge>
+              <Badge variant="outline">{eventTypeLabel[event.type]}</Badge>
+              {fromCourse ? <Badge variant="outline">Dari course</Badge> : null}
             </div>
             <CardTitle>{event.title}</CardTitle>
             <CardDescription className="mt-1">
               {event.courseItem.assessment?.title}
             </CardDescription>
           </div>
-          <TrophyIcon className="text-muted-foreground size-5" />
+          <TrophyIcon className="text-muted-foreground size-5 shrink-0" />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-muted-foreground grid grid-cols-3 gap-3 text-xs">
+        <p className="flex items-center gap-1.5 text-sm">
+          <UsersIcon className="text-muted-foreground size-3.5 shrink-0" />
+          <span className="truncate">{targetSummary(event)}</span>
+        </p>
+        <div className="text-muted-foreground mt-2 grid grid-cols-3 gap-3 text-xs">
           <span className="flex items-center gap-1.5">
             <Clock3Icon className="size-3.5" /> {event.durationMinutes} menit
           </span>
-          <span className="flex items-center gap-1.5">
-            <UsersIcon className="size-3.5" /> {event._count.participants}{" "}
-            peserta
-          </span>
+          <span>{event._count.participants} peserta</span>
           <span className="flex items-center gap-1.5">
             <ClipboardCheckIcon className="size-3.5" /> {event._count.attempts}{" "}
             attempt
           </span>
         </div>
-        <p className="text-muted-foreground mt-3 text-xs">
-          Ditutup{" "}
-          {event.closesAt ? dateTimeFormatter.format(event.closesAt) : "—"}
+        <p className="text-muted-foreground mt-3 flex flex-wrap gap-x-3 text-xs">
+          {event.status === "SCHEDULED" && event.opensAt ? (
+            <span className="flex items-center gap-1">
+              <CalendarClockIcon className="size-3.5" />
+              Dibuka {dateTimeFormatter.format(event.opensAt)}
+            </span>
+          ) : null}
+          <span>
+            Ditutup{" "}
+            {event.closesAt ? dateTimeFormatter.format(event.closesAt) : "—"}
+          </span>
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={onSelect}>
             Lihat peserta & hasil
           </Button>
-          {event.status === "DRAFT" ? (
+          {manage &&
+          (event.status === "DRAFT" || event.status === "SCHEDULED") ? (
             <Button size="sm" onClick={onOpen} disabled={pending}>
-              <PlayIcon /> Buka
+              <PlayIcon /> Buka sekarang
             </Button>
           ) : null}
-          {event.status === "OPEN" ? (
+          {manage && event.status === "OPEN" ? (
             <Button size="sm" onClick={onClose} disabled={pending}>
               <SquareIcon /> Tutup
             </Button>
           ) : null}
-          {event.status === "DRAFT" || event.status === "OPEN" ? (
+          {manage && active && onAddCohorts ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onAddCohorts}
+              disabled={pending}
+            >
+              <PlusIcon /> Tambah kelas
+            </Button>
+          ) : null}
+          {manage && active ? (
             <Button
               size="sm"
               variant="ghost"
@@ -685,17 +601,131 @@ function EventCard({
               <BanIcon /> Batalkan
             </Button>
           ) : null}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onDelete}
-            disabled={pending}
-          >
-            <Trash2Icon /> Hapus
-          </Button>
+          {manage ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onDelete}
+              disabled={pending}
+            >
+              <Trash2Icon /> Hapus
+            </Button>
+          ) : null}
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/** Adds classes to an event that has not closed; classes cannot be removed again. */
+function AddCohortsDialog({
+  event,
+  courseId,
+  onClose,
+  onAdded,
+}: {
+  event: EventSummary;
+  courseId: string;
+  onClose: () => void;
+  onAdded: () => Promise<void>;
+}) {
+  const targets = api.assessmentEvent.listTargetCohorts.useQuery({ courseId });
+  const addCohorts = api.assessmentEvent.addCohorts.useMutation();
+  const [picked, setPicked] = useState<string[]>([]);
+  const [notify, setNotify] = useState(true);
+  const existing = new Set(event.targets.map((target) => target.id));
+  const available =
+    targets.data?.cohorts.filter(
+      (cohort) => !existing.has(cohort.id) && cohort.canTarget,
+    ) ?? [];
+
+  async function submit() {
+    try {
+      const result = await addCohorts.mutateAsync({
+        eventId: event.id,
+        cohortIds: picked,
+        notify,
+      });
+      toast.success(
+        event.status === "OPEN"
+          ? `${result.added} kelas ditambahkan, ${result.participantCount} learner bisa mulai.`
+          : `${result.added} kelas ditambahkan.`,
+      );
+      onClose();
+      await onAdded();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Tambah kelas</DialogTitle>
+          <DialogDescription>
+            Kelas yang sudah ditambahkan tidak bisa dikeluarkan lagi.
+          </DialogDescription>
+        </DialogHeader>
+        {targets.isPending ? (
+          <Skeleton className="h-24 w-full" />
+        ) : available.length ? (
+          <ul className="max-h-72 divide-y overflow-y-auto rounded-lg border">
+            {available.map((cohort) => (
+              <li key={cohort.id}>
+                <label className="hover:bg-muted/50 flex cursor-pointer items-center gap-3 px-3 py-2.5">
+                  <Checkbox
+                    checked={picked.includes(cohort.id)}
+                    onCheckedChange={(checked) =>
+                      setPicked((current) =>
+                        checked
+                          ? [...current, cohort.id]
+                          : current.filter((id) => id !== cohort.id),
+                      )
+                    }
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">
+                      {cohort.name}
+                    </span>
+                    <span className="text-muted-foreground block text-xs">
+                      {cohort.learnerCount} learner
+                      {cohort.averageProgress !== null
+                        ? ` · progres rata-rata ${cohort.averageProgress}%`
+                        : ""}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            Semua kelas yang bisa kamu pilih sudah ikut.
+          </p>
+        )}
+        {event.status === "OPEN" ? (
+          <label className="flex items-center gap-2">
+            <Checkbox checked={notify} onCheckedChange={setNotify} />
+            <span>Beri tahu learner kelas baru</span>
+          </label>
+        ) : null}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Batal
+          </Button>
+          <Button
+            disabled={!picked.length || addCohorts.isPending}
+            onClick={() => void submit()}
+          >
+            {addCohorts.isPending ? (
+              <LoaderCircleIcon className="animate-spin" />
+            ) : null}
+            Tambah {picked.length || ""} kelas
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -707,6 +737,8 @@ function EventResults({
   onSearch,
   status,
   onStatus,
+  cohortFilter,
+  onCohortFilter,
   pending,
   onInvalidate,
   onAdjust,
@@ -720,6 +752,8 @@ function EventResults({
   onStatus: (
     value: "IN_PROGRESS" | "IN_REVIEW" | "GRADED" | "NOT_STARTED" | undefined,
   ) => void;
+  cohortFilter?: string;
+  onCohortFilter: (value: string | undefined) => void;
   pending: boolean;
   onInvalidate: (eventId: string, attemptId: string) => Promise<void>;
   onAdjust: (
@@ -730,6 +764,12 @@ function EventResults({
   ) => Promise<void>;
 }) {
   const [reviewId, setReviewId] = useState<string>();
+  // Reviewers who do not manage the event only see their own classes.
+  const filterableCohorts = event.targets.filter(
+    (target) =>
+      event.reviewCohortIds === null ||
+      event.reviewCohortIds.includes(target.id),
+  );
   const ranks = useMemo(
     () => new Map(event.leaderboard.map((entry) => [entry.userId, entry.rank])),
     [event.leaderboard],
@@ -789,6 +829,33 @@ function EventResults({
             ))}
           </SelectContent>
         </Select>
+        {filterableCohorts.length > 1 ? (
+          <Select
+            value={cohortFilter ?? "ALL"}
+            onValueChange={(value) => {
+              if (!value) return;
+              onCohortFilter(value === "ALL" ? undefined : value);
+            }}
+          >
+            <SelectTrigger aria-label="Kelas">
+              <span className="flex flex-1 truncate text-left">
+                {filterableCohorts.find((target) => target.id === cohortFilter)
+                  ?.name ??
+                  (event.reviewCohortIds === null ? "Semua kelas" : "Kelasku")}
+              </span>
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="ALL">
+                {event.reviewCohortIds === null ? "Semua kelas" : "Kelasku"}
+              </SelectItem>
+              {filterableCohorts.map((target) => (
+                <SelectItem key={target.id} value={target.id}>
+                  {target.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
       </div>
       {event.status === "CLOSED" && event.leaderboard.length ? (
         <div className="grid gap-3 sm:grid-cols-3">
@@ -849,6 +916,9 @@ function EventResults({
                     <p className="font-medium">{participant.user.name}</p>
                     <p className="text-muted-foreground text-xs">
                       {participant.user.email}
+                      {participant.cohort && event.targets.length > 1
+                        ? ` · ${participant.cohort.name}`
+                        : ""}
                     </p>
                     <Badge
                       variant={invalidated ? "destructive" : "outline"}
