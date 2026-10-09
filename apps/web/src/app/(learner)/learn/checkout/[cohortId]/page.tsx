@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CohortCheckout } from "~/components/learner/payments/cohort-checkout";
 
 export const metadata: Metadata = {
-  title: "Checkout Group belajar",
+  title: "Checkout kelas",
   robots: { index: false, follow: false },
 };
 

@@ -12,7 +12,7 @@ export function ManagementSlide() {
       muted="untuk seluruh program."
       points={[
         "Kurikulum per bab: materi, kosakata, dan tugas dengan urutan bertahap",
-        "Group belajar per angkatan, lengkap dengan pengajar dan jadwal",
+        "Kelas per angkatan, lengkap dengan pengajar dan jadwal",
         "Role untuk Owner, Admin, Pengajar, Instruktur, dan Asisten",
         "Antrean review untuk jawaban esai murid",
         "Ringkasan kelas, jadwal, dan tugas di dashboard",

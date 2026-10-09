@@ -75,10 +75,10 @@ export function getCohortJoinBlocker(input: {
 }
 
 export const cohortJoinBlockerMessages: Record<CohortJoinBlocker, string> = {
-  COHORT_UNAVAILABLE: "Group belajar ini tidak sedang menerima peserta.",
-  INVITE_REQUIRED: "Group belajar ini hanya bisa diikuti melalui undangan.",
-  ALREADY_ENROLLED: "Kamu sudah terdaftar di Group belajar ini.",
-  FULL: "Kuota Group belajar ini sudah penuh.",
+  COHORT_UNAVAILABLE: "Kelas ini tidak sedang menerima peserta.",
+  INVITE_REQUIRED: "Kelas ini hanya bisa diikuti melalui undangan.",
+  ALREADY_ENROLLED: "Kamu sudah terdaftar di kelas ini.",
+  FULL: "Kuota kelas ini sudah penuh.",
   PAYMENT_NOT_CONFIGURED:
     "Penyelenggara belum mengatur metode pembayaran. Hubungi penyelenggara.",
 };

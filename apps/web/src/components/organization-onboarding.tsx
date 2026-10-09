@@ -155,7 +155,7 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
           icon={Building2Icon}
           audience="Untuk pendiri"
           title="Buat organization"
-          description="Siapkan workspace, atur kurikulum sebagai Public atau Private, dan kelola pengajar, Group belajar, serta siswa. Anda otomatis menjadi owner."
+          description="Siapkan workspace, atur kurikulum sebagai Public atau Private, dan kelola pengajar, kelas, serta siswa. Anda otomatis menjadi owner."
           featured
         >
           <Link

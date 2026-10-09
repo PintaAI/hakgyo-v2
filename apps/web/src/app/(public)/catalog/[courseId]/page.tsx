@@ -156,9 +156,9 @@ export default async function CatalogCoursePage({
                     aria-hidden="true"
                   />
                   {course.cohorts.length > 0
-                    ? "Pilih Group belajar di bawah untuk mendaftar."
+                    ? "Pilih kelas di bawah untuk mendaftar."
                     : course.price > 0
-                      ? "Belum ada Group belajar yang dibuka untuk kurikulum ini."
+                      ? "Belum ada kelas yang dibuka untuk kurikulum ini."
                       : "Kurikulum ini hanya dapat diakses melalui undangan."}
                 </p>
               )}
@@ -183,7 +183,7 @@ export default async function CatalogCoursePage({
             </span>
             <div>
               <h2 id="cohorts-heading" className="text-xl font-bold">
-                Group belajar
+                Kelas
               </h2>
               <p className="text-muted-foreground text-sm">
                 Belajar bersama pengajar dan teman sekelas.

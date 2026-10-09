@@ -280,7 +280,7 @@ function CourseItemContent({
               assessment.eligibleCohorts.length > 1 ? (
                 <View className="gap-2 border-t border-border pt-4">
                   <Text className="text-sm font-bold text-foreground">
-                    Pilih Group belajar
+                    Pilih kelas
                   </Text>
                   {assessment.eligibleCohorts.map((cohort) => (
                     <Pressable

@@ -118,7 +118,7 @@ export async function redeemEnrollmentInvite(
   if (invite.cohort && effectiveCohortPrice(invite.cohort, invite.course) > 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Group belajar ini berbayar. Lanjutkan ke pembayaran.",
+      message: "Kelas ini berbayar. Lanjutkan ke pembayaran.",
     });
   }
 

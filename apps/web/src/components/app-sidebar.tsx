@@ -362,7 +362,7 @@ export function AppSidebar({
         </SidebarGroup>
         {showCohortShortcuts && cohortShortcuts.length > 0 ? (
           <SidebarGroup>
-            <SidebarGroupLabel>Group belajar</SidebarGroupLabel>
+            <SidebarGroupLabel>Kelas</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {cohortShortcuts.slice(0, visibleCohortCount).map((cohort) => {

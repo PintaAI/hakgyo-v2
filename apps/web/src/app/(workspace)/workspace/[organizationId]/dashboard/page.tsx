@@ -70,7 +70,7 @@ async function TeacherDashboard({
             icon: "course",
           },
           {
-            label: "Group belajar",
+            label: "Kelas",
             value: cohortsPage.total ?? cohortsPage.items.length,
             href: `${root}/courses`,
             icon: "cohort",
@@ -149,7 +149,7 @@ export default async function DashboardPage({
             icon: "course",
           },
           {
-            label: "Group belajar",
+            label: "Kelas",
             value: analytics.cohorts.total,
             href: `${root}/courses`,
             icon: "cohort",

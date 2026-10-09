@@ -24,7 +24,7 @@ import { TryoutSlide } from "~/components/landing/slides/tryout";
 
 const title = "LMS siap pakai untuk program kelas bahasa Korea";
 const description =
-  "Hakgyo menyatukan kurikulum, group belajar, aplikasi murid, halaman promosi, serta tryout dan tugas dalam satu platform untuk lembaga dan pengajar bahasa Korea.";
+  "Hakgyo menyatukan kurikulum, kelas, aplikasi murid, halaman promosi, serta tryout dan tugas dalam satu platform untuk lembaga dan pengajar bahasa Korea.";
 
 export const metadata: Metadata = {
   title,

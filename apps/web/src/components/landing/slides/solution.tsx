@@ -19,7 +19,7 @@ export const pillars = [
     icon: LayoutDashboardIcon,
     name: "Manajemen kelas",
     description:
-      "Kurikulum, group belajar, pengajar, jadwal, dan penilaian dari satu dashboard.",
+      "Kurikulum, kelas, pengajar, jadwal, dan penilaian dari satu dashboard.",
   },
   {
     slide: "aplikasi",

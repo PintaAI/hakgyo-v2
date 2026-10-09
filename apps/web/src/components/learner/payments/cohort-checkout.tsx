@@ -76,7 +76,7 @@ export function CohortCheckout({
       <Card className="mx-auto max-w-lg">
         <CardContent className="py-10 text-center">
           <LockKeyholeIcon className="text-muted-foreground mx-auto size-6" />
-          <p className="mt-3 font-medium">Group belajar tidak ditemukan</p>
+          <p className="mt-3 font-medium">Kelas tidak ditemukan</p>
           <p className="text-muted-foreground mt-1 text-sm">
             Link mungkin sudah tidak berlaku. Hubungi penyelenggara kelas.
           </p>
@@ -111,7 +111,7 @@ export function CohortCheckout({
       if (result.type === "PAYMENT") {
         router.push(`/learn/payments/${result.paymentId}`);
       } else {
-        toast.success("Kamu sudah terdaftar di Group belajar ini.");
+        toast.success("Kamu sudah terdaftar di kelas ini.");
         router.push(`/learn/${result.courseId}`);
         router.refresh();
       }
@@ -141,7 +141,7 @@ export function CohortCheckout({
               {data.cohort.name}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Group belajar untuk {data.course.title}
+              Kelas untuk {data.course.title}
             </p>
           </div>
           {data.cohort.description ? (
@@ -241,7 +241,7 @@ export function CohortCheckout({
                 {start.isPending ? (
                   <LoaderCircleIcon className="animate-spin" />
                 ) : null}
-                {free ? "Gabung Group belajar" : "Lanjut ke pembayaran"}
+                {free ? "Gabung kelas" : "Lanjut ke pembayaran"}
                 <ArrowRightIcon data-icon="inline-end" />
               </Button>
               {!free ? (

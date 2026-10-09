@@ -48,7 +48,7 @@ const inviteGrid =
 const typeLabels = {
   ORGANIZATION: "Undangan organisasi",
   COURSE: "Undangan kurikulum",
-  COHORT: "Undangan group belajar",
+  COHORT: "Undangan kelas",
 } as const;
 
 export function InviteRedemption({ token }: { token: string }) {
@@ -106,7 +106,7 @@ export function InviteRedemption({ token }: { token: string }) {
     data.type === "ORGANIZATION"
       ? `Bergabung sebagai ${data.role === "ADMIN" ? "Admin" : "Pengajar"}`
       : data.type === "COHORT"
-        ? `Group belajar untuk ${data.course.title}`
+        ? `Kelas untuk ${data.course.title}`
         : "Akses langsung ke kurikulum";
   const unavailable = data.status !== "PENDING";
   const emailMismatch =
@@ -133,7 +133,7 @@ export function InviteRedemption({ token }: { token: string }) {
         result.type === "ORGANIZATION"
           ? `Berhasil bergabung ke ${result.organization.name}.`
           : result.type === "COHORT"
-            ? "Berhasil bergabung ke Group belajar."
+            ? "Berhasil bergabung ke kelas."
             : "Kurikulum berhasil ditambahkan ke ruang belajar.",
       );
 
@@ -168,7 +168,7 @@ export function InviteRedemption({ token }: { token: string }) {
       : !session.data?.user
         ? "Masuk atau buat akun untuk menerima akses. Link undangan ini tetap tersimpan selama proses masuk."
         : paidCohortPrice !== null
-          ? "Group belajar ini berbayar. Selesaikan pembayaran untuk mengaktifkan akses belajar."
+          ? "Kelas ini berbayar. Selesaikan pembayaran untuk mengaktifkan akses belajar."
           : "Akun Anda sudah siap. Terima undangan untuk mengaktifkan akses belajar.";
   const details = [
     ["Organisasi", data.organization.name],
@@ -179,7 +179,7 @@ export function InviteRedemption({ token }: { token: string }) {
     [
       "Akses",
       data.type === "COHORT"
-        ? "Kurikulum + group belajar"
+        ? "Kurikulum + kelas"
         : data.type === "COURSE"
           ? "Kurikulum"
           : data.role === "ADMIN"

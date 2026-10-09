@@ -199,7 +199,7 @@ export default function AuthScreen() {
           <Text className="text-sm leading-5 text-muted-foreground">
             {isSignUp
               ? "Akun baru langsung mendapat kurikulum Hangeul Mastery."
-              : "Akses kelas, Group belajar, dan tugas kamu dari satu tempat."}
+              : "Akses kurikulum, kelas, dan tugas kamu dari satu tempat."}
           </Text>
         </View>
 
