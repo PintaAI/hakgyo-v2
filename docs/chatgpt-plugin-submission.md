@@ -4,6 +4,9 @@ Hakgyo is published to ChatGPT (and Codex) as an MCP-backed plugin. The plugin
 is the production MCP server described in [mcp-server.md](mcp-server.md); this
 document holds what the OpenAI Platform dashboard asks for on top of it.
 
+For the project-independent procedure and the pitfalls hit on the way to
+review, see [chatgpt-plugin-playbook.md](chatgpt-plugin-playbook.md).
+
 Submit from `https://platform.openai.com/plugins` and choose **With MCP**. Only
 an organization owner, or a member with Apps Management Write, can submit, and
 the organization must have finished individual or business verification.
