@@ -371,7 +371,7 @@ export function AssessmentEventManager({
           {events.error.message}
         </div>
       ) : events.data.items.length ? (
-        <div className="grid gap-4 max-sm:-mx-4 max-sm:gap-0 max-sm:border-t lg:grid-cols-2">
+        <div className="grid gap-4 max-sm:gap-0 max-sm:border-t lg:grid-cols-2">
           {events.data.items.map((event) => (
             <EventCard
               key={event.id}

@@ -62,7 +62,7 @@ export async function addAllCohortTargets(
 
 /**
  * Adds every eligible learner of the event's targets (or of `cohortIds` only) as a participant,
- * attributed to their earliest eligible class. Returns the number of distinct eligible learners.
+ * attributed to their earliest eligible class (a real class before the self-paced cohort). Returns the number of distinct eligible learners.
  */
 export async function enrollEventParticipants(
   tx: Prisma.TransactionClient,
@@ -83,7 +83,11 @@ export async function enrollEventParticipants(
       WHERE target."eventId" = ${eventId}
         ${cohortFilter}
         AND ${eventEnrollmentSql(now)}
-      ORDER BY enrollment."userId", enrollment."enrolledAt" ASC, enrollment."id" ASC
+      ORDER BY
+        enrollment."userId",
+        (cohort."defaultForCourseId" IS NOT NULL) ASC,
+        enrollment."enrolledAt" ASC,
+        enrollment."id" ASC
     ),
     inserted AS (
       INSERT INTO "AssessmentEventParticipant" ("eventId", "userId", "cohortId")
@@ -96,7 +100,10 @@ export async function enrollEventParticipants(
   return Number(result?.eligibleCount ?? 0);
 }
 
-/** The learner's earliest eligible targeted class, or null when they cannot take part. */
+/**
+ * The learner's earliest eligible targeted class (a real class before the self-paced cohort), or
+ * null when they cannot take part.
+ */
 export async function findEligibleEventCohort(
   db: Db,
   eventId: string,
@@ -113,7 +120,11 @@ export async function findEligibleEventCohort(
         assessmentEvents: { some: { eventId } },
       },
     },
-    orderBy: [{ enrolledAt: "asc" }, { id: "asc" }],
+    orderBy: [
+      { cohort: { defaultForCourseId: { sort: "asc", nulls: "first" } } },
+      { enrolledAt: "asc" },
+      { id: "asc" },
+    ],
     select: { cohortId: true },
   });
   return enrollment?.cohortId ?? null;

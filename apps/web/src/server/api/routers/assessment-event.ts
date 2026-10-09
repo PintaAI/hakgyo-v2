@@ -286,7 +286,10 @@ function learnerEventSelect(userId: string, now: Date) {
           enrollments: { some: { ...membership, userId } },
         },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: [
+        { cohort: { defaultForCourseId: { sort: "asc", nulls: "first" } } },
+        { createdAt: "asc" },
+      ],
       take: 1,
       select: { cohort: { select: { id: true, name: true } } },
     },
