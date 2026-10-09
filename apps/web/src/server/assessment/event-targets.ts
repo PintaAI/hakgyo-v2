@@ -62,7 +62,8 @@ export async function addAllCohortTargets(
 
 /**
  * Adds every eligible learner of the event's targets (or of `cohortIds` only) as a participant,
- * attributed to their earliest eligible class (a real class before the self-paced cohort). Returns the number of distinct eligible learners.
+ * attributed to their earliest eligible class (a real class before the self-paced cohort). Returns
+ * the number of distinct eligible learners and the ids of learners who were not participants yet.
  */
 export async function enrollEventParticipants(
   tx: Prisma.TransactionClient,
@@ -73,7 +74,9 @@ export async function enrollEventParticipants(
   const cohortFilter = cohortIds
     ? Prisma.sql`AND target."cohortId" IN (${Prisma.join(cohortIds)})`
     : Prisma.empty;
-  const [result] = await tx.$queryRaw<Array<{ eligibleCount: number }>>`
+  const [result] = await tx.$queryRaw<
+    Array<{ eligibleCount: number; addedUserIds: string[] }>
+  >`
     WITH eligible AS (
       SELECT DISTINCT ON (enrollment."userId")
         enrollment."userId", enrollment."cohortId"
@@ -93,11 +96,16 @@ export async function enrollEventParticipants(
       INSERT INTO "AssessmentEventParticipant" ("eventId", "userId", "cohortId")
       SELECT ${eventId}, eligible."userId", eligible."cohortId" FROM eligible
       ON CONFLICT DO NOTHING
-      RETURNING 1
+      RETURNING "userId"
     )
-    SELECT (SELECT COUNT(*) FROM eligible)::int AS "eligibleCount"
+    SELECT
+      (SELECT COUNT(*) FROM eligible)::int AS "eligibleCount",
+      ARRAY(SELECT "userId" FROM inserted) AS "addedUserIds"
   `;
-  return Number(result?.eligibleCount ?? 0);
+  return {
+    eligibleCount: Number(result?.eligibleCount ?? 0),
+    addedUserIds: result?.addedUserIds ?? [],
+  };
 }
 
 /**

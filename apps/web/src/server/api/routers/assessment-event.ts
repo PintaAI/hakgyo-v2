@@ -504,6 +504,9 @@ export const assessmentEventRouter = createTRPCRouter({
           ...event,
           targets: shapeTargets(cohorts),
           canManage: Boolean(access[index]?.manage),
+          // "All classes" drafts appear on class pages before any class is targeted, so their
+          // class staff cannot open the event yet.
+          canReview: access[index] !== null,
         })),
         total,
         pageCount: Math.ceil(total / MANAGE_PAGE_SIZE),

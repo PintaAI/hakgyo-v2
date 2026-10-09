@@ -77,12 +77,12 @@ function eventLabel(type: string) {
 
 /**
  * Valid participants who are still actively enrolled in a targeted class (optionally only the
- * given classes).
+ * given learners).
  */
 async function eventRecipientIds(
   eventId: string,
   now: Date,
-  cohortIds?: string[],
+  userIds?: string[],
 ) {
   const rows = await db.$queryRaw<Array<{ userId: string }>>`
     SELECT DISTINCT participant."userId"
@@ -95,7 +95,7 @@ async function eventRecipientIds(
       AND participant."invalidatedAt" IS NULL
       AND enrollment."status" = 'ACTIVE'
       AND (enrollment."expiresAt" IS NULL OR enrollment."expiresAt" > ${now}::timestamp(3))
-      ${cohortIds ? Prisma.sql`AND target."cohortId" IN (${Prisma.join(cohortIds)})` : Prisma.empty}
+      ${userIds ? Prisma.sql`AND participant."userId" IN (${Prisma.join(userIds)})` : Prisma.empty}
   `;
   return rows.map((row) => row.userId);
 }
@@ -108,8 +108,8 @@ function eventLinks(eventId: string) {
   };
 }
 
-/** "Opened" push to the event's learners, or only to those of newly added classes. */
-export async function notifyEventOpened(eventId: string, cohortIds?: string[]) {
+/** "Opened" push to the event's learners, or only to the given new participants. */
+export async function notifyEventOpened(eventId: string, userIds?: string[]) {
   const now = new Date();
   const event = await db.assessmentEvent.findUnique({
     where: { id: eventId },
@@ -119,7 +119,7 @@ export async function notifyEventOpened(eventId: string, cohortIds?: string[]) {
   const closes = event.closesAt
     ? ` Ditutup dalam ${formatRelativeDuration(event.closesAt.getTime() - now.getTime())}.`
     : "";
-  return notifyUsers(await eventRecipientIds(event.id, now, cohortIds), {
+  return notifyUsers(await eventRecipientIds(event.id, now, userIds), {
     type: "assessment-opened",
     title: `${eventLabel(event.type)} dibuka: ${event.title}`,
     body: `${event.course.title}.${closes} Kerjakan sekarang.`,

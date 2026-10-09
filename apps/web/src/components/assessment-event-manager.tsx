@@ -567,9 +567,15 @@ function EventCard({
           </span>
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={onSelect}>
-            Lihat peserta & hasil
-          </Button>
+          {event.canReview ? (
+            <Button size="sm" variant="outline" onClick={onSelect}>
+              Lihat peserta & hasil
+            </Button>
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              Draf untuk semua kelas, menunggu dibuka oleh pengelola course.
+            </p>
+          )}
           {manage &&
           (event.status === "DRAFT" || event.status === "SCHEDULED") ? (
             <Button size="sm" onClick={onOpen} disabled={pending}>

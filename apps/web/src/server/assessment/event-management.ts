@@ -461,9 +461,9 @@ export async function addCohortsToEvent(
     now: new Date(),
     authorize: authorizeEventManager(userId),
   });
-  if (result.open && result.added.length > 0 && input.notify) {
+  if (result.open && result.addedParticipantIds.length > 0 && input.notify) {
     await notifyInBackground("event classes added", () =>
-      notifyEventOpened(input.eventId, result.added),
+      notifyEventOpened(input.eventId, result.addedParticipantIds),
     );
   }
   return {

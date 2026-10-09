@@ -175,7 +175,7 @@ export async function openAssessmentEvent(
           message: "Pilih setidaknya satu kelas.",
         });
       }
-      const participantCount = await enrollEventParticipants(
+      const { eligibleCount: participantCount } = await enrollEventParticipants(
         tx,
         event.id,
         input.now,
@@ -355,7 +355,7 @@ export async function finalizeClosedEvent(
 /**
  * Adds classes to a DRAFT, SCHEDULED or OPEN event. Classes are never removed once added. On an
  * open event the new classes' eligible learners become participants right away. Returns the
- * ids of the classes that were actually added.
+ * ids of the classes that were actually added and of the learners who became participants.
  */
 export async function addEventCohorts(
   db: PrismaClient,
@@ -402,15 +402,20 @@ export async function addEventCohorts(
         (cohortId) => !existing.has(cohortId),
       );
       if (added.length === 0)
-        return { added, participantCount: 0, open: false };
+        return {
+          added,
+          participantCount: 0,
+          addedParticipantIds: [],
+          open: false,
+        };
       await tx.assessmentEventCohort.createMany({
         data: added.map((cohortId) => ({ eventId: event.id, cohortId })),
         skipDuplicates: true,
       });
       const open = event.status === "OPEN";
-      const participantCount = open
+      const { eligibleCount: participantCount, addedUserIds } = open
         ? await enrollEventParticipants(tx, event.id, input.now, added)
-        : 0;
+        : { eligibleCount: 0, addedUserIds: [] };
       // Touch the event so mobile sync picks up the new classes.
       await tx.assessmentEvent.update({
         where: { id: event.id },
@@ -424,7 +429,13 @@ export async function addEventCohorts(
           metadata: { cohortIds: added, participantCount },
         },
       });
-      return { added, participantCount, open };
+      return {
+        added,
+        participantCount,
+        /** Learners who became participants now, not through a class they were already in. */
+        addedParticipantIds: addedUserIds,
+        open,
+      };
     }),
   );
 }
