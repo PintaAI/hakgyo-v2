@@ -282,7 +282,14 @@ function RootNavigator() {
                     headerShadowVisible: false,
                     headerStyle: { backgroundColor: "transparent" },
                     title: "Pilih organisasi",
-                    contentStyle: { backgroundColor: "transparent" },
+                    // iOS shows the native sheet material through; Android
+                    // sheets have none and need an opaque surface.
+                    contentStyle: {
+                      backgroundColor:
+                        Platform.OS === "ios"
+                          ? "transparent"
+                          : colors.background,
+                    },
                     presentation: "formSheet",
                     sheetAllowedDetents: [0.55, 0.9],
                     sheetInitialDetentIndex: 0,
@@ -356,7 +363,7 @@ function RootNavigator() {
                     default: {
                       presentation: "formSheet",
                       headerShown: false,
-                      contentStyle: { backgroundColor: "transparent" },
+                      contentStyle: { backgroundColor: colors.background },
                       sheetAllowedDetents: "fitToContents",
                       sheetInitialDetentIndex: 0,
                       sheetCornerRadius: 28,

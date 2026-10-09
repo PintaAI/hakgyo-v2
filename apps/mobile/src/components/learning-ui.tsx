@@ -74,7 +74,13 @@ export function StudyScreen({
     <View
       className={`${fillViewport ? "flex-1" : ""} ${bleedTop ? "gap-6 px-5 pb-12 pt-0" : "gap-6 px-5 pb-12 pt-4"}`}
       style={
-        bleedTop ? { paddingBottom: Math.max(insets.bottom, 48) } : undefined
+        bleedTop
+          ? { paddingBottom: Math.max(insets.bottom, 48) }
+          : Platform.OS !== "ios" && !headerShown
+            ? // Without a header nothing else clears the status bar here:
+              // contentInsetAdjustmentBehavior is iOS-only.
+              { paddingTop: insets.top + 16 }
+            : undefined
       }
     >
       {children}

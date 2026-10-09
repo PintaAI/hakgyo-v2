@@ -14,7 +14,9 @@ export default function HomeTabsLayout() {
       tintColor={colors.primary}
       iconColor={{
         default: colors.mutedForeground,
-        selected: colors.primary,
+        // Android draws the selected icon on the primary-colored indicator.
+        selected:
+          Platform.OS === "android" ? colors.primaryForeground : colors.primary,
       }}
       labelStyle={{ color: colors.foreground }}
       indicatorColor={Platform.OS === "android" ? colors.primary : undefined}

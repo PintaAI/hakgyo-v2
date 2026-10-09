@@ -3,6 +3,7 @@ import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
+  Platform,
   View,
   type LayoutChangeEvent,
   type NativeScrollEvent,
@@ -29,6 +30,10 @@ import {
 } from "../../../../src/lib/learn-cohort-focus";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
+import {
+  AndroidTabActions,
+  TabActionButton,
+} from "../../../../src/components/sidebar/AndroidTabActions";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
@@ -246,22 +251,27 @@ export default function LearnTab() {
   return (
     <>
       <DoodleBackground />
-      <SidebarToolbarButton />
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
-          icon={toolbarIcons.notifications}
-          accessibilityLabel="Buka pembaruan belajar"
-          onPress={openUpdates}
-        >
-          {unreadCount > 0 ? (
-            <Stack.Toolbar.Badge>
-              {unreadCount > 99 ? "99+" : String(unreadCount)}
-            </Stack.Toolbar.Badge>
-          ) : null}
-        </Stack.Toolbar.Button>
-      </Stack.Toolbar>
+      {Platform.OS === "ios" ? (
+        <>
+          <SidebarToolbarButton />
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              icon={toolbarIcons.notifications}
+              accessibilityLabel="Buka pembaruan belajar"
+              onPress={openUpdates}
+            >
+              {unreadCount > 0 ? (
+                <Stack.Toolbar.Badge>
+                  {unreadCount > 99 ? "99+" : String(unreadCount)}
+                </Stack.Toolbar.Badge>
+              ) : null}
+            </Stack.Toolbar.Button>
+          </Stack.Toolbar>
+        </>
+      ) : null}
       <StudyScreen
         title=""
+        headerShown={Platform.OS === "ios"}
         bleedTop
         contentInsetAdjustmentBehavior="never"
         refreshing={dashboard.isRefetching || isSyncing}
@@ -298,6 +308,19 @@ export default function LearnTab() {
           </Empty>
         ) : null}
       </StudyScreen>
+      {Platform.OS !== "ios" ? (
+        <AndroidTabActions
+          floating
+          right={
+            <TabActionButton
+              symbol={{ ios: "bell", android: "notifications" }}
+              accessibilityLabel="Buka pembaruan belajar"
+              badgeCount={unreadCount}
+              onPress={openUpdates}
+            />
+          }
+        />
+      ) : null}
     </>
   );
 }
