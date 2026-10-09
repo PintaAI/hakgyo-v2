@@ -8,6 +8,7 @@ import {
 } from "~/server/assessment/event-targets";
 import { assertAssessmentComplete } from "~/server/course/readiness-service";
 import { withTransactionRetry } from "~/server/db-retry";
+import { notifyEventOpenedOnce } from "~/server/notifications/triggers";
 
 /**
  * Event status machine:
@@ -23,6 +24,19 @@ import { withTransactionRetry } from "~/server/db-retry";
 
 type Db = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
+/** The event's current targets, read under its row lock. */
+export type EventTargets = {
+  courseId: string;
+  allCohorts: boolean;
+  cohortIds: string[];
+};
+
+/**
+ * Checks a manual action against the targets read under the event row lock, inside the same
+ * transaction, so classes added concurrently are part of the check. Throws to reject.
+ */
+export type AuthorizeEventChange = (targets: EventTargets) => Promise<void>;
+
 /** Attempts graded per event in one finalize call. */
 const FINALIZE_BATCH_SIZE = 50;
 
@@ -30,6 +44,24 @@ async function lockEvent(tx: Prisma.TransactionClient, eventId: string) {
   await tx.$queryRaw`
     SELECT "id" FROM "AssessmentEvent" WHERE "id" = ${eventId} FOR UPDATE
   `;
+}
+
+/** Locks the event row and returns its targets, or throws NOT_FOUND. */
+export async function lockEventTargets(
+  tx: Prisma.TransactionClient,
+  eventId: string,
+): Promise<EventTargets> {
+  await lockEvent(tx, eventId);
+  const event = await tx.assessmentEvent.findUnique({
+    where: { id: eventId },
+    select: {
+      courseId: true,
+      allCohorts: true,
+      cohorts: { select: { cohortId: true } },
+    },
+  });
+  if (!event) throw new TRPCError({ code: "NOT_FOUND" });
+  return targetsOf(event);
 }
 
 async function assertEventAssessmentReady(
@@ -55,8 +87,20 @@ const lifecycleEventSelect = {
   notifyOnOpen: true,
   createdByMembershipId: true,
   courseItem: { select: { isPublished: true, assessmentId: true } },
-  _count: { select: { cohorts: true } },
+  cohorts: { select: { cohortId: true } },
 } satisfies Prisma.AssessmentEventSelect;
+
+function targetsOf(event: {
+  courseId: string;
+  allCohorts: boolean;
+  cohorts: Array<{ cohortId: string }>;
+}): EventTargets {
+  return {
+    courseId: event.courseId,
+    allCohorts: event.allCohorts,
+    cohortIds: event.cohorts.map((target) => target.cohortId),
+  };
+}
 
 /**
  * Opens a DRAFT or SCHEDULED event: stores the classes of an "all classes" event, adds every
@@ -71,7 +115,16 @@ export async function openAssessmentEvent(
   input: {
     eventId: string;
     now: Date;
-  } & ({ automatic: false; actorMembershipId: string } | { automatic: true }),
+  } & (
+    | {
+        automatic: false;
+        actorMembershipId: string;
+        /** Push learners once it is open (`notifyEventOpenedOnce`). */
+        notify: boolean;
+        authorize: AuthorizeEventChange;
+      }
+    | { automatic: true }
+  ),
 ) {
   return withTransactionRetry(() =>
     db.$transaction(async (tx) => {
@@ -89,8 +142,11 @@ export async function openAssessmentEvent(
         ) {
           return { opened: false as const };
         }
-      } else if (event.status !== "DRAFT" && event.status !== "SCHEDULED") {
-        throw new TRPCError({ code: "CONFLICT" });
+      } else {
+        await input.authorize(targetsOf(event));
+        if (event.status !== "DRAFT" && event.status !== "SCHEDULED") {
+          throw new TRPCError({ code: "CONFLICT" });
+        }
       }
       if (!event.closesAt || event.closesAt <= input.now) {
         if (input.automatic) {
@@ -113,7 +169,7 @@ export async function openAssessmentEvent(
       }
       await assertEventAssessmentReady(tx, event.courseItem);
       if (event.allCohorts) await addAllCohortTargets(tx, event);
-      else if (event._count.cohorts === 0) {
+      else if (event.cohorts.length === 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Pilih setidaknya satu kelas.",
@@ -132,7 +188,12 @@ export async function openAssessmentEvent(
       }
       const updated = await tx.assessmentEvent.updateMany({
         where: { id: event.id, status: { in: ["DRAFT", "SCHEDULED"] } },
-        data: { status: "OPEN", openedAt: input.now },
+        data: {
+          status: "OPEN",
+          openedAt: input.now,
+          // A scheduled opening keeps the choice made when scheduling.
+          ...(input.automatic ? {} : { notifyOnOpen: input.notify }),
+        },
       });
       if (updated.count !== 1) throw new TRPCError({ code: "CONFLICT" });
       await tx.assessmentEventAudit.create({
@@ -145,11 +206,7 @@ export async function openAssessmentEvent(
           metadata: { participantCount, automatic: input.automatic },
         },
       });
-      return {
-        opened: true as const,
-        participantCount,
-        notify: event.notifyOnOpen,
-      };
+      return { opened: true as const, participantCount };
     }),
   );
 }
@@ -163,6 +220,7 @@ export async function scheduleAssessmentEvent(
     notify: boolean;
     actorMembershipId: string;
     now: Date;
+    authorize: AuthorizeEventChange;
   },
 ) {
   return db.$transaction(async (tx) => {
@@ -172,6 +230,7 @@ export async function scheduleAssessmentEvent(
       select: lifecycleEventSelect,
     });
     if (!event) throw new TRPCError({ code: "NOT_FOUND" });
+    await input.authorize(targetsOf(event));
     if (event.status !== "DRAFT" && event.status !== "SCHEDULED") {
       throw new TRPCError({ code: "CONFLICT" });
     }
@@ -189,7 +248,7 @@ export async function scheduleAssessmentEvent(
     }
     await assertEventAssessmentReady(tx, event.courseItem);
     if (event.allCohorts) await addAllCohortTargets(tx, event);
-    else if (event._count.cohorts === 0) {
+    else if (event.cohorts.length === 0) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "Pilih setidaknya satu kelas.",
@@ -224,15 +283,24 @@ export async function closeAssessmentEvent(
   input: {
     eventId: string;
     closedAt: Date;
-    actorMembershipId?: string;
-  },
+  } & (
+    | { actorMembershipId: string; authorize: AuthorizeEventChange }
+    | { actorMembershipId?: undefined }
+  ),
 ) {
   return db.$transaction(async (tx) => {
+    await lockEvent(tx, input.eventId);
     const event = await tx.assessmentEvent.findUnique({
       where: { id: input.eventId },
-      select: { createdByMembershipId: true },
+      select: {
+        createdByMembershipId: true,
+        courseId: true,
+        allCohorts: true,
+        cohorts: { select: { cohortId: true } },
+      },
     });
     if (!event) throw new TRPCError({ code: "NOT_FOUND" });
+    if (input.actorMembershipId) await input.authorize(targetsOf(event));
     const updated = await tx.assessmentEvent.updateMany({
       where: { id: input.eventId, status: "OPEN" },
       data: { status: "CLOSED", closedAt: input.closedAt },
@@ -296,6 +364,8 @@ export async function addEventCohorts(
     cohortIds: string[];
     actorMembershipId: string;
     now: Date;
+    /** Called with the targets after the addition, so the caller checks the resulting set. */
+    authorize: AuthorizeEventChange;
   },
 ) {
   return withTransactionRetry(() =>
@@ -306,10 +376,17 @@ export async function addEventCohorts(
         select: {
           id: true,
           status: true,
+          courseId: true,
+          allCohorts: true,
           cohorts: { select: { cohortId: true } },
         },
       });
       if (!event) throw new TRPCError({ code: "NOT_FOUND" });
+      const current = targetsOf(event);
+      await input.authorize({
+        ...current,
+        cohortIds: [...new Set([...current.cohortIds, ...input.cohortIds])],
+      });
       if (
         event.status !== "DRAFT" &&
         event.status !== "SCHEDULED" &&
@@ -354,16 +431,17 @@ export async function addEventCohorts(
 
 export type LifecycleRunResult = {
   opened: string[];
-  /** Opened events whose learners asked to be notified. */
-  notify: string[];
+  /** Open events whose "opened" push was sent (or skipped by choice) in this run. */
+  notified: number;
   closed: string[];
   finalized: number;
   pendingFinalization: number;
 };
 
 /**
- * One sweep of the lifecycle cron: opens due scheduled events, closes events past `closesAt`
- * and grades attempts of closed events in batches until `deadline`. Each step is idempotent, so
+ * One sweep of the lifecycle cron: opens due scheduled events, sends pending "opened" pushes,
+ * closes events past `closesAt` and grades attempts of closed events in batches until
+ * `deadline`. Each step is idempotent, so
  * overlapping or interrupted runs pick up where the last one stopped.
  */
 export async function runAssessmentEventLifecycle(
@@ -373,7 +451,7 @@ export async function runAssessmentEventLifecycle(
 ): Promise<LifecycleRunResult> {
   const result: LifecycleRunResult = {
     opened: [],
-    notify: [],
+    notified: 0,
     closed: [],
     finalized: 0,
     pendingFinalization: 0,
@@ -390,13 +468,32 @@ export async function runAssessmentEventLifecycle(
         now,
         automatic: true,
       });
-      if (opened.opened) {
-        result.opened.push(id);
-        if (opened.notify) result.notify.push(id);
-      }
+      if (opened.opened) result.opened.push(id);
     } catch (error) {
       // Typically the assessment was hidden or edited into an incomplete state.
       console.error("Failed to open a scheduled assessment event", {
+        eventId: id,
+        error,
+      });
+    }
+  }
+  // "Opened" pushes not claimed yet: scheduled openings above, and any earlier opening whose
+  // push was interrupted. Sent before grading so a long grading run cannot delay them.
+  const unannounced = await db.assessmentEvent.findMany({
+    where: {
+      status: "OPEN",
+      openNotificationSentAt: null,
+      closesAt: { gt: now },
+    },
+    orderBy: { openedAt: "asc" },
+    select: { id: true },
+  });
+  for (const { id } of unannounced) {
+    try {
+      await notifyEventOpenedOnce(id);
+      result.notified += 1;
+    } catch (error) {
+      console.error("Failed to send an event opened notification", {
         eventId: id,
         error,
       });

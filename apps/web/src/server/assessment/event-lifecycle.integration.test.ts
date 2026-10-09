@@ -2,7 +2,11 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { assessmentEventRouter } from "../api/routers/assessment-event";
 import { db } from "../db";
-import { runAssessmentEventLifecycle } from "./event-lifecycle";
+import {
+  closeAssessmentEvent,
+  runAssessmentEventLifecycle,
+} from "./event-lifecycle";
+import { authorizeEventManager } from "./event-management";
 
 // Runs against DATABASE_URL with its own organization, removed afterwards.
 const run = Bun.env.DATABASE_URL ? describe : describe.skip;
@@ -404,8 +408,14 @@ run("class-targeted assessment events", () => {
       Date.now() + 30_000,
     );
     expect(result.opened).toContain(scheduled.id);
-    expect(result.notify).toContain(scheduled.id);
+    expect(result.notified).toBeGreaterThan(0);
     expect(result.closed).toContain(open.id);
+    // The scheduled opening's push is claimed exactly once.
+    const announced = await db.assessmentEvent.findUniqueOrThrow({
+      where: { id: scheduled.id },
+      select: { openNotificationSentAt: true },
+    });
+    expect(announced.openNotificationSentAt).not.toBeNull();
 
     const closed = await db.assessmentEvent.findUniqueOrThrow({
       where: { id: open.id },
@@ -429,6 +439,51 @@ run("class-targeted assessment events", () => {
     );
     expect(again.closed).not.toContain(open.id);
     expect(again.opened).not.toContain(scheduled.id);
+  });
+
+  test("changes are authorized against the targets under the row lock", async () => {
+    const teacherEvent = await caller(users.teacher).create(eventInput());
+    // The teacher passed every up-front check; meanwhile the owner adds a class they do not teach.
+    await caller(users.owner).addCohorts({
+      eventId: teacherEvent.id,
+      cohortIds: [ids.k2],
+      notify: false,
+    });
+    expect(
+      await rejection(
+        closeAssessmentEvent(db, {
+          eventId: teacherEvent.id,
+          closedAt: new Date(),
+          actorMembershipId: `m-teacher-${fixture}`,
+          authorize: authorizeEventManager(users.teacher),
+        }),
+      ),
+    ).toContain("kelas yang kamu ajar");
+    expect(
+      await rejection(
+        caller(users.teacher).delete({ eventId: teacherEvent.id }),
+      ),
+    ).not.toBeNull();
+    const still = await db.assessmentEvent.findUnique({
+      where: { id: teacherEvent.id },
+      select: { status: true },
+    });
+    expect(still?.status).toBe("OPEN");
+  });
+
+  test("a pending opened push is retried by the next cron run", async () => {
+    const event = await caller(users.owner).create(eventInput());
+    // Simulates a request that opened the event but died before its push went out.
+    await db.assessmentEvent.update({
+      where: { id: event.id },
+      data: { openNotificationSentAt: null },
+    });
+    await runAssessmentEventLifecycle(db, new Date(), Date.now() + 30_000);
+    const announced = await db.assessmentEvent.findUniqueOrThrow({
+      where: { id: event.id },
+      select: { openNotificationSentAt: true },
+    });
+    expect(announced.openNotificationSentAt).not.toBeNull();
   });
 
   test("target cohort picker reports learners and access", async () => {

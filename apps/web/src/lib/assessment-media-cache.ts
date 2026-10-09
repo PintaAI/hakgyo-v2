@@ -2,7 +2,9 @@
  * Offline copies of assessment media (question images and audio) so a learner's attempt does not
  * depend on the connection once it has started. Files are downloaded ahead into Cache Storage,
  * keyed by asset id (signed URLs change on every signing), and served as object URLs. Media
- * blocks read through `cachedAssetUrl` before signing a download URL.
+ * blocks read through `cachedAssetUrl` before signing a download URL; while an asset is being
+ * downloaded they wait for that download instead of fetching the file a second time, so they
+ * never end up holding a network URL for media that is about to be stored.
  *
  * Browser-only. Without Cache Storage the downloads are kept in memory for the current page.
  */
@@ -15,6 +17,8 @@ const CONCURRENCY = 3;
 const RETRIES = 2;
 
 const objectUrls = new Map<string, string>();
+/** Downloads in progress, registered synchronously when a preload starts. */
+const inflight = new Map<string, Promise<string | null>>();
 let index: Promise<Set<string>> | null = null;
 
 function available() {
@@ -68,8 +72,19 @@ function remember(assetId: string, blob: Blob) {
   return url;
 }
 
-/** A local URL for a downloaded asset, or null when it has to come from the network. */
+/**
+ * A local URL for a downloaded asset, or null when it has to come from the network. Waits for
+ * a preload that is downloading the asset right now.
+ */
 export async function cachedAssetUrl(assetId: string): Promise<string | null> {
+  const known = objectUrls.get(assetId);
+  if (known) return known;
+  const pending = inflight.get(assetId);
+  if (pending) return pending;
+  return readStored(assetId);
+}
+
+async function readStored(assetId: string): Promise<string | null> {
   const known = objectUrls.get(assetId);
   if (known) return known;
   if (!available() || !(await cachedIds()).has(assetId)) return null;
@@ -128,6 +143,10 @@ export type MediaPreloadProgress = {
 /**
  * Downloads every asset not stored yet, a few at a time, reporting progress after each file.
  * Failed assets are reported, never thrown; the media blocks fall back to the network for them.
+ *
+ * The downloads are registered before the first `await`, so media blocks whose URL lookups run
+ * after this call (see `useAssessmentMediaPreload`, which starts it in a layout effect) wait for
+ * the local copy.
  */
 export async function preloadAssessmentMedia(
   assetIds: readonly string[],
@@ -141,31 +160,77 @@ export async function preloadAssessmentMedia(
     failed: [],
   };
   if (ids.length === 0) return progress;
+  // Claim every asset this call will settle, synchronously.
+  const settle = new Map<string, (url: string | null) => void>();
+  const claims = new Map<string, Promise<string | null>>();
+  const waitFor = new Map<string, Promise<string | null>>();
+  for (const assetId of ids) {
+    if (objectUrls.has(assetId)) continue;
+    const pending = inflight.get(assetId);
+    if (pending) {
+      waitFor.set(assetId, pending);
+      continue;
+    }
+    const claimed = new Promise<string | null>((resolve) => {
+      settle.set(assetId, resolve);
+    });
+    inflight.set(assetId, claimed);
+    claims.set(assetId, claimed);
+  }
+  const finish = (assetId: string, url: string | null) => {
+    settle.get(assetId)?.(url);
+    if (inflight.get(assetId) === claims.get(assetId)) inflight.delete(assetId);
+  };
   const report = () =>
     onProgress?.({ ...progress, failed: [...progress.failed] });
-  const stored = await cachedIds();
-  const missing = ids.filter((assetId) => {
-    if (objectUrls.has(assetId) || stored.has(assetId)) {
-      progress.ready += 1;
-      return false;
-    }
-    return true;
-  });
-  report();
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, missing.length) }, async () => {
-      while (next < missing.length) {
-        const assetId = missing[next++]!;
-        try {
-          await download(assetId, sign);
-          progress.ready += 1;
-        } catch {
-          progress.failed.push(assetId);
-        }
-        report();
+  const missing: string[] = [];
+  try {
+    const stored = await cachedIds();
+    for (const assetId of ids) {
+      if (objectUrls.has(assetId) && !settle.has(assetId)) {
+        progress.ready += 1;
+      } else if (waitFor.has(assetId)) {
+        missing.push(assetId);
+      } else if (stored.has(assetId)) {
+        progress.ready += 1;
+        finish(assetId, await readStored(assetId));
+      } else {
+        missing.push(assetId);
       }
-    }),
-  );
+    }
+    report();
+    let next = 0;
+    await Promise.all(
+      Array.from(
+        { length: Math.min(CONCURRENCY, missing.length) },
+        async () => {
+          while (next < missing.length) {
+            const assetId = missing[next++]!;
+            const other = waitFor.get(assetId);
+            if (other) {
+              // Another preload is downloading it.
+              if (await other) progress.ready += 1;
+              else progress.failed.push(assetId);
+            } else {
+              try {
+                await download(assetId, sign);
+                progress.ready += 1;
+                finish(assetId, objectUrls.get(assetId) ?? null);
+              } catch {
+                progress.failed.push(assetId);
+                finish(assetId, null);
+              }
+            }
+            report();
+          }
+        },
+      ),
+    );
+  } finally {
+    // Never leave a media block waiting, whatever happened above.
+    for (const assetId of settle.keys()) {
+      finish(assetId, objectUrls.get(assetId) ?? null);
+    }
+  }
   return { ...progress, failed: [...progress.failed] };
 }

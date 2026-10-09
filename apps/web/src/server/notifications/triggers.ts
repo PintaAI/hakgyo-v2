@@ -129,6 +129,35 @@ export async function notifyEventOpened(eventId: string, cohortIds?: string[]) {
   });
 }
 
+/**
+ * The "opened" push of an event, sent once per event. The send is claimed through
+ * `openNotificationSentAt` so concurrent callers (the opening request, a learner's start, the
+ * lifecycle cron) send it once; a failed send releases the claim and the cron retries it.
+ * Events opened with notifications off are only marked.
+ */
+export async function notifyEventOpenedOnce(eventId: string) {
+  const now = new Date();
+  const claimed = await db.assessmentEvent.updateMany({
+    where: { id: eventId, status: "OPEN", openNotificationSentAt: null },
+    data: { openNotificationSentAt: now },
+  });
+  if (claimed.count !== 1) return;
+  const event = await db.assessmentEvent.findUnique({
+    where: { id: eventId },
+    select: { notifyOnOpen: true },
+  });
+  if (!event?.notifyOnOpen) return;
+  try {
+    await notifyEventOpened(eventId);
+  } catch (error) {
+    await db.assessmentEvent.updateMany({
+      where: { id: eventId, openNotificationSentAt: now },
+      data: { openNotificationSentAt: null },
+    });
+    throw error;
+  }
+}
+
 /** Only for events that were open: drafts never reached learners. */
 export async function notifyEventCancelled(eventId: string, reason: string) {
   const event = await db.assessmentEvent.findUnique({

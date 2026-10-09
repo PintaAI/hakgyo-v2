@@ -1,6 +1,6 @@
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Text } from "react-native";
 
 import {
@@ -84,11 +84,22 @@ export default function AssessmentEventScreen() {
   // A scheduled event can be started from its opening time; the server opens
   // it on the first start. The cached detail may predate that moment.
   const opensAt = event?.status === "SCHEDULED" ? event.opensAt : null;
+  const opensAtTime = opensAt?.getTime() ?? null;
+  const [now, setNow] = useState(() => Date.now());
+  // Re-render at the opening time so the start button appears while the screen is open.
+  useEffect(() => {
+    // Nothing to wait for, or this render already happens after the opening.
+    if (opensAtTime === null || opensAtTime <= now) return;
+    // setTimeout overflows past ~24.8 days; the next render re-arms it.
+    const wait = Math.min(opensAtTime - Date.now() + 500, 2 ** 31 - 1);
+    const timer = setTimeout(() => setNow(Date.now()), Math.max(wait, 0));
+    return () => clearTimeout(timer);
+  }, [opensAtTime, now]);
   const dueNow =
-    !!opensAt &&
-    opensAt.getTime() <= Date.now() &&
+    opensAtTime !== null &&
+    opensAtTime <= now &&
     !!event?.closesAt &&
-    event.closesAt.getTime() > Date.now() &&
+    event.closesAt.getTime() > now &&
     !attempt &&
     !invalidated;
   const primaryAction =

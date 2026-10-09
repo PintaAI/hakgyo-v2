@@ -21,7 +21,13 @@ CREATE TABLE "AssessmentEventCohort" (
 ALTER TABLE "AssessmentEvent" ADD COLUMN "allCohorts" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN "attemptsFinalizedAt" TIMESTAMP(3),
 ADD COLUMN "opensAt" TIMESTAMP(3),
-ADD COLUMN "notifyOnOpen" BOOLEAN NOT NULL DEFAULT true;
+ADD COLUMN "notifyOnOpen" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "openNotificationSentAt" TIMESTAMP(3);
+
+-- Events opened before this migration already sent (or skipped) their "opened" push.
+UPDATE "AssessmentEvent"
+SET "openNotificationSentAt" = COALESCE("openedAt", CURRENT_TIMESTAMP)
+WHERE "status" <> 'DRAFT';
 
 -- AlterTable
 ALTER TABLE "AssessmentEventParticipant" ADD COLUMN "cohortId" TEXT;
@@ -62,6 +68,17 @@ SELECT DISTINCT participant."eventId", participant."cohortId", event."createdAt"
 FROM "AssessmentEventParticipant" AS participant
 JOIN "AssessmentEvent" AS event ON event."id" = participant."eventId"
 WHERE event."scope" = 'COURSE' AND participant."cohortId" IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+-- Open course-scoped events stay open to every class of the course that grants access, including
+-- classes without participants yet, so their learners can still join.
+INSERT INTO "AssessmentEventCohort" ("eventId", "cohortId", "createdAt")
+SELECT event."id", cohort."id", event."createdAt"
+FROM "AssessmentEvent" AS event
+JOIN "Cohort" AS cohort ON cohort."courseId" = event."courseId"
+WHERE event."scope" = 'COURSE'
+  AND event."status" = 'OPEN'
+  AND cohort."status" IN ('OPEN', 'IN_PROGRESS', 'COMPLETED')
 ON CONFLICT DO NOTHING;
 
 -- Event attempts carry the learner's class, like chapter attempts (never the self-paced cohort).

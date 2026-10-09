@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffectEvent, useLayoutEffect, useState } from "react";
 import { CheckCircle2Icon, LoaderCircleIcon, RotateCwIcon } from "lucide-react";
 
 import { useAssetUrlSigner } from "~/components/asset-download-url";
@@ -27,7 +27,9 @@ export function useAssessmentMediaPreload(
       preloadAssessmentMedia(key ? key.split("\n") : [], sign, onProgress),
   );
 
-  useEffect(() => {
+  // A layout effect runs before the passive effects in which media blocks look up their URLs,
+  // so the downloads are registered first and those lookups wait for the local copies.
+  useLayoutEffect(() => {
     if (!enabled || !key) return;
     let active = true;
     const update = (next: MediaPreloadProgress) => {

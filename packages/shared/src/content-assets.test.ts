@@ -22,6 +22,22 @@ describe("collectContentAssetIds", () => {
     ).toEqual(["audio-1", "image-1"]);
   });
 
+  test("finds BlockNote file URLs and media inside JSON strings", () => {
+    expect(
+      collectContentAssetIds([
+        { type: "image", props: { url: "hakgyo-asset:image-2" } },
+        { type: "audio", props: { url: "https://example.test/a.mp3" } },
+        {
+          type: "culture",
+          props: {
+            sections: JSON.stringify([{ images: [{ assetId: "image-3" }] }]),
+          },
+        },
+        { type: "paragraph", content: "[tidak valid" },
+      ]),
+    ).toEqual(["image-2", "image-3"]);
+  });
+
   test("ignores non-string ids and plain values", () => {
     expect(collectContentAssetIds(null, "text", 3, { assetId: 7 })).toEqual([]);
   });

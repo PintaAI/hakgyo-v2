@@ -41,6 +41,28 @@ describe("preloadAssessmentMedia", () => {
     expect(fetched).toHaveLength(2);
   });
 
+  test("lookups during a running download wait for the local copy", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    globalThis.fetch = (async () => {
+      await gate;
+      return new Response(new Blob(["audio"], { type: "audio/mpeg" }));
+    }) as unknown as typeof fetch;
+
+    const preload = preloadAssessmentMedia(
+      ["slow-audio"],
+      async () => "https://r2.test/slow-audio",
+    );
+    // A media block resolving its URL right after the preload started.
+    const lookup = cachedAssetUrl("slow-audio");
+    release();
+
+    expect(await lookup).toStartWith("blob:");
+    expect((await preload).ready).toBe(1);
+  });
+
   test("reports assets that keep failing instead of throwing", async () => {
     globalThis.fetch = (async () =>
       new Response("nope", { status: 403 })) as unknown as typeof fetch;

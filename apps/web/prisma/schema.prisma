@@ -719,13 +719,13 @@ model CourseCollaborator {
 }
 
 model Cohort {
-  id                 String              @id @default(cuid())
+  id                 String                       @id @default(cuid())
   courseId           String
   organizationId     String
   name               String
   description        String?
   whatsappGroupUrl   String?
-  status             CohortStatus        @default(DRAFT)
+  status             CohortStatus                 @default(DRAFT)
   enrollmentMode     EnrollmentMode?
   price              Int?
   capacity           Int?
@@ -734,10 +734,10 @@ model Cohort {
   // Set to courseId on the course's system self-paced cohort, which holds
   // learners who study without a class cohort. A CHECK constraint keeps it
   // equal to courseId, and the unique index allows one per course.
-  defaultForCourseId String?             @unique
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  course             Course              @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  defaultForCourseId String?                      @unique
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  course             Course                       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
   staff              CohortStaff[]
   enrollments        CohortEnrollment[]
   enrollmentInvites  EnrollmentInvite[]
@@ -1193,40 +1193,42 @@ model AssessmentAttempt {
 }
 
 model AssessmentEvent {
-  id                    String                       @id @default(cuid())
-  organizationId        String
-  courseId              String
-  courseItemId          String
-  createdByMembershipId String
-  type                  AssessmentEventType
-  title                 String
-  durationMinutes       Int
-  status                AssessmentEventStatus        @default(DRAFT)
+  id                     String                       @id @default(cuid())
+  organizationId         String
+  courseId               String
+  courseItemId           String
+  createdByMembershipId  String
+  type                   AssessmentEventType
+  title                  String
+  durationMinutes        Int
+  status                 AssessmentEventStatus        @default(DRAFT)
   /// Targets every class of the course; the classes active at opening are stored as targets.
-  allCohorts            Boolean                      @default(false)
-  shuffleQuestions      Boolean                      @default(true)
+  allCohorts             Boolean                      @default(false)
+  shuffleQuestions       Boolean                      @default(true)
   /// Planned opening of a SCHEDULED event (the lifecycle cron opens it).
-  opensAt               DateTime?
-  /// Push learners when a SCHEDULED event opens.
-  notifyOnOpen          Boolean                      @default(true)
-  openedAt              DateTime?
-  closesAt              DateTime?
-  closedAt              DateTime?
-  cancelledAt           DateTime?
+  opensAt                DateTime?
+  /// Push learners when the event opens (scheduled or manual).
+  notifyOnOpen           Boolean                      @default(true)
+  /// Set once the "opened" push was claimed, so a failed send is retried by the cron at most once.
+  openNotificationSentAt DateTime?
+  openedAt               DateTime?
+  closesAt               DateTime?
+  closedAt               DateTime?
+  cancelledAt            DateTime?
   /// Set once every attempt left in progress at closing has been graded.
-  attemptsFinalizedAt   DateTime?
+  attemptsFinalizedAt    DateTime?
   /// Set once the "closing soon" push went out (notifications cron).
-  closingReminderSentAt DateTime?
-  createdAt             DateTime                     @default(now())
-  updatedAt             DateTime                     @updatedAt
-  organization          Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course                Course                       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  courseItem            CourseItem                   @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  createdBy             OrganizationMember           @relation("AssessmentEventCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  cohorts               AssessmentEventCohort[]
-  participants          AssessmentEventParticipant[]
-  attempts              AssessmentAttempt[]
-  audits                AssessmentEventAudit[]
+  closingReminderSentAt  DateTime?
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  organization           Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course                 Course                       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  courseItem             CourseItem                   @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  createdBy              OrganizationMember           @relation("AssessmentEventCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  cohorts                AssessmentEventCohort[]
+  participants           AssessmentEventParticipant[]
+  attempts               AssessmentAttempt[]
+  audits                 AssessmentEventAudit[]
 
   @@unique([id, organizationId])
   @@index([courseId, createdAt])

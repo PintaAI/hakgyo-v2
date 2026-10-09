@@ -31,6 +31,10 @@ Both show a combined leaderboard across all targeted classes.
 - Class staff with `assessment.review` manage events that only target classes they review, and can
   review (view, adjust, invalidate) their own classes' participants on any event.
 - "Semua kelas" events require course management.
+- Every change (open, schedule, close, cancel, delete, add classes) is authorized again inside its
+  transaction against the targets read under the event row lock
+  (`src/server/assessment/event-management.ts`), so a class someone else adds concurrently is part
+  of the check.
 
 ## Lifecycle
 
@@ -42,24 +46,33 @@ DRAFT / SCHEDULED / OPEN ──cancel──▶ CANCELLED
 
 `src/server/assessment/event-lifecycle.ts` implements each transition. The cron route
 `/api/cron/assessment-events` (GitHub Actions `assessment-events.yml`, every 5 minutes, with
-`CRON_SECRET`) opens due scheduled events (pushing "dibuka" when `notifyOnOpen`), closes events past
+`CRON_SECRET`) opens due scheduled events, sends "opened" pushes that are still pending, closes
+events past
 `closesAt` (with `closedAt = closesAt`) and grades attempts left in progress, 50 at a time, until
 `attemptsFinalizedAt` is set. Every step is idempotent. A learner starting a due scheduled event
 opens it immediately, so a late cron run only delays the push. A manual close grades a few batches
 right away and leaves the rest to the cron.
+
+The "opened" push is sent once per event through `notifyEventOpenedOnce`: the opening request, a
+learner's start and the cron claim it via `openNotificationSentAt` (respecting `notifyOnOpen`); a
+failed send releases the claim and the next cron run retries it, before any grading.
 
 A scheduled or open event locks its assessment against edits (`live-status.ts`).
 
 ## Media preload
 
 Questions show one at a time, so their images and audio are downloaded before the learner needs
-them (`collectContentAssetIds` / `assessmentContentAssetIds` in `@hakgyo/shared`):
+them. `collectContentAssetIds` / `assessmentContentAssetIds` in `@hakgyo/shared` find `assetId`
+props of custom media blocks, `hakgyo-asset:<id>` URLs of BlockNote file blocks and media inside
+JSON strings (culture sections).
 
 - `assessmentEvent.getForLearner` returns `mediaAssetIds` once the learner can start or continue the
   event, never before it opens.
 - Web: `src/lib/assessment-media-cache.ts` stores downloads in Cache Storage (memory where it is
-  unavailable) keyed by asset id; every media block reads the local copy first. The event page and
-  the attempt page download ahead and show progress. Downloads use `fetch`, so the R2 bucket CORS
+  unavailable) keyed by asset id; every media block reads the local copy first. Downloads are
+  registered synchronously and started in a layout effect, so URL lookups made while a download
+  runs wait for the local copy instead of taking a network URL. The event page and the attempt
+  page download ahead and show progress. Downloads use `fetch`, so the R2 bucket CORS
   must allow GET from the app origins.
 - Mobile: the event and attempt screens call `prefetchAssessmentMedia`; open events are also
   downloaded in the background on Wi-Fi, and lesson prefetch includes assessment media.
