@@ -1,5 +1,8 @@
 import { TRPCError } from "@trpc/server";
-import { resolveAssessmentEntry } from "@hakgyo/shared";
+import {
+  assessmentContentAssetIds,
+  resolveAssessmentEntry,
+} from "@hakgyo/shared";
 import { z } from "zod";
 
 import { after } from "next/server";
@@ -380,6 +383,24 @@ async function requireTargetManagement(
         : "Kamu hanya bisa memilih kelas yang kamu ajar.",
     });
   }
+}
+
+/** Assets referenced by the assessment's instructions, questions and options. */
+async function loadAssessmentMediaAssetIds(
+  db: Prisma.TransactionClient | Prisma.DefaultPrismaClient,
+  assessmentId: string,
+) {
+  const assessment = await db.assessment.findUnique({
+    where: { id: assessmentId },
+    select: {
+      instructions: true,
+      questions: {
+        orderBy: { position: "asc" },
+        select: { prompt: true, options: { select: { content: true } } },
+      },
+    },
+  });
+  return assessment ? assessmentContentAssetIds(assessment) : [];
 }
 
 /** Grades a few batches right away; the lifecycle cron finishes larger events. */
@@ -1225,19 +1246,31 @@ export const assessmentEventRouter = createTRPCRouter({
       ]);
       if (!event) throw new TRPCError({ code: "NOT_FOUND" });
       const learnerEvent = shapeLearnerEvent(event, attemptCount, now);
+      // Images and audio the learner can download ahead, once the event has opened (never
+      // before, so listening material is not handed out early).
+      const mediaAssetIds =
+        (learnerEvent.entry.canStart ||
+          learnerEvent.entry.canReattempt ||
+          learnerEvent.entry.state === "IN_PROGRESS") &&
+        event.courseItem.assessment
+          ? await loadAssessmentMediaAssetIds(
+              ctx.db,
+              event.courseItem.assessment.id,
+            )
+          : [];
       if (
         event.status !== "CLOSED" &&
         (learnerEvent.entry.state === "NOT_STARTED" ||
           learnerEvent.entry.state === "IN_PROGRESS")
       )
-        return { ...learnerEvent, leaderboard: null };
+        return { ...learnerEvent, mediaAssetIds, leaderboard: null };
       // Top entries plus the learner's own row, ranked in SQL.
       const leaderboard = await getAssessmentEventLeaderboard(ctx.db, {
         eventId: event.id,
         limit: LEARNER_LEADERBOARD_LIMIT,
         userId: ctx.actorUserId,
       });
-      return { ...learnerEvent, leaderboard };
+      return { ...learnerEvent, mediaAssetIds, leaderboard };
     }),
 
   /**

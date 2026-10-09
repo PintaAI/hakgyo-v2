@@ -3,6 +3,10 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
 import { Text } from "react-native";
 
+import {
+  AssessmentMediaStatus,
+  useAssessmentMediaPrefetch,
+} from "../../src/components/assessment-media";
 import { QueryState, Row, StudyScreen } from "../../src/components/learning-ui";
 import { StudyAction, StudyGlass } from "../../src/components/study-glass";
 import { assessmentAttemptPresentation } from "../../src/lib/assessment-state";
@@ -32,6 +36,8 @@ export default function AssessmentEventScreen() {
   const attemptState = assessmentAttemptPresentation(attempt);
   const invalidated = !!event?.participants[0]?.invalidatedAt;
   const assessment = event?.courseItem.assessment;
+  // The server lists the media once the event is open; download it while the connection is good.
+  const media = useAssessmentMediaPrefetch(event?.mediaAssetIds ?? []);
 
   useEffect(() => {
     if (eventId) markEntitySeen("ASSESSMENT", eventId);
@@ -158,6 +164,11 @@ export default function AssessmentEventScreen() {
                     : ""}
                 </Text>
               ) : null}
+
+              <AssessmentMediaStatus
+                progress={media.progress}
+                onRetry={media.retry}
+              />
 
               {primaryAction ? (
                 <StudyAction

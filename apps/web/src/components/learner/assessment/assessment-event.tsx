@@ -11,6 +11,10 @@ import { assessmentAttemptPresentation } from "~/lib/learner/assessment-state";
 import { dateLabel } from "~/lib/learner/study";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
+import {
+  AssessmentMediaStatus,
+  useAssessmentMediaPreload,
+} from "./assessment-media";
 import { StudyCard } from "./assessment-ui";
 
 function formatDuration(milliseconds: number) {
@@ -34,6 +38,8 @@ export function AssessmentEvent({
   const attemptHref = (attemptId: string) =>
     `/learn/${event.course.id}/items/${event.courseItem.id}/attempts/${attemptId}`;
   const opensAt = event.status === "SCHEDULED" ? event.opensAt : null;
+  // Download the question media ahead once the event is open, while the connection is good.
+  const media = useAssessmentMediaPreload(event.mediaAssetIds);
 
   // A scheduled event becomes startable at its opening time.
   useEffect(() => {
@@ -121,6 +127,11 @@ export function AssessmentEvent({
         {attempt ? (
           <p className="text-base font-bold">{attemptState.detail}</p>
         ) : null}
+
+        <AssessmentMediaStatus
+          progress={media.progress}
+          onRetry={media.retry}
+        />
 
         {primaryAction ? (
           <Button

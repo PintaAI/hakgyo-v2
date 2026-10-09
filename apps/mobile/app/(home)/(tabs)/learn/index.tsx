@@ -15,6 +15,7 @@ import {
   type CohortEvent,
   type LearnCohort,
 } from "../../../../src/components/learn/cohort-card";
+import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
 import type { CohortMilestoneGroup } from "../../../../src/components/learn/milestone-section";
 import {
   Empty,
@@ -192,6 +193,7 @@ export default function LearnTab() {
   const { data: session } = authClient.useSession();
   const { activeOrganizationId } = useAppTheme();
   const dashboard = useSyncIndex(activeOrganizationId);
+  useOpenEventMediaPrefetch(dashboard.data?.events);
   const cohortCourseIds = useMemo(
     () => (dashboard.data?.cohorts ?? []).map((cohort) => cohort.course.id),
     [dashboard.data?.cohorts],

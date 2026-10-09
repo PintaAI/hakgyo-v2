@@ -28,7 +28,10 @@ import {
   type RecordVocabularyAttemptInput,
 } from "../sync/engine";
 import { createAssetCache } from "../sync/asset-cache";
-import { createAssetResolver } from "../sync/asset-resolver";
+import {
+  createAssetResolver,
+  type AssetPrefetchProgress,
+} from "../sync/asset-resolver";
 import {
   clearAllDeviceAssetFiles,
   createDeviceAssetFileStore,
@@ -118,6 +121,16 @@ type MobileSyncActionsValue = {
   }) => Promise<void>;
   /** Warms the lesson's (and the next lesson's) media into the asset cache. */
   prefetchLesson: (courseId: string, courseItemId: string) => void;
+  /**
+   * Downloads an assessment's images and audio to the device, reporting progress; resolves
+   * with the final progress (failed ids load on demand later).
+   */
+  prefetchAssessmentMedia: (
+    assetIds: readonly string[],
+    onProgress?: (progress: AssetPrefetchProgress) => void,
+  ) => Promise<AssetPrefetchProgress | null>;
+  /** Background download of an open event's media from the local bundle (Wi-Fi only). */
+  prefetchEventMedia: (courseId: string, courseItemId: string) => void;
   clearLocalDataAndResync: (organizationId?: string) => Promise<ResyncReport>;
   getLocalDataStats: () => Promise<LocalDataStats>;
 };
@@ -468,6 +481,31 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     [assetResolver],
   );
 
+  const prefetchAssessmentMedia = useCallback(
+    async (
+      assetIds: readonly string[],
+      onProgress?: (progress: AssetPrefetchProgress) => void,
+    ) => {
+      if (!assetResolver || !assetIds.length) return null;
+      return assetResolver.prefetchAssetsWithProgress(assetIds, onProgress);
+    },
+    [assetResolver],
+  );
+
+  const prefetchEventMedia = useCallback(
+    (courseId: string, courseItemId: string) => {
+      if (!assetResolver || !courseId || !courseItemId) return;
+      void Network.getNetworkStateAsync()
+        .then((state) => {
+          // Large listening files are not fetched over cellular in the background.
+          if (state.type !== Network.NetworkStateType.WIFI) return;
+          return assetResolver.prefetchLesson(courseId, courseItemId);
+        })
+        .catch(() => undefined);
+    },
+    [assetResolver],
+  );
+
   const actions = useMemo<MobileSyncActionsValue>(
     () => ({
       recordVocabularyAttempt: async (input) => {
@@ -577,6 +615,8 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         if (localData) await persistAttempt(queryClient, localData, input);
       },
       prefetchLesson,
+      prefetchAssessmentMedia,
+      prefetchEventMedia,
       clearLocalDataAndResync,
       getLocalDataStats,
     }),
@@ -586,6 +626,8 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       clearLocalDataAndResync,
       getLocalDataStats,
       localData,
+      prefetchAssessmentMedia,
+      prefetchEventMedia,
       prefetchLesson,
       queryClient,
       syncNow,

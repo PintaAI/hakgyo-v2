@@ -18,6 +18,7 @@ import { usePushNotifications } from "../../../../src/providers/PushNotification
 import { useCourseOutlines, useSyncIndex } from "../../../../src/sync/hooks";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import { AndroidTabActions } from "../../../../src/components/sidebar/AndroidTabActions";
+import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
 
 export default function PracticeTab() {
   const { activeOrganizationId } = useAppTheme();
@@ -79,6 +80,7 @@ export default function PracticeTab() {
     }, []),
   );
 
+  useOpenEventMediaPrefetch(dashboard.data?.events);
   const visibleEvents = (dashboard.data?.events ?? []).filter(
     (event) => !isStaleClosedOnDemandAssessment(event, now),
   );

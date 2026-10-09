@@ -5,3 +5,4 @@ export * from "./pdf-book";
 export * from "./learning";
 export * from "./query-retry";
 export * from "./support";
+export * from "./content-assets";

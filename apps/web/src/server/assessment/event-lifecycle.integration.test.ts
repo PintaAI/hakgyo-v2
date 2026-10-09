@@ -125,7 +125,10 @@ run("class-targeted assessment events", () => {
           create: {
             type: "SINGLE_CHOICE",
             position: 0,
-            prompt: [{ type: "paragraph", content: "Q" }],
+            prompt: [
+              { type: "paragraph", content: "Q" },
+              { type: "assetAudio", props: { assetId: "fixture-audio" } },
+            ],
             options: {
               create: [
                 {
@@ -343,6 +346,10 @@ run("class-targeted assessment events", () => {
     ).find((entry) => entry.id === event.id);
     expect(upcoming?.status).toBe("SCHEDULED");
     expect(upcoming?.entry.canStart).toBe(false);
+    // Media is only listed once the event opens, so listening files are not handed out early.
+    expect(
+      (await learner.getForLearner({ eventId: event.id })).mediaAssetIds,
+    ).toEqual([]);
     // App versions that predate scheduling never see it.
     expect(
       (await learner.listForLearner()).some((entry) => entry.id === event.id),
@@ -358,6 +365,9 @@ run("class-targeted assessment events", () => {
     });
     const attempt = await learner.startAttempt({ eventId: event.id });
     expect(attempt.status).toBe("IN_PROGRESS");
+    expect(
+      (await learner.getForLearner({ eventId: event.id })).mediaAssetIds,
+    ).toEqual(["fixture-audio"]);
     const opened = await db.assessmentEvent.findUniqueOrThrow({
       where: { id: event.id },
       select: { status: true },

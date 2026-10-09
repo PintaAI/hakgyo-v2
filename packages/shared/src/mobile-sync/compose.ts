@@ -11,6 +11,7 @@
  *
  * No React Native or server imports: this runs on the device and in tests.
  */
+import { assessmentContentAssetIds } from "../content-assets";
 import {
   evaluateOpenModules,
   evaluateSequentialModules,
@@ -620,7 +621,10 @@ export type ComposedVocabularyPractice = NonNullable<
 // Assets referenced by a lesson (used by the prefetcher)
 // ---------------------------------------------------------------------------
 
-/** Every asset id a lesson screen may render: material assets, referenced PDF pages, vocabulary media. */
+/**
+ * Every asset id a lesson screen may render: material assets, referenced PDF pages, vocabulary
+ * media and the images/audio of its assessments.
+ */
 export function lessonAssetIds(bundle: CourseBundle, courseItemId: string) {
   const found = findItem(bundle, courseItemId);
   if (!found) return [];
@@ -646,6 +650,19 @@ export function lessonAssetIds(bundle: CourseBundle, courseItemId: string) {
   addSet(item.vocabularySetId);
   for (const reference of placement.embedded.vocabularySetIds) {
     addSet(reference.id);
+  }
+  const addAssessment = (assessmentId: string | null) => {
+    const assessment = assessmentId
+      ? bundle.content.assessments[assessmentId]
+      : undefined;
+    if (!assessment) return;
+    for (const assetId of assessmentContentAssetIds(assessment)) {
+      ids.add(assetId);
+    }
+  };
+  addAssessment(item.assessmentId);
+  for (const reference of placement.embedded.assessmentIds) {
+    addAssessment(reference.id);
   }
   return [...ids];
 }

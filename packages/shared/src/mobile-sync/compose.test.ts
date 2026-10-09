@@ -600,6 +600,25 @@ describe("lessonAssetIds", () => {
     ]);
     expect(lessonAssetIds(bundle(), "item-vocab")).toEqual(["asset-audio"]);
   });
+
+  test("includes the images and audio of placed and embedded assessments", () => {
+    const withMedia = bundle();
+    const question =
+      withMedia.content.assessments["assessment-1"]!.questions[0]!;
+    question.prompt = [
+      { type: "assetAudio", props: { assetId: "question-audio" } },
+    ];
+    question.options[0]!.content = [
+      { type: "assetImage", props: { assetId: "option-image" } },
+    ];
+    expect(lessonAssetIds(withMedia, "item-assessment")).toEqual([
+      "question-audio",
+      "option-image",
+    ]);
+    expect(lessonAssetIds(withMedia, "item-material")).toContain(
+      "question-audio",
+    );
+  });
 });
 
 describe("mergeLearnerState", () => {
