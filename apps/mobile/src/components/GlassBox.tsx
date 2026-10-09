@@ -1,4 +1,7 @@
-import { View, type ViewProps } from "react-native";
+import { StyleSheet, View, type ViewProps } from "react-native";
+
+import { useAppTheme } from "../providers/AppThemeProvider";
+import { blendOver } from "../theme/colors";
 
 type GlassStyle = "clear" | "regular" | "none";
 type GlassColorScheme = "auto" | "light" | "dark";
@@ -24,11 +27,15 @@ export function GlassBox({
   colorScheme: _colorScheme,
   ...viewProps
 }: GlassBoxProps) {
+  const { colors } = useAppTheme();
+  // There is no glass backdrop here, and glass tints are too faint on their
+  // own: composite the tint onto the card (or the caller's) surface.
+  const ownBackground = StyleSheet.flatten(style)?.backgroundColor;
+  const base = typeof ownBackground === "string" ? ownBackground : colors.card;
+  const backgroundColor = tintColor ? blendOver(base, tintColor) : base;
+
   return (
-    <View
-      style={tintColor ? [style, { backgroundColor: tintColor }] : style}
-      {...viewProps}
-    >
+    <View style={[style, { backgroundColor }]} {...viewProps}>
       {children}
     </View>
   );

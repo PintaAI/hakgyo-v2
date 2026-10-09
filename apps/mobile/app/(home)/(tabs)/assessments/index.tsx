@@ -17,6 +17,7 @@ import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 import { usePushNotifications } from "../../../../src/providers/PushNotificationsProvider";
 import { useCourseOutlines, useSyncIndex } from "../../../../src/sync/hooks";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
+import { AndroidTabActions } from "../../../../src/components/sidebar/AndroidTabActions";
 
 export default function PracticeTab() {
   const { activeOrganizationId } = useAppTheme();
@@ -88,19 +89,22 @@ export default function PracticeTab() {
   return (
     <>
       <DoodleBackground />
-      <SidebarToolbarButton />
       {Platform.OS === "ios" ? (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.View hidesSharedBackground>
-            <OrganizationSwitcherTrigger
-              compact
-              onPress={() => router.push("/organization-switcher" as Href)}
-            />
-          </Stack.Toolbar.View>
-        </Stack.Toolbar>
+        <>
+          <SidebarToolbarButton />
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.View hidesSharedBackground>
+              <OrganizationSwitcherTrigger
+                compact
+                onPress={() => router.push("/organization-switcher" as Href)}
+              />
+            </Stack.Toolbar.View>
+          </Stack.Toolbar>
+        </>
       ) : null}
       <StudyScreen
         title=""
+        headerShown={Platform.OS === "ios"}
         keyboardAvoiding
         automaticallyAdjustKeyboardInsets
         scrollViewRef={scrollViewRef}
@@ -109,17 +113,21 @@ export default function PracticeTab() {
           void syncNow(activeOrganizationId ?? undefined);
         }}
       >
+        {Platform.OS !== "ios" ? (
+          <AndroidTabActions
+            right={
+              <OrganizationSwitcherTrigger
+                onPress={() => router.push("/organization-switcher" as Href)}
+              />
+            }
+          />
+        ) : null}
         <Text
           accessibilityRole="header"
           className="text-[26px] font-black leading-8 tracking-tight text-foreground"
         >
           Latihan
         </Text>
-        {Platform.OS !== "ios" ? (
-          <OrganizationSwitcherTrigger
-            onPress={() => router.push("/organization-switcher" as Href)}
-          />
-        ) : null}
         <PracticeHub
           courses={dashboard.data?.courses ?? []}
           coursesError={dashboard.error}

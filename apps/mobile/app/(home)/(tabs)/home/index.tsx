@@ -5,6 +5,7 @@ import { Platform, Pressable, Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { DoodleBackground } from "../../../../src/components/doodle-background";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
+import { AndroidTabActions } from "../../../../src/components/sidebar/AndroidTabActions";
 import {
   QueryState,
   StudyScreen,
@@ -44,24 +45,34 @@ export default function HomeTab() {
   return (
     <>
       <DoodleBackground />
-      <SidebarToolbarButton />
       {Platform.OS === "ios" ? (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.View hidesSharedBackground>
-            <OrganizationSwitcherTrigger
-              compact
-              onPress={openOrganizationSwitcher}
-            />
-          </Stack.Toolbar.View>
-        </Stack.Toolbar>
+        <>
+          <SidebarToolbarButton />
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.View hidesSharedBackground>
+              <OrganizationSwitcherTrigger
+                compact
+                onPress={openOrganizationSwitcher}
+              />
+            </Stack.Toolbar.View>
+          </Stack.Toolbar>
+        </>
       ) : null}
       <StudyScreen
         title=""
+        headerShown={Platform.OS === "ios"}
         scrollGesture={scrollGesture}
         refreshing={refreshing}
         onRefresh={() => void refresh()}
         automaticallyAdjustKeyboardInsets
       >
+        {Platform.OS !== "ios" ? (
+          <AndroidTabActions
+            right={
+              <OrganizationSwitcherTrigger onPress={openOrganizationSwitcher} />
+            }
+          />
+        ) : null}
         <View className="-mb-3 flex-row items-center gap-2">
           <Text
             accessibilityRole="header"
@@ -100,9 +111,6 @@ export default function HomeTab() {
             </Text>
           </Pressable>
         </View>
-        {Platform.OS !== "ios" ? (
-          <OrganizationSwitcherTrigger onPress={openOrganizationSwitcher} />
-        ) : null}
         <QueryState
           pending={dashboard.isPending}
           error={dashboard.error}

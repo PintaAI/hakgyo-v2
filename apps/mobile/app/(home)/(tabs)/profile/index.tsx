@@ -6,7 +6,7 @@ import * as Updates from "expo-updates";
 import * as WebBrowser from "expo-web-browser";
 import { useUpdates } from "expo-updates";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Linking, Text } from "react-native";
+import { Alert, Linking, Platform, Text } from "react-native";
 
 import { AppSegmentedControl } from "../../../../src/components/app-segmented-control";
 import { DoodleBackground } from "../../../../src/components/doodle-background";
@@ -251,6 +251,7 @@ export default function ProfileTab() {
       <DoodleBackground />
       <StudyScreen
         title=""
+        headerShown={Platform.OS === "ios"}
         onRefresh={() => {
           void syncNow(activeOrganizationId ?? undefined);
           void refreshOrganizations();

@@ -22,6 +22,42 @@ export function withOpacity(color: string, opacity: number) {
   return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
 }
 
+function parseColor(color: string) {
+  const hex = color.match(/^#([0-9a-f]{6})$/i)?.[1];
+  if (hex) {
+    return {
+      red: Number.parseInt(hex.slice(0, 2), 16),
+      green: Number.parseInt(hex.slice(2, 4), 16),
+      blue: Number.parseInt(hex.slice(4, 6), 16),
+      alpha: 1,
+    };
+  }
+  const rgb = color.match(
+    /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i,
+  );
+  if (!rgb) return null;
+  return {
+    red: Number(rgb[1]),
+    green: Number(rgb[2]),
+    blue: Number(rgb[3]),
+    alpha: rgb[4] === undefined ? 1 : Number(rgb[4]),
+  };
+}
+
+/**
+ * Composites a (possibly translucent) overlay onto an opaque base and returns
+ * the solid result. Falls back to the overlay when either color is not hex or
+ * rgb(a).
+ */
+export function blendOver(base: string, overlay: string) {
+  const below = parseColor(base);
+  const above = parseColor(overlay);
+  if (!below || !above) return overlay;
+  const mix = (from: number, to: number) =>
+    Math.round(from + (to - from) * above.alpha);
+  return `rgb(${mix(below.red, above.red)}, ${mix(below.green, above.green)}, ${mix(below.blue, above.blue)})`;
+}
+
 const variableNames = {
   background: "--color-background",
   foreground: "--color-foreground",
