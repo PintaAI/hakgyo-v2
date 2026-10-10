@@ -41,6 +41,7 @@ export type CohortJoinBlocker =
   | "COHORT_UNAVAILABLE"
   | "INVITE_REQUIRED"
   | "ALREADY_ENROLLED"
+  | "IN_OTHER_CLASS"
   | "FULL"
   | "PAYMENT_NOT_CONFIGURED";
 
@@ -55,6 +56,8 @@ export function getCohortJoinBlocker(input: {
   enrollmentMode: EnrollmentMode;
   hasValidInvite: boolean;
   alreadyEnrolled: boolean;
+  /** The learner already takes another running class of the course. */
+  inOtherClass: boolean;
   capacity: number | null;
   memberCount: number;
   price: number;
@@ -62,6 +65,7 @@ export function getCohortJoinBlocker(input: {
 }): CohortJoinBlocker | null {
   if (!input.joinable || !input.coursePublished) return "COHORT_UNAVAILABLE";
   if (input.alreadyEnrolled) return "ALREADY_ENROLLED";
+  if (input.inOtherClass) return "IN_OTHER_CLASS";
   if (input.enrollmentMode !== "OPEN" && !input.hasValidInvite) {
     return "INVITE_REQUIRED";
   }
@@ -75,10 +79,12 @@ export function getCohortJoinBlocker(input: {
 }
 
 export const cohortJoinBlockerMessages: Record<CohortJoinBlocker, string> = {
-  COHORT_UNAVAILABLE: "Group belajar ini tidak sedang menerima peserta.",
-  INVITE_REQUIRED: "Group belajar ini hanya bisa diikuti melalui undangan.",
-  ALREADY_ENROLLED: "Kamu sudah terdaftar di Group belajar ini.",
-  FULL: "Kuota Group belajar ini sudah penuh.",
+  COHORT_UNAVAILABLE: "Kelas ini tidak sedang menerima peserta.",
+  INVITE_REQUIRED: "Kelas ini hanya bisa diikuti melalui undangan.",
+  ALREADY_ENROLLED: "Kamu sudah terdaftar di kelas ini.",
+  IN_OTHER_CLASS:
+    "Kamu masih terdaftar di kelas lain untuk course ini. Satu course hanya bisa diikuti di satu kelas pada saat yang sama.",
+  FULL: "Kuota kelas ini sudah penuh.",
   PAYMENT_NOT_CONFIGURED:
     "Penyelenggara belum mengatur metode pembayaran. Hubungi penyelenggara.",
 };

@@ -30,7 +30,8 @@ async function createCourseFixture(tx: Prisma.TransactionClient) {
   const member = await tx.organizationMember.findFirst({
     select: { id: true, organizationId: true, userId: true },
   });
-  if (!member) throw new Error("Integration fixture needs an organization member");
+  if (!member)
+    throw new Error("Integration fixture needs an organization member");
 
   const fixtureId = crypto.randomUUID();
   const course = await tx.course.create({
@@ -95,7 +96,7 @@ test("deletes an assessment and all related learner progress atomically", () =>
         courseItemId: item.id,
         createdByMembershipId: member.id,
         durationMinutes: 30,
-        scope: "COURSE",
+        allCohorts: true,
         title: "Deletion regression event",
         type: "TRYOUT",
       },
@@ -149,7 +150,9 @@ test("deletes an assessment and all related learner progress atomically", () =>
       await tx.assessment.findUnique({ where: { id: assessment.id } }),
     ).toBeNull();
     expect(
-      await tx.assessmentAttempt.count({ where: { assessmentId: assessment.id } }),
+      await tx.assessmentAttempt.count({
+        where: { assessmentId: assessment.id },
+      }),
     ).toBe(0);
     expect(
       await tx.contentProgress.count({ where: { courseItemId: item.id } }),
@@ -186,7 +189,7 @@ test("deletes a closed assessment event and its attempts without deleting the as
         createdByMembershipId: member.id,
         durationMinutes: 30,
         organizationId: member.organizationId,
-        scope: "COURSE",
+        allCohorts: true,
         status: "CLOSED",
         title: "Closed deletion regression event",
         type: "TRYOUT",
@@ -211,7 +214,9 @@ test("deletes a closed assessment event and its attempts without deleting the as
     expect(removed).toEqual({ attempts: 1 });
     expect(await tx.assessmentEvent.count({ where: { id: event.id } })).toBe(0);
     expect(
-      await tx.assessmentAttempt.count({ where: { assessmentEventId: event.id } }),
+      await tx.assessmentAttempt.count({
+        where: { assessmentEventId: event.id },
+      }),
     ).toBe(0);
     expect(await tx.assessment.count({ where: { id: assessment.id } })).toBe(1);
     expect(await tx.courseItem.count({ where: { id: item.id } })).toBe(1);
@@ -262,11 +267,17 @@ test("deletes a material, every placement, and all related learner progress", ()
       events: 0,
       progress: 1,
     });
-    expect(await tx.material.findUnique({ where: { id: material.id } })).toBeNull();
-    expect(await tx.courseItem.count({ where: { id: item.id } })).toBe(0);
-    expect(await tx.contentProgress.count({ where: { courseItemId: item.id } })).toBe(0);
     expect(
-      await tx.userActivityEvent.count({ where: { idempotencyKey: activityKey } }),
+      await tx.material.findUnique({ where: { id: material.id } }),
+    ).toBeNull();
+    expect(await tx.courseItem.count({ where: { id: item.id } })).toBe(0);
+    expect(
+      await tx.contentProgress.count({ where: { courseItemId: item.id } }),
+    ).toBe(0);
+    expect(
+      await tx.userActivityEvent.count({
+        where: { idempotencyKey: activityKey },
+      }),
     ).toBe(0);
 
     const remaining = await tx.userActivityEvent.aggregate({
@@ -323,8 +334,12 @@ test("deletes a course placement and its progress without deleting the library r
       progress: 1,
     });
     expect(await tx.courseItem.count({ where: { id: item.id } })).toBe(0);
-    expect(await tx.contentProgress.count({ where: { courseItemId: item.id } })).toBe(0);
-    expect(await tx.material.findUnique({ where: { id: material.id } })).not.toBeNull();
+    expect(
+      await tx.contentProgress.count({ where: { courseItemId: item.id } }),
+    ).toBe(0);
+    expect(
+      await tx.material.findUnique({ where: { id: material.id } }),
+    ).not.toBeNull();
   }));
 
 test("deletes a vocabulary set, requirement links, and all learner progress", () =>
@@ -404,8 +419,12 @@ test("deletes a vocabulary set, requirement links, and all learner progress", ()
       await tx.materialRequirement.count({ where: { id: requirement.id } }),
     ).toBe(0);
     expect(await tx.courseItem.count({ where: { id: item.id } })).toBe(0);
-    expect(await tx.contentProgress.count({ where: { courseItemId: item.id } })).toBe(0);
     expect(
-      await tx.userActivityEvent.count({ where: { idempotencyKey: activityKey } }),
+      await tx.contentProgress.count({ where: { courseItemId: item.id } }),
+    ).toBe(0);
+    expect(
+      await tx.userActivityEvent.count({
+        where: { idempotencyKey: activityKey },
+      }),
     ).toBe(0);
   }));

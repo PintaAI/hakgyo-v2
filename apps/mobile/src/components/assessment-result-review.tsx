@@ -88,8 +88,7 @@ export function AssessmentResultReview({
           Review jawaban belum tersedia
         </Text>
         <Text className="text-sm leading-5 text-muted-foreground">
-          Kunci jawaban dan pembahasan tersedia setelah tugas on-demand ini
-          ditutup.
+          Kunci jawaban dan pembahasan tersedia setelah latihan ini ditutup.
         </Text>
       </StudyGlass>
     );

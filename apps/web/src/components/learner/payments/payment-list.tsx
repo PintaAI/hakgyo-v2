@@ -30,7 +30,7 @@ export function PaymentList() {
           Pembayaran
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Riwayat pembayaran Group belajar kamu.
+          Riwayat pembayaran kelas kamu.
         </p>
       </div>
       {payments.error ? (
@@ -45,7 +45,7 @@ export function PaymentList() {
         <EmptyState
           icon={ReceiptIcon}
           title="Belum ada pembayaran"
-          description="Pembayaran muncul di sini setelah kamu checkout Group belajar berbayar."
+          description="Pembayaran muncul di sini setelah kamu checkout kelas berbayar."
           action={
             <Link
               href="/catalog"

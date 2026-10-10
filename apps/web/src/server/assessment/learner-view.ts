@@ -167,7 +167,7 @@ export function shapeLearnerAssessment(input: {
         attempt?.assessmentEvent?.type === "TRYOUT"
           ? "Tryout"
           : attempt?.assessmentEvent
-            ? "Tugas on-demand"
+            ? "Latihan"
             : "Tugas bab",
       title: attempt?.assessmentEvent?.title ?? item.assessment.title,
       courseTitle: item.module.course.title,

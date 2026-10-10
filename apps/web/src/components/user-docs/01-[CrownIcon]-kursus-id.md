@@ -110,11 +110,11 @@ Sebuah item dapat diakses peserta didik jika:
 3. Peserta didik sudah gabung kurikulum dan aksesnya masih aktif.
 4. Bab tersebut sudah tersedia untuk peserta didik sesuai cara belajar yang dipilih.
 
-## Gabung Kurikulum dan Group belajar
+## Gabung Kurikulum dan Kelas
 
-Gabung kurikulum adalah cara peserta didik mendapatkan akses ke kurikulum. Peserta didik dapat bergabung melalui pendaftaran terbuka, undangan, ditambahkan oleh pengelola, atau melalui Group belajar.
+Gabung kurikulum adalah cara peserta didik mendapatkan akses ke kurikulum. Peserta didik dapat bergabung melalui pendaftaran terbuka, undangan, ditambahkan oleh pengelola, atau melalui kelas.
 
-Group belajar adalah kelompok pelaksanaan untuk kurikulum yang sama. Satu kurikulum dapat mempunyai beberapa batch dengan peserta didik, pengajar, jadwal, dan meeting yang berbeda.
+Kelas adalah kelompok pelaksanaan untuk kurikulum yang sama. Satu kurikulum dapat mempunyai beberapa batch dengan peserta didik, pengajar, jadwal, dan meeting yang berbeda.
 
 <div class="my-6 max-w-xl rounded-xl border p-4">
   <div class="font-heading font-semibold">Kurikulum: Bahasa Jepang Pemula</div>
@@ -134,7 +134,7 @@ Group belajar adalah kelompok pelaksanaan untuk kurikulum yang sama. Satu kuriku
   </div>
 </div>
 
-Kurikulum menyimpan materi kurikulum, sedangkan Group belajar menyimpan konteks pelaksanaannya.
+Kurikulum menyimpan materi kurikulum, sedangkan kelas menyimpan konteks pelaksanaannya.
 
 - **Gabung langsung** cocok untuk peserta didik yang belajar mandiri dan tidak memerlukan kelompok atau jadwal tertentu.
 - **Gabung melalui batch** menghubungkan peserta didik ke kurikulum sekaligus ke kelompok, pengajar, meeting, dan periode belajar tertentu.

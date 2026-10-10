@@ -99,7 +99,7 @@ export function AssessmentIntroduction({
 
         {picksCohort ? (
           <div className="border-border flex flex-col gap-2 border-t pt-4">
-            <p className="text-sm font-bold">Pilih Group belajar</p>
+            <p className="text-sm font-bold">Pilih kelas</p>
             <div role="radiogroup" className="flex flex-col gap-2">
               {cohorts.map((cohort) => (
                 <button

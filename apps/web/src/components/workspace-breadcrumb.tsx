@@ -24,7 +24,7 @@ const sectionLabels: Record<string, string> = {
 
 /** Pages below a kurikulum, keyed by the path segment after its id. */
 const coursePageLabels: Record<string, string> = {
-  cohorts: "Group belajar",
+  cohorts: "Kelas",
   kurikulum: "Materi kurikulum",
 };
 
@@ -39,7 +39,7 @@ export function WorkspaceBreadcrumb({
   const sectionLabel = (section && sectionLabels[section]) ?? "Workspace";
   const workspaceHome = `/workspace/${organizationSlug}/dashboard`;
   // Inside a kurikulum, the section links back to the list and the page below
-  // it is named, e.g. Workspace › Kurikulum › Group belajar.
+  // it is named, e.g. Workspace › Kurikulum › Kelas.
   const inCourse = section === "courses" && segments.length > 3;
   const pageLabel = !inCourse
     ? null

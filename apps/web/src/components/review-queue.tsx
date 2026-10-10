@@ -53,8 +53,8 @@ const statusLabel = {
 const kindLabel = {
   ALL: "Semua jenis",
   CHAPTER: "Tugas bab",
-  QUICK_ASSESSMENT: "On-demand · Group belajar",
-  TRYOUT: "Tryout · kurikulum",
+  QUICK_ASSESSMENT: "Latihan",
+  TRYOUT: "Tryout",
 } as const;
 const date = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
@@ -428,7 +428,7 @@ export function ReviewQueue({
   const courseLabel =
     courses.find((c) => c.id === course)?.title ?? "Semua kurikulum";
   const cohortLabel =
-    cohorts.find((c) => c.id === cohort)?.name ?? "Semua Group belajar";
+    cohorts.find((c) => c.id === cohort)?.name ?? "Semua kelas";
   const embedded = Boolean(courseId ?? cohortId);
   return (
     <div className="flex w-full flex-col gap-6">
@@ -532,13 +532,13 @@ export function ReviewQueue({
                 }
               }}
             >
-              <SelectTrigger aria-label="Group belajar" className="max-w-56">
+              <SelectTrigger aria-label="Kelas" className="max-w-56">
                 <span className="flex flex-1 truncate text-left">
                   {cohortLabel}
                 </span>
               </SelectTrigger>
               <SelectContent align="end">
-                <SelectItem value="ALL">Semua Group belajar</SelectItem>
+                <SelectItem value="ALL">Semua kelas</SelectItem>
                 {cohorts.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}

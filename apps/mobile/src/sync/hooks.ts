@@ -14,6 +14,7 @@ import {
   composeCourseOutline,
   composeLearnerAssessment,
   composeVocabularyPractice,
+  lessonAssetIds,
   type BundleContent,
   type BundleStructure,
   type CourseBundle,
@@ -749,6 +750,45 @@ export function lessonItemIds(
   const index = items.findIndex((item) => item.id === courseItemId);
   if (index === -1) return [];
   return items.slice(index, index + 2).map((item) => item.id);
+}
+
+export type CourseOfflineMedia = {
+  /** Media of each chapter, in bundle order. */
+  modules: Array<{ moduleId: string; assetIds: string[] }>;
+  /** Sizes in bytes of the media the bundle knows. */
+  sizes: Map<string, number>;
+};
+
+/**
+ * Images, audio and PDF pages every chapter of a downloaded course renders (materials,
+ * vocabulary and question media), for "Simpan offline". Null until the bundle is on the device.
+ */
+export function useCourseOfflineMedia(
+  courseId: string,
+): CourseOfflineMedia | null {
+  const structure = useBundleStructure(courseId);
+  const content = useBundleContent(courseId);
+  return useMemo(() => {
+    if (!structure.data || !content.data) return null;
+    const bundle = toBundle(structure.data, content.data);
+    const sizes = new Map(
+      Object.values(bundle.content.assets).map((asset) => [
+        asset.id,
+        asset.size,
+      ]),
+    );
+    const modules = [...bundle.structure.modules]
+      .sort((a, b) => a.position - b.position)
+      .map((module) => ({
+        moduleId: module.id,
+        assetIds: [
+          ...new Set(
+            module.items.flatMap((item) => lessonAssetIds(bundle, item.id)),
+          ),
+        ],
+      }));
+    return { modules, sizes };
+  }, [content.data, structure.data]);
 }
 
 // ---------------------------------------------------------------------------

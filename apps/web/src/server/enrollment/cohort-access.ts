@@ -53,3 +53,29 @@ export function courseAccessWhere(userId: string, now: Date) {
     cohorts: { some: courseAccessCohortWhere(userId, now) },
   } satisfies Prisma.CourseWhereInput;
 }
+
+/**
+ * The learner's other running class of the same course, if any. A learner takes one class of a
+ * course at a time; they can join another once that class or their membership has ended. The
+ * self-paced cohort is not a class and never counts.
+ */
+export async function findOtherRunningClass(
+  db: Pick<Prisma.TransactionClient, "cohortEnrollment">,
+  input: { cohortId: string; courseId: string; userId: string; now: Date },
+) {
+  const enrollment = await db.cohortEnrollment.findFirst({
+    where: {
+      userId: input.userId,
+      status: "ACTIVE",
+      OR: [{ expiresAt: null }, { expiresAt: { gt: input.now } }],
+      cohortId: { not: input.cohortId },
+      cohort: { courseId: input.courseId, ...liveClassCohortWhere(input.now) },
+    },
+    select: { cohort: { select: { id: true, name: true } } },
+  });
+  return enrollment?.cohort ?? null;
+}
+
+export function otherRunningClassMessage(className: string) {
+  return `Kamu masih terdaftar di ${className}. Satu course hanya bisa diikuti di satu kelas pada saat yang sama.`;
+}

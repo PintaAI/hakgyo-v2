@@ -120,9 +120,9 @@ export function CoursesLibrary({
 
   const accessLabels = {
     MANAGER: "Pengelola",
-    COHORT_MANAGER: "Pengelola Group belajar",
+    COHORT_MANAGER: "Pengelola kelas",
     EDITOR: "Editor",
-    COHORT_STAFF: "Staf Group belajar",
+    COHORT_STAFF: "Staf kelas",
     VIEWER: "Hanya lihat",
   } as const;
   const visibleCourses = courses.filter((course) => {
@@ -140,7 +140,7 @@ export function CoursesLibrary({
         description={
           role === "TEACHER"
             ? "Temukan dan kelola kurikulum yang menjadi tanggung jawab Anda."
-            : "Kelola kurikulum, Group belajar, dan peserta dari satu tempat."
+            : "Kelola kurikulum, kelas, dan peserta dari satu tempat."
         }
         actions={
           canCreate ? (
@@ -156,7 +156,7 @@ export function CoursesLibrary({
         <EmptyState
           icon={BookOpenIcon}
           title="Belum ada kurikulum"
-          description="Kurikulum menyatukan materi, Group belajar, dan peserta agar semuanya mudah ditemukan."
+          description="Kurikulum menyatukan materi, kelas, dan peserta agar semuanya mudah ditemukan."
           action={
             canCreate ? (
               <Link
@@ -258,7 +258,7 @@ export function CoursesLibrary({
                         </span>
                         <span className="text-muted-foreground mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs sm:hidden">
                           <span>{course._count.modules} bab</span>
-                          <span>{course._count.cohorts} Group belajar</span>
+                          <span>{course._count.cohorts} kelas</span>
                         </span>
                       </span>
                       <span className="text-muted-foreground hidden shrink-0 items-center gap-4 text-xs sm:flex">
@@ -268,7 +268,7 @@ export function CoursesLibrary({
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <UsersIcon className="size-3.5" />
-                          {course._count.cohorts} Group belajar
+                          {course._count.cohorts} kelas
                         </span>
                       </span>
                       <span className="text-muted-foreground hidden w-32 shrink-0 truncate text-right text-xs lg:block">

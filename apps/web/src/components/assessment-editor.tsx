@@ -465,7 +465,7 @@ function LiveAssessmentBanner({
               {event.title}
             </Link>
             <Badge variant="outline" className="border-current/30">
-              Event sedang dibuka
+              {event.scheduled ? "Event terjadwal" : "Event sedang dibuka"}
             </Badge>
           </li>
         ))}

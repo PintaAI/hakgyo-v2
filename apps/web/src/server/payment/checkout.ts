@@ -4,6 +4,10 @@ import type { Prisma } from "../../../generated/prisma/client";
 import type { PaymentMethod } from "../../../generated/prisma/enums";
 import { openPaymentStatuses } from "~/lib/payments/payment";
 import {
+  findOtherRunningClass,
+  otherRunningClassMessage,
+} from "~/server/enrollment/cohort-access";
+import {
   consumeEnrollmentInvite,
   redeemEnrollmentInvite,
 } from "~/server/enrollment/invite-redemption";
@@ -98,36 +102,48 @@ export async function loadCohortCheckout(
     throw new TRPCError({ code: "NOT_FOUND" });
   }
 
-  const [memberCount, membership, openPayment, destinations, hasValidInvite] =
-    await Promise.all([
-      db.cohortEnrollment.count({
-        where: {
-          cohortId: cohort.id,
-          status: { in: ["ACTIVE", "COMPLETED"] },
-        },
-      }),
-      db.cohortEnrollment.findUnique({
-        where: {
-          cohortId_userId: { cohortId: cohort.id, userId: input.userId },
-        },
-        select: { status: true, expiresAt: true },
-      }),
-      db.payment.findFirst({
-        where: {
-          cohortId: cohort.id,
-          userId: input.userId,
-          status: { in: [...openPaymentStatuses] },
-        },
-        orderBy: { createdAt: "desc" },
-        select: { id: true },
-      }),
-      getCheckoutDestinations(db, cohort.organizationId),
-      hasValidCohortInvite(db, {
+  const [
+    memberCount,
+    membership,
+    otherClass,
+    openPayment,
+    destinations,
+    hasValidInvite,
+  ] = await Promise.all([
+    db.cohortEnrollment.count({
+      where: {
         cohortId: cohort.id,
-        token: input.inviteToken,
-        now: input.now,
-      }),
-    ]);
+        status: { in: ["ACTIVE", "COMPLETED"] },
+      },
+    }),
+    db.cohortEnrollment.findUnique({
+      where: {
+        cohortId_userId: { cohortId: cohort.id, userId: input.userId },
+      },
+      select: { status: true, expiresAt: true },
+    }),
+    findOtherRunningClass(db, {
+      cohortId: cohort.id,
+      courseId: cohort.course.id,
+      userId: input.userId,
+      now: input.now,
+    }),
+    db.payment.findFirst({
+      where: {
+        cohortId: cohort.id,
+        userId: input.userId,
+        status: { in: [...openPaymentStatuses] },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    }),
+    getCheckoutDestinations(db, cohort.organizationId),
+    hasValidCohortInvite(db, {
+      cohortId: cohort.id,
+      token: input.inviteToken,
+      now: input.now,
+    }),
+  ]);
 
   const price = effectiveCohortPrice(cohort, cohort.course);
   const methods = availablePaymentMethods(destinations);
@@ -145,6 +161,7 @@ export async function loadCohortCheckout(
     enrollmentMode,
     hasValidInvite,
     alreadyEnrolled,
+    inOtherClass: otherClass !== null,
     capacity: cohort.capacity,
     memberCount,
     price,
@@ -178,7 +195,12 @@ export async function loadCohortCheckout(
     usesInvite: enrollmentMode !== "OPEN" && hasValidInvite,
     openPaymentId: openPayment?.id ?? null,
     blocker,
-    blockerMessage: blocker ? cohortJoinBlockerMessages[blocker] : null,
+    blockerMessage:
+      blocker === "IN_OTHER_CLASS" && otherClass
+        ? otherRunningClassMessage(otherClass.name)
+        : blocker
+          ? cohortJoinBlockerMessages[blocker]
+          : null,
   };
 }
 

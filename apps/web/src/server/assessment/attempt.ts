@@ -1,10 +1,7 @@
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
-import {
-  getMissingWrittenQuestionIds,
-  groupScoresByValue,
-} from "./logic";
+import { getMissingWrittenQuestionIds, groupScoresByValue } from "./logic";
 import { withTransactionRetry } from "../db-retry";
 
 /**
@@ -200,20 +197,22 @@ export async function gradeInProgressAttempt(
 const AUTO_SUBMIT_CONCURRENCY = 2;
 
 /**
- * Submits and grades every attempt of a closed event that is still IN_PROGRESS, as if each
- * learner had submitted at `now`. Each attempt is graded in its own short transaction under the
- * attempt row lock, so a concurrent learner submit/save is serialized and never double-graded.
- * One failing attempt does not stop the others; failures are logged and the attempt stays
- * IN_PROGRESS, so closing the event again retries it. Returns the number of attempts graded here.
+ * Submits and grades the attempts of a closed event that are still IN_PROGRESS, as if each
+ * learner had submitted at `now`, at most `limit` per call (oldest ids first). Each attempt is
+ * graded in its own short transaction under the attempt row lock, so a concurrent learner
+ * submit/save is serialized and never double-graded. One failing attempt does not stop the
+ * others; failures are logged and the attempt stays IN_PROGRESS for the next run.
  */
 export async function autoSubmitEventAttempts(
   db: PrismaClient,
   eventId: string,
   now: Date,
+  limit?: number,
 ) {
   const attempts = await db.assessmentAttempt.findMany({
     where: { assessmentEventId: eventId, status: "IN_PROGRESS" },
     orderBy: { id: "asc" },
+    take: limit,
     select: { id: true },
   });
   let graded = 0;
@@ -261,5 +260,5 @@ export async function autoSubmitEventAttempts(
       total: attempts.length,
     });
   }
-  return graded;
+  return { graded, failed, processed: attempts.length };
 }

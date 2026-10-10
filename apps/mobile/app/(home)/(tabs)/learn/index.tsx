@@ -15,6 +15,7 @@ import {
   type CohortEvent,
   type LearnCohort,
 } from "../../../../src/components/learn/cohort-card";
+import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
 import type { CohortMilestoneGroup } from "../../../../src/components/learn/milestone-section";
 import {
   Empty,
@@ -192,6 +193,7 @@ export default function LearnTab() {
   const { data: session } = authClient.useSession();
   const { activeOrganizationId } = useAppTheme();
   const dashboard = useSyncIndex(activeOrganizationId);
+  useOpenEventMediaPrefetch(dashboard.data?.events);
   const cohortCourseIds = useMemo(
     () => (dashboard.data?.cohorts ?? []).map((cohort) => cohort.course.id),
     [dashboard.data?.cohorts],
@@ -302,9 +304,9 @@ export default function LearnTab() {
           </View>
         ) : dashboard.data && !dashboard.error ? (
           <Empty>
-            Belum ada Group belajar di organisasi ini. Group belajar muncul di
-            sini setelah lembaga mendaftarkan kamu. Sementara itu, lanjutkan
-            latihan Hangeul dan kosakata dari tab Hari Ini.
+            Belum ada kelas di organisasi ini. Kelas muncul di sini setelah
+            lembaga mendaftarkan kamu. Sementara itu, lanjutkan latihan Hangeul
+            dan kosakata dari tab Hari Ini.
           </Empty>
         ) : null}
       </StudyScreen>

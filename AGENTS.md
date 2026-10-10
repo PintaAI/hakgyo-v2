@@ -9,7 +9,7 @@ Hakgyo V2 is a Bun/Turborepo monorepo containing the web and mobile clients for 
 - `packages/api`: type-only tRPC contract (`AppRouter`) consumed by Expo.
 - `packages/shared`: code shared by both clients, including the mobile sync protocol (`@hakgyo/shared/mobile-sync`), learning helpers, colors and organization themes.
 
-Core domain: organizations with members (OWNER, ADMIN, TEACHER) and a SIMPLE or ADVANCED permission mode; courses built from modules and items that place materials, vocabulary sets, PDF books and assessments; cohorts (study groups) with staff, enrollments and meetings; assessment attempts, teacher review and assessment events (tryouts/exams); vocabulary progress, practice and gamification. Topic docs live in `docs/` (for example `docs/api.md`, `docs/database.md`, `docs/mobile-sync.md`, `docs/mcp-server.md`).
+Core domain: organizations with members (OWNER, ADMIN, TEACHER) and a SIMPLE or ADVANCED permission mode; courses built from modules and items that place materials, vocabulary sets, PDF books and assessments; cohorts (study groups) with staff, enrollments and meetings; assessment attempts, teacher review and assessment events (Latihan and Tryout for one or more classes, see `docs/assessment-events.md`); vocabulary progress, practice and gamification. Topic docs live in `docs/` (for example `docs/api.md`, `docs/database.md`, `docs/mobile-sync.md`, `docs/mcp-server.md`).
 
 ## Repository Layout
 

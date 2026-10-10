@@ -1013,6 +1013,7 @@ export function createMobileSyncEngine({
         const result = await transport.getIndex({
           protocol: SYNC_PROTOCOL,
           organizationId,
+          includeScheduledEvents: true,
           knownIndexToken:
             local && !local.stale && !force ? local.token : undefined,
         });

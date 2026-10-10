@@ -1,10 +1,10 @@
-# Konsep Utama Group belajar di Hakgyo
+# Konsep Utama Kelas di Hakgyo
 
-Group belajar (**cohort**) adalah satu pelaksanaan terjadwal dari sebuah kurikulum. Kurikulum menyimpan materi kurikulum yang dipelajari, sedangkan Group belajar menyimpan konteks bagaimana materi kurikulum tersebut dijalankan untuk kelompok tertentu.
+Kelas (**cohort**) adalah satu pelaksanaan terjadwal dari sebuah kurikulum. Kurikulum menyimpan materi kurikulum yang dipelajari, sedangkan kelas menyimpan konteks bagaimana materi kurikulum tersebut dijalankan untuk kelompok tertentu.
 
-Satu kurikulum dapat memiliki banyak Group belajar. Setiap batch dapat mempunyai periode, peserta didik, instructor, assistant, kapasitas, harga, grup WhatsApp, undangan, dan jadwal meeting yang berbeda tanpa menduplikasi materi kurikulum.
+Satu kurikulum dapat memiliki banyak kelas. Setiap batch dapat mempunyai periode, peserta didik, instructor, assistant, kapasitas, harga, grup WhatsApp, undangan, dan jadwal meeting yang berbeda tanpa menduplikasi materi kurikulum.
 
-Dokumen ini menjelaskan hubungan antara **kurikulum**, **Group belajar**, **peserta didik**, **staff**, **undangan**, **meeting**, dan **akses belajar**. Di dalam sistem, istilah teknisnya tetap `cohort`.
+Dokumen ini menjelaskan hubungan antara **kurikulum**, **kelas**, **peserta didik**, **staff**, **undangan**, **meeting**, dan **akses belajar**. Di dalam sistem, istilah teknisnya tetap `cohort`.
 
 ## Gambaran Dasar
 
@@ -40,9 +40,9 @@ Ketiga batch menggunakan materi kurikulum yang sama. Perubahan pada susunan kuri
 | Cara belajar open atau sequential            | Meeting dan link Zoom                   |
 | Aturan enrollment dasar dan materi kurikulum | Kapasitas, harga, dan aturan enrollment |
 
-## Kapan Menggunakan Group belajar
+## Kapan Menggunakan Kelas
 
-Gunakan Group belajar ketika sebuah program belajar membutuhkan satu atau lebih konteks berikut:
+Gunakan kelas ketika sebuah program belajar membutuhkan satu atau lebih konteks berikut:
 
 - Kelompok peserta didik tertentu.
 - Tanggal mulai dan selesai.
@@ -52,9 +52,9 @@ Gunakan Group belajar ketika sebuah program belajar membutuhkan satu atau lebih 
 - Grup komunikasi seperti WhatsApp.
 - Harga atau aturan enrollment yang berbeda dari kurikulum.
 
-Group belajar tidak wajib digunakan untuk semua kurikulum. Kurikulum belajar mandiri dapat memberikan akses langsung kepada peserta didik tanpa memasukkannya ke batch.
+Kelas tidak wajib digunakan untuk semua kurikulum. Kurikulum belajar mandiri dapat memberikan akses langsung kepada peserta didik tanpa memasukkannya ke batch.
 
-### Kurikulum Langsung atau Group belajar
+### Kurikulum Langsung atau Kelas
 
 | Kebutuhan                                           | Pilihan yang disarankan  |
 | --------------------------------------------------- | ------------------------ |
@@ -94,15 +94,15 @@ Kapasitas menyatakan jumlah peserta didik yang direncanakan. Dashboard cohort me
 Occupancy = peserta didik aktif / kapasitas x 100%
 ```
 
-Checkout mandiri dari katalog atau undangan Group belajar berbayar ditolak ketika kapasitas tercapai. Penambahan manual oleh pengelola dan persetujuan pembayaran tetap diizinkan, jadi pengelola tetap perlu memantau jumlah peserta.
+Checkout mandiri dari katalog atau undangan kelas berbayar ditolak ketika kapasitas tercapai. Penambahan manual oleh pengelola dan persetujuan pembayaran tetap diizinkan, jadi pengelola tetap perlu memantau jumlah peserta.
 
 ### Harga
 
 Cohort dapat mengikuti harga kurikulum atau mempunyai harga sendiri. Harga cohort berguna ketika setiap batch memiliki paket, fasilitas, atau biaya yang berbeda.
 
-Group belajar dengan harga lebih dari 0 diikuti melalui checkout. Siswa memilih QRIS atau transfer bank yang diatur owner atau admin di **Pengaturan → Pembayaran**, membayar, lalu mengunggah bukti. Pengelola Group belajar memeriksa bukti di tab **Pembayaran** dan menyetujui atau menolaknya. Siswa baru mendapat akses setelah pembayaran disetujui.
+Kelas dengan harga lebih dari 0 diikuti melalui checkout. Siswa memilih QRIS atau transfer bank yang diatur owner atau admin di **Pengaturan → Pembayaran**, membayar, lalu mengunggah bukti. Pengelola kelas memeriksa bukti di tab **Pembayaran** dan menyetujui atau menolaknya. Siswa baru mendapat akses setelah pembayaran disetujui.
 
-Isi harga 0 agar Group belajar gratis. Undangan ke Group belajar berbayar mengarahkan siswa ke checkout; menambahkan siswa secara manual lewat email tetap tidak memerlukan pembayaran.
+Isi harga 0 agar kelas gratis. Undangan ke kelas berbayar mengarahkan siswa ke checkout; menambahkan siswa secara manual lewat email tetap tidak memerlukan pembayaran.
 
 ### Grup WhatsApp
 

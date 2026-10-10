@@ -181,6 +181,54 @@ describe("invite redemption", () => {
     expect(updateCount).toBe(0);
   });
 
+  test("refuses a class invite while the learner takes another class of the course", async () => {
+    let updateCount = 0;
+    const lookups: unknown[] = [];
+    const tx = {
+      $executeRaw: () => Promise.resolve(1),
+      enrollmentInvite: {
+        findUnique: () =>
+          Promise.resolve({
+            id: "invite-1",
+            courseId: "course-1",
+            cohortId: "cohort-2",
+            revokedAt: null,
+            expiresAt: null,
+            maxUses: null,
+            useCount: 0,
+            course: { price: 0 },
+            cohort: { status: "OPEN", endsAt: null, price: null },
+          }),
+        updateMany: () => {
+          updateCount += 1;
+          return Promise.resolve({ count: 1 });
+        },
+      },
+      cohortEnrollment: {
+        // Not a member of the invited class, but active in another one.
+        findFirst: (args: unknown) => {
+          lookups.push(args);
+          return Promise.resolve(
+            lookups.length === 1
+              ? null
+              : { cohort: { id: "cohort-1", name: "Kelas Pagi" } },
+          );
+        },
+      },
+    } as unknown as Prisma.TransactionClient;
+
+    expect(
+      await rejectionCode(
+        redeemEnrollmentInvite(tx, {
+          token: "class-invite-token-long-enough",
+          userId: "user-1",
+          now,
+        }),
+      ),
+    ).toBe("PRECONDITION_FAILED");
+    expect(updateCount).toBe(0);
+  });
+
   test("consumes a use and joins the course's default cohort", async () => {
     const { tx, getUseCount } = createTransaction();
     const memberships: unknown[] = [];

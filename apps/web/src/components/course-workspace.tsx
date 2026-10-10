@@ -181,10 +181,10 @@ const cohortStatus = {
 
 const views = [
   { value: "overview", label: "Ringkasan", icon: LayoutDashboardIcon },
-  { value: "cohorts", label: "Group belajar", icon: CalendarDaysIcon },
+  { value: "cohorts", label: "Kelas", icon: CalendarDaysIcon },
   { value: "learners", label: "Siswa", icon: UsersIcon },
   { value: "reviews", label: "Hasil & review tugas", icon: ClipboardCheckIcon },
-  { value: "tryouts", label: "Tryout", icon: TrophyIcon },
+  { value: "tryouts", label: "Latihan & tryout", icon: TrophyIcon },
   { value: "access", label: "Akses", icon: ShieldCheckIcon },
   { value: "settings", label: "Pengaturan", icon: Settings2Icon },
 ] satisfies Array<{
@@ -677,7 +677,7 @@ function OverviewSection({
         label="Ringkasan kurikulum"
         items={[
           { label: "Bab", value: stats.moduleCount },
-          { label: "Group belajar", value: stats.cohortCount },
+          { label: "Kelas", value: stats.cohortCount },
           { label: "Siswa aktif", value: stats.activeLearnerCount },
           { label: "Undangan aktif", value: stats.activeInviteCount },
         ]}
@@ -779,7 +779,7 @@ function OverviewSection({
                 {
                   view: "cohorts" as const,
                   icon: CalendarDaysIcon,
-                  label: "Buat dan kelola Group belajar",
+                  label: "Buat dan kelola kelas",
                 },
                 {
                   view: "learners" as const,
@@ -905,7 +905,7 @@ function CohortsSection({
       setCapacity("");
       setStartsAt("");
       setEndsAt("");
-      toast.success("Group belajar berhasil dibuat.");
+      toast.success("Kelas berhasil dibuat.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -916,7 +916,7 @@ function CohortsSection({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-heading text-2xl font-medium tracking-tight">
-            Group belajar
+            Kelas
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             Kelola kelas, kapasitas, periode, dan staff kurikulum.
@@ -925,7 +925,7 @@ function CohortsSection({
         {canCreate ? (
           <Button onClick={() => setOpen(true)}>
             <PlusIcon data-icon="inline-start" />
-            Buat Group belajar
+            Buat kelas
           </Button>
         ) : null}
       </div>
@@ -941,9 +941,9 @@ function CohortsSection({
           <div className="relative min-w-0 flex-1">
             <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
             <Input
-              aria-label="Cari Group belajar"
+              aria-label="Cari kelas"
               className="pl-8"
-              placeholder="Cari nama Group belajar"
+              placeholder="Cari nama kelas"
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
             />
@@ -989,7 +989,7 @@ function CohortsSection({
             }}
           >
             <SelectTrigger
-              aria-label="Urutkan Group belajar"
+              aria-label="Urutkan kelas"
               className="w-full sm:w-44 max-sm:[&>svg:first-child]:hidden"
             >
               {sort === "name" ? (
@@ -1051,14 +1051,12 @@ function CohortsSection({
               size="sm"
               icon={hasActiveFilters ? SearchIcon : CalendarDaysIcon}
               title={
-                hasActiveFilters
-                  ? "Group belajar tidak ditemukan"
-                  : "Belum ada Group belajar"
+                hasActiveFilters ? "Kelas tidak ditemukan" : "Belum ada kelas"
               }
               description={
                 hasActiveFilters
                   ? "Coba kata kunci atau status yang berbeda."
-                  : "Group belajar membantu mengatur periode belajar, pengajar, meeting, dan kelompok siswa."
+                  : "Kelas membantu mengatur periode belajar, pengajar, meeting, dan kelompok siswa."
               }
               action={
                 canCreate && !hasActiveFilters ? (
@@ -1068,7 +1066,7 @@ function CohortsSection({
                     onClick={() => setOpen(true)}
                   >
                     <PlusIcon data-icon="inline-start" />
-                    Buat Group belajar pertama
+                    Buat kelas pertama
                   </Button>
                 ) : undefined
               }
@@ -1100,8 +1098,7 @@ function CohortsSection({
                         </Badge>
                       </div>
                       <p className="text-muted-foreground mt-1 line-clamp-1 text-xs">
-                        {cohort.description ??
-                          "Belum ada deskripsi Group belajar."}
+                        {cohort.description ?? "Belum ada deskripsi kelas."}
                       </p>
                     </div>
                   </div>
@@ -1148,7 +1145,7 @@ function CohortsSection({
               {isLoadingMore ? (
                 <LoaderCircleIcon className="animate-spin" />
               ) : null}
-              Muat Group belajar berikutnya
+              Muat kelas berikutnya
             </Button>
           ) : null}
         </div>
@@ -1159,19 +1156,19 @@ function CohortsSection({
           <DialogContent className="sm:max-w-lg">
             <form onSubmit={submit}>
               <DialogHeader>
-                <DialogTitle>Buat Group belajar</DialogTitle>
+                <DialogTitle>Buat kelas</DialogTitle>
                 <DialogDescription>
-                  Buat Group belajar baru untuk kurikulum ini.
+                  Buat kelas baru untuk kurikulum ini.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-5 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cohort-name">Nama Group belajar</Label>
+                  <Label htmlFor="cohort-name">Nama kelas</Label>
                   <Input
                     id="cohort-name"
                     autoFocus
                     maxLength={200}
-                    placeholder="Contoh: Group belajar September 2026"
+                    placeholder="Contoh: Kelas September 2026"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                   />
@@ -1181,7 +1178,7 @@ function CohortsSection({
                   <Textarea
                     id="cohort-description"
                     maxLength={10000}
-                    placeholder="Fokus dan konteks Group belajar ini"
+                    placeholder="Fokus dan konteks kelas ini"
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                   />
@@ -1233,7 +1230,7 @@ function CohortsSection({
                   ) : (
                     <PlusIcon />
                   )}
-                  Buat Group belajar
+                  Buat kelas
                 </Button>
               </DialogFooter>
             </form>
@@ -1348,8 +1345,8 @@ function LearnersSection({
             Siswa
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Siswa yang belajar mandiri tanpa Group belajar. Siswa Group belajar
-            dikelola di halaman group masing-masing.
+            Siswa yang belajar mandiri tanpa kelas. Siswa kelas dikelola di
+            halaman group masing-masing.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1628,8 +1625,8 @@ function LearnersSection({
             </AlertDialogTitle>
             <AlertDialogDescription>
               Akses belajar mandiri siswa ke kurikulum ini dicabut. Jika siswa
-              masih terdaftar di Group belajar kurikulum ini, aksesnya tetap
-              berlaku lewat group tersebut. Status lama tidak dapat dipulihkan.
+              masih terdaftar di kelas kurikulum ini, aksesnya tetap berlaku
+              lewat group tersebut. Status lama tidak dapat dipulihkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1758,7 +1755,7 @@ function InvitesSection({
             Invites
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Buat link akses untuk kurikulum atau Group belajar tertentu.
+            Buat link akses untuk kurikulum atau kelas tertentu.
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>
@@ -1783,7 +1780,7 @@ function InvitesSection({
               size="sm"
               icon={MailPlusIcon}
               title="Belum ada invite"
-              description="Buat link terbatas untuk mengundang siswa ke kurikulum atau Group belajar."
+              description="Buat link terbatas untuk mengundang siswa ke kurikulum atau kelas."
               action={
                 <Button
                   className="mt-4"
@@ -1827,9 +1824,7 @@ function InvitesSection({
                     <TableCell className="pl-4">
                       <span className="block font-medium">
                         {cohort?.name ??
-                          (invite.cohortId
-                            ? "Group belajar"
-                            : "Seluruh kurikulum")}
+                          (invite.cohortId ? "Kelas" : "Seluruh kurikulum")}
                       </span>
                       <span className="text-muted-foreground block text-xs">
                         oleh {invite.createdBy.user.name}
@@ -2279,7 +2274,7 @@ function AccessSection({
                 <div>
                   <p className="font-medium">Manager</p>
                   <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                    Mengelola materi kurikulum, siswa, group belajar, undangan,
+                    Mengelola materi kurikulum, siswa, kelas, undangan,
                     pengaturan, dan status kurikulum.
                   </p>
                 </div>

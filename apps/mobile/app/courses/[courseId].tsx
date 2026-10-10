@@ -11,10 +11,11 @@ import {
 } from "react-native";
 
 import { CourseOutlineList } from "../../src/components/learn/course-outline-list";
+import { CourseOfflineCard } from "../../src/components/offline-download";
 import { getCourseResumeItem } from "../../src/lib/course-learning-path";
 import { authClient } from "../../src/lib/auth-client";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
-import { useCourseOutline } from "../../src/sync/hooks";
+import { useCourseOfflineMedia, useCourseOutline } from "../../src/sync/hooks";
 import { withOpacity } from "../../src/theme/colors";
 
 export default function CourseDetailScreen() {
@@ -40,6 +41,17 @@ export default function CourseDetailScreen() {
   }, [courseId, isSessionPending, session]);
 
   const course = courseQuery.data;
+  const offlineMedia = useCourseOfflineMedia(courseId);
+  // Only chapters the learner can open: locked ones cannot be signed for download yet.
+  const openModuleIds = new Set(
+    course?.modules
+      .filter((module) => module.access !== "LOCKED")
+      .map((module) => module.id) ?? [],
+  );
+  const offlineAssetIds =
+    offlineMedia?.modules
+      .filter((entry) => openModuleIds.has(entry.moduleId))
+      .flatMap((entry) => entry.assetIds) ?? [];
   const resumeItem = course && getCourseResumeItem(course);
   const allItems = course?.modules.flatMap((module) => module.items) ?? [];
   const completedCount = allItems.filter((item) => item.isCompleted).length;
@@ -212,9 +224,18 @@ export default function CourseDetailScreen() {
             </View>
           ) : null}
 
+          {offlineMedia ? (
+            <CourseOfflineCard
+              courseId={courseId}
+              assetIds={offlineAssetIds}
+              sizes={offlineMedia.sizes}
+            />
+          ) : null}
+
           <CourseOutlineList
             courseId={courseId}
             showActiveState={false}
+            offlineMedia={offlineMedia}
             onOpenItem={(item, attempt) => {
               if (attempt?.status === "IN_PROGRESS") {
                 router.push({

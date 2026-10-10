@@ -16,7 +16,9 @@ const storageKey = (userId: string) => `hakgyo:learn-cohort:v1:${userId}`;
 
 export function LearnTab({ userId }: { userId: string }) {
   const cohortsQuery = api.learning.listMyCohorts.useQuery();
-  const eventsQuery = api.assessmentEvent.listForLearner.useQuery();
+  const eventsQuery = api.assessmentEvent.listForLearner.useQuery({
+    includeScheduled: true,
+  });
   const milestonesQuery = api.learning.listMyCohortMilestones.useQuery();
   const [now, setNow] = useState(Date.now);
   // Read on first render: nothing depends on it until the cohorts have loaded,
@@ -92,7 +94,7 @@ export function LearnTab({ userId }: { userId: string }) {
     <div className="flex flex-col gap-4">
       {cohorts.length > 1 ? (
         <nav
-          aria-label="Group belajar"
+          aria-label="Kelas"
           className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
         >
           {cohorts.map((cohort) => (

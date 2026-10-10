@@ -9,8 +9,13 @@ import { getCourseResumeItem } from "../../lib/course-learning-path";
 import { authClient } from "../../lib/auth-client";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
-import { useCourseOutline, useSyncIndex } from "../../sync/hooks";
+import {
+  useCourseOutline,
+  useSyncIndex,
+  type CourseOfflineMedia,
+} from "../../sync/hooks";
 import { QueryState } from "../learning-ui";
+import { ModuleOfflineBadge } from "../offline-download";
 import { LearningItemRow } from "./learning-item-row";
 
 const itemLabels = {
@@ -25,6 +30,7 @@ export function CourseOutlineList({
   onOpenItem,
   showHeader = true,
   showActiveState = true,
+  offlineMedia,
 }: {
   courseId: string;
   currentItemId?: string;
@@ -39,6 +45,8 @@ export function CourseOutlineList({
   ) => void;
   showHeader?: boolean;
   showActiveState?: boolean;
+  /** Shows each open chapter's offline state and a download button. */
+  offlineMedia?: CourseOfflineMedia | null;
 }) {
   const { data: session } = authClient.useSession();
   const { activeOrganizationId, colors } = useAppTheme();
@@ -161,6 +169,17 @@ export function CourseOutlineList({
                         : `${module.items.filter((item) => item.isCompleted).length}/${module.items.length} selesai`}
                     </Text>
                   )}
+                  {!locked && offlineMedia ? (
+                    <ModuleOfflineBadge
+                      moduleId={module.id}
+                      assetIds={
+                        offlineMedia.modules.find(
+                          (entry) => entry.moduleId === module.id,
+                        )?.assetIds ?? []
+                      }
+                      sizes={offlineMedia.sizes}
+                    />
+                  ) : null}
                 </View>
               </View>
 

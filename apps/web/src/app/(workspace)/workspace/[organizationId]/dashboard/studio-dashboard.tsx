@@ -176,8 +176,7 @@ function Groups({ data }: { data: StudioDashboardData }) {
         </ul>
       ) : (
         <Empty>
-          Belum ada Group belajar. Buka kurikulum untuk menyiapkan kelompok
-          pertama.
+          Belum ada kelas. Buka kurikulum untuk menyiapkan kelompok pertama.
         </Empty>
       )}
     </>
@@ -337,7 +336,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
                       <span className="inline-flex min-w-0 items-center gap-1">
                         <Users className="size-3 shrink-0" />
                         <span className="truncate">
-                          {course._count.cohorts} Group belajar
+                          {course._count.cohorts} kelas
                         </span>
                       </span>
                     </p>
@@ -352,11 +351,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
             <Empty>Mulai cerita belajar Anda dengan kurikulum pertama.</Empty>
           )}
           <div className="mt-8">
-            <Title
-              number="02"
-              title="Group belajar"
-              href={`${data.root}/courses`}
-            />
+            <Title number="02" title="Kelas" href={`${data.root}/courses`} />
             <Groups data={data} />
           </div>
         </section>

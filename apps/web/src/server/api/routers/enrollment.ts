@@ -15,6 +15,7 @@ import {
 import { withTransactionRetry } from "~/server/db-retry";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
 import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
+import { findOtherRunningClass } from "~/server/enrollment/cohort-access";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 import {
   notifyEnrollmentAdded,
@@ -432,7 +433,7 @@ export const enrollmentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireCohortPermission({
+      const cohort = await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "learners.manage",
         userId: ctx.actorUserId,
@@ -446,6 +447,20 @@ export const enrollmentRouter = createTRPCRouter({
           code: "NOT_FOUND",
           message: "No Hakgyo account was found for this email",
         });
+      }
+      if (input.status === "ACTIVE") {
+        const otherClass = await findOtherRunningClass(ctx.db, {
+          cohortId: input.cohortId,
+          courseId: cohort.courseId,
+          userId: user.id,
+          now: new Date(),
+        });
+        if (otherClass) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Learner ini masih aktif di ${otherClass.name}. Keluarkan atau selesaikan dulu dari kelas itu.`,
+          });
+        }
       }
       const completedAt = input.status === "COMPLETED" ? new Date() : null;
       const previous = await ctx.db.cohortEnrollment.findUnique({

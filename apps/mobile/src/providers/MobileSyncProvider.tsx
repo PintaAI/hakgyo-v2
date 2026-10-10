@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -28,12 +29,20 @@ import {
   type RecordVocabularyAttemptInput,
 } from "../sync/engine";
 import { createAssetCache } from "../sync/asset-cache";
-import { createAssetResolver } from "../sync/asset-resolver";
+import {
+  createAssetResolver,
+  type AssetPrefetchProgress,
+} from "../sync/asset-resolver";
 import {
   clearAllDeviceAssetFiles,
   createDeviceAssetFileStore,
 } from "../sync/asset-files";
 import { createBundleFetcher } from "../sync/bundle-sync";
+import {
+  createOfflineDownloads,
+  type OfflineDownloads,
+  type OfflineDownloadState,
+} from "../sync/offline-downloads";
 import {
   persistAttempt,
   SyncDataContext,
@@ -118,6 +127,16 @@ type MobileSyncActionsValue = {
   }) => Promise<void>;
   /** Warms the lesson's (and the next lesson's) media into the asset cache. */
   prefetchLesson: (courseId: string, courseItemId: string) => void;
+  /**
+   * Downloads an assessment's images and audio to the device, reporting progress; resolves
+   * with the final progress (failed ids load on demand later).
+   */
+  prefetchAssessmentMedia: (
+    assetIds: readonly string[],
+    onProgress?: (progress: AssetPrefetchProgress) => void,
+  ) => Promise<AssetPrefetchProgress | null>;
+  /** Background download of an open event's media from the local bundle (Wi-Fi only). */
+  prefetchEventMedia: (courseId: string, courseItemId: string) => void;
   clearLocalDataAndResync: (organizationId?: string) => Promise<ResyncReport>;
   getLocalDataStats: () => Promise<LocalDataStats>;
 };
@@ -130,6 +149,19 @@ const MobileSyncStatusContext = createContext<MobileSyncStatusValue | null>(
 const MobileSyncActionsContext = createContext<MobileSyncActionsValue | null>(
   null,
 );
+type OfflineMediaValue = {
+  downloads: OfflineDownloads;
+  /** Downloads the assets under `key` ("course:<id>" / "module:<id>") unless already running. */
+  start: (
+    key: string,
+    assetIds: readonly string[],
+  ) => Promise<OfflineDownloadState | undefined>;
+  /** The ids among `assetIds` whose files are on the device. */
+  onDevice: (assetIds: readonly string[]) => Promise<string[]>;
+};
+
+const OfflineMediaContext = createContext<OfflineMediaValue | null>(null);
+
 const MobileAssetResolverContext = createContext<
   ((assetId: string) => Promise<string>) | null
 >(null);
@@ -204,6 +236,31 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     });
   }, [assetCache, fileStore, utils.client.storage.createDownloadUrls]);
   useEffect(() => () => assetResolver?.dispose(), [assetResolver]);
+  // Per user: a new account starts without the previous account's download state.
+  const offlineDownloads = useMemo(() => {
+    void userId;
+    return createOfflineDownloads();
+  }, [userId]);
+  const offlineMedia = useMemo<OfflineMediaValue>(
+    () => ({
+      downloads: offlineDownloads,
+      start: async (key, assetIds) => {
+        if (!assetResolver) return undefined;
+        return offlineDownloads.start(key, assetIds, (ids, onProgress) =>
+          assetResolver.prefetchAssetsWithProgress(ids, onProgress),
+        );
+      },
+      onDevice: async (assetIds) => {
+        if (!fileStore) return [];
+        const stored: string[] = [];
+        for (const assetId of new Set(assetIds)) {
+          if (await fileStore.getUri(assetId)) stored.push(assetId);
+        }
+        return stored;
+      },
+    }),
+    [assetResolver, fileStore, offlineDownloads],
+  );
   const activeOrganizationIdRef = useRef<string | null>(null);
 
   const resolveAssetUrl = useCallback(
@@ -468,6 +525,31 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     [assetResolver],
   );
 
+  const prefetchAssessmentMedia = useCallback(
+    async (
+      assetIds: readonly string[],
+      onProgress?: (progress: AssetPrefetchProgress) => void,
+    ) => {
+      if (!assetResolver || !assetIds.length) return null;
+      return assetResolver.prefetchAssetsWithProgress(assetIds, onProgress);
+    },
+    [assetResolver],
+  );
+
+  const prefetchEventMedia = useCallback(
+    (courseId: string, courseItemId: string) => {
+      if (!assetResolver || !courseId || !courseItemId) return;
+      void Network.getNetworkStateAsync()
+        .then((state) => {
+          // Large listening files are not fetched over cellular in the background.
+          if (state.type !== Network.NetworkStateType.WIFI) return;
+          return assetResolver.prefetchLesson(courseId, courseItemId);
+        })
+        .catch(() => undefined);
+    },
+    [assetResolver],
+  );
+
   const actions = useMemo<MobileSyncActionsValue>(
     () => ({
       recordVocabularyAttempt: async (input) => {
@@ -577,6 +659,8 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         if (localData) await persistAttempt(queryClient, localData, input);
       },
       prefetchLesson,
+      prefetchAssessmentMedia,
+      prefetchEventMedia,
       clearLocalDataAndResync,
       getLocalDataStats,
     }),
@@ -586,6 +670,8 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       clearLocalDataAndResync,
       getLocalDataStats,
       localData,
+      prefetchAssessmentMedia,
+      prefetchEventMedia,
       prefetchLesson,
       queryClient,
       syncNow,
@@ -620,13 +706,15 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
   if (!status.isHydrated) return null;
   return (
     <MobileAssetResolverContext.Provider value={resolveAssetUrl}>
-      <MobileSyncActionsContext.Provider value={actions}>
-        <MobileSyncStatusContext.Provider value={status}>
-          <SyncDataContext.Provider value={syncData}>
-            {children}
-          </SyncDataContext.Provider>
-        </MobileSyncStatusContext.Provider>
-      </MobileSyncActionsContext.Provider>
+      <OfflineMediaContext.Provider value={offlineMedia}>
+        <MobileSyncActionsContext.Provider value={actions}>
+          <MobileSyncStatusContext.Provider value={status}>
+            <SyncDataContext.Provider value={syncData}>
+              {children}
+            </SyncDataContext.Provider>
+          </MobileSyncStatusContext.Provider>
+        </MobileSyncActionsContext.Provider>
+      </OfflineMediaContext.Provider>
     </MobileAssetResolverContext.Provider>
   );
 }
@@ -658,4 +746,24 @@ export function useMobileAssetResolver() {
     );
   }
   return resolveAssetUrl;
+}
+
+export function useOfflineMedia() {
+  const offline = useContext(OfflineMediaContext);
+  if (!offline) {
+    throw new Error("useOfflineMedia must be used within MobileSyncProvider");
+  }
+  return offline;
+}
+
+/** Progress of the offline download under `key`, if one ran this session. */
+export function useOfflineDownload(key: string) {
+  const { downloads } = useOfflineMedia();
+  return useSyncExternalStore(downloads.subscribe, () => downloads.get(key));
+}
+
+/** Changes whenever an offline download stores files, to re-check badges. */
+export function useOfflineRevision() {
+  const { downloads } = useOfflineMedia();
+  return useSyncExternalStore(downloads.subscribe, downloads.getRevision);
 }

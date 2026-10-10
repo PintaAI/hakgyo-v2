@@ -1,0 +1,31 @@
+name: Assessment events
+
+# Every 5 minutes: opens scheduled assessment events, closes events past their
+# closing time and grades attempts left in progress (see
+# apps/web/src/app/api/cron/assessment-events/route.ts). Every step is
+# idempotent, so late or overlapping runs are safe.
+# CRON_SECRET must match the value set in Vercel.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: assessment-events-cron
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call assessment events route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 300 \
+            -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            https://hakgyo-v2.vercel.app/api/cron/assessment-events

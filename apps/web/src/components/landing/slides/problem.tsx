@@ -59,7 +59,7 @@ const segments: readonly Segment[] = [
         title: "Pembagian kelas manual",
         detail:
           "Setiap murid baru datang, batch disusun ulang lewat catatan atau spreadsheet.",
-        solution: "Group belajar per angkatan, murid masuk lewat link",
+        solution: "Kelas per angkatan, murid masuk lewat link",
       },
       {
         icon: MessagesSquareIcon,

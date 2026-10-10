@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
+import { cachedAssetUrl } from "~/lib/assessment-media-cache";
 import { api } from "~/trpc/react";
 
 type StorageClient = ReturnType<typeof api.useUtils>["client"];
@@ -66,10 +67,10 @@ function flush(client: StorageClient) {
 }
 
 /**
- * Resolves an inline download URL for an asset. Calls made close together are
+ * Signs an inline download URL for an asset. Calls made close together are
  * signed in one request, and URLs are reused until shortly before they expire.
  */
-export function loadAssetDownloadUrl(
+export function signAssetDownloadUrl(
   client: StorageClient,
   assetId: string,
 ): Promise<string> {
@@ -91,6 +92,19 @@ export function loadAssetDownloadUrl(
 }
 
 /**
+ * Resolves a URL for an asset: the downloaded copy when assessment media was
+ * preloaded (see `~/lib/assessment-media-cache`), else a signed download URL.
+ */
+export async function loadAssetDownloadUrl(
+  client: StorageClient,
+  assetId: string,
+): Promise<string> {
+  return (
+    (await cachedAssetUrl(assetId)) ?? signAssetDownloadUrl(client, assetId)
+  );
+}
+
+/**
  * Replaces the signed-in asset loader for a subtree, e.g. public quiz pages where visitors have
  * no session and media is signed through the quiz instead.
  */
@@ -102,9 +116,19 @@ export const AssetUrlLoaderContext = createContext<
 export function useAssetUrlLoader() {
   const utils = api.useUtils();
   const override = useContext(AssetUrlLoaderContext);
+  return override
+    ? async (assetId: string) =>
+        (await cachedAssetUrl(assetId)) ?? override(assetId)
+    : (assetId: string) => loadAssetDownloadUrl(utils.client, assetId);
+}
+
+/** Signs download URLs without the offline copies; used to fill them. */
+export function useAssetUrlSigner() {
+  const utils = api.useUtils();
+  const override = useContext(AssetUrlLoaderContext);
   return (
     override ??
-    ((assetId: string) => loadAssetDownloadUrl(utils.client, assetId))
+    ((assetId: string) => signAssetDownloadUrl(utils.client, assetId))
   );
 }
 
@@ -121,7 +145,10 @@ export function useAssetDownloadUrl(assetId: string, enabled = true) {
   useEffect(() => {
     if (!enabled || !assetId) return;
     let active = true;
-    (override ? override(assetId) : loadAssetDownloadUrl(utils.client, assetId))
+    (override
+      ? cachedAssetUrl(assetId).then((local) => local ?? override(assetId))
+      : loadAssetDownloadUrl(utils.client, assetId)
+    )
       .then((url) => {
         if (active) setState({ assetId, url, failed: false });
       })

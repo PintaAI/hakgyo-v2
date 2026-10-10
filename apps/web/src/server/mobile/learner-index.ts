@@ -171,7 +171,8 @@ export function nextLocalMidnight(now: Date, timeZone: string): Date {
 
 /**
  * Earliest time-driven change of the index: streak day rollover, an event
- * closing, a cohort ending or an enrollment expiring; capped at 24 hours.
+ * opening or closing, a cohort ending or an enrollment expiring; capped at 24
+ * hours.
  */
 export function computeValidUntil(input: {
   now: Date;
@@ -195,7 +196,7 @@ export function computeValidUntil(input: {
  */
 export async function buildLearnerIndex(
   ctx: LearnerContext,
-  input: { organizationId?: string },
+  input: { organizationId?: string; includeScheduledEvents?: boolean },
 ) {
   const actorUserId = ctx.actorUserId;
   const scope = input.organizationId
@@ -302,7 +303,10 @@ export async function buildLearnerIndex(
   ] = await Promise.all([
     coursesPromise,
     cohortsPromise,
-    assessmentEvent.listForLearner(scope),
+    assessmentEvent.listForLearner({
+      ...scope,
+      includeScheduled: input.includeScheduledEvents ?? false,
+    }),
     learning.listMyCohortMilestones(scope),
     attemptsPromise,
     gamification.getMySummary(),
@@ -363,6 +367,10 @@ export async function buildLearnerIndex(
     timeZone: gamificationSummary.summary.timeZone,
     deadlines: [
       ...events.map((event) => event.closesAt),
+      // A scheduled event becomes startable at its opening time.
+      ...events.map((event) =>
+        event.status === "SCHEDULED" ? event.opensAt : null,
+      ),
       ...cohorts.map((cohort) => cohort.endsAt),
       ...enrollments.map((enrollment) => enrollment.expiresAt),
     ],

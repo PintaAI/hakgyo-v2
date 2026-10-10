@@ -1,7 +1,7 @@
 import { after } from "next/server";
 
+import { Prisma } from "../../../generated/prisma/client";
 import { db } from "~/server/db";
-import { courseAccessCohortStatuses } from "~/server/enrollment/cohort-access";
 import { notifyUsers } from "~/server/notifications/dispatch";
 import {
   formatMeetingTime,
@@ -61,58 +61,43 @@ export async function activeCohortLearnerIds(cohortId: string, now: Date) {
   return rows.map((row) => row.userId);
 }
 
-/** Learners with an active membership in any accessible cohort of the course. */
-async function activeCourseLearnerIds(courseId: string, now: Date) {
-  const rows = await db.cohortEnrollment.findMany({
-    where: {
-      ...activeEnrollmentWhere(now),
-      cohort: { courseId, status: { in: [...courseAccessCohortStatuses] } },
-    },
-    distinct: ["userId"],
-    select: { userId: true },
-  });
-  return rows.map((row) => row.userId);
-}
-
 const eventSelect = {
   id: true,
   title: true,
   type: true,
-  scope: true,
   organizationId: true,
   courseId: true,
-  cohortId: true,
   closesAt: true,
   course: { select: { title: true } },
 } as const;
 
 function eventLabel(type: string) {
-  return type === "TRYOUT" ? "Tryout" : "Tugas cepat";
+  return type === "TRYOUT" ? "Tryout" : "Latihan";
 }
 
-/** Valid participants who are still actively enrolled. */
+/**
+ * Valid participants who are still actively enrolled in a targeted class (optionally only the
+ * given learners).
+ */
 async function eventRecipientIds(
-  event: {
-    id: string;
-    scope: string;
-    courseId: string;
-    cohortId: string | null;
-  },
+  eventId: string,
   now: Date,
+  userIds?: string[],
 ) {
-  const [participants, active] = await Promise.all([
-    db.assessmentEventParticipant.findMany({
-      where: { eventId: event.id, invalidatedAt: null },
-      select: { userId: true },
-    }),
-    event.scope === "COHORT" && event.cohortId
-      ? activeCohortLearnerIds(event.cohortId, now)
-      : activeCourseLearnerIds(event.courseId, now),
-  ]);
-  const activeIds = new Set(active);
-  return participants
-    .map((participant) => participant.userId)
-    .filter((userId) => activeIds.has(userId));
+  const rows = await db.$queryRaw<Array<{ userId: string }>>`
+    SELECT DISTINCT participant."userId"
+    FROM "AssessmentEventParticipant" AS participant
+    JOIN "AssessmentEventCohort" AS target ON target."eventId" = participant."eventId"
+    JOIN "CohortEnrollment" AS enrollment
+      ON enrollment."cohortId" = target."cohortId"
+      AND enrollment."userId" = participant."userId"
+    WHERE participant."eventId" = ${eventId}
+      AND participant."invalidatedAt" IS NULL
+      AND enrollment."status" = 'ACTIVE'
+      AND (enrollment."expiresAt" IS NULL OR enrollment."expiresAt" > ${now}::timestamp(3))
+      ${userIds ? Prisma.sql`AND participant."userId" IN (${Prisma.join(userIds)})` : Prisma.empty}
+  `;
+  return rows.map((row) => row.userId);
 }
 
 function eventLinks(eventId: string) {
@@ -123,7 +108,8 @@ function eventLinks(eventId: string) {
   };
 }
 
-export async function notifyEventOpened(eventId: string) {
+/** "Opened" push to the event's learners, or only to the given new participants. */
+export async function notifyEventOpened(eventId: string, userIds?: string[]) {
   const now = new Date();
   const event = await db.assessmentEvent.findUnique({
     where: { id: eventId },
@@ -133,7 +119,7 @@ export async function notifyEventOpened(eventId: string) {
   const closes = event.closesAt
     ? ` Ditutup dalam ${formatRelativeDuration(event.closesAt.getTime() - now.getTime())}.`
     : "";
-  return notifyUsers(await eventRecipientIds(event, now), {
+  return notifyUsers(await eventRecipientIds(event.id, now, userIds), {
     type: "assessment-opened",
     title: `${eventLabel(event.type)} dibuka: ${event.title}`,
     body: `${event.course.title}.${closes} Kerjakan sekarang.`,
@@ -143,6 +129,35 @@ export async function notifyEventOpened(eventId: string) {
   });
 }
 
+/**
+ * The "opened" push of an event, sent once per event. The send is claimed through
+ * `openNotificationSentAt` so concurrent callers (the opening request, a learner's start, the
+ * lifecycle cron) send it once; a failed send releases the claim and the cron retries it.
+ * Events opened with notifications off are only marked.
+ */
+export async function notifyEventOpenedOnce(eventId: string) {
+  const now = new Date();
+  const claimed = await db.assessmentEvent.updateMany({
+    where: { id: eventId, status: "OPEN", openNotificationSentAt: null },
+    data: { openNotificationSentAt: now },
+  });
+  if (claimed.count !== 1) return;
+  const event = await db.assessmentEvent.findUnique({
+    where: { id: eventId },
+    select: { notifyOnOpen: true },
+  });
+  if (!event?.notifyOnOpen) return;
+  try {
+    await notifyEventOpened(eventId);
+  } catch (error) {
+    await db.assessmentEvent.updateMany({
+      where: { id: eventId, openNotificationSentAt: now },
+      data: { openNotificationSentAt: null },
+    });
+    throw error;
+  }
+}
+
 /** Only for events that were open: drafts never reached learners. */
 export async function notifyEventCancelled(eventId: string, reason: string) {
   const event = await db.assessmentEvent.findUnique({
@@ -150,7 +165,7 @@ export async function notifyEventCancelled(eventId: string, reason: string) {
     select: eventSelect,
   });
   if (!event) return;
-  return notifyUsers(await eventRecipientIds(event, new Date()), {
+  return notifyUsers(await eventRecipientIds(event.id, new Date()), {
     type: "assessment-cancelled",
     title: `${eventLabel(event.type)} dibatalkan: ${event.title}`,
     body: `Alasan: ${reason}`,
@@ -196,7 +211,7 @@ export async function notifyEventClosingSoon(eventId: string, now: Date) {
   });
   if (!event.closesAt) return;
   const [recipients, submitted] = await Promise.all([
-    eventRecipientIds(event, now),
+    eventRecipientIds(event.id, now),
     db.assessmentAttempt.findMany({
       where: { assessmentEventId: eventId, status: { not: "IN_PROGRESS" } },
       distinct: ["userId"],

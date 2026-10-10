@@ -1,6 +1,10 @@
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
+import {
+  findOtherRunningClass,
+  otherRunningClassMessage,
+} from "~/server/enrollment/cohort-access";
 import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
 import { effectiveCohortPrice } from "~/server/payment/cohort-offer";
 
@@ -118,8 +122,23 @@ export async function redeemEnrollmentInvite(
   if (invite.cohort && effectiveCohortPrice(invite.cohort, invite.course) > 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Group belajar ini berbayar. Lanjutkan ke pembayaran.",
+      message: "Kelas ini berbayar. Lanjutkan ke pembayaran.",
     });
+  }
+
+  if (invite.cohortId) {
+    const otherClass = await findOtherRunningClass(tx, {
+      cohortId: invite.cohortId,
+      courseId: invite.courseId,
+      userId: input.userId,
+      now: input.now,
+    });
+    if (otherClass) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: otherRunningClassMessage(otherClass.name),
+      });
+    }
   }
 
   await claimEnrollmentInviteUse(tx, invite, input.now);

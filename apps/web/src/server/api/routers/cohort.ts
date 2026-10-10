@@ -455,7 +455,18 @@ export const cohortRouter = createTRPCRouter({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
-            "Group belajar ini punya pembayaran lunas atau menunggu verifikasi. Ubah statusnya menjadi Dibatalkan.",
+            "Kelas ini punya pembayaran lunas atau menunggu verifikasi. Ubah statusnya menjadi Dibatalkan.",
+        });
+      }
+      // Event results stay attributed to their classes.
+      const events = await ctx.db.assessmentEventCohort.count({
+        where: { cohortId: input.cohortId },
+      });
+      if (events > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Kelas ini dipakai di latihan atau tryout. Hapus event-nya dulu atau ubah status kelas menjadi Dibatalkan.",
         });
       }
       const proofs = await ctx.db.payment.findMany({

@@ -1,8 +1,12 @@
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text } from "react-native";
 
+import {
+  AssessmentMediaStatus,
+  useAssessmentMediaPrefetch,
+} from "../../src/components/assessment-media";
 import { QueryState, Row, StudyScreen } from "../../src/components/learning-ui";
 import { StudyAction, StudyGlass } from "../../src/components/study-glass";
 import { assessmentAttemptPresentation } from "../../src/lib/assessment-state";
@@ -32,6 +36,14 @@ export default function AssessmentEventScreen() {
   const attemptState = assessmentAttemptPresentation(attempt);
   const invalidated = !!event?.participants[0]?.invalidatedAt;
   const assessment = event?.courseItem.assessment;
+  // The server lists the media once the event is open; download it while the connection is good.
+  const media = useAssessmentMediaPrefetch(
+    event?.media?.map((asset) => asset.assetId) ?? [],
+  );
+  const mediaSizes = useMemo(
+    () => new Map(event?.media?.map((asset) => [asset.assetId, asset.size])),
+    [event?.media],
+  );
 
   useEffect(() => {
     if (eventId) markEntitySeen("ASSESSMENT", eventId);
@@ -75,17 +87,39 @@ export default function AssessmentEventScreen() {
     }
   }
 
-  const primaryAction = event?.entry.canStart
-    ? "Mulai tugas berwaktu"
-    : event?.entry.canReattempt
-      ? "Kerjakan ulang tugas"
-      : null;
+  // A scheduled event can be started from its opening time; the server opens
+  // it on the first start. The cached detail may predate that moment.
+  const opensAt = event?.status === "SCHEDULED" ? event.opensAt : null;
+  const opensAtTime = opensAt?.getTime() ?? null;
+  const [now, setNow] = useState(() => Date.now());
+  // Re-render at the opening time so the start button appears while the screen is open.
+  useEffect(() => {
+    // Nothing to wait for, or this render already happens after the opening.
+    if (opensAtTime === null || opensAtTime <= now) return;
+    // setTimeout overflows past ~24.8 days; the next render re-arms it.
+    const wait = Math.min(opensAtTime - Date.now() + 500, 2 ** 31 - 1);
+    const timer = setTimeout(() => setNow(Date.now()), Math.max(wait, 0));
+    return () => clearTimeout(timer);
+  }, [opensAtTime, now]);
+  const dueNow =
+    opensAtTime !== null &&
+    opensAtTime <= now &&
+    !!event?.closesAt &&
+    event.closesAt.getTime() > now &&
+    !attempt &&
+    !invalidated;
+  const primaryAction =
+    event?.entry.canStart || dueNow
+      ? "Mulai tugas berwaktu"
+      : event?.entry.canReattempt
+        ? "Kerjakan ulang tugas"
+        : null;
 
   return (
     <>
       <Stack.Screen options={{ headerBackButtonDisplayMode: "minimal" }} />
       <StudyScreen
-        title={event?.title ?? "Event tugas"}
+        title={event?.title ?? "Latihan & tryout"}
         refreshing={query.isRefetching}
         onRefresh={() => void query.refetch()}
       >
@@ -105,7 +139,7 @@ export default function AssessmentEventScreen() {
           <>
             <StudyGlass>
               <Text className="text-xs font-black uppercase tracking-[1.5px] text-primary">
-                {event.type === "TRYOUT" ? "Tryout" : "Tugas cepat"} ·{" "}
+                {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
                 {event.cohort?.name ?? event.course.title}
               </Text>
               <Text className="text-2xl font-black leading-8 text-foreground">
@@ -123,6 +157,7 @@ export default function AssessmentEventScreen() {
                 {assessment?.passingScore != null
                   ? ` · lulus ${assessment.passingScore}%`
                   : ""}
+                {opensAt ? `\nDibuka ${dateLabel(opensAt)}` : ""}
                 {event.closesAt ? `\nDitutup ${dateLabel(event.closesAt)}` : ""}
                 {assessment?.maxAttempts != null
                   ? `\n${event.attemptCount} dari ${assessment.maxAttempts} percobaan terpakai`
@@ -147,6 +182,12 @@ export default function AssessmentEventScreen() {
                 </Text>
               ) : null}
 
+              <AssessmentMediaStatus
+                progress={media.progress}
+                sizes={mediaSizes}
+                onRetry={media.retry}
+              />
+
               {primaryAction ? (
                 <StudyAction
                   disabled={start.isPending}
@@ -168,7 +209,9 @@ export default function AssessmentEventScreen() {
                 <Text className="text-sm font-semibold text-muted-foreground">
                   {event.status === "CANCELLED"
                     ? "Event ini dibatalkan."
-                    : "Event ini belum dibuka untuk dikerjakan."}
+                    : opensAt
+                      ? `Dibuka ${dateLabel(opensAt)}. Kamu bisa mulai mengerjakan saat itu.`
+                      : "Event ini belum dibuka untuk dikerjakan."}
                 </Text>
               ) : null}
 

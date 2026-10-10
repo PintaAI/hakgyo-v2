@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
+import { assessmentContentAssetIds } from "@hakgyo/shared";
 
 import {
   AlertDialog,
@@ -27,6 +28,10 @@ import {
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { RichContent } from "../practice/rich-content";
+import {
+  AssessmentMediaStatus,
+  useAssessmentMediaPreload,
+} from "./assessment-media";
 import {
   AssessmentOption,
   AssessmentQuestion,
@@ -107,6 +112,12 @@ export function AssessmentAttempt({
     }
   }, [attempt.id, attempt.status, courseItemId, utils]);
 
+  // Questions show one at a time: fetch every question's media up front so later questions do
+  // not depend on the connection.
+  const media = useAssessmentMediaPreload(
+    assessmentContentAssetIds(assessment),
+    attempt.status === "IN_PROGRESS",
+  );
   const [current, setCurrent] = useState(0);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -434,6 +445,15 @@ export function AssessmentAttempt({
           </p>
         </div>
       </header>
+
+      {media.progress &&
+      (media.progress.failed.length > 0 ||
+        media.progress.ready < media.progress.total) ? (
+        <AssessmentMediaStatus
+          progress={media.progress}
+          onRetry={media.retry}
+        />
+      ) : null}
 
       {secondsLeft !== null ? (
         <p

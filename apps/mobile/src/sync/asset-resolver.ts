@@ -46,6 +46,14 @@ export type AssetResolverOptions = {
   now?: () => number;
 };
 
+export type AssetPrefetchProgress = {
+  total: number;
+  ready: number;
+  /** Assets stored locally, for byte totals. */
+  readyIds: string[];
+  failed: string[];
+};
+
 type Waiter = {
   resolve: (download: AssetDownload) => void;
   reject: (error: unknown) => void;
@@ -165,6 +173,55 @@ export function createAssetResolver(options: AssetResolverOptions) {
     if (Object.keys(downloads).length) await assetCache.preload(downloads);
   }
 
+  /**
+   * Downloads the assets missing on the device a few at a time, reporting progress after each
+   * file. Failures are reported, not thrown: screens fall back to loading them on demand.
+   */
+  async function prefetchAssetsWithProgress(
+    assetIds: readonly string[],
+    onProgress?: (progress: AssetPrefetchProgress) => void,
+  ): Promise<AssetPrefetchProgress> {
+    const ids = [...new Set(assetIds)];
+    const progress: AssetPrefetchProgress = {
+      total: ids.length,
+      ready: 0,
+      readyIds: [],
+      failed: [],
+    };
+    const markReady = (assetId: string) => {
+      progress.ready += 1;
+      progress.readyIds.push(assetId);
+    };
+    const snapshot = () => ({
+      ...progress,
+      readyIds: [...progress.readyIds],
+      failed: [...progress.failed],
+    });
+    const report = () => onProgress?.(snapshot());
+    const missing: string[] = [];
+    for (const assetId of ids) {
+      if (fileStore && (await fileStore.getUri(assetId))) markReady(assetId);
+      else missing.push(assetId);
+    }
+    report();
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(4, missing.length) }, async () => {
+        while (next < missing.length) {
+          const assetId = missing[next++]!;
+          try {
+            await resolveAssetUrl(assetId);
+            markReady(assetId);
+          } catch {
+            progress.failed.push(assetId);
+          }
+          report();
+        }
+      }),
+    );
+    return snapshot();
+  }
+
   /** Downloads every asset a lesson renders (material, referenced PDF pages, vocabulary media). */
   async function prefetchLesson(courseId: string, courseItemId: string) {
     const bundle = await options.loadBundle?.(courseId);
@@ -198,6 +255,7 @@ export function createAssetResolver(options: AssetResolverOptions) {
     resolveAssetUrl,
     getDownload,
     prefetchAssets,
+    prefetchAssetsWithProgress,
     prefetchLesson,
     prefetchNextLesson,
     dispose,

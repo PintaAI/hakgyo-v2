@@ -193,7 +193,7 @@ export function OrganizationIntegrations({
                     <Badge variant="outline">Utama</Badge>
                   ) : null}
                 </div>
-                <CardDescription>Meeting Group belajar</CardDescription>
+                <CardDescription>Meeting kelas</CardDescription>
               </div>
             </div>
             {connection.isPending ? (
@@ -278,8 +278,8 @@ export function OrganizationIntegrations({
                 <p className="font-medium">Buat meeting dari Hakgyo</p>
                 <p className="text-muted-foreground mt-1 max-w-lg text-sm">
                   Otorisasi akun Zoom Anda untuk membuat, memperbarui, dan
-                  membatalkan meeting Group belajar tanpa membagikan kredensial
-                  kepada anggota.
+                  membatalkan meeting kelas tanpa membagikan kredensial kepada
+                  anggota.
                 </p>
               </div>
               <a
@@ -309,7 +309,7 @@ export function OrganizationIntegrations({
                   ) : null}
                 </div>
                 <CardDescription>
-                  Meeting Group belajar melalui Google Calendar
+                  Meeting kelas melalui Google Calendar
                 </CardDescription>
               </div>
             </div>

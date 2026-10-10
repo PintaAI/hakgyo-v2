@@ -70,13 +70,8 @@ type PlateRow = {
   badge?: string;
 };
 
-export function assessmentSourceBadge(event: {
-  type: string;
-  scope?: string | null;
-}) {
-  if (event.type === "TRYOUT") return "Tryout";
-  if (event.scope === "COHORT") return "Tugas Group belajar";
-  return "Tugas";
+export function assessmentSourceBadge(event: { type: string }) {
+  return event.type === "TRYOUT" ? "Tryout" : "Latihan";
 }
 
 export function closesLabel(closesAt: Date, now: number) {
@@ -247,8 +242,21 @@ export function CohortCard({
   const nextState = next
     ? (meetingState(next, now) as "live" | "joining" | "upcoming")
     : null;
+  // Scheduled events that have not opened yet only show their opening time.
+  const upcomingEvent = events
+    .filter(
+      (event) =>
+        event.status === "SCHEDULED" &&
+        !event.entry.canStart &&
+        event.opensAt !== null,
+    )
+    .sort(
+      (a, b) => (a.opensAt?.getTime() ?? 0) - (b.opensAt?.getTime() ?? 0),
+    )[0];
   const visibleEvents = events.filter(
-    (event) => !isStaleClosedOnDemandAssessment(event, now),
+    (event) =>
+      !isStaleClosedOnDemandAssessment(event, now) &&
+      !(event.status === "SCHEDULED" && !event.entry.canStart),
   );
   const open = visibleEvents.filter((event) => {
     const attempt = event.attempts[0];
@@ -375,6 +383,15 @@ export function CohortCard({
       title: featured.title,
       detail: `${assessmentSourceBadge(featured)} · ${assessmentAttemptPresentation(featuredAttempt).detail}${featured.closesAt ? ` · ${closesLabel(featured.closesAt, now)}` : ""}`,
       target: eventTarget(featured),
+    });
+  }
+  if (upcomingEvent?.opensAt) {
+    plateRows.push({
+      key: "upcoming-assessment",
+      icon: CalendarIcon,
+      title: upcomingEvent.title,
+      detail: `${assessmentSourceBadge(upcomingEvent)} · dibuka ${dateLabel(upcomingEvent.opensAt)}`,
+      target: eventTarget(upcomingEvent),
     });
   }
   if (nextOutlineItem && nextTypeLabel && hero?.kind !== "learning") {

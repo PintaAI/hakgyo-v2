@@ -72,7 +72,7 @@ const roleDetails: Record<
   },
   TEACHER: {
     label: "Pengajar",
-    description: "Mengelola kurikulum dan Group belajar sesuai mode akses",
+    description: "Mengelola kurikulum dan kelas sesuai mode akses",
   },
 };
 
@@ -360,7 +360,7 @@ export function OrganizationMembers({
                         <p className="text-muted-foreground mt-1 text-xs">
                           {member._count.ownedCourses} kurikulum dikelola ·{" "}
                           {member._count.courseCollaborations} akses kurikulum ·{" "}
-                          {member._count.cohortStaffMemberships} Group belajar
+                          {member._count.cohortStaffMemberships} kelas
                         </p>
                       </div>
                     </div>

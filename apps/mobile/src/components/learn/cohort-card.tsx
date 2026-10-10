@@ -78,8 +78,8 @@ export type CohortEvent = {
   id: string;
   title: string;
   type: string;
-  scope?: string | null;
   status?: string | null;
+  opensAt?: Date | null;
   cohort?: { id: string; name: string } | null;
   closesAt: Date | null;
   closedAt?: Date | null;
@@ -94,13 +94,17 @@ export type CohortEvent = {
   }[];
 };
 
-export function assessmentSourceBadge(event: {
-  type: string;
-  scope?: string | null;
-}) {
-  if (event.type === "TRYOUT") return "Tryout";
-  if (event.scope === "COHORT") return "Tugas Group belajar";
-  return "Tugas";
+export function assessmentSourceBadge(event: { type: string }) {
+  return event.type === "TRYOUT" ? "Tryout" : "Latihan";
+}
+
+/** A scheduled event that cannot be started yet: only its opening time shows. */
+function isUpcomingEvent(event: CohortEvent, now: number) {
+  return (
+    event.status === "SCHEDULED" &&
+    !!event.opensAt &&
+    event.opensAt.getTime() > now
+  );
 }
 
 export async function openExternalLink(
@@ -445,8 +449,15 @@ export function CohortCard({
   const nextState = next
     ? (meetingState(next, now) as "live" | "joining" | "upcoming")
     : null;
+  const upcomingEvent = events
+    .filter((event) => isUpcomingEvent(event, now))
+    .sort(
+      (a, b) => (a.opensAt?.getTime() ?? 0) - (b.opensAt?.getTime() ?? 0),
+    )[0];
   const visibleEvents = events.filter(
-    (event) => !isStaleClosedOnDemandAssessment(event, now),
+    (event) =>
+      !isStaleClosedOnDemandAssessment(event, now) &&
+      !isUpcomingEvent(event, now),
   );
   const { open, total } = eventSummary(visibleEvents);
   const featured = open[0] ?? visibleEvents[0];
@@ -647,6 +658,21 @@ export function CohortCard({
       title: featured.title,
       detail: `${assessmentSourceBadge(featured)} · ${assessmentAttemptPresentation(featuredAttempt).detail}${featured.closesAt ? ` · ${closesLabel(featured.closesAt, now)}` : ""}`,
       onPress: openFeaturedAssessment,
+    });
+  }
+  if (upcomingEvent?.opensAt) {
+    const upcomingId = upcomingEvent.id;
+    plateRows.push({
+      key: "upcoming-assessment",
+      icon: "calendar",
+      fallback: "◷",
+      title: upcomingEvent.title,
+      detail: `${assessmentSourceBadge(upcomingEvent)} · dibuka ${dateLabel(upcomingEvent.opensAt)}`,
+      onPress: () =>
+        router.push({
+          pathname: "/events/[eventId]",
+          params: { eventId: upcomingId },
+        }),
     });
   }
   if (nextOutlineItem && nextTypeLabel && hero?.kind !== "learning") {

@@ -1,3 +1,4 @@
+import { assessmentContentAssetIds } from "@hakgyo/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
@@ -11,6 +12,10 @@ import {
   View,
 } from "react-native";
 
+import {
+  AssessmentMediaStatus,
+  useAssessmentMediaPrefetch,
+} from "../../../../../../src/components/assessment-media";
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
 import {
   AssessmentOption,
@@ -151,6 +156,16 @@ function AssessmentAttemptContent({
   // Resumable attempts come from the local index / persisted start result;
   // graded ones from the persisted checkpoint result. Online otherwise.
   const { assessment, attempt } = useLearnerAttempt(attemptId, courseItemId);
+  // Questions show one at a time: fetch every question's media up front so later questions do
+  // not depend on the connection.
+  const mediaAssetIds = useMemo(
+    () => (assessment.data ? assessmentContentAssetIds(assessment.data) : []),
+    [assessment.data],
+  );
+  const media = useAssessmentMediaPrefetch(
+    mediaAssetIds,
+    attempt.data?.status === "IN_PROGRESS",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -529,6 +544,14 @@ function AssessmentAttemptContent({
         >
           {deadline !== null ? (
             <AssessmentDeadline deadline={deadline} onExpire={expireAttempt} />
+          ) : null}
+          {media.progress &&
+          (media.progress.failed.length > 0 ||
+            media.progress.ready < media.progress.total) ? (
+            <AssessmentMediaStatus
+              progress={media.progress}
+              onRetry={media.retry}
+            />
           ) : null}
           <AssessmentQuestion
             current={currentIndex}

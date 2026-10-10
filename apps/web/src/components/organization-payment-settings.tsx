@@ -71,7 +71,7 @@ export function OrganizationPaymentSettings({
       <PageHeader
         eyebrow="Penerimaan pembayaran"
         title="Pembayaran"
-        description="Siswa membayar Group belajar berbayar ke QRIS atau rekening di bawah ini. Pengelola Group belajar memeriksa setiap pembayaran secara manual sebelum siswa mendapat akses."
+        description="Siswa membayar kelas berbayar ke QRIS atau rekening di bawah ini. Pengelola kelas memeriksa setiap pembayaran secara manual sebelum siswa mendapat akses."
       />
 
       {settings.error ? (
