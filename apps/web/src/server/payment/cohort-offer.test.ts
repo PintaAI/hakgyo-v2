@@ -14,6 +14,7 @@ const open = {
   enrollmentMode: "OPEN" as const,
   hasValidInvite: false,
   alreadyEnrolled: false,
+  inOtherClass: false,
   capacity: null,
   memberCount: 0,
   price: 350000,
@@ -108,6 +109,16 @@ describe("getCohortJoinBlocker", () => {
     expect(getCohortJoinBlocker({ ...open, alreadyEnrolled: true })).toBe(
       "ALREADY_ENROLLED",
     );
+    expect(getCohortJoinBlocker({ ...open, inOtherClass: true })).toBe(
+      "IN_OTHER_CLASS",
+    );
+    expect(
+      getCohortJoinBlocker({
+        ...open,
+        alreadyEnrolled: true,
+        inOtherClass: true,
+      }),
+    ).toBe("ALREADY_ENROLLED");
     expect(getCohortJoinBlocker({ ...open, coursePublished: false })).toBe(
       "COHORT_UNAVAILABLE",
     );

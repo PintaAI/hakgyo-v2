@@ -516,13 +516,21 @@ export async function runAssessmentEventLifecycle(
     select: { id: true, closesAt: true },
   });
   for (const event of expired) {
-    if (
-      await closeAssessmentEvent(db, {
+    try {
+      if (
+        await closeAssessmentEvent(db, {
+          eventId: event.id,
+          closedAt: event.closesAt ?? now,
+        })
+      ) {
+        result.closed.push(event.id);
+      }
+    } catch (error) {
+      // The next run retries it; the other events still close and finalize.
+      console.error("Failed to close an expired assessment event", {
         eventId: event.id,
-        closedAt: event.closesAt ?? now,
-      })
-    ) {
-      result.closed.push(event.id);
+        error,
+      });
     }
   }
   const closed = await db.assessmentEvent.findMany({

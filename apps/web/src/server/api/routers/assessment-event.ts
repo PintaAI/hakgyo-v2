@@ -273,7 +273,8 @@ function learnerEventSelect(userId: string, now: Date) {
         cohort: { select: { id: true, name: true } },
       },
     },
-    // The learner's targeted class when they are not a participant yet.
+    // The learner's targeted classes when they are not a participant yet; the one they would
+    // join is picked like `findEligibleEventCohort`.
     cohorts: {
       where: {
         cohort: {
@@ -281,12 +282,20 @@ function learnerEventSelect(userId: string, now: Date) {
           enrollments: { some: { ...membership, userId } },
         },
       },
-      orderBy: [
-        { cohort: { defaultForCourseId: { sort: "asc", nulls: "first" } } },
-        { createdAt: "asc" },
-      ],
-      take: 1,
-      select: { cohort: { select: { id: true, name: true } } },
+      select: {
+        cohort: {
+          select: {
+            id: true,
+            name: true,
+            defaultForCourseId: true,
+            enrollments: {
+              where: { ...membership, userId },
+              select: { enrolledAt: true, id: true },
+              take: 1,
+            },
+          },
+        },
+      },
     },
     attempts: {
       where: { userId },
@@ -306,7 +315,14 @@ type LearnerEventRow = {
     invalidationReason: string | null;
     cohort: { id: string; name: string } | null;
   }>;
-  cohorts: Array<{ cohort: { id: string; name: string } }>;
+  cohorts: Array<{
+    cohort: {
+      id: string;
+      name: string;
+      defaultForCourseId: string | null;
+      enrollments: Array<{ enrolledAt: Date; id: string }>;
+    };
+  }>;
   attempts: Array<
     Prisma.AssessmentAttemptGetPayload<{
       select: typeof learnerAttemptSelect;
@@ -314,6 +330,23 @@ type LearnerEventRow = {
   >;
   courseItem: { assessment: { maxAttempts: number | null } | null };
 };
+
+/** The targeted class a learner would join: real before self-paced, then the latest joined. */
+function joiningCohort(cohorts: LearnerEventRow["cohorts"]) {
+  const rank = ({ cohort }: LearnerEventRow["cohorts"][number]) => {
+    const enrollment = cohort.enrollments[0];
+    return [
+      cohort.defaultForCourseId === null ? 0 : 1,
+      -(enrollment?.enrolledAt.getTime() ?? 0),
+      enrollment?.id ?? "",
+    ] as const;
+  };
+  const [first] = [...cohorts].sort((a, b) => {
+    const [ra, rb] = [rank(a), rank(b)];
+    return ra[0] - rb[0] || ra[1] - rb[1] || rb[2].localeCompare(ra[2]);
+  });
+  return first ? { id: first.cohort.id, name: first.cohort.name } : null;
+}
 
 /** Shared learner shaping: entry decision, withheld scores and the learner's class. */
 function shapeLearnerEvent<T extends LearnerEventRow>(
@@ -337,7 +370,7 @@ function shapeLearnerEvent<T extends LearnerEventRow>(
     ...event,
     // Kept for app versions that predate class-targeted events.
     scope: "COHORT" as const,
-    cohort: participant?.cohort ?? cohorts[0]?.cohort ?? null,
+    cohort: participant?.cohort ?? joiningCohort(cohorts),
     attemptCount,
     entry,
     attempts: latestAttempt
@@ -599,10 +632,30 @@ export const assessmentEventRouter = createTRPCRouter({
         select: { id: true },
       });
       if (due) {
+        // Only learners of a targeted class may trigger the opening.
+        if (
+          !(await findEligibleEventCohort(ctx.db, due.id, ctx.actorUserId, now))
+        ) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
         const opened = await openAssessmentEvent(ctx.db, {
           eventId: due.id,
           now,
           automatic: true,
+        }).catch((error: unknown) => {
+          // Opening fails on teacher-side problems (a hidden or incomplete assessment); the
+          // cron logs and retries it.
+          if (!(error instanceof TRPCError) || error.code !== "BAD_REQUEST") {
+            throw error;
+          }
+          console.error("Failed to open a due assessment event on start", {
+            eventId: due.id,
+            error,
+          });
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Event ini belum bisa dimulai. Hubungi guru kamu.",
+          });
         });
         if (opened.opened) {
           await notifyInBackground("event opened", () =>

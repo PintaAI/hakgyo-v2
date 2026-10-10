@@ -62,7 +62,7 @@ export async function addAllCohortTargets(
 
 /**
  * Adds every eligible learner of the event's targets (or of `cohortIds` only) as a participant,
- * attributed to their earliest eligible class (a real class before the self-paced cohort). Returns
+ * attributed to their latest eligible class (see `findEligibleEventCohort`). Returns
  * the number of distinct eligible learners and the ids of learners who were not participants yet.
  */
 export async function enrollEventParticipants(
@@ -89,8 +89,8 @@ export async function enrollEventParticipants(
       ORDER BY
         enrollment."userId",
         (cohort."defaultForCourseId" IS NOT NULL) ASC,
-        enrollment."enrolledAt" ASC,
-        enrollment."id" ASC
+        enrollment."enrolledAt" DESC,
+        enrollment."id" DESC
     ),
     inserted AS (
       INSERT INTO "AssessmentEventParticipant" ("eventId", "userId", "cohortId")
@@ -109,8 +109,9 @@ export async function enrollEventParticipants(
 }
 
 /**
- * The learner's earliest eligible targeted class (a real class before the self-paced cohort), or
- * null when they cannot take part.
+ * The learner's eligible targeted class, or null when they cannot take part. A real class comes
+ * before the self-paced cohort, then the latest joined: a learner takes one running class of a
+ * course at a time, so an older one is a class they already finished.
  */
 export async function findEligibleEventCohort(
   db: Db,
@@ -130,8 +131,8 @@ export async function findEligibleEventCohort(
     },
     orderBy: [
       { cohort: { defaultForCourseId: { sort: "asc", nulls: "first" } } },
-      { enrolledAt: "asc" },
-      { id: "asc" },
+      { enrolledAt: "desc" },
+      { id: "desc" },
     ],
     select: { cohortId: true },
   });
