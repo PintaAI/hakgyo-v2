@@ -27,7 +27,8 @@ describe("preloadAssessmentMedia", () => {
       (progress) => updates.push(progress.ready),
     );
 
-    expect(result).toEqual({ total: 2, ready: 2, failed: [] });
+    expect(result).toMatchObject({ total: 2, ready: 2, failed: [] });
+    expect([...result.readyIds].sort()).toEqual(["audio-a", "image-a"]);
     expect(updates.at(-1)).toBe(2);
     expect(fetched.sort()).toEqual([
       "https://r2.test/audio-a?signed",
@@ -72,6 +73,11 @@ describe("preloadAssessmentMedia", () => {
       async () => "https://r2.test/broken",
     );
 
-    expect(result).toEqual({ total: 1, ready: 0, failed: ["broken"] });
+    expect(result).toEqual({
+      total: 1,
+      ready: 0,
+      readyIds: [],
+      failed: ["broken"],
+    });
   }, 10_000);
 });

@@ -66,7 +66,7 @@ them. `collectContentAssetIds` / `assessmentContentAssetIds` in `@hakgyo/shared`
 props of custom media blocks, `hakgyo-asset:<id>` URLs of BlockNote file blocks and media inside
 JSON strings (culture sections).
 
-- `assessmentEvent.getForLearner` returns `mediaAssetIds` once the learner can start or continue the
+- `assessmentEvent.getForLearner` returns `media` (asset ids with sizes) once the learner can start or continue the
   event, never before it opens.
 - Web: `src/lib/assessment-media-cache.ts` stores downloads in Cache Storage (memory where it is
   unavailable) keyed by asset id; every media block reads the local copy first. Downloads are
@@ -75,7 +75,18 @@ JSON strings (culture sections).
   page download ahead and show progress. Downloads use `fetch`, so the R2 bucket CORS
   must allow GET from the app origins.
 - Mobile: the event and attempt screens call `prefetchAssessmentMedia`; open events are also
-  downloaded in the background on Wi-Fi, and lesson prefetch includes assessment media.
+  downloaded in the background on Wi-Fi, and lesson prefetch includes assessment media. The course
+  bundle lists question media in `content.assets`, so sizes are known.
+- Both clients show a progress bar with bytes (`formatByteSize` in `@hakgyo/shared`), files when
+  sizes are unknown, and a retry for failed files.
+
+## Offline materials (mobile)
+
+The course screen offers "Simpan offline" for every chapter the learner can open, and each open
+chapter header shows its state: stored ("Offline"), downloading (percent bar) or a download button
+with the missing size. `useCourseOfflineMedia` derives each chapter's media from the local bundle
+(`lessonAssetIds`), and `MobileSyncProvider` runs the downloads in a session-wide store
+(`src/sync/offline-downloads.ts`), so they continue when the learner leaves the screen.
 
 ## Mobile compatibility
 

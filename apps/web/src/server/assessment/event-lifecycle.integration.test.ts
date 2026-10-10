@@ -19,6 +19,7 @@ const ids = {
   k1: `evt-k1-${fixture}`,
   k2: `evt-k2-${fixture}`,
   selfPaced: `evt-self-${fixture}`,
+  audio: `evt-audio-${fixture}`,
 };
 const users = {
   owner: `evt-owner-${fixture}`,
@@ -120,6 +121,17 @@ run("class-targeted assessment events", () => {
         status: "PUBLISHED",
       },
     });
+    await db.asset.create({
+      data: {
+        id: ids.audio,
+        organizationId: ids.organization,
+        objectKey: `fixtures/${ids.audio}.mp3`,
+        fileName: "listening.mp3",
+        contentType: "audio/mpeg",
+        size: 2048,
+        confirmedAt: new Date(),
+      },
+    });
     const assessment = await db.assessment.create({
       data: {
         organizationId: ids.organization,
@@ -131,7 +143,7 @@ run("class-targeted assessment events", () => {
             position: 0,
             prompt: [
               { type: "paragraph", content: "Q" },
-              { type: "assetAudio", props: { assetId: "fixture-audio" } },
+              { type: "assetAudio", props: { assetId: ids.audio } },
             ],
             options: {
               create: [
@@ -234,6 +246,7 @@ run("class-targeted assessment events", () => {
     await db.assessment.deleteMany({
       where: { organizationId: ids.organization },
     });
+    await db.asset.deleteMany({ where: { organizationId: ids.organization } });
     await db.organizationMember.deleteMany({
       where: { organizationId: ids.organization },
     });
@@ -351,9 +364,9 @@ run("class-targeted assessment events", () => {
     expect(upcoming?.status).toBe("SCHEDULED");
     expect(upcoming?.entry.canStart).toBe(false);
     // Media is only listed once the event opens, so listening files are not handed out early.
-    expect(
-      (await learner.getForLearner({ eventId: event.id })).mediaAssetIds,
-    ).toEqual([]);
+    expect((await learner.getForLearner({ eventId: event.id })).media).toEqual(
+      [],
+    );
     // App versions that predate scheduling never see it.
     expect(
       (await learner.listForLearner()).some((entry) => entry.id === event.id),
@@ -369,9 +382,9 @@ run("class-targeted assessment events", () => {
     });
     const attempt = await learner.startAttempt({ eventId: event.id });
     expect(attempt.status).toBe("IN_PROGRESS");
-    expect(
-      (await learner.getForLearner({ eventId: event.id })).mediaAssetIds,
-    ).toEqual(["fixture-audio"]);
+    expect((await learner.getForLearner({ eventId: event.id })).media).toEqual([
+      { assetId: ids.audio, size: 2048 },
+    ]);
     const opened = await db.assessmentEvent.findUniqueOrThrow({
       where: { id: event.id },
       select: { status: true },

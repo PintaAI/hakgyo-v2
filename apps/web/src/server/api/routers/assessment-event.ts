@@ -394,8 +394,11 @@ const eventTarget = z
     message: "Pilih setidaknya satu kelas.",
   });
 
-/** Assets referenced by the assessment's instructions, questions and options. */
-async function loadAssessmentMediaAssetIds(
+/**
+ * Downloadable assets referenced by the assessment's instructions, questions and options, in
+ * content order, with their sizes for progress display.
+ */
+async function loadAssessmentMedia(
   db: Prisma.TransactionClient | Prisma.DefaultPrismaClient,
   assessmentId: string,
 ) {
@@ -409,7 +412,21 @@ async function loadAssessmentMediaAssetIds(
       },
     },
   });
-  return assessment ? assessmentContentAssetIds(assessment) : [];
+  const assetIds = assessment ? assessmentContentAssetIds(assessment) : [];
+  if (assetIds.length === 0) return [];
+  const assets = await db.asset.findMany({
+    where: {
+      id: { in: assetIds },
+      confirmedAt: { not: null },
+      deletedAt: null,
+    },
+    select: { id: true, size: true },
+  });
+  const sizes = new Map(assets.map((asset) => [asset.id, asset.size]));
+  return assetIds.flatMap((assetId) => {
+    const size = sizes.get(assetId);
+    return size === undefined ? [] : [{ assetId, size }];
+  });
 }
 
 export const assessmentEventRouter = createTRPCRouter({
@@ -932,29 +949,26 @@ export const assessmentEventRouter = createTRPCRouter({
       const learnerEvent = shapeLearnerEvent(event, attemptCount, now);
       // Images and audio the learner can download ahead, once the event has opened (never
       // before, so listening material is not handed out early).
-      const mediaAssetIds =
+      const media =
         (learnerEvent.entry.canStart ||
           learnerEvent.entry.canReattempt ||
           learnerEvent.entry.state === "IN_PROGRESS") &&
         event.courseItem.assessment
-          ? await loadAssessmentMediaAssetIds(
-              ctx.db,
-              event.courseItem.assessment.id,
-            )
+          ? await loadAssessmentMedia(ctx.db, event.courseItem.assessment.id)
           : [];
       if (
         event.status !== "CLOSED" &&
         (learnerEvent.entry.state === "NOT_STARTED" ||
           learnerEvent.entry.state === "IN_PROGRESS")
       )
-        return { ...learnerEvent, mediaAssetIds, leaderboard: null };
+        return { ...learnerEvent, media, leaderboard: null };
       // Top entries plus the learner's own row, ranked in SQL.
       const leaderboard = await getAssessmentEventLeaderboard(ctx.db, {
         eventId: event.id,
         limit: LEARNER_LEADERBOARD_LIMIT,
         userId: ctx.actorUserId,
       });
-      return { ...learnerEvent, mediaAssetIds, leaderboard };
+      return { ...learnerEvent, media, leaderboard };
     }),
 
   /**

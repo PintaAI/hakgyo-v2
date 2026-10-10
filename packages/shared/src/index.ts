@@ -6,3 +6,4 @@ export * from "./learning";
 export * from "./query-retry";
 export * from "./support";
 export * from "./content-assets";
+export * from "./format-bytes";

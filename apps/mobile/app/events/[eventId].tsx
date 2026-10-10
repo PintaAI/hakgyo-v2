@@ -1,6 +1,6 @@
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text } from "react-native";
 
 import {
@@ -37,7 +37,13 @@ export default function AssessmentEventScreen() {
   const invalidated = !!event?.participants[0]?.invalidatedAt;
   const assessment = event?.courseItem.assessment;
   // The server lists the media once the event is open; download it while the connection is good.
-  const media = useAssessmentMediaPrefetch(event?.mediaAssetIds ?? []);
+  const media = useAssessmentMediaPrefetch(
+    event?.media?.map((asset) => asset.assetId) ?? [],
+  );
+  const mediaSizes = useMemo(
+    () => new Map(event?.media?.map((asset) => [asset.assetId, asset.size])),
+    [event?.media],
+  );
 
   useEffect(() => {
     if (eventId) markEntitySeen("ASSESSMENT", eventId);
@@ -178,6 +184,7 @@ export default function AssessmentEventScreen() {
 
               <AssessmentMediaStatus
                 progress={media.progress}
+                sizes={mediaSizes}
                 onRetry={media.retry}
               />
 

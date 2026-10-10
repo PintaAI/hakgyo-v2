@@ -49,8 +49,18 @@ describe("prefetchAssetsWithProgress", () => {
       (progress) => updates.push(progress),
     );
 
-    expect(result).toEqual({ total: 4, ready: 3, failed: ["gone"] });
-    expect(updates[0]).toEqual({ total: 4, ready: 1, failed: [] });
+    expect(result).toMatchObject({ total: 4, ready: 3, failed: ["gone"] });
+    expect([...result.readyIds].sort()).toEqual([
+      "audio-1",
+      "image-1",
+      "stored",
+    ]);
+    expect(updates[0]).toEqual({
+      total: 4,
+      ready: 1,
+      readyIds: ["stored"],
+      failed: [],
+    });
     expect(updates.at(-1)).toEqual(result);
     // Missing assets are signed together, never the stored one.
     expect(signedBatches.flat().sort()).toEqual(["audio-1", "gone", "image-1"]);

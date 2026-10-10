@@ -1,3 +1,4 @@
+import { assessmentContentAssetIds } from "@hakgyo/shared";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import {
   BUNDLE_SCHEMA,
@@ -213,6 +214,12 @@ export async function loadCourseBundle(
   for (const book of Object.values(pdfBooks)) {
     for (const page of book.pages) shaped.assetIds.add(page.assetId);
   }
+  // Question images and audio, so the app knows their sizes for offline downloads.
+  for (const assessment of Object.values(shaped.assessments)) {
+    for (const assetId of assessmentContentAssetIds(assessment)) {
+      shaped.assetIds.add(assetId);
+    }
+  }
 
   const assetRows = shaped.assetIds.size
     ? await db.asset.findMany({
@@ -222,7 +229,7 @@ export async function loadCourseBundle(
     : [];
   const assets: Record<string, BundleAsset> = {};
   for (const asset of assetRows) assets[asset.id] = asset;
-  // Vocabulary and page assets were filtered by the asset query; material
+  // Vocabulary, page and question assets were filtered by the asset query; material
   // asset lists were filtered in the course query. Keep them consistent.
   for (const material of Object.values(shaped.materials)) {
     material.assetIds = material.assetIds.filter((id) => id in assets);

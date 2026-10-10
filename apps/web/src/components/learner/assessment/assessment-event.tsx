@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, LoaderCircleIcon } from "lucide-react";
@@ -39,7 +39,13 @@ export function AssessmentEvent({
     `/learn/${event.course.id}/items/${event.courseItem.id}/attempts/${attemptId}`;
   const opensAt = event.status === "SCHEDULED" ? event.opensAt : null;
   // Download the question media ahead once the event is open, while the connection is good.
-  const media = useAssessmentMediaPreload(event.mediaAssetIds);
+  const media = useAssessmentMediaPreload(
+    event.media.map((asset) => asset.assetId),
+  );
+  const mediaSizes = useMemo(
+    () => new Map(event.media.map((asset) => [asset.assetId, asset.size])),
+    [event.media],
+  );
 
   // A scheduled event becomes startable at its opening time.
   useEffect(() => {
@@ -130,6 +136,7 @@ export function AssessmentEvent({
 
         <AssessmentMediaStatus
           progress={media.progress}
+          sizes={mediaSizes}
           onRetry={media.retry}
         />
 

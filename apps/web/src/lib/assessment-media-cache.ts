@@ -137,6 +137,8 @@ async function download(
 export type MediaPreloadProgress = {
   total: number;
   ready: number;
+  /** Assets stored locally, for byte totals. */
+  readyIds: string[];
   failed: string[];
 };
 
@@ -157,8 +159,18 @@ export async function preloadAssessmentMedia(
   const progress: MediaPreloadProgress = {
     total: ids.length,
     ready: 0,
+    readyIds: [],
     failed: [],
   };
+  const markReady = (assetId: string) => {
+    progress.ready += 1;
+    progress.readyIds.push(assetId);
+  };
+  const snapshot = () => ({
+    ...progress,
+    readyIds: [...progress.readyIds],
+    failed: [...progress.failed],
+  });
   if (ids.length === 0) return progress;
   // Claim every asset this call will settle, synchronously.
   const settle = new Map<string, (url: string | null) => void>();
@@ -181,18 +193,17 @@ export async function preloadAssessmentMedia(
     settle.get(assetId)?.(url);
     if (inflight.get(assetId) === claims.get(assetId)) inflight.delete(assetId);
   };
-  const report = () =>
-    onProgress?.({ ...progress, failed: [...progress.failed] });
+  const report = () => onProgress?.(snapshot());
   const missing: string[] = [];
   try {
     const stored = await cachedIds();
     for (const assetId of ids) {
       if (objectUrls.has(assetId) && !settle.has(assetId)) {
-        progress.ready += 1;
+        markReady(assetId);
       } else if (waitFor.has(assetId)) {
         missing.push(assetId);
       } else if (stored.has(assetId)) {
-        progress.ready += 1;
+        markReady(assetId);
         finish(assetId, await readStored(assetId));
       } else {
         missing.push(assetId);
@@ -209,12 +220,12 @@ export async function preloadAssessmentMedia(
             const other = waitFor.get(assetId);
             if (other) {
               // Another preload is downloading it.
-              if (await other) progress.ready += 1;
+              if (await other) markReady(assetId);
               else progress.failed.push(assetId);
             } else {
               try {
                 await download(assetId, sign);
-                progress.ready += 1;
+                markReady(assetId);
                 finish(assetId, objectUrls.get(assetId) ?? null);
               } catch {
                 progress.failed.push(assetId);
@@ -232,5 +243,5 @@ export async function preloadAssessmentMedia(
       finish(assetId, objectUrls.get(assetId) ?? null);
     }
   }
-  return { ...progress, failed: [...progress.failed] };
+  return snapshot();
 }

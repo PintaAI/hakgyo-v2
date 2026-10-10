@@ -49,6 +49,8 @@ export type AssetResolverOptions = {
 export type AssetPrefetchProgress = {
   total: number;
   ready: number;
+  /** Assets stored locally, for byte totals. */
+  readyIds: string[];
   failed: string[];
 };
 
@@ -183,13 +185,22 @@ export function createAssetResolver(options: AssetResolverOptions) {
     const progress: AssetPrefetchProgress = {
       total: ids.length,
       ready: 0,
+      readyIds: [],
       failed: [],
     };
-    const report = () =>
-      onProgress?.({ ...progress, failed: [...progress.failed] });
+    const markReady = (assetId: string) => {
+      progress.ready += 1;
+      progress.readyIds.push(assetId);
+    };
+    const snapshot = () => ({
+      ...progress,
+      readyIds: [...progress.readyIds],
+      failed: [...progress.failed],
+    });
+    const report = () => onProgress?.(snapshot());
     const missing: string[] = [];
     for (const assetId of ids) {
-      if (fileStore && (await fileStore.getUri(assetId))) progress.ready += 1;
+      if (fileStore && (await fileStore.getUri(assetId))) markReady(assetId);
       else missing.push(assetId);
     }
     report();
@@ -200,7 +211,7 @@ export function createAssetResolver(options: AssetResolverOptions) {
           const assetId = missing[next++]!;
           try {
             await resolveAssetUrl(assetId);
-            progress.ready += 1;
+            markReady(assetId);
           } catch {
             progress.failed.push(assetId);
           }
@@ -208,7 +219,7 @@ export function createAssetResolver(options: AssetResolverOptions) {
         }
       }),
     );
-    return { ...progress, failed: [...progress.failed] };
+    return snapshot();
   }
 
   /** Downloads every asset a lesson renders (material, referenced PDF pages, vocabulary media). */

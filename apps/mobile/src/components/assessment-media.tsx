@@ -1,7 +1,10 @@
+import { downloadedBytes, formatByteSize } from "@hakgyo/shared";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
+import { useAppTheme } from "../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../providers/MobileSyncProvider";
+import { DownloadProgressBar } from "./offline-download";
 import type { AssetPrefetchProgress } from "../sync/asset-resolver";
 
 /**
@@ -37,48 +40,82 @@ export function useAssessmentMediaPrefetch(
   };
 }
 
-/** One line telling the learner whether the media is ready for a shaky connection. */
+/**
+ * Download state of the question media: a progress bar while downloading, a retry when some
+ * files failed, and a short confirmation once everything is on the device. Counts files when
+ * sizes are unknown.
+ */
 export function AssessmentMediaStatus({
   progress,
+  sizes,
   onRetry,
 }: {
   progress: AssetPrefetchProgress | null;
+  sizes?: ReadonlyMap<string, number>;
   onRetry: () => void;
 }) {
+  const { colors } = useAppTheme();
   if (!progress || progress.total === 0) return null;
   const done = progress.ready + progress.failed.length >= progress.total;
+  const totalBytes = sizes
+    ? [...sizes.values()].reduce((total, size) => total + size, 0)
+    : 0;
+  const readyBytes = sizes ? downloadedBytes(progress.readyIds, sizes) : 0;
+  const fraction =
+    totalBytes > 0 ? readyBytes / totalBytes : progress.ready / progress.total;
+  const amount =
+    totalBytes > 0
+      ? `${formatByteSize(readyBytes)} / ${formatByteSize(totalBytes)}`
+      : `${progress.ready}/${progress.total} file`;
+
   if (!done) {
     return (
-      <Text
-        accessibilityLiveRegion="polite"
-        className="text-sm text-muted-foreground"
-      >
-        Menyiapkan gambar & audio soal… {progress.ready}/{progress.total}
-      </Text>
+      <View className="gap-1.5" accessibilityLiveRegion="polite">
+        <View className="flex-row items-center justify-between gap-3">
+          <View className="min-w-0 flex-1 flex-row items-center gap-2">
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text className="shrink text-sm text-muted-foreground">
+              Menyiapkan gambar & audio soal
+            </Text>
+          </View>
+          <Text
+            numberOfLines={1}
+            className="text-xs tabular-nums text-muted-foreground"
+          >
+            {amount}
+          </Text>
+        </View>
+        <DownloadProgressBar fraction={fraction} />
+      </View>
     );
   }
   if (progress.failed.length) {
     return (
-      <View className="flex-row flex-wrap items-center gap-2">
-        <Text className="flex-1 text-sm text-destructive">
-          {progress.failed.length} dari {progress.total} media belum terunduh.
-          Media itu dimuat saat soalnya tampil.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onRetry}
-          className="rounded-full border border-border px-3 py-1.5 active:opacity-70"
-        >
-          <Text className="text-sm font-semibold text-foreground">
-            Coba lagi
+      <View className="gap-2">
+        <DownloadProgressBar fraction={fraction} />
+        <View className="flex-row flex-wrap items-center gap-2">
+          <Text className="flex-1 text-sm text-destructive">
+            {progress.failed.length} dari {progress.total} media belum terunduh.
+            Media itu dimuat saat soalnya tampil.
           </Text>
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onRetry}
+            className="rounded-full border border-border px-3 py-1.5 active:opacity-70"
+          >
+            <Text className="text-sm font-semibold text-foreground">
+              Coba lagi
+            </Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
   return (
     <Text className="text-sm text-muted-foreground">
-      ✓ Gambar & audio soal siap, aman jika koneksi terputus.
+      ✓ Gambar & audio soal siap
+      {totalBytes > 0 ? ` (${formatByteSize(totalBytes)})` : ""}, aman jika
+      koneksi terputus.
     </Text>
   );
 }
