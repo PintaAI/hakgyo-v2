@@ -1024,9 +1024,15 @@ function QuickAddForm({
   onImportImage: (file: File) => void;
 }) {
   const termInputRef = useRef<HTMLInputElement>(null);
+  const definitionInputRef = useRef<HTMLInputElement>(null);
   const [term, setTerm] = useState("");
   const [definition, setDefinition] = useState("");
   const [dragActive, setDragActive] = useState(false);
+  // Set when the user tries to add an incomplete pair, so the missing
+  // fields light up instead of the button silently doing nothing.
+  const [showMissing, setShowMissing] = useState(false);
+  const termMissing = showMissing && !term.trim();
+  const definitionMissing = showMissing && !definition.trim();
   const canSubmit = Boolean(term.trim() && definition.trim());
 
   function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
@@ -1063,7 +1069,12 @@ function QuickAddForm({
   }
 
   async function submitEntry(focusExamples: boolean) {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      setShowMissing(true);
+      (term.trim() ? definitionInputRef : termInputRef).current?.focus();
+      return;
+    }
+    setShowMissing(false);
     const draft = {
       term: term.trim(),
       definition: definition.trim(),
@@ -1100,6 +1111,8 @@ function QuickAddForm({
       onSubmit={handleSubmit}
     >
       <Input
+        aria-describedby={showMissing ? "new-entry-missing" : undefined}
+        aria-invalid={termMissing || undefined}
         aria-label="Istilah baru"
         autoFocus={autoFocus}
         className="bg-card col-span-3 h-9 sm:col-span-1"
@@ -1110,15 +1123,25 @@ function QuickAddForm({
         value={term}
       />
       <Input
+        aria-describedby={showMissing ? "new-entry-missing" : undefined}
+        aria-invalid={definitionMissing || undefined}
         aria-label="Definisi istilah baru"
         className="bg-card h-9"
         maxLength={5000}
         onChange={(event) => setDefinition(event.target.value)}
         placeholder="Definisi — Enter menambah, Shift+Enter + contoh"
+        ref={definitionInputRef}
         title="Enter: tambah istilah. Shift+Enter: tambah lalu isi contoh."
         value={definition}
       />
-      <Button aria-label="Tambah entri" disabled={!canSubmit} type="submit">
+      <Button
+        aria-label="Tambah entri"
+        className={cn(!canSubmit && "opacity-60")}
+        title={
+          canSubmit ? undefined : "Isi istilah dan definisi terlebih dahulu"
+        }
+        type="submit"
+      >
         {busy ? (
           <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
         ) : (
@@ -1131,6 +1154,20 @@ function QuickAddForm({
         onSelect={onImportImage}
         title="Impor kosakata dengan AI"
       />
+      {termMissing || definitionMissing ? (
+        <p
+          className="text-destructive col-span-full flex items-center gap-1.5 text-xs"
+          id="new-entry-missing"
+          role="status"
+        >
+          <CircleAlertIcon className="size-3.5" />
+          {termMissing && definitionMissing
+            ? "Isi istilah dan definisi terlebih dahulu untuk menambah entri."
+            : termMissing
+              ? "Isi istilah terlebih dahulu untuk menambah entri."
+              : "Isi definisi terlebih dahulu untuk menambah entri."}
+        </p>
+      ) : null}
     </form>
   );
 }
