@@ -178,7 +178,7 @@ describe("shared color generation", () => {
     }
     expect(JSON.parse(JSON.stringify(runtime))).toEqual(runtime);
     expect(runtime.properties["--app-shadow-lg"]).toBe(
-      "0px 4px 12px -2px rgb(0 0 0 / 14%)",
+      "0px 6px 18px -2px rgb(0 0 0 / 20%)",
     );
   });
 

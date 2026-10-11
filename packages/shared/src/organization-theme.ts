@@ -19,6 +19,14 @@ export const organizationThemeSeedsSchema = z.object({
   destructive: hexColor,
 });
 
+export const DEFAULT_ORGANIZATION_SHADOW = {
+  x: 0,
+  y: 6,
+  blur: 18,
+  spread: -2,
+  opacity: 20,
+} as const;
+
 export const organizationThemeSchema = organizationThemeSeedsSchema.extend({
   version: z.literal(2),
   darkBrightness: z.number().int().min(0).max(100).default(35),
@@ -37,7 +45,7 @@ export const organizationThemeSchema = organizationThemeSeedsSchema.extend({
       spread: z.number().int().min(-12).max(16),
       opacity: z.number().int().min(0).max(40),
     })
-    .default({ x: 0, y: 4, blur: 12, spread: -2, opacity: 14 }),
+    .default(DEFAULT_ORGANIZATION_SHADOW),
   size: z.enum(["small", "default", "large"]).default("default"),
 });
 

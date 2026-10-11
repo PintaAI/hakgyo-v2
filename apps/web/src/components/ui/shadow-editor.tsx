@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { DEFAULT_ORGANIZATION_SHADOW } from "@hakgyo/shared";
 
 import { cn } from "~/lib/utils";
 
@@ -12,14 +13,6 @@ type ShadowValue = {
   opacity: number;
 };
 
-const DEFAULT_SHADOW: ShadowValue = {
-  x: 0,
-  y: 4,
-  blur: 12,
-  spread: -2,
-  opacity: 14,
-};
-
 const shadowPresets = [
   {
     label: "Tanpa bayangan",
@@ -29,7 +22,7 @@ const shadowPresets = [
   {
     label: "Bayangan halus",
     shortLabel: "Halus",
-    value: DEFAULT_SHADOW,
+    value: DEFAULT_ORGANIZATION_SHADOW,
   },
   {
     label: "Bayangan tegas",
@@ -245,7 +238,7 @@ function ShadowEditor({ value, onValueChange }: ShadowEditorProps) {
 }
 
 export {
-  DEFAULT_SHADOW,
+  DEFAULT_ORGANIZATION_SHADOW as DEFAULT_SHADOW,
   ShadowEditor,
   isShadowValue,
   shadowToCss,
