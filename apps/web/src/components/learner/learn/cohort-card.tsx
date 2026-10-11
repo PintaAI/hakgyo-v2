@@ -413,15 +413,19 @@ export function CohortCard({
     });
   }
 
+  const hasActions =
+    hero !== null || eventsPending || !!eventsError || plateRows.length > 0;
+
   return (
     // Phones drop the frame so the content gets the full width; the header
-    // keeps its own rounded block.
-    <article className="sm:bg-card sm:ring-foreground/10 sm:overflow-hidden sm:rounded-[20px] sm:ring-1">
-      <header className="bg-muted relative flex flex-wrap items-end gap-3 overflow-hidden rounded-2xl p-4 pt-5 sm:rounded-none sm:p-6 sm:pt-12">
+    // keeps its own rounded block. The card does not clip, so the action
+    // column can stay pinned while the outline scrolls on desktop.
+    <article className="sm:bg-card sm:ring-foreground/10 @container sm:rounded-[20px] sm:ring-1">
+      <header className="bg-muted relative flex flex-wrap items-end gap-3 overflow-hidden rounded-2xl p-4 pt-5 sm:rounded-t-[20px] sm:rounded-b-none sm:p-6 sm:pt-12">
         <CourseCover
           title={cohort.course.title}
           thumbnailUrl={cohort.course.thumbnailUrl}
-          sizes="(min-width: 768px) 768px, 100vw"
+          sizes="(min-width: 1280px) 1152px, 100vw"
           className="absolute inset-0 blur-[3px]"
         />
         <span className="bg-background/70 absolute inset-0" />
@@ -477,33 +481,43 @@ export function CohortCard({
         ) : null}
       </header>
 
-      <div className="flex flex-col gap-4 pt-4 sm:p-6">
-        {hero ? <HeroBlock hero={hero} /> : null}
+      <div
+        className={cn(
+          "flex flex-col gap-4 pt-4 sm:p-6",
+          hasActions &&
+            "@3xl:grid @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] @3xl:items-start @3xl:gap-8",
+        )}
+      >
+        {hasActions ? (
+          <div className="flex flex-col gap-4 @3xl:sticky @3xl:top-6">
+            {hero ? <HeroBlock hero={hero} /> : null}
 
-        {eventsPending ? (
-          <Skeleton className="h-16 w-full rounded-2xl" />
-        ) : null}
-        {eventsError ? (
-          <p role="alert" className="text-destructive text-sm">
-            Aktivitas belum bisa dimuat.
-          </p>
-        ) : null}
+            {eventsPending ? (
+              <Skeleton className="h-16 w-full rounded-2xl" />
+            ) : null}
+            {eventsError ? (
+              <p role="alert" className="text-destructive text-sm">
+                Aktivitas belum bisa dimuat.
+              </p>
+            ) : null}
 
-        {plateRows.length > 0 ? (
-          <section className="flex flex-col gap-2">
-            <h3 className="text-muted-foreground text-xs font-bold tracking-[1.2px] uppercase">
-              Perlu dikerjakan
-            </h3>
-            <div>
-              {plateRows.map((row, index) => (
-                <PlateRowView
-                  key={row.key}
-                  row={row}
-                  isLast={index === plateRows.length - 1}
-                />
-              ))}
-            </div>
-          </section>
+            {plateRows.length > 0 ? (
+              <section className="flex flex-col gap-2">
+                <h3 className="text-muted-foreground text-xs font-bold tracking-[1.2px] uppercase">
+                  Perlu dikerjakan
+                </h3>
+                <div>
+                  {plateRows.map((row, index) => (
+                    <PlateRowView
+                      key={row.key}
+                      row={row}
+                      isLast={index === plateRows.length - 1}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </div>
         ) : null}
 
         {outline || milestoneGroup ? (

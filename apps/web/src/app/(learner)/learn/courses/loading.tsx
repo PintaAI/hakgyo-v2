@@ -5,7 +5,7 @@ import {
 
 export default function LearningCoursesLoading() {
   return (
-    <PageSkeleton width="3xl" label="Memuat Belajar">
+    <PageSkeleton width="6xl" label="Memuat Belajar">
       <CohortCardSkeleton />
     </PageSkeleton>
   );

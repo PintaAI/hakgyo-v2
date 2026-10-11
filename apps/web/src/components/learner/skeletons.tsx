@@ -10,7 +10,7 @@ export function PageSkeleton({
   className,
   children,
 }: {
-  width: "xl" | "2xl" | "3xl";
+  width: "xl" | "2xl" | "3xl" | "6xl";
   label: string;
   className?: string;
   children: ReactNode;
@@ -22,7 +22,12 @@ export function PageSkeleton({
       aria-label={label}
       className={cn(
         "mx-auto flex w-full flex-col gap-6",
-        { xl: "max-w-xl", "2xl": "max-w-2xl", "3xl": "max-w-3xl" }[width],
+        {
+          xl: "max-w-xl",
+          "2xl": "max-w-2xl",
+          "3xl": "max-w-3xl",
+          "6xl": "max-w-6xl",
+        }[width],
         className,
       )}
     >
@@ -166,29 +171,33 @@ export function OutlineSkeleton({ modules = 2 }: { modules?: number }) {
 /** Cohort card of Belajar: header, the hero action, to-do rows and the curriculum. */
 export function CohortCardSkeleton() {
   return (
-    <div className="bg-card ring-foreground/10 [&_[data-slot=skeleton]]:bg-foreground/10 overflow-hidden rounded-[20px] ring-1">
+    <div className="bg-card ring-foreground/10 [&_[data-slot=skeleton]]:bg-foreground/10 @container overflow-hidden rounded-[20px] ring-1">
       <div className="bg-muted/60 flex flex-col gap-2 p-4 pt-8 sm:p-6 sm:pt-12">
         <Skeleton className="h-3 w-40" />
         <Skeleton className="h-7 w-64 max-w-full" />
         <Skeleton className="h-3 w-44" />
       </div>
-      <div className="flex flex-col gap-4 p-4 sm:p-6">
-        <Skeleton className="h-24 w-full rounded-[20px]" />
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-3 w-36" />
-          {Array.from({ length: 2 }).map((_, index) => (
-            <div key={index} className="flex items-center gap-3">
-              <Skeleton className="size-9 rounded-full" />
-              <div className="flex flex-1 flex-col gap-1.5">
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-3 w-2/3" />
+      <div className="flex flex-col gap-4 p-4 sm:p-6 @3xl:grid @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] @3xl:items-start @3xl:gap-8">
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-24 w-full rounded-[20px]" />
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-3 w-36" />
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <Skeleton className="size-9 rounded-full" />
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-        <Skeleton className="h-3 w-44" />
-        <Skeleton className="h-9 w-full rounded-full" />
-        <OutlineSkeleton modules={1} />
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-3 w-44" />
+          <Skeleton className="h-9 w-full rounded-full" />
+          <OutlineSkeleton modules={1} />
+        </div>
       </div>
     </div>
   );
