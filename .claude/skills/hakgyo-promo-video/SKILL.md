@@ -65,9 +65,8 @@ Do the steps in order; each one removes a class of rework from the next.
 7. **`bun pv.mjs check <name>`** (stills and labelled contact sheets), look at every sheet, fix, repeat.
 8. **`bun pv.mjs render <name>`** (GPU worker when up, video downloaded; audio normalised to -14 LUFS), then
    `bun pv.mjs lint <name>` (rhythm, scene changes, loudness and true peak). Fix its warnings or say why one stays.
-9. **Backup, then delete.** `bun pv.mjs backup <file>` uploads to R2. Confirm the object size equals the local file (list
-   with `listMedia()` from `apps/web/src/server/superadmin/media`, run with `bun --conditions=react-server`), and only then
-   delete the local mp4.
+9. **Backup, then delete.** `bun pv.mjs backup <file>` uploads to R2. Then `bun pv.mjs media has <file>` must print `OK` (same
+   name and exact size; it exits 1 otherwise), and only then delete the local mp4. `bun pv.mjs media ls` lists everything in R2.
 10. **Verify and report** (below).
 
 ## Editing storyboards (pv-studio and `pvs`)
@@ -75,17 +74,21 @@ Do the steps in order; each one removes a class of rework from the next.
 - **`storyboard.json` is the source** of an adopted project (`"source": "json"` in `project.json`); `pv story` then skips
   `storyboard.py` so edits are never overwritten. A project not yet adopted is view-only in the editor; `pvs adopt <p>`
   moves its script to `storyboard.legacy.py`. Ask before adopting a real project.
-- **Drive it from the terminal** with `pvs`: `show`, `add`, `mv`, `dup`, `rm`, `rename`, `vo`, `set`, `hold`, `trim`,
-  `cut`, `zoom`, `focus`, `undo`, `redo`, `history`, `voice` (which lines need audio and their cost), `timeline`, `still`.
+- **Drive it from the terminal** with `pvs`: `show`, `add` (kinds `statement`, `window`, `phone`, `card --image assets/x.webp`,
+  `end`, `clip` for compose, or any `--v '{...}'`; clips, marks and images are validated), `mv`, `dup`, `rm`, `rename`, `vo`,
+  `set`, `hold`, `trim`, `cut`, `zoom`, `focus`, `callout`, `undo`, `redo`, `history`, `voice` (which lines need audio and their cost), `timeline`, `still`.
   Add `--json` for machine output. `pvs timeline`/`still` open the real page in Chrome with estimated durations for lines
   that have no audio yet, so layout can be judged before the voice exists.
 - **Editor facts:** the preview is the real engine page in an iframe; timeline tracks are Scene, Suara, Layar, Efek; drag a
-  scene block to reorder, drag its right edge for `v.hold`; the clip panel trims, cuts, and sets zoom and focus keys by
-  dragging on the filmstrip and drawing boxes on the frame. Every edit reloads the preview (2-4 s). History lives in
+  scene block to reorder, drag its right edge for `v.hold`; the clip panel trims and cuts on both pages, and on
+  `editorial.html` sets zoom and focus keys by dragging on the filmstrip and drawing boxes on the frame; on `compose.html` it
+  edits `maxRate`, `maxZoom`, `device` and callouts. Every edit reloads the preview (2-4 s). History lives in
   `<p>/.pv/history`.
 - **Gotchas:** a `statement` scene needs `lineWords` (one regex per line, matching the voice word that triggers it);
   the op layer generates and keeps them. The editorial `end` card is never hidden afterwards, so `end` must stay last. A new
-  or edited `vo` has no audio until `pv voice`. Focus and zoom lists must stay sorted by time (the editor does this).
+  or edited `vo` has no audio until `pv voice`. Focus and zoom lists must stay sorted by time (the editor does this). On
+  `compose.html` a callout's `word` regex must match a word of that scene's voice line and its `icon` must exist in
+  `demo/assets/icons.js` (new Lucide names: put them in a storyboard, run `bun run setup`), or the page throws.
 - **Server:** restart with `/root/projects/pv-studio/restart.sh` after changing `server.ts` or `lib/`. It is exposed to the
   tailnet only (`tailscale serve --bg --https=4310 http://127.0.0.1:4310`); if the page is unreachable, check
   `systemctl is-active tailscaled` before blaming the app.
@@ -109,15 +112,18 @@ Being creative means composition and motion, not novelty props. Check stills aga
 all content in the safe area (x 60-940, y 250-1440 of 1080x1920) that TikTok, Reels and Shorts leave uncovered; the editor
 has a "zona aman" toggle and `pv check <p> --safe` tints it.
 
-## Captions on a raw talking-head video (`caption.html`)
+## Captions on a raw talking-head video (`caption.html`, `pv caption`)
 
-1. Transcode the source to all-intra H.264 (`-g 1`) so every seek is frame accurate; keep the original audio and mux it back
-   with two-pass loudnorm (-14 LUFS, limited by the true peak).
-2. Transcribe with Whisper twice (`id` and, for Korean, `ko`). Whisper mishears or drops Korean and mistranslates a
-   mixed-language clip, so list Korean phrases and their times by hand and tell the user to check them.
-3. Build `captions.json` with a small `build.py` (caption chunks by word index, keyword highlights, example cards,
-   scene timings). Edit that script, not the JSON.
-4. `captions.json` is staged by `scripts/render-remote.sh` (already in its project-file list) so the GPU render sees it.
+`bun pv.mjs caption init <name> <video.mp4> [--ko]` does the mechanical part: transcodes to all-intra H.264 (`-g 1`, so every seek
+is frame accurate), keeps the original audio, calls Whisper once for word times, and writes `captions.src.json` and `captions.json`.
+Then shape it with `caption show` (words with their index), `chunks`, `keywords`, `title`, `equals`, `korean add`, `example add` and
+`set`; each command rebuilds `captions.json`, and the editor preview follows. Render with `bun pv.mjs render <name>`: `make.mjs` muxes
+the original audio back with a two-pass loudnorm (`project.json` `audio.source`).
+
+- Whisper mishears or drops Korean and mistranslates a mixed-language clip, so list Korean phrases and their times by hand and tell
+  the user to check them (they cannot be verified by listening).
+- The video must be portrait; check frames with `pvs still <name> <seconds...>` (the editor also previews it).
+- `captions.json` is staged by `scripts/render-remote.sh` already.
 
 ## Rules that came from real mistakes
 
