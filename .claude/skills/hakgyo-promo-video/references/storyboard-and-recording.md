@@ -1,18 +1,19 @@
 # Storyboard, graphics and recording
 
-Paths are relative to `tools/promo-video/demo/`.
+Paths are relative to `tools/promo-video/demo/` (the engine); a project folder sits next to it.
 
 ## Contents
 
-- Storyboard schema
+- Storyboard schema (compose.html)
+- Storyboard schema (editorial.html)
 - How time works
 - Adding a motion graphic
 - Adding a recording stage
-- Reel timing model
 
-## Storyboard schema
+## Storyboard schema (compose.html)
 
-`storyboard.json` has `chapters` (`{ n, title }`) and `segments`. A segment is
+`storyboard.json` has `chapters` (`{ n, title }`) and `segments`. It is the source for adopted projects (edit it with pv-studio
+or `pvs`); an older project may still generate it from `storyboard.py`. A segment is
 `{ id, v, vo }`: a unique `id`, the visual `v`, and the voiceover text `vo`. Every segment needs
 voiceover, because the voice sets the length of its scene.
 
@@ -35,7 +36,28 @@ in a phone frame with a step list beside it. `maxRate` caps the fast-forward spe
 Consecutive segments that point at the same clip share one continuous layer, so cutting one long
 recording into several lines of narration does not restart the video.
 
+## Storyboard schema (editorial.html)
+
+A segment is `{ id, v, vo }`. `v.kind` is one of the following; every kind accepts `label`, `title` (`|` is a line break; a scene
+with a `title` gets the numbered header, so give both `label` and `title`), `noCaption` and `hold` (extra seconds).
+
+| `v.kind` | Fields |
+| -------- | ------ |
+| `statement` | `lines` (list of strings), `lineWords` (one regex per line: the voice word that reveals it, e.g. `"^Masih"`; the op layer generates them), `grey` (first line index drawn grey) |
+| `window` | Desktop recording in a window frame: `clip`, `from`, `to`, `cuts`, `maxRate`, `aspect` (frame aspect, e.g. 0.917), `zoom`, `focus` |
+| `phone` | Phone recording in a phone frame: `clip`, `from`, `to`, `cuts`, `maxRate`, `focus` |
+| `card` | A still image: `image` |
+| `end` | Closing card: `line`, `sub` (the card stays up, so keep `end` last) |
+
+`from`/`to` and every time below are clip seconds, a mark name written by the recorder, `"end"`, or (focus only) `[mark, offset]`.
+`cuts` is a list of `[a, b]` stretches skipped. `zoom` (window only) is a sorted list of `[t, x, y, z]`: centre `x, y` as fractions of the
+recording and zoom `z`. `focus` is a sorted list of `[t, [x0, y0, x1, y1]]` boxes in fractions of the recording (the ring eases to the next box),
+or `[t, null]` to hide the ring. Boxes are measured on frames at the marks; in the editor, draw them on the frame.
+
 ## How time works
+
+Editorial: a scene lasts 0.3 s lead + voice + 0.45 s tail + (2.4 s for `end`, 0.4 s for `statement`, else 0.15 s) + `hold`. A clip
+scene plays the kept span at the rate that fits (between 0.6x and `maxRate`, default 2) and is lengthened if `span / maxRate` is longer.
 
 `compose.html` builds the timeline from `vo_timing.json` (clip lengths and word times). Each
 segment lasts 0.3 s lead + voice + 0.55 s tail; chapter cards last at least 3 s, the outro adds 3.2 s,
@@ -86,13 +108,4 @@ character by character); it also makes the video readable.
 Demo data is fake and must stay fake: the static QRIS image encodes a made-up merchant and the
 transfer receipts are drawn images. Never put real payment details in a recording.
 
-After recording a clip, run `bun run demo:camera <clip>` for its camera track. Phone clips need none.
-
-## Reel timing model
-
-`reel/reel.html` is authored on a 64 beat grid at 128 BPM: `b(n)` converts a design beat to seconds
-and `d(n)` a beat duration that is never stretched. The voiceover lines (`reel/voiceover.py`) are
-`(start beat, hold beat, text, anchors)`. When a line runs past its hold, the scene holds for whole
-beats (`HOLDS`), and the music sections move with it, so cuts stay on the beat. Anchors `(beat, word)`
-hold a card until the word that names it is spoken. The video is as long as the voice needs; the
-original 30 s target was dropped by the user.
+After recording a clip, run `bun pv.mjs camera <project>` for its camera track. Phone clips need none.

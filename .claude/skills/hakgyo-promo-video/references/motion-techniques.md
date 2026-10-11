@@ -1,9 +1,10 @@
 # Motion techniques catalogue
 
 What the engine can animate, where each technique already lives, and how to lift it into another
-video. Paths are relative to `tools/promo-video/demo/`. The live reference is the `showreel` project
-(`showreel.html`, rendered as `showreel/hakgyo-showreel.mp4`): 20 techniques and 9 transitions,
-each labelled on screen. Show it to the user when they ask what is possible.
+video. Paths are relative to `tools/promo-video/demo/`. The reference was the `showreel` project (`showreel.html`: 20
+techniques and 9 transitions, each labelled on screen). That page and project were removed on 2026-10-11; the rendered video is
+in R2 as `hakgyo-showreel.mp4` (superadmin media) and the page is in `/root/archive/promo-legacy-2026-10-11.tar.gz` on the VPS
+(`demo/showreel.html`). Show the video when the user asks what is possible; the tables below are recipes to lift into a live page.
 
 ## Contents
 
@@ -12,7 +13,7 @@ each labelled on screen. Show it to the user when they ask what is possible.
 - Transitions
 - Camera, blur, grain, HUD
 - Music and sound
-- Lifting a technique into compose.html or short.html
+- Lifting a technique into compose.html or editorial.html
 - compose.html scenes added for the skill explainer
 
 ## Rules every technique follows
@@ -59,7 +60,7 @@ each labelled on screen. Show it to the user when they ask what is possible.
 ## Transitions
 
 Set per scene with `enter`; the incoming layer plays over the outgoing one for `TW[enter]` seconds
-(`enterFx` and `exitFx` in `showreel.html`).
+(`enterFx` and `exitFx` in the archived `showreel.html`).
 
 | enter | Look |
 | ----- | ---- |
@@ -73,7 +74,7 @@ Set per scene with `enter`; the incoming layer plays over the outgoing one for `
 | `liquid` | SVG `feTurbulence` + `feDisplacementMap` filter on the new layer; displacement falls from 420 to 0. |
 | `glitch` | The two scenes alternate per frame (by `hash`) with RGB-split drop shadows. |
 
-Shorts use their own set (`carry`, `whip`, `fade`, `cut`; see SKILL.md "Motion in shorts").
+The old `short.html` page had its own set (`carry`, `whip`, `fade`, `cut`); `editorial.html` uses calm eased moves and no transition props.
 
 ## Camera, blur, grain, HUD
 
@@ -95,15 +96,15 @@ eighth-note bass) over Am7-Fmaj7-Cmaj7-G; `drumsFrom` is the bar where the drums
 `style` the calm 96 BPM bed is used. Segments with `"file": null` (no voiceover) are skipped, so a
 music-only video works. The showreel measured -13.4 LUFS, true peak -1.4 dBTP.
 
-## Lifting a technique into compose.html or short.html
+## Lifting a technique into compose.html or editorial.html
 
 1. Copy the builder body into a new `builders.<name> = (shot, root) => update` in the target page.
 2. Replace `S.fx(lt, …)` with `sfx(it.start + lt, …)`, and `S.hit` with an entry in that page's hit
-   list (short.html: `HITS`).
+   list (the page may not have one; editorial.html deliberately has no camera hits).
 3. Times in the showreel are seconds into the scene. In compose/short pages, tie them to the voice
    instead: `it.voAt + wordAt(it.id, /word/)`, so the move lands on the spoken word.
 4. Keep the `hash`, `noise2`, `box`, `dashable` and `drawn` helpers with it (they are small; copy
-   them if the target page lacks them). `motion.js` is already loaded by all three pages.
+   them if the target page lacks them). `motion.js` is loaded by the live pages.
 5. Run `bun run setup` if the builder names new Lucide icons, then render stills at the scene.
 
 ## compose.html scenes added for the skill explainer

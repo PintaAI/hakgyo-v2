@@ -1,186 +1,191 @@
 ---
 name: hakgyo-promo-video
-description: Make Hakgyo marketing and product videos end to end. Researches the real app flows, writes a storyboard and an Indonesian ElevenLabs voiceover, screen-records the real app with Playwright, adds motion graphics, and renders a finished MP4 (a ~6 minute 16:9 product demo, or a 9:16 TikTok/Reels/Shorts promo). Use whenever the user asks for a promo video, demo video, product walkthrough, tutorial or explainer video, reel, TikTok, screen recording with voiceover, motion graphics, or wants to edit, retime, re-render or fix an existing Hakgyo video, even if they never name the tools or say "skill".
+description: Make Hakgyo marketing and product videos end to end. Researches the real app flows, writes a storyboard and an Indonesian voiceover, screen-records the real app with Playwright, composes scenes in the pv-studio timeline editor (or its `pvs` CLI), adds motion graphics and dynamic captions, and renders a finished MP4 (a 9:16 TikTok/Reels/Shorts explainer, a 16:9 product walkthrough, or captions and graphics over a raw talking-head video). Use whenever the user asks for a promo video, demo video, product walkthrough, tutorial or explainer video, reel, TikTok, screen recording with voiceover, motion graphics, captions on a raw video, or wants to edit, retime, re-render or fix an existing Hakgyo video, even if they never name the tools or say "skill".
 ---
 
 # Hakgyo promo video
 
-The code lives in `tools/promo-video/` (standalone: not a workspace, never part of lint, typecheck,
-build or CI). Its `README.md` is the command reference. This skill is the part the README cannot
-hold: how to decide things, and what went wrong before.
+Two pieces, both standalone (never part of lint, typecheck, build or CI):
 
-Two projects share that folder:
+- **`tools/promo-video/`** (untracked): the engine and the `pv` CLI. Its `README.md` is the command reference.
+- **`/root/projects/pv-studio`** (own git repo, not pushed): a dashboard and timeline editor served on the tailnet
+  (`https://jennie-linux.tail2268a1.ts.net:4310`, editor at `#/edit/<project>`) and the `pvs` CLI
+  (`bun /root/projects/pv-studio/bin/pvs.ts help`). Both edit the same `storyboard.json` through one op layer, with undo,
+  and each shows the other's edits live.
 
-- `demo/`: horizontal 1080p walkthrough. Storyboard in `demo/storyboard.json`, screen recordings
-  in `demo/clips/`, voiceover in `demo/vo/`.
-- `reel/`: vertical 1080x1920 promo built from the landing page design, on a 128 BPM beat grid.
+This skill is the part the README cannot hold: how to decide things, and what went wrong before.
+
+## Pages and projects
+
+A project is a folder in `tools/promo-video/` whose `project.json` picks an engine page (`demo/*.html`):
+
+| `page` | For |
+| --- | --- |
+| `editorial.html` | The default look for 9:16 shorts (see below). Scenes `statement`, `window`, `phone`, `card`, `end`. |
+| `compose.html` | Long 16:9 explainers: chapters, callouts, `list` scenes, phone clips with `side`/`step`, `cuts`. |
+| `caption.html` | Overlay on a raw talking-head video: word-by-word captions and graphic cards from `captions.json`. |
+
+Every page implements `window.ready`, `window.seek(t, frame)` and `window.TIMELINE`; that contract is what `render.mjs`
+and the editor preview both use. Reference projects: `contoh-tryout` (the example to open first), `short-03`, `short-04`,
+`pr41-kelas-events` (shorts), `pr41-demo` (16:9), `raw-ingin` (talking head). Older projects, `reel/` and the pages
+`short.html`, `showreel.html`, `quiznight.html` were removed on 2026-10-11 (videos are in R2; recipes are in
+`/root/archive/promo-legacy-2026-10-11.tar.gz` on the VPS).
 
 ## Decide first (ask only what the answer changes)
 
-- **Format and length.** A walkthrough or tutorial is `demo/` and has no length cap unless the user
-  sets one. A TikTok/Reels/Shorts clip is `reel/` (30 s unless told otherwise). A music-only motion
-  piece (no voiceover, cut to the beat) uses `"page": "showreel.html"` as the model; see
-  `references/motion-techniques.md`.
-- **Audience.** Hakgyo's paying customer is the institution or individual who runs Korean classes,
-  not the learner. Copy speaks to them: their problem, their workflow, their students.
-- **Language and terms.** Indonesian, common English loanwords kept. In speech and on screen:
-  "kurikulum" for a course, "group belajar" or "kelas" for a cohort, "Tugas" for assessments,
-  "kosakata" for vocabulary. Match what the UI says.
-- **New recordings or reuse?** Recording drives the shared dev server and creates real demo data
-  (accounts, an organization, a payment). If only wording or timing changes, edit the storyboard and
-  re-render; do not re-record.
-- **Voice.** The free ElevenLabs plan only allows premade voices over the API (default Jessica) and
-  10,000 characters a month. A native Indonesian library voice needs a paid plan.
+- **Format and length.** A walkthrough or tutorial is 16:9 `compose.html` with no length cap unless the user sets one. A
+  TikTok/Reels/Shorts piece is 9:16 `editorial.html`, 45-60 s unless told otherwise. A raw video the user supplies is
+  `caption.html`.
+- **Audience.** Hakgyo's paying customer is the institution or individual who runs Korean classes, not the learner. Copy
+  speaks to them: their problem, their workflow, their students.
+- **Language and terms.** Indonesian, common English loanwords kept. In speech and on screen: "kurikulum" for a course,
+  "group belajar" or "kelas" for a cohort, "Tugas" for assessments, "kosakata" for vocabulary. Match what the UI says.
+- **New recordings or reuse?** Recording drives the shared dev server and creates real demo data (accounts, an
+  organization, a payment). If only wording or timing changes, edit the storyboard and re-render; do not re-record.
+- **Voice.** Shorts use Gemini "Leda" (`project.json` `voice`; word times from Whisper, needs `OPENAI_API_KEY`). ElevenLabs
+  is still supported (free plan: premade voices only, 10,000 characters a month).
 
 ## Workflow
 
 Do the steps in order; each one removes a class of rework from the next.
 
-1. **Check the state.** `git status`; `bun pv.mjs status` in `tools/promo-video` (disk, GPU worker,
-   projects); fetched assets present (`bun run setup` if not).
-2. **Research the real flows from the code, read-only.** Routes, exact Indonesian UI labels, seed
-   data, rules in `docs/`. Use one Explore agent at most. The script must describe what the product
-   actually does: for example the landing page says the WhatsApp integration is still being prepared,
-   so do not promise it.
-3. **Scaffold, then write the storyboard first.** `bun pv.mjs new <name> --like=<project>`; edit
-   `<name>/storyboard.py` (never the JSON). Schema and scene types are in
-   `references/storyboard-and-recording.md`. Keep lines short (about 14 characters a second).
-4. **Record** with `bun pv.mjs record <name> --dry` first for new selectors, then without `--dry`.
-   Stages use `demo/lib/stage.mjs`; name marks after the on-screen moment.
-5. **`bun pv.mjs prep <name>`** (storyboard, camera, voiceover, labelled contact sheets in
-   `<name>/stills/sheet-NN.jpg`). Look at every sheet before rendering; fix and re-run `check`.
-6. **`bun pv.mjs render <name>`** (GPU worker when up, video downloaded; audio normalised to -14 LUFS),
-   then `bun pv.mjs backup <file>` and delete the local copy once the backup is confirmed.
-7. **`bun pv.mjs lint <name>`**: shot rhythm, how many scene changes carry an element across, and
-   after a render the loudness and true peak. Fix its warnings or say why one stays.
-8. **Verify and report** (see below).
+1. **Check the state.** `git status`; `bun pv.mjs status` in `tools/promo-video` (or the dashboard: disk, GPU worker,
+   per-project stages); fetched assets present (`bun run setup` if not).
+2. **Research the real flows from the code, read-only.** Routes, exact Indonesian UI labels, seed data, rules in `docs/`.
+   Use one Explore agent at most. The script must describe what the product actually does.
+3. **Scaffold.** `bun pv.mjs new <name>` creates a 9:16 editorial project whose source is `storyboard.json` (a project made
+   with `--like=<p>` still starts from `storyboard.py`; run `pvs adopt <name>` to switch it to JSON).
+4. **Record** with `bun pv.mjs record <name> --dry` first for new selectors, then without `--dry`. Stages use
+   `demo/lib/stage.mjs`; name marks after the on-screen moment. Then `bun pv.mjs camera <name>`.
+5. **Compose the storyboard** in the editor or with `pvs` (next section). Keep lines short (about 14-17 characters a
+   second). Look at the preview or `pvs still <p> <t...>` (frames land in `<p>/.pv/stills/`) before spending TTS quota.
+6. **`bun pv.mjs voice <name>`** once the lines are final. It only generates new or edited lines (cached by text); the
+   editor shows the character count and asks first. Render stays disabled until every line has audio.
+7. **`bun pv.mjs check <name>`** (stills and labelled contact sheets), look at every sheet, fix, repeat.
+8. **`bun pv.mjs render <name>`** (GPU worker when up, video downloaded; audio normalised to -14 LUFS), then
+   `bun pv.mjs lint <name>` (rhythm, scene changes, loudness and true peak). Fix its warnings or say why one stays.
+9. **Backup, then delete.** `bun pv.mjs backup <file>` uploads to R2. Confirm the object size equals the local file (list
+   with `listMedia()` from `apps/web/src/server/superadmin/media`, run with `bun --conditions=react-server`), and only then
+   delete the local mp4.
+10. **Verify and report** (below).
+
+## Editing storyboards (pv-studio and `pvs`)
+
+- **`storyboard.json` is the source** of an adopted project (`"source": "json"` in `project.json`); `pv story` then skips
+  `storyboard.py` so edits are never overwritten. A project not yet adopted is view-only in the editor; `pvs adopt <p>`
+  moves its script to `storyboard.legacy.py`. Ask before adopting a real project.
+- **Drive it from the terminal** with `pvs`: `show`, `add`, `mv`, `dup`, `rm`, `rename`, `vo`, `set`, `hold`, `trim`,
+  `cut`, `zoom`, `focus`, `undo`, `redo`, `history`, `voice` (which lines need audio and their cost), `timeline`, `still`.
+  Add `--json` for machine output. `pvs timeline`/`still` open the real page in Chrome with estimated durations for lines
+  that have no audio yet, so layout can be judged before the voice exists.
+- **Editor facts:** the preview is the real engine page in an iframe; timeline tracks are Scene, Suara, Layar, Efek; drag a
+  scene block to reorder, drag its right edge for `v.hold`; the clip panel trims, cuts, and sets zoom and focus keys by
+  dragging on the filmstrip and drawing boxes on the frame. Every edit reloads the preview (2-4 s). History lives in
+  `<p>/.pv/history`.
+- **Gotchas:** a `statement` scene needs `lineWords` (one regex per line, matching the voice word that triggers it);
+  the op layer generates and keeps them. The editorial `end` card is never hidden afterwards, so `end` must stay last. A new
+  or edited `vo` has no audio until `pv voice`. Focus and zoom lists must stay sorted by time (the editor does this).
+- **Server:** restart with `/root/projects/pv-studio/restart.sh` after changing `server.ts` or `lib/`. It is exposed to the
+  tailnet only (`tailscale serve --bg --https=4310 http://127.0.0.1:4310`); if the page is unreachable, check
+  `systemctl is-active tailscaled` before blaming the app.
+- Long commands (`record`, `voice`, `check`, `render`, ...) write `<p>/.pv/status.json` and `last.log`; the dashboard shows them.
 
 ## Default look for shorts: editorial (`demo/editorial.html`)
 
-The user approved this look (short-02c) after rejecting a game-show page as "cringe, not professional,
-cheap". Start every new short from it (`"page": "editorial.html"`, `--like=short-02c`):
+The user approved this look (short-02c) after rejecting a game-show page as "cringe, not professional, cheap". Start every
+new short from it (`contoh-tryout` is the model):
 
 - The landing page's monochrome palette on an off-white stage. Colour comes only from the app UI.
 - One numbered label and one short title per beat (`01 · Bagikan`), revealed through a mask.
 - The real recording is the hero, in a clean window or phone frame with a soft shadow.
-- A focus ring slides over the element the voice names, keyed to the clip clock (recording marks),
-  not to spoken words.
+- A focus ring slides over the element the voice names, keyed to the clip clock (recording marks), not to spoken words.
 - Eased moves with no overshoot. No camera shake, confetti, stamps, bulbs, neon or slot counters.
 - A calm voice and quiet music without drums.
+- Shorts render 6 captures per moving frame (`"motionBlur": N`, default 6 for portrait); stills and `check` are never blurred.
+  The user prefers the quality over render time.
 
-Being creative means composition and motion, not novelty props. Check stills against this bar before
-a full render.
+Being creative means composition and motion, not novelty props. Check stills against this bar before a full render. Keep
+all content in the safe area (x 60-940, y 250-1440 of 1080x1920) that TikTok, Reels and Shorts leave uncovered; the editor
+has a "zona aman" toggle and `pv check <p> --safe` tints it.
 
-## Motion in shorts (`demo/short.html`, `demo/motion.js`)
+## Captions on a raw talking-head video (`caption.html`, example `raw-ingin`)
 
-The ideas come from studying continuous-take motion films; the code is our own (the onetake repository
-that inspired it is noncommercial-only, so never copy its code or assets into this tooling).
-
-- **Carry, not fade.** A scene change should keep something on screen: when two scenes mark an element
-  with the same `it.carry` key (`card` for photo, screen and phone cards and the closing logo; `logo`
-  for reveal and cta), the element flies from its place in the old scene to its place in the new one.
-  Otherwise ad style uses a whip and soft style a short fade. Force one with `v.enter`
-  (`carry`, `whip`, `fade`, `cut`) and pick the key with `v.carryKey`.
-- **Springs.** Entrances use `M.spring` (one small overshoot, then a dead rest), not CSS-style eases.
-- **Camera.** Ad style jolts the camera on `impact` and `boom` hits; soft style never moves it, which
-  keeps screen recordings calm.
-- **Motion blur.** Shorts render 6 captures per moving frame over a 180-degree shutter, averaged in
-  linear light (`"motionBlur": N` in project.json; 1 turns it off). Still frames cost one capture, so a
-  short renders about 3x slower than without blur. Stills and `check` are never blurred.
-- **Sound.** Effects share one room reverb and the music dips under them.
+1. Transcode the source to all-intra H.264 (`-g 1`) so every seek is frame accurate; keep the original audio and mux it back
+   with two-pass loudnorm (-14 LUFS, limited by the true peak).
+2. Transcribe with Whisper twice (`id` and, for Korean, `ko`). Whisper mishears or drops Korean and mistranslates a
+   mixed-language clip, so list Korean phrases and their times by hand and tell the user to check them.
+3. Build `captions.json` with a small `build.py` (caption chunks by word index, keyword highlights, example cards,
+   scene timings). Edit that script, not the JSON.
+4. `captions.json` is staged by `scripts/render-remote.sh` (already in its project-file list) so the GPU render sees it.
 
 ## Rules that came from real mistakes
 
-- **On-screen text mirrors the voiceover.** Every headline, caption and card must say what the voice
-  says at that moment. After any script change, audit every scene, including headlines left over from
-  earlier copy. Terms the voice introduces (for example "PBT") appear on screen with a short
-  explanation. Never drop or swap something the user named: when "Claude" was replaced by "fitur AI"
-  to fit a sentence, the user had to ask for it back.
-- **The camera is calm.** The first auto camera followed the cursor and the user called it aggressive
-  and jittery. Use held framings of at least 3 seconds, slow eased moves, at most 1.25x zoom. A steady
-  wide shot beats a tight frame that crops the field being used.
-- **Never trust an estimate you did not measure.** Quote time left from real progress, and say so
-  when something restarts the clock. A render lost at 80% had to restart from zero and the user was
-  rightly annoyed by the earlier "15 minutes left".
-- **Long jobs run detached from the session.** Start them with `setsid nohup ... > log 2>&1 < /dev/null
-& disown`. A render started through a session's background tool died twice when the session ended.
-  Renders are chunked and resumable, so a restart loses only the chunks in progress.
-- **Wait on a PID, not a pattern.** `pgrep -f "text"` matches your own waiting command and exits
-  early or never; capture the PID and loop on `kill -0`.
-- **Do not guess at timing; measure.** The assumption that video seeking was the slow part was wrong:
-  the screenshot step was. Profile (`demo/perf/profile.mjs`) before optimizing.
-- **`tools/` is untracked, so git can delete it.** It was tracked on `main` once; a fast-forward of
-  `main` past the commit that stopped tracking it deleted every engine file that had not changed.
-  Recover from the T3 checkpoint refs (`git for-each-ref refs/t3`, newest commit that has the file)
-  or from the GPU worker's job workspaces, and check `bun pv.mjs status` after branch switches.
-- **Delete by explicit names.** A wildcard `rm` is blocked by a safety check; list what you created
-  and remove those paths.
+- **On-screen text mirrors the voiceover.** Every headline, caption and card must say what the voice says at that moment.
+  After any script change, audit every scene, including headlines left over from earlier copy. Terms the voice introduces
+  (for example "PBT") appear on screen with a short explanation. Never drop or swap something the user named.
+- **The camera is calm.** Use held framings of at least 3 seconds, slow eased moves, at most 1.25x zoom. A steady wide shot
+  beats a tight frame that crops the field being used.
+- **Never trust an estimate you did not measure.** Quote time left from real progress, and say so when something restarts
+  the clock.
+- **Long jobs run detached from the session.** Start them with `setsid nohup ... > log 2>&1 < /dev/null & disown`. Renders
+  are chunked and resumable. Check the log tail for real completion: a stale log gives a false "done".
+- **Wait on a PID, not a pattern, and never `pkill -f`/`pgrep -f` a text that is in your own command line.** It matches the
+  calling shell and kills it (exit 144). Match `/proc/<pid>/cmdline` exactly, or use `restart.sh`.
+- **Do not guess at timing; measure.** Profile (`demo/perf/profile.mjs`) before optimizing.
+- **`tools/` is untracked, so git can delete it.** A fast-forward of `main` once deleted engine files. Recover from the T3
+  checkpoint refs (`git for-each-ref refs/t3`) or the GPU worker's job workspaces, and check `bun pv.mjs status` after
+  branch switches.
+- **Deleting.** The auto-mode classifier blocks wildcard and bulk `rm -rf`. Delete by explicit names, only what you created
+  or what the user listed; if it is blocked, stop and let the user decide instead of working around it. Verify R2 holds the
+  video (size match) before removing a local copy. The dashboard's trash button moves a project to `.trash/` unless
+  "permanen" is ticked.
+- **Never run cleanup against the shared development database** without the user's go-ahead; report demo data instead.
 
 ## This VPS is resource limited
 
-It has 4 cores, 7 GB of RAM and a nearly full disk. Run at most one agent at a time, and do heavy
-work (typecheck, renders, test suites) one thing at a time, because parallel work has crashed the
-machine and killed every running task. A full local render takes about 55 minutes for 6:21. If the
-private GPU worker is available (`gpu-run status` answers), a render takes about 9 minutes; the
-command is in the README. Keep the finished video on that machine instead of downloading it (the
-user sits there, and a 200 MB transfer once crawled at 350 KB/s): copy it to the worker's `/output`,
-and verify in place with `demo/perf/verify-render.sh`, which returns only a report and two contact
-sheets. If the `gpu-run` client dies with "The operation timed out" the job usually keeps running
-on the worker; read its log through the job API and do not restart it. Keep the CPU-only Chrome default: GPU rasterization made the large
-screen-recording scenes about 4x slower. Check free disk before a render, and delete frame folders
-and old renders you created once the final file exists.
+It has 4 cores, 7 GB of RAM and a nearly full disk. Run at most one agent at a time, and do heavy work (typecheck, renders,
+test suites) one thing at a time, because parallel work has crashed the machine and killed every running task. A full local
+render takes tens of minutes; with the private GPU worker (`gpu-run status` answers) a short renders in minutes and a long
+video in about 9. Keep long finished videos on that machine instead of downloading them (a 200 MB transfer once crawled at
+350 KB/s): copy to the worker's `/output` and verify with `demo/perf/verify-render.sh`. If `gpu-run` dies with "The operation
+timed out" the job usually keeps running; read its log through the job API and do not restart it. Keep the CPU-only Chrome
+default: GPU rasterization made large screen-recording scenes about 4x slower. Check free disk before a render, and check
+`tailscale status` first, because the PC may be offline.
 
 ## Voiceover and quota
 
-Check the quota before generating, without printing the key:
+Gemini: quota is characters; a 50 s short is about 700. Check ElevenLabs quota, without printing the key:
 
 ```bash
 K=$(grep '^ELEVENLABS_API_KEY=' apps/web/.env | cut -d= -f2- | tr -d "\"'")
 curl -s -H "xi-api-key: $K" https://api.elevenlabs.io/v1/user/subscription
 ```
 
-A 6 minute narration is about 4,500 characters. Lines are cached by their text, so editing a line only
-re-generates that line, and re-running is free. Do not edit the voice settings or model casually: that
-changes every cache key and regenerates everything.
+Lines are cached by their spoken text, so editing a line only regenerates that line and re-running is free. Do not edit the
+voice settings, model or `pronounce` table casually: that changes cache keys and regenerates everything.
 
 ## Verify before you report
 
 You cannot listen to the result, so verify what you can and say plainly what you could not.
 
-- Render stills at a spread of timestamps, assemble a contact sheet and look at it yourself. Do not
-  paste screenshots into the reply to the user; describe what you checked in text.
-- `python3 demo/perf/review-timeline.py` after any script change: it lists silences over 1.2 s and
-  fast or slow clip segments. A silence over about 2 s means a clip needs more screen time than its
-  narration; fill it with narration that describes the action rather than leaving dead air.
-- `ffprobe` for duration, resolution and that an audio stream exists. `ffmpeg -af ebur128` for
-  loudness; the target is about -14 LUFS.
-- Tell the user what to check by ear: pronunciation of "Hakgyo" and any acronym, music level under
-  the voice, whether each line lands on its scene.
+- Render stills at a spread of timestamps (`pv check`, `pvs still`), assemble a contact sheet and look at it yourself with
+  the image reader. Describe what you checked in text.
+- `python3 demo/perf/review-timeline.py` after any script change: it lists silences over 1.2 s and fast or slow clip
+  segments. A silence over about 2 s means a clip needs more screen time than its narration.
+- `ffprobe` for duration, resolution and that an audio stream exists. `ffmpeg -af ebur128` for loudness (about -14 LUFS).
+- Tell the user what to check by ear: pronunciation of "Hakgyo" and any acronym or Korean phrase, music level under the voice,
+  whether each line lands on its scene.
 
 ## Report
 
-Give an outline with timestamps (from `timeline.json`), where the file is, and every side effect:
-demo data created in the dev database (emails, organization), ElevenLabs characters used, dev server
-restarts, files left behind. Offer cleanup of the demo data rather than doing it silently, and do not
-commit or open a PR unless asked.
+Give an outline with timestamps (from `timeline.json`), where the file is, and every side effect: demo data created in the dev
+database (emails, organization), TTS characters and Whisper calls used, dev server restarts, files left behind. Offer cleanup
+of the demo data rather than doing it silently, and do not commit or open a PR unless asked.
 
 ## References
 
-- `references/storyboard-and-recording.md`: storyboard schema, graphic types, how to add a recording
-  stage or a motion graphic, the reel's timing model.
+- `references/storyboard-and-recording.md`: storyboard schema (editorial and compose), how time works, how to add a recording
+  stage or a motion graphic.
 - `references/troubleshooting.md`: selectors that bit before, stale servers, render and worker pitfalls.
-- `references/motion-techniques.md`: the catalogue of what the engine can animate (20 techniques and
-  9 transitions in `demo/showreel.html`, the `drive` music style, the `pipeline`/`carrydemo`/`terminal`
-  scenes) and how to lift a technique into another video. Read it before designing motion graphics,
-  and show `showreel/hakgyo-showreel.mp4` when the user asks what is possible.
-
-## Projects, Gemini voice and long tutorials
-
-- The engine takes `--project <dir>`; a second project (`kurikulum`) lives next to `demo`. See `tools/promo-video/README.md`
-  ("Projects") for the stage order, the new scene types (`anatomy`, `list`, `compare`), `cuts`, `callouts` and the Gemini
-  voice provider (`project.json`, `GEMINI_API_KEY`, style in the `speech_metadata` annotation).
-- Never run cleanup against the shared development database without the user's go-ahead; the auto-mode classifier blocks it
-  and the user chose to leave old demo resources in place.
-- Render long videos with `scripts/render-remote.sh`; check `tailscale status` first, because the PC may be offline and
-  the VPS disk is too small to render locally.
-
+- `references/motion-techniques.md`: the catalogue of motion techniques and transitions (the `showreel.html` page that held
+  them was archived; the descriptions are recipes to lift into the live pages).
