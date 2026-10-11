@@ -184,7 +184,7 @@ function Groups({ data }: { data: StudioDashboardData }) {
 }
 function Activity({ data }: { data: StudioDashboardData }) {
   return (
-    <section>
+    <section className="sm:bg-card sm:rounded-lg sm:border sm:p-5 sm:shadow-sm">
       <Title title={data.activity ? "Aktivitas terbaru" : "Bahan ajar"} />
       {data.activity ? (
         data.activity.length ? (
@@ -358,7 +358,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
         <aside className="space-y-7">
           <Activity data={data} />
           {/* Phones already flag reviews in the stat strip and bottom nav. */}
-          <section className="bg-muted rounded-lg border p-6 shadow-xs max-sm:hidden">
+          <section className="bg-muted rounded-lg border p-6 shadow-sm max-sm:hidden">
             <Kicker>Butuh perhatian</Kicker>
             <div className="my-5 flex items-end gap-3">
               <span className="text-5xl font-medium tracking-tight">

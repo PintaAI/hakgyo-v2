@@ -5,7 +5,7 @@ import { cn } from "~/lib/utils";
 /** The surface of every card: as on the landing page, a hairline border, a
  * large radius, and a faint shadow. */
 export const cardSurface =
-  "bg-card text-card-foreground border-border rounded-2xl border shadow-[0_1px_2px_rgb(0_0_0/0.04)]";
+  "bg-card text-card-foreground border-border rounded-2xl border shadow-sm";
 
 function Card({
   className,

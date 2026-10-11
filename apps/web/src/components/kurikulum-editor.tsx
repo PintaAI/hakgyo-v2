@@ -870,8 +870,8 @@ function SortableModuleCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card overflow-hidden border-y max-sm:-mx-4 sm:rounded-xl sm:border",
-        isDragging && "z-10 shadow-lg",
+        "bg-card overflow-hidden border-y max-sm:-mx-4 sm:rounded-xl sm:border sm:shadow-xs",
+        isDragging && "z-10 shadow-lg sm:shadow-lg",
       )}
     >
       <div className="flex items-start gap-3 px-4 py-4 sm:px-5">

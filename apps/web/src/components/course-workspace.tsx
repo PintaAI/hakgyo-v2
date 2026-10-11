@@ -930,7 +930,7 @@ function CohortsSection({
         ) : null}
       </div>
 
-      <div className="sm:bg-card flex flex-col gap-2 sm:gap-3 sm:rounded-xl sm:border sm:p-3 lg:flex-row lg:items-center">
+      <div className="sm:bg-card flex flex-col gap-2 sm:gap-3 sm:rounded-xl sm:border sm:p-3 sm:shadow-xs lg:flex-row lg:items-center">
         <form
           className="flex min-w-0 flex-1 gap-2"
           onSubmit={(event) => {

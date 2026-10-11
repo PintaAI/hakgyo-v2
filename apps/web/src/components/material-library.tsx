@@ -354,7 +354,7 @@ function MaterialRow({
   return (
     <Link
       href={`/workspace/${organizationSlug}/library/materials/${material.id}`}
-      className="group focus-visible:ring-ring/50 hover:bg-muted/20 sm:bg-card sm:hover:border-foreground/20 grid gap-2 p-4 transition-colors outline-none focus-visible:ring-3 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.8fr)_auto] sm:items-center sm:gap-4 sm:rounded-xl sm:border"
+      className="group focus-visible:ring-ring/50 hover:bg-muted/20 sm:bg-card sm:hover:border-foreground/20 grid gap-2 p-4 transition-[background-color,border-color,box-shadow] outline-none focus-visible:ring-3 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.8fr)_auto] sm:items-center sm:gap-4 sm:rounded-xl sm:border sm:shadow-xs sm:hover:shadow-sm"
     >
       <div className="min-w-0">
         <h2 className="font-heading flex min-w-0 items-center gap-2 truncate font-semibold">

@@ -124,7 +124,7 @@ export function CourseCreateForm({
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <form
-          className="bg-card ring-foreground/10 rounded-lg p-5 ring-1 sm:p-6"
+          className="bg-card ring-foreground/10 rounded-lg p-5 ring-1 sm:p-6 sm:shadow-sm"
           onSubmit={handleSubmit}
           noValidate
         >
@@ -203,7 +203,7 @@ export function CourseCreateForm({
           </div>
         </form>
 
-        <aside className="bg-card ring-foreground/10 h-fit rounded-lg p-5 ring-1">
+        <aside className="bg-card ring-foreground/10 h-fit rounded-lg p-5 ring-1 sm:shadow-sm">
           <p className="font-heading font-medium">Setelah kurikulum dibuat</p>
           <ol className="text-muted-foreground mt-5 space-y-5 text-sm">
             {[

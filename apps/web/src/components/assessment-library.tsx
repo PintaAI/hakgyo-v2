@@ -204,7 +204,7 @@ function AssessmentRow({
   return (
     <Link
       href={`/workspace/${organizationSlug}/library/assessments/${assessment.id}`}
-      className="group focus-visible:ring-ring/50 hover:bg-muted/20 sm:bg-card sm:hover:border-foreground/20 grid gap-4 p-4 transition-colors outline-none focus-visible:ring-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:rounded-xl sm:border"
+      className="group focus-visible:ring-ring/50 hover:bg-muted/20 sm:bg-card sm:hover:border-foreground/20 grid gap-4 p-4 transition-[background-color,border-color,box-shadow] outline-none focus-visible:ring-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:rounded-xl sm:border sm:shadow-xs sm:hover:shadow-sm"
     >
       <div className="flex min-w-0 items-start gap-3">
         <span className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10">
