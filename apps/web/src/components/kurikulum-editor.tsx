@@ -1119,13 +1119,7 @@ function VisibilitySwitch({
   const disabled = isPending || Boolean(blockedReason);
   const controls = (
     <>
-      <div className="mr-1 hidden items-center gap-2 sm:flex">
-        <Label
-          htmlFor={`published-${item.id}`}
-          className="text-muted-foreground text-xs font-normal"
-        >
-          Tampil
-        </Label>
+      <div className="mr-1 hidden items-center sm:flex">
         <Switch
           id={`published-${item.id}`}
           aria-label={label}
