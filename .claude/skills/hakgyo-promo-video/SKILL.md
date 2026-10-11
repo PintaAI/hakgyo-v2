@@ -26,10 +26,11 @@ A project is a folder in `tools/promo-video/` whose `project.json` picks an engi
 | `caption.html` | Overlay on a raw talking-head video: word-by-word captions and graphic cards from `captions.json`. |
 
 Every page implements `window.ready`, `window.seek(t, frame)` and `window.TIMELINE`; that contract is what `render.mjs`
-and the editor preview both use. Reference projects: `contoh-tryout` (the example to open first), `short-03`, `short-04`,
-`pr41-kelas-events` (shorts), `pr41-demo` (16:9), `raw-ingin` (talking head). Older projects, `reel/` and the pages
-`short.html`, `showreel.html`, `quiznight.html` were removed on 2026-10-11 (videos are in R2; recipes are in
-`/root/archive/promo-legacy-2026-10-11.tar.gz` on the VPS).
+and the editor preview both use. The reference project is `contoh-tryout` (a 30 s editorial short with recordings and voice;
+open it first). Earlier projects were removed from the VPS after their videos went to R2 (`hakgyo-*` in superadmin media):
+the 2026-10-11 cleanup of `kurikulum`, `landing`, `undang`, the old shorts, `skill-explainer`, `showreel`, `reel/` and the pages
+`short.html`, `showreel.html`, `quiznight.html` (their recipes are in `/root/archive/promo-legacy-2026-10-11.tar.gz`), and later
+`pr41-demo`, `pr41-kelas-events`, `short-03`, `short-04` and `raw-ingin` (no recipe archive; rebuild from this skill).
 
 ## Decide first (ask only what the answer changes)
 
@@ -108,7 +109,7 @@ Being creative means composition and motion, not novelty props. Check stills aga
 all content in the safe area (x 60-940, y 250-1440 of 1080x1920) that TikTok, Reels and Shorts leave uncovered; the editor
 has a "zona aman" toggle and `pv check <p> --safe` tints it.
 
-## Captions on a raw talking-head video (`caption.html`, example `raw-ingin`)
+## Captions on a raw talking-head video (`caption.html`)
 
 1. Transcode the source to all-intra H.264 (`-g 1`) so every seek is frame accurate; keep the original audio and mux it back
    with two-pass loudnorm (-14 LUFS, limited by the true peak).
