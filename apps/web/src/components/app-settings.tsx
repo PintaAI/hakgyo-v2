@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
+import { APP_PREFERENCES_RUNTIME_KEY } from "~/components/app-preferences-bootstrap";
 import { Button } from "~/components/ui/button";
 import { useOrganizationTheme } from "~/components/organization-theme-provider";
 import { ColorPicker, type ColorPreset } from "~/components/ui/color-picker";
@@ -354,8 +355,19 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
     for (const [property, value] of Object.entries(runtime.properties)) {
       root.style.setProperty(property, value);
     }
+    // AppPreferencesBootstrap replays this before first paint. Store the
+    // device runtime without organization colors; org pages layer their own.
+    const deviceRuntime = organizationTheme
+      ? createOrganizationThemeRuntime(
+          createPreferenceTheme(resolvePreferences(preferences, null), null),
+        )
+      : runtime;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
-  }, [preferenceTheme, preferences]);
+    localStorage.setItem(
+      APP_PREFERENCES_RUNTIME_KEY,
+      JSON.stringify(deviceRuntime),
+    );
+  }, [organizationTheme, preferenceTheme, preferences]);
 
   function updatePreference<Key extends keyof Preferences>(
     key: Key,

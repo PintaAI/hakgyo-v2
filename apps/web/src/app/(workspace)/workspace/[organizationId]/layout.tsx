@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { AppPreferencesBootstrap } from "~/components/app-preferences-bootstrap";
 import { AppSidebar } from "~/components/app-sidebar";
 import { NotificationBell } from "~/components/notifications/notification-bell";
 import { OrganizationThemeBootstrap } from "~/components/organization-theme-bootstrap";
@@ -55,6 +56,7 @@ export default async function WorkspaceLayout({
   return (
     <>
       <OrganizationThemeBootstrap theme={organizationTheme} />
+      <AppPreferencesBootstrap organizationTheme={Boolean(organizationTheme)} />
       <OrganizationThemeProvider theme={organizationTheme}>
         <SidebarProvider
           defaultOpen={defaultOpen}

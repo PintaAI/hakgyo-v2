@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { AppPreferencesBootstrap } from "~/components/app-preferences-bootstrap";
 import { DocsAppSidebar } from "~/components/app-sidebar";
 import { Separator } from "~/components/ui/separator";
 import {
@@ -30,6 +31,7 @@ export default async function DocsLayout({
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
+      <AppPreferencesBootstrap />
       <DocsAppSidebar navigation={navigation} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear md:border-b-0">
