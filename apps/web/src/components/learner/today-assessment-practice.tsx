@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import {
   randomSeed,
@@ -10,6 +10,7 @@ import { api } from "~/trpc/react";
 import { QuizSession, type QuizQuestionItem } from "./practice/quiz-session";
 import { RichContent } from "./practice/rich-content";
 import { QuestionSkeleton } from "./skeletons";
+import { useRoundSeed } from "./use-round-seed";
 
 /** `initialSeed` lets the page prefetch the first sample on the server. */
 export function TodayAssessmentPractice({
@@ -18,7 +19,7 @@ export function TodayAssessmentPractice({
   initialSeed: string;
 }) {
   const utils = api.useUtils();
-  const [seed, setSeed] = useState(initialSeed);
+  const [seed, setSeed] = useRoundSeed(initialSeed);
   // The sample must not swap while the learner is answering it.
   const pool = api.practice.getAssessmentSample.useQuery(
     { seed, limit: TODAY_ASSESSMENT_QUESTION_COUNT },

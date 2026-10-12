@@ -51,14 +51,22 @@ function SessionNotificationBell() {
 function Bell() {
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
+  // Stale after a minute (the app default is 5) so returning to the tab
+  // actually refetches the badge.
   const countQuery = api.notification.unreadCount.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: true,
+    staleTime: 60_000,
   });
   // The preview list is only needed while the dropdown is open.
   const inboxQuery = api.notification.inboxList.useQuery(
     { limit: 5 },
-    { retry: false, refetchOnWindowFocus: true, enabled: open },
+    {
+      retry: false,
+      refetchOnWindowFocus: true,
+      staleTime: 60_000,
+      enabled: open,
+    },
   );
   const markAllRead = api.notification.markAllRead.useMutation({
     onSettled: () => {
@@ -82,7 +90,7 @@ function Bell() {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (next) void utils.notification.unreadCount.invalidate();
+        if (next) void refresh();
       }}
     >
       <DropdownMenuTrigger

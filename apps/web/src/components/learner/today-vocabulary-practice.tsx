@@ -19,6 +19,7 @@ import {
   type FlipCardResult,
 } from "./practice/flip-card-deck";
 import { FlipDeckSkeleton } from "./skeletons";
+import { useRoundSeed } from "./use-round-seed";
 
 /** `ID` answers in Indonesian (receptive); `KR` answers in Korean (productive). */
 type Mode = "ID" | "KR";
@@ -68,7 +69,7 @@ export function TodayVocabularyPractice({
 }: {
   initialSeed: string;
 }) {
-  const [seed, setSeed] = useState(initialSeed);
+  const [seed, setSeed] = useRoundSeed(initialSeed);
   const [mode, setMode] = useState<Mode>("ID");
   // The round must not swap while the learner is answering it.
   const pool = api.practice.getVocabularyPool.useQuery(

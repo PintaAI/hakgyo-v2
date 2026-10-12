@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { AutosaveStatus } from "~/lib/autosave-registry";
+import { onPageHidden } from "~/lib/page-hidden";
 
 type PendingValue<T> = { value: T } | null;
 
@@ -91,22 +92,13 @@ export function useDebouncedAutosave<T>(
     [clearTimer, delay, flush, maxWait],
   );
 
-  // Save before the tab goes to the background or closes, so the longer delay
-  // cannot lose edits (phones rarely fire beforeunload).
-  useEffect(() => {
-    const saveNow = () => {
-      if (pendingRef.current) void flush().catch(() => undefined);
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") saveNow();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("pagehide", saveNow);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("pagehide", saveNow);
-    };
-  }, [flush]);
+  useEffect(
+    () =>
+      onPageHidden(() => {
+        if (pendingRef.current) void flush().catch(() => undefined);
+      }),
+    [flush],
+  );
 
   const cancel = useCallback(() => {
     clearTimer();

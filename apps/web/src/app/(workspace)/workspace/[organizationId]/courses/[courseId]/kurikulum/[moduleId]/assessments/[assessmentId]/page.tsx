@@ -17,7 +17,7 @@ export default async function Page({
   const { organizationId, organizationSlug, attachTo, moduleHref } =
     await requireCurriculumModule(resolvedParams);
   const { assessmentId } = resolvedParams;
-  void api.assessment.get.prefetch({ assessmentId });
+  await api.assessment.get.prefetch({ assessmentId });
 
   return (
     <HydrateClient>

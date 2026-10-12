@@ -10,6 +10,7 @@ import {
   SearchIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { LocalDateTime } from "~/components/local-date-time";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { EmptyState } from "~/components/ui/empty-state";
@@ -203,12 +204,18 @@ function AttemptDetail({
         </p>
         <p className="text-muted-foreground text-xs">
           Percobaan #{attempt.attemptNumber}
-          {attempt.submittedAt
-            ? ` · Dikirim ${date.format(attempt.submittedAt)}`
-            : ""}
-          {attempt.gradedAt
-            ? ` · Dinilai ${date.format(attempt.gradedAt)}`
-            : ""}
+          {attempt.submittedAt ? (
+            <>
+              {" · Dikirim "}
+              <LocalDateTime value={attempt.submittedAt} format={date} />
+            </>
+          ) : null}
+          {attempt.gradedAt ? (
+            <>
+              {" · Dinilai "}
+              <LocalDateTime value={attempt.gradedAt} format={date} />
+            </>
+          ) : null}
         </p>
         {attempt.status === "GRADED" && attempt.score !== null ? (
           <p className="text-lg font-semibold">
@@ -404,8 +411,10 @@ export function ReviewQueue({
     limit: 20,
   };
   const query = api.assessment.listAttempts.useQuery(input, {
-    // New submissions trickle in; refocusing the tab also refetches.
+    // New submissions trickle in. Stale after a minute so refocusing the tab
+    // also refetches.
     refetchInterval: 2 * 60_000,
+    staleTime: 60_000,
   });
   const filters = api.assessment.getRegisterFilters.useQuery(
     { organizationId },
@@ -613,7 +622,10 @@ export function ReviewQueue({
                         {attempt.user.name}
                       </span>
                       <span className="text-muted-foreground shrink-0 text-xs">
-                        {date.format(attempt.submittedAt ?? attempt.startedAt)}
+                        <LocalDateTime
+                          value={attempt.submittedAt ?? attempt.startedAt}
+                          format={date}
+                        />
                       </span>
                     </span>
                     <span className="mt-0.5 block truncate text-sm">
@@ -704,7 +716,10 @@ export function ReviewQueue({
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground p-3 text-xs">
-                      {date.format(attempt.submittedAt ?? attempt.startedAt)}
+                      <LocalDateTime
+                        value={attempt.submittedAt ?? attempt.startedAt}
+                        format={date}
+                      />
                     </TableCell>
                     <TableCell className="p-3 text-right">
                       <Button

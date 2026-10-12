@@ -20,12 +20,6 @@ const config = {
       "../../node_modules/.bun/@img+*/**",
     ],
   },
-  experimental: {
-    // Reuse a visited page's server render for 60 seconds when navigating back
-    // to it instead of rendering it again. Mutations that call
-    // router.refresh() clear this cache.
-    staleTimes: { dynamic: 60 },
-  },
   images: {
     // Uploads get a new random key, so an optimized image never changes.
     minimumCacheTTL: 31 * 24 * 60 * 60,

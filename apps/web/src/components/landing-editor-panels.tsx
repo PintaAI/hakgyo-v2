@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 
 import Link from "~/components/link";
+import { LocalDateTime } from "~/components/local-date-time";
 import { Badge } from "~/components/ui/badge";
 import { CopyButton } from "~/components/ui/copy-button";
 import { Button } from "~/components/ui/button";
@@ -32,11 +33,14 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+export const timeFormat = new Intl.DateTimeFormat("id-ID", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+/** For labels shown only after an interaction; render text with LocalDateTime. */
 export function formatTime(value: Date) {
-  return value.toLocaleString("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return timeFormat.format(value);
 }
 
 const sectionNames: Record<string, string> = {
@@ -458,7 +462,7 @@ export function LandingRevisionsPanel({
               </div>
               {revision.summary && <p>{revision.summary}</p>}
               <p className="text-muted-foreground text-xs">
-                {formatTime(revision.createdAt)}
+                <LocalDateTime value={revision.createdAt} format={timeFormat} />
                 {revision.createdBy ? ` · ${revision.createdBy.name}` : ""}
               </p>
               {!isDraft && (

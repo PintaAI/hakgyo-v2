@@ -8,8 +8,9 @@ import { createTRPCContext } from "~/server/api/trpc";
 
 // Copying a starter kurikulum duplicates every file it uses inside R2, which
 // takes a while for PDF books with hundreds of pages. That fits in Fluid
-// compute's default 300-second limit; exporting `maxDuration` would split this
-// route into its own Vercel function with its own cold starts.
+// compute's default 300-second limit (vercel.json enables Fluid); exporting
+// `maxDuration` would split this route into its own Vercel function with its
+// own cold starts.
 
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when

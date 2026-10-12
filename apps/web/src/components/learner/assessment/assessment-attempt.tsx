@@ -25,6 +25,7 @@ import {
   nextUnansweredQuestion,
   type QuestionStatus,
 } from "~/lib/learner/question-progress";
+import { onPageHidden } from "~/lib/page-hidden";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { RichContent } from "../practice/rich-content";
@@ -328,28 +329,32 @@ export function AssessmentAttempt({
     })();
   });
 
-  // Each save is a server call: wait for a pause in answering. Submitting
-  // saves everything; hiding or closing the tab and leaving the page save at
-  // once.
+  // Each save is a server call: wait for a pause in answering, but save at
+  // least every 30 seconds while answers keep coming. Submitting saves
+  // everything; hiding or closing the tab and leaving the page save at once.
+  const firstUnsavedAt = useRef<number | null>(null);
   useEffect(() => {
-    if (isFinished || expired || !dirtyQuestionIds.current.size) return;
-    const timer = window.setTimeout(() => flushAutosave(), 3000);
+    if (isFinished || expired || !dirtyQuestionIds.current.size) {
+      firstUnsavedAt.current = null;
+      return;
+    }
+    firstUnsavedAt.current ??= Date.now();
+    const wait = Math.min(3000, firstUnsavedAt.current + 30_000 - Date.now());
+    const timer = window.setTimeout(
+      () => {
+        firstUnsavedAt.current = null;
+        flushAutosave();
+      },
+      Math.max(0, wait),
+    );
     return () => window.clearTimeout(timer);
   }, [answers, isFinished, expired]);
 
   useEffect(() => {
-    const saveNow = () => {
-      if (dirtyQuestionIds.current.size) flushAutosave();
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") saveNow();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("pagehide", saveNow);
+    const unsubscribe = onPageHidden(() => flushAutosave());
     return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("pagehide", saveNow);
-      saveNow();
+      unsubscribe();
+      flushAutosave();
     };
   }, []);
 

@@ -48,6 +48,21 @@ export default tseslint.config(
     rules: { "no-restricted-imports": "off" },
   },
   {
+    // Server pages and layouts prefetch for HydrateClient.
+    files: ["src/app/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "UnaryExpression[operator='void'] CallExpression[callee.property.name=/^prefetch(Infinite)?$/]",
+          message:
+            "Await server prefetches. A query still pending when HydrateClient renders shows a skeleton on the server and data in the browser, which breaks hydration.",
+        },
+      ],
+    },
+  },
+  {
     linterOptions: {
       reportUnusedDisableDirectives: true,
     },

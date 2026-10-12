@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import {
-  formatTime,
+  timeFormat,
   LandingAiPanel,
   LandingCopyPanel,
   LandingImagesPanel,
@@ -25,6 +25,7 @@ import {
   type LandingRevision,
 } from "~/components/landing-editor-panels";
 import Link from "~/components/link";
+import { LocalDateTime } from "~/components/local-date-time";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -417,7 +418,11 @@ function LandingEditor({
             <div className="bg-primary text-primary-foreground flex w-full flex-wrap items-center gap-2 px-3 py-2 text-sm md:rounded-lg">
               <EyeIcon className="size-4 shrink-0" />
               <p className="min-w-0 flex-1">
-                Melihat revisi {formatTime(previewRevision.createdAt)}
+                Melihat revisi{" "}
+                <LocalDateTime
+                  value={previewRevision.createdAt}
+                  format={timeFormat}
+                />
                 {previewRevision.summary && (
                   <span className="hidden opacity-80 sm:inline">
                     {" "}
@@ -478,9 +483,23 @@ function LandingEditor({
         >
           <TabsContent value="copy" className="grid gap-4">
             <p className="text-muted-foreground text-sm">
-              {draft.isStarterTemplate
-                ? "Ini template awal. Desain ulang dengan AI, atau klik teks di pratinjau untuk mengeditnya."
-                : `Klik teks di pratinjau untuk mengeditnya langsung. Draft terakhir diubah ${draft.updatedAt ? formatTime(draft.updatedAt) : "-"}.`}
+              {draft.isStarterTemplate ? (
+                "Ini template awal. Desain ulang dengan AI, atau klik teks di pratinjau untuk mengeditnya."
+              ) : (
+                <>
+                  Klik teks di pratinjau untuk mengeditnya langsung. Draft
+                  terakhir diubah{" "}
+                  {draft.updatedAt ? (
+                    <LocalDateTime
+                      value={draft.updatedAt}
+                      format={timeFormat}
+                    />
+                  ) : (
+                    "-"
+                  )}
+                  .
+                </>
+              )}
             </p>
             <LandingCopyPanel
               fields={draft.fields}

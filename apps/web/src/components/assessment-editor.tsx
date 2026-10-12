@@ -1691,7 +1691,10 @@ function AssessmentEditorForm({
                     disabled={isDeleting}
                     onClick={() => {
                       cancelSettingsSave();
-                      void flushSettingsSave()
+                      // Save pending question and option edits first; once the
+                      // assessment is gone their unmount saves would fail.
+                      void autosaveRegistry
+                        .flushAll()
                         .then(onDelete)
                         .catch(() => undefined);
                     }}

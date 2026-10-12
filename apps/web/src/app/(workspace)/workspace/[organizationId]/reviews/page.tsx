@@ -14,14 +14,17 @@ export default async function Page({
     organizationRoles,
   );
   const organizationId = membership.organizationId;
-  // Must match the client's initial query input exactly (see ReviewQueue) to hydrate.
-  void api.assessment.listAttempts.prefetch({
-    organizationId,
-    status: "IN_REVIEW",
-    page: 1,
-    limit: 20,
-  });
-  void api.assessment.getRegisterFilters.prefetch({ organizationId });
+  // Must match the client's initial query input exactly (see ReviewQueue) to
+  // hydrate. Awaited so the server HTML matches the browser's first render.
+  await Promise.all([
+    api.assessment.listAttempts.prefetch({
+      organizationId,
+      status: "IN_REVIEW",
+      page: 1,
+      limit: 20,
+    }),
+    api.assessment.getRegisterFilters.prefetch({ organizationId }),
+  ]);
 
   return (
     <HydrateClient>
