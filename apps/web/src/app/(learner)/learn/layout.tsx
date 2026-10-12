@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { AppPreferencesBootstrap } from "~/components/app-preferences-bootstrap";
 import { LearnerBreadcrumb } from "~/components/learner-breadcrumb";
 import { LearnerSidebar } from "~/components/learner-sidebar";
 import { NotificationBell } from "~/components/notifications/notification-bell";
@@ -27,6 +28,7 @@ export default async function LearnerLayout({
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
+      <AppPreferencesBootstrap />
       <LearnerSidebar courses={courses} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear">

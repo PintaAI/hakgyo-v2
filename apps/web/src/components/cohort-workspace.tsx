@@ -1488,6 +1488,7 @@ function Meetings({
                         Edit
                       </Button>
                       <Button
+                        aria-label={`Hapus meeting ${meeting.title}`}
                         size="icon-sm"
                         variant="ghost"
                         onClick={() => deleteMeeting(meeting)}

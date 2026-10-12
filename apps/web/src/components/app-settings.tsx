@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import {
   BellIcon,
   CheckIcon,
@@ -74,6 +74,8 @@ const fontLabels = {
 };
 
 const STORAGE_KEY = "hakgyo-app-settings-v2";
+/** Device appearance runtime replayed by AppPreferencesBootstrap before first paint. */
+export const APP_PREFERENCES_RUNTIME_KEY = "hakgyo-app-settings-runtime-v1";
 
 type Preferences = {
   secondary: string | null;
@@ -286,6 +288,75 @@ function readPreferences(): Preferences {
   return defaultPreferences;
 }
 
+// Shared device preferences. AppPreferencesSync applies them on every page,
+// while AppSettings may stay unmounted (the phone sidebar is a closed sheet).
+let storedPreferences: Preferences | null = null;
+const preferenceListeners = new Set<() => void>();
+
+function getPreferences() {
+  return (storedPreferences ??= readPreferences());
+}
+
+function getServerPreferences() {
+  return defaultPreferences;
+}
+
+function subscribePreferences(listener: () => void) {
+  preferenceListeners.add(listener);
+  return () => preferenceListeners.delete(listener);
+}
+
+function setPreferences(update: (current: Preferences) => Preferences) {
+  storedPreferences = update(getPreferences());
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(storedPreferences));
+  for (const listener of preferenceListeners) listener();
+}
+
+function usePreferences() {
+  return useSyncExternalStore(
+    subscribePreferences,
+    getPreferences,
+    getServerPreferences,
+  );
+}
+
+/** Applies device appearance preferences; mounted by AppPreferencesBootstrap. */
+export function AppPreferencesSync() {
+  const organizationTheme = useOrganizationTheme();
+  const preferences = usePreferences();
+
+  useEffect(() => {
+    // Hydration renders the server snapshot first; wait for stored values.
+    if (preferences !== getPreferences()) return;
+    const root = document.documentElement;
+    // Same runtime the server bootstrap uses, so per-device overrides and
+    // generated org surfaces stay in sync instead of clobbering each other.
+    const runtime = createOrganizationThemeRuntime(
+      createPreferenceTheme(
+        resolvePreferences(preferences, organizationTheme),
+        organizationTheme,
+      ),
+    );
+    Object.assign(root.dataset, runtime.dataset);
+    for (const [property, value] of Object.entries(runtime.properties)) {
+      root.style.setProperty(property, value);
+    }
+    // AppPreferencesBootstrap replays this before first paint. Store the
+    // device runtime without organization colors; org pages layer their own.
+    const deviceRuntime = organizationTheme
+      ? createOrganizationThemeRuntime(
+          createPreferenceTheme(resolvePreferences(preferences, null), null),
+        )
+      : runtime;
+    localStorage.setItem(
+      APP_PREFERENCES_RUNTIME_KEY,
+      JSON.stringify(deviceRuntime),
+    );
+  }, [organizationTheme, preferences]);
+
+  return null;
+}
+
 function ChoiceButton({
   active,
   children,
@@ -319,7 +390,7 @@ function ChoiceButton({
 export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
   const { resolvedTheme, setTheme, theme } = useTheme();
   const organizationTheme = useOrganizationTheme();
-  const [preferences, setPreferences] = useState<Preferences>(readPreferences);
+  const preferences = usePreferences();
   const effectivePreferences = useMemo(
     () => resolvePreferences(preferences, organizationTheme),
     [organizationTheme, preferences],
@@ -345,18 +416,6 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
     };
   }, [preferenceTheme]);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    // Same runtime the server bootstrap uses, so per-device overrides and
-    // generated org surfaces stay in sync instead of clobbering each other.
-    const runtime = createOrganizationThemeRuntime(preferenceTheme);
-    Object.assign(root.dataset, runtime.dataset);
-    for (const [property, value] of Object.entries(runtime.properties)) {
-      root.style.setProperty(property, value);
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
-  }, [preferenceTheme, preferences]);
-
   function updatePreference<Key extends keyof Preferences>(
     key: Key,
     value: Preferences[Key],
@@ -365,7 +424,7 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
   }
 
   function resetPreferences() {
-    setPreferences(defaultPreferences);
+    setPreferences(() => defaultPreferences);
     setTheme("system");
   }
 
