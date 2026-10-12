@@ -354,7 +354,8 @@ function AttemptDetail({
         </p>
       ) : null}
       {canReview ? (
-        <div className="bg-background sticky bottom-0 flex justify-end border-t py-4">
+        // Phones stick above WorkspaceBottomNav (h-16 plus the safe area).
+        <div className="bg-background sticky bottom-0 z-10 flex justify-end border-t py-4 max-md:bottom-[calc(4rem+env(safe-area-inset-bottom))]">
           <Button type="submit" disabled={review.isPending}>
             {review.isPending ? (
               <LoaderCircleIcon className="animate-spin" />
