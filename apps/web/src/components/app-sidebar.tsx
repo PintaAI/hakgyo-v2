@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ComponentProps, type ComponentType } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpenIcon,
@@ -20,6 +19,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 
+import Link from "~/components/link";
 import {
   Collapsible,
   CollapsibleContent,

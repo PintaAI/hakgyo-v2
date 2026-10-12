@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRightIcon,
@@ -20,6 +19,7 @@ import { toast } from "sonner";
 import { CourseCover } from "~/components/course-cover";
 import { FlowShell, surfaceCard } from "~/components/brand/flow-shell";
 import { Headline, Kicker, leadText } from "~/components/brand/typography";
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { appHandoffPath } from "~/lib/mobile-app";

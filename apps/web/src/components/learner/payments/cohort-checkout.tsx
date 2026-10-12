@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRightIcon,
@@ -15,6 +14,7 @@ import {
 import { toast } from "sonner";
 
 import { CourseCover } from "~/components/course-cover";
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";

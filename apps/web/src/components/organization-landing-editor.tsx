@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
   ArrowLeftIcon,
   ExternalLinkIcon,
@@ -25,6 +24,7 @@ import {
   LandingRevisionsPanel,
   type LandingRevision,
 } from "~/components/landing-editor-panels";
+import Link from "~/components/link";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -36,8 +36,10 @@ import { api, type RouterOutputs } from "~/trpc/react";
 
 type LandingDraft = RouterOutputs["organizationLanding"]["get"];
 
-// Short enough that MCP edits feel live, long enough to stay cheap.
-const STATUS_POLL_MS = 3_000;
+// MCP edits usually happen in another window, and returning to this tab
+// refetches at once (the status query is never fresh), so polling only covers
+// side-by-side windows.
+const STATUS_POLL_MS = 15_000;
 
 // Messages from the preview's editing bridge (editor-bridge.ts). The frame
 // also runs AI-authored scripts, so every message is validated as untrusted.
@@ -99,7 +101,7 @@ function LandingEditor({
   const frame = useRef<HTMLIFrameElement>(null);
   const status = api.organizationLanding.status.useQuery(
     { organizationId },
-    { refetchInterval: STATUS_POLL_MS },
+    { refetchInterval: STATUS_POLL_MS, staleTime: 0 },
   );
   const dirty = Object.keys(edits).length > 0;
   const remoteChanged =

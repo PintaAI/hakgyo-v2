@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { AlertTriangleIcon, RefreshCwIcon } from "lucide-react";
 
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 
 export default function LearningError({ reset }: { reset: () => void }) {

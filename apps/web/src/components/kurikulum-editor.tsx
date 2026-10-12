@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { formatPdfPageRange, type PdfPageRange } from "@hakgyo/shared";
-import Link from "next/link";
 import {
   DndContext,
   KeyboardSensor,
@@ -40,6 +39,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import Link from "~/components/link";
 import {
   AlertDialog,
   AlertDialogAction,

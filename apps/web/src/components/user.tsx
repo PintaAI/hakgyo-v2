@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Building2Icon,
@@ -16,6 +15,7 @@ import { toast } from "sonner";
 
 import { AccountSettings } from "~/components/account-settings";
 import { AppSettings } from "~/components/app-settings";
+import Link from "~/components/link";
 import { getWebDeviceId } from "~/components/notifications/use-push";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";

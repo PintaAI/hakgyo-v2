@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import {
   EyeIcon,
   ImagePlusIcon,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import Link from "~/components/link";
 import { Badge } from "~/components/ui/badge";
 import { CopyButton } from "~/components/ui/copy-button";
 import { Button } from "~/components/ui/button";

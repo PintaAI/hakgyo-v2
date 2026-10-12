@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
 import {
   LanguagesIcon,
@@ -10,6 +9,7 @@ import {
   SearchIcon,
 } from "lucide-react";
 
+import Link from "~/components/link";
 import { PageHeader } from "~/components/ui/page-header";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
 import {
   CalendarIcon,
   ChevronRightIcon,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { CourseCover } from "~/components/course-cover";
+import Link from "~/components/link";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
   assessmentAttemptPresentation,

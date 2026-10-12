@@ -100,6 +100,10 @@ export function AccountSettings({
 }) {
   const router = useRouter();
   const { data: session, refetch: refetchSession } = authClient.useSession();
+  // Profile updates go through tRPC, so skip the session cookie cache to read
+  // the new name and photo and re-issue the cache with them.
+  const refreshSession = () =>
+    refetchSession({ query: { disableCookieCache: true } });
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -158,7 +162,7 @@ export function AccountSettings({
     setPendingAction("profile");
     try {
       await updateProfile.mutateAsync({ name: trimmedName });
-      await Promise.all([refetchSession(), utils.account.me.invalidate()]);
+      await Promise.all([refreshSession(), utils.account.me.invalidate()]);
       toast.success("Profil diperbarui.");
     } catch (error) {
       toast.error(errorMessage(error));
@@ -198,7 +202,7 @@ export function AccountSettings({
 
       await confirmImageUpload.mutateAsync({ key: upload.key });
       uploadedKey = null;
-      await Promise.all([refetchSession(), utils.account.me.invalidate()]);
+      await Promise.all([refreshSession(), utils.account.me.invalidate()]);
       toast.success("Foto profil diperbarui.");
     } catch (error) {
       if (uploadedKey) {
@@ -218,7 +222,7 @@ export function AccountSettings({
     setPendingAction("remove-profile-image");
     try {
       await deleteProfileImage.mutateAsync();
-      await Promise.all([refetchSession(), utils.account.me.invalidate()]);
+      await Promise.all([refreshSession(), utils.account.me.invalidate()]);
       toast.success("Foto profil dihapus.");
     } catch (error) {
       toast.error(errorMessage(error));

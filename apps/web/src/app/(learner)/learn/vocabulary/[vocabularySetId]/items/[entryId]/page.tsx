@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EntryImage } from "~/components/learner/learn/entry-image";
 import { VocabularyAudioButton } from "~/components/learner/learn/vocabulary-audio-button";
+import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/server";

@@ -2,7 +2,6 @@
 
 import { useDeferredValue, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   ArrowUpRightIcon,
   BookOpenIcon,
@@ -14,6 +13,7 @@ import {
   UserRoundIcon,
 } from "lucide-react";
 
+import Link from "~/components/link";
 import { PageHeader } from "~/components/ui/page-header";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";

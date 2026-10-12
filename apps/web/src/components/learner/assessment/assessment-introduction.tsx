@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { resolveAssessmentEntry } from "@hakgyo/shared";
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { assessmentAttemptPresentation } from "~/lib/learner/assessment-state";
 import { cn } from "~/lib/utils";

@@ -26,6 +26,12 @@ export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
+  session: {
+    // Every page render and API call reads the session. The signed cookie
+    // cache answers those without a database query for 5 minutes, so a revoked
+    // session or a suspension can take up to that long to apply.
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
+  },
   databaseHooks: {
     user: {
       create: {

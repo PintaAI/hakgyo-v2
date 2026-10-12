@@ -1,7 +1,6 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookMarkedIcon,
@@ -14,6 +13,7 @@ import {
 
 import { CourseCover } from "~/components/course-cover";
 import { BrandMark } from "~/components/brand/brand-link";
+import Link from "~/components/link";
 import { User } from "~/components/user";
 import {
   Sidebar,

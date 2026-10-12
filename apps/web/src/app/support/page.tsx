@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { supportEmail } from "@hakgyo/shared";
 
 import {
@@ -8,6 +7,7 @@ import {
   LegalPage,
   LegalSection as Section,
 } from "~/components/legal-page";
+import Link from "~/components/link";
 
 const title = "Bantuan";
 const description =

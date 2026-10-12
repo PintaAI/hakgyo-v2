@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 import { assessmentContentAssetIds } from "@hakgyo/shared";
 
+import Link from "~/components/link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +48,10 @@ type Answer = {
   optionIds: string[];
 };
 
+// Results wait on a teacher review or on the event closing, which can take
+// hours, so waiting for one polls slowly.
+const AWAITING_REVIEW_POLL_MS = 60_000;
+
 function formatRemaining(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
@@ -74,7 +78,7 @@ export function AssessmentAttempt({
       refetchInterval: (query) =>
         query.state.data?.status === "IN_REVIEW" ||
         query.state.data?.status === "SUBMITTED"
-          ? 15_000
+          ? AWAITING_REVIEW_POLL_MS
           : false,
     },
   );
@@ -91,7 +95,7 @@ export function AssessmentAttempt({
         (attempt.status === "GRADED" &&
           query.state.data?.event?.type === "QUICK_ASSESSMENT" &&
           query.state.data.event.status === "OPEN")
-          ? 15_000
+          ? AWAITING_REVIEW_POLL_MS
           : false,
     },
   );

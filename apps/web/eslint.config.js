@@ -29,7 +29,23 @@ export default tseslint.config(
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "next/link",
+              message:
+                "Import Link from ~/components/link, which prefetches on intent instead of on scroll.",
+            },
+          ],
+        },
+      ],
     },
+  },
+  {
+    files: ["src/components/link.tsx"],
+    rules: { "no-restricted-imports": "off" },
   },
   {
     linterOptions: {

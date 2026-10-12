@@ -404,7 +404,8 @@ export function ReviewQueue({
     limit: 20,
   };
   const query = api.assessment.listAttempts.useQuery(input, {
-    refetchInterval: 30_000,
+    // New submissions trickle in; refocusing the tab also refetches.
+    refetchInterval: 2 * 60_000,
   });
   const filters = api.assessment.getRegisterFilters.useQuery(
     { organizationId },

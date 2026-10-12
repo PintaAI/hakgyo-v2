@@ -1,6 +1,5 @@
 import { cache } from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 import {
@@ -15,6 +14,7 @@ import {
 
 import { CourseCover } from "~/components/course-cover";
 import { CatalogEnrollmentButton } from "~/components/catalog-enrollment-button";
+import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { getSession } from "~/server/better-auth/server";
 import { api } from "~/trpc/server";

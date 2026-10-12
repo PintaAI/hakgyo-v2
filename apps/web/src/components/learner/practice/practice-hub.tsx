@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2Icon,
@@ -12,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import Link from "~/components/link";
 import { Skeleton } from "~/components/ui/skeleton";
 import { isStaleClosedOnDemandAssessment } from "~/lib/learner/assessment-state";
 import { assessmentEventHref, learningItemHref } from "~/lib/learner/hrefs";
