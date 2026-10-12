@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
-import sharp from "sharp";
 
+import { hasImageSignature } from "~/lib/image-signature";
 import {
   DEFAULT_ORGANIZATION_THEME,
   parseOrganizationTheme,
@@ -65,7 +65,10 @@ async function loadFonts(text: string): Promise<FontOption[]> {
 
 const logoCache = new Map<string, Promise<string | null>>();
 
-/** The organization logo as a PNG data URL (Satori cannot draw WebP), or null. */
+// Formats Satori can draw. New logos are uploaded as PNG; older WebP logos fall back to the initial.
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/gif"] as const;
+
+/** The organization logo as a data URL Satori can draw, or null. */
 function loadLogo(url: string | null) {
   if (!url) return Promise.resolve(null);
   let logo = logoCache.get(url);
@@ -73,12 +76,11 @@ function loadLogo(url: string | null) {
     logo = fetch(url)
       .then(async (response) => {
         if (!response.ok) return null;
-        const png = await sharp(Buffer.from(await response.arrayBuffer()))
-          .resize(256, 256, { fit: "contain", background: "#ffffff" })
-          .flatten({ background: "#ffffff" })
-          .png()
-          .toBuffer();
-        return `data:image/png;base64,${png.toString("base64")}`;
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const type = LOGO_TYPES.find((type) => hasImageSignature(bytes, type));
+        return type
+          ? `data:${type};base64,${Buffer.from(bytes).toString("base64")}`
+          : null;
       })
       .catch(() => null);
     if (logoCache.size > 200) logoCache.clear();
@@ -160,7 +162,11 @@ function Brand({
           src={logo}
           width={size}
           height={size}
-          style={{ borderRadius: size * 0.26, background: "white" }}
+          style={{
+            borderRadius: size * 0.26,
+            background: "white",
+            objectFit: "contain",
+          }}
           alt=""
         />
       ) : (

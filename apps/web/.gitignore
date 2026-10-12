@@ -13,6 +13,9 @@
 /prisma/db.sqlite-journal
 db.sqlite
 
+# pdf.js assets copied by scripts/copy-pdfjs-assets.mjs
+/public/pdfjs/
+
 # next.js
 /.next/
 /out/

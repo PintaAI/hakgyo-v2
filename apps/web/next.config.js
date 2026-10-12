@@ -10,13 +10,14 @@ import { withSerwist } from "@serwist/turbopack";
 const config = {
   allowedDevOrigins: ["jennie-linux.tail2268a1.ts.net"],
   poweredByHeader: false,
-  outputFileTracingIncludes: {
-    "/pdfjs/*": [
-      "./node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
-      "./node_modules/pdfjs-dist/cmaps/**/*",
-      "./node_modules/pdfjs-dist/standard_fonts/**/*",
-      "./node_modules/pdfjs-dist/wasm/**/*",
-      "./node_modules/pdfjs-dist/iccs/**/*",
+  outputFileTracingExcludes: {
+    // `next/og` uses sharp when it can import it (sharp is an optional
+    // dependency of next) and otherwise falls back to its bundled resvg WASM.
+    // Sharp's native binaries would add about 35 MB to each function that
+    // renders images.
+    "/**": [
+      "../../node_modules/.bun/sharp@*/**",
+      "../../node_modules/.bun/@img+*/**",
     ],
   },
   images: {
@@ -35,6 +36,11 @@ const config = {
         // this with `scope: "/"`.
         source: "/serwist/sw.js",
         headers: [{ key: "Service-Worker-Allowed", value: "/" }],
+      },
+      {
+        // pdf.js assets copied into public/ by scripts/copy-pdfjs-assets.mjs.
+        source: "/pdfjs/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400" }],
       },
       {
         source: "/(.*)",
