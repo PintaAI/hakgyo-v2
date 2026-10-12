@@ -1,10 +1,9 @@
 import "server-only";
 
-import { openai } from "@ai-sdk/openai";
-import { generateText, Output } from "ai";
 import { z } from "zod";
 
 import { env } from "~/env";
+import { loadAiSdk } from "~/server/ai/sdk";
 
 const maxExtractedVocabularyEntries = 200;
 
@@ -34,6 +33,7 @@ export async function extractVocabularyFromImage(input: {
     throw new Error("OPENAI_API_KEY_MISSING");
   }
 
+  const { generateText, Output, openai } = await loadAiSdk();
   const { output } = await generateText({
     model: openai("gpt-5.4-mini"),
     output: Output.object({

@@ -1,6 +1,6 @@
 import type { NotifyPayload } from "~/server/notifications/types";
-import { Expo, type ExpoPushMessage } from "expo-server-sdk";
-import webpush from "web-push";
+import type { Expo, ExpoPushMessage } from "expo-server-sdk";
+import type * as WebPush from "web-push";
 
 import { env } from "~/env";
 
@@ -18,27 +18,39 @@ export type SendOutcome =
   | { status: "gone"; reason: string }
   | { status: "failed"; reason: string };
 
-let vapidConfigured = false;
+// The push SDKs load on the first send instead of in the cold start of every
+// function that imports this module (about 190 ms together).
+let webPush: Promise<typeof WebPush> | undefined;
 
-function ensureVapid() {
-  if (vapidConfigured) return true;
+/** web-push with VAPID details set, or null when the keys are missing. */
+async function getWebPush() {
   const publicKey = env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = env.VAPID_PRIVATE_KEY;
-  if (!publicKey || !privateKey) return false;
-  webpush.setVapidDetails(
-    `mailto:${env.VAPID_CONTACT_EMAIL ?? "owner@hakgyo.test"}`,
-    publicKey,
-    privateKey,
-  );
-  vapidConfigured = true;
-  return true;
+  if (!publicKey || !privateKey) return null;
+  webPush ??= import("web-push").then((module) => {
+    module.setVapidDetails(
+      `mailto:${env.VAPID_CONTACT_EMAIL ?? "owner@hakgyo.test"}`,
+      publicKey,
+      privateKey,
+    );
+    return module;
+  });
+  return webPush;
 }
 
-// With "enhanced push security" enabled in EAS, Expo rejects sends without
-// this token.
-export const expo = new Expo(
-  env.EXPO_ACCESS_TOKEN ? { accessToken: env.EXPO_ACCESS_TOKEN } : {},
-);
+let expoClient: Promise<Expo> | undefined;
+
+export function getExpo() {
+  // With "enhanced push security" enabled in EAS, Expo rejects sends without
+  // this token.
+  expoClient ??= import("expo-server-sdk").then(
+    ({ Expo }) =>
+      new Expo(
+        env.EXPO_ACCESS_TOKEN ? { accessToken: env.EXPO_ACCESS_TOKEN } : {},
+      ),
+  );
+  return expoClient;
+}
 
 /** Android channel created by the mobile app (`DEFAULT_CHANNEL_ID`). */
 const EXPO_CHANNEL_ID = "default";
@@ -50,7 +62,8 @@ export async function sendWebPush(
   if (!target.endpoint || !target.p256dh || !target.auth) {
     return { status: "failed", reason: "missing subscription keys" };
   }
-  if (!ensureVapid()) {
+  const webpush = await getWebPush();
+  if (!webpush) {
     return { status: "failed", reason: "VAPID keys not configured" };
   }
   try {
@@ -103,6 +116,8 @@ export async function sendExpoPushes(
     reason: "not sent",
   }));
   const indexed: Array<{ index: number; message: ExpoPushMessage }> = [];
+  const expo = await getExpo();
+  const { Expo } = await import("expo-server-sdk");
   sends.forEach(({ target, payload }, index) => {
     if (!target.expoPushToken) {
       outcomes[index] = { status: "failed", reason: "missing Expo push token" };
