@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { RefreshCwIcon } from "lucide-react";
 
 import { Headline, Kicker, leadText } from "~/components/brand/typography";
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 

@@ -5,9 +5,12 @@ import { runAssessmentEventLifecycle } from "~/server/assessment/event-lifecycle
 import { db } from "~/server/db";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// Runs under Fluid compute's default 300-second limit (vercel.json enables
+// Fluid). Exporting `maxDuration` would split this route into its own Vercel
+// function with its own cold starts, instead of sharing one with the other
+// route handlers.
 
-/** Grading stops here so the response fits in `maxDuration`. */
+/** Grading stops here so the response fits in the 300-second limit. */
 const GRADING_BUDGET_MS = 200_000;
 
 function isAuthorized(request: Request) {

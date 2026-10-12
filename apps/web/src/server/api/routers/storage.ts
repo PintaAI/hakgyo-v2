@@ -49,7 +49,7 @@ import {
   deleteObject,
   headUploadedObject,
   removeObject,
-  SIGNED_URL_TTL_SECONDS,
+  ASSET_DOWNLOAD_URL_TTL_SECONDS,
   signDownloadUrl,
   validateImageObject,
 } from "~/server/storage/objects";
@@ -304,8 +304,12 @@ async function signDownload(
   disposition: "attachment" | "inline",
 ) {
   return {
-    downloadUrl: await signDownloadUrl(asset.objectKey, disposition),
-    expiresIn: SIGNED_URL_TTL_SECONDS,
+    downloadUrl: await signDownloadUrl(
+      asset.objectKey,
+      disposition,
+      ASSET_DOWNLOAD_URL_TTL_SECONDS,
+    ),
+    expiresIn: ASSET_DOWNLOAD_URL_TTL_SECONDS,
     fileName: asset.fileName,
     contentType: asset.contentType,
     size: asset.size,

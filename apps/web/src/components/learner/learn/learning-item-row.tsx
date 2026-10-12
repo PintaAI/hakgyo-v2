@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -9,6 +8,7 @@ import {
   SquareCheckBigIcon,
 } from "lucide-react";
 
+import Link from "~/components/link";
 import {
   getLearningItemTypeMeta,
   type LearningItemType,

@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 import { assessmentContentAssetIds } from "@hakgyo/shared";
 
+import Link from "~/components/link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ import {
   nextUnansweredQuestion,
   type QuestionStatus,
 } from "~/lib/learner/question-progress";
+import { onPageHidden } from "~/lib/page-hidden";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { RichContent } from "../practice/rich-content";
@@ -47,6 +48,10 @@ type Answer = {
   content?: string;
   optionIds: string[];
 };
+
+// Results wait on a teacher review or on the event closing, which can take
+// hours, so waiting for one polls slowly.
+const AWAITING_REVIEW_POLL_MS = 60_000;
 
 function formatRemaining(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -74,7 +79,7 @@ export function AssessmentAttempt({
       refetchInterval: (query) =>
         query.state.data?.status === "IN_REVIEW" ||
         query.state.data?.status === "SUBMITTED"
-          ? 15_000
+          ? AWAITING_REVIEW_POLL_MS
           : false,
     },
   );
@@ -91,7 +96,7 @@ export function AssessmentAttempt({
         (attempt.status === "GRADED" &&
           query.state.data?.event?.type === "QUICK_ASSESSMENT" &&
           query.state.data.event.status === "OPEN")
-          ? 15_000
+          ? AWAITING_REVIEW_POLL_MS
           : false,
     },
   );
@@ -324,11 +329,34 @@ export function AssessmentAttempt({
     })();
   });
 
+  // Each save is a server call: wait for a pause in answering, but save at
+  // least every 30 seconds while answers keep coming. Submitting saves
+  // everything; hiding or closing the tab and leaving the page save at once.
+  const firstUnsavedAt = useRef<number | null>(null);
   useEffect(() => {
-    if (isFinished || expired || !dirtyQuestionIds.current.size) return;
-    const timer = window.setTimeout(() => flushAutosave(), 800);
+    if (isFinished || expired || !dirtyQuestionIds.current.size) {
+      firstUnsavedAt.current = null;
+      return;
+    }
+    firstUnsavedAt.current ??= Date.now();
+    const wait = Math.min(3000, firstUnsavedAt.current + 30_000 - Date.now());
+    const timer = window.setTimeout(
+      () => {
+        firstUnsavedAt.current = null;
+        flushAutosave();
+      },
+      Math.max(0, wait),
+    );
     return () => window.clearTimeout(timer);
   }, [answers, isFinished, expired]);
+
+  useEffect(() => {
+    const unsubscribe = onPageHidden(() => flushAutosave());
+    return () => {
+      unsubscribe();
+      flushAutosave();
+    };
+  }, []);
 
   // A new question starts at its top, like the app's scroll reset.
   const firstQuestion = useRef(true);

@@ -10,7 +10,7 @@ export default async function Page({
 }) {
   const { organizationId: organizationSlug } = await params;
   await requireOrganizationMembershipBySlug(organizationSlug);
-  void api.account.listMcpAuthorizations.prefetch();
+  await api.account.listMcpAuthorizations.prefetch();
 
   return (
     <HydrateClient>

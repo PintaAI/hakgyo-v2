@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { OrganizationThemeBootstrap } from "~/components/organization-theme-bootstrap";
 import { parseOrganizationTheme } from "~/lib/organization-theme";

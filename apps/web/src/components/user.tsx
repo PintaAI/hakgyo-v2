@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Building2Icon,
@@ -16,6 +15,7 @@ import { toast } from "sonner";
 
 import { AccountSettings } from "~/components/account-settings";
 import { AppSettings } from "~/components/app-settings";
+import Link from "~/components/link";
 import { getWebDeviceId } from "~/components/notifications/use-push";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
@@ -54,12 +54,17 @@ function formatRole(role: string) {
     .join(" ");
 }
 
+type AuthenticatedUser = Pick<Session["user"], "name" | "email" | "image">;
+
 export type UserProps = {
   role?: OrganizationRole;
   variant?: "header" | "sidebar";
+  /**
+   * The signed-in user, when a server layout already has the session. Without
+   * it the menu loads the session in the browser (an extra request).
+   */
+  user?: AuthenticatedUser;
 };
-
-type AuthenticatedUser = Session["user"];
 
 function UserDetails({
   user,
@@ -161,14 +166,17 @@ function SidebarUserMenu({
   );
 }
 
-export function User({ role, variant = "header" }: UserProps) {
+export function User({ user, ...props }: UserProps) {
+  return user ? (
+    <UserMenu user={user} {...props} />
+  ) : (
+    <SessionUser {...props} />
+  );
+}
+
+function SessionUser({ role, variant = "header" }: UserProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const disableDevice = api.notification.disableDevice.useMutation();
 
   if (isPending) {
     if (variant === "sidebar") {
@@ -225,7 +233,28 @@ export function User({ role, variant = "header" }: UserProps) {
     );
   }
 
-  const { user } = session;
+  return <UserMenu user={session.user} role={role} variant={variant} />;
+}
+
+function UserMenu({
+  user,
+  role,
+  variant = "header",
+}: UserProps & { user: AuthenticatedUser }) {
+  const router = useRouter();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  // Mounted on first open: the dialog reads the session in the browser.
+  const [isAccountMounted, setIsAccountMounted] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const disableDevice = api.notification.disableDevice.useMutation();
+  const openAccount = () => {
+    setIsAccountMounted(true);
+    setIsAccountOpen(true);
+  };
+  const accountSettings = isAccountMounted ? (
+    <AccountSettings open={isAccountOpen} onOpenChange={setIsAccountOpen} />
+  ) : null;
   const initials = getInitials(user.name || user.email);
   const signOut = async () => {
     setIsSigningOut(true);
@@ -259,11 +288,11 @@ export function User({ role, variant = "header" }: UserProps) {
           user={user}
           role={role}
           isSigningOut={isSigningOut}
-          onOpenAccount={() => setIsAccountOpen(true)}
+          onOpenAccount={openAccount}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onSignOut={signOut}
         />
-        <AccountSettings open={isAccountOpen} onOpenChange={setIsAccountOpen} />
+        {accountSettings}
         <AppSettings open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       </>
     );
@@ -318,7 +347,7 @@ export function User({ role, variant = "header" }: UserProps) {
           </div>
 
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setIsAccountOpen(true)}>
+          <DropdownMenuItem onClick={openAccount}>
             <UserRoundIcon />
             Profile & akun
           </DropdownMenuItem>
@@ -341,7 +370,7 @@ export function User({ role, variant = "header" }: UserProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <AccountSettings open={isAccountOpen} onOpenChange={setIsAccountOpen} />
+      {accountSettings}
       <AppSettings open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </>
   );

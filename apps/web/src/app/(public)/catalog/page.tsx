@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowRightIcon, BookOpenIcon } from "lucide-react";
 
 import { CourseCover } from "~/components/course-cover";
+import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { EmptyState } from "~/components/ui/empty-state";
 import { PageHeader } from "~/components/ui/page-header";

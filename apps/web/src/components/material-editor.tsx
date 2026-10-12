@@ -66,8 +66,9 @@ function getMaterialContent(value: unknown): MaterialContent {
   return blocks.length ? blocks : EMPTY_DOCUMENT;
 }
 
-// Material documents are large; batch keystrokes into fewer saves.
-const materialAutosaveDelayMs = 1500;
+// Material documents are large, and long-form writing pauses between
+// sentences; a shorter delay would save, a server call, every few seconds.
+const materialAutosaveDelayMs = 5000;
 
 function errorMessage(error: unknown) {
   if (

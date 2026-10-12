@@ -144,7 +144,7 @@ export function AssessmentEventManager({
   const input = { courseId, cohortId, page: eventPage };
   // The event list sits behind the results dialog, so only one of the two polls at a time.
   const events = api.assessmentEvent.listManageable.useQuery(input, {
-    refetchInterval: selectedEventId ? false : 30_000,
+    refetchInterval: selectedEventId ? false : 60_000,
   });
   // Query the participant search after typing pauses instead of on every keystroke.
   const [appliedParticipantSearch, setAppliedParticipantSearch] = useState("");

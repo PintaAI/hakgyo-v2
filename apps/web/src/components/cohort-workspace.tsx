@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -31,6 +30,7 @@ import {
 import { toast } from "sonner";
 
 import { CourseCover } from "~/components/course-cover";
+import Link from "~/components/link";
 import { PageHeader } from "~/components/ui/page-header";
 import { CohortInvites } from "~/components/cohort-invites";
 import {

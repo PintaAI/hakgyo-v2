@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { ChevronRightIcon, LoaderCircleIcon, PlusIcon } from "lucide-react";
 
+import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { CopyButton } from "~/components/ui/copy-button";

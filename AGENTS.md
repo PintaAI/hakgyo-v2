@@ -99,6 +99,12 @@ bun run --cwd apps/mobile typecheck
 - Use `publicProcedure` for unauthenticated procedures, `protectedProcedure` for procedures requiring an authenticated user, `superadminProcedure` for the superadmin area, and `mobileProtocolProcedure` for mobile sync procedures that gate on the sync protocol version.
 - Keep database access on the server through `src/server/db.ts`; do not import Prisma into client components.
 - Use the `~/` path alias for imports within the web app.
+- Import `Link` from `~/components/link`, not `next/link` (ESLint enforces this). It prefetches when the user hovers, focuses or touches a link instead of whenever it scrolls into view, because each prefetch of a dynamic route is a function call on Vercel.
+- Keep Vercel function calls low. Every request is billed compute.
+  - Load a page's data in its server render: `await api.x.prefetch(input)` and wrap the page in `HydrateClient`. Don't leave it to client `useQuery` calls after hydration. Await the prefetch: a pending query renders a skeleton on the server and can cause a hydration mismatch. ESLint rejects `void` prefetches under `src/app`.
+  - Vercel renders in UTC, while users are mostly in WIB. Render timestamps in server-rendered UI with `LocalDateTime` (`~/components/local-date-time`), or pass an explicit `timeZone`. Never format them with the runtime's default zone.
+  - Don't poll unless the data changes because of other people. Prefer refetching on focus or on user action.
+  - Don't export `maxDuration` (or other segment config that differs from the default) from a route without a reason. It splits the route into its own Vercel function with its own cold starts.
 - Keep links as semantic anchors. To make a Next.js `Link` or `<a>` look like a button, apply `buttonVariants` from `~/components/ui/button`; do not render links through Base UI `Button`, including with `nativeButton={false}`.
 - On phone widths, use fewer cards and use all of the available space. Let sections run edge to edge and separate them with hairline borders instead of nesting cards, then restore card surfaces from `sm` up. Follow the auth route (`src/app/auth`, `AuthPanel`): `cardSurface` with `max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none`. Keep primary actions within thumb reach (a sticky bottom bar when the page scrolls), and prefer list rows over tables. Check every UI change at 390px wide.
 - Keep authentication changes aligned across `src/server/better-auth/config.ts`, `server.ts`, `client.ts`, and the auth route.

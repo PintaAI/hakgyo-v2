@@ -14,7 +14,7 @@ export default async function Page({
   const membership =
     await requireOrganizationMembershipBySlug(organizationSlug);
   const organizationId = membership.organizationId;
-  void api.content.getVocabularySet.prefetch({
+  await api.content.getVocabularySet.prefetch({
     organizationId,
     vocabularySetId,
   });

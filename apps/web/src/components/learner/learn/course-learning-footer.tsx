@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRightIcon, LoaderCircleIcon } from "lucide-react";
 
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import {
   getLearningMilestone,

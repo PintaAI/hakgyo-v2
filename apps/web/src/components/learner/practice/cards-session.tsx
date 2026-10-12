@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { isPracticeAnswerCorrect, randomSeed } from "~/lib/learner/practice";
 import { useVocabularyAttempts } from "~/lib/learner/use-vocabulary-attempts";

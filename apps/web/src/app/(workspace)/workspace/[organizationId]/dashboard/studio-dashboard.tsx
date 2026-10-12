@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowUpRight,
   BookOpen,
@@ -8,6 +7,7 @@ import {
   Users,
 } from "lucide-react";
 import { type ReactNode } from "react";
+import Link from "~/components/link";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";

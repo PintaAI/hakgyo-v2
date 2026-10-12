@@ -12,7 +12,6 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangleIcon,
@@ -51,6 +50,7 @@ import {
   type ExtractedAssessmentQuestion,
   type ImportedAssessmentQuestion,
 } from "~/components/assessment-image-import";
+import Link from "~/components/link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1691,7 +1691,10 @@ function AssessmentEditorForm({
                     disabled={isDeleting}
                     onClick={() => {
                       cancelSettingsSave();
-                      void flushSettingsSave()
+                      // Save pending question and option edits first; once the
+                      // assessment is gone their unmount saves would fail.
+                      void autosaveRegistry
+                        .flushAll()
                         .then(onDelete)
                         .catch(() => undefined);
                     }}

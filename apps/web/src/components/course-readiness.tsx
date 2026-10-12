@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -10,6 +9,7 @@ import {
   WrenchIcon,
 } from "lucide-react";
 
+import Link from "~/components/link";
 import {
   AlertDialog,
   AlertDialogAction,

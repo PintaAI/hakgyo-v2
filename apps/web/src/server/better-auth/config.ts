@@ -5,6 +5,7 @@ import { mcp } from "@better-auth/mcp";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
 import { jwt } from "better-auth/plugins";
 
 import { env } from "~/env";
@@ -26,6 +27,13 @@ export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
+  session: {
+    // Every page render and API call reads the session. The signed cookie
+    // cache answers those without a database query for 5 minutes, so a revoked
+    // session or a suspension can take up to that long to apply. nextCookies
+    // (below) lets tRPC requests re-issue it and extend the session.
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
+  },
   databaseHooks: {
     user: {
       create: {
@@ -137,6 +145,9 @@ export const auth = betterAuth({
       metadataProfile: "mcp-2026-07-28",
     }),
     expo(),
+    // Writes cookies refreshed by server-side getSession calls (tRPC, route
+    // handlers) to the response. Must stay last.
+    nextCookies(),
   ],
 });
 

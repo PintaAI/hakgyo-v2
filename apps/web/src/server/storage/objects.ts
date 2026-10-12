@@ -12,6 +12,12 @@ import { hasImageSignature } from "~/lib/image-signature";
 import { r2, r2Bucket } from "~/server/r2";
 
 export const SIGNED_URL_TTL_SECONDS = 5 * 60;
+/**
+ * Course assets (images, audio, PDFs) are signed for an hour so browsers and
+ * the mobile app can reuse a URL, and its cached file, instead of asking the
+ * API again on every view.
+ */
+export const ASSET_DOWNLOAD_URL_TTL_SECONDS = 60 * 60;
 
 /** Signs a PUT for `key` and returns what the client needs to upload. */
 export async function createUploadUrl(
@@ -42,6 +48,7 @@ export async function createUploadUrl(
 export async function signDownloadUrl(
   key: string,
   disposition: "attachment" | "inline",
+  expiresIn = SIGNED_URL_TTL_SECONDS,
 ) {
   return getSignedUrl(
     r2,
@@ -50,7 +57,7 @@ export async function signDownloadUrl(
       Key: key,
       ResponseContentDisposition: disposition,
     }),
-    { expiresIn: SIGNED_URL_TTL_SECONDS },
+    { expiresIn },
   );
 }
 

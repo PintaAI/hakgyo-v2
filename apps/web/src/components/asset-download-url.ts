@@ -7,10 +7,10 @@ import { api } from "~/trpc/react";
 
 type StorageClient = ReturnType<typeof api.useUtils>["client"];
 
-// storage.createDownloadUrls signs URLs for five minutes. Reuse them for two so
-// a cached URL keeps at least three minutes of validity, e.g. for `<audio
+// storage.createDownloadUrls signs URLs for an hour. Reuse them for 45 minutes
+// so a cached URL keeps at least 15 minutes of validity, e.g. for `<audio
 // preload="none">` that only requests the file once the user presses play.
-const CACHE_MS = 2 * 60 * 1000;
+const CACHE_MS = 45 * 60 * 1000;
 // Collects the requests of every media block mounted in the same render.
 const BATCH_DELAY_MS = 10;
 // Matches the server's per-request limit.

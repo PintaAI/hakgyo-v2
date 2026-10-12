@@ -16,7 +16,7 @@ export default async function DocsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [, cookieStore, docs] = await Promise.all([
+  const [session, cookieStore, docs] = await Promise.all([
     requireSession(),
     cookies(),
     getUserDocs(),
@@ -32,7 +32,14 @@ export default async function DocsLayout({
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppPreferencesBootstrap />
-      <DocsAppSidebar navigation={navigation} />
+      <DocsAppSidebar
+        navigation={navigation}
+        user={{
+          name: session.user.name,
+          email: session.user.email,
+          image: session.user.image,
+        }}
+      />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear md:border-b-0">
           <div className="flex items-center gap-2 px-4">

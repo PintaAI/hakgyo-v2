@@ -21,6 +21,8 @@ const config = {
     ],
   },
   images: {
+    // Uploads get a new random key, so an optimized image never changes.
+    minimumCacheTTL: 31 * 24 * 60 * 60,
     remotePatterns: [
       {
         protocol: "https",

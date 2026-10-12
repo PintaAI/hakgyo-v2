@@ -39,7 +39,7 @@ export default async function CohortPage({
       ["overview", "learners", "invites"].includes(requestedView));
   const showsMeetings =
     !requestedView || ["overview", "meetings"].includes(requestedView);
-  void Promise.all([
+  await Promise.all([
     showsLearners
       ? api.enrollment.listCohortEnrollments.prefetchInfinite({
           cohortId: cohort.id,

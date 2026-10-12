@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { ArrowUpRightIcon } from "lucide-react";
 
 import { BrandLink } from "~/components/brand/brand-link";
+import Link from "~/components/link";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { buttonVariants } from "~/components/ui/button";
 

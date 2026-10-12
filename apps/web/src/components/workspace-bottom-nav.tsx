@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpenIcon,
@@ -10,6 +9,7 @@ import {
   MenuIcon,
 } from "lucide-react";
 
+import Link from "~/components/link";
 import { useSidebar } from "~/components/ui/sidebar";
 import { cn } from "~/lib/utils";
 

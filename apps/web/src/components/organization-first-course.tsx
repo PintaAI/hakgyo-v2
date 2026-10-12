@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -20,6 +19,7 @@ import { CourseCoverEditor } from "~/components/course-cover-editor";
 import { useCreateCourse } from "~/components/course-create-form";
 import { FlowShell, surfaceCard } from "~/components/brand/flow-shell";
 import { Headline, Kicker, leadText } from "~/components/brand/typography";
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";

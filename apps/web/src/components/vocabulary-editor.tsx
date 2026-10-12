@@ -227,6 +227,9 @@ export function VocabularyEditor({
   const createSetItem = api.content.createVocabularySetItem.useMutation();
   const updateSet = api.content.updateVocabularySet.useMutation();
   const deleteSet = api.content.deleteVocabularySet.useMutation();
+  // Set once the set is deleted: edits still waiting to autosave (the title
+  // or an entry) flush as the editor unmounts and must not hit the deleted set.
+  const deletedRef = useRef(false);
   const createEntry = api.content.createVocabularyEntry.useMutation();
   const updateEntry = api.content.updateVocabularyEntry.useMutation();
   const deleteEntry = api.content.deleteVocabularyEntry.useMutation();
@@ -432,6 +435,7 @@ export function VocabularyEditor({
         if (!vocabularySetId) return;
         try {
           await deleteSet.mutateAsync({ organizationId, vocabularySetId });
+          deletedRef.current = true;
           await refreshVocabulary();
           toast.success("Set kosakata dihapus.");
           router.replace(`/workspace/${organizationSlug}/library/vocabulary`);
@@ -475,6 +479,7 @@ export function VocabularyEditor({
         }
       }}
       onSave={async ({ title, description }) => {
+        if (deletedRef.current) return;
         const targetVocabularySetId =
           vocabularySetId ?? createdVocabularySetIdRef.current;
         try {
@@ -522,6 +527,7 @@ export function VocabularyEditor({
         }
       }}
       onUpdateEntry={async (entryId, entry) => {
+        if (deletedRef.current) return;
         try {
           await updateEntry.mutateAsync({ organizationId, entryId, ...entry });
           await refreshVocabulary();

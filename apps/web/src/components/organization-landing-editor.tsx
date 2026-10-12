@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
   ArrowLeftIcon,
   ExternalLinkIcon,
@@ -18,13 +17,15 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import {
-  formatTime,
+  timeFormat,
   LandingAiPanel,
   LandingCopyPanel,
   LandingImagesPanel,
   LandingRevisionsPanel,
   type LandingRevision,
 } from "~/components/landing-editor-panels";
+import Link from "~/components/link";
+import { LocalDateTime } from "~/components/local-date-time";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -36,8 +37,10 @@ import { api, type RouterOutputs } from "~/trpc/react";
 
 type LandingDraft = RouterOutputs["organizationLanding"]["get"];
 
-// Short enough that MCP edits feel live, long enough to stay cheap.
-const STATUS_POLL_MS = 3_000;
+// MCP edits usually happen in another window, and returning to this tab
+// refetches at once (the status query is never fresh), so polling only covers
+// side-by-side windows.
+const STATUS_POLL_MS = 15_000;
 
 // Messages from the preview's editing bridge (editor-bridge.ts). The frame
 // also runs AI-authored scripts, so every message is validated as untrusted.
@@ -99,7 +102,7 @@ function LandingEditor({
   const frame = useRef<HTMLIFrameElement>(null);
   const status = api.organizationLanding.status.useQuery(
     { organizationId },
-    { refetchInterval: STATUS_POLL_MS },
+    { refetchInterval: STATUS_POLL_MS, staleTime: 0 },
   );
   const dirty = Object.keys(edits).length > 0;
   const remoteChanged =
@@ -415,7 +418,11 @@ function LandingEditor({
             <div className="bg-primary text-primary-foreground flex w-full flex-wrap items-center gap-2 px-3 py-2 text-sm md:rounded-lg">
               <EyeIcon className="size-4 shrink-0" />
               <p className="min-w-0 flex-1">
-                Melihat revisi {formatTime(previewRevision.createdAt)}
+                Melihat revisi{" "}
+                <LocalDateTime
+                  value={previewRevision.createdAt}
+                  format={timeFormat}
+                />
                 {previewRevision.summary && (
                   <span className="hidden opacity-80 sm:inline">
                     {" "}
@@ -476,9 +483,23 @@ function LandingEditor({
         >
           <TabsContent value="copy" className="grid gap-4">
             <p className="text-muted-foreground text-sm">
-              {draft.isStarterTemplate
-                ? "Ini template awal. Desain ulang dengan AI, atau klik teks di pratinjau untuk mengeditnya."
-                : `Klik teks di pratinjau untuk mengeditnya langsung. Draft terakhir diubah ${draft.updatedAt ? formatTime(draft.updatedAt) : "-"}.`}
+              {draft.isStarterTemplate ? (
+                "Ini template awal. Desain ulang dengan AI, atau klik teks di pratinjau untuk mengeditnya."
+              ) : (
+                <>
+                  Klik teks di pratinjau untuk mengeditnya langsung. Draft
+                  terakhir diubah{" "}
+                  {draft.updatedAt ? (
+                    <LocalDateTime
+                      value={draft.updatedAt}
+                      format={timeFormat}
+                    />
+                  ) : (
+                    "-"
+                  )}
+                  .
+                </>
+              )}
             </p>
             <LandingCopyPanel
               fields={draft.fields}
