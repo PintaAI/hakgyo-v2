@@ -5,7 +5,9 @@ import { db } from "~/server/db";
 import { compactMobileSyncLog } from "~/server/mobile/sync-log";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// Runs under Fluid compute's default 300-second limit. Exporting
+// `maxDuration` would split this route into its own Vercel function with its
+// own cold starts, instead of sharing one with the other route handlers.
 
 function isAuthorized(request: Request) {
   const secret = env.CRON_SECRET;

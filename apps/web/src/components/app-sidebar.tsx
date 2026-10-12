@@ -45,7 +45,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "~/components/ui/sidebar";
-import { User } from "~/components/user";
+import { User, type UserProps } from "~/components/user";
 import type { OrganizationRole } from "~/lib/access";
 
 type NavigationLink = {
@@ -182,6 +182,7 @@ export function AppSidebar({
   recentCourses,
   cohortShortcuts,
   showSuperadmin,
+  user,
   ...props
 }: ComponentProps<typeof Sidebar> & {
   organizationSlug: string;
@@ -198,6 +199,7 @@ export function AppSidebar({
     course: { id: string; title: string; thumbnailUrl: string | null };
   }>;
   showSuperadmin: boolean;
+  user: UserProps["user"];
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
@@ -508,7 +510,7 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <User variant="sidebar" role={role} />
+        <User variant="sidebar" role={role} user={user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
@@ -517,9 +519,11 @@ export function AppSidebar({
 
 export function DocsAppSidebar({
   navigation,
+  user,
   ...props
 }: ComponentProps<typeof Sidebar> & {
   navigation: DocsNavigationItem[];
+  user: UserProps["user"];
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
@@ -598,7 +602,7 @@ export function DocsAppSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <User variant="sidebar" />
+        <User variant="sidebar" user={user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -30,18 +30,28 @@ function timeAgo(value: Date | string): string {
 /**
  * Inbox bell with unread badge. Renders nothing when logged out so it is
  * safe to mount in shared shells (AppShell is also used by public pages).
+ * Layouts that already read the session pass `signedIn`; without it the bell
+ * waits for the browser session.
  *
  * The badge doesn't poll: it loads with the page, when the tab regains focus
  * and when the dropdown opens, and the dropdown has a refresh button. Urgent
  * notifications arrive as web push.
  */
-export function NotificationBell() {
-  const utils = api.useUtils();
-  const [open, setOpen] = useState(false);
+export function NotificationBell({ signedIn }: { signedIn?: boolean }) {
+  if (signedIn === undefined) return <SessionNotificationBell />;
+  return signedIn ? <Bell /> : null;
+}
+
+function SessionNotificationBell() {
   // Shares the session store the user menu already loads, so this adds no request.
   const { data: session } = authClient.useSession();
+  return session ? <Bell /> : null;
+}
+
+function Bell() {
+  const utils = api.useUtils();
+  const [open, setOpen] = useState(false);
   const countQuery = api.notification.unreadCount.useQuery(undefined, {
-    enabled: !!session,
     retry: false,
     refetchOnWindowFocus: true,
   });
@@ -57,7 +67,7 @@ export function NotificationBell() {
     },
   });
 
-  if (!session || countQuery.error) return null;
+  if (countQuery.error) return null;
   const unread = countQuery.data ?? 0;
   const items = inboxQuery.data?.items ?? [];
   const refreshing = countQuery.isFetching || inboxQuery.isFetching;

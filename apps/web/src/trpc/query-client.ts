@@ -10,9 +10,10 @@ export const createQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
-        // With SSR, we usually want to set some default staleTime
-        // above 0 to avoid refetching immediately on the client
-        staleTime: 30 * 1000,
+        // Mutations invalidate what they change, so data stays fresh for 5
+        // minutes before a mount or tab focus refetches it. Every refetch is a
+        // function call; queries that must track other users poll instead.
+        staleTime: 5 * 60 * 1000,
         retry: shouldRetryQuery,
       },
       dehydrate: {

@@ -101,9 +101,12 @@ export function AccountSettings({
   const router = useRouter();
   const { data: session, refetch: refetchSession } = authClient.useSession();
   // Profile updates go through tRPC, so skip the session cookie cache to read
-  // the new name and photo and re-issue the cache with them.
-  const refreshSession = () =>
-    refetchSession({ query: { disableCookieCache: true } });
+  // the new name and photo and re-issue the cache with them, then re-render
+  // the layouts that pass the user to the menus.
+  const refreshSession = async () => {
+    await refetchSession({ query: { disableCookieCache: true } });
+    router.refresh();
+  };
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [currentPassword, setCurrentPassword] = useState("");
