@@ -12,7 +12,7 @@ import { useState } from "react";
 import SuperJSON from "superjson";
 
 import { apiUrl } from "../config";
-import { getAuthCookie } from "./auth-client";
+import { getAuthCookie, rememberAuthCookies } from "./auth-client";
 import { createQueryClient } from "./query-client";
 
 export const api = createTRPCReact<AppRouter>();
@@ -46,8 +46,13 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
               [CLIENT_HEADER]: clientHeaderValue,
             };
           },
-          fetch(url, options) {
-            return fetch(url, { ...options, credentials: "omit" });
+          async fetch(url, options) {
+            const response = await fetch(url, {
+              ...options,
+              credentials: "omit",
+            });
+            void rememberAuthCookies(response.headers.get("set-cookie"));
+            return response;
           },
         }),
       ],
