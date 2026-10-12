@@ -91,11 +91,11 @@ function isRouteActive(pathname: string, item: NavigationLink): boolean {
     return false;
   }
 
-  return (
-    pathname === match ||
-    pathname.startsWith(`${match}/`) ||
-    item.items?.some((child) => isRouteActive(pathname, child)) === true
-  );
+  if (item.items?.some((child) => isRouteActive(pathname, child))) {
+    return false;
+  }
+
+  return pathname === match || pathname.startsWith(`${match}/`);
 }
 
 function CollapsibleNavigationItem({
