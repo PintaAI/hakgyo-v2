@@ -16,6 +16,7 @@ const reservedSlugs = new Set([
   "onboarding",
   "open",
   "privacy",
+  "integrations",
   "organizations",
   "superadmin",
   "serwist",
