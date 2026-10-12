@@ -6,13 +6,22 @@ import type { AutosaveStatus } from "~/lib/autosave-registry";
 
 type PendingValue<T> = { value: T } | null;
 
+/**
+ * Each save is a server call, so edits wait for a pause in typing (`delay`)
+ * and arrive as one save. Uninterrupted typing still saves every `maxWait`,
+ * and pending edits are saved at once when the tab is hidden or closed and
+ * when the editor unmounts.
+ */
 export function useDebouncedAutosave<T>(
   save: (value: T) => Promise<unknown>,
-  delay = 700,
+  delay = 3000,
+  maxWait = 30_000,
 ) {
   const saveRef = useRef(save);
   const pendingRef = useRef<PendingValue<T>>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // When the oldest unsaved edit was made, for `maxWait`.
+  const pendingSinceRef = useRef<number | null>(null);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const [status, setStatus] = useState<AutosaveStatus>("idle");
 
@@ -25,6 +34,7 @@ export function useDebouncedAutosave<T>(
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    pendingSinceRef.current = null;
   }, []);
 
   const flush = useCallback((): Promise<void> => {
@@ -66,14 +76,37 @@ export function useDebouncedAutosave<T>(
     (value: T) => {
       pendingRef.current = { value };
       setStatus("pending");
+      const pendingSince = pendingSinceRef.current ?? Date.now();
       clearTimer();
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        void flush().catch(() => undefined);
-      }, delay);
+      pendingSinceRef.current = pendingSince;
+      const wait = Math.min(delay, pendingSince + maxWait - Date.now());
+      timerRef.current = setTimeout(
+        () => {
+          timerRef.current = null;
+          void flush().catch(() => undefined);
+        },
+        Math.max(0, wait),
+      );
     },
-    [clearTimer, delay, flush],
+    [clearTimer, delay, flush, maxWait],
   );
+
+  // Save before the tab goes to the background or closes, so the longer delay
+  // cannot lose edits (phones rarely fire beforeunload).
+  useEffect(() => {
+    const saveNow = () => {
+      if (pendingRef.current) void flush().catch(() => undefined);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") saveNow();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", saveNow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", saveNow);
+    };
+  }, [flush]);
 
   const cancel = useCallback(() => {
     clearTimer();

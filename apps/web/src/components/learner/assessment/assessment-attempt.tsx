@@ -328,11 +328,30 @@ export function AssessmentAttempt({
     })();
   });
 
+  // Each save is a server call: wait for a pause in answering. Submitting
+  // saves everything; hiding or closing the tab and leaving the page save at
+  // once.
   useEffect(() => {
     if (isFinished || expired || !dirtyQuestionIds.current.size) return;
-    const timer = window.setTimeout(() => flushAutosave(), 800);
+    const timer = window.setTimeout(() => flushAutosave(), 3000);
     return () => window.clearTimeout(timer);
   }, [answers, isFinished, expired]);
+
+  useEffect(() => {
+    const saveNow = () => {
+      if (dirtyQuestionIds.current.size) flushAutosave();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") saveNow();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", saveNow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", saveNow);
+      saveNow();
+    };
+  }, []);
 
   // A new question starts at its top, like the app's scroll reset.
   const firstQuestion = useRef(true);

@@ -693,6 +693,7 @@ function VocabularySetForm({
     [entries],
   );
   const {
+    cancel: cancelDetailsSave,
     flush: flushDetailsSave,
     schedule: scheduleDetailsSave,
     status: detailsStatus,
@@ -831,7 +832,11 @@ function VocabularySetForm({
                 <AlertDialogCancel>Batal</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={isDeleting}
-                  onClick={onDelete}
+                  onClick={() => {
+                    // A pending title edit must not be saved to a deleted set.
+                    cancelDetailsSave();
+                    void onDelete();
+                  }}
                   variant="destructive"
                 >
                   {isDeleting && <LoaderCircleIcon className="animate-spin" />}
