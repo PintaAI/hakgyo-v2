@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { AppSettings } from "~/components/app-settings";
+import { AppPreferencesSync } from "~/components/app-settings";
 import { DynamicBlockNoteEditor } from "~/components/editor";
 import { OrganizationThemeProvider } from "~/components/organization-theme-provider";
 
@@ -47,7 +47,7 @@ function ThemeValues() {
 export default function ThemeDebugPage() {
   return (
     <OrganizationThemeProvider theme={debugTheme}>
-      <AppSettings open={false} onOpenChange={() => undefined} />
+      <AppPreferencesSync />
       <ThemeValues />
       <DynamicBlockNoteEditor
         initialContent={[{ type: "paragraph", content: "Theme probe" }]}

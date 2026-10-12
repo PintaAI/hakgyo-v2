@@ -56,8 +56,10 @@ export default async function WorkspaceLayout({
   return (
     <>
       <OrganizationThemeBootstrap theme={organizationTheme} />
-      <AppPreferencesBootstrap organizationTheme={Boolean(organizationTheme)} />
       <OrganizationThemeProvider theme={organizationTheme}>
+        <AppPreferencesBootstrap
+          organizationTheme={Boolean(organizationTheme)}
+        />
         <SidebarProvider
           defaultOpen={defaultOpen}
           defaultRightOpen={defaultRightOpen}
