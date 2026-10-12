@@ -11,4 +11,7 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
     swSrc: "src/app/sw.ts",
     useNativeEsbuild: true,
     additionalPrecacheEntries: [{ url: "/", revision }],
+    // Serwist's default ignore, plus the pdf.js assets that only PDF book
+    // imports need.
+    globIgnores: ["**/node_modules/**/*", "public/pdfjs/**"],
   });
