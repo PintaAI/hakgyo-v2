@@ -1,61 +1,111 @@
-import { createRequestCache } from "~/server/request-cache";
-import { organizationLandingRouter } from "~/server/api/routers/organization-landing";
-import { accountRouter } from "~/server/api/routers/account";
-import { assessmentRouter } from "~/server/api/routers/assessment";
-import { assessmentEventRouter } from "~/server/api/routers/assessment-event";
-import { assessmentImportRouter } from "~/server/api/routers/assessment-import";
-import { brandRouter } from "~/server/api/routers/brand";
-import { cohortRouter } from "~/server/api/routers/cohort";
-import { contentRouter } from "~/server/api/routers/content";
-import { courseRouter } from "~/server/api/routers/course";
-import { enrollmentRouter } from "~/server/api/routers/enrollment";
-import { gamificationRouter } from "~/server/api/routers/gamification";
-import { learningRouter } from "~/server/api/routers/learning";
-import { mobileSyncV2Router } from "~/server/api/routers/mobile-sync-v2";
-import { inviteRouter } from "~/server/api/routers/invite";
-import { notificationRouter } from "~/server/api/routers/notification";
-import { organizationRouter } from "~/server/api/routers/organization";
-import { paymentRouter } from "~/server/api/routers/payment";
-import { pdfBookRouter } from "~/server/api/routers/pdf-book";
-import { practiceRouter } from "~/server/api/routers/practice";
-import { publicQuizRouter } from "~/server/api/routers/public-quiz";
-import { storageRouter } from "~/server/api/routers/storage";
-import { superadminRouter } from "~/server/api/routers/superadmin";
+import { lazy } from "@trpc/server";
+
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { createRequestCache } from "~/server/request-cache";
 
 /**
  * This is the primary router for your server.
  *
- * All routers added in /api/routers should be manually added here.
+ * All routers added in /api/routers should be manually added here. They load
+ * lazily: a cold start evaluates only the routers (with their input schemas
+ * and services) that the request actually calls.
  */
 export const appRouter = createTRPCRouter({
-  account: accountRouter,
-  assessment: assessmentRouter,
-  assessmentEvent: assessmentEventRouter,
-  assessmentImport: assessmentImportRouter,
-  brand: brandRouter,
-  cohort: cohortRouter,
-  content: contentRouter,
-  course: courseRouter,
-  enrollment: enrollmentRouter,
-  gamification: gamificationRouter,
-  learning: learningRouter,
-  mobileSyncV2: mobileSyncV2Router,
-  invite: inviteRouter,
-  notification: notificationRouter,
-  organization: organizationRouter,
-  organizationLanding: organizationLandingRouter,
-  payment: paymentRouter,
-  pdfBook: pdfBookRouter,
-  practice: practiceRouter,
-  publicQuiz: publicQuizRouter,
-  storage: storageRouter,
-  superadmin: superadminRouter,
+  account: lazy(() =>
+    import("~/server/api/routers/account").then((m) => m.accountRouter),
+  ),
+  assessment: lazy(() =>
+    import("~/server/api/routers/assessment").then((m) => m.assessmentRouter),
+  ),
+  assessmentEvent: lazy(() =>
+    import("~/server/api/routers/assessment-event").then(
+      (m) => m.assessmentEventRouter,
+    ),
+  ),
+  assessmentImport: lazy(() =>
+    import("~/server/api/routers/assessment-import").then(
+      (m) => m.assessmentImportRouter,
+    ),
+  ),
+  brand: lazy(() =>
+    import("~/server/api/routers/brand").then((m) => m.brandRouter),
+  ),
+  cohort: lazy(() =>
+    import("~/server/api/routers/cohort").then((m) => m.cohortRouter),
+  ),
+  content: lazy(() =>
+    import("~/server/api/routers/content").then((m) => m.contentRouter),
+  ),
+  course: lazy(() =>
+    import("~/server/api/routers/course").then((m) => m.courseRouter),
+  ),
+  enrollment: lazy(() =>
+    import("~/server/api/routers/enrollment").then((m) => m.enrollmentRouter),
+  ),
+  gamification: lazy(() =>
+    import("~/server/api/routers/gamification").then(
+      (m) => m.gamificationRouter,
+    ),
+  ),
+  learning: lazy(() =>
+    import("~/server/api/routers/learning").then((m) => m.learningRouter),
+  ),
+  mobileSyncV2: lazy(() =>
+    import("~/server/api/routers/mobile-sync-v2").then(
+      (m) => m.mobileSyncV2Router,
+    ),
+  ),
+  invite: lazy(() =>
+    import("~/server/api/routers/invite").then((m) => m.inviteRouter),
+  ),
+  notification: lazy(() =>
+    import("~/server/api/routers/notification").then(
+      (m) => m.notificationRouter,
+    ),
+  ),
+  organization: lazy(() =>
+    import("~/server/api/routers/organization").then(
+      (m) => m.organizationRouter,
+    ),
+  ),
+  organizationLanding: lazy(() =>
+    import("~/server/api/routers/organization-landing").then(
+      (m) => m.organizationLandingRouter,
+    ),
+  ),
+  payment: lazy(() =>
+    import("~/server/api/routers/payment").then((m) => m.paymentRouter),
+  ),
+  pdfBook: lazy(() =>
+    import("~/server/api/routers/pdf-book").then((m) => m.pdfBookRouter),
+  ),
+  practice: lazy(() =>
+    import("~/server/api/routers/practice").then((m) => m.practiceRouter),
+  ),
+  publicQuiz: lazy(() =>
+    import("~/server/api/routers/public-quiz").then((m) => m.publicQuizRouter),
+  ),
+  storage: lazy(() =>
+    import("~/server/api/routers/storage").then((m) => m.storageRouter),
+  ),
+  superadmin: lazy(() =>
+    import("~/server/api/routers/superadmin").then((m) => m.superadminRouter),
+  ),
 });
 
 // export type definition of API
 export type AppRouter = typeof appRouter;
+
+/**
+ * Loads every lazy router. Calls load routers on demand; code that reads
+ * procedure definitions directly (the MCP tool schemas) must load them first.
+ */
+export async function loadAllRouters() {
+  await Promise.all(
+    Object.values(appRouter._def.lazy).map((router) => router.load()),
+  );
+}
 
 /**
  * Create a server-side caller for the tRPC API.

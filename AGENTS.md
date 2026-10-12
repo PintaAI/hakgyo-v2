@@ -91,7 +91,7 @@ bun run --cwd apps/mobile typecheck
 ## Web Conventions
 
 - Use the App Router under `apps/web/src/app`.
-- Add tRPC procedures to a feature router under `apps/web/src/server/api/routers`, then register that router in `src/server/api/root.ts`.
+- Add tRPC procedures to a feature router under `apps/web/src/server/api/routers`, then register that router in `src/server/api/root.ts` with `lazy(() => import(...))` like the others. Cold starts then load only the routers a request calls. Code that reads procedure definitions directly (the MCP tool schemas) must call `loadAllRouters()` first.
 - Keep routers thin: procedures declare input schemas and delegate to domain services under `src/server/<domain>/` (for example `src/server/assessment/` for access checks, authoring, learner attempts and review). Services take the Prisma client and the acting user id so the same logic serves web, mobile sync and MCP callers.
 - Enforce access with the helpers in `src/server/authorization` (`requireOrganizationPermission`, `requireCoursePermission`, `requireCohortPermission`, `requireCourseItemAccess`, `requireContentAuthor`) rather than ad hoc membership queries.
 - Use `ctx.actorUserId` for the acting user. MCP tools call the same routers through `createMcpCaller`, where `ctx.session` is null.
