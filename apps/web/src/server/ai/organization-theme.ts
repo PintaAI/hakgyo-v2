@@ -1,11 +1,10 @@
 import "server-only";
 
-import { openai } from "@ai-sdk/openai";
-import { generateText, Output } from "ai";
 import { organizationThemeSeedsSchema } from "@hakgyo/shared";
 
 import { env } from "~/env";
 import { normalizeOrganizationTheme } from "~/lib/organization-theme";
+import { loadAiSdk } from "~/server/ai/sdk";
 
 export async function generateOrganizationTheme(input: {
   logoUrl: string;
@@ -15,6 +14,7 @@ export async function generateOrganizationTheme(input: {
     throw new Error("OPENAI_API_KEY_MISSING");
   }
 
+  const { generateText, Output, openai } = await loadAiSdk();
   const { output } = await generateText({
     model: openai("gpt-5.4-mini"),
     output: Output.object({
