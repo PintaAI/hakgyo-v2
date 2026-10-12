@@ -1,5 +1,6 @@
 import { requireMcpAuth } from "@better-auth/mcp";
 
+import { loadAllRouters } from "~/server/api/root";
 import { auth } from "~/server/better-auth";
 import { isActiveUserId } from "~/server/better-auth/active-user";
 import { createMcpAuthInfo, requireMcpUserId } from "~/server/mcp/auth";
@@ -25,6 +26,8 @@ const authenticatedHandler = requireMcpAuth(
         },
       });
     }
+    // Tool input schemas are read from the tRPC procedures, which load lazily.
+    await loadAllRouters();
     return mcpHandler.fetch(request, { authInfo });
   },
   {
