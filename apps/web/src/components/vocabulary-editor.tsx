@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { SaveNowButton } from "~/components/save-now-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -810,43 +811,54 @@ function VocabularySetForm({
             </p>
           </div>
         </div>
-        {vocabularySet && canDelete ? (
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  aria-label="Hapus set kosakata"
-                  variant="destructive"
-                  size="icon"
-                />
-              }
-            >
-              <Trash2Icon />
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Hapus set kosakata ini?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tindakan ini permanen. Semua entri, penempatan di kurikulum,
-                  progres siswa, aktivitas XP, dan kaitan prasyarat materi akan
-                  ikut dihapus.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={isDeleting}
-                  onClick={onDelete}
-                  variant="destructive"
-                >
-                  {isDeleting && <LoaderCircleIcon className="animate-spin" />}
-                  Hapus
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {vocabularySet ? (
+            <SaveNowButton
+              size="default"
+              status={detailsStatus}
+              onSave={flushDetailsSave}
+            />
+          ) : null}
+          {vocabularySet && canDelete ? (
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    type="button"
+                    aria-label="Hapus set kosakata"
+                    variant="destructive"
+                    size="icon"
+                  />
+                }
+              >
+                <Trash2Icon />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus set kosakata ini?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tindakan ini permanen. Semua entri, penempatan di kurikulum,
+                    progres siswa, aktivitas XP, dan kaitan prasyarat materi
+                    akan ikut dihapus.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isDeleting}
+                    onClick={onDelete}
+                    variant="destructive"
+                  >
+                    {isDeleting && (
+                      <LoaderCircleIcon className="animate-spin" />
+                    )}
+                    Hapus
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
+        </div>
       </header>
 
       <div className="grid gap-1">
@@ -1377,6 +1389,7 @@ function EntryForm({
   const invalid = !term.trim() || !definition.trim();
   const {
     cancel: cancelEntrySave,
+    flush: flushEntrySave,
     schedule: scheduleEntrySave,
     status: saveStatus,
   } = useDebouncedAutosave<EntryFields>(async (draft) => {
@@ -1531,36 +1544,47 @@ function EntryForm({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-xs" role="status">
-          {invalid ? (
-            <>
-              <CircleAlertIcon className="text-destructive size-3.5" />
-              <span className="text-destructive">
-                Istilah dan definisi wajib diisi
-              </span>
-            </>
-          ) : saveStatus === "pending" || saveStatus === "saving" ? (
-            <>
-              <LoaderCircleIcon className="text-muted-foreground size-3.5 animate-spin" />
-              <span className="text-muted-foreground">Menyimpan…</span>
-            </>
-          ) : saveStatus === "error" ? (
-            <>
-              <CircleAlertIcon className="text-destructive size-3.5" />
-              <span className="text-destructive">Gagal menyimpan</span>
-            </>
-          ) : saveStatus === "saved" ? (
-            <>
-              <CheckCircle2Icon className="text-muted-foreground size-3.5" />
-              <span className="text-muted-foreground">Tersimpan</span>
-            </>
-          ) : (
-            <>
-              <CheckCircle2Icon className="text-muted-foreground size-3.5" />
-              <span className="text-muted-foreground">Belum ada perubahan</span>
-            </>
+        <div className="flex items-center gap-2">
+          <p className="flex items-center gap-1.5 text-xs" role="status">
+            {invalid ? (
+              <>
+                <CircleAlertIcon className="text-destructive size-3.5" />
+                <span className="text-destructive">
+                  Istilah dan definisi wajib diisi
+                </span>
+              </>
+            ) : saveStatus === "pending" || saveStatus === "saving" ? (
+              <>
+                <LoaderCircleIcon className="text-muted-foreground size-3.5 animate-spin" />
+                <span className="text-muted-foreground">Menyimpan…</span>
+              </>
+            ) : saveStatus === "error" ? (
+              <>
+                <CircleAlertIcon className="text-destructive size-3.5" />
+                <span className="text-destructive">Gagal menyimpan</span>
+              </>
+            ) : saveStatus === "saved" ? (
+              <>
+                <CheckCircle2Icon className="text-muted-foreground size-3.5" />
+                <span className="text-muted-foreground">Tersimpan</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2Icon className="text-muted-foreground size-3.5" />
+                <span className="text-muted-foreground">
+                  Belum ada perubahan
+                </span>
+              </>
+            )}
+          </p>
+          {invalid ? null : (
+            <SaveNowButton
+              size="xs"
+              status={saveStatus}
+              onSave={flushEntrySave}
+            />
           )}
-        </p>
+        </div>
         {canDelete ? (
           <DeleteEntryAlert
             onDelete={async () => {
