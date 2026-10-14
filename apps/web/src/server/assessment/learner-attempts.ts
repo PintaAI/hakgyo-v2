@@ -21,6 +21,8 @@ import {
   lockAttemptStart,
   lockInProgressAttempt,
   markCourseItemCompleted,
+  recordAssessmentPassed,
+  recordAssessmentSubmitted,
 } from "~/server/assessment/attempt";
 import { assessmentContext } from "~/server/assessment/register";
 import { isAssessmentExpired } from "~/server/assessment/timing";
@@ -442,7 +444,10 @@ export async function saveAnswers(
   );
 }
 
-/** Grades the attempt; a passing standalone attempt completes its course item. */
+/**
+ * Grades the attempt and awards the submission; a passing standalone attempt completes its course
+ * item and awards the pass.
+ */
 export async function submitAttempt(
   db: PrismaClient,
   attemptId: string,
@@ -496,8 +501,10 @@ export async function submitAttempt(
         full.assessmentEvent?.closesAt,
       );
       const graded = await gradeInProgressAttempt(tx, full, now);
+      await recordAssessmentSubmitted(tx, full, now);
       if (graded.passed && !full.assessmentEvent) {
         await markCourseItemCompleted(tx, full.courseItemId, userId, now);
+        await recordAssessmentPassed(tx, full, now);
       }
       return {
         status: graded.status,

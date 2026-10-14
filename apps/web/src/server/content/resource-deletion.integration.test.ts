@@ -211,7 +211,7 @@ test("deletes a closed assessment event and its attempts without deleting the as
 
     const removed = await deleteAssessmentEventWithProgress(tx, event.id);
 
-    expect(removed).toEqual({ attempts: 1 });
+    expect(removed).toEqual({ activityEvents: 0, attempts: 1 });
     expect(await tx.assessmentEvent.count({ where: { id: event.id } })).toBe(0);
     expect(
       await tx.assessmentAttempt.count({
