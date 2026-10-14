@@ -1091,7 +1091,7 @@ query({ courseId: string }): CohortEnrollmentWithUser[]
 ```
 
 - Scope: pengelola course.
-- Berisi anggota cohort default (belajar mandiri). Siswa Group belajar ada di
+- Berisi anggota cohort default (belajar mandiri). Murid Group belajar ada di
   `listCohortEnrollments`.
 
 ### `enrollment.listCohortEnrollments`

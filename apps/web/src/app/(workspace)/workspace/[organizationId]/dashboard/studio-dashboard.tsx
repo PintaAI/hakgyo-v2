@@ -165,7 +165,7 @@ function Groups({ data }: { data: StudioDashboardData }) {
                     <span aria-hidden="true">·</span>
                     <span className="inline-flex shrink-0 items-center gap-1">
                       <Users className="size-3" />
-                      {group._count.enrollments} siswa
+                      {group._count.enrollments} murid
                     </span>
                   </span>
                 </span>

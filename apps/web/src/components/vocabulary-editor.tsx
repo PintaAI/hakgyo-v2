@@ -838,7 +838,7 @@ function VocabularySetForm({
                   <AlertDialogTitle>Hapus set kosakata ini?</AlertDialogTitle>
                   <AlertDialogDescription>
                     Tindakan ini permanen. Semua entri, penempatan di kurikulum,
-                    progres siswa, aktivitas XP, dan kaitan prasyarat materi
+                    progres murid, aktivitas XP, dan kaitan prasyarat materi
                     akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>

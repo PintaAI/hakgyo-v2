@@ -218,7 +218,7 @@ export function InviteRedemption({ token }: { token: string }) {
               {[
                 {
                   icon: UsersIcon,
-                  text: `${data.joinedCount} siswa bergabung`,
+                  text: `${data.joinedCount} murid bergabung`,
                 },
                 // The materials list below already says when nothing is out.
                 ...(data.course.itemCount > 0

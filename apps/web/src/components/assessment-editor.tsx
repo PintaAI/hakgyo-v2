@@ -1679,7 +1679,7 @@ function AssessmentEditorForm({
                   <AlertDialogTitle>Hapus tugas ini?</AlertDialogTitle>
                   <AlertDialogDescription>
                     Tindakan ini permanen. Semua soal, penempatan di kurikulum,
-                    event, jawaban, hasil, dan progres siswa akan ikut dihapus.
+                    event, jawaban, hasil, dan progres murid akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -1734,7 +1734,7 @@ function AssessmentEditorForm({
             settingsTouchedRef.current = true;
             setDescription(event.target.value);
           }}
-          placeholder="Jelaskan tujuan tugas ini kepada siswa (opsional)…"
+          placeholder="Jelaskan tujuan tugas ini kepada murid (opsional)…"
           rows={1}
           value={description}
         />
@@ -2736,7 +2736,7 @@ function QuestionEditor({
       ) : (
         <div className="bg-muted/30 text-muted-foreground flex items-start gap-2 rounded-lg border p-3 text-xs">
           <FileQuestionIcon className="mt-0.5 size-4 shrink-0" />
-          Soal tertulis akan diperiksa manual setelah siswa mengirim jawaban.
+          Soal tertulis akan diperiksa manual setelah murid mengirim jawaban.
         </div>
       )}
 
