@@ -167,6 +167,7 @@
     },
   },
   "patchedDependencies": {
+    "@better-auth/oauth-provider@1.7.2": "patches/@better-auth%2Foauth-provider@1.7.2.patch",
     "@better-auth/cimd@1.7.2": "patches/@better-auth%2Fcimd@1.7.2.patch",
   },
   "overrides": {
