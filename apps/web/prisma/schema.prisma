@@ -1188,6 +1188,8 @@ model AssessmentAttempt {
   @@index([userId, status])
   @@index([userId, startedAt])
   @@index([organizationId, status, submittedAt])
+  /// Performance analytics read graded attempts by grading time.
+  @@index([organizationId, status, gradedAt])
   @@index([organizationId, startedAt])
   @@index([assessmentEventId, status])
 }
@@ -1592,6 +1594,8 @@ model Payment {
   @@index([cohortId, userId])
   @@index([userId, createdAt])
   @@index([organizationId, status, createdAt])
+  /// Revenue analytics sum PAID payments by approval time.
+  @@index([organizationId, status, paidAt])
   @@index([reviewedByUserId])
   @@index([enrollmentInviteId])
 }

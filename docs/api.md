@@ -12,6 +12,7 @@ Referensi kontrak tRPC bersama untuk aplikasi web dan mobile Hakgyo.
 - [Error Handling](#error-handling)
 - [Account](#account)
 - [Organization](#organization)
+- [Analytics](#analytics)
 - [Course](#course)
 - [Content](#content)
 - [Cohort](#cohort)
@@ -451,6 +452,86 @@ dipanggil owner/admin. Pilihan ini berlaku untuk meeting baru. Default untuk
 organisasi lama adalah `ZOOM`.
 
 ---
+
+## Analytics
+
+Statistik halaman Analitik workspace. Definisi lengkap ada di
+[`docs/analytics.md`](analytics.md). Semua prosedur menerima periode yang sama:
+
+```ts
+type AnalyticsPeriod = "7h" | "30h" | "90h" | "bulan-ini" | "12b"; // default "30h"
+```
+
+### `analytics.performance`
+
+```ts
+query({ organizationId: string; period?: AnalyticsPeriod }): {
+  averageScore: { current: number | null; previous: number | null }; // 0–1
+  passRate: { current: number | null; previous: number | null };
+  assessed: { current: number; previous: number };
+  graded: number;
+  completion: { rate: number | null; completed: number; items: number };
+  review: {
+    reviewed: number;
+    medianHours: number | null;
+    waiting: number;
+    oldestSubmittedAt: Date | null;
+  };
+  series: Array<{ bucket: string; averageScore: number | null; assessed: number }>;
+  hardest: Array<{ courseItemId; title; courseId; courseTitle; passingScore; learners; averageScore; passRate }>;
+  cohorts: Array<{ cohortId: string | null; cohortName; courseTitle; selfPaced; learners; averageScore; completionRate }>;
+  courses: Array<{ courseId; courseTitle; learners; finished; completionRate }>;
+  events: { participants: number; averageScore: number | null; items: Array<{ eventId; title; type; status; courseId; courseTitle; openedAt; participants; averageScore; topScore }> };
+}
+```
+
+- Scope: member organization. TEACHER hanya melihat kelas yang ia pegang.
+
+### `analytics.learners`
+
+```ts
+query({ organizationId: string; period?: AnalyticsPeriod }): {
+  learners: number;
+  newEnrollments: { current: number; previous: number };
+  active: { current: number; previous: number; rate: number | null };
+  inactive: { days: 30; total: number; learners: Array<{ userId; name; email; image; cohortId; cohortName; selfPaced; courseId; courseTitle; enrolledAt; lastActiveAt }> };
+  series: Array<{ bucket: string; active: number; enrollments: Record<EnrollmentSource, number> }>;
+  cohorts: Array<{ cohortId; cohortName; selfPaced; status; courseId; courseTitle; learners; active; newEnrollments }>;
+  topXp: Array<{ userId; name; image; xp; activities }>;
+}
+```
+
+- Scope: member organization. TEACHER hanya melihat kelas yang ia pegang.
+
+### `analytics.revenue`
+
+```ts
+query({ organizationId: string; period?: AnalyticsPeriod }): {
+  revenue: { current: number; previous: number }; // IDR
+  payments: { current: number; previous: number };
+  averagePayment: { current: number; previous: number };
+  pending: { payments: number; amount: number };
+  conversion: { started: number; paid: number; rate: number | null };
+  series: Array<{ bucket: string; revenue: number; payments: number }>;
+  cohorts: Array<{ cohortId; cohortName; courseId; courseTitle; revenue; payments }>;
+  methods: Array<{ method: PaymentMethod; revenue: number; payments: number }>;
+}
+```
+
+- Scope: `OWNER` atau `ADMIN` (`organization.manage`).
+
+### `analytics.summary`
+
+```ts
+query({ organizationId: string; period?: AnalyticsPeriod }): {
+  learners: number;
+  activeLearners: { current: number; previous: number };
+  averageScore: { current: number | null; previous: number | null };
+  revenue: { current: number; previous: number } | null; // null untuk TEACHER
+}
+```
+
+- Dipakai kartu "Analitik · 30 hari" di dashboard dan ringkasan mingguan.
 
 ## Course
 

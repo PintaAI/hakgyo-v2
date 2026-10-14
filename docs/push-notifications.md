@@ -16,6 +16,7 @@ Domain routers call a trigger from `apps/web/src/server/notifications/triggers.t
 | Meeting scheduled / rescheduled / cancelled | `cohort.createMeeting`, `updateMeeting` (time changes only), `deleteMeeting` (future meetings), each with `notify` | ACTIVE cohort members                                            | Belajar tab focused on the cohort (`/learn?cohortId=…`) |
 | Meeting starts soon                         | Cron, starts within 60 min                                                                                         | ACTIVE cohort members                                            | same                                                    |
 | Enrollment added / removed                  | `enrollment.set*Enrollment` (becomes ACTIVE), `remove*Enrollment` (was ACTIVE)                                     | That learner                                                     | course / none                                           |
+| Weekly analytics digest                     | Cron, Mondays 08:00 WIB (`/api/cron/analytics-digest`, see `docs/analytics.md`)                                    | Owners, admins and teachers with learners in view                | none (web only, opens `/workspace/[slug]/analitik`)     |
 
 Teachers choose per action with the "Beri tahu peserta" checkbox (default on); the `notify` input defaults to `true` for MCP callers. Event times in copy are relative because learner time zones are not stored reliably; meeting times use the meeting's time zone.
 

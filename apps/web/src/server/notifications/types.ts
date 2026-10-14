@@ -44,4 +44,5 @@ export type NotificationType =
   | "assessment-invalidated"
   | "cohort-meeting"
   | "enrollment"
-  | "announcement";
+  | "announcement"
+  | "analytics-weekly";

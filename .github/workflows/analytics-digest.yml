@@ -1,0 +1,31 @@
+name: Analytics digest
+
+# Mondays at 01:00 UTC (08:00 WIB): each owner, admin and teacher gets a
+# summary of the past seven days in their notification inbox and browser
+# push (see apps/web/src/app/api/cron/analytics-digest/route.ts). Retries are
+# safe; members already notified this week are skipped.
+# CRON_SECRET must match the value set in Vercel.
+on:
+  schedule:
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: analytics-digest-cron
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call analytics digest route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 300 \
+            -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            https://hakgyo-v2.vercel.app/api/cron/analytics-digest

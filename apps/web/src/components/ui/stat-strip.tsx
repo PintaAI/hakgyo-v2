@@ -15,6 +15,8 @@ export type StatItem = {
   onSelect?: () => void;
   /** Highlights the figure whose filter is active. */
   selected?: boolean;
+  /** A small line under the figure, such as the change from last period. */
+  detail?: ReactNode;
 };
 
 const columns = {
@@ -44,7 +46,15 @@ export function StatStrip({
       )}
     >
       {items.map(
-        ({ label: itemLabel, value, href, attention, onSelect, selected }) => {
+        ({
+          label: itemLabel,
+          value,
+          href,
+          attention,
+          onSelect,
+          selected,
+          detail,
+        }) => {
           const content = (
             <>
               <span
@@ -69,6 +79,11 @@ export function StatStrip({
                   <span className="bg-primary size-2 rounded-full" />
                 ) : null}
               </span>
+              {detail ? (
+                <span className="text-muted-foreground mt-1 text-xs leading-5">
+                  {detail}
+                </span>
+              ) : null}
             </>
           );
           // Hairlines only where the figures share one row.

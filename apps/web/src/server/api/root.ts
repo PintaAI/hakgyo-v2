@@ -15,6 +15,9 @@ export const appRouter = createTRPCRouter({
   account: lazy(() =>
     import("~/server/api/routers/account").then((m) => m.accountRouter),
   ),
+  analytics: lazy(() =>
+    import("~/server/api/routers/analytics").then((m) => m.analyticsRouter),
+  ),
   assessment: lazy(() =>
     import("~/server/api/routers/assessment").then((m) => m.assessmentRouter),
   ),
