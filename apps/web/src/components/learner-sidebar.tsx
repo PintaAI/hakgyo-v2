@@ -183,7 +183,7 @@ export function LearnerSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton
                 tooltip="Panduan belajar"
-                render={<Link href="/docs" onClick={closeMobile} />}
+                render={<Link href="/docs/murid" onClick={closeMobile} />}
               >
                 <BookMarkedIcon />
                 <span>Panduan belajar</span>

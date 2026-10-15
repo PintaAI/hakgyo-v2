@@ -19,6 +19,8 @@ const config = {
       "../../node_modules/.bun/sharp@*/**",
       "../../node_modules/.bun/@img+*/**",
     ],
+    // The guide pages read their Markdown from disk at request time.
+    "/docs/**/*": ["./src/components/user-docs/**/*.md"],
   },
   images: {
     // Uploads get a new random key, so an optimized image never changes.
@@ -68,6 +70,11 @@ const config = {
         // Landing documents are framed by the organization's public page and
         // the owner's editor; their route handlers send a sandboxing CSP.
         source: "/api/organization-landing/:path*",
+        headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }],
+      },
+      {
+        // Interactive UI previews are framed by the guide pages at /docs.
+        source: "/docs/pratinjau/:path*",
         headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }],
       },
     ];
