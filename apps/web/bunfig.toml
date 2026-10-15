@@ -1,0 +1,3 @@
+[test]
+# Test environment setup shared by every test file; see the file.
+preload = ["./src/test/setup.ts"]
