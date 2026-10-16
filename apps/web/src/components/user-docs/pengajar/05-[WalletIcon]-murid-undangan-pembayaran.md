@@ -10,11 +10,11 @@ Ada tiga cara murid masuk ke kelas Anda:
 
 ## Menambahkan murid secara manual
 
-1. Buka halaman kelas, tab **Siswa**.
-2. Klik **Tambah siswa**.
+1. Buka halaman kelas, tab **Murid**.
+2. Klik **Tambah murid**.
 3. Isi **Email** murid. Murid harus sudah membuat akun Hakgyo dengan email itu.
 4. Pilih **Status awal**. Pilih **Aktif** agar murid langsung bisa belajar. Pilih **Menunggu** jika murid belum boleh belajar, misalnya masih menunggu pembayaran di luar Hakgyo.
-5. Klik **Tambah siswa**.
+5. Klik **Tambah murid**.
 
 Status murid:
 
@@ -34,7 +34,7 @@ Murid yang ditambahkan manual tidak perlu membayar dan tetap masuk walaupun kapa
 ### Membuat tautan undangan kelas
 
 1. Pastikan status kelas **Dibuka** atau **Berjalan**.
-2. Buka halaman kelas, tab **Siswa**, lalu klik **Buat link invite**.
+2. Buka halaman kelas, tab **Murid**, lalu klik **Buat link invite**.
 3. Atur pilihan:
    - **Link sekali pakai**: menyala secara bawaan, artinya satu tautan untuk satu murid. Matikan jika satu tautan akan dibagikan ke banyak murid, misalnya di grup WhatsApp.
    - **Berlaku hingga**: tanggal kedaluwarsa (opsional).
@@ -76,7 +76,7 @@ Jika tautan tidak berlaku, murid melihat **Undangan tidak berlaku** dengan kode 
 
 Murid juga bisa belajar sebuah kurikulum **tanpa kelas**, misalnya untuk kursus rekaman yang tidak punya jadwal. Hakgyo menyimpan mereka di kelompok khusus bernama **Belajar mandiri**.
 
-- Lihat dan tambahkan mereka di halaman kurikulum, tab **Siswa**, bagian **Belajar mandiri**. Di sini Anda juga bisa mengisi **Akses hingga** untuk membatasi lama akses.
+- Lihat dan tambahkan mereka di halaman kurikulum, tab **Murid**, bagian **Belajar mandiri**. Di sini Anda juga bisa mengisi **Akses hingga** untuk membatasi lama akses.
 - Buat tautan untuk seluruh kurikulum di tab yang sama, bagian **Invites**, lalu klik **Buat invite** dan pilih **Target** **Seluruh kurikulum**.
 - **Belajar mandiri** juga muncul sebagai pilihan kelas saat membuat latihan atau tryout.
 

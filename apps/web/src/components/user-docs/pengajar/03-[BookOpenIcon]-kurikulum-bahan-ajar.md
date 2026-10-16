@@ -26,7 +26,7 @@ Halaman kurikulum punya beberapa tab:
 
 - **Ringkasan**: jumlah bab, kelas, murid, dan langkah berikutnya.
 - **Kelas**: daftar kelas untuk kurikulum ini.
-- **Siswa**: murid belajar mandiri (tanpa kelas), serta tautan undangan untuk seluruh kurikulum.
+- **Murid**: murid belajar mandiri (tanpa kelas), serta tautan undangan untuk seluruh kurikulum.
 - **Hasil & review tugas**: jawaban murid yang perlu dinilai.
 - **Latihan & tryout**: kuis bersama untuk beberapa kelas.
 - **Akses**: hanya muncul pada mode akses lanjutan.
