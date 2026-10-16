@@ -60,7 +60,9 @@ export default async function DocsLayout({
             <span className="text-sm font-medium">Panduan Hakgyo</span>
           </div>
         </header>
-        <div className="flex-1 px-5 py-8 md:px-8 lg:px-12">{children}</div>
+        <div className="flex-1 px-4 py-6 sm:px-5 sm:py-8 md:px-8 lg:px-12">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );
