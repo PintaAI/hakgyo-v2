@@ -1,23 +1,45 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { EyeIcon, EyeOffIcon, LoaderCircleIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, MailCheckIcon } from "lucide-react";
 
+import {
+  AuthFormError,
+  authFieldClass,
+  AuthSubmitLabel,
+  authSurface,
+} from "~/components/auth-form";
 import { surfaceCard } from "~/components/brand/flow-shell";
 import { Kicker } from "~/components/brand/typography";
+import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { getPostSignInPath } from "~/lib/access";
 import { cn } from "~/lib/utils";
-
-/** A card from `sm` up; on phones the form sits directly on the page. */
-const authSurface = cn(
-  surfaceCard,
-  "max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none sm:p-8",
-);
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
+
+const signedOAuthParams = ["sig", "exp", "ba_iat", "ba_pl", "ba_param"];
+
+/**
+ * During an OAuth authorization (an MCP client connecting), the sign-in page
+ * carries the signed authorize query. A new account has no session until its
+ * email is verified, so the verification link has to restart the
+ * authorization itself; the signed query would have expired by then.
+ */
+function authorizationResumePath() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has("sig") || !params.has("client_id")) return null;
+  for (const key of signedOAuthParams) params.delete(key);
+  // The user has just signed in; asking again would loop back here.
+  if (
+    ["login", "create", "select_account"].includes(params.get("prompt") ?? "")
+  ) {
+    params.delete("prompt");
+  }
+  return `/api/auth/oauth2/authorize?${params.toString()}`;
+}
 
 function resumesAuthorization(data: unknown) {
   return (
@@ -50,6 +72,10 @@ export function AuthPanel({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Set once a verification email is on its way; replaces the form.
+  const [verificationSentTo, setVerificationSentTo] = useState<string | null>(
+    null,
+  );
   const account = api.account.me.useQuery(undefined, {
     enabled: Boolean(session?.user),
     retry: false,
@@ -59,16 +85,30 @@ export function AuthPanel({
     event.preventDefault();
     setError(null);
     setSubmitting(true);
+    // Also the destination of the verification link the server sends.
+    const callbackURL = authorizationResumePath() ?? postSignInPath;
 
     try {
       const result =
         mode === "sign-in"
-          ? await authClient.signIn.email({ email: email.trim(), password })
+          ? await authClient.signIn.email({
+              email: email.trim(),
+              password,
+              callbackURL,
+            })
           : await authClient.signUp.email({
               email: email.trim(),
               name: name.trim(),
               password,
+              callbackURL,
             });
+
+      // The server resends the verification link on a blocked sign-in.
+      if (result.error?.code === "EMAIL_NOT_VERIFIED") {
+        setVerificationSentTo(email.trim());
+        setSubmitting(false);
+        return;
+      }
 
       if (result.error) {
         setError(result.error.message ?? "Autentikasi gagal.");
@@ -76,8 +116,15 @@ export function AuthPanel({
         return;
       }
 
-      // An OAuth authorization (e.g. an MCP client) resumes at the URL Better
-      // Auth returns, which its client already navigates to.
+      // Sign-up only creates a session once the email is verified.
+      if (mode === "sign-up" && !result.data?.token) {
+        setVerificationSentTo(email.trim());
+        setSubmitting(false);
+        return;
+      }
+
+      // Sign-in returns a URL (the callback, or a resumed OAuth authorization
+      // for an MCP client) that Better Auth's client already navigates to.
       if (resumesAuthorization(result.data)) return;
       window.location.replace(postSignInPath);
     } catch {
@@ -135,6 +182,35 @@ export function AuthPanel({
     );
   }
 
+  if (verificationSentTo) {
+    return (
+      <section className={authSurface}>
+        <MailCheckIcon className="text-primary size-8" aria-hidden="true" />
+        <h2 className="mt-4 text-2xl font-medium tracking-tight">
+          Verifikasi email Anda
+        </h2>
+        <p className="text-muted-foreground mt-2 text-sm leading-6">
+          Kami mengirim tautan verifikasi ke {verificationSentTo}. Buka tautan
+          itu untuk mengaktifkan akun, lalu kembali ke sini untuk masuk. Cek
+          juga folder spam.
+        </p>
+        <button
+          className={cn(
+            buttonVariants({ variant: "outline", size: "lg" }),
+            "mt-6 h-11 w-full",
+          )}
+          onClick={() => {
+            setVerificationSentTo(null);
+            setMode("sign-in");
+          }}
+          type="button"
+        >
+          Kembali ke halaman masuk
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section className={authSurface}>
       <div>
@@ -187,7 +263,7 @@ export function AuthPanel({
             <Input
               id="auth-name"
               autoComplete="name"
-              className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 text-base transition-colors sm:h-12 md:text-sm"
+              className={authFieldClass}
               onChange={(event) => setName(event.target.value)}
               placeholder="Nama Anda"
               required
@@ -202,7 +278,7 @@ export function AuthPanel({
           <Input
             id="auth-email"
             autoComplete="email"
-            className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 text-base transition-colors sm:h-12 md:text-sm"
+            className={authFieldClass}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="nama@email.com"
             required
@@ -224,7 +300,7 @@ export function AuthPanel({
               autoComplete={
                 mode === "sign-in" ? "current-password" : "new-password"
               }
-              className="focus-visible:ring-ring/15 h-11 rounded-xl px-4 pr-12 text-base transition-colors sm:h-12 md:text-sm"
+              className={cn(authFieldClass, "pr-12")}
               minLength={8}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Minimal 8 karakter"
@@ -251,37 +327,26 @@ export function AuthPanel({
             <p id="password-help" className="text-muted-foreground text-xs">
               Gunakan minimal 8 karakter.
             </p>
-          ) : null}
+          ) : (
+            <Link
+              href="/auth/forgot-password"
+              className="text-muted-foreground hover:text-foreground -my-1 inline-block py-2 text-sm"
+            >
+              Lupa kata sandi?
+            </Link>
+          )}
         </div>
 
-        {error && (
-          <p
-            className="border-destructive/20 bg-destructive/10 text-destructive rounded-xl border px-4 py-3 text-sm leading-5"
-            role="alert"
-            aria-live="polite"
-          >
-            {error}
-          </p>
-        )}
+        {error ? <AuthFormError message={error} /> : null}
 
         <button
           className={cn(buttonVariants({ size: "lg" }), "h-11 w-full sm:h-12")}
           disabled={submitting}
           type="submit"
         >
-          {submitting ? (
-            <>
-              <LoaderCircleIcon
-                className="size-4 animate-spin"
-                aria-hidden="true"
-              />{" "}
-              Mohon tunggu...
-            </>
-          ) : mode === "sign-in" ? (
-            "Masuk dengan email"
-          ) : (
-            "Buat akun"
-          )}
+          <AuthSubmitLabel submitting={submitting}>
+            {mode === "sign-in" ? "Masuk dengan email" : "Buat akun"}
+          </AuthSubmitLabel>
         </button>
       </form>
 

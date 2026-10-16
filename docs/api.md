@@ -149,6 +149,29 @@ Tanpa session valid, protected procedure mengembalikan `UNAUTHORIZED`.
 Web menggunakan cookie browser. Mobile memakai `authClient` dan cookie yang
 disimpan oleh plugin `@better-auth/expo`.
 
+### Verifikasi email dan reset kata sandi
+
+Akun email dan kata sandi wajib memverifikasi email sebelum bisa masuk
+(`requireEmailVerification`). Akun Google dan Apple sudah terverifikasi dari
+provider. Email akun dikirim lewat Resend (`src/server/email/`) dan memerlukan
+`RESEND_API_KEY` serta `EMAIL_FROM` di production; di development tanpa key,
+isi email dicetak ke log server.
+
+- Daftar tidak membuat session. Server mengirim tautan verifikasi; masuk
+  sebelum verifikasi ditolak dengan `EMAIL_NOT_VERIFIED` dan tautan dikirim
+  ulang.
+- Semua tautan verifikasi mendarat di `/auth/verified`
+  (`routeVerificationLink`). Halaman itu meneruskan user yang sudah masuk ke
+  `redirectTo` (misalnya `/invite/...` atau authorize OAuth klien MCP),
+  menjelaskan tautan yang kedaluwarsa, dan mengarahkan user aplikasi
+  (`expo-origin`) kembali ke aplikasi.
+- Daftar dengan email yang sudah terdaftar dijawab seperti akun baru agar tidak
+  membocorkan email terdaftar; pemiliknya menerima email "sudah punya akun".
+- Reset kata sandi lewat `/auth/forgot-password` dan `/auth/reset-password`
+  mencabut semua session dan menandai email terverifikasi.
+- Pengiriman email berjalan setelah response (`after()`), supaya waktu respons
+  tidak membedakan email terdaftar dan tidak.
+
 ## Type Safety
 
 Package `@hakgyo/api` hanya mengekspor tipe. Kode Prisma dan server tidak masuk
