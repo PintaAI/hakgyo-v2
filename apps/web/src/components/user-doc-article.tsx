@@ -37,7 +37,7 @@ export function UserDocArticle({
   } = {
     h1: ({ children }) => (
       <>
-        <h1 className="font-heading mb-5 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+        <h1 className="font-heading mb-4 text-2xl font-semibold tracking-tight text-balance sm:mb-5 sm:text-4xl">
           {children}
         </h1>
         {afterTitle}
@@ -46,7 +46,7 @@ export function UserDocArticle({
     h2: ({ children, node }) => (
       <h2
         id={idFor(node)}
-        className="font-heading mt-12 mb-4 scroll-m-20 border-b pb-2 text-2xl font-semibold tracking-tight"
+        className="font-heading mt-8 mb-3 scroll-m-20 border-b pb-2 text-lg font-semibold tracking-tight sm:mt-12 sm:mb-4 sm:text-2xl"
       >
         {children}
       </h2>
@@ -54,7 +54,7 @@ export function UserDocArticle({
     h3: ({ children, node }) => (
       <h3
         id={idFor(node)}
-        className="font-heading mt-8 mb-3 scroll-m-20 text-xl font-semibold tracking-tight"
+        className="font-heading mt-6 mb-2 scroll-m-20 text-base font-semibold tracking-tight sm:mt-8 sm:mb-3 sm:text-xl"
       >
         {children}
       </h3>
@@ -69,16 +69,22 @@ export function UserDocArticle({
       ) ? (
         <>{children}</>
       ) : (
-        <p className="text-foreground/85 my-4 leading-7">{children}</p>
+        <p className="text-foreground/85 my-3 text-sm leading-6 sm:my-4 sm:text-base sm:leading-7">
+          {children}
+        </p>
       ),
     ul: ({ children }) => (
-      <ul className="my-4 ml-6 list-disc space-y-2 leading-7">{children}</ul>
+      <ul className="my-3 ml-5 list-disc space-y-1.5 text-sm leading-6 sm:my-4 sm:ml-6 sm:space-y-2 sm:text-base sm:leading-7">
+        {children}
+      </ul>
     ),
     ol: ({ children }) => (
-      <ol className="my-4 ml-6 list-decimal space-y-2 leading-7">{children}</ol>
+      <ol className="my-3 ml-5 list-decimal space-y-1.5 text-sm leading-6 sm:my-4 sm:ml-6 sm:space-y-2 sm:text-base sm:leading-7">
+        {children}
+      </ol>
     ),
     blockquote: ({ children }) => (
-      <blockquote className="border-primary/50 bg-muted/50 my-6 rounded-r-lg border-l-4 px-4 py-1 text-sm leading-6 [&_p]:my-3 [&_p]:leading-6">
+      <blockquote className="border-primary/50 bg-muted/50 my-5 rounded-r-lg border-l-4 px-3 py-0.5 text-sm leading-6 sm:my-6 sm:px-4 sm:py-1 [&_p]:my-2.5 [&_p]:text-sm [&_p]:leading-6 sm:[&_p]:my-3">
         {children}
       </blockquote>
     ),
@@ -130,17 +136,21 @@ export function UserDocArticle({
     ),
     table: ({ children }) => (
       <div className="my-6 overflow-x-auto rounded-xl border">
-        <table className="w-full border-collapse text-sm [&_tbody_tr:last-child_td]:border-b-0">
+        <table className="w-full border-collapse text-xs sm:text-sm [&_tbody_tr:last-child_td]:border-b-0">
           {children}
         </table>
       </div>
     ),
     thead: ({ children }) => <thead className="bg-muted">{children}</thead>,
     th: ({ children }) => (
-      <th className="border-b px-4 py-3 text-left font-semibold">{children}</th>
+      <th className="border-b px-3 py-2 text-left font-semibold sm:px-4 sm:py-3">
+        {children}
+      </th>
     ),
     td: ({ children }) => (
-      <td className="border-b px-4 py-3 align-top">{children}</td>
+      <td className="border-b px-3 py-2 align-top sm:px-4 sm:py-3">
+        {children}
+      </td>
     ),
     hr: () => <hr className="border-border my-10" />,
     "doc-preview": ({ name, caption, device, height }) =>
