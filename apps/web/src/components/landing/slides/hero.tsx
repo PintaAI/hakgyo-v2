@@ -7,7 +7,7 @@ import { cn } from "~/lib/utils";
 import { landingContainer } from "../layout";
 import { reveal } from "../reveal";
 import { WhatsAppLink } from "../slide";
-import { TeaserVideo } from "../teaser-video";
+import { TeaserVideo, TeaserVideoButton } from "../teaser-video";
 import { pillars } from "./solution";
 
 /** The opening slide, active before any script runs. */
@@ -18,7 +18,7 @@ export function HeroSlide() {
       data-slide
       data-active
       aria-labelledby="mulai-title"
-      className="border-border relative flex flex-col justify-center overflow-hidden border-b pt-24 pb-10 sm:pt-32 sm:pb-16 lg:pt-28"
+      className="border-border relative flex flex-col justify-center overflow-hidden border-b pt-20 pb-6 sm:pt-32 sm:pb-16 lg:pt-24 lg:pb-8"
     >
       <div
         className="bg-primary/10 animate-landing-drift pointer-events-none absolute -top-40 -right-40 size-[36rem] rounded-full blur-3xl"
@@ -55,6 +55,7 @@ export function HeroSlide() {
             </p>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <WhatsAppLink className="h-11 px-5 sm:h-12 sm:px-6" />
+              <TeaserVideoButton className="h-11 sm:h-12 lg:hidden" />
               <Link
                 href="/docs"
                 className={cn(
@@ -69,18 +70,18 @@ export function HeroSlide() {
                 href="#solusi"
                 className={cn(
                   buttonVariants({ variant: "ghost" }),
-                  "hidden h-11 gap-2 px-3 sm:inline-flex sm:h-12 sm:px-4 lg:hidden xl:inline-flex",
+                  "hidden h-11 gap-2 px-3 sm:h-12 sm:px-4 xl:inline-flex",
                 )}
               >
                 Lihat fitur <ArrowRightIcon aria-hidden="true" />
               </a>
             </div>
           </div>
-          <TeaserVideo />
+          <TeaserVideo className="hidden lg:block" />
         </div>
         <div
           {...reveal(5)}
-          className="border-border bg-border mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border sm:mt-14 lg:mt-10 lg:grid-cols-4"
+          className="border-border bg-border mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border sm:mt-14 lg:mt-8 lg:grid-cols-4"
         >
           {pillars.map(({ slide, icon: Icon, name }, index) => (
             <a
