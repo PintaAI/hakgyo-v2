@@ -10,7 +10,7 @@ Beberapa istilah yang sering muncul:
 | **Kurikulum** | Isi pelajaran yang tersusun per bab, misalnya "Bahasa Korea Dasar 1". |
 | **Bahan ajar** | Materi bacaan, kumpulan kosakata, dan tugas yang dipakai di kurikulum. |
 | **Kelas** | Kelompok murid yang belajar satu kurikulum dalam periode tertentu, misalnya "Kelas Malam Oktober". |
-| **Murid** | Orang yang belajar. Di beberapa layar pengelola, murid masih disebut **siswa** atau **peserta**. |
+| **Murid** | Orang yang belajar. Di layar latihan dan tryout, murid disebut **peserta**. |
 | **Workspace** | Area pengelola untuk pemilik, admin, dan pengajar. Di sini Anda menyusun kurikulum dan mengurus kelas. Murid tidak melihatnya. |
 
 Di beberapa layar, kelas masih disebut **Group** atau **cohort**, dan kurikulum disebut **course**. Artinya sama.
@@ -76,8 +76,8 @@ Panduan lengkap: [Kelas dan Jadwal](/docs/pengajar/kelas-jadwal).
 
 Pastikan status kelas sudah **Dibuka**; tautan undangan tidak bisa dipakai untuk kelas **Persiapan**. Lalu pilih salah satu cara:
 
-- **Tautan undangan:** di halaman kelas, tab **Siswa**, klik **Buat link invite**, lalu bagikan tautannya lewat WhatsApp. Salin segera; tautan hanya ditampilkan sekali.
-- **Tambah manual:** klik **Tambah siswa** dan masukkan email murid yang sudah punya akun Hakgyo.
+- **Tautan undangan:** di halaman kelas, tab **Murid**, klik **Buat link invite**, lalu bagikan tautannya lewat WhatsApp. Salin segera; tautan hanya ditampilkan sekali.
+- **Tambah manual:** klik **Tambah murid** dan masukkan email murid yang sudah punya akun Hakgyo.
 - **Kelas berbayar:** atur QRIS atau rekening bank dulu, lalu murid membayar dan Anda memeriksa buktinya.
 
 Panduan lengkap: [Murid, Undangan, dan Pembayaran](/docs/pengajar/murid-undangan-pembayaran).

@@ -11,7 +11,9 @@ import {
   isDocPreviewName,
 } from "~/components/user-doc-previews/names";
 
-const designWidth = { desktop: 1100, mobile: 390 } as const;
+const desktopWidth = 1100;
+/** Phone layouts render at the real column width within this range. */
+const phoneWidth = { min: 360, max: 430 } as const;
 /** Below this frame width the phone layout reads better than a tiny desktop. */
 const phoneBreakpoint = 560;
 const defaultHeight = 560;
@@ -75,14 +77,24 @@ export function UserDocPreviewFrame({
         ? "mobile"
         : "desktop"
       : device;
-  const width = designWidth[layout];
+  // A phone layout fills a phone's column at 100% and sits centered at phone
+  // width in a wider column, instead of stretching the frame around it.
+  const width =
+    layout === "mobile"
+      ? Math.min(
+          Math.max(containerWidth ?? phoneWidth.max, phoneWidth.min),
+          phoneWidth.max,
+        )
+      : desktopWidth;
   const scale = containerWidth ? Math.min(1, containerWidth / width) : 1;
   const height = Math.min(contentHeight, maxHeight ?? 900);
   const label = caption ?? "Pratinjau tampilan Hakgyo";
 
   return (
-    <figure className="my-8">
-      <div className="mb-2 flex items-center justify-between gap-3">
+    // On phones the frame runs edge to edge like the intro video: -mx-4
+    // cancels the docs layout's px-4.
+    <figure className="my-8 max-sm:-mx-4">
+      <div className="mb-2 flex items-center justify-between gap-3 max-sm:px-4">
         <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <MousePointerClickIcon className="size-3.5" />
           Bisa dicoba · data contoh, tidak tersimpan
@@ -99,31 +111,37 @@ export function UserDocPreviewFrame({
           Ulangi
         </Button>
       </div>
-      <div
-        ref={containerRef}
-        className="bg-background relative overflow-hidden rounded-xl border shadow-xs"
-        style={{ height: containerWidth ? height * scale : height }}
-      >
-        {containerWidth ? (
-          <iframe
-            key={`${layout}-${version}`}
-            ref={iframeRef}
-            src={docPreviewHref(name, layout)}
-            title={label}
-            loading="lazy"
-            onLoad={() => setLoaded(true)}
-            className="absolute top-0 left-0 origin-top-left border-0"
-            style={{
-              width,
-              height,
-              transform: `scale(${scale})`,
-            }}
-          />
-        ) : null}
-        {loaded ? null : <Skeleton className="absolute inset-0 rounded-none" />}
+      <div ref={containerRef}>
+        <div
+          className="bg-background relative mx-auto overflow-hidden rounded-xl border shadow-xs max-sm:rounded-none max-sm:border-x-0 max-sm:shadow-none"
+          style={{
+            maxWidth: width,
+            height: containerWidth ? height * scale : height,
+          }}
+        >
+          {containerWidth ? (
+            <iframe
+              key={`${layout}-${version}`}
+              ref={iframeRef}
+              src={docPreviewHref(name, layout)}
+              title={label}
+              loading="lazy"
+              onLoad={() => setLoaded(true)}
+              className="absolute top-0 left-0 origin-top-left border-0"
+              style={{
+                width,
+                height,
+                transform: `scale(${scale})`,
+              }}
+            />
+          ) : null}
+          {loaded ? null : (
+            <Skeleton className="absolute inset-0 rounded-none" />
+          )}
+        </div>
       </div>
       {caption ? (
-        <figcaption className="text-muted-foreground mt-2 text-sm">
+        <figcaption className="text-muted-foreground mt-2 text-sm max-sm:px-4 max-sm:text-xs">
           {caption}
         </figcaption>
       ) : null}

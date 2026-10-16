@@ -23,7 +23,7 @@ Klik nama kelas untuk membukanya. Tab yang tersedia tergantung peran Anda:
 | Tab | Isinya |
 |---|---|
 | **Ringkasan** | Jumlah murid aktif, kapasitas, keterisian, pertemuan mendatang, dan tombol cepat |
-| **Siswa** | Daftar murid dan tautan undangan |
+| **Murid** | Daftar murid dan tautan undangan |
 | **Pembayaran** | Bukti bayar yang perlu diperiksa. Hanya muncul untuk kelas berbayar |
 | **Staf** | Pengajar dan asisten kelas |
 | **Jadwal kelas** | Pertemuan online lewat Zoom atau Google Meet |
