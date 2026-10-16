@@ -19,8 +19,11 @@ const config = {
       "../../node_modules/.bun/sharp@*/**",
       "../../node_modules/.bun/@img+*/**",
     ],
-    // The guide pages read their Markdown from disk at request time.
-    "/docs/**/*": ["./src/components/user-docs/**/*.md"],
+  },
+  outputFileTracingIncludes: {
+    // The guide pages read their Markdown from disk at request time, which
+    // the tracer can't follow.
+    "/docs/**": ["./src/components/user-docs/**/*.md"],
   },
   images: {
     // Uploads get a new random key, so an optimized image never changes.
