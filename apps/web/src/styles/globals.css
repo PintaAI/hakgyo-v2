@@ -403,8 +403,10 @@ html:has([data-slide-deck]) {
   }
 }
 
+/* The slide navigator turns smooth scrolling on once it has opened the slide
+   in the URL; a smooth jump to the fragment while the page loads overshoots. */
 @media (prefers-reduced-motion: no-preference) {
-  html:has([data-slide-deck]) {
+  html.landing-smooth {
     scroll-behavior: smooth;
   }
 }
