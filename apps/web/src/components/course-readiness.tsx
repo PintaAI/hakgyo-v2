@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -10,6 +9,7 @@ import {
   WrenchIcon,
 } from "lucide-react";
 
+import Link from "~/components/link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -150,7 +150,7 @@ export function ReadinessBadge({
         <PopoverHeader>
           <PopoverTitle>Belum siap ditampilkan</PopoverTitle>
           <PopoverDescription className="text-xs">
-            Item ini belum bisa tampil untuk siswa sampai masalah berikut
+            Item ini belum bisa tampil untuk murid sampai masalah berikut
             diperbaiki.
           </PopoverDescription>
         </PopoverHeader>
@@ -312,7 +312,7 @@ export function CoursePublicationControl({
             <AlertDialogHeader>
               <AlertDialogTitle>Batalkan publikasi kurikulum?</AlertDialogTitle>
               <AlertDialogDescription>
-                Semua item akan disembunyikan dari siswa sampai kurikulum
+                Semua item akan disembunyikan dari murid sampai kurikulum
                 dipublikasikan lagi. Pengaturan tampil tiap item tetap
                 tersimpan.
               </AlertDialogDescription>
@@ -377,7 +377,7 @@ export function CoursePublicationControl({
               {preview.live.length === 0 && preview.blocking.length === 0 ? (
                 <p className="text-muted-foreground text-xs">
                   Belum ada item yang ditampilkan. Kurikulum tetap bisa
-                  dipublikasikan, tetapi siswa belum akan melihat materi.
+                  dipublikasikan, tetapi murid belum akan melihat materi.
                 </p>
               ) : null}
               {preview.blocking.length ? (

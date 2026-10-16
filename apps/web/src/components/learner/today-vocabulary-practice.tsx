@@ -5,7 +5,11 @@ import Image from "next/image";
 
 import { useAssetDownloadUrl } from "~/components/asset-download-url";
 import { Skeleton } from "~/components/ui/skeleton";
-import { isPracticeAnswerCorrect, randomSeed } from "~/lib/learner/practice";
+import {
+  isPracticeAnswerCorrect,
+  randomSeed,
+  TODAY_VOCABULARY_ROUND_SIZE,
+} from "~/lib/learner/practice";
 import { useVocabularyAttempts } from "~/lib/learner/use-vocabulary-attempts";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -15,11 +19,10 @@ import {
   type FlipCardResult,
 } from "./practice/flip-card-deck";
 import { FlipDeckSkeleton } from "./skeletons";
+import { useRoundSeed } from "./use-round-seed";
 
 /** `ID` answers in Indonesian (receptive); `KR` answers in Korean (productive). */
 type Mode = "ID" | "KR";
-
-const ROUND_SIZE = 24;
 
 function CardImage({ assetId, label }: { assetId: string; label: string }) {
   const { url } = useAssetDownloadUrl(assetId);
@@ -60,12 +63,17 @@ function Face({
   );
 }
 
-export function TodayVocabularyPractice() {
-  const [seed, setSeed] = useState(randomSeed);
+/** `initialSeed` lets the page prefetch the first round on the server. */
+export function TodayVocabularyPractice({
+  initialSeed,
+}: {
+  initialSeed: string;
+}) {
+  const [seed, setSeed] = useRoundSeed(initialSeed);
   const [mode, setMode] = useState<Mode>("ID");
   // The round must not swap while the learner is answering it.
   const pool = api.practice.getVocabularyPool.useQuery(
-    { seed, limit: ROUND_SIZE },
+    { seed, limit: TODAY_VOCABULARY_ROUND_SIZE },
     { staleTime: Infinity, refetchOnWindowFocus: false },
   );
   // Every round has its own random seed, which doubles as the session id.

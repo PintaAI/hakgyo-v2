@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import Link from "~/components/link";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -146,7 +146,7 @@ export function CohortPayments({
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             Periksa bukti transfer atau QRIS di rekening/aplikasi merchant, lalu
-            setujui agar siswa mendapat akses.
+            setujui agar murid mendapat akses.
           </p>
         </div>
         {firstPage ? (
@@ -163,7 +163,7 @@ export function CohortPayments({
         <div className="border-destructive/30 bg-destructive/5 flex flex-wrap items-center gap-3 rounded-lg border p-4 text-sm">
           <AlertTriangleIcon className="text-destructive size-4 shrink-0" />
           <p className="flex-1">
-            Siswa belum bisa membayar karena organisasi belum mengatur QRIS atau
+            Murid belum bisa membayar karena organisasi belum mengatur QRIS atau
             rekening bank.
           </p>
           {canManageSettings ? (
@@ -182,7 +182,7 @@ export function CohortPayments({
       ) : null}
       {firstPage?.price === 0 ? (
         <p className="text-muted-foreground bg-muted/40 rounded-lg p-4 text-sm">
-          Kelas ini gratis. Atur harga di tab Pengaturan agar siswa membayar
+          Kelas ini gratis. Atur harga di tab Pengaturan agar murid membayar
           sebelum bergabung.
         </p>
       ) : null}
@@ -248,14 +248,14 @@ export function CohortPayments({
               ? "Tidak ada pembayaran yang perlu diverifikasi"
               : "Belum ada pembayaran"
           }
-          description="Pembayaran muncul di sini setelah siswa checkout kelas ini."
+          description="Pembayaran muncul di sini setelah murid checkout kelas ini."
         />
       ) : (
         <div className="overflow-hidden rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Siswa</TableHead>
+                <TableHead>Murid</TableHead>
                 <TableHead className="max-sm:hidden">Kode</TableHead>
                 <TableHead className="text-right">Nominal</TableHead>
                 <TableHead className="max-sm:hidden">Metode</TableHead>
@@ -413,8 +413,8 @@ function PaymentReviewDialog({
         ? "Batalkan persetujuan?"
         : `Tolak pembayaran ${payment.reference}?`,
       description: revertApproval
-        ? "Akses siswa dari pembayaran ini dicabut. Tulis alasan yang akan dilihat siswa."
-        : "Siswa bisa mengunggah bukti baru. Tulis alasan yang akan dilihat siswa.",
+        ? "Akses murid dari pembayaran ini dicabut. Tulis alasan yang akan dilihat murid."
+        : "Murid bisa mengunggah bukti baru. Tulis alasan yang akan dilihat murid.",
       confirmLabel: revertApproval
         ? "Batalkan persetujuan"
         : "Tolak pembayaran",
@@ -430,7 +430,7 @@ function PaymentReviewDialog({
       await refresh();
       toast.success(
         result.deactivated
-          ? "Persetujuan dibatalkan dan akses siswa dicabut."
+          ? "Persetujuan dibatalkan dan akses murid dicabut."
           : "Pembayaran ditolak.",
       );
       onClose();
@@ -443,7 +443,7 @@ function PaymentReviewDialog({
     const confirmed = await confirm({
       title: `Batalkan pembayaran ${payment.reference}?`,
       description:
-        "Gunakan ini untuk checkout yang tidak dilanjutkan siswa. Siswa bisa checkout ulang.",
+        "Gunakan ini untuk checkout yang tidak dilanjutkan murid. Murid bisa checkout ulang.",
       confirmLabel: "Batalkan pembayaran",
       destructive: true,
     });
@@ -459,7 +459,7 @@ function PaymentReviewDialog({
   }
 
   const details: Array<[string, string | null]> = [
-    ["Siswa", `${payment.user.name} · ${payment.user.email}`],
+    ["Murid", `${payment.user.name} · ${payment.user.email}`],
     ["Nominal", formatRupiah(payment.amount)],
     ["Metode", paymentMethodLabels[payment.method]],
     ["Dibuat", dateTimeFormatter.format(payment.createdAt)],
@@ -470,7 +470,7 @@ function PaymentReviewDialog({
         : null,
     ],
     ["Nama pengirim", payment.payerName],
-    ["Catatan siswa", payment.payerNote],
+    ["Catatan murid", payment.payerNote],
     ["Lunas", payment.paidAt ? dateTimeFormatter.format(payment.paidAt) : null],
     [
       "Diperiksa",
@@ -520,7 +520,7 @@ function PaymentReviewDialog({
             {!payment.hasProof ? (
               <div className="bg-muted/40 text-muted-foreground flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-4 text-center text-xs">
                 <ImageIcon className="size-5" />
-                Siswa belum mengunggah bukti.
+                Murid belum mengunggah bukti.
               </div>
             ) : proof.data ? (
               <a

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { AppPreferencesBootstrap } from "~/components/app-preferences-bootstrap";
 import { AppSidebar } from "~/components/app-sidebar";
 import { NotificationBell } from "~/components/notifications/notification-bell";
 import { OrganizationThemeBootstrap } from "~/components/organization-theme-bootstrap";
@@ -16,7 +17,7 @@ import { parseOrganizationTheme } from "~/lib/organization-theme";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
 import { isSuperadminEmail } from "~/server/authorization/superadmin";
 import { getSession } from "~/server/better-auth/server";
-import { api } from "~/trpc/server";
+import { api, HydrateClient } from "~/trpc/server";
 
 export default async function WorkspaceLayout({
   children,
@@ -44,6 +45,8 @@ export default async function WorkspaceLayout({
           limit: 50,
         })
       : null,
+    // Ship the badge count with the page instead of a request after hydration.
+    api.notification.unreadCount.prefetch(),
   ]);
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
   const defaultRightOpen =
@@ -53,9 +56,12 @@ export default async function WorkspaceLayout({
     : null;
 
   return (
-    <>
+    <HydrateClient>
       <OrganizationThemeBootstrap theme={organizationTheme} />
       <OrganizationThemeProvider theme={organizationTheme}>
+        <AppPreferencesBootstrap
+          organizationTheme={Boolean(organizationTheme)}
+        />
         <SidebarProvider
           defaultOpen={defaultOpen}
           defaultRightOpen={defaultRightOpen}
@@ -69,6 +75,15 @@ export default async function WorkspaceLayout({
             showSuperadmin={Boolean(
               session?.user && isSuperadminEmail(session.user.email),
             )}
+            user={
+              session
+                ? {
+                    name: session.user.name,
+                    email: session.user.email,
+                    image: session.user.image,
+                  }
+                : undefined
+            }
           />
           <SidebarInset>
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear">
@@ -82,7 +97,7 @@ export default async function WorkspaceLayout({
                 <WorkspaceBreadcrumb organizationSlug={organizationSlug} />
               </div>
               <div className="ml-auto flex items-center gap-1 px-4">
-                <NotificationBell />
+                <NotificationBell signedIn={session ? true : undefined} />
                 <div
                   id="workspace-editor-sidebar-trigger-outlet"
                   className="contents"
@@ -100,6 +115,6 @@ export default async function WorkspaceLayout({
           <div id="workspace-editor-sidebar-outlet" className="contents" />
         </SidebarProvider>
       </OrganizationThemeProvider>
-    </>
+    </HydrateClient>
   );
 }

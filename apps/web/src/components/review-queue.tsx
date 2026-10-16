@@ -10,6 +10,7 @@ import {
   SearchIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { LocalDateTime } from "~/components/local-date-time";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { EmptyState } from "~/components/ui/empty-state";
@@ -172,7 +173,7 @@ function AttemptDetail({
           : []),
       ]);
       toast.success(
-        "Review selesai. Nilai dan feedback sekarang tersedia untuk siswa.",
+        "Review selesai. Nilai dan feedback sekarang tersedia untuk murid.",
       );
       onDone?.();
     } catch (cause) {
@@ -188,7 +189,7 @@ function AttemptDetail({
           <Badge>{attempt.context.label}</Badge>
           <Badge variant="outline">
             {attempt.invalidated
-              ? "Dibatalkan untuk siswa"
+              ? "Dibatalkan untuk murid"
               : statusLabel[attempt.status]}
           </Badge>
         </div>
@@ -203,12 +204,18 @@ function AttemptDetail({
         </p>
         <p className="text-muted-foreground text-xs">
           Percobaan #{attempt.attemptNumber}
-          {attempt.submittedAt
-            ? ` · Dikirim ${date.format(attempt.submittedAt)}`
-            : ""}
-          {attempt.gradedAt
-            ? ` · Dinilai ${date.format(attempt.gradedAt)}`
-            : ""}
+          {attempt.submittedAt ? (
+            <>
+              {" · Dikirim "}
+              <LocalDateTime value={attempt.submittedAt} format={date} />
+            </>
+          ) : null}
+          {attempt.gradedAt ? (
+            <>
+              {" · Dinilai "}
+              <LocalDateTime value={attempt.gradedAt} format={date} />
+            </>
+          ) : null}
         </p>
         {attempt.status === "GRADED" && attempt.score !== null ? (
           <p className="text-lg font-semibold">
@@ -274,7 +281,7 @@ function AttemptDetail({
                         {answer?.selectedOptions.some(
                           (s) => s.optionId === option.id,
                         )
-                          ? "✓ Pilihan siswa · "
+                          ? "✓ Pilihan murid · "
                           : ""}
                         {option.isCorrect ? "Kunci benar" : ""}
                       </span>
@@ -310,7 +317,7 @@ function AttemptDetail({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`feedback-${answer.id}`}>
-                      Feedback untuk siswa
+                      Feedback untuk murid
                     </Label>
                     <Textarea
                       id={`feedback-${answer.id}`}
@@ -354,7 +361,8 @@ function AttemptDetail({
         </p>
       ) : null}
       {canReview ? (
-        <div className="bg-background sticky bottom-0 flex justify-end border-t py-4">
+        // Phones stick above WorkspaceBottomNav (h-16 plus the safe area).
+        <div className="bg-background sticky bottom-0 z-10 flex justify-end border-t py-4 max-md:bottom-[calc(4rem+env(safe-area-inset-bottom))]">
           <Button type="submit" disabled={review.isPending}>
             {review.isPending ? (
               <LoaderCircleIcon className="animate-spin" />
@@ -403,7 +411,10 @@ export function ReviewQueue({
     limit: 20,
   };
   const query = api.assessment.listAttempts.useQuery(input, {
-    refetchInterval: 30_000,
+    // New submissions trickle in. Stale after a minute so refocusing the tab
+    // also refetches.
+    refetchInterval: 2 * 60_000,
+    staleTime: 60_000,
   });
   const filters = api.assessment.getRegisterFilters.useQuery(
     { organizationId },
@@ -466,7 +477,7 @@ export function ReviewQueue({
         >
           <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
-            aria-label="Cari siswa atau tugas"
+            aria-label="Cari murid atau tugas"
             className="pl-8"
             placeholder="Nama, email, tugas… (Enter)"
             value={search}
@@ -611,7 +622,10 @@ export function ReviewQueue({
                         {attempt.user.name}
                       </span>
                       <span className="text-muted-foreground shrink-0 text-xs">
-                        {date.format(attempt.submittedAt ?? attempt.startedAt)}
+                        <LocalDateTime
+                          value={attempt.submittedAt ?? attempt.startedAt}
+                          format={date}
+                        />
                       </span>
                     </span>
                     <span className="mt-0.5 block truncate text-sm">
@@ -644,7 +658,7 @@ export function ReviewQueue({
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead className="px-3">Siswa</TableHead>
+                  <TableHead className="px-3">Murid</TableHead>
                   <TableHead className="px-3">Tugas & konteks</TableHead>
                   <TableHead className="px-3">Status</TableHead>
                   <TableHead className="px-3">Nilai</TableHead>
@@ -702,7 +716,10 @@ export function ReviewQueue({
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground p-3 text-xs">
-                      {date.format(attempt.submittedAt ?? attempt.startedAt)}
+                      <LocalDateTime
+                        value={attempt.submittedAt ?? attempt.startedAt}
+                        format={date}
+                      />
                     </TableCell>
                     <TableCell className="p-3 text-right">
                       <Button
@@ -754,7 +771,7 @@ export function ReviewQueue({
           <DialogHeader>
             <DialogTitle>Detail pengerjaan</DialogTitle>
             <DialogDescription>
-              Periksa jawaban dan hasil satu siswa.
+              Periksa jawaban dan hasil satu murid.
             </DialogDescription>
           </DialogHeader>
           {selected ? (

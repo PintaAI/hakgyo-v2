@@ -1,21 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { randomSeed } from "~/lib/learner/practice";
+import {
+  randomSeed,
+  TODAY_ASSESSMENT_QUESTION_COUNT,
+} from "~/lib/learner/practice";
 import { api } from "~/trpc/react";
 import { QuizSession, type QuizQuestionItem } from "./practice/quiz-session";
 import { RichContent } from "./practice/rich-content";
 import { QuestionSkeleton } from "./skeletons";
+import { useRoundSeed } from "./use-round-seed";
 
-const QUESTION_COUNT = 5;
-
-export function TodayAssessmentPractice() {
+/** `initialSeed` lets the page prefetch the first sample on the server. */
+export function TodayAssessmentPractice({
+  initialSeed,
+}: {
+  initialSeed: string;
+}) {
   const utils = api.useUtils();
-  const [seed, setSeed] = useState(randomSeed);
+  const [seed, setSeed] = useRoundSeed(initialSeed);
   // The sample must not swap while the learner is answering it.
   const pool = api.practice.getAssessmentSample.useQuery(
-    { seed, limit: QUESTION_COUNT },
+    { seed, limit: TODAY_ASSESSMENT_QUESTION_COUNT },
     { staleTime: Infinity, refetchOnWindowFocus: false },
   );
 

@@ -1,5 +1,6 @@
 import { Prisma } from "../../../generated/prisma/client";
 import { chunk } from "../batch";
+import { deletedWorkActivityKeys } from "../gamification/activity-keys";
 import {
   calculateStreak,
   DEFAULT_ACHIEVEMENT_RULES,
@@ -142,23 +143,13 @@ async function rebuildGamification(
   }
 }
 
-async function deleteCourseItemActivity(
-  tx: Transaction,
-  itemIds: readonly string[],
-) {
-  if (itemIds.length === 0) return 0;
+/**
+ * Deletes the activity events of deleted learner work and rebuilds the affected learners'
+ * gamification summaries. Exact keys hit the unique index instead of scanning with LIKE patterns.
+ */
+async function deleteActivityByKeys(tx: Transaction, keys: readonly string[]) {
+  if (keys.length === 0) return 0;
 
-  // Completion events are recorded together with the learner's progress row
-  // (key `content-completed:${userId}:${courseItemId}`), and progress is only
-  // removed together with its item, so the progress rows name every key.
-  // Exact keys hit the unique index instead of scanning with LIKE patterns.
-  const progress = await tx.contentProgress.findMany({
-    where: { courseItemId: { in: [...itemIds] } },
-    select: { courseItemId: true, userId: true },
-  });
-  const keys = progress.map(
-    ({ courseItemId, userId }) => `content-completed:${userId}:${courseItemId}`,
-  );
   const activities = (
     await Promise.all(
       chunk(keys, MAX_BATCH_ROWS).map((batch) =>
@@ -212,12 +203,15 @@ export async function deleteAssessmentEventWithProgress(
     where: { assessmentEventId: eventId },
     select: { id: true },
   });
-  const attemptCount = await deleteAssessmentAttempts(
+  const attemptIds = attempts.map(({ id }) => id);
+  // Event attempts never complete course items, so only their submissions were awarded.
+  const activityEvents = await deleteActivityByKeys(
     tx,
-    attempts.map(({ id }) => id),
+    deletedWorkActivityKeys({ progress: [], attemptIds }),
   );
+  const attemptCount = await deleteAssessmentAttempts(tx, attemptIds);
   await tx.assessmentEvent.delete({ where: { id: eventId } });
-  return { attempts: attemptCount };
+  return { activityEvents, attempts: attemptCount };
 }
 
 export async function deleteCourseItemsWithProgress(
@@ -257,7 +251,16 @@ export async function deleteCourseItemsWithProgress(
   if (eventIds.length) {
     await tx.assessmentEvent.deleteMany({ where: { id: { in: eventIds } } });
   }
-  const activityEvents = await deleteCourseItemActivity(tx, itemIds);
+  const progressRows = itemIds.length
+    ? await tx.contentProgress.findMany({
+        where: { courseItemId: { in: itemIds } },
+        select: { courseItemId: true, userId: true },
+      })
+    : [];
+  const activityEvents = await deleteActivityByKeys(
+    tx,
+    deletedWorkActivityKeys({ progress: progressRows, attemptIds }),
+  );
   const progress = itemIds.length
     ? await tx.contentProgress.deleteMany({
         where: { courseItemId: { in: itemIds } },

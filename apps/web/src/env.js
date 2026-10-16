@@ -45,6 +45,17 @@ export const env = createEnv({
     OPENAI_APPS_CHALLENGE_TOKEN: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     ELEVENLABS_API_KEY: z.string().min(1).optional(),
+    // Resend API key and the verified sender used for account emails (verification, password reset).
+    // Required in production: Better Auth only logs a failed send, so a missing key would otherwise
+    // tell users an email is on its way that never arrives. Development logs the email instead.
+    RESEND_API_KEY:
+      process.env.NODE_ENV === "production"
+        ? z.string().min(1)
+        : z.string().min(1).optional(),
+    EMAIL_FROM:
+      process.env.NODE_ENV === "production"
+        ? z.string().min(1)
+        : z.string().min(1).optional(),
     DATABASE_URL: z.string().url(),
     DIRECT_URL: z.string().url(),
     // Max connections per server instance in the Neon adapter pool.
@@ -95,6 +106,8 @@ export const env = createEnv({
     OPENAI_APPS_CHALLENGE_TOKEN: process.env.OPENAI_APPS_CHALLENGE_TOKEN,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM,
     DATABASE_URL: process.env.DATABASE_URL,
     DIRECT_URL: process.env.DIRECT_URL,
     DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX,

@@ -60,25 +60,32 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
+// Only Geist is the default. The next four apply when a user picks them in
+// their preferences, so they load on first use instead of preloading on every
+// page.
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  preload: false,
 });
 
 const poppins = Poppins({
   subsets: ["latin"],
   variable: "--font-poppins",
   weight: ["400", "500", "600", "700"],
+  preload: false,
 });
 
 const merriweather = Merriweather({
   subsets: ["latin"],
   variable: "--font-merriweather",
+  preload: false,
 });
 
 const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
+  preload: false,
 });
 
 export default function RootLayout({

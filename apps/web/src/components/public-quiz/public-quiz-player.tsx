@@ -9,7 +9,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import Link from "next/link";
 import {
   ArrowRightIcon,
   BookOpenIcon,
@@ -32,6 +31,7 @@ import {
   QuestionNavigator,
   StudyCard,
 } from "~/components/learner/assessment/assessment-ui";
+import Link from "~/components/link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1040,7 +1040,8 @@ function Leaderboard({
 }) {
   const leaderboard = api.publicQuiz.leaderboard.useQuery(
     { ...quizRef, token },
-    { refetchInterval: 30_000 },
+    // Every open player polls, so keep this slow.
+    { refetchInterval: 60_000 },
   );
   const data = leaderboard.data;
   const mineListed = data?.entries.some((entry) => entry.isMine);

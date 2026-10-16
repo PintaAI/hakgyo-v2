@@ -191,7 +191,7 @@ export function CohortInvites({
               Belum ada link invite
             </h3>
             <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">
-              Buat link pertama untuk mengundang siswa langsung ke kelas ini.
+              Buat link pertama untuk mengundang murid langsung ke kelas ini.
             </p>
           </CardContent>
         </Card>
@@ -332,7 +332,7 @@ export function CohortInvites({
               <DialogHeader>
                 <DialogTitle>Buat link invite</DialogTitle>
                 <DialogDescription>
-                  Link akan memasukkan siswa langsung ke {cohortName}.
+                  Link akan memasukkan murid langsung ke {cohortName}.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-5 grid gap-4">

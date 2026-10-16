@@ -12,7 +12,6 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangleIcon,
@@ -51,6 +50,8 @@ import {
   type ExtractedAssessmentQuestion,
   type ImportedAssessmentQuestion,
 } from "~/components/assessment-image-import";
+import Link from "~/components/link";
+import { SaveNowButton } from "~/components/save-now-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1639,21 +1640,17 @@ function AssessmentEditorForm({
                 <CheckCircle2Icon className="size-3.5" />
               )}
               <span>{autosaveStatusLabels[autosaveStatus]}</span>
-              {autosaveStatus === "error" ? (
-                <button
-                  className="underline underline-offset-2"
-                  onClick={() => {
-                    void autosaveRegistry.flushAll().catch(() => undefined);
-                  }}
-                  type="button"
-                >
-                  Coba lagi
-                </button>
-              ) : null}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {readOnly ? null : (
+            <SaveNowButton
+              size="default"
+              status={autosaveStatus}
+              onSave={autosaveRegistry.flushAll}
+            />
+          )}
           {assessment && publicQuizHref ? (
             <Link
               href={publicQuizHref}
@@ -1682,7 +1679,7 @@ function AssessmentEditorForm({
                   <AlertDialogTitle>Hapus tugas ini?</AlertDialogTitle>
                   <AlertDialogDescription>
                     Tindakan ini permanen. Semua soal, penempatan di kurikulum,
-                    event, jawaban, hasil, dan progres siswa akan ikut dihapus.
+                    event, jawaban, hasil, dan progres murid akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -1691,7 +1688,10 @@ function AssessmentEditorForm({
                     disabled={isDeleting}
                     onClick={() => {
                       cancelSettingsSave();
-                      void flushSettingsSave()
+                      // Save pending question and option edits first; once the
+                      // assessment is gone their unmount saves would fail.
+                      void autosaveRegistry
+                        .flushAll()
                         .then(onDelete)
                         .catch(() => undefined);
                     }}
@@ -1734,7 +1734,7 @@ function AssessmentEditorForm({
             settingsTouchedRef.current = true;
             setDescription(event.target.value);
           }}
-          placeholder="Jelaskan tujuan tugas ini kepada siswa (opsional)…"
+          placeholder="Jelaskan tujuan tugas ini kepada murid (opsional)…"
           rows={1}
           value={description}
         />
@@ -2736,38 +2736,45 @@ function QuestionEditor({
       ) : (
         <div className="bg-muted/30 text-muted-foreground flex items-start gap-2 rounded-lg border p-3 text-xs">
           <FileQuestionIcon className="mt-0.5 size-4 shrink-0" />
-          Soal tertulis akan diperiksa manual setelah siswa mengirim jawaban.
+          Soal tertulis akan diperiksa manual setelah murid mengirim jawaban.
         </div>
       )}
 
       {readOnly ? null : (
         <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-          <p className="flex items-center gap-1.5 text-xs" role="status">
-            {questionSaveStatus === "pending" ||
-            questionSaveStatus === "saving" ? (
-              <>
-                <LoaderCircleIcon className="text-muted-foreground size-3.5 animate-spin" />
-                <span className="text-muted-foreground">Menyimpan…</span>
-              </>
-            ) : questionSaveStatus === "error" ? (
-              <>
-                <AlertTriangleIcon className="text-destructive size-3.5" />
-                <span className="text-destructive">Gagal menyimpan</span>
-              </>
-            ) : questionSaveStatus === "saved" ? (
-              <>
-                <CheckCircle2Icon className="text-muted-foreground size-3.5" />
-                <span className="text-muted-foreground">Tersimpan</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2Icon className="text-muted-foreground size-3.5" />
-                <span className="text-muted-foreground">
-                  Belum ada perubahan
-                </span>
-              </>
-            )}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="flex items-center gap-1.5 text-xs" role="status">
+              {questionSaveStatus === "pending" ||
+              questionSaveStatus === "saving" ? (
+                <>
+                  <LoaderCircleIcon className="text-muted-foreground size-3.5 animate-spin" />
+                  <span className="text-muted-foreground">Menyimpan…</span>
+                </>
+              ) : questionSaveStatus === "error" ? (
+                <>
+                  <AlertTriangleIcon className="text-destructive size-3.5" />
+                  <span className="text-destructive">Gagal menyimpan</span>
+                </>
+              ) : questionSaveStatus === "saved" ? (
+                <>
+                  <CheckCircle2Icon className="text-muted-foreground size-3.5" />
+                  <span className="text-muted-foreground">Tersimpan</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2Icon className="text-muted-foreground size-3.5" />
+                  <span className="text-muted-foreground">
+                    Belum ada perubahan
+                  </span>
+                </>
+              )}
+            </p>
+            <SaveNowButton
+              size="xs"
+              status={questionSaveStatus}
+              onSave={flushQuestionSave}
+            />
+          </div>
           <DeleteQuestionAlert
             busy={busy}
             onDelete={async () => {

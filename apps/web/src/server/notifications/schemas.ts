@@ -69,6 +69,7 @@ export const notificationTypeSchema = z.enum([
   "cohort-meeting",
   "enrollment",
   "announcement",
+  "analytics-weekly",
 ]);
 
 export const notifyInputSchema = z.object({

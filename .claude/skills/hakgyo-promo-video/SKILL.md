@@ -112,6 +112,17 @@ Being creative means composition and motion, not novelty props. Check stills aga
 all content in the safe area (x 60-940, y 250-1440 of 1080x1920) that TikTok, Reels and Shorts leave uncovered; the editor
 has a "zona aman" toggle and `pv check <p> --safe` tints it.
 
+## Promotional teaser: problem, then answer (`demo/teaser.html`)
+
+"Teaser" means a promo, not a feature tour: a hook question, the problem (the tools a class runs on
+today, piling up), Hakgyo pulling them into one window, then product moments, and a CTA. Something
+visible must change about every 3 s, so each product beat is one short line (about 2 s of voice) over
+a 4-6 s slice of a recording with a zoom key. The same page and storyboard render 16:9 and 9:16
+(`"size": [1080, 1920]` switches the layout). Projects: `teaser-hakgyo` (landing hero) and
+`teaser-hakgyo-vertical`. Clips can be copied from the guide videos instead of recorded again. Music on
+a public page must be licensed for commercial use: put the file in the project and set
+`"audio": {"track": "..."}`. Never rip music from YouTube.
+
 ## Captions on a raw talking-head video (`caption.html`, `pv caption`)
 
 `bun pv.mjs caption init <name> <video.mp4> [--ko]` does the mechanical part: transcodes to all-intra H.264 (`-g 1`, so every seek
@@ -150,14 +161,17 @@ the original audio back with a two-pass loudnorm (`project.json` `audio.source`)
 
 ## This VPS is resource limited
 
-It has 4 cores, 7 GB of RAM and a nearly full disk. Run at most one agent at a time, and do heavy work (typecheck, renders,
+It has 4 cores, 7 GB of RAM and a nearly full disk. When the PC worker is up, `pv.mjs` already sends
+`record`, `camera`, `check` and the heavy half of `prep` there (its own Chrome and Next dev server on
+`localhost:3000`, same database) and falls back to this machine when it is not. Run at most one agent at a time, and do heavy work (typecheck, renders,
 test suites) one thing at a time, because parallel work has crashed the machine and killed every running task. A full local
 render takes tens of minutes; with the private GPU worker (`gpu-run status` answers) a short renders in minutes and a long
 video in about 9. Keep long finished videos on that machine instead of downloading them (a 200 MB transfer once crawled at
 350 KB/s): copy to the worker's `/output` and verify with `demo/perf/verify-render.sh`. If `gpu-run` dies with "The operation
 timed out" the job usually keeps running; read its log through the job API and do not restart it. Keep the CPU-only Chrome
-default: GPU rasterization made large screen-recording scenes about 4x slower. Check free disk before a render, and check
-`tailscale status` first, because the PC may be offline.
+default: GPU rasterization made large screen-recording scenes about 4x slower. Before a large transfer, or when one seems slow, run `gpu-run speedtest` (add `--internet` to compare each side's own
+line) and quote its numbers instead of guessing. Check free disk before a render, delete frame folders and old renders you
+created once the final file exists, and check `tailscale status` first, because the PC may be offline.
 
 ## Voiceover and quota
 
@@ -194,5 +208,8 @@ of the demo data rather than doing it silently, and do not commit or open a PR u
 - `references/storyboard-and-recording.md`: storyboard schema (editorial and compose), how time works, how to add a recording
   stage or a motion graphic.
 - `references/troubleshooting.md`: selectors that bit before, stale servers, render and worker pitfalls.
+- `references/guide-videos.md`: the user-guide intro videos (`guide-videos/`): order of work, recorder helpers
+  (`s.find`, `s.require`, `g.learner`, `s.irreversible`, `g.created`), `pv lint` and the safe limits. Read it before
+  making or fixing a guide video.
 - `references/motion-techniques.md`: the catalogue of motion techniques and transitions (the `showreel.html` page that held
   them was archived; the descriptions are recipes to lift into the live pages).

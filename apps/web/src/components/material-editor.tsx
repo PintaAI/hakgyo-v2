@@ -19,6 +19,7 @@ import {
   DynamicBlockNoteEditor,
   type EditorAssetStorageOptions,
 } from "~/components/editor";
+import { SaveNowButton } from "~/components/save-now-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,8 +67,9 @@ function getMaterialContent(value: unknown): MaterialContent {
   return blocks.length ? blocks : EMPTY_DOCUMENT;
 }
 
-// Material documents are large; batch keystrokes into fewer saves.
-const materialAutosaveDelayMs = 1500;
+// Material documents are large, and long-form writing pauses between
+// sentences; a shorter delay would save, a server call, every few seconds.
+const materialAutosaveDelayMs = 5000;
 
 function errorMessage(error: unknown) {
   if (
@@ -565,7 +567,7 @@ function MaterialEditorForm({
                   <AlertDialogTitle>Hapus materi ini?</AlertDialogTitle>
                   <AlertDialogDescription>
                     Tindakan ini permanen. Semua penempatan materi di kurikulum,
-                    progres siswa, dan aktivitas XP terkait akan ikut dihapus.
+                    progres murid, dan aktivitas XP terkait akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -587,17 +589,26 @@ function MaterialEditorForm({
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <Button disabled={isSaving || isDeleting} type="submit">
-            {isSaving ? (
-              <LoaderCircleIcon
-                className="animate-spin"
-                data-icon="inline-start"
-              />
-            ) : (
-              <SaveIcon data-icon="inline-start" />
-            )}
-            {saveLabel ?? (materialId ? "Simpan perubahan" : "Buat materi")}
-          </Button>
+          {materialId ? (
+            // Edits autosave; this only appears while one is still waiting.
+            <SaveNowButton
+              size="default"
+              status={autosaveStatus}
+              onSave={flushAutosave}
+            />
+          ) : (
+            <Button disabled={isSaving || isDeleting} type="submit">
+              {isSaving ? (
+                <LoaderCircleIcon
+                  className="animate-spin"
+                  data-icon="inline-start"
+                />
+              ) : (
+                <SaveIcon data-icon="inline-start" />
+              )}
+              {saveLabel ?? "Buat materi"}
+            </Button>
+          )}
         </div>
       </header>
 

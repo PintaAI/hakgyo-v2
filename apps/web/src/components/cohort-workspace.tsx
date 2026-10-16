@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -31,6 +30,7 @@ import {
 import { toast } from "sonner";
 
 import { CourseCover } from "~/components/course-cover";
+import Link from "~/components/link";
 import { PageHeader } from "~/components/ui/page-header";
 import { CohortInvites } from "~/components/cohort-invites";
 import {
@@ -133,7 +133,7 @@ type CohortView =
 
 const views = [
   { value: "overview", label: "Ringkasan", icon: LayoutDashboardIcon },
-  { value: "learners", label: "Siswa", icon: UsersIcon },
+  { value: "learners", label: "Murid", icon: UsersIcon },
   { value: "payments", label: "Pembayaran", icon: WalletIcon },
   { value: "staff", label: "Staf", icon: UserRoundCogIcon },
   { value: "meetings", label: "Jadwal kelas", icon: VideoIcon },
@@ -301,7 +301,7 @@ export function CohortWorkspace({
     return true;
   });
   const rawRequestedView = searchParams.get("view");
-  // Legacy `?view=invites` now lives inside the Siswa tab.
+  // Legacy `?view=invites` now lives inside the Murid tab.
   const requestedView = (
     rawRequestedView === "invites" ? "learners" : rawRequestedView
   ) as CohortView | null;
@@ -376,7 +376,7 @@ export function CohortWorkspace({
         title={cohort.name}
         description={
           cohort.description ??
-          "Kelola siswa, pengajar, dan jadwal kelas dari workspace ini."
+          "Kelola murid, pengajar, dan jadwal kelas dari workspace ini."
         }
         media={
           <CourseCover
@@ -557,7 +557,7 @@ function Overview({
       <StatStrip
         label="Ringkasan kelas"
         items={[
-          { label: "Siswa aktif", value: learnersPending ? "–" : active },
+          { label: "Murid aktif", value: learnersPending ? "–" : active },
           { label: "Kapasitas", value: cohort.capacity ?? "∞" },
           { label: "Keterisian", value: learnersPending ? "–" : occupancy },
           {
@@ -639,7 +639,7 @@ function Overview({
               {
                 target: "learners" as const,
                 icon: UsersIcon,
-                label: "Kelola siswa dan status",
+                label: "Kelola murid dan status",
               },
               ...(canManagePayments
                 ? [
@@ -648,7 +648,7 @@ function Overview({
                       icon: WalletIcon,
                       label: paymentsToReview
                         ? `Verifikasi ${paymentsToReview} pembayaran`
-                        : "Kelola pembayaran siswa",
+                        : "Kelola pembayaran murid",
                     },
                   ]
                 : []),
@@ -754,7 +754,7 @@ function Learners({
     try {
       await mutation.mutateAsync({ cohortId, email, status });
       await utils.enrollment.listCohortEnrollments.invalidate({ cohortId });
-      toast.success("Status siswa diperbarui.");
+      toast.success("Status murid diperbarui.");
       return true;
     } catch (cause) {
       toast.error(getErrorMessage(cause));
@@ -782,7 +782,7 @@ function Learners({
         utils.cohort.get.invalidate({ cohortId }),
       ]);
       setRemoving(null);
-      toast.success(`Siswa ${enrollment.user.name} dihapus dari kelas.`);
+      toast.success(`Murid ${enrollment.user.name} dihapus dari kelas.`);
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -791,11 +791,11 @@ function Learners({
   return (
     <section className="space-y-5">
       <SectionHeading
-        title="Siswa"
-        description="Kelola siswa yang tergabung langsung dalam kelas."
+        title="Murid"
+        description="Kelola murid yang tergabung langsung dalam kelas."
         action={
           <Button onClick={() => setOpen(true)}>
-            <UserPlusIcon data-icon="inline-start" /> Tambah siswa
+            <UserPlusIcon data-icon="inline-start" /> Tambah murid
           </Button>
         }
       />
@@ -806,7 +806,7 @@ function Learners({
             <EmptyState
               size="sm"
               icon={UsersIcon}
-              title="Belum ada siswa"
+              title="Belum ada murid"
               description="Tambahkan akun Hakgyo menggunakan alamat email."
               action={
                 <Button
@@ -814,7 +814,7 @@ function Learners({
                   size="sm"
                   onClick={() => setOpen(true)}
                 >
-                  Tambah siswa
+                  Tambah murid
                 </Button>
               }
             />
@@ -826,7 +826,7 @@ function Learners({
           <CardHeader className="border-b py-4 sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
               <CardTitle>Peserta kelas</CardTitle>
-              <CardDescription>{data.length} siswa terdaftar</CardDescription>
+              <CardDescription>{data.length} murid terdaftar</CardDescription>
             </div>
             <div className="relative w-full sm:w-64">
               <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
@@ -842,7 +842,7 @@ function Learners({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-4">Siswa</TableHead>
+                  <TableHead className="pl-4">Murid</TableHead>
                   <TableHead className="max-sm:hidden">Sumber</TableHead>
                   <TableHead className="max-sm:hidden">Terdaftar</TableHead>
                   <TableHead className="text-right">Status</TableHead>
@@ -940,7 +940,7 @@ function Learners({
               <EmptyState
                 size="sm"
                 icon={SearchIcon}
-                title="Siswa tidak ditemukan"
+                title="Murid tidak ditemukan"
                 description="Coba nama atau email yang berbeda."
               />
             </CardContent>
@@ -957,7 +957,7 @@ function Learners({
                 {isLoadingMore ? (
                   <LoaderCircleIcon className="animate-spin" />
                 ) : null}
-                Muat siswa berikutnya
+                Muat murid berikutnya
               </Button>
             </div>
           ) : null}
@@ -967,7 +967,7 @@ function Learners({
         <DialogContent>
           <form onSubmit={submit}>
             <DialogHeader>
-              <DialogTitle>Tambah siswa</DialogTitle>
+              <DialogTitle>Tambah murid</DialogTitle>
               <DialogDescription>
                 Email harus sudah terdaftar sebagai akun Hakgyo.
               </DialogDescription>
@@ -1024,7 +1024,7 @@ function Learners({
                 ) : (
                   <UserPlusIcon />
                 )}
-                Tambah siswa
+                Tambah murid
               </Button>
             </DialogFooter>
           </form>
@@ -1046,7 +1046,7 @@ function Learners({
               Hapus {removing?.user.name} dari kelas?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Siswa akan dikeluarkan dari kelas ini dan kehilangan akses
+              Murid akan dikeluarkan dari kelas ini dan kehilangan akses
               kurikulum yang berasal dari kelas ini. Akses lewat kelas lain atau
               belajar mandiri pada kurikulum yang sama tetap berlaku.
             </AlertDialogDescription>
@@ -1122,7 +1122,7 @@ function Staff({ canManage, cohort }: { canManage: boolean; cohort: Cohort }) {
     <section className="space-y-5">
       <SectionHeading
         title="Staf"
-        description="Instructor mengelola aktivitas kelas. Assistant membantu siswa dan melihat jadwal."
+        description="Instructor mengelola aktivitas kelas. Assistant membantu murid dan melihat jadwal."
         action={
           canManage ? (
             <Button onClick={() => setOpen(true)}>
@@ -1256,7 +1256,7 @@ function Staff({ canManage, cohort }: { canManage: boolean; cohort: Cohort }) {
                   </Select>
                   <p className="text-muted-foreground text-xs">
                     Instructor dapat mengelola meeting, invite, dan review.
-                    Assistant hanya mengelola siswa dan melihat jadwal.
+                    Assistant hanya mengelola murid dan melihat jadwal.
                   </p>
                 </div>
               </div>
@@ -1488,6 +1488,7 @@ function Meetings({
                         Edit
                       </Button>
                       <Button
+                        aria-label={`Hapus meeting ${meeting.title}`}
                         size="icon-sm"
                         variant="ghost"
                         onClick={() => deleteMeeting(meeting)}
@@ -1849,7 +1850,7 @@ function Settings({
               Informasi umum
             </CardTitle>
             <CardDescription>
-              Nama dan deskripsi yang dilihat siswa di workspace.
+              Nama dan deskripsi yang dilihat murid di workspace.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 py-5">
@@ -2010,7 +2011,7 @@ function Settings({
               Zona berbahaya
             </CardTitle>
             <CardDescription>
-              Hapus kelas beserta siswa, staff, invite, dan meeting terkait.
+              Hapus kelas beserta murid, staff, invite, dan meeting terkait.
               Tindakan ini permanen.
             </CardDescription>
           </CardHeader>
@@ -2037,7 +2038,7 @@ function Settings({
               </AlertDialogMedia>
               <AlertDialogTitle>Hapus {cohort.name}?</AlertDialogTitle>
               <AlertDialogDescription>
-                Siswa, staff, invite, dan meeting terkait dapat ikut terhapus.
+                Murid, staff, invite, dan meeting terkait dapat ikut terhapus.
                 Action ini permanen.
               </AlertDialogDescription>
             </AlertDialogHeader>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowUpRight,
   BookOpen,
@@ -8,6 +7,7 @@ import {
   Users,
 } from "lucide-react";
 import { type ReactNode } from "react";
+import Link from "~/components/link";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
@@ -45,6 +45,11 @@ export type StudioDashboardData = {
   }[];
   pendingReviews: number;
   activity?: { id: string; title: string; detail: string }[];
+  /** Last 30 days at a glance, linking to the analytics pages. */
+  insights: {
+    href: string;
+    items: { label: string; value: string; detail: ReactNode }[];
+  };
 };
 
 const courseStatusLabels: Record<string, string> = {
@@ -165,7 +170,7 @@ function Groups({ data }: { data: StudioDashboardData }) {
                     <span aria-hidden="true">·</span>
                     <span className="inline-flex shrink-0 items-center gap-1">
                       <Users className="size-3" />
-                      {group._count.enrollments} siswa
+                      {group._count.enrollments} murid
                     </span>
                   </span>
                 </span>
@@ -216,6 +221,26 @@ function Activity({ data }: { data: StudioDashboardData }) {
           </Action>
         </div>
       )}
+    </section>
+  );
+}
+function Insights({ data }: { data: StudioDashboardData }) {
+  return (
+    <section className="sm:bg-card max-sm:border-y max-sm:py-5 sm:rounded-lg sm:border sm:p-5 sm:shadow-sm">
+      <Title title="Analitik · 30 hari" href={data.insights.href} />
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-5 xl:grid-cols-1">
+        {data.insights.items.map((item) => (
+          <div key={item.label} className="min-w-0">
+            <dt className="text-muted-foreground text-xs">{item.label}</dt>
+            <dd className="mt-1 text-2xl font-medium tracking-[-0.03em] tabular-nums">
+              {item.value}
+            </dd>
+            <dd className="text-muted-foreground mt-0.5 text-xs">
+              {item.detail}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }
@@ -356,6 +381,7 @@ export function StudioDashboard({ data }: { data: StudioDashboardData }) {
           </div>
         </section>
         <aside className="space-y-7">
+          <Insights data={data} />
           <Activity data={data} />
           {/* Phones already flag reviews in the stat strip and bottom nav. */}
           <section className="bg-muted rounded-lg border p-6 shadow-sm max-sm:hidden">

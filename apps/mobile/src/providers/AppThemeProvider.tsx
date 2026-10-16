@@ -22,6 +22,9 @@ import { type ColorScheme, type ThemeColors } from "../theme/colors";
 import { createMobileTheme } from "../theme/organization-theme";
 
 const STORAGE_VERSION = 2;
+// How long the organization list counts as fresh, on mount and on returning
+// to the app.
+const ORGANIZATIONS_STALE_MS = 5 * 60 * 1000;
 
 export type ActiveBrandContext = RouterOutputs["brand"]["getContext"];
 export type AvailableOrganizationBrand =
@@ -166,7 +169,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     undefined,
     {
       enabled: Boolean(userId),
-      staleTime: 5 * 60 * 1000,
+      staleTime: ORGANIZATIONS_STALE_MS,
       refetchOnMount: true,
       refetchOnReconnect: true,
     },
@@ -188,10 +191,17 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   // backgrounded would otherwise stay invisible until the next cold start.
   // React Query dedupes in-flight fetches, so rapid foreground toggles share
   // a single request.
+  // Only when the list is stale (5 minutes): switching apps back and forth
+  // would otherwise cost a request every time.
+  const orgsUpdatedAtRef = useRef(organizationsQuery.dataUpdatedAt);
+  orgsUpdatedAtRef.current = organizationsQuery.dataUpdatedAt;
   useEffect(() => {
     if (!userId) return;
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
+      if (
+        state === "active" &&
+        Date.now() - orgsUpdatedAtRef.current > ORGANIZATIONS_STALE_MS
+      ) {
         void refetchOrgsRef.current();
       }
     });

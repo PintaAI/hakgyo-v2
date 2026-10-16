@@ -11,7 +11,7 @@ export default async function Page({
   const membership =
     await requireOrganizationMembershipBySlug(organizationSlug);
   const organizationId = membership.organizationId;
-  void api.payment.getSettings.prefetch({ organizationId });
+  await api.payment.getSettings.prefetch({ organizationId });
 
   return (
     <HydrateClient>

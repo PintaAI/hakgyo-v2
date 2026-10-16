@@ -1,5 +1,5 @@
 import { db } from "~/server/db";
-import { expo } from "~/server/notifications/sender";
+import { getExpo } from "~/server/notifications/sender";
 
 /** Expo keeps receipts for about a day; older tickets can never resolve. */
 const RECEIPT_READY_MS = 15 * 60_000;
@@ -35,6 +35,7 @@ export async function checkPushReceipts(
 
   const settledIds: string[] = [];
   const goneTargetIds = new Set<string>();
+  const expo = await getExpo();
   for (const chunk of expo.chunkPushNotificationReceiptIds(
     tickets.map((ticket) => ticket.ticketId),
   )) {

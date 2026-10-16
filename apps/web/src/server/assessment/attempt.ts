@@ -3,6 +3,11 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { getMissingWrittenQuestionIds, groupScoresByValue } from "./logic";
 import { withTransactionRetry } from "../db-retry";
+import {
+  assessmentPassedActivityKey,
+  assessmentSubmittedActivityKey,
+} from "../gamification/activity-keys";
+import { recordGamificationActivity } from "../gamification/record-activity";
 
 /**
  * Serializes attempt creation for one learner and course item (standalone and event attempts
@@ -64,11 +69,71 @@ export async function markCourseItemCompleted(
   });
 }
 
+/**
+ * Awards the learner's submission of an attempt (standalone or event), once per attempt. Call it
+ * in the submitting transaction so a rolled-back submit awards nothing. The learner's stored time
+ * zone dates the activity.
+ */
+export function recordAssessmentSubmitted(
+  tx: Prisma.TransactionClient,
+  attempt: {
+    id: string;
+    userId: string;
+    organizationId: string;
+    courseItemId: string;
+    assessmentEventId: string | null;
+  },
+  submittedAt: Date,
+) {
+  return recordGamificationActivity(tx, {
+    action: "ASSESSMENT_SUBMITTED",
+    idempotencyKey: assessmentSubmittedActivityKey(attempt.id),
+    metadata: {
+      attemptId: attempt.id,
+      courseItemId: attempt.courseItemId,
+      ...(attempt.assessmentEventId
+        ? { assessmentEventId: attempt.assessmentEventId }
+        : {}),
+    },
+    organizationId: attempt.organizationId,
+    occurredAt: submittedAt,
+    userId: attempt.userId,
+  });
+}
+
+/**
+ * Awards passing a standalone assessment, once per learner and course item however often it is
+ * retaken. Call it next to `markCourseItemCompleted`, in the same transaction.
+ */
+export function recordAssessmentPassed(
+  tx: Prisma.TransactionClient,
+  attempt: {
+    id: string;
+    userId: string;
+    organizationId: string;
+    courseItemId: string;
+  },
+  passedAt: Date,
+) {
+  return recordGamificationActivity(tx, {
+    action: "ASSESSMENT_PASSED",
+    idempotencyKey: assessmentPassedActivityKey(
+      attempt.userId,
+      attempt.courseItemId,
+    ),
+    metadata: { attemptId: attempt.id, courseItemId: attempt.courseItemId },
+    organizationId: attempt.organizationId,
+    occurredAt: passedAt,
+    userId: attempt.userId,
+  });
+}
+
 export const gradableAttemptSelect = {
   id: true,
   userId: true,
   organizationId: true,
   courseItemId: true,
+  assessmentEventId: true,
   status: true,
   startedAt: true,
   assessment: {

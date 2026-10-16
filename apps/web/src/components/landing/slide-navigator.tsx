@@ -53,6 +53,21 @@ export function SlideNavigator({ slides }: { slides: readonly SlideLink[] }) {
   const [active, setActive] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
 
+  // Opens the slide in the URL (/#faq), which the browser's own jump to the
+  // fragment does not reliably do on this page, then turns on smooth
+  // scrolling for later moves (see globals.css).
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (id) {
+      document
+        .getElementById(id)
+        ?.scrollIntoView({ block: "start", behavior: "instant" });
+    }
+    const root = document.documentElement;
+    root.classList.add("landing-smooth");
+    return () => root.classList.remove("landing-smooth");
+  }, []);
+
   useEffect(() => {
     const elements = slides.map(({ id }) => document.getElementById(id));
     let frame = 0;
@@ -218,7 +233,7 @@ export function SlideNavigator({ slides }: { slides: readonly SlideLink[] }) {
           </a>
         ))}
       </nav>
-      <div className="bg-background/85 border-border fixed right-6 bottom-6 z-40 hidden items-center gap-1 rounded-full border p-1 shadow-sm backdrop-blur lg:flex">
+      <div className="bg-background/95 border-border fixed right-6 bottom-6 z-40 hidden items-center gap-1 rounded-full border p-1 shadow-sm lg:flex">
         <button
           type="button"
           className={control}

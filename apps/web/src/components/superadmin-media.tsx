@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";

@@ -31,8 +31,10 @@ export default async function KurikulumPage({
   ) {
     notFound();
   }
-  void api.content.listCoursePdfPageRanges.prefetch({ courseId });
-  void api.content.getCurriculumReadiness.prefetch({ courseId });
+  await Promise.all([
+    api.content.listCoursePdfPageRanges.prefetch({ courseId }),
+    api.content.getCurriculumReadiness.prefetch({ courseId }),
+  ]);
   const toOption = (resource: {
     id: string;
     title: string;

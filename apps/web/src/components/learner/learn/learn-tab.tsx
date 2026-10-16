@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { CompassIcon } from "lucide-react";
 
+import Link from "~/components/link";
 import { EmptyState } from "~/components/ui/empty-state";
 import { buttonVariants } from "~/components/ui/button";
 import { isStaleClosedOnDemandAssessment } from "~/lib/learner/assessment-state";

@@ -25,6 +25,8 @@ const authCodeMessages: Record<string, string> = {
   FAILED_TO_CREATE_USER: "Akun tidak dapat dibuat. Coba lagi.",
   SESSION_EXPIRED: "Demi keamanan, keluar lalu masuk lagi sebelum melanjutkan.",
   CREDENTIAL_ACCOUNT_NOT_FOUND: "Akun ini tidak memakai kata sandi.",
+  EMAIL_NOT_VERIFIED:
+    "Email belum diverifikasi. Kami mengirim ulang tautan verifikasi, cek kotak masuk kamu.",
 };
 
 const networkPattern = /network request failed|failed to fetch|network error/i;

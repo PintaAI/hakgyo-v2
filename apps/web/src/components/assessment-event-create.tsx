@@ -50,7 +50,7 @@ const typeOptions: Array<{
   {
     value: "QUICK_ASSESSMENT",
     icon: BookOpenCheckIcon,
-    description: "Learner melihat pembahasan jawaban setelah ditutup.",
+    description: "Murid melihat pembahasan jawaban setelah ditutup.",
   },
   {
     value: "TRYOUT",
@@ -81,7 +81,7 @@ function nextHour() {
 function errorMessage(error: unknown) {
   return error instanceof Error
     ? error.message
-    : "Event belum berhasil disimpan.";
+    : "Latihan atau tryout belum berhasil disimpan.";
 }
 
 function Section({
@@ -276,7 +276,7 @@ export function CreateAssessmentEventSheet({
       });
       toast.success(
         startMode === "now"
-          ? `${eventTypeLabel[type]} dibuka untuk ${created.participantCount ?? 0} learner.`
+          ? `${eventTypeLabel[type]} dibuka untuk ${created.participantCount ?? 0} murid.`
           : startMode === "schedule"
             ? `${eventTypeLabel[type]} dijadwalkan.`
             : "Draft disimpan.",
@@ -299,7 +299,7 @@ export function CreateAssessmentEventSheet({
     ? "Pilih tugas untuk melanjutkan."
     : targets.isPending
       ? "Menghitung peserta…"
-      : `${eventTypeLabel[type]} untuk ${learnerCount} learner di ${
+      : `${eventTypeLabel[type]} untuk ${learnerCount} murid di ${
           targetAll ? "semua kelas" : `${chosen.length} kelas`
         }${
           startMode === "schedule" && !Number.isNaN(openDate.getTime())
@@ -319,7 +319,7 @@ export function CreateAssessmentEventSheet({
             <SheetDescription>
               {fixedCohort
                 ? `Untuk kelas ${fixedCohort.name}.`
-                : "Untuk satu, beberapa, atau semua kelas di course ini."}
+                : "Untuk satu, beberapa, atau semua kelas di kurikulum ini."}
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -395,7 +395,7 @@ export function CreateAssessmentEventSheet({
                       {fixedCohort?.name ?? "Kelas ini"}
                     </p>
                     <p className="text-muted-foreground text-xs">
-                      {fixedCohort?.learnerCount ?? 0} learner aktif
+                      {fixedCohort?.learnerCount ?? 0} murid aktif
                     </p>
                   </div>
                 </div>
@@ -412,7 +412,7 @@ export function CreateAssessmentEventSheet({
                         <span className="text-muted-foreground block text-xs">
                           {canTargetAll
                             ? `${cohorts.length} kelas yang aktif saat dibuka`
-                            : "Khusus pengelola course"}
+                            : "Khusus pengelola kurikulum"}
                         </span>
                       </span>
                     </ChoiceRow>
@@ -459,7 +459,7 @@ export function CreateAssessmentEventSheet({
                                   ) : null}
                                 </span>
                                 <span className="text-muted-foreground block text-xs">
-                                  {cohort.learnerCount} learner
+                                  {cohort.learnerCount} murid
                                   {cohort.averageProgress !== null
                                     ? ` · progres rata-rata ${cohort.averageProgress}%`
                                     : ""}
@@ -473,7 +473,7 @@ export function CreateAssessmentEventSheet({
                     </ul>
                   ) : (
                     <p className="text-muted-foreground text-sm">
-                      Belum ada kelas aktif di course ini.
+                      Belum ada kelas aktif di kurikulum ini.
                     </p>
                   )}
                 </div>
@@ -512,7 +512,7 @@ export function CreateAssessmentEventSheet({
                     onChange={setOpensAt}
                   />
                   <p className="text-muted-foreground text-xs">
-                    Dibuka otomatis; learner sudah melihat jadwalnya.
+                    Dibuka otomatis; murid sudah melihat jadwalnya.
                   </p>
                 </div>
               ) : null}
@@ -587,7 +587,7 @@ export function CreateAssessmentEventSheet({
                 <label className="flex items-center gap-2">
                   <Checkbox checked={notify} onCheckedChange={setNotify} />
                   <span>
-                    Beri tahu learner{" "}
+                    Beri tahu murid{" "}
                     {startMode === "schedule" ? "saat dibuka" : ""}
                   </span>
                 </label>

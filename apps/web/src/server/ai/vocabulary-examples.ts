@@ -1,10 +1,9 @@
 import "server-only";
 
-import { openai } from "@ai-sdk/openai";
-import { generateText, Output } from "ai";
 import { z } from "zod";
 
 import { env } from "~/env";
+import { loadAiSdk } from "~/server/ai/sdk";
 
 const examplesSchema = z.object({
   examples: z.array(z.string().trim().min(1).max(5000)).min(3).max(4),
@@ -17,6 +16,7 @@ export async function generateVocabularyExamples(input: {
 }): Promise<string[]> {
   if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY_MISSING");
 
+  const { generateText, Output, openai } = await loadAiSdk();
   const { output } = await generateText({
     model: openai("gpt-5.4-mini"),
     output: Output.object({

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   analyzeTableOfContents,
@@ -24,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import Link from "~/components/link";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import {
@@ -231,7 +231,7 @@ export function PdfImportFlow({
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
             Halaman buku ditampilkan apa adanya. Setelah itu, tambahkan kosa
-            kata dan kuis Hakgyo di setiap bab agar siswa bisa berlatih.
+            kata dan kuis Hakgyo di setiap bab agar murid bisa berlatih.
           </p>
         </div>
         <ol className="flex flex-wrap items-center gap-2 text-sm">
@@ -407,7 +407,7 @@ export function PdfImportFlow({
           </div>
           <p className="text-muted-foreground text-sm">
             Semua materi dibuat dalam keadaan <strong>disembunyikan</strong>,
-            jadi belum terlihat oleh siswa. Anda bisa menambahkan kosakata,
+            jadi belum terlihat oleh murid. Anda bisa menambahkan kosakata,
             kuis, atau catatan di setiap materi sebelum menampilkannya.
           </p>
           {book.data.status !== "READY" ? (
@@ -759,7 +759,8 @@ function MapStep({
           onAnchorChange={setAnchor}
         />
         {selection ? (
-          <div className="bg-background/95 supports-backdrop-filter:bg-background/80 sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-xl border p-3 shadow-lg backdrop-blur">
+          // Phones stick above WorkspaceBottomNav (h-16 plus the safe area).
+          <div className="bg-background/95 supports-backdrop-filter:bg-background/80 sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-xl border p-3 shadow-lg backdrop-blur max-md:bottom-[calc(5rem+env(safe-area-inset-bottom))]">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">
                 {formatPdfPageRange(
@@ -1144,7 +1145,13 @@ function TableOfContentsDialog({
                   const cover = thumbnails.get(entry.startPage);
                   return (
                     <li key={entry.line} className="flex gap-3 p-2.5">
-                      <span className="bg-muted h-14 w-10 shrink-0 overflow-hidden rounded border bg-white">
+                      <span
+                        className={cn(
+                          "h-14 w-10 shrink-0 overflow-hidden rounded border",
+                          // PDF pages render on white paper; empty slots stay muted.
+                          cover ? "bg-white" : "bg-muted",
+                        )}
+                      >
                         {cover ? (
                           // Signed thumbnails expire, so they bypass next/image.
                           // eslint-disable-next-line @next/next/no-img-element

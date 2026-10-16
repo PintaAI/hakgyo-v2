@@ -17,7 +17,7 @@ export default async function Page({
   const { organizationId, organizationSlug, attachTo, moduleHref } =
     await requireCurriculumModule(resolvedParams);
   const { vocabularySetId } = resolvedParams;
-  void api.content.getVocabularySet.prefetch({
+  await api.content.getVocabularySet.prefetch({
     organizationId,
     vocabularySetId,
   });

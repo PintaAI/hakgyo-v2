@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 
 import { CourseCover } from "~/components/course-cover";
 import { CourseOutlineList } from "~/components/learner/learn/course-outline-list";
+import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { getCourseResumeItem } from "~/lib/learner/course-learning-path";
 import { learningItemHref } from "~/lib/learner/hrefs";

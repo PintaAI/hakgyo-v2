@@ -13,7 +13,7 @@ export default async function Page({
   const { pickerToken, returnTo } = await searchParams;
   const membership =
     await requireOrganizationMembershipBySlug(organizationSlug);
-  void api.assessment.get.prefetch({ assessmentId });
+  await api.assessment.get.prefetch({ assessmentId });
 
   return (
     <HydrateClient>

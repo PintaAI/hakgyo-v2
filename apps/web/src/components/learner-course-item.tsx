@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { useTheme } from "next-themes";
 import { ArrowLeftIcon, HouseIcon } from "lucide-react";
 
 import type { HakgyoPartialBlock } from "~/components/editor/block-note-schema";
 import { DynamicLearnerBlockNoteDocument } from "~/components/editor/dynamic-learner-block-note-document";
+import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";

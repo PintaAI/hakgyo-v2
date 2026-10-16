@@ -216,7 +216,9 @@ export function SlidePanels({
           "relative flex snap-x snap-mandatory scroll-px-5 gap-10 overflow-y-hidden! overscroll-x-contain px-5 py-6 sm:scroll-px-10 sm:px-10 lg:grid",
           paged
             ? "lg:auto-cols-[100%] lg:grid-flow-col lg:scroll-px-[var(--gutter)] lg:gap-x-[calc(var(--gutter)*2)] lg:px-[var(--gutter)]"
-            : "lg:overflow-visible! lg:p-0",
+            : // A grid that does not scroll; its panels must not become snap
+              // points of the page.
+              "lg:overflow-visible! lg:p-0 lg:*:snap-align-none",
           className,
         )}
       >

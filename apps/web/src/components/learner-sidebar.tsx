@@ -1,7 +1,6 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookMarkedIcon,
@@ -14,7 +13,8 @@ import {
 
 import { CourseCover } from "~/components/course-cover";
 import { BrandMark } from "~/components/brand/brand-link";
-import { User } from "~/components/user";
+import Link from "~/components/link";
+import { User, type UserProps } from "~/components/user";
 import {
   Sidebar,
   SidebarContent,
@@ -43,8 +43,12 @@ function isActive(pathname: string, href: string) {
 
 export function LearnerSidebar({
   courses,
+  user,
   ...props
-}: ComponentProps<typeof Sidebar> & { courses: LearnerCourse[] }) {
+}: ComponentProps<typeof Sidebar> & {
+  courses: LearnerCourse[];
+  user: UserProps["user"];
+}) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const closeMobile = () => setOpenMobile(false);
@@ -179,7 +183,7 @@ export function LearnerSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton
                 tooltip="Panduan belajar"
-                render={<Link href="/docs" onClick={closeMobile} />}
+                render={<Link href="/docs/murid" onClick={closeMobile} />}
               >
                 <BookMarkedIcon />
                 <span>Panduan belajar</span>
@@ -189,7 +193,7 @@ export function LearnerSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <User variant="sidebar" />
+        <User variant="sidebar" user={user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

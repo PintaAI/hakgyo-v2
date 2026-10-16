@@ -1,4 +1,13 @@
+import { ChangeLine } from "~/components/analytics/analytics-parts";
 import { organizationRoles } from "~/lib/access";
+import {
+  countChange,
+  formatCount,
+  formatPercent,
+  formatRupiahAmount,
+  ratioChange,
+} from "~/lib/analytics/format";
+import type { AnalyticsSummary } from "~/server/analytics/summary";
 import { requireOrganizationRole } from "~/server/auth/dal";
 import { getSession } from "~/server/better-auth/server";
 import { api } from "~/trpc/server";
@@ -11,6 +20,58 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
 });
 
 const dashboardCourseLimit = 4;
+
+function insightsFor(summary: AnalyticsSummary, root: string) {
+  const comparison = "30 hari sebelumnya";
+  return {
+    href: `${root}/analitik/performa`,
+    items: [
+      {
+        label: "Murid aktif",
+        value: formatCount(summary.activeLearners.current),
+        detail: (
+          <ChangeLine
+            change={countChange(
+              summary.activeLearners.current,
+              summary.activeLearners.previous,
+            )}
+            comparison={comparison}
+          />
+        ),
+      },
+      {
+        label: "Rata-rata nilai",
+        value: formatPercent(summary.averageScore.current),
+        detail: (
+          <ChangeLine
+            change={ratioChange(
+              summary.averageScore.current,
+              summary.averageScore.previous,
+            )}
+            comparison={comparison}
+          />
+        ),
+      },
+      ...(summary.revenue
+        ? [
+            {
+              label: "Pendapatan",
+              value: formatRupiahAmount(summary.revenue.current),
+              detail: (
+                <ChangeLine
+                  change={countChange(
+                    summary.revenue.current,
+                    summary.revenue.previous,
+                  )}
+                  comparison={comparison}
+                />
+              ),
+            },
+          ]
+        : []),
+    ],
+  };
+}
 
 const activityLabels = {
   MATERIAL_COMPLETED: "Menyelesaikan materi",
@@ -27,7 +88,7 @@ async function TeacherDashboard({
   organizationSlug: string;
 }) {
   const { organizationId, organization } = membership;
-  const [session, courses, cohortsPage, materialCount, reviewQueue] =
+  const [session, courses, cohortsPage, materialCount, reviewQueue, summary] =
     await Promise.all([
       getSession(),
       api.course.list({ organizationId }),
@@ -42,6 +103,7 @@ async function TeacherDashboard({
         includeTotal: true,
         limit: 1,
       }),
+      api.analytics.summary({ organizationId, period: "30h" }),
     ]);
   const root = `/workspace/${organizationSlug}`;
   const pendingReviews = reviewQueue.total ?? reviewQueue.items.length;
@@ -62,6 +124,7 @@ async function TeacherDashboard({
         courses: courses.slice(0, dashboardCourseLimit),
         cohorts: cohortsPage.items,
         pendingReviews,
+        insights: insightsFor(summary, root),
         stats: [
           {
             label: "Kurikulum saya",
@@ -112,13 +175,14 @@ export default async function DashboardPage({
     );
   }
   const { organizationId, organization, role } = membership;
-  const [session, analytics, courses, cohortsPage, activity] =
+  const [session, analytics, courses, cohortsPage, activity, summary] =
     await Promise.all([
       getSession(),
       api.organization.getDashboardAnalytics({ organizationId }),
       api.course.list({ organizationId }),
       api.cohort.listByOrganization({ organizationId, limit: 5 }),
       api.organization.getRecentActivity({ organizationId }),
+      api.analytics.summary({ organizationId, period: "30h" }),
     ]);
   const root = `/workspace/${organizationSlug}`;
 
@@ -136,6 +200,7 @@ export default async function DashboardPage({
         courses: courses.slice(0, dashboardCourseLimit),
         cohorts: cohortsPage.items,
         pendingReviews: analytics.actionItems.attemptsInReview,
+        insights: insightsFor(summary, root),
         activity: activity.map((item) => ({
           id: item.id,
           title: item.user.name,

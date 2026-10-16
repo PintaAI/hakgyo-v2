@@ -14,7 +14,12 @@ import { reveal } from "./reveal";
 /**
  * One slide of the deck: a screen-tall section with the page container.
  * Horizontal overflow is clipped so full-bleed tracks inside (see
- * `SlidePanels`) never widen the page.
+ * `SlidePanels`) never widen the page. Every slide but the opening one skips
+ * style, layout and paint until it nears the screen, which is most of the
+ * page's rendering work at load. A skipped slide has no content height, so it
+ * takes its minimum height of one screen, which is what slides render at. A
+ * placeholder height would be added on top of the padding, and anchor links
+ * would miss their slide as slides corrected their height mid-scroll.
  */
 export function Slide({
   id,
@@ -31,7 +36,7 @@ export function Slide({
       data-slide
       aria-labelledby={`${id}-title`}
       className={cn(
-        "relative flex flex-col justify-center overflow-x-clip py-10 sm:py-20 lg:py-14",
+        "relative flex flex-col justify-center overflow-x-clip py-10 [contain-intrinsic-size:auto_none] [content-visibility:auto] sm:py-20 lg:py-14",
         className,
       )}
     >

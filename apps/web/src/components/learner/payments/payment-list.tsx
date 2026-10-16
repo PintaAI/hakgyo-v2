@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { ChevronRightIcon, LoaderCircleIcon, ReceiptIcon } from "lucide-react";
 
+import Link from "~/components/link";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { EmptyState } from "~/components/ui/empty-state";

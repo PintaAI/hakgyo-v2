@@ -7,7 +7,6 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRightIcon,
@@ -20,6 +19,7 @@ import {
 
 import { FlowShell, surfaceCard } from "~/components/brand/flow-shell";
 import { Headline, Kicker, leadText } from "~/components/brand/typography";
+import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { getWorkspaceFallback } from "~/lib/access";
@@ -155,7 +155,7 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
           icon={Building2Icon}
           audience="Untuk pendiri"
           title="Buat organization"
-          description="Siapkan workspace, atur kurikulum sebagai Public atau Private, dan kelola pengajar, kelas, serta siswa. Anda otomatis menjadi owner."
+          description="Siapkan workspace, atur kurikulum sebagai Public atau Private, dan kelola pengajar, kelas, serta murid. Anda otomatis menjadi owner."
           featured
         >
           <Link
@@ -202,7 +202,7 @@ export function OrganizationOnboarding({ userId }: { userId: string }) {
         <PathCard
           number={3}
           icon={BookOpenIcon}
-          audience="Untuk siswa"
+          audience="Untuk murid"
           title="Jelajahi kurikulum"
           description="Tidak perlu organization untuk mengikuti kurikulum dan melanjutkan progres belajar."
         >

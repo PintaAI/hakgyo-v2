@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   AlertTriangleIcon,
   ArrowLeftIcon,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import Link from "~/components/link";
 import { QrCode } from "~/components/qr-code";
 import {
   AlertDialog,
@@ -239,7 +239,7 @@ function QuizDashboard({
 }) {
   const results = api.publicQuiz.listResults.useQuery(
     { quizId: quiz.id },
-    { refetchInterval: 30_000 },
+    { refetchInterval: 60_000 },
   );
   const currentCount =
     results.data?.filter((row) => row.round === quiz.round).length ?? 0;
@@ -484,7 +484,7 @@ function StatusPanel({
 function Kpis({ quizId }: { quizId: string }) {
   const stats = api.publicQuiz.stats.useQuery(
     { quizId },
-    { refetchInterval: 30_000 },
+    { refetchInterval: 60_000 },
   );
   const data = stats.data;
   const percent = (part: number, whole: number) =>

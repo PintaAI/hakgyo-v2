@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { formatPdfPageRange, type PdfPageRange } from "@hakgyo/shared";
-import Link from "next/link";
 import {
   DndContext,
   KeyboardSensor,
@@ -40,6 +39,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import Link from "~/components/link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -464,7 +464,7 @@ export function KurikulumEditor({
           ? course.status === "PUBLISHED"
             ? "Item ditampilkan untuk learner."
             : "Item akan tampil setelah kurikulum dipublikasikan."
-          : "Item disembunyikan dari siswa.",
+          : "Item disembunyikan dari murid.",
       );
     } catch (error) {
       // Readiness may have changed since it was loaded; refresh the badges.
@@ -959,7 +959,7 @@ function SortableModuleCard({
         <div className="flex flex-wrap items-center gap-2 border-t bg-amber-500/5 px-4 py-2.5 text-xs sm:px-5">
           <LightbulbIcon className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <span className="text-muted-foreground flex-1">
-            Tambahkan kosakata atau kuis agar siswa bisa berlatih setelah
+            Tambahkan kosakata atau kuis agar murid bisa berlatih setelah
             membaca halaman PDF bab ini.
           </span>
           <Button size="xs" variant="outline" onClick={onAddItem}>
@@ -1516,7 +1516,7 @@ function ItemDialog({
                     ? `${notReadyReason} Item ditambahkan dalam keadaan tersembunyi; tampilkan setelah lengkap.`
                     : courseStatus === "PUBLISHED"
                       ? "Item langsung terlihat oleh learner. Item yang belum siap tetap disembunyikan."
-                      : "Item akan terlihat oleh siswa setelah kurikulum dipublikasikan."}
+                      : "Item akan terlihat oleh murid setelah kurikulum dipublikasikan."}
                 </p>
               </div>
               <Switch

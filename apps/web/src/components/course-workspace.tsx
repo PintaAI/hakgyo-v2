@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowDownAZIcon,
@@ -35,6 +34,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import Link from "~/components/link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -182,7 +182,7 @@ const cohortStatus = {
 const views = [
   { value: "overview", label: "Ringkasan", icon: LayoutDashboardIcon },
   { value: "cohorts", label: "Kelas", icon: CalendarDaysIcon },
-  { value: "learners", label: "Siswa", icon: UsersIcon },
+  { value: "learners", label: "Murid", icon: UsersIcon },
   { value: "reviews", label: "Hasil & review tugas", icon: ClipboardCheckIcon },
   { value: "tryouts", label: "Latihan & tryout", icon: TrophyIcon },
   { value: "access", label: "Akses", icon: ShieldCheckIcon },
@@ -282,7 +282,7 @@ export function CourseWorkspace({
           value === "overview" || (canViewCohorts && value === "cohorts"),
       );
   const rawRequestedView = searchParams.get("view");
-  // Legacy `?view=invites` now lives inside the Siswa tab.
+  // Legacy `?view=invites` now lives inside the Murid tab.
   const requestedView = (
     rawRequestedView === "invites" ? "learners" : rawRequestedView
   ) as CourseView | null;
@@ -388,7 +388,7 @@ export function CourseWorkspace({
       toast.success(
         status === "PUBLISHED"
           ? "Kurikulum dipublikasikan."
-          : "Publikasi kurikulum dibatalkan. Semua item disembunyikan dari siswa.",
+          : "Publikasi kurikulum dibatalkan. Semua item disembunyikan dari murid.",
       );
       router.refresh();
       return true;
@@ -678,7 +678,7 @@ function OverviewSection({
         items={[
           { label: "Bab", value: stats.moduleCount },
           { label: "Kelas", value: stats.cohortCount },
-          { label: "Siswa aktif", value: stats.activeLearnerCount },
+          { label: "Murid aktif", value: stats.activeLearnerCount },
           { label: "Undangan aktif", value: stats.activeInviteCount },
         ]}
       />
@@ -784,7 +784,7 @@ function OverviewSection({
                 {
                   view: "learners" as const,
                   icon: MailPlusIcon,
-                  label: "Undang siswa",
+                  label: "Undang murid",
                 },
                 {
                   view: "settings" as const,
@@ -1056,7 +1056,7 @@ function CohortsSection({
               description={
                 hasActiveFilters
                   ? "Coba kata kunci atau status yang berbeda."
-                  : "Kelas membantu mengatur periode belajar, pengajar, meeting, dan kelompok siswa."
+                  : "Kelas membantu mengatur periode belajar, pengajar, meeting, dan kelompok murid."
               }
               action={
                 canCreate && !hasActiveFilters ? (
@@ -1312,7 +1312,7 @@ function LearnersSection({
       setEmail("");
       setStatus("ACTIVE");
       setExpiresAt("");
-      toast.success("Siswa berhasil ditambahkan.");
+      toast.success("Murid berhasil ditambahkan.");
     } catch (cause) {
       toast.error(getErrorMessage(cause));
     }
@@ -1330,7 +1330,7 @@ function LearnersSection({
       ]);
       setRemoving(null);
       toast.success(
-        `Siswa ${enrollment.user.name} dihapus dari belajar mandiri.`,
+        `Murid ${enrollment.user.name} dihapus dari belajar mandiri.`,
       );
     } catch (cause) {
       toast.error(getErrorMessage(cause));
@@ -1342,17 +1342,17 @@ function LearnersSection({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-heading text-2xl font-medium tracking-tight">
-            Siswa
+            Murid
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Siswa yang belajar mandiri tanpa kelas. Siswa kelas dikelola di
+            Murid yang belajar mandiri tanpa kelas. Murid kelas dikelola di
             halaman group masing-masing.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => setAddOpen(true)}>
             <UserPlusIcon data-icon="inline-start" />
-            Tambah siswa
+            Tambah murid
           </Button>
         </div>
       </div>
@@ -1364,8 +1364,8 @@ function LearnersSection({
             <EmptyState
               size="sm"
               icon={UserRoundCheckIcon}
-              title="Belum ada siswa"
-              description="Tambahkan akun Hakgyo dengan email atau bagikan invite agar siswa mendaftar sendiri."
+              title="Belum ada murid"
+              description="Tambahkan akun Hakgyo dengan email atau bagikan invite agar murid mendaftar sendiri."
               action={
                 <Button
                   className="mt-4"
@@ -1373,7 +1373,7 @@ function LearnersSection({
                   onClick={() => setAddOpen(true)}
                 >
                   <UserPlusIcon data-icon="inline-start" />
-                  Tambah siswa
+                  Tambah murid
                 </Button>
               }
             />
@@ -1385,12 +1385,12 @@ function LearnersSection({
           <CardHeader className="gap-4 border-b sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
               <CardTitle>Belajar mandiri</CardTitle>
-              <CardDescription>{data.length} siswa terdaftar</CardDescription>
+              <CardDescription>{data.length} murid terdaftar</CardDescription>
             </div>
             <div className="relative w-full sm:w-64">
               <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
               <Input
-                aria-label="Cari siswa"
+                aria-label="Cari murid"
                 className="pl-8"
                 placeholder="Cari nama atau email"
                 value={search}
@@ -1402,7 +1402,7 @@ function LearnersSection({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-4">Siswa</TableHead>
+                  <TableHead className="pl-4">Murid</TableHead>
                   <TableHead className="max-sm:hidden">Sumber</TableHead>
                   <TableHead className="max-sm:hidden">Terdaftar</TableHead>
                   <TableHead className="text-right">Status</TableHead>
@@ -1498,7 +1498,7 @@ function LearnersSection({
               <EmptyState
                 size="sm"
                 icon={SearchIcon}
-                title="Siswa tidak ditemukan"
+                title="Murid tidak ditemukan"
                 description="Coba nama atau alamat email yang berbeda."
               />
             </CardContent>
@@ -1515,7 +1515,7 @@ function LearnersSection({
                 {isLoadingMore ? (
                   <LoaderCircleIcon className="animate-spin" />
                 ) : null}
-                Muat siswa berikutnya
+                Muat murid berikutnya
               </Button>
             </div>
           ) : null}
@@ -1526,7 +1526,7 @@ function LearnersSection({
         <DialogContent className="sm:max-w-md">
           <form onSubmit={addLearner}>
             <DialogHeader>
-              <DialogTitle>Tambah siswa</DialogTitle>
+              <DialogTitle>Tambah murid</DialogTitle>
               <DialogDescription>
                 Masukkan email akun Hakgyo yang akan diberi akses ke kurikulum
                 ini.
@@ -1534,13 +1534,13 @@ function LearnersSection({
             </DialogHeader>
             <div className="mt-5 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="learner-email">Email siswa</Label>
+                <Label htmlFor="learner-email">Email murid</Label>
                 <Input
                   id="learner-email"
                   autoComplete="email"
                   autoFocus
                   maxLength={320}
-                  placeholder="siswa@example.com"
+                  placeholder="murid@example.com"
                   required
                   type="email"
                   value={email}
@@ -1602,7 +1602,7 @@ function LearnersSection({
                 ) : (
                   <UserPlusIcon />
                 )}
-                Tambah siswa
+                Tambah murid
               </Button>
             </DialogFooter>
           </form>
@@ -1624,7 +1624,7 @@ function LearnersSection({
               Hapus {removing?.user.name} dari belajar mandiri?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Akses belajar mandiri siswa ke kurikulum ini dicabut. Jika siswa
+              Akses belajar mandiri murid ke kurikulum ini dicabut. Jika murid
               masih terdaftar di kelas kurikulum ini, aksesnya tetap berlaku
               lewat group tersebut. Status lama tidak dapat dipulihkan.
             </AlertDialogDescription>
@@ -1780,7 +1780,7 @@ function InvitesSection({
               size="sm"
               icon={MailPlusIcon}
               title="Belum ada invite"
-              description="Buat link terbatas untuk mengundang siswa ke kurikulum atau kelas."
+              description="Buat link terbatas untuk mengundang murid ke kurikulum atau kelas."
               action={
                 <Button
                   className="mt-4"
@@ -2213,7 +2213,7 @@ function AccessSection({
             <div className="bg-muted/35 border-t p-4">
               <Label htmlFor="new-course-editor">Tambah editor kurikulum</Label>
               <p className="text-muted-foreground mt-1 text-xs">
-                Editor dapat menyusun bab dan materi, tanpa akses ke siswa,
+                Editor dapat menyusun bab dan materi, tanpa akses ke murid,
                 undangan, atau pengaturan kurikulum.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -2274,7 +2274,7 @@ function AccessSection({
                 <div>
                   <p className="font-medium">Manager</p>
                   <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                    Mengelola materi kurikulum, siswa, kelas, undangan,
+                    Mengelola materi kurikulum, murid, kelas, undangan,
                     pengaturan, dan status kurikulum.
                   </p>
                 </div>
@@ -2531,7 +2531,7 @@ function SettingsSection({
           <CardHeader className="border-b">
             <CardTitle>Informasi kurikulum</CardTitle>
             <CardDescription>
-              Informasi yang terlihat oleh pengelola dan siswa.
+              Informasi yang terlihat oleh pengelola dan murid.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -2606,14 +2606,14 @@ function SettingsSection({
           <CardContent className="border-t pt-5">
             <h3 className="font-heading font-medium">Aturan akses</h3>
             <p className="text-muted-foreground mt-0.5 text-sm">
-              Siapa yang bisa mengikuti kurikulum dan bagaimana siswa membuka
+              Siapa yang bisa mengikuti kurikulum dan bagaimana murid membuka
               materinya.
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Label htmlFor="settings-enrollment">Tipe kurikulum</Label>
-                  <FieldHelp content="Ikuti organisasi untuk memakai pengaturan default, atau timpa khusus kurikulum ini. Public bisa ditemukan dan diikuti siswa, private hanya untuk siswa yang diundang." />
+                  <FieldHelp content="Ikuti organisasi untuk memakai pengaturan default, atau timpa khusus kurikulum ini. Public bisa ditemukan dan diikuti murid, private hanya untuk murid yang diundang." />
                 </div>
                 <Select
                   value={enrollmentMode}
@@ -2648,7 +2648,7 @@ function SettingsSection({
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Label htmlFor="settings-progression">Alur belajar</Label>
-                  <FieldHelp content="Terbuka membebaskan siswa membuka semua materi, bertahap mengharuskan menyelesaikan item sebelumnya secara berurutan." />
+                  <FieldHelp content="Terbuka membebaskan murid membuka semua materi, bertahap mengharuskan menyelesaikan item sebelumnya secara berurutan." />
                 </div>
                 <Select
                   value={progressionMode}
@@ -2699,7 +2699,7 @@ function SettingsSection({
         <CardHeader className="border-b">
           <CardTitle className="text-destructive">Zona berbahaya</CardTitle>
           <CardDescription>
-            Action lifecycle yang berdampak pada akses siswa.
+            Action lifecycle yang berdampak pada akses murid.
           </CardDescription>
         </CardHeader>
         <div className="divide-border divide-y">

@@ -15,6 +15,7 @@ import { buildAssessmentAnswerReviewUpdate } from "~/server/assessment/answer-co
 import {
   isPassingScore,
   markCourseItemCompleted,
+  recordAssessmentPassed,
 } from "~/server/assessment/attempt";
 import {
   attemptSummarySelect,
@@ -162,7 +163,7 @@ export async function getReviewAttempt(
 
 /**
  * Scores every written answer of an IN_REVIEW attempt and finalizes it as GRADED; a passing
- * standalone attempt completes its course item.
+ * standalone attempt completes its course item and awards the learner the pass.
  */
 export async function reviewAttempt(
   db: PrismaClient,
@@ -181,6 +182,7 @@ export async function reviewAttempt(
         select: {
           id: true,
           userId: true,
+          organizationId: true,
           status: true,
           maxScore: true,
           courseItemId: true,
@@ -283,6 +285,8 @@ export async function reviewAttempt(
           attempt.userId,
           now,
         );
+        // Dated in the learner's stored time zone; the reviewer's request carries none.
+        await recordAssessmentPassed(tx, attempt, now);
       }
       return {
         status: "GRADED" as const,

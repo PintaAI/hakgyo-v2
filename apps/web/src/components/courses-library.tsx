@@ -1,7 +1,6 @@
 "use client";
 
 import { useDeferredValue, useState, type ComponentType } from "react";
-import Link from "next/link";
 import {
   ArrowUpRightIcon,
   BookCheckIcon,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { CourseCover } from "~/components/course-cover";
+import Link from "~/components/link";
 import { PageHeader } from "~/components/ui/page-header";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Button, buttonVariants } from "~/components/ui/button";

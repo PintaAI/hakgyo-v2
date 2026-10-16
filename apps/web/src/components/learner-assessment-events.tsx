@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   ArrowRightIcon,
   Clock3Icon,
@@ -8,6 +7,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 
+import Link from "~/components/link";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";

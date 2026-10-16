@@ -74,6 +74,19 @@ after the account schema cleanup in the 1.7 upgrade guide.
 CIMD clients that also declare grants Hakgyo does not offer, such as Claude's
 `jwt-bearer` grant.
 
+`patches/@better-auth%2Foauth-provider@1.7.2.patch` lets a registered `http://localhost`
+redirect URI match any port. Claude Code declares `http://localhost/callback` and
+`http://127.0.0.1/callback` in its CIMD and redirects to an ephemeral port such as
+`http://localhost:3118/callback`; Anthropic's connector docs require the port-agnostic
+match for `localhost` too. Without the patch the library only does this for IP
+literals, so Claude Code sign-in fails with `invalid_redirect` while `127.0.0.1`
+works. The patch applies only to `http:` and only to a registered `localhost` entry;
+scheme, host, path and query must still match. Re-check it when upgrading
+`@better-auth/oauth-provider`, and verify against production with
+`GET /api/auth/oauth2/authorize` using `client_id=https://claude.ai/oauth/claude-code-client-metadata`
+and `redirect_uri=http://localhost:3118/callback` (a `302` to `/auth` means accepted,
+`invalid_redirect` means rejected).
+
 `loginPage` is `/auth`. The sign-in page must keep the signed OAuth query in its
 URL, and `AuthPanel` must let the auth client follow the returned redirect, so
 authorization resumes after sign-in.
@@ -130,6 +143,14 @@ mobile app. The MCP allowlist excludes learner attempt actions
 behalf. Instead, both tools add an `appUrl` deep link
 (`hakgyo://courses/{courseId}/items/{courseItemId}`) to every assessment item for
 the client to hand the learner.
+
+## Public Documentation
+
+`/integrations` (`src/app/integrations/page.tsx`) is the public, English setup and
+usage page for the connector. Anthropic's directory requires public documentation
+and a privacy policy URL; the listing uses `https://hakgyo.id/integrations`,
+`/privacy` and `/support`. Keep the tool areas, scope and safety statements on that
+page in line with this document when they change.
 
 ## Tools
 

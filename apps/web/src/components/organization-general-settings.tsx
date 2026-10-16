@@ -330,7 +330,7 @@ export function OrganizationGeneralSettings({
               onChange={(event) => setName(event.target.value)}
             />
             <p className="text-muted-foreground text-xs">
-              Nama tampilan yang dilihat member dan siswa.
+              Nama tampilan yang dilihat member dan murid.
             </p>
           </div>
 
@@ -404,8 +404,8 @@ export function OrganizationGeneralSettings({
               </Label>
               <p className="text-muted-foreground text-xs">
                 {effectiveEnrollmentMode === "OPEN"
-                  ? "Kurikulum baru bisa ditemukan dan diikuti siswa."
-                  : "Kurikulum baru hanya untuk siswa yang diundang."}
+                  ? "Kurikulum baru bisa ditemukan dan diikuti murid."
+                  : "Kurikulum baru hanya untuk murid yang diundang."}
               </p>
             </div>
             <Switch

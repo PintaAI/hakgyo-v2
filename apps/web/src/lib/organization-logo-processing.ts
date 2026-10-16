@@ -5,10 +5,11 @@ import {
 } from "~/lib/organization-logo";
 import { hasImageSignature } from "~/lib/image-signature";
 
-export const MAX_ORGANIZATION_LOGO_DIMENSION = 1024;
+// Logos show at small sizes. PNG keeps transparency and is a format the social
+// preview images can draw without decoding on the server.
+export const MAX_ORGANIZATION_LOGO_DIMENSION = 512;
 
-const webpContentType = "image/webp" satisfies OrganizationLogoContentType;
-const outputQualities = [0.86, 0.72, 0.58, 0.45];
+const outputContentType = "image/png" satisfies OrganizationLogoContentType;
 
 type DecodedImage = {
   source: CanvasImageSource;
@@ -56,13 +57,9 @@ async function decodeImage(file: File): Promise<DecodedImage> {
   }
 }
 
-function canvasToBlob(
-  canvas: HTMLCanvasElement,
-  contentType: string,
-  quality?: number,
-) {
+function canvasToBlob(canvas: HTMLCanvasElement, contentType: string) {
   return new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, contentType, quality);
+    canvas.toBlob(resolve, contentType);
   });
 }
 
@@ -74,19 +71,13 @@ type EncodedImage = {
 async function encodeImage(
   canvas: HTMLCanvasElement,
 ): Promise<EncodedImage | null> {
-  for (const quality of outputQualities) {
-    const blob = await canvasToBlob(canvas, webpContentType, quality);
-    if (blob) return { blob, contentType: webpContentType };
-  }
-
-  const blob = await canvasToBlob(canvas, "image/png");
-  return blob ? { blob, contentType: "image/png" } : null;
+  const blob = await canvasToBlob(canvas, outputContentType);
+  return blob ? { blob, contentType: outputContentType } : null;
 }
 
-function outputFileName(fileName: string, contentType: string) {
+function outputFileName(fileName: string) {
   const stem = fileName.replace(/\.[^/.]+$/, "") || "organization-logo";
-  const extension = contentType === "image/png" ? "png" : "webp";
-  return `${stem}.${extension}`;
+  return `${stem}.png`;
 }
 
 export async function processOrganizationLogo(file: File) {
@@ -179,14 +170,10 @@ export async function processOrganizationLogo(file: File) {
       throw new Error("Logo organisasi terlalu besar setelah diproses.");
     }
 
-    return new File(
-      [encoded.blob],
-      outputFileName(file.name, encoded.contentType),
-      {
-        type: encoded.contentType,
-        lastModified: file.lastModified,
-      },
-    );
+    return new File([encoded.blob], outputFileName(file.name), {
+      type: encoded.contentType,
+      lastModified: file.lastModified,
+    });
   } finally {
     decoded.close();
   }

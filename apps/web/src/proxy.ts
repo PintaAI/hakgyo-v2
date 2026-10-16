@@ -21,14 +21,54 @@ export function proxy(request: NextRequest) {
     : redirectToSignIn(request);
 }
 
+// Only full page loads go through the proxy, to keep the deep link in
+// `redirectTo`. Client navigations, prefetches and server actions skip it
+// (each proxy run is a separate function call); their layouts and pages still
+// redirect signed-out visitors through requireSession. Next reads the matcher
+// at build time, so it has to stay literal.
 export const config = {
   matcher: [
-    "/auth/continue",
-    "/docs/:path*",
-    "/learn/:path*",
-    "/onboarding",
-    "/organizations/:path*",
-    "/workspace/:path*",
-    "/superadmin/:path*",
+    {
+      source: "/auth/continue",
+      missing: [
+        { type: "header", key: "rsc" },
+        { type: "header", key: "next-action" },
+      ],
+    },
+    {
+      source: "/learn/:path*",
+      missing: [
+        { type: "header", key: "rsc" },
+        { type: "header", key: "next-action" },
+      ],
+    },
+    {
+      source: "/onboarding",
+      missing: [
+        { type: "header", key: "rsc" },
+        { type: "header", key: "next-action" },
+      ],
+    },
+    {
+      source: "/organizations/:path*",
+      missing: [
+        { type: "header", key: "rsc" },
+        { type: "header", key: "next-action" },
+      ],
+    },
+    {
+      source: "/workspace/:path*",
+      missing: [
+        { type: "header", key: "rsc" },
+        { type: "header", key: "next-action" },
+      ],
+    },
+    {
+      source: "/superadmin/:path*",
+      missing: [
+        { type: "header", key: "rsc" },
+        { type: "header", key: "next-action" },
+      ],
+    },
   ],
 };

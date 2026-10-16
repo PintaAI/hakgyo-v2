@@ -6,7 +6,10 @@ import { checkPushReceipts } from "~/server/notifications/receipts";
 import { sendDueReminders } from "~/server/notifications/reminders";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// Runs under Fluid compute's default 300-second limit (vercel.json enables
+// Fluid). Exporting `maxDuration` would split this route into its own Vercel
+// function with its own cold starts, instead of sharing one with the other
+// route handlers.
 
 function isAuthorized(request: Request) {
   const secret = env.CRON_SECRET;
