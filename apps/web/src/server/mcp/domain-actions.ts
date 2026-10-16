@@ -325,6 +325,16 @@ export const mcpDomainTools = {
       effect: "change",
     },
   ],
+  storage: [
+    {
+      action: "listOrganizationFiles",
+      name: "list_organization_files",
+      title: "List organization files",
+      description:
+        "List uploaded image and audio files in an organization's library, newest first, optionally filtered by kind or file name. Use a file's id, fileName and contentType in material block props (see get_material_block_catalog). Teachers only see their own uploads.",
+      effect: "read",
+    },
+  ],
   cohort: [
     {
       action: "list",

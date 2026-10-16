@@ -31,7 +31,6 @@ import { toast } from "sonner";
 import {
   assessmentReferenceBlockType,
   assetAudioBlockType,
-  assetImageBlockType,
   calloutBlockType,
   conversationBlockType,
   cultureBlockType,
@@ -40,7 +39,11 @@ import {
   pdfPagesBlockType,
   vocabularyReferenceBlockType,
 } from "~/lib/blocknote/block-catalog";
-import { getCultureAssetIds } from "~/lib/blocknote/culture-content";
+import {
+  assetUrlPrefix,
+  collectMaterialAssetIds,
+  getAssetIdFromUrl,
+} from "~/lib/blocknote/material-assets";
 import { handleBlockNotePaste } from "~/lib/blocknote/paste";
 
 import {
@@ -63,46 +66,6 @@ import {
   ResourceReferenceProvider,
   type EditorResourceLibrary,
 } from "./resource-reference-context";
-
-const assetUrlPrefix = "hakgyo-asset:";
-
-function getAssetId(url: string) {
-  return url.startsWith(assetUrlPrefix)
-    ? url.slice(assetUrlPrefix.length)
-    : null;
-}
-
-function collectAssetIds(blocks: HakgyoBlock[]) {
-  const assetIds = new Set<string>();
-  const visit = (block: HakgyoBlock) => {
-    if (
-      block.type === assetAudioBlockType ||
-      block.type === assetImageBlockType ||
-      block.type === conversationBlockType ||
-      block.type === lessonPageBlockType
-    ) {
-      if (block.props.assetId) assetIds.add(block.props.assetId);
-      if (block.type === conversationBlockType && block.props.practiceAssetId) {
-        assetIds.add(block.props.practiceAssetId);
-      }
-    } else if (block.type === cultureBlockType) {
-      getCultureAssetIds(block.props.sections).forEach((assetId) =>
-        assetIds.add(assetId),
-      );
-    } else if (
-      block.type === "audio" ||
-      block.type === "file" ||
-      block.type === "image" ||
-      block.type === "video"
-    ) {
-      const assetId = getAssetId(block.props.url);
-      if (assetId) assetIds.add(assetId);
-    }
-    block.children.forEach(visit);
-  };
-  blocks.forEach(visit);
-  return assetIds;
-}
 
 export type BlockNoteDocument = HakgyoBlock[];
 
@@ -211,7 +174,7 @@ export function BlockNoteEditor({
     : undefined;
 
   const resolveFileUrl = async (url: string) => {
-    const assetId = getAssetId(url);
+    const assetId = getAssetIdFromUrl(url);
     if (!assetId) return url;
     return loadAssetDownloadUrl(utils.client, assetId);
   };
@@ -257,7 +220,7 @@ export function BlockNoteEditor({
       : undefined,
     resolveFileUrl,
   });
-  const assetIdsRef = useRef(collectAssetIds(editor.document));
+  const assetIdsRef = useRef(collectMaterialAssetIds(editor.document));
 
   const slashMenuItems = (editor: HakgyoBlockNoteEditor) => [
     {
@@ -406,7 +369,9 @@ export function BlockNoteEditor({
               editable={editable}
               editor={editor}
               onChange={() => {
-                const currentAssetIds = collectAssetIds(editor.document);
+                const currentAssetIds = collectMaterialAssetIds(
+                  editor.document,
+                );
                 if (removeAsset) {
                   for (const assetId of assetIdsRef.current) {
                     if (!currentAssetIds.has(assetId)) {

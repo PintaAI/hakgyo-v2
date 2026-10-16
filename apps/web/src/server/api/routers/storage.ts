@@ -32,6 +32,7 @@ import {
   parseProfileImageKey,
   profileImageContentTypes,
 } from "~/lib/profile-image";
+import { pageInput } from "~/server/api/pagination";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   requireCoursePermission,
@@ -53,16 +54,18 @@ import {
   signDownloadUrl,
   validateImageObject,
 } from "~/server/storage/objects";
+import {
+  createDocumentKey,
+  getDocumentPrefix,
+} from "~/server/storage/documents";
+import { listOrganizationFiles } from "~/server/storage/files";
 
 const MAX_DOCUMENT_SIZE = 100 * 1024 * 1024;
 
 const documentKeySchema = z.string().min(1).max(1024);
 
-const getUserPrefix = (userId: string) =>
-  `documents/${encodeURIComponent(userId)}/`;
-
 const assertOwnedKey = (key: string, userId: string) => {
-  if (!key.startsWith(getUserPrefix(userId))) {
+  if (!key.startsWith(getDocumentPrefix(userId))) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
 };
@@ -618,6 +621,18 @@ export const storageRouter = createTRPCRouter({
       return { deleted: true };
     }),
 
+  listOrganizationFiles: protectedProcedure
+    .input(
+      pageInput.omit({ includeTotal: true }).extend({
+        organizationId: z.string().min(1),
+        kind: z.enum(["image", "audio", "all"]).default("all"),
+        query: z.string().max(100).optional(),
+      }),
+    )
+    .query(({ ctx, input }) =>
+      listOrganizationFiles(db, { ...input, actorUserId: ctx.actorUserId }),
+    ),
+
   createUploadUrl: protectedProcedure
     .input(
       z.object({
@@ -640,7 +655,7 @@ export const storageRouter = createTRPCRouter({
 
       const extension =
         /\.[a-z0-9]{1,10}$/i.exec(input.fileName)?.[0].toLowerCase() ?? "";
-      const key = `${getUserPrefix(userId)}${crypto.randomUUID()}-${input.fileSize}${extension}`;
+      const key = createDocumentKey(userId, input.fileSize, extension);
       const upload = await createUploadUrl(key, input.contentType);
       const asset = await db.asset.create({
         data: {
