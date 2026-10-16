@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 
+import Link from "~/components/link";
 import { UserDocArticle } from "~/components/user-doc-article";
 import { UserDocIntroVideo } from "~/components/user-doc-intro-video";
 import { UserDocToc } from "~/components/user-doc-toc";

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ChevronRightIcon } from "lucide-react";
 
+import Link from "~/components/link";
 import { userDocAudiences, userDocHref } from "~/lib/user-doc-audiences";
 import { getUserDocs } from "~/lib/user-docs";
 

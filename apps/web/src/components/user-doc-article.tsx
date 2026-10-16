@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 
+import Link from "~/components/link";
 import { UserDocPreviewFrame } from "~/components/user-doc-preview-frame";
 import type { UserDocHeading } from "~/lib/user-doc-headings";
 
