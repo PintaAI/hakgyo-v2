@@ -71,7 +71,7 @@ export function OrganizationPaymentSettings({
       <PageHeader
         eyebrow="Penerimaan pembayaran"
         title="Pembayaran"
-        description="Siswa membayar kelas berbayar ke QRIS atau rekening di bawah ini. Pengelola kelas memeriksa setiap pembayaran secara manual sebelum siswa mendapat akses."
+        description="Murid membayar kelas berbayar ke QRIS atau rekening di bawah ini. Pengelola kelas memeriksa setiap pembayaran secara manual sebelum murid mendapat akses."
       />
 
       {settings.error ? (
@@ -149,7 +149,7 @@ function QrisCard({
     const confirmed = await confirm({
       title: "Hapus QRIS?",
       description:
-        "Siswa tidak bisa lagi memilih QRIS. Pembayaran yang sudah dibuat tetap memakai QRIS lama.",
+        "Murid tidak bisa lagi memilih QRIS. Pembayaran yang sudah dibuat tetap memakai QRIS lama.",
       confirmLabel: "Hapus QRIS",
       destructive: true,
     });
@@ -332,7 +332,7 @@ function BankAccountsCard({
             <div>
               <CardTitle>Rekening bank</CardTitle>
               <CardDescription>
-                Siswa yang memilih transfer bank melihat semua rekening aktif.
+                Murid yang memilih transfer bank melihat semua rekening aktif.
               </CardDescription>
             </div>
           </div>
@@ -348,7 +348,7 @@ function BankAccountsCard({
             size="sm"
             icon={CreditCardIcon}
             title="Belum ada rekening"
-            description="Tambahkan rekening bank untuk menerima transfer dari siswa."
+            description="Tambahkan rekening bank untuk menerima transfer dari murid."
           />
         ) : (
           <ul className="divide-border -my-2 divide-y">
@@ -488,7 +488,7 @@ function BankAccountDialog({
               {account ? "Ubah rekening" : "Tambah rekening"}
             </DialogTitle>
             <DialogDescription>
-              Pastikan nama pemilik sesuai buku tabungan agar siswa yakin
+              Pastikan nama pemilik sesuai buku tabungan agar murid yakin
               mentransfer ke rekening yang benar.
             </DialogDescription>
           </DialogHeader>

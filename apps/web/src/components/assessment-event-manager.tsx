@@ -805,7 +805,7 @@ function EventResults({
       <div className="flex flex-wrap gap-3">
         <Input
           aria-label="Cari peserta"
-          placeholder="Nama atau email siswa"
+          placeholder="Nama atau email murid"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
         />

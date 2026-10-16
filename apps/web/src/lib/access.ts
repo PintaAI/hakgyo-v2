@@ -16,6 +16,8 @@ export const organizationManagerRoles: readonly OrganizationRole[] = [
 const workspaceSectionRoles: Readonly<
   Record<string, readonly OrganizationRole[]>
 > = {
+  // Teachers see their own classes; revenue is gated on its page.
+  analitik: allOrganizationRoles,
   dashboard: allOrganizationRoles,
   members: organizationManagerRoles,
   reviews: allOrganizationRoles,

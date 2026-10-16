@@ -49,7 +49,9 @@ DRAFT / SCHEDULED / OPEN ──cancel──▶ CANCELLED
 `CRON_SECRET`) opens due scheduled events, sends "opened" pushes that are still pending, closes
 events past
 `closesAt` (with `closedAt = closesAt`) and grades attempts left in progress, 50 at a time, until
-`attemptsFinalizedAt` is set. Every step is idempotent. A learner starting a due scheduled event
+`attemptsFinalizedAt` is set. Every step is idempotent. Attempts graded this way award no XP: only
+a learner's own submit records an `ASSESSMENT_SUBMITTED` activity, and event attempts never record
+`ASSESSMENT_PASSED`. A learner starting a due scheduled event
 opens it immediately, so a late cron run only delays the push. A manual close grades a few batches
 right away and leaves the rest to the cron.
 

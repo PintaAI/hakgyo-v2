@@ -245,6 +245,12 @@ export function AppSidebar({
       icon: LayoutDashboardIcon,
     },
     {
+      title: "Analitik",
+      href: `${workspaceRoot}/analitik/performa`,
+      match: `${workspaceRoot}/analitik`,
+      icon: ChartColumnIcon,
+    },
+    {
       title: "Kurikulum",
       href: `${workspaceRoot}/courses`,
       icon: BookOpenIcon,

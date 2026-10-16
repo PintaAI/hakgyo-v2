@@ -28,7 +28,7 @@ const ENROLLMENT_OPTIONS = [
     value: "INVITE_ONLY" as const,
     icon: LockIcon,
     title: "Kurikulum privat",
-    description: "Hanya siswa yang diundang atau ditambahkan.",
+    description: "Hanya murid yang diundang atau ditambahkan.",
   },
   {
     value: "OPEN" as const,

@@ -173,7 +173,7 @@ function AttemptDetail({
           : []),
       ]);
       toast.success(
-        "Review selesai. Nilai dan feedback sekarang tersedia untuk siswa.",
+        "Review selesai. Nilai dan feedback sekarang tersedia untuk murid.",
       );
       onDone?.();
     } catch (cause) {
@@ -189,7 +189,7 @@ function AttemptDetail({
           <Badge>{attempt.context.label}</Badge>
           <Badge variant="outline">
             {attempt.invalidated
-              ? "Dibatalkan untuk siswa"
+              ? "Dibatalkan untuk murid"
               : statusLabel[attempt.status]}
           </Badge>
         </div>
@@ -281,7 +281,7 @@ function AttemptDetail({
                         {answer?.selectedOptions.some(
                           (s) => s.optionId === option.id,
                         )
-                          ? "✓ Pilihan siswa · "
+                          ? "✓ Pilihan murid · "
                           : ""}
                         {option.isCorrect ? "Kunci benar" : ""}
                       </span>
@@ -317,7 +317,7 @@ function AttemptDetail({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`feedback-${answer.id}`}>
-                      Feedback untuk siswa
+                      Feedback untuk murid
                     </Label>
                     <Textarea
                       id={`feedback-${answer.id}`}
@@ -477,7 +477,7 @@ export function ReviewQueue({
         >
           <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
-            aria-label="Cari siswa atau tugas"
+            aria-label="Cari murid atau tugas"
             className="pl-8"
             placeholder="Nama, email, tugas… (Enter)"
             value={search}
@@ -658,7 +658,7 @@ export function ReviewQueue({
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead className="px-3">Siswa</TableHead>
+                  <TableHead className="px-3">Murid</TableHead>
                   <TableHead className="px-3">Tugas & konteks</TableHead>
                   <TableHead className="px-3">Status</TableHead>
                   <TableHead className="px-3">Nilai</TableHead>
@@ -771,7 +771,7 @@ export function ReviewQueue({
           <DialogHeader>
             <DialogTitle>Detail pengerjaan</DialogTitle>
             <DialogDescription>
-              Periksa jawaban dan hasil satu siswa.
+              Periksa jawaban dan hasil satu murid.
             </DialogDescription>
           </DialogHeader>
           {selected ? (

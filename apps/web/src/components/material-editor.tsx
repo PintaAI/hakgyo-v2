@@ -567,7 +567,7 @@ function MaterialEditorForm({
                   <AlertDialogTitle>Hapus materi ini?</AlertDialogTitle>
                   <AlertDialogDescription>
                     Tindakan ini permanen. Semua penempatan materi di kurikulum,
-                    progres siswa, dan aktivitas XP terkait akan ikut dihapus.
+                    progres murid, dan aktivitas XP terkait akan ikut dihapus.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

@@ -372,7 +372,7 @@ berikutnya.
 Keanggotaan user pada cohort tertentu, dan satu-satunya sumber akses course.
 Keanggotaan memberi akses jika statusnya `ACTIVE` atau `COMPLETED`, `expiresAt`
 kosong atau belum lewat, dan cohort berstatus `OPEN`, `IN_PROGRESS`, atau
-`COMPLETED`. Siswa tetap bisa membuka materi setelah Group belajar selesai;
+`COMPLETED`. Murid tetap bisa membuka materi setelah Group belajar selesai;
 cohort `DRAFT` dan `CANCELLED` tidak memberi akses. Filter ini ada di
 `src/server/enrollment/cohort-access.ts` (`courseAccessMembershipWhere`,
 `courseAccessWhere`). Tampilan yang hanya berlaku selama kelas berjalan, seperti
@@ -382,13 +382,13 @@ jadwal, meeting, dan atribusi attempt, memakai `liveClassCohortWhere`.
 
 Setiap course dapat memiliki satu cohort sistem dengan `defaultForCourseId`
 berisi `courseId`. Cohort ini dibuat saat pertama dipakai
-(`ensureDefaultCohort`) dan menampung siswa yang belajar tanpa kelas: join dari
-katalog, invite course, siswa yang ditambahkan manual dari halaman course, dan
+(`ensureDefaultCohort`) dan menampung murid yang belajar tanpa kelas: join dari
+katalog, invite course, murid yang ditambahkan manual dari halaman course, dan
 course Hangeul Mastery saat pendaftaran akun. Semua jalur ini menulis lewat
 `upsertDefaultCohortEnrollment`.
 
 Cohort default tidak muncul di daftar dan hitungan cohort, dan
-`requireCohortPermission` menolaknya; siswanya dikelola dari halaman Siswa pada
+`requireCohortPermission` menolaknya; muridnya dikelola dari halaman Murid pada
 course.
 
 Tabel keanggotaan memiliki constraint unik agar user tidak terdaftar dua kali

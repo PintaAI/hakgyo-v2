@@ -17,6 +17,7 @@ import {
 import { enrolledCourseWhere } from "~/server/learning/enrolled-courses";
 import { getCourseItemDetails } from "~/server/learning/course-item-detail";
 import { hasPassedAssessment } from "@hakgyo/shared/learning/sequential-access";
+import { contentCompletedActivityKey } from "~/server/gamification/activity-keys";
 import { recordGamificationActivity } from "~/server/gamification/record-activity";
 import {
   isVocabularySetPracticed,
@@ -494,7 +495,10 @@ export const learningRouter = createTRPCRouter({
               item.type === "MATERIAL"
                 ? "MATERIAL_COMPLETED"
                 : "VOCABULARY_REVIEWED",
-            idempotencyKey: `content-completed:${ctx.actorUserId}:${input.courseItemId}`,
+            idempotencyKey: contentCompletedActivityKey(
+              ctx.actorUserId,
+              input.courseItemId,
+            ),
             metadata: { courseItemId: input.courseItemId },
             organizationId: item.organizationId,
             occurredAt: completedAt ?? undefined,

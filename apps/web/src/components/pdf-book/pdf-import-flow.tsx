@@ -231,7 +231,7 @@ export function PdfImportFlow({
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
             Halaman buku ditampilkan apa adanya. Setelah itu, tambahkan kosa
-            kata dan kuis Hakgyo di setiap bab agar siswa bisa berlatih.
+            kata dan kuis Hakgyo di setiap bab agar murid bisa berlatih.
           </p>
         </div>
         <ol className="flex flex-wrap items-center gap-2 text-sm">
@@ -407,7 +407,7 @@ export function PdfImportFlow({
           </div>
           <p className="text-muted-foreground text-sm">
             Semua materi dibuat dalam keadaan <strong>disembunyikan</strong>,
-            jadi belum terlihat oleh siswa. Anda bisa menambahkan kosakata,
+            jadi belum terlihat oleh murid. Anda bisa menambahkan kosakata,
             kuis, atau catatan di setiap materi sebelum menampilkannya.
           </p>
           {book.data.status !== "READY" ? (
