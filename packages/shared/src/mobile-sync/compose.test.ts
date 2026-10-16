@@ -504,7 +504,7 @@ describe("composeLearnerAssessment", () => {
     expect(assessment).toMatchObject({
       id: "assessment-1",
       context: {
-        label: "Asesmen bab",
+        label: "Tugas bab",
         courseTitle: "Korean 101",
         moduleTitle: "Module 1",
       },

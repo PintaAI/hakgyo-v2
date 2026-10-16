@@ -120,7 +120,7 @@ function formatDuration(milliseconds: number) {
 function errorMessage(error: unknown) {
   return error instanceof Error
     ? error.message
-    : "Perubahan event belum berhasil disimpan.";
+    : "Perubahan belum berhasil disimpan.";
 }
 
 export function AssessmentEventManager({
@@ -199,13 +199,13 @@ export function AssessmentEventManager({
     const confirmed = await confirm({
       title: "Buka sekarang?",
       description:
-        "Learner di kelas yang dipilih bisa langsung mengerjakan dan mendapat notifikasi.",
+        "Murid di kelas yang dipilih bisa langsung mengerjakan dan mendapat notifikasi.",
       confirmLabel: "Buka sekarang",
     });
     if (!confirmed) return;
     try {
       const result = await open.mutateAsync({ eventId });
-      toast.success(`Event dibuka untuk ${result.participantCount} learner.`);
+      toast.success(`Dibuka untuk ${result.participantCount} murid.`);
       await refresh(eventId);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -214,15 +214,15 @@ export function AssessmentEventManager({
 
   async function closeEvent(eventId: string) {
     const confirmed = await confirm({
-      title: "Tutup event?",
+      title: "Tutup sekarang?",
       description:
-        "Peserta tidak dapat mengerjakan lagi dan leaderboard akan ditampilkan kepada mereka.",
-      confirmLabel: "Tutup event",
+        "Peserta tidak dapat mengerjakan lagi dan peringkat akan ditampilkan kepada mereka.",
+      confirmLabel: "Tutup",
     });
     if (!confirmed) return;
     try {
       await close.mutateAsync({ eventId });
-      toast.success("Event ditutup. Leaderboard sekarang tersedia.");
+      toast.success("Sudah ditutup. Peringkat sekarang tersedia.");
       await refresh(eventId);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -231,9 +231,9 @@ export function AssessmentEventManager({
 
   async function cancelEvent(eventId: string) {
     const values = await prompt({
-      title: "Batalkan event?",
+      title: "Batalkan latihan atau tryout ini?",
       description: "Alasan pembatalan akan dicatat dan ditampilkan ke peserta.",
-      confirmLabel: "Batalkan event",
+      confirmLabel: "Batalkan",
       destructive: true,
       fields: [
         { name: "reason", label: "Alasan pembatalan", type: "textarea" },
@@ -251,7 +251,7 @@ export function AssessmentEventManager({
         reason: values.reason,
         notify: values.notify === "true",
       });
-      toast.success("Event dibatalkan.");
+      toast.success("Sudah dibatalkan.");
       await refresh(eventId);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -260,16 +260,16 @@ export function AssessmentEventManager({
 
   async function removeEvent(eventId: string) {
     const confirmed = await confirm({
-      title: "Hapus event ini?",
+      title: "Hapus latihan atau tryout ini?",
       description:
-        "Tindakan ini permanen. Semua attempt, jawaban, hasil, dan riwayat peserta event ini akan ikut dihapus.",
-      confirmLabel: "Hapus event",
+        "Tindakan ini permanen. Semua pengerjaan, jawaban, hasil, dan riwayat peserta akan ikut dihapus.",
+      confirmLabel: "Hapus",
       destructive: true,
     });
     if (!confirmed) return;
     try {
       await deleteEvent.mutateAsync({ eventId });
-      toast.success("Event dihapus.");
+      toast.success("Sudah dihapus.");
       await refresh();
     } catch (error) {
       toast.error(errorMessage(error));
@@ -278,12 +278,12 @@ export function AssessmentEventManager({
 
   async function invalidateAttempt(eventId: string, attemptId: string) {
     const values = await prompt({
-      title: "Invalidasi attempt?",
-      description: "Attempt akan dikeluarkan dari leaderboard.",
-      confirmLabel: "Invalidasi",
+      title: "Batalkan hasil peserta ini?",
+      description: "Hasil ini tidak dihitung lagi di peringkat.",
+      confirmLabel: "Batalkan hasil",
       destructive: true,
       fields: [
-        { name: "reason", label: "Alasan invalidasi", type: "textarea" },
+        { name: "reason", label: "Alasan pembatalan hasil", type: "textarea" },
       ],
     });
     if (!values?.reason) return;
@@ -293,7 +293,7 @@ export function AssessmentEventManager({
         attemptId,
         reason: values.reason,
       });
-      toast.success("Attempt dikeluarkan dari leaderboard.");
+      toast.success("Hasil dikeluarkan dari peringkat.");
       await refresh(eventId);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -308,7 +308,7 @@ export function AssessmentEventManager({
   ) {
     const values = await prompt({
       title: "Ubah nilai",
-      description: "Perubahan nilai dicatat di audit log.",
+      description: "Perubahan nilai dicatat di riwayat perubahan.",
       fields: [
         {
           name: "score",
@@ -334,7 +334,7 @@ export function AssessmentEventManager({
         score,
         reason: values.reason,
       });
-      toast.success("Nilai diperbarui dan dicatat di audit log.");
+      toast.success("Nilai diperbarui dan dicatat di riwayat perubahan.");
       await refresh(eventId);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -351,7 +351,7 @@ export function AssessmentEventManager({
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {cohortId
-              ? "Latihan dan tryout untuk kelas ini, termasuk yang dibuat dari course."
+              ? "Latihan dan tryout untuk kelas ini, termasuk yang dibuat dari halaman kurikulum."
               : "Jalankan latihan atau tryout untuk satu, beberapa, atau semua kelas."}
           </p>
         </div>
@@ -408,7 +408,7 @@ export function AssessmentEventManager({
 
       <div className="flex items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
-          {events.data?.total ?? 0} asesmen · Halaman {eventPage}
+          {events.data?.total ?? 0} latihan & tryout · Halaman {eventPage}
         </p>
         <div className="flex gap-2">
           <Button
@@ -449,12 +449,12 @@ export function AssessmentEventManager({
       >
         <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{detail.data?.title ?? "Hasil event"}</DialogTitle>
+            <DialogTitle>{detail.data?.title ?? "Hasil"}</DialogTitle>
             <DialogDescription>
               {detail.data
                 ? `${eventTypeLabel[detail.data.type]} · ${targetSummary(detail.data)}. `
                 : ""}
-              Peserta yang belum mengirim tidak masuk leaderboard.
+              Peserta yang belum mengirim tidak masuk peringkat.
             </DialogDescription>
           </DialogHeader>
           {detail.isPending ? (
@@ -529,7 +529,9 @@ function EventCard({
                 {statusLabel[event.status]}
               </Badge>
               <Badge variant="outline">{eventTypeLabel[event.type]}</Badge>
-              {fromCourse ? <Badge variant="outline">Dari course</Badge> : null}
+              {fromCourse ? (
+                <Badge variant="outline">Dari kurikulum</Badge>
+              ) : null}
             </div>
             <CardTitle>{event.title}</CardTitle>
             <CardDescription className="mt-1">
@@ -551,7 +553,7 @@ function EventCard({
           <span>{event._count.participants} peserta</span>
           <span className="flex items-center gap-1.5">
             <ClipboardCheckIcon className="size-3.5" /> {event._count.attempts}{" "}
-            attempt
+            pengerjaan
           </span>
         </div>
         <p className="text-muted-foreground mt-3 flex flex-wrap gap-x-3 text-xs">
@@ -573,7 +575,7 @@ function EventCard({
             </Button>
           ) : (
             <p className="text-muted-foreground text-xs">
-              Draf untuk semua kelas, menunggu dibuka oleh pengelola course.
+              Draf untuk semua kelas, menunggu dibuka oleh pengelola kurikulum.
             </p>
           )}
           {manage &&
@@ -654,7 +656,7 @@ function AddCohortsDialog({
       });
       toast.success(
         event.status === "OPEN"
-          ? `${result.added} kelas ditambahkan, ${result.participantCount} learner bisa mulai.`
+          ? `${result.added} kelas ditambahkan, ${result.participantCount} murid bisa mulai.`
           : `${result.added} kelas ditambahkan.`,
       );
       onClose();
@@ -695,7 +697,7 @@ function AddCohortsDialog({
                       {cohort.name}
                     </span>
                     <span className="text-muted-foreground block text-xs">
-                      {cohort.learnerCount} learner
+                      {cohort.learnerCount} murid
                       {cohort.averageProgress !== null
                         ? ` · progres rata-rata ${cohort.averageProgress}%`
                         : ""}
@@ -713,7 +715,7 @@ function AddCohortsDialog({
         {event.status === "OPEN" ? (
           <label className="flex items-center gap-2">
             <Checkbox checked={notify} onCheckedChange={setNotify} />
-            <span>Beri tahu learner kelas baru</span>
+            <span>Beri tahu murid kelas baru</span>
           </label>
         ) : null}
         <DialogFooter>
@@ -888,7 +890,7 @@ function EventResults({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10 sm:w-16">Rank</TableHead>
+              <TableHead className="w-10 sm:w-16">Peringkat</TableHead>
               <TableHead>Peserta</TableHead>
               <TableHead className="max-sm:hidden">Status</TableHead>
               <TableHead>Nilai</TableHead>
@@ -901,7 +903,7 @@ function EventResults({
               const rank = ranks.get(participant.userId);
               const invalidated = Boolean(participant.invalidatedAt);
               const resultStatus = invalidated
-                ? "Invalid"
+                ? "Hasil dibatalkan"
                 : !attempt
                   ? event.status === "CLOSED"
                     ? "Tidak mengerjakan"
@@ -984,7 +986,7 @@ function EventResults({
                           disabled={pending}
                           onClick={() => onInvalidate(event.id, attempt.id)}
                         >
-                          Invalidasi
+                          Batalkan hasil
                         </Button>
                       </span>
                     ) : invalidated ? (

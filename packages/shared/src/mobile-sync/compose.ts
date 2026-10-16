@@ -515,7 +515,7 @@ export function composeLearnerAssessment(
     shuffleQuestions: assessment.shuffleQuestions,
     shuffleOptions: assessment.shuffleOptions,
     context: {
-      label: "Asesmen bab",
+      label: "Tugas bab",
       title: assessment.title,
       courseTitle: bundle.structure.title,
       moduleTitle: module.title,

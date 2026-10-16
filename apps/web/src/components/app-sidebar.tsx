@@ -3,9 +3,18 @@
 import { useState, type ComponentProps, type ComponentType } from "react";
 import { usePathname } from "next/navigation";
 import {
+  ArrowLeftIcon,
+  ArrowLeftRightIcon,
+  BellIcon,
   BookOpenIcon,
+  CircleUserIcon,
   CrownIcon,
+  FlameIcon,
+  SmartphoneIcon,
+  WalletIcon,
+  ChartColumnIcon,
   ChevronRightIcon,
+  CircleHelpIcon,
   ClipboardCheckIcon,
   FileTextIcon,
   GraduationCapIcon,
@@ -14,6 +23,8 @@ import {
   LayoutDashboardIcon,
   LibraryIcon,
   BookMarkedIcon,
+  PlugIcon,
+  RocketIcon,
   Settings2Icon,
   TrophyIcon,
   UsersIcon,
@@ -46,7 +57,7 @@ import {
   useSidebar,
 } from "~/components/ui/sidebar";
 import { User, type UserProps } from "~/components/user";
-import type { OrganizationRole } from "~/lib/access";
+import { routeAccess, type OrganizationRole } from "~/lib/access";
 
 type NavigationLink = {
   title: string;
@@ -65,18 +76,36 @@ export type DocsNavigationItem = {
   title: string;
   href: string;
   iconName: string;
-  locale: string;
+};
+
+export type DocsNavigationSection = {
+  audience: string;
+  label: string;
+  shortLabel: string;
+  href: string;
+  items: DocsNavigationItem[];
 };
 
 const docsIconMap: Record<string, ComponentType<{ className?: string }>> = {
+  BellIcon,
   BookOpenIcon,
+  CircleUserIcon,
+  FlameIcon,
+  SmartphoneIcon,
+  WalletIcon,
+  ChartColumnIcon,
+  CircleHelpIcon,
   ClipboardCheckIcon,
   CrownIcon,
   FileTextIcon,
+  GlobeIcon,
   GraduationCapIcon,
   LanguagesIcon,
   LibraryIcon,
+  PlugIcon,
+  RocketIcon,
   Settings2Icon,
+  TrophyIcon,
   UsersIcon,
 };
 
@@ -498,9 +527,11 @@ export function AppSidebar({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                isActive={pathname === "/docs" || pathname.startsWith("/docs/")}
+                isActive={pathname.startsWith("/docs/pengajar")}
                 tooltip="Panduan aplikasi"
-                render={<Link href="/docs" onClick={closeMobileSidebar} />}
+                render={
+                  <Link href="/docs/pengajar" onClick={closeMobileSidebar} />
+                }
               >
                 <BookMarkedIcon />
                 <span>Panduan aplikasi</span>
@@ -518,16 +549,24 @@ export function AppSidebar({
 }
 
 export function DocsAppSidebar({
-  navigation,
+  sections,
   user,
   ...props
 }: ComponentProps<typeof Sidebar> & {
-  navigation: DocsNavigationItem[];
+  sections: DocsNavigationSection[];
   user: UserProps["user"];
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const closeMobileSidebar = () => setOpenMobile(false);
+  const current = sections.find(
+    (section) =>
+      pathname === section.href || pathname.startsWith(`${section.href}/`),
+  );
+  const visibleSections = current ? [current] : sections;
+  const otherSections = current
+    ? sections.filter((section) => section !== current)
+    : [];
 
   return (
     <Sidebar variant="inset" collapsible="icon" {...props}>
@@ -536,16 +575,16 @@ export function DocsAppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              tooltip="Dokumen Hakgyo"
-              render={<Link href="/" onClick={closeMobileSidebar} />}
+              tooltip="Panduan Hakgyo"
+              render={<Link href="/docs" onClick={closeMobileSidebar} />}
             >
               <span className="bg-sidebar-primary text-sidebar-primary-foreground flex size-8 items-center justify-center rounded-lg">
                 <BookMarkedIcon className="size-4" />
               </span>
               <span className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate font-semibold">Dokumen Hakgyo</span>
+                <span className="truncate font-semibold">Panduan Hakgyo</span>
                 <span className="text-sidebar-foreground/65 truncate text-xs">
-                  Panduan pengguna
+                  {current?.label ?? "Pilih panduan"}
                 </span>
               </span>
             </SidebarMenuButton>
@@ -553,49 +592,65 @@ export function DocsAppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Konsep utama</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigation.map((item) => {
-                const active = pathname === item.href;
-                const Icon = docsIconMap[item.iconName] ?? FileTextIcon;
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      isActive={active}
-                      tooltip={item.title}
-                      render={
-                        <Link
-                          href={item.href}
-                          aria-current={active ? "page" : undefined}
-                          onClick={closeMobileSidebar}
-                        />
-                      }
-                    >
-                      <Icon />
-                      <span>{item.title}</span>
-                      <span className="text-sidebar-foreground/50 ml-auto text-[0.65rem] uppercase group-data-[collapsible=icon]:hidden">
-                        {item.locale}
-                      </span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleSections.map((section) => (
+          <SidebarGroup key={section.audience}>
+            <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.items.map((item) => {
+                  const active = pathname === item.href;
+                  const Icon = docsIconMap[item.iconName] ?? FileTextIcon;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        isActive={active}
+                        tooltip={item.title}
+                        render={
+                          <Link
+                            href={item.href}
+                            aria-current={active ? "page" : undefined}
+                            onClick={closeMobileSidebar}
+                          />
+                        }
+                      >
+                        <Icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
         <SidebarGroup className="mt-auto">
           <SidebarMenu>
+            {otherSections.map((section) => (
+              <SidebarMenuItem key={section.audience}>
+                <SidebarMenuButton
+                  tooltip={section.label}
+                  render={
+                    <Link href={section.href} onClick={closeMobileSidebar} />
+                  }
+                >
+                  <ArrowLeftRightIcon />
+                  <span>{section.shortLabel}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
             <SidebarMenuItem>
               <SidebarMenuButton
-                tooltip="Buka area belajar"
+                tooltip="Kembali ke aplikasi"
                 render={
-                  <Link href="/learn/courses" onClick={closeMobileSidebar} />
+                  <Link
+                    href={routeAccess.postSignInPath}
+                    prefetch={false}
+                    onClick={closeMobileSidebar}
+                  />
                 }
               >
-                <GraduationCapIcon />
-                <span>Buka area belajar</span>
+                <ArrowLeftIcon />
+                <span>Kembali ke aplikasi</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
