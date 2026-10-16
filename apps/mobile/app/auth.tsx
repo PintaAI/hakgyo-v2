@@ -3,6 +3,7 @@ import { router, Stack, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -11,6 +12,7 @@ import {
   View,
 } from "react-native";
 
+import { apiUrl } from "../src/config";
 import { authClient } from "../src/lib/auth-client";
 import { userErrorMessage as errorMessage } from "../src/lib/error-message";
 import { useAppTheme } from "../src/providers/AppThemeProvider";
@@ -48,11 +50,13 @@ export default function AuthScreen() {
   const [password, setPassword] = useState("");
   const [pendingMethod, setPendingMethod] = useState<SignInMethod | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const isPending = pendingMethod !== null;
 
   const switchMode = (nextMode: AuthMode) => {
     setMode(nextMode);
     setError(null);
+    setNotice(null);
   };
 
   const handleEmailSubmit = async () => {
@@ -78,6 +82,7 @@ export default function AuthScreen() {
     }
 
     setError(null);
+    setNotice(null);
     setPendingMethod("email");
 
     try {
@@ -96,6 +101,16 @@ export default function AuthScreen() {
 
       if (result.error) {
         setError(errorMessage(result.error, failureMessage));
+        return;
+      }
+
+      // Sign-up only creates a session once the email is verified.
+      if (isSignUp && !result.data?.token) {
+        setNotice(
+          `Kami mengirim tautan verifikasi ke ${normalizedEmail}. Buka tautan itu, lalu masuk.`,
+        );
+        setMode("sign-in");
+        setPassword("");
         return;
       }
 
@@ -248,6 +263,15 @@ export default function AuthScreen() {
             value={password}
           />
 
+          {notice ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              className="rounded-lg bg-primary/10 px-4 py-3 text-sm font-semibold text-foreground"
+            >
+              {notice}
+            </Text>
+          ) : null}
+
           {error ? (
             <Text
               accessibilityLiveRegion="polite"
@@ -271,6 +295,19 @@ export default function AuthScreen() {
               </Text>
             )}
           </Pressable>
+          {!isSignUp ? (
+            <Pressable
+              accessibilityRole="link"
+              disabled={isPending}
+              onPress={() =>
+                void Linking.openURL(`${apiUrl}/auth/forgot-password`)
+              }
+            >
+              <Text className="text-center text-sm text-muted-foreground">
+                Lupa kata sandi?
+              </Text>
+            </Pressable>
+          ) : null}
           {isAppleAvailable ? (
             <View
               pointerEvents={isPending ? "none" : "auto"}
