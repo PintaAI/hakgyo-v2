@@ -21,7 +21,7 @@ export function HeroSlide() {
       className="border-border relative flex flex-col justify-center overflow-hidden border-b pt-20 pb-6 sm:pt-32 sm:pb-16 lg:pt-24 lg:pb-8"
     >
       <div
-        className="bg-primary/10 animate-landing-drift pointer-events-none absolute -top-40 -right-40 size-[36rem] rounded-full blur-3xl"
+        className="animate-landing-drift pointer-events-none absolute -top-40 -right-40 size-[36rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary)_14%,transparent),transparent)]"
         aria-hidden="true"
       />
       <div className={cn(landingContainer, "relative")}>
