@@ -1,11 +1,13 @@
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, BookOpenIcon } from "lucide-react";
 
+import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
 import { landingContainer } from "../layout";
 import { reveal } from "../reveal";
 import { WhatsAppLink } from "../slide";
+import { TeaserVideo } from "../teaser-video";
 import { pillars } from "./solution";
 
 /** The opening slide, active before any script runs. */
@@ -43,29 +45,42 @@ export function HeroSlide() {
         </h1>
         <div
           {...reveal(3)}
-          className="mt-5 flex flex-col justify-between gap-6 sm:mt-9 sm:gap-8 lg:flex-row lg:items-end"
+          className="mt-5 grid gap-6 sm:mt-9 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] lg:items-end lg:gap-10"
         >
-          <p className="text-muted-foreground max-w-xl text-[15px] leading-6 sm:text-lg sm:leading-8">
-            Kurikulum, kelas, aplikasi untuk murid, halaman promosi, serta
-            tryout dan tugas dalam satu platform siap pakai. Tanpa membangun
-            sistem sendiri.
-          </p>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:pb-1">
-            <WhatsAppLink className="h-11 px-5 sm:h-12 sm:px-6" />
-            <a
-              href="#solusi"
-              className={cn(
-                buttonVariants({ variant: "ghost" }),
-                "hidden h-11 gap-2 px-3 sm:inline-flex sm:h-12 sm:px-4",
-              )}
-            >
-              Lihat fitur <ArrowRightIcon aria-hidden="true" />
-            </a>
+          <div className="flex flex-col gap-6 sm:gap-8">
+            <p className="text-muted-foreground max-w-xl text-[15px] leading-6 sm:text-lg sm:leading-8">
+              Kurikulum, kelas, aplikasi untuk murid, halaman promosi, serta
+              tryout dan tugas dalam satu platform siap pakai. Tanpa membangun
+              sistem sendiri.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <WhatsAppLink className="h-11 px-5 sm:h-12 sm:px-6" />
+              <Link
+                href="/docs"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "h-11 gap-2 px-5 sm:h-12 sm:px-6",
+                )}
+              >
+                <BookOpenIcon aria-hidden="true" />
+                Pelajari lengkap
+              </Link>
+              <a
+                href="#solusi"
+                className={cn(
+                  buttonVariants({ variant: "ghost" }),
+                  "hidden h-11 gap-2 px-3 sm:inline-flex sm:h-12 sm:px-4 lg:hidden xl:inline-flex",
+                )}
+              >
+                Lihat fitur <ArrowRightIcon aria-hidden="true" />
+              </a>
+            </div>
           </div>
+          <TeaserVideo />
         </div>
         <div
           {...reveal(5)}
-          className="border-border bg-border mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border sm:mt-14 lg:mt-20 lg:grid-cols-4"
+          className="border-border bg-border mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border sm:mt-14 lg:mt-10 lg:grid-cols-4"
         >
           {pillars.map(({ slide, icon: Icon, name }, index) => (
             <a
