@@ -218,7 +218,7 @@ export function SlideNavigator({ slides }: { slides: readonly SlideLink[] }) {
           </a>
         ))}
       </nav>
-      <div className="bg-background/85 border-border fixed right-6 bottom-6 z-40 hidden items-center gap-1 rounded-full border p-1 shadow-sm backdrop-blur lg:flex">
+      <div className="bg-background/95 border-border fixed right-6 bottom-6 z-40 hidden items-center gap-1 rounded-full border p-1 shadow-sm lg:flex">
         <button
           type="button"
           className={control}

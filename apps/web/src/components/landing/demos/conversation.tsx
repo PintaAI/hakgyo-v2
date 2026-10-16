@@ -13,7 +13,7 @@ import { cn } from "~/lib/utils";
 
 import { demoShadow } from "./frame";
 import { wideScreenQuery } from "../layout";
-import { useInView } from "../motion";
+import { useInView, useNearViewport } from "../motion";
 
 const conversationContent: HakgyoPartialBlock[] = [
   {
@@ -34,6 +34,8 @@ const conversationWidth = 820;
 export function ConversationDemo() {
   const { resolvedTheme } = useTheme();
   const { ref, inView } = useInView<HTMLDivElement>();
+  // The block editor is a large chunk; it loads when the slide is a screen away.
+  const { ref: nearRef, near } = useNearViewport<HTMLDivElement>();
   const contentRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState<{
     width?: number;
@@ -66,7 +68,10 @@ export function ConversationDemo() {
 
   return (
     <div
-      ref={ref}
+      ref={(element) => {
+        ref.current = element;
+        nearRef.current = element;
+      }}
       className={cn(
         "border-border bg-card group h-[440px] overflow-hidden rounded-2xl border [mask-image:linear-gradient(to_bottom,black_88%,transparent)] sm:h-[min(62dvh,540px)]",
         demoShadow,
@@ -89,10 +94,12 @@ export function ConversationDemo() {
           } as CSSProperties
         }
       >
-        <DynamicLearnerBlockNoteDocument
-          content={conversationContent}
-          theme={resolvedTheme === "dark" ? "dark" : "light"}
-        />
+        {near ? (
+          <DynamicLearnerBlockNoteDocument
+            content={conversationContent}
+            theme={resolvedTheme === "dark" ? "dark" : "light"}
+          />
+        ) : null}
       </div>
     </div>
   );

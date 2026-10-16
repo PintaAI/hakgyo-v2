@@ -51,6 +51,8 @@ type Fallen = {
 
 /** Glyphs on a 1440×900 screen; smaller screens get fewer. */
 const glyphsPerScreen = 12;
+/** Shortest time between two drawn frames; the drift is slow enough for 30 fps. */
+const frameMs = 30;
 /** Overall strength of the effect, kept faint behind the slides. */
 const opacity = 0.5;
 
@@ -141,7 +143,9 @@ export function startAtmosphere(canvas: HTMLCanvasElement) {
   const wind = { x: 0, y: 0 };
   let width = 0;
   let height = 0;
-  let ratio = 1;
+  // The glyphs are faint and blurred, so CSS-pixel resolution is sharp enough,
+  // and a full-screen canvas at device resolution costs several times more.
+  const ratio = 1;
   /** The colour the sprites were drawn in; they are redrawn when it changes. */
   let spriteColor = "";
   let particles: Particle[] = [];
@@ -341,7 +345,6 @@ export function startAtmosphere(canvas: HTMLCanvasElement) {
   }
 
   function resize() {
-    ratio = Math.min(window.devicePixelRatio || 1, 1.5);
     width = window.innerWidth;
     height = window.innerHeight;
     canvas.width = Math.round(width * ratio);
@@ -366,6 +369,7 @@ export function startAtmosphere(canvas: HTMLCanvasElement) {
 
   let pointer: { x: number; y: number } | null = null;
   let hovered: Particle | null = null;
+  let appliedCursor = "";
 
   // A click, not a pointer press, so swiping on a phone never pops a bubble.
   function onClick(event: MouseEvent) {
@@ -572,6 +576,7 @@ export function startAtmosphere(canvas: HTMLCanvasElement) {
 
   function tick(now: number) {
     frame = requestAnimationFrame(tick);
+    if (now - last < frameMs) return;
     // Frames at 60 Hz; capped so a background tab does not teleport everything.
     const dt = Math.min((now - last) / 16.667, 3);
     last = now;
@@ -595,7 +600,11 @@ export function startAtmosphere(canvas: HTMLCanvasElement) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     hovered = pointer ? bubbleAt(pointer.x, pointer.y) : null;
-    document.documentElement.style.cursor = hovered ? "pointer" : "";
+    const cursor = hovered ? "pointer" : "";
+    if (cursor !== appliedCursor) {
+      document.documentElement.style.cursor = cursor;
+      appliedCursor = cursor;
+    }
     // Fixed 60 Hz steps keep the Verlet physics stable at any frame rate.
     for (let step = 0; step < Math.max(1, Math.round(dt)); step++) stepFallen();
     drawFallen(now);

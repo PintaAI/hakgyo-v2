@@ -409,6 +409,21 @@ html:has([data-slide-deck]) {
   }
 }
 
+/* Looping demo animations only run while their slide is the one in view. */
+[data-slide]:not([data-active])
+  :is(
+    .animate-landing-drift,
+    .animate-landing-float,
+    .animate-landing-pan,
+    .animate-scan-line,
+    .animate-spin,
+    .animate-ping,
+    .animate-bounce,
+    .animate-pulse
+  ) {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-landing-float,
   .animate-landing-drift,

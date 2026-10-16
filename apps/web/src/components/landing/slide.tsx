@@ -14,7 +14,10 @@ import { reveal } from "./reveal";
 /**
  * One slide of the deck: a screen-tall section with the page container.
  * Horizontal overflow is clipped so full-bleed tracks inside (see
- * `SlidePanels`) never widen the page.
+ * `SlidePanels`) never widen the page. Every slide but the opening one skips
+ * style, layout and paint until it nears the screen, which is most of the
+ * page's rendering work at load; slides are at least one screen tall, so the
+ * placeholder height is close to the real one.
  */
 export function Slide({
   id,
@@ -31,7 +34,7 @@ export function Slide({
       data-slide
       aria-labelledby={`${id}-title`}
       className={cn(
-        "relative flex flex-col justify-center overflow-x-clip py-10 sm:py-20 lg:py-14",
+        "relative flex flex-col justify-center overflow-x-clip py-10 [contain-intrinsic-size:auto_100svh] [content-visibility:auto] sm:py-20 lg:py-14",
         className,
       )}
     >

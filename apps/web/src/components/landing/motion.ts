@@ -93,3 +93,29 @@ export function useInView<T extends HTMLElement>() {
   }, []);
   return { ref, inView: inView && !reducedMotion };
 }
+
+/**
+ * Whether the element's slide has come within `rootMargin` of the viewport. It
+ * stays true once reached, so heavy content mounts once and is kept. The slide
+ * is watched, not the element, because an element in a horizontal panel track
+ * is clipped by the track and never counts as near until its panel opens.
+ */
+export function useNearViewport<T extends HTMLElement>(rootMargin = "100%") {
+  const ref = useRef<T>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry!.isIntersecting) return;
+        setNear(true);
+        observer.disconnect();
+      },
+      { rootMargin },
+    );
+    observer.observe(element.closest("[data-slide]") ?? element);
+    return () => observer.disconnect();
+  }, [rootMargin]);
+  return { ref, near };
+}
