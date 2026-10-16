@@ -36,13 +36,6 @@ export const config = {
       ],
     },
     {
-      source: "/docs/:path*",
-      missing: [
-        { type: "header", key: "rsc" },
-        { type: "header", key: "next-action" },
-      ],
-    },
-    {
       source: "/learn/:path*",
       missing: [
         { type: "header", key: "rsc" },

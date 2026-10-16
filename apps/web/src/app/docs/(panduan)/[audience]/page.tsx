@@ -7,6 +7,9 @@ import {
 } from "~/lib/user-doc-audiences";
 import { getUserDocs } from "~/lib/user-docs";
 
+// Every page is prerendered; anything else is a 404.
+export const dynamicParams = false;
+
 export function generateStaticParams() {
   return userDocAudiences.map(({ id }) => ({ audience: id }));
 }

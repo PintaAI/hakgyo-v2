@@ -12,7 +12,7 @@ import {
 describe("route access", () => {
   test("identifies protected route segments without matching similar names", () => {
     expect(isProtectedRoute("/learn/courses")).toBe(true);
-    expect(isProtectedRoute("/docs/courses-id")).toBe(true);
+    expect(isProtectedRoute("/docs/murid/mulai-belajar")).toBe(false);
     expect(isProtectedRoute("/workspace/acme-school/dashboard")).toBe(true);
     expect(isProtectedRoute("/invite/token.with.dot")).toBe(false);
     expect(isProtectedRoute("/organization-invite/token.with.dot")).toBe(false);

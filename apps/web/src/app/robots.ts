@@ -11,9 +11,11 @@ export default function robots(): MetadataRoute.Robots {
         "/api/",
         // Match app routes exactly so organization slugs such as learn-korean
         // remain crawlable at the root.
-        ...["auth", "docs", "invite", "learn", "oauth", "workspace"].flatMap(
+        ...["auth", "invite", "learn", "oauth", "workspace"].flatMap(
           (route) => [`/${route}$`, `/${route}/`],
         ),
+        // Bare UI previews framed by the guide pages.
+        "/docs/pratinjau/",
       ],
     },
     sitemap: `${env.APP_URL}/sitemap.xml`,

@@ -21,9 +21,10 @@ const config = {
     ],
   },
   outputFileTracingIncludes: {
-    // The guide pages read their Markdown from disk at request time, which
-    // the tracer can't follow.
+    // The guide pages and the sitemap read the guide Markdown from disk at
+    // request time, which the tracer can't follow.
     "/docs/**": ["./src/components/user-docs/**/*.md"],
+    "/sitemap.xml": ["./src/components/user-docs/**/*.md"],
   },
   images: {
     // Uploads get a new random key, so an optimized image never changes.

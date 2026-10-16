@@ -28,7 +28,6 @@ export const routeAccess = {
   signedInFallbackPath: "/onboarding",
   protectedPrefixes: [
     "/auth/continue",
-    "/docs",
     "/learn",
     "/onboarding",
     "/organizations",

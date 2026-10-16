@@ -2,14 +2,23 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { AppPreferencesBootstrap } from "~/components/app-preferences-bootstrap";
-import { isDocPreviewName } from "~/components/user-doc-previews/names";
+import {
+  docPreviewNames,
+  isDocPreviewName,
+} from "~/components/user-doc-previews/names";
 import { DocPreviewHost } from "~/components/user-doc-previews/preview-host";
-import { requireSession } from "~/server/auth/dal";
 
 export const metadata: Metadata = {
   title: "Pratinjau panduan",
   robots: { index: false, follow: false },
 };
+
+// Every page is prerendered; anything else is a 404.
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return docPreviewNames.map((name) => ({ name }));
+}
 
 /**
  * One interactive UI preview for the guide, loaded inside an iframe by
@@ -20,7 +29,7 @@ export default async function DocPreviewPage({
 }: {
   params: Promise<{ name: string }>;
 }) {
-  const [{ name }] = await Promise.all([params, requireSession()]);
+  const { name } = await params;
   if (!isDocPreviewName(name)) notFound();
 
   return (
