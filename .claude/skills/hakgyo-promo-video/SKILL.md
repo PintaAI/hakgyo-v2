@@ -24,6 +24,7 @@ A project is a folder in `tools/promo-video/` whose `project.json` picks an engi
 | `editorial.html` | The default look for 9:16 shorts (see below). Scenes `statement`, `window`, `phone`, `card`, `end`. |
 | `compose.html` | Long 16:9 explainers: chapters, callouts, `list` scenes, phone clips with `side`/`step`, `cuts`. |
 | `caption.html` | Overlay on a raw talking-head video: word-by-word captions and graphic cards from `captions.json`. |
+| `origami.html` | Folded-paper stop-motion graphics, no recordings (kinds `mess`, `fold`, `curriculum`, `class`, `tryout`, `offline`, `end`). Faces hinged like creases with real 3D folds, poses held 3 frames, `"motionBlur": 1`, `audio.style: "paper"` for the kalimba bed and paper sound effects. Example project `reels-origami`. |
 
 Every page implements `window.ready`, `window.seek(t, frame)` and `window.TIMELINE`; that contract is what `render.mjs`
 and the editor preview both use. The reference project is `contoh-tryout` (a 30 s editorial short with recordings and voice;
@@ -58,13 +59,18 @@ Do the steps in order; each one removes a class of rework from the next.
    with `--like=<p>` still starts from `storyboard.py`; run `pvs adopt <name>` to switch it to JSON).
 4. **Record** with `bun pv.mjs record <name> --dry` first for new selectors, then without `--dry`. Stages use
    `demo/lib/stage.mjs`; name marks after the on-screen moment. Then `bun pv.mjs camera <name>`.
-5. **Compose the storyboard** in the editor or with `pvs` (next section). Keep lines short (about 14-17 characters a
+5. **Compose the storyboard** in the editor or with `pvs` (next section). Give each beat one job (hook, turn, proof, close; see
+   `references/motion-design.md`). Keep lines short (about 14-17 characters a
    second). Look at the preview or `pvs still <p> <t...>` (frames land in `<p>/.pv/stills/`) before spending TTS quota.
 6. **`bun pv.mjs voice <name>`** once the lines are final. It only generates new or edited lines (cached by text); the
    editor shows the character count and asks first. Render stays disabled until every line has audio.
 7. **`bun pv.mjs check <name>`** (stills and labelled contact sheets), look at every sheet, fix, repeat.
-8. **`bun pv.mjs render <name>`** (GPU worker when up, video downloaded; audio normalised to -14 LUFS), then
-   `bun pv.mjs lint <name>` (rhythm, scene changes, loudness and true peak). Fix its warnings or say why one stays.
+8. **Render.** The user decides when: the dashboard's Render button opens a dialog with the estimate, the target (GPU worker or
+   local) and a refusal if a job is running, a voice line has no audio, or the GPU is offline (local needs an explicit OK).
+   Tell the user the project is ready instead of rendering on your own unless they asked. From the terminal it is
+   `bun pv.mjs render <name>` (GPU worker when up, video downloaded; audio normalised to -14 LUFS). Then
+   `bun pv.mjs lint <name>` (rhythm, scene changes, loudness and true peak). Fix its warnings or say why one stays, and run
+   the render gates in `references/motion-design.md` (empty frames, end hold, readable proof).
 9. **Backup, then delete.** `bun pv.mjs backup <file>` uploads to R2. Then `bun pv.mjs media has <file>` must print `OK` (same
    name and exact size; it exits 1 otherwise), and only then delete the local mp4. `bun pv.mjs media ls` lists everything in R2.
 10. **Verify and report** (below).
@@ -108,7 +114,7 @@ new short from it (`contoh-tryout` is the model):
 - Shorts render 6 captures per moving frame (`"motionBlur": N`, default 6 for portrait); stills and `check` are never blurred.
   The user prefers the quality over render time.
 
-Being creative means composition and motion, not novelty props. Check stills against this bar before a full render. Keep
+Being creative means composition and motion, not novelty props (timings and curves: `references/motion-design.md`). Check stills against this bar before a full render. Keep
 all content in the safe area (x 60-940, y 250-1440 of 1080x1920) that TikTok, Reels and Shorts leave uncovered; the editor
 has a "zona aman" toggle and `pv check <p> --safe` tints it.
 
@@ -211,5 +217,7 @@ of the demo data rather than doing it silently, and do not commit or open a PR u
 - `references/guide-videos.md`: the user-guide intro videos (`guide-videos/`): order of work, recorder helpers
   (`s.find`, `s.require`, `g.learner`, `s.irreversible`, `g.created`), `pv lint` and the safe limits. Read it before
   making or fixing a guide video.
+- `references/motion-design.md`: the craft layer: beat roles, default durations and curves, entrances and cuts, cursor and camera
+  on a recording, no dead frames, the ending, render gates, and what the engine still lacks. Read it before designing motion.
 - `references/motion-techniques.md`: the catalogue of motion techniques and transitions (the `showreel.html` page that held
   them was archived; the descriptions are recipes to lift into the live pages).

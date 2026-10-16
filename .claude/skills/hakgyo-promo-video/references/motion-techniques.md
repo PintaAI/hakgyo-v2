@@ -1,5 +1,7 @@
 # Motion techniques catalogue
 
+For timings, curves and what to check on a render, read `motion-design.md` first; this file is the effects catalogue.
+
 What the engine can animate, where each technique already lives, and how to lift it into another
 video. Paths are relative to `tools/promo-video/demo/`. The reference was the `showreel` project (`showreel.html`: 20
 techniques and 9 transitions, each labelled on screen). That page and project were removed on 2026-10-11; the rendered video is
