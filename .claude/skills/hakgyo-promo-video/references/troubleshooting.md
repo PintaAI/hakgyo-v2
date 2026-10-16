@@ -55,7 +55,23 @@ Each entry is a failure that cost time before.
   worker (the PC is also in use for other things) can miss the log poll. Check `gpu-run jobs`, read
   the log with `curl` on `/jobs/<id>/log`, and leave the job alone. A render that took 3 minutes per
   chunk once took 8 because the PC was in use; quote estimates from measured chunks.
+- Slow transfers between the VPS and the worker come from the path between them, not from either
+  internet line. On 2026-10-15 `gpu-run speedtest --internet` measured about 130 ms latency, 25-40
+  Mbit/s to the PC and 47-65 Mbit/s back, while the PC's own line did about 80 Mbit/s each way and
+  the VPS's was gigabit. The link speed also swung by 2x between runs. Parallel streams (several
+  blobs at once, ranged downloads) did not help, so do not rewrite `gpu-run` for them; keep large
+  files on the PC instead.
 - The GPU worker's `/output` once looked fine but was a 125 MB VM disk (`df -h /output`), because the
   bind mount pointed at a drive Docker Desktop could not see. The Windows folder stayed empty and a
   229 MB copy failed with "No space left on device". Check `df -h /output` and the mount source in
   `/proc/self/mountinfo` before relying on it, and remove any partial file the failed copy left.
+- On the VPS (4 cores, 7.9 GB) the shared Next dev server alone can hold ~3.6 GB. A recording's Chrome plus a
+  local libx264 re-encode on top of it ran out of memory on 2026-10-15: the disk read ~500 MB/s, the system sat at 95%
+  CPU, a recording hung and Gemini TTS timed out. Record and render one at a time, and check `vmstat 1` when everything
+  suddenly gets slow. For a size limit, set `MAX_MB` on `scripts/render-remote.sh` (or `pv.mjs render`): an
+  oversized render is re-encoded on the worker with NVENC, which takes seconds there instead of half an hour here.
+- A gpu-worker job counts as finished only when every process holding its output pipe exits. A job that
+  started the PC dev server in the background (`( ... & )` with the redirect inside) kept the worker busy
+  after its script ended and blocked the queue until cancelled. Start long-lived processes with
+  `setsid -f ... > log 2>&1 < /dev/null`, and use `pkill -f "[n]ame"` so the pattern cannot match the
+  job's own shell.

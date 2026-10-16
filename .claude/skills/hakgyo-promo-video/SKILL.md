@@ -71,6 +71,17 @@ cheap". Start every new short from it (`"page": "editorial.html"`, `--like=short
 Being creative means composition and motion, not novelty props. Check stills against this bar before
 a full render.
 
+## Promotional teaser: problem, then answer (`demo/teaser.html`)
+
+"Teaser" means a promo, not a feature tour: a hook question, the problem (the tools a class runs on
+today, piling up), Hakgyo pulling them into one window, then product moments, and a CTA. Something
+visible must change about every 3 s, so each product beat is one short line (about 2 s of voice) over
+a 4-6 s slice of a recording with a zoom key. The same page and storyboard render 16:9 and 9:16
+(`"size": [1080, 1920]` switches the layout). Projects: `teaser-hakgyo` (landing hero) and
+`teaser-hakgyo-vertical`. Clips can be copied from the guide videos instead of recorded again. Music on
+a public page must be licensed for commercial use: put the file in the project and set
+`"audio": {"track": "..."}`. Never rip music from YouTube.
+
 ## Motion in shorts (`demo/short.html`, `demo/motion.js`)
 
 The ideas come from studying continuous-take motion films; the code is our own (the onetake repository
@@ -118,14 +129,18 @@ that inspired it is noncommercial-only, so never copy its code or assets into th
 
 ## This VPS is resource limited
 
-It has 4 cores, 7 GB of RAM and a nearly full disk. Run at most one agent at a time, and do heavy
+It has 4 cores, 7 GB of RAM and a nearly full disk. When the PC worker is up, `pv.mjs` already sends
+`record`, `camera`, `check` and the heavy half of `prep` there (its own Chrome and Next dev server on
+`localhost:3000`, same database) and falls back to this machine when it is not; see "Rekam dan prep
+di PC" in `tools/promo-video/README.md`. Run at most one agent at a time, and do heavy
 work (typecheck, renders, test suites) one thing at a time, because parallel work has crashed the
 machine and killed every running task. A full local render takes about 55 minutes for 6:21. If the
 private GPU worker is available (`gpu-run status` answers), a render takes about 9 minutes; the
 command is in the README. Keep the finished video on that machine instead of downloading it (the
 user sits there, and a 200 MB transfer once crawled at 350 KB/s): copy it to the worker's `/output`,
 and verify in place with `demo/perf/verify-render.sh`, which returns only a report and two contact
-sheets. If the `gpu-run` client dies with "The operation timed out" the job usually keeps running
+sheets. Before a large transfer, or when one seems slow, run `gpu-run speedtest` (add `--internet`
+to compare each side's own line) and quote its numbers instead of guessing. If the `gpu-run` client dies with "The operation timed out" the job usually keeps running
 on the worker; read its log through the job API and do not restart it. Keep the CPU-only Chrome default: GPU rasterization made the large
 screen-recording scenes about 4x slower. Check free disk before a render, and delete frame folders
 and old renders you created once the final file exists.
@@ -169,6 +184,9 @@ commit or open a PR unless asked.
 - `references/storyboard-and-recording.md`: storyboard schema, graphic types, how to add a recording
   stage or a motion graphic, the reel's timing model.
 - `references/troubleshooting.md`: selectors that bit before, stale servers, render and worker pitfalls.
+- `references/guide-videos.md`: the user-guide intro videos (`guide-videos/`): order of work, recorder helpers
+  (`s.find`, `s.require`, `g.learner`, `s.irreversible`, `g.created`), `pv lint` and the safe limits. Read it before
+  making or fixing a guide video.
 - `references/motion-techniques.md`: the catalogue of what the engine can animate (20 techniques and
   9 transitions in `demo/showreel.html`, the `drive` music style, the `pipeline`/`carrydemo`/`terminal`
   scenes) and how to lift a technique into another video. Read it before designing motion graphics,
