@@ -12,6 +12,9 @@ import { getAllUserDocs, getUserDoc } from "~/lib/user-docs";
 
 type Params = Promise<{ audience: string; slug: string }>;
 
+// Every page is prerendered; anything else is a 404.
+export const dynamicParams = false;
+
 export async function generateStaticParams() {
   return (await getAllUserDocs()).map(({ audience, slug }) => ({
     audience,

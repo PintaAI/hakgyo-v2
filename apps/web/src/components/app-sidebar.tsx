@@ -550,11 +550,9 @@ export function AppSidebar({
 
 export function DocsAppSidebar({
   sections,
-  user,
   ...props
 }: ComponentProps<typeof Sidebar> & {
   sections: DocsNavigationSection[];
-  user: UserProps["user"];
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
@@ -639,8 +637,11 @@ export function DocsAppSidebar({
               </SidebarMenuItem>
             ))}
             <SidebarMenuItem>
+              {/* The guide is public, so it doesn't know who is reading.
+                  /auth/continue sends signed-in users to their home and
+                  everyone else to sign in. */}
               <SidebarMenuButton
-                tooltip="Kembali ke aplikasi"
+                tooltip="Buka aplikasi"
                 render={
                   <Link
                     href={routeAccess.postSignInPath}
@@ -650,15 +651,12 @@ export function DocsAppSidebar({
                 }
               >
                 <ArrowLeftIcon />
-                <span>Kembali ke aplikasi</span>
+                <span>Buka aplikasi</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <User variant="sidebar" user={user} />
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
