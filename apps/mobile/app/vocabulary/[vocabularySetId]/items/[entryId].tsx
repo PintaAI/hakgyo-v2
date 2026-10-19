@@ -2,7 +2,12 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
-import { Empty, QueryState } from "../../../../src/components/learning-ui";
+import {
+  Empty,
+  Eyebrow,
+  ProgressBar,
+  QueryState,
+} from "../../../../src/components/learning-ui";
 import { EntryImage } from "../../../../src/components/learn/vocabulary-set-detail";
 import { StudyAction } from "../../../../src/components/study-glass";
 import { VocabularyAudioButton } from "../../../../src/components/vocabulary-audio-button";
@@ -68,9 +73,9 @@ export default function VocabularyItemSheet() {
     >
       <View className="gap-3">
         <View className="gap-1.5">
-          <Text className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
+          <Eyebrow tone="primary" className="text-center">
             Word {index + 1} of {vocabulary.entries.length}
-          </Text>
+          </Eyebrow>
           <View className="flex-row items-center gap-3">
             <Text
               accessibilityRole="header"
@@ -91,22 +96,11 @@ export default function VocabularyItemSheet() {
             {vocabulary.title}
           </Text>
         </View>
-        <View
-          accessibilityRole="progressbar"
-          accessibilityValue={{
-            min: 0,
-            max: vocabulary.entries.length,
-            now: index + 1,
-          }}
-          className="h-1 overflow-hidden rounded-full bg-muted"
-        >
-          <View
-            className="h-full rounded-full bg-primary"
-            style={{
-              width: `${((index + 1) / vocabulary.entries.length) * 100}%`,
-            }}
-          />
-        </View>
+        <ProgressBar
+          max={vocabulary.entries.length}
+          size="sm"
+          value={index + 1}
+        />
       </View>
 
       {entry.imageAssetId ? (
@@ -114,9 +108,7 @@ export default function VocabularyItemSheet() {
       ) : null}
 
       <View className="gap-1.5 border-t border-border pt-5">
-        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-          Arti
-        </Text>
+        <Eyebrow tone="primary">Arti</Eyebrow>
         <Text className="text-base font-bold leading-6 text-foreground">
           {entry.definition}
         </Text>
@@ -124,9 +116,7 @@ export default function VocabularyItemSheet() {
 
       {examples.length > 0 ? (
         <View className="gap-2 border-t border-border pt-5">
-          <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-            Contoh
-          </Text>
+          <Eyebrow tone="primary">Contoh</Eyebrow>
           {examples.map((example, exampleIndex) => (
             <Text
               className="text-sm leading-5 text-muted-foreground"

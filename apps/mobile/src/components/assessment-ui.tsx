@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
+import { Eyebrow, ProgressBar } from "./learning-ui";
 import { StudyGlass } from "./study-glass";
 
 export function AssessmentQuestion({
@@ -34,29 +35,14 @@ export function AssessmentQuestion({
             </Text>
             <Text className="text-sm font-bold text-primary">Soal ▦</Text>
           </View>
-          <View
-            accessibilityRole="progressbar"
-            accessibilityValue={{ min: 0, max: total, now: answered }}
-            className="h-1.5 overflow-hidden rounded-full bg-muted"
-          >
-            <View
-              className="h-full rounded-full bg-primary"
-              style={{
-                width: `${total ? ((answered as number) / (total as number)) * 100 : 0}%`,
-              }}
-            />
-          </View>
+          <ProgressBar value={answered} max={total} />
           <Text className="text-xs text-muted-foreground">
             {answered} dijawab · {(total as number) - (answered as number)}{" "}
             tersisa
           </Text>
         </View>
       ) : null}
-      {detail ? (
-        <Text className="text-[10px] font-black uppercase tracking-[2px] text-muted-foreground">
-          {detail}
-        </Text>
-      ) : null}
+      {detail ? <Eyebrow size="xs">{detail}</Eyebrow> : null}
       {children}
     </>
   );

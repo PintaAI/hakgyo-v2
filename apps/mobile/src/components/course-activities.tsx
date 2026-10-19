@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { openCourseItem } from "../lib/navigation";
 import { canOpenModule } from "../lib/study";
 import { useCourseOutline } from "../sync/hooks";
 import { Empty, QueryState, Row } from "./learning-ui";
@@ -48,27 +48,13 @@ export function CourseActivities({
           title={item.title}
           disabled={!item.available}
           detail={`${item.isCompleted ? "Selesai · " : ""}${getLearningItemTypeMeta(item.type).label} · ${item.module}`}
-          onPress={() => {
-            if (
-              item.type === "ASSESSMENT" &&
-              item.attempt?.status === "IN_PROGRESS"
-            ) {
-              router.push({
-                pathname:
-                  "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                params: {
-                  courseId,
-                  courseItemId: item.id,
-                  attemptId: item.attempt.id,
-                },
-              });
-              return;
-            }
-            router.push({
-              pathname: "/courses/[courseId]/items/[courseItemId]",
-              params: { courseId, courseItemId: item.id },
-            });
-          }}
+          onPress={() =>
+            openCourseItem({
+              courseId,
+              courseItemId: item.id,
+              attempt: item.attempt,
+            })
+          }
         />
       ))}
     </>

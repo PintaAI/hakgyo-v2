@@ -1,6 +1,6 @@
-import { router } from "expo-router";
 import { View } from "react-native";
 
+import { openCourseItem } from "../../lib/navigation";
 import { dayLabel } from "../../lib/study";
 import { LearningItemRow } from "./learning-item-row";
 import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
@@ -61,13 +61,7 @@ export function CohortMilestoneTimeline({
           isLast={index === milestones.length - 1}
           titleLines={2}
           onPress={() =>
-            router.push({
-              pathname: "/courses/[courseId]/items/[courseItemId]",
-              params: {
-                courseId,
-                courseItemId: milestone.courseItemId,
-              },
-            })
+            openCourseItem({ courseId, courseItemId: milestone.courseItemId })
           }
           accessibilityHint={`Buka ${getLearningItemTypeMeta(milestone.type).label.toLowerCase()} yang sudah selesai`}
         />

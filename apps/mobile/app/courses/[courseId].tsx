@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { Eyebrow } from "../../src/components/learning-ui";
 import { CourseOutlineList } from "../../src/components/learn/course-outline-list";
 import { CourseOfflineCard } from "../../src/components/offline-download";
 import { getCourseResumeItem } from "../../src/lib/course-learning-path";
@@ -144,9 +145,9 @@ export default function CourseDetailScreen() {
             ) : null}
             <View className="relative z-20 justify-end gap-2 px-5 pb-6 pt-6">
               <View className="gap-2">
-                <Text className="text-center text-xs font-semibold uppercase tracking-[1.5px] text-muted-foreground">
+                <Eyebrow size="md" className="text-center">
                   {course.organization.name}
-                </Text>
+                </Eyebrow>
                 <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
                   {course.title}
                 </Text>
@@ -199,9 +200,9 @@ export default function CourseDetailScreen() {
               }}
             >
               <View className="min-w-0 flex-1 gap-0.5">
-                <Text className="text-[10px] font-bold uppercase tracking-[1.5px] text-primary">
+                <Eyebrow tone="primary" size="xs">
                   {completedCount ? "Lanjutkan belajar" : "Mulai belajar"}
-                </Text>
+                </Eyebrow>
                 <Text
                   className="text-base font-black text-foreground"
                   numberOfLines={1}

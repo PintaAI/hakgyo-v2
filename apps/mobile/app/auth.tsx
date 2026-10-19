@@ -1,17 +1,15 @@
 import * as AppleAuthentication from "expo-apple-authentication";
 import { router, Stack, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Linking,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Linking, Platform, ScrollView, View } from "react-native";
 
+import {
+  Action,
+  Callout,
+  Card,
+  HeroHeader,
+  TextField,
+} from "../src/components/learning-ui";
 import { apiUrl } from "../src/config";
 import { authClient } from "../src/lib/auth-client";
 import { userErrorMessage as errorMessage } from "../src/lib/error-message";
@@ -22,7 +20,7 @@ type SignInMethod = "email" | "google" | "apple";
 type AuthMode = "sign-in" | "sign-up";
 
 export default function AuthScreen() {
-  const { colors, colorScheme } = useAppTheme();
+  const { colorScheme } = useAppTheme();
   const [isAppleAvailable, setIsAppleAvailable] = useState(false);
   useEffect(() => {
     if (Platform.OS !== "ios") return;
@@ -201,109 +199,75 @@ export default function AuthScreen() {
         contentContainerClassName="gap-5 px-5 pb-10 pt-5"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="gap-2">
-          <Text className="text-xs font-semibold uppercase tracking-[2px] text-muted-foreground">
-            Akun Hakgyo
-          </Text>
-          <Text className="text-3xl font-black tracking-tight text-foreground">
-            {isSignUp ? "Buat akun gratis" : "Masuk untuk melanjutkan"}
-          </Text>
-          <Text className="text-sm leading-5 text-muted-foreground">
-            {isSignUp
+        <HeroHeader
+          eyebrow="Akun Hakgyo"
+          title={isSignUp ? "Buat akun gratis" : "Masuk untuk melanjutkan"}
+          description={
+            isSignUp
               ? "Akun baru langsung mendapat kurikulum Hangeul Mastery."
-              : "Akses kurikulum, kelas, dan tugas kamu dari satu tempat."}
-          </Text>
-        </View>
+              : "Akses kurikulum, kelas, dan tugas kamu dari satu tempat."
+          }
+        />
 
-        <View className="gap-3 rounded-xl border border-border bg-card p-4">
+        <Card>
           {isSignUp ? (
-            <TextInput
+            <TextField
               autoCapitalize="words"
               autoComplete="name"
-              className="rounded-full border border-input bg-background px-4 py-3 text-base text-foreground"
               editable={!isPending}
               onChangeText={setName}
               placeholder="Nama"
-              placeholderTextColor={colors.mutedForeground}
               returnKeyType="next"
               textContentType="name"
               value={name}
             />
           ) : null}
-          <TextInput
+          <TextField
             autoCapitalize="none"
             autoComplete="email"
-            className="rounded-full border border-input bg-background px-4 py-3 text-base text-foreground"
             editable={!isPending}
             keyboardType="email-address"
             onChangeText={setEmail}
             placeholder="Alamat email"
-            placeholderTextColor={colors.mutedForeground}
             returnKeyType="next"
             textContentType="emailAddress"
             value={email}
           />
-          <TextInput
+          <TextField
             autoCapitalize="none"
             autoComplete={isSignUp ? "new-password" : "current-password"}
-            className="rounded-full border border-input bg-background px-4 py-3 text-base text-foreground"
             editable={!isPending}
             onChangeText={setPassword}
             onSubmitEditing={() => void handleEmailSubmit()}
             placeholder={
               isSignUp ? "Kata sandi (min. 8 karakter)" : "Kata sandi"
             }
-            placeholderTextColor={colors.mutedForeground}
             returnKeyType="go"
             secureTextEntry
             textContentType={isSignUp ? "newPassword" : "password"}
             value={password}
           />
 
-          {notice ? (
-            <Text
-              accessibilityLiveRegion="polite"
-              className="rounded-lg bg-primary/10 px-4 py-3 text-sm font-semibold text-foreground"
-            >
-              {notice}
-            </Text>
-          ) : null}
+          {notice ? <Callout>{notice}</Callout> : null}
+          {error ? <Callout tone="destructive">{error}</Callout> : null}
 
-          {error ? (
-            <Text
-              accessibilityLiveRegion="polite"
-              className="rounded-lg bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive"
-            >
-              {error}
-            </Text>
-          ) : null}
-
-          <Pressable
-            className="items-center rounded-full bg-primary px-5 py-4"
+          <Action
             disabled={isPending}
+            loading={pendingMethod === "email"}
             onPress={() => void handleEmailSubmit()}
-            style={{ opacity: isPending ? 0.6 : 1 }}
           >
-            {pendingMethod === "email" ? (
-              <ActivityIndicator color={colors.primaryForeground} />
-            ) : (
-              <Text className="font-bold text-primary-foreground">
-                {isSignUp ? "Daftar" : "Masuk"}
-              </Text>
-            )}
-          </Pressable>
+            {isSignUp ? "Daftar" : "Masuk"}
+          </Action>
           {!isSignUp ? (
-            <Pressable
-              accessibilityRole="link"
+            <Action
               disabled={isPending}
+              variant="ghost"
               onPress={() =>
                 void Linking.openURL(`${apiUrl}/auth/forgot-password`)
               }
             >
-              <Text className="text-center text-sm text-muted-foreground">
-                Lupa kata sandi?
-              </Text>
-            </Pressable>
+              Lupa kata sandi?
+            </Action>
           ) : null}
           {isAppleAvailable ? (
             <View
@@ -321,44 +285,36 @@ export default function AuthScreen() {
                     ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
                     : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
                 }
-                cornerRadius={999}
+                cornerRadius={16}
                 onPress={() => void handleAppleSignIn()}
-                style={{ height: 52, width: "100%" }}
+                style={{ height: 48, width: "100%" }}
               />
             </View>
           ) : null}
-          <Pressable
-            className="items-center rounded-full border border-border px-5 py-4"
+          <Action
             disabled={isPending}
+            loading={pendingMethod === "google"}
+            variant="secondary"
             onPress={() => void handleGoogleSignIn()}
-            style={{ opacity: isPending ? 0.6 : 1 }}
           >
-            {pendingMethod === "google" ? (
-              <ActivityIndicator />
-            ) : (
-              <Text className="font-bold text-foreground">
-                Lanjutkan dengan Google
-              </Text>
-            )}
-          </Pressable>
-        </View>
+            Lanjutkan dengan Google
+          </Action>
+        </Card>
 
         <View className="items-center gap-2">
-          <Pressable
-            accessibilityRole="button"
+          <Action
             disabled={isPending}
+            variant="link"
             onPress={() => switchMode(isSignUp ? "sign-in" : "sign-up")}
           >
-            <Text className="font-bold text-primary">
-              {isSignUp
-                ? "Sudah punya akun? Masuk"
-                : "Baru di Hakgyo? Daftar gratis"}
-            </Text>
-          </Pressable>
+            {isSignUp
+              ? "Sudah punya akun? Masuk"
+              : "Baru di Hakgyo? Daftar gratis"}
+          </Action>
           {Platform.OS === "android" ? (
-            <Pressable onPress={() => router.back()}>
-              <Text className="text-sm text-muted-foreground">Tutup</Text>
-            </Pressable>
+            <Action variant="ghost" onPress={() => router.back()}>
+              Tutup
+            </Action>
           ) : null}
         </View>
       </ScrollView>

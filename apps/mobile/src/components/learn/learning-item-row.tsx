@@ -6,6 +6,7 @@ import {
   type LearningItemType,
 } from "../../lib/learning-item-type";
 import { useAppTheme } from "../../providers/AppThemeProvider";
+import { Chevron } from "../learning-ui";
 
 function typeIcon(type: LearningItemType) {
   if (type === "VOCABULARY_SET") return "character.book.closed.fill";
@@ -116,9 +117,7 @@ export function LearningItemRow({
                 {statusText ? ` · ${statusText}` : null}
               </Text>
             </View>
-            {showChevron ? (
-              <Text className="pt-0.5 text-lg text-muted-foreground">›</Text>
-            ) : null}
+            {showChevron ? <Chevron className="pt-0.5" /> : null}
           </View>
         </Pressable>
       </View>

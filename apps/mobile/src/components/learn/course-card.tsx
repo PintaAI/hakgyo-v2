@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
+import { Chevron } from "../learning-ui";
 
 /** A sidebar row with the course thumbnail (or its initial), title and subtitle. */
 export function CourseRow({
@@ -69,12 +70,7 @@ export function CourseRow({
           {subtitle}
         </Text>
       </View>
-      <Text
-        className="text-lg font-bold"
-        style={{ color: colors.mutedForeground }}
-      >
-        ›
-      </Text>
+      <Chevron />
     </Pressable>
   );
 }

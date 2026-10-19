@@ -12,6 +12,7 @@ import {
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { AssessmentOption, AssessmentQuestion } from "./assessment-ui";
+import { Eyebrow } from "./learning-ui";
 import { StudyAction, StudyGlass } from "./study-glass";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
@@ -136,9 +137,7 @@ export function AssessmentResultReview({
       </AssessmentQuestion>
       {question.type === "WRITTEN" ? (
         <StudyGlass>
-          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Jawaban kamu
-          </Text>
+          <Eyebrow size="md">Jawaban kamu</Eyebrow>
           <Text className="text-base leading-6 text-foreground">
             {typeof answer?.content === "string" && answer.content.trim()
               ? answer.content
@@ -163,9 +162,9 @@ export function AssessmentResultReview({
       )}
       {feedback ? (
         <StudyGlass>
-          <Text className="text-xs font-bold uppercase tracking-wider text-primary">
+          <Eyebrow size="md" tone="primary">
             Feedback pengajar
-          </Text>
+          </Eyebrow>
           <NativeContentRenderer
             content={feedback}
             resolveAssetUrl={resolveAssetUrl}
@@ -174,9 +173,7 @@ export function AssessmentResultReview({
       ) : null}
       {question.explanation ? (
         <StudyGlass>
-          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Pembahasan
-          </Text>
+          <Eyebrow size="md">Pembahasan</Eyebrow>
           <NativeContentRenderer
             content={question.explanation}
             resolveAssetUrl={resolveAssetUrl}

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
+import { EmptyState } from "../learning-ui";
 import { BlockTree } from "./block-tree";
 import { ContentRendererProvider } from "./context";
 import { customBlockRenderers } from "./custom-blocks";
@@ -43,11 +44,7 @@ export function NativeContentRenderer({
         </View>
       ) : (
         (emptyState ?? (
-          <View className="rounded-xl border border-dashed border-border p-6">
-            <Text className="text-center text-sm text-muted-foreground">
-              Belum ada konten.
-            </Text>
-          </View>
+          <EmptyState variant="dashed">Belum ada konten.</EmptyState>
         ))
       )}
     </ContentRendererProvider>

@@ -1,13 +1,12 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Text, TextInput, Pressable, View } from "react-native";
+import { Keyboard, Pressable, Text, TextInput, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 import type { NativeGesture } from "react-native-gesture-handler";
 
 import { localSample } from "../lib/local-sample";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../providers/MobileSyncProvider";
-import { withOpacity } from "../theme/colors";
 import { isDefinitionCorrect } from "../lib/today-vocabulary-practice";
 import { isVocabularyAnswerCorrect } from "../lib/vocabulary-practice";
 import {
@@ -16,8 +15,7 @@ import {
 } from "../lib/vocabulary-speech";
 import { useVocabularySpeech } from "../lib/use-vocabulary-speech";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
-import { Action, Empty } from "./learning-ui";
-import { GlassBox } from "./GlassBox";
+import { Action, Empty, Eyebrow, GlassInput } from "./learning-ui";
 import {
   VocabularyPracticeDeck,
   type VocabularyPracticeDeckHandle,
@@ -44,7 +42,7 @@ export function TodayVocabularyPractice({
   scrollGesture: NativeGesture;
   pool: VocabularyPool;
 }) {
-  const { colors, colorScheme } = useAppTheme();
+  const { colors } = useAppTheme();
   const [seed, setSeed] = useState(randomSeed);
   const { finishVocabularySession, recordVocabularyAttempt } =
     useMobileSyncActions();
@@ -412,11 +410,11 @@ export function TodayVocabularyPractice({
         <Empty>Belum ada kata untuk dilatih.</Empty>
       ) : round.length > 0 ? (
         <>
-          <Text className="text-center text-xs font-bold uppercase tracking-[1.2px] text-muted-foreground">
+          <Eyebrow size="md" className="text-center">
             {card
               ? `${card.vocabularySetTitle} · ${card.courseTitle}`
               : "Siap untuk campuran berikutnya?"}
-          </Text>
+          </Eyebrow>
           <View className="items-center">
             <VocabularyModeSwitch
               mode={mode}
@@ -477,217 +475,162 @@ export function TodayVocabularyPractice({
                 </Text>
               ) : null}
               <View className="flex-row items-center gap-2">
-                <GlassBox
-                  isInteractive
-                  tintColor={withOpacity(
-                    colors.primary,
-                    colorScheme === "dark" ? 0.35 : 0.18,
-                  )}
-                  glassEffectStyle="clear"
-                  style={{ borderRadius: 9999, flex: 1, height: 44 }}
-                >
-                  {answer.length === 0 ? (
-                    <View
-                      pointerEvents="none"
-                      className="absolute inset-0 items-center justify-center px-14"
-                    >
-                      <Text
-                        className="text-center text-base"
-                        style={{ color: colors.mutedForeground }}
-                      >
-                        {revealed
-                          ? "Siap untuk kata berikutnya?"
-                          : listening
-                            ? "Mendengarkan…"
-                            : mode === "KR"
-                              ? "Ketik kata Koreanya"
-                              : "Ketik artinya"}
-                      </Text>
-                    </View>
-                  ) : null}
-                  <TextInput
-                    ref={inputRef}
-                    accessibilityLabel={
-                      mode === "KR"
-                        ? `Kata Korea untuk ${card.definition}`
-                        : `Arti dari ${card.term}`
-                    }
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    blurOnSubmit={false}
-                    onBlur={() => setTyping(false)}
-                    onChangeText={handleAnswerChange}
-                    onFocus={() => {
-                      if (!handsFree) return;
-                      clearAutoTimer();
-                      setTyping(true);
-                      speech.abort();
-                    }}
-                    onSubmitEditing={handleInputSubmit}
-                    returnKeyType={feedback || revealed ? "next" : "done"}
-                    selectionColor={colors.primary}
-                    value={answer}
-                    style={{
-                      color: colors.foreground,
-                      fontSize: 16,
-                      height: 44,
-                      includeFontPadding: false,
-                      paddingHorizontal: 62,
-                      paddingVertical: 0,
-                      textAlign: "center",
-                      textAlignVertical: "center",
-                      width: "100%",
-                    }}
-                  />
-                  {handsFree || (!feedback && !revealed) ? (
-                    <Pressable
-                      accessibilityLabel={
-                        handsFree
-                          ? "Hentikan latihan tanpa sentuh"
-                          : "Mulai latihan tanpa sentuh"
-                      }
-                      accessibilityRole="button"
-                      accessibilityState={{
-                        busy: speechBusy,
-                        disabled: moving && !handsFree,
-                      }}
-                      disabled={moving && !handsFree}
-                      onPress={toggleSpeechSession}
-                      className="rounded-full active:opacity-75"
-                      style={{
-                        opacity: moving ? 0.5 : 1,
-                        position: "absolute",
-                        left: 2,
-                        top: 2,
-                      }}
-                    >
-                      <View
-                        className="size-10 items-center justify-center"
-                        style={{
-                          transform: [{ translateX: 2 }, { translateY: 2 }],
-                        }}
-                      >
-                        <SymbolView
-                          fallback={
-                            <Text
-                              className="text-xl font-black"
-                              style={{
-                                color: handsFree
-                                  ? colors.destructive
-                                  : colors.primary,
-                              }}
-                            >
-                              {handsFree ? "■" : "🎙"}
-                            </Text>
-                          }
-                          name={handsFree ? "stop.fill" : "mic.fill"}
-                          size={22}
-                          style={{ height: 22, width: 22 }}
-                          tintColor={
-                            handsFree ? colors.destructive : colors.primary
-                          }
-                          weight="bold"
-                        />
-                      </View>
-                    </Pressable>
-                  ) : null}
-                  {feedback || revealed ? (
-                    <Pressable
-                      accessibilityLabel={
-                        feedback && !feedback.saved
-                          ? "Coba simpan jawaban lagi"
-                          : revealed && !revealSaved
-                            ? "Coba simpan lagi"
-                            : "Kata berikutnya"
-                      }
-                      accessibilityRole="button"
-                      accessibilityState={{
-                        disabled: moving || recordPending,
-                        busy: moving || recordPending,
-                      }}
-                      disabled={moving || recordPending}
-                      style={{
-                        opacity: moving ? 0.5 : 1,
-                        position: "absolute",
-                        right: 2,
-                        top: 2,
-                      }}
-                      onPress={() => {
-                        if (feedback && !feedback.saved) {
-                          void saveAnswer(feedback.correct);
-                        } else if (revealed && !revealSaved) {
-                          void saveReveal();
-                        } else {
-                          nextCard();
+                <GlassInput
+                  inputRef={inputRef}
+                  accessibilityLabel={
+                    mode === "KR"
+                      ? `Kata Korea untuk ${card.definition}`
+                      : `Arti dari ${card.term}`
+                  }
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  blurOnSubmit={false}
+                  height={44}
+                  onBlur={() => setTyping(false)}
+                  onChangeText={handleAnswerChange}
+                  onFocus={() => {
+                    if (!handsFree) return;
+                    clearAutoTimer();
+                    setTyping(true);
+                    speech.abort();
+                  }}
+                  onSubmitEditing={handleInputSubmit}
+                  placeholder={
+                    revealed
+                      ? "Siap untuk kata berikutnya?"
+                      : listening
+                        ? "Mendengarkan…"
+                        : mode === "KR"
+                          ? "Ketik kata Koreanya"
+                          : "Ketik artinya"
+                  }
+                  returnKeyType={feedback || revealed ? "next" : "done"}
+                  value={answer}
+                  leading={
+                    handsFree || (!feedback && !revealed) ? (
+                      <Pressable
+                        accessibilityLabel={
+                          handsFree
+                            ? "Hentikan latihan tanpa sentuh"
+                            : "Mulai latihan tanpa sentuh"
                         }
-                      }}
-                      className="rounded-full active:opacity-75"
-                    >
-                      <View
-                        className="size-10 items-center justify-center"
-                        style={{ transform: [{ translateY: 2 }] }}
-                      >
-                        <SymbolView
-                          fallback={
-                            <Text
-                              className="text-xl font-black"
-                              style={{ color: colors.primary }}
-                            >
-                              →
-                            </Text>
-                          }
-                          name="arrow.right"
-                          size={22}
-                          tintColor={colors.primary}
-                          weight="bold"
-                        />
-                      </View>
-                    </Pressable>
-                  ) : (
-                    <Pressable
-                      accessibilityLabel={
-                        mode === "KR" ? "Periksa kata Korea" : "Periksa arti"
-                      }
-                      accessibilityRole="button"
-                      accessibilityState={{
-                        busy: recordPending,
-                        disabled: moving || !answer.trim(),
-                      }}
-                      disabled={moving || !answer.trim()}
-                      onPress={() => void checkAnswer()}
-                      className="rounded-full active:opacity-75"
-                      style={{
-                        opacity: answer.trim() ? 1 : 0.4,
-                        position: "absolute",
-                        right: 2,
-                        top: 2,
-                      }}
-                    >
-                      <View
-                        className="size-10 items-center justify-center"
-                        style={{
-                          transform: [{ translateX: -2 }, { translateY: 2 }],
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          busy: speechBusy,
+                          disabled: moving && !handsFree,
                         }}
+                        disabled={moving && !handsFree}
+                        onPress={toggleSpeechSession}
+                        className="rounded-full active:opacity-75"
+                        style={{ opacity: moving ? 0.5 : 1 }}
                       >
-                        <SymbolView
-                          fallback={
-                            <Text
-                              className="text-xl font-black"
-                              style={{ color: colors.primary }}
-                            >
-                              ➤
-                            </Text>
+                        <View className="size-10 items-center justify-center">
+                          <SymbolView
+                            fallback={
+                              <Text
+                                className="text-xl font-black"
+                                style={{
+                                  color: handsFree
+                                    ? colors.destructive
+                                    : colors.primary,
+                                }}
+                              >
+                                {handsFree ? "■" : "🎙"}
+                              </Text>
+                            }
+                            name={handsFree ? "stop.fill" : "mic.fill"}
+                            size={22}
+                            style={{ height: 22, width: 22 }}
+                            tintColor={
+                              handsFree ? colors.destructive : colors.primary
+                            }
+                            weight="bold"
+                          />
+                        </View>
+                      </Pressable>
+                    ) : undefined
+                  }
+                  trailing={
+                    feedback || revealed ? (
+                      <Pressable
+                        accessibilityLabel={
+                          feedback && !feedback.saved
+                            ? "Coba simpan jawaban lagi"
+                            : revealed && !revealSaved
+                              ? "Coba simpan lagi"
+                              : "Kata berikutnya"
+                        }
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          disabled: moving || recordPending,
+                          busy: moving || recordPending,
+                        }}
+                        disabled={moving || recordPending}
+                        style={{ opacity: moving ? 0.5 : 1 }}
+                        onPress={() => {
+                          if (feedback && !feedback.saved) {
+                            void saveAnswer(feedback.correct);
+                          } else if (revealed && !revealSaved) {
+                            void saveReveal();
+                          } else {
+                            nextCard();
                           }
-                          name="paperplane.fill"
-                          size={22}
-                          style={{ height: 22, width: 22 }}
-                          tintColor={colors.primary}
-                          weight="bold"
-                        />
-                      </View>
-                    </Pressable>
-                  )}
-                </GlassBox>
+                        }}
+                        className="rounded-full active:opacity-75"
+                      >
+                        <View className="size-10 items-center justify-center">
+                          <SymbolView
+                            fallback={
+                              <Text
+                                className="text-xl font-black"
+                                style={{ color: colors.primary }}
+                              >
+                                →
+                              </Text>
+                            }
+                            name="arrow.right"
+                            size={22}
+                            tintColor={colors.primary}
+                            weight="bold"
+                          />
+                        </View>
+                      </Pressable>
+                    ) : (
+                      <Pressable
+                        accessibilityLabel={
+                          mode === "KR" ? "Periksa kata Korea" : "Periksa arti"
+                        }
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          busy: recordPending,
+                          disabled: moving || !answer.trim(),
+                        }}
+                        disabled={moving || !answer.trim()}
+                        onPress={() => void checkAnswer()}
+                        className="rounded-full active:opacity-75"
+                        style={{ opacity: answer.trim() ? 1 : 0.4 }}
+                      >
+                        <View className="size-10 items-center justify-center">
+                          <SymbolView
+                            fallback={
+                              <Text
+                                className="text-xl font-black"
+                                style={{ color: colors.primary }}
+                              >
+                                ➤
+                              </Text>
+                            }
+                            name="paperplane.fill"
+                            size={22}
+                            style={{ height: 22, width: 22 }}
+                            tintColor={colors.primary}
+                            weight="bold"
+                          />
+                        </View>
+                      </Pressable>
+                    )
+                  }
+                />
               </View>
             </View>
           ) : (

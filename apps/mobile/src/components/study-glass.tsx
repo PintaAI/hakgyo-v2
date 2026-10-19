@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
-import { withOpacity } from "../theme/colors";
+import { glassTint, withOpacity } from "../theme/colors";
 import { GlassBox } from "./GlassBox";
 
 // Shared visual primitives: callers own their domain behavior and content.
@@ -11,28 +11,41 @@ export function StudyGlass({
   tone = "primary",
   emphasized = false,
   isInteractive = false,
+  radius = 20,
+  contentClassName = "gap-4 p-5",
+  bordered = true,
+  tinted = true,
 }: {
   children: ReactNode;
   tone?: "primary" | "destructive";
   emphasized?: boolean;
   isInteractive?: boolean;
+  /** Corner radius of the glass surface. */
+  radius?: number;
+  /** Replaces the default content padding and spacing (`gap-4 p-5`). */
+  contentClassName?: string;
+  /** Draws the hairline border; turn off for tint-only surfaces. */
+  bordered?: boolean;
+  /** Tints the glass with the tone colour; off leaves plain glass. */
+  tinted?: boolean;
 }) {
   const { colors, colorScheme } = useAppTheme();
   return (
     <GlassBox
       isInteractive={isInteractive}
       glassEffectStyle="clear"
-      tintColor={withOpacity(
-        colors[tone],
-        colorScheme === "dark" ? 0.35 : 0.18,
-      )}
+      tintColor={tinted ? glassTint(colors, colorScheme, tone) : undefined}
       style={{
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: emphasized ? colors[tone] : colors.border,
+        borderRadius: radius,
+        ...(bordered
+          ? {
+              borderWidth: 1,
+              borderColor: emphasized ? colors[tone] : colors.border,
+            }
+          : null),
       }}
     >
-      <View className="gap-4 p-5">{children}</View>
+      <View className={contentClassName}>{children}</View>
     </GlassBox>
   );
 }
@@ -66,10 +79,11 @@ export function StudyAction({
       <GlassBox
         isInteractive
         glassEffectStyle="clear"
-        tintColor={withOpacity(
-          colors.primary,
-          secondary ? 0.06 : colorScheme === "dark" ? 0.35 : 0.18,
-        )}
+        tintColor={
+          secondary
+            ? withOpacity(colors.primary, 0.06)
+            : glassTint(colors, colorScheme)
+        }
         style={{
           borderRadius: 16,
           borderWidth: 1,

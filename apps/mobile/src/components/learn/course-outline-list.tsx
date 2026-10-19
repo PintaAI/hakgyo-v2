@@ -14,7 +14,13 @@ import {
   useSyncIndex,
   type CourseOfflineMedia,
 } from "../../sync/hooks";
-import { QueryState } from "../learning-ui";
+import {
+  Badge,
+  EmptyState,
+  Eyebrow,
+  QueryState,
+  SectionHeader,
+} from "../learning-ui";
 import { ModuleOfflineBadge } from "../offline-download";
 import { LearningItemRow } from "./learning-item-row";
 import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
@@ -72,25 +78,20 @@ export function CourseOutlineList({
   return (
     <View className="gap-5">
       {showHeader ? (
-        <View className="flex-row items-center justify-between gap-4">
-          <Text className="text-xl font-bold text-foreground">
-            Materi kurikulum
-          </Text>
-          <Text className="text-xs font-semibold text-muted-foreground">
-            {course.modules.length} bab
-          </Text>
-        </View>
+        <SectionHeader
+          title="Materi kurikulum"
+          trailing={
+            <Text className="text-xs font-semibold text-muted-foreground">
+              {course.modules.length} bab
+            </Text>
+          }
+        />
       ) : null}
 
       {course.modules.length === 0 ? (
-        <View className="items-center border-y border-border px-6 py-10">
-          <Text className="text-base font-bold text-foreground">
-            Belum ada materi
-          </Text>
-          <Text className="mt-2 text-center text-sm leading-5 text-muted-foreground">
-            Bab yang dipublikasikan akan muncul di sini.
-          </Text>
-        </View>
+        <EmptyState title="Belum ada materi" variant="flush">
+          Bab yang dipublikasikan akan muncul di sini.
+        </EmptyState>
       ) : (
         course.modules.map((module, moduleIndex) => {
           const locked = module.access === "LOCKED";
@@ -139,11 +140,9 @@ export function CourseOutlineList({
                   className={`${hasSubtitle ? "pt-1" : ""} items-end gap-1`}
                 >
                   {unread ? (
-                    <View className="rounded-full bg-destructive px-1.5 py-0.5">
-                      <Text className="text-[10px] font-bold text-destructive-foreground">
-                        Baru
-                      </Text>
-                    </View>
+                    <Badge tone="destructive" size="sm">
+                      Baru
+                    </Badge>
                   ) : null}
                   {locked ? (
                     <SymbolView
@@ -158,11 +157,11 @@ export function CourseOutlineList({
                       tintColor={colors.mutedForeground}
                     />
                   ) : (
-                    <Text className="text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground">
+                    <Eyebrow size="xs">
                       {module.isCompleted
                         ? "Selesai"
                         : `${module.items.filter((item) => item.isCompleted).length}/${module.items.length} selesai`}
-                    </Text>
+                    </Eyebrow>
                   )}
                   {!locked && offlineMedia ? (
                     <ModuleOfflineBadge

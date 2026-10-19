@@ -32,6 +32,7 @@ import {
 } from "../../../../src/sync/hooks";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
+import { Eyebrow } from "../../../../src/components/learning-ui";
 import {
   StudyAction,
   StudyGlass,
@@ -256,9 +257,9 @@ function CourseItemContent({
           >
             <StudyGlass>
               <View className="gap-2">
-                <Text className="text-xs font-black uppercase tracking-[2px] text-muted-foreground">
+                <Eyebrow size="md">
                   Tugas · {assessment.questions.length} soal
-                </Text>
+                </Eyebrow>
                 <Text
                   adjustsFontSizeToFit
                   className="text-3xl font-black leading-10 tracking-tight text-foreground"

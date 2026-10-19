@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
+import { openCourseItem } from "../../lib/navigation";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { CourseOutlineList } from "../learn/course-outline-list";
 import { courseSidebarConfig } from "./config-course";
@@ -57,10 +58,7 @@ export function CourseSidebarContent({
             );
           }}
         >
-          <Text
-            className="text-xs font-bold"
-            style={{ color: colors.primary }}
-          >
+          <Text className="text-xs font-bold" style={{ color: colors.primary }}>
             {courseSidebarConfig.viewCourseLabel}
           </Text>
         </Pressable>
@@ -74,28 +72,11 @@ export function CourseSidebarContent({
             onClose();
             return;
           }
-          if (attempt?.status === "IN_PROGRESS") {
-            onNavigate(() =>
-              go({
-                pathname:
-                  "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                params: {
-                  courseId,
-                  courseItemId: item.id,
-                  attemptId: attempt.id,
-                },
-              }),
-            );
-            return;
-          }
           onNavigate(() =>
-            go({
-              pathname: "/courses/[courseId]/items/[courseItemId]",
-              params: {
-                courseId,
-                courseItemId: item.id,
-              },
-            }),
+            openCourseItem(
+              { courseId, courseItemId: item.id, attempt },
+              { replace: Boolean(currentItemId) },
+            ),
           );
         }}
       />

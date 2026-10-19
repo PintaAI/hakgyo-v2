@@ -14,6 +14,7 @@ import Animated, {
 
 import { DECK_TOP_SPACE } from "../lib/vocabulary-deck-motion";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { Card, IconCircle } from "./learning-ui";
 
 export type DeckTutorialStep = "peel" | "swipe" | "done";
 
@@ -195,26 +196,27 @@ const COACH_COPY: Record<
 export function DeckTutorialCoach({ step }: { step: DeckTutorialStep }) {
   const copy = COACH_COPY[step];
   return (
-    <View
-      accessibilityLiveRegion="polite"
-      className="flex-row items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3"
-    >
-      <View className="size-7 items-center justify-center rounded-full bg-primary">
-        <Text className="text-xs font-black text-primary-foreground">
-          {copy.badge}
-        </Text>
-      </View>
-      <View className="min-w-0 flex-1">
-        <Text className="text-sm font-bold text-foreground">{copy.title}</Text>
-        <Text className="text-xs leading-4 text-muted-foreground">
-          {copy.detail}
-        </Text>
-      </View>
-      {step !== "done" ? (
-        <Text className="text-xs font-bold text-muted-foreground">
-          {copy.badge}/2
-        </Text>
-      ) : null}
+    <View accessibilityLiveRegion="polite">
+      <Card className="flex-row items-center gap-3 px-4 py-3" tone="primary">
+        <IconCircle size="sm" tone="solid">
+          <Text className="text-xs font-black text-primary-foreground">
+            {copy.badge}
+          </Text>
+        </IconCircle>
+        <View className="min-w-0 flex-1">
+          <Text className="text-sm font-bold text-foreground">
+            {copy.title}
+          </Text>
+          <Text className="text-xs leading-4 text-muted-foreground">
+            {copy.detail}
+          </Text>
+        </View>
+        {step !== "done" ? (
+          <Text className="text-xs font-bold text-muted-foreground">
+            {copy.badge}/2
+          </Text>
+        ) : null}
+      </Card>
     </View>
   );
 }

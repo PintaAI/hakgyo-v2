@@ -1,16 +1,10 @@
 import * as Updates from "expo-updates";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Linking,
-  Platform,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Linking, Platform, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { Action } from "./ui/action";
 
 type Phase =
   | { kind: "checking" }
@@ -135,30 +129,21 @@ export function ForcedUpdateGate({ minProtocol }: { minProtocol: number }) {
       ) : (
         <View className="w-full gap-3">
           {listing ? (
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-12 items-center justify-center rounded-full bg-primary px-5 py-3 active:opacity-80"
-              onPress={openStore}
-            >
-              <Text className="font-bold text-primary-foreground">
-                {Platform.OS === "ios" ? "Buka App Store" : "Buka Google Play"}
-              </Text>
-            </Pressable>
+            <Action onPress={openStore}>
+              {Platform.OS === "ios" ? "Buka App Store" : "Buka Google Play"}
+            </Action>
           ) : (
             <Text className="text-center text-sm text-muted-foreground">
               Pasang versi Hakgyo terbaru dari{" "}
               {Platform.OS === "ios" ? "App Store" : "Google Play"}.
             </Text>
           )}
-          <Pressable
-            accessibilityRole="button"
-            className="min-h-12 items-center justify-center rounded-full border border-border px-5 py-3 active:opacity-80"
+          <Action
+            variant="secondary"
             onPress={() => setAttempt((value) => value + 1)}
           >
-            <Text className="font-bold text-foreground">
-              Periksa pembaruan lagi
-            </Text>
-          </Pressable>
+            Periksa pembaruan lagi
+          </Action>
         </View>
       )}
       <Text className="text-center text-[11px] text-muted-foreground">

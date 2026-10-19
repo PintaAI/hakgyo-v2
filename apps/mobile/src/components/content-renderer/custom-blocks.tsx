@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
+import { Action, EmptyState, Eyebrow } from "../learning-ui";
 import { VocabularyAudioButton } from "../vocabulary-audio-button";
 import { InlineContent } from "./inline-content";
 import { assetSource, ContentAudio, ContentImage } from "./media";
@@ -29,14 +30,6 @@ function accentFor(theme: string, fallback: keyof typeof accentPalettes) {
     : accentPalettes[fallback];
 }
 
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <Text className="text-xs font-black uppercase tracking-[1.5px] text-muted-foreground">
-      {children}
-    </Text>
-  );
-}
-
 function AccentDot({ accent, label }: { accent: string; label: string }) {
   return (
     <View className="flex-row items-center gap-2">
@@ -44,7 +37,7 @@ function AccentDot({ accent, label }: { accent: string; label: string }) {
         className="size-2 rounded-full"
         style={{ backgroundColor: accent }}
       />
-      <SectionLabel>{label}</SectionLabel>
+      <Eyebrow size="md">{label}</Eyebrow>
     </View>
   );
 }
@@ -106,20 +99,16 @@ function VocabularyReference({ block }: BlockRendererProps) {
 
   if (!resource) {
     return (
-      <View className="rounded-xl border border-dashed border-border p-5">
-        <Text className="text-sm text-muted-foreground">
-          Set kosakata tidak tersedia.
-        </Text>
-      </View>
+      <EmptyState variant="dashed">Set kosakata tidak tersedia.</EmptyState>
     );
   }
 
   return (
     <View className="overflow-hidden rounded-xl border border-border bg-card">
       <View className="gap-2 border-b border-border bg-muted/40 p-5">
-        <Text className="text-xs font-black uppercase tracking-[1.5px] text-primary">
+        <Eyebrow size="md" tone="primary">
           Kosakata
-        </Text>
+        </Eyebrow>
         <Text className="text-2xl font-black text-foreground">
           {resource.title}
         </Text>
@@ -212,17 +201,13 @@ function VocabularyReference({ block }: BlockRendererProps) {
               : "Set ini belum memiliki kosakata."}
           </Text>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          className="items-center rounded-full bg-primary px-5 py-4"
+        <Action
           onPress={() =>
             onOpenResource?.("vocabulary", resource.id, resource.courseItemId)
           }
         >
-          <Text className="font-black text-primary-foreground">
-            Hafalkan kosakata →
-          </Text>
-        </Pressable>
+          Hafalkan kosakata →
+        </Action>
       </View>
     </View>
   );
@@ -236,13 +221,7 @@ function AssessmentReference({ block }: BlockRendererProps) {
   );
 
   if (!resource) {
-    return (
-      <View className="rounded-xl border border-dashed border-border p-5">
-        <Text className="text-sm text-muted-foreground">
-          Tugas tidak tersedia.
-        </Text>
-      </View>
-    );
+    return <EmptyState variant="dashed">Tugas tidak tersedia.</EmptyState>;
   }
 
   return (
@@ -251,9 +230,9 @@ function AssessmentReference({ block }: BlockRendererProps) {
         <Text className="text-xl font-black text-primary">A</Text>
       </View>
       <View className="gap-1">
-        <Text className="text-xs font-black uppercase tracking-[1.5px] text-muted-foreground">
+        <Eyebrow size="md">
           Assessment · {resource.questionCount} questions
-        </Text>
+        </Eyebrow>
         <Text className="text-xl font-black text-foreground">
           {resource.title}
         </Text>
@@ -263,20 +242,14 @@ function AssessmentReference({ block }: BlockRendererProps) {
           </Text>
         ) : null}
       </View>
-      <Pressable
-        accessibilityRole="button"
-        className={`items-center rounded-full px-5 py-4 ${resource.courseItemId ? "bg-primary" : "bg-muted"}`}
+      <Action
         disabled={!resource.courseItemId}
         onPress={() =>
           onOpenResource?.("assessment", resource.id, resource.courseItemId)
         }
       >
-        <Text
-          className={`font-black ${resource.courseItemId ? "text-primary-foreground" : "text-muted-foreground"}`}
-        >
-          {resource.courseItemId ? "Mulai tugas →" : "Tidak tersedia"}
-        </Text>
-      </Pressable>
+        {resource.courseItemId ? "Mulai tugas →" : "Tidak tersedia"}
+      </Action>
     </View>
   );
 }
@@ -299,9 +272,9 @@ function Callout({ block }: BlockRendererProps) {
       className="gap-2 rounded-xl border-l-4 p-4"
       style={{ backgroundColor: colors.muted, borderLeftColor: tone.accent }}
     >
-      <Text className="text-xs font-black uppercase tracking-[1.5px] text-foreground">
+      <Eyebrow size="md" tone="foreground">
         {tone.label}
-      </Text>
+      </Eyebrow>
       <InlineContent
         className="text-sm leading-6 text-foreground"
         content={block.content}
@@ -348,7 +321,7 @@ function LessonPage({ block }: BlockRendererProps) {
             </Text>
           </View>
           <View className="min-w-0 flex-1 gap-1">
-            <SectionLabel>{stringProp(block.props, "eyebrow")}</SectionLabel>
+            <Eyebrow size="md">{stringProp(block.props, "eyebrow")}</Eyebrow>
             <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
               {stringProp(block.props, "title")}
             </Text>
@@ -371,7 +344,7 @@ function LessonPage({ block }: BlockRendererProps) {
 
       <View className="gap-3">
         <View className="rounded-xl bg-muted/60 p-4">
-          <SectionLabel>Contoh pertanyaan</SectionLabel>
+          <Eyebrow size="md">Contoh pertanyaan</Eyebrow>
           <Text className="mt-2 text-base font-bold leading-6 text-foreground">
             {stringProp(block.props, "question")}
           </Text>
@@ -380,7 +353,7 @@ function LessonPage({ block }: BlockRendererProps) {
           className="rounded-xl border-l-4 bg-muted/60 p-4"
           style={{ borderLeftColor: accent }}
         >
-          <SectionLabel>Contoh jawaban</SectionLabel>
+          <Eyebrow size="md">Contoh jawaban</Eyebrow>
           <Text className="mt-2 text-base leading-6 text-foreground">
             {stringProp(block.props, "answer")}
           </Text>
@@ -388,7 +361,7 @@ function LessonPage({ block }: BlockRendererProps) {
       </View>
 
       <View className="gap-3">
-        <SectionLabel>Fokus materi</SectionLabel>
+        <Eyebrow size="md">Fokus materi</Eyebrow>
         {focusCards.map((card, index) => (
           <View className="rounded-xl bg-muted/50 p-4" key={index}>
             <AccentDot accent={accent} label={card.label} />
@@ -460,7 +433,7 @@ function Grammar({ block }: BlockRendererProps) {
 
       {rules.length ? (
         <View className="gap-2">
-          <SectionLabel>Aturan tata bahasa</SectionLabel>
+          <Eyebrow size="md">Aturan tata bahasa</Eyebrow>
           {rules.map((rule, index) => (
             <View className="rounded-xl border border-border p-4" key={index}>
               <View className="flex-row gap-3">
@@ -496,7 +469,7 @@ function Grammar({ block }: BlockRendererProps) {
       ) : null}
 
       <View className="gap-2">
-        <SectionLabel>{stringProp(block.props, "examplesLabel")}</SectionLabel>
+        <Eyebrow size="md">{stringProp(block.props, "examplesLabel")}</Eyebrow>
         {examples.map((example, index) => (
           <View
             className="flex-row gap-3 rounded-xl bg-muted/45 p-4"
@@ -813,9 +786,9 @@ function Culture({ block }: BlockRendererProps) {
               <Text className="text-sm font-black text-foreground">
                 {stringProp(block.props, "checklistTitleKo")}
               </Text>
-              <Text className="text-xs uppercase tracking-[1.5px] text-muted-foreground">
+              <Eyebrow size="md">
                 {stringProp(block.props, "checklistTitleEn")}
-              </Text>
+              </Eyebrow>
             </View>
           </View>
           {checklist.length ? (
@@ -921,7 +894,7 @@ function Conversation({ block }: BlockRendererProps) {
           </Text>
         </View>
         <View className="min-w-0 flex-1">
-          <SectionLabel>{stringProp(block.props, "eyebrow")}</SectionLabel>
+          <Eyebrow size="md">{stringProp(block.props, "eyebrow")}</Eyebrow>
           <Text className="mt-1 text-xs text-muted-foreground">
             Audio {stringProp(block.props, "audioTrack")}
           </Text>
@@ -964,7 +937,7 @@ function Conversation({ block }: BlockRendererProps) {
         className="gap-3 rounded-xl border p-4"
         style={{ borderColor: accent }}
       >
-        <SectionLabel>{stringProp(block.props, "questionsLabel")}</SectionLabel>
+        <Eyebrow size="md">{stringProp(block.props, "questionsLabel")}</Eyebrow>
         {questions.map((question, index) => (
           <View className="flex-row gap-3" key={index}>
             <View
@@ -1026,7 +999,7 @@ function Conversation({ block }: BlockRendererProps) {
           />
         ) : null}
         <View className="gap-3 rounded-xl bg-muted/55 p-4">
-          <SectionLabel>Ungkapan yang disediakan</SectionLabel>
+          <Eyebrow size="md">Ungkapan yang disediakan</Eyebrow>
           {expressions.map((expression, index) => (
             <View key={index}>
               <Text className="text-sm font-bold text-foreground">

@@ -1,11 +1,17 @@
 import { SymbolView } from "expo-symbols";
-import { Image } from "expo-image";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { achievementLabel, dateLabel } from "../lib/study";
 import { useAppTheme } from "../providers/AppThemeProvider";
-import { QueryState } from "./learning-ui";
+import {
+  Action,
+  Avatar,
+  Badge,
+  EmptyState,
+  QueryState,
+  SectionHeader,
+} from "./learning-ui";
 
 export type LearnerStats = {
   vocabularyMastered: number;
@@ -43,7 +49,7 @@ export function ProfileHero({
   stats: LearnerStats | undefined;
   isPending: boolean;
 }) {
-  const { activeBrand, colors } = useAppTheme();
+  const { activeBrand } = useAppTheme();
   const counters = [
     {
       label: "Kosakata",
@@ -65,35 +71,9 @@ export function ProfileHero({
   return (
     <View className="gap-3 pt-1">
       <View className="flex-row items-center gap-5">
-        <View
-          className="size-20 items-center justify-center rounded-full"
-          style={{ backgroundColor: colors.primary }}
-        >
-          <View
-            className="size-[74px] items-center justify-center overflow-hidden rounded-full"
-            style={{
-              backgroundColor: colors.primary,
-              borderColor: colors.background,
-              borderWidth: 3,
-            }}
-          >
-            {image ? (
-              <Image
-                cachePolicy="memory-disk"
-                className="size-full"
-                contentFit="cover"
-                source={{ uri: image }}
-                style={{ width: "100%", height: "100%" }}
-                transition={0}
-              />
-            ) : (
-              <Text
-                className="text-2xl font-extrabold"
-                style={{ color: colors.primaryForeground }}
-              >
-                {initials || "H"}
-              </Text>
-            )}
+        <View className="size-20 items-center justify-center rounded-full bg-primary">
+          <View className="size-[74px] items-center justify-center overflow-hidden rounded-full border-[3px] border-background bg-primary">
+            <Avatar initials={initials || "H"} size={68} uri={image} />
           </View>
         </View>
         <View className="min-w-0 flex-1 flex-row">
@@ -146,24 +126,21 @@ export function RecentActivity({
 
   return (
     <View className="gap-4">
-      <View className="flex-row items-center justify-between gap-4">
-        <Text className="text-xl font-bold text-foreground">
-          Aktivitas terbaru
-        </Text>
-        <Text className="text-xs font-semibold text-muted-foreground">
-          {weekXp > 0 ? `+${weekXp} XP minggu ini` : "Belum ada XP minggu ini"}
-        </Text>
-      </View>
+      <SectionHeader
+        title="Aktivitas terbaru"
+        trailing={
+          <Text className="text-xs font-semibold text-muted-foreground">
+            {weekXp > 0
+              ? `+${weekXp} XP minggu ini`
+              : "Belum ada XP minggu ini"}
+          </Text>
+        }
+      />
 
       {activities.length === 0 ? (
-        <View className="items-center border-y border-border px-6 py-10">
-          <Text className="text-base font-bold text-foreground">
-            Belum ada aktivitas
-          </Text>
-          <Text className="mt-2 text-center text-sm leading-5 text-muted-foreground">
-            Selesaikan materi atau latihan untuk melihat aktivitas di sini.
-          </Text>
-        </View>
+        <EmptyState title="Belum ada aktivitas" variant="flush">
+          Selesaikan materi atau latihan untuk melihat aktivitas di sini.
+        </EmptyState>
       ) : (
         <View>
           {visible.map((activity, index) => (
@@ -171,14 +148,9 @@ export function RecentActivity({
               key={`${activity.action}-${index}`}
               className={`flex-row items-center gap-3 py-2.5 ${index > 0 ? "border-t border-border" : ""}`}
             >
-              <View
-                accessibilityLabel={`Tambah ${activity.xpAwarded} XP`}
-                className="rounded-full bg-primary/10 px-2.5 py-1"
-              >
-                <Text className="text-[11px] font-black tabular-nums text-primary">
-                  +{activity.xpAwarded}
-                </Text>
-              </View>
+              <Badge accessibilityLabel={`Tambah ${activity.xpAwarded} XP`}>
+                +{activity.xpAwarded}
+              </Badge>
               <View className="min-w-0 flex-1 gap-0.5">
                 <Text
                   className="text-[15px] font-semibold capitalize leading-5 text-foreground"
@@ -199,17 +171,14 @@ export function RecentActivity({
       )}
 
       {activities.length > 3 ? (
-        <Pressable
-          accessibilityRole="button"
-          className="-mt-2 py-1 active:opacity-60"
+        <Action
+          variant="link"
           onPress={() => setExpanded((current) => !current)}
         >
-          <Text className="text-sm font-bold text-primary">
-            {expanded
-              ? "Tampilkan lebih sedikit"
-              : `Tampilkan semua (${activities.length})`}
-          </Text>
-        </Pressable>
+          {expanded
+            ? "Tampilkan lebih sedikit"
+            : `Tampilkan semua (${activities.length})`}
+        </Action>
       ) : null}
     </View>
   );
@@ -236,22 +205,19 @@ export function MilestoneTrail({
 
   return (
     <View className="gap-5">
-      <View className="flex-row items-center justify-between gap-4">
-        <Text className="text-xl font-bold text-foreground">Pencapaian</Text>
-        <Text className="text-xs font-semibold text-muted-foreground">
-          {achievements.length} diraih
-        </Text>
-      </View>
+      <SectionHeader
+        title="Pencapaian"
+        trailing={
+          <Text className="text-xs font-semibold text-muted-foreground">
+            {achievements.length} diraih
+          </Text>
+        }
+      />
 
       {achievements.length === 0 ? (
-        <View className="items-center border-y border-border px-6 py-10">
-          <Text className="text-base font-bold text-foreground">
-            Belum ada pencapaian
-          </Text>
-          <Text className="mt-2 text-center text-sm leading-5 text-muted-foreground">
-            Selesaikan aktivitas belajar pertamamu untuk meraih pencapaian.
-          </Text>
-        </View>
+        <EmptyState title="Belum ada pencapaian" variant="flush">
+          Selesaikan aktivitas belajar pertamamu untuk meraih pencapaian.
+        </EmptyState>
       ) : (
         <View>
           {achievements.map((achievement, index) => {

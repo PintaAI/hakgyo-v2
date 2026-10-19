@@ -6,7 +6,6 @@ import {
   type RefObject,
 } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,6 +22,42 @@ import {
 } from "react-native-gesture-handler";
 import { userErrorMessage } from "../lib/error-message";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { Chevron } from "./ui/chevron";
+import { Eyebrow } from "./ui/eyebrow";
+import { Action } from "./ui/action";
+import { Spinner } from "./ui/spinner";
+
+// The shared UI primitives live in ./ui; they are re-exported here so screens
+// can keep importing from one place.
+export { Action, type ActionVariant } from "./ui/action";
+export { Avatar } from "./ui/avatar";
+export { Badge } from "./ui/badge";
+export { Callout } from "./ui/callout";
+export { Card } from "./ui/card";
+export { Chevron } from "./ui/chevron";
+export { Chip } from "./ui/chip";
+export { EmptyState } from "./ui/empty-state";
+export { Eyebrow } from "./ui/eyebrow";
+export { FullScreenState } from "./ui/full-screen-state";
+export { GlassInput } from "./ui/glass-input";
+export { HeroHeader } from "./ui/hero-header";
+export { IconCircle } from "./ui/icon-circle";
+export { PageTitle } from "./ui/page-title";
+export { ProgressBar } from "./ui/progress-bar";
+export { SectionHeader } from "./ui/section-header";
+export { Spinner } from "./ui/spinner";
+export { TextField } from "./ui/text-field";
+
+/** The horizontal padding of a screen's content, in points (`px-5`). */
+const SCREEN_GUTTER = 20;
+
+/**
+ * Lets content run edge to edge inside a `StudyScreen`, past its horizontal
+ * padding.
+ */
+export function FullBleed({ children }: { children: ReactNode }) {
+  return <View style={{ marginHorizontal: -SCREEN_GUTTER }}>{children}</View>;
+}
 
 export function StudyScreen({
   title,
@@ -39,6 +74,7 @@ export function StudyScreen({
   scrollGesture,
   scrollViewRef,
   gameHeader = false,
+  contentClassName = "gap-6",
 }: {
   title: string;
   children: ReactNode;
@@ -55,6 +91,8 @@ export function StudyScreen({
   scrollGesture?: NativeGesture;
   scrollViewRef?: RefObject<ScrollView | null>;
   gameHeader?: boolean;
+  /** Replaces the default `gap-6` between sections; the gutter stays `px-5`. */
+  contentClassName?: string;
 }) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -72,7 +110,7 @@ export function StudyScreen({
   }, []);
   const content = (
     <View
-      className={`${fillViewport ? "flex-1" : ""} ${bleedTop ? "gap-6 px-5 pb-12 pt-0" : "gap-6 px-5 pb-12 pt-4"}`}
+      className={`${fillViewport ? "flex-1" : ""} px-5 pb-12 ${bleedTop ? "pt-0" : "pt-4"} ${contentClassName}`}
       style={
         bleedTop
           ? { paddingBottom: Math.max(insets.bottom, 48) }
@@ -157,59 +195,7 @@ export function StudyScreen({
   );
 }
 
-export function Action({
-  children,
-  onPress,
-  disabled = false,
-  secondary = false,
-}: {
-  children: string;
-  onPress: () => void;
-  disabled?: boolean;
-  secondary?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      className={`min-h-12 items-center justify-center rounded-2xl border px-5 py-3 ${secondary ? "border-border bg-card" : "border-primary bg-primary"}`}
-      style={{ opacity: disabled ? 0.5 : 1 }}
-    >
-      <Text
-        className={`text-base font-semibold ${secondary ? "text-foreground" : "text-primary-foreground"}`}
-      >
-        {children}
-      </Text>
-    </Pressable>
-  );
-}
-
-export function Card({ children }: { children: ReactNode }) {
-  return (
-    <View className="gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4">
-      {children}
-    </View>
-  );
-}
-
-export function Eyebrow({
-  children,
-  tone = "muted",
-}: {
-  children: string;
-  tone?: "muted" | "primary";
-}) {
-  return (
-    <Text
-      className={`text-[11px] font-bold uppercase tracking-[1.5px] ${tone === "primary" ? "text-primary" : "text-muted-foreground"}`}
-    >
-      {children}
-    </Text>
-  );
-}
-
+/** A tinted call-to-action card with a label, title and optional detail. */
 export function TintedAction({
   eyebrow,
   title,
@@ -231,9 +217,7 @@ export function TintedAction({
       onPress={onPress}
     >
       <View className="min-w-0 flex-1 gap-1">
-        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-          {eyebrow}
-        </Text>
+        <Eyebrow tone="primary">{eyebrow}</Eyebrow>
         <Text
           className="text-lg font-black leading-6 text-foreground"
           numberOfLines={2}
@@ -283,9 +267,11 @@ export function Row({
         ) : null}
       </View>
       {onPress ? (
-        <Text className="text-lg text-muted-foreground">
-          {disabled ? "Terkunci" : "›"}
-        </Text>
+        disabled ? (
+          <Text className="text-lg text-muted-foreground">Terkunci</Text>
+        ) : (
+          <Chevron />
+        )
       ) : null}
     </Pressable>
   );
@@ -306,13 +292,15 @@ export function QueryState({
         <Text accessibilityRole="alert" className="text-sm text-destructive">
           {userErrorMessage(error, "Data tidak dapat dimuat.")}
         </Text>
-        <Action secondary onPress={retry}>
+        <Action variant="secondary" onPress={retry}>
           Coba lagi
         </Action>
       </View>
     );
   return pending ? (
-    <ActivityIndicator accessibilityLabel="Memuat" className="py-8" />
+    <View className="py-8">
+      <Spinner />
+    </View>
   ) : null;
 }
 

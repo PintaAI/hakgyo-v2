@@ -2,7 +2,6 @@ import type { RouterOutputs } from "@hakgyo/api";
 import { Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Keyboard,
   Text,
   TextInput,
@@ -33,7 +32,15 @@ import { useGameExitGuard } from "../games/game-navigation";
 import { useVocabularyProgressReporter } from "../lib/use-vocabulary-progress";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { toolbarIcons } from "../theme/toolbar-icons";
-import { Action, Empty, QueryState } from "./learning-ui";
+import {
+  Action,
+  Card,
+  Empty,
+  Eyebrow,
+  ProgressBar,
+  QueryState,
+  Spinner,
+} from "./learning-ui";
 import {
   VocabularyPracticeDeck,
   type VocabularyPracticeDeckHandle,
@@ -467,11 +474,8 @@ export function VocabularySession({
 
   if (progressQuery.isPending) {
     return (
-      <View className="min-h-64 items-center justify-center gap-3">
-        <ActivityIndicator color={colors.primary} />
-        <Text className="text-sm text-muted-foreground">
-          Memuat latihan kamu yang tersimpan…
-        </Text>
+      <View className="min-h-64 items-center justify-center">
+        <Spinner label="Memuat latihan kamu yang tersimpan…" />
       </View>
     );
   }
@@ -695,7 +699,7 @@ export function VocabularySession({
           />
         </View>
         {visibleCards.length === 0 ? (
-          <View className="items-center gap-4 rounded-3xl border border-border bg-card p-6">
+          <Card className="items-center gap-4 p-6">
             <Text className="text-3xl">🌱</Text>
             <View className="items-center gap-2">
               <Text className="text-xl font-black text-foreground">
@@ -706,10 +710,13 @@ export function VocabularySession({
                 tersisa.
               </Text>
             </View>
-            <Action secondary onPress={() => void progressQuery.refetch()}>
+            <Action
+              variant="secondary"
+              onPress={() => void progressQuery.refetch()}
+            >
               Periksa lagi
             </Action>
-          </View>
+          </Card>
         ) : (
           <VocabularyPracticeDeck
             key={roundActive ? roundKey : "preview"}
@@ -728,7 +735,7 @@ export function VocabularySession({
       </View>
 
       {sessionError ? (
-        <View className="gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4">
+        <Card tone="destructive">
           <Text
             accessibilityRole="alert"
             className="text-sm leading-5 text-destructive"
@@ -737,7 +744,7 @@ export function VocabularySession({
           </Text>
           {reporter.error ? (
             <Action
-              secondary
+              variant="secondary"
               onPress={() => {
                 if (feedback) void saveAnswer(feedback.correct);
                 else if (revealed) void saveReveal();
@@ -746,11 +753,11 @@ export function VocabularySession({
               {revealed ? "Coba simpan lagi" : "Coba simpan jawaban lagi"}
             </Action>
           ) : currentWord ? (
-            <Action secondary onPress={restartWord}>
+            <Action variant="secondary" onPress={restartWord}>
               Coba lagi
             </Action>
           ) : null}
-        </View>
+        </Card>
       ) : null}
 
       <GameStartModal
@@ -758,9 +765,7 @@ export function VocabularySession({
           <View className="gap-4">
             <View className="flex-row items-start justify-between gap-5">
               <View className="min-w-0 flex-1 gap-0.5">
-                <Text className="text-[11px] font-bold uppercase tracking-[1.4px] text-primary">
-                  Progres set
-                </Text>
+                <Eyebrow tone="primary">Progres set</Eyebrow>
                 <Text className="text-xl font-black tracking-tight text-foreground">
                   {practicedCount} dilatih
                 </Text>
@@ -769,16 +774,7 @@ export function VocabularySession({
                 {progress}%
               </Text>
             </View>
-            <View
-              accessibilityRole="progressbar"
-              accessibilityValue={{ min: 0, max: 100, now: progress }}
-              className="h-1.5 overflow-hidden rounded-full bg-muted"
-            >
-              <View
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${progress}%` }}
-              />
-            </View>
+            <ProgressBar value={progress} max={100} />
             <View className="flex-row items-center justify-between gap-4">
               <Text className="text-sm text-muted-foreground">
                 {usableWords.length} kata total

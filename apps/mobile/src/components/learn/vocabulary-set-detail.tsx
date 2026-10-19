@@ -258,9 +258,7 @@ export function VocabularySetDetail({
         <View className="mb-2 gap-5">
           <StudyGlass>
             <View className="gap-2">
-              <Text className="text-xs font-black uppercase tracking-[2px] text-muted-foreground">
-                Kosakata · {total} kata
-              </Text>
+              <Eyebrow size="md">Kosakata · {total} kata</Eyebrow>
               <Text
                 adjustsFontSizeToFit
                 className="text-3xl font-black leading-10 tracking-tight text-foreground"

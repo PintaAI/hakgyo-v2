@@ -4,6 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 
 import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
+import { openAssessmentEvent } from "../../lib/navigation";
 import { useSyncIndex } from "../../sync/hooks";
 import {
   countUnreadIndicators,
@@ -217,7 +218,6 @@ export function MainSidebarContent({
           <SectionHeader label="Berikutnya" count={upcomingEvents.length} />
           <View style={{ gap: 1 }}>
             {upcomingEvents.map((event) => {
-              const attempt = event.attempts[0];
               const urgent =
                 !!event.closesAt &&
                 event.closesAt.getTime() - now < 48 * 3_600_000;
@@ -231,26 +231,7 @@ export function MainSidebarContent({
                   unread={indicator("ASSESSMENT", event.id)?.unread ?? false}
                   onPress={() => {
                     markEntitySeen("ASSESSMENT", event.id);
-                    if (event.entry.destination === "ATTEMPT" && attempt) {
-                      onNavigate(() =>
-                        router.push({
-                          pathname:
-                            "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                          params: {
-                            courseId: event.course.id,
-                            courseItemId: event.courseItem.id,
-                            attemptId: attempt.id,
-                          },
-                        }),
-                      );
-                      return;
-                    }
-                    onNavigate(() =>
-                      router.push({
-                        pathname: "/events/[eventId]",
-                        params: { eventId: event.id },
-                      }),
-                    );
+                    onNavigate(() => openAssessmentEvent(event));
                   }}
                 />
               );

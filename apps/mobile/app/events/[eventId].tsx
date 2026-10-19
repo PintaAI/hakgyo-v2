@@ -7,7 +7,12 @@ import {
   AssessmentMediaStatus,
   useAssessmentMediaPrefetch,
 } from "../../src/components/assessment-media";
-import { QueryState, Row, StudyScreen } from "../../src/components/learning-ui";
+import {
+  Eyebrow,
+  QueryState,
+  Row,
+  StudyScreen,
+} from "../../src/components/learning-ui";
 import { StudyAction, StudyGlass } from "../../src/components/study-glass";
 import { assessmentAttemptPresentation } from "../../src/lib/assessment-state";
 import { dateLabel } from "../../src/lib/study";
@@ -138,10 +143,10 @@ export default function AssessmentEventScreen() {
         ) : event ? (
           <>
             <StudyGlass>
-              <Text className="text-xs font-black uppercase tracking-[1.5px] text-primary">
+              <Eyebrow tone="primary" size="md">
                 {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
                 {event.cohort?.name ?? event.course.title}
-              </Text>
+              </Eyebrow>
               <Text className="text-2xl font-black leading-8 text-foreground">
                 {assessment?.title ?? event.title}
               </Text>
