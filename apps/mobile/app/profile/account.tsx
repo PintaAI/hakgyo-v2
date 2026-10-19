@@ -11,12 +11,12 @@ import {
   Card,
   Eyebrow,
   TextField,
-} from "../../../../src/components/learning-ui";
+} from "../../src/components/learning-ui";
 
-import { authClient } from "../../../../src/lib/auth-client";
-import { userErrorMessage as errorMessage } from "../../../../src/lib/error-message";
-import { api } from "../../../../src/lib/trpc";
-import { usePushNotifications } from "../../../../src/providers/PushNotificationsProvider";
+import { authClient } from "../../src/lib/auth-client";
+import { userErrorMessage as errorMessage } from "../../src/lib/error-message";
+import { api } from "../../src/lib/trpc";
+import { usePushNotifications } from "../../src/providers/PushNotificationsProvider";
 
 function isAppleCancel(error: unknown) {
   return (

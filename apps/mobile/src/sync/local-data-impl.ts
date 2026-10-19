@@ -39,6 +39,13 @@ export function createLocalData({
   return {
     loadIndex: (scope) => engine.loadIndex(scope),
 
+    listIndexScopes: () => store.listIndexScopes(userId),
+
+    async listBundleRevisions() {
+      const bundles = await store.listBundleRevisions(userId);
+      return bundles.map(({ courseId, revision }) => ({ courseId, revision }));
+    },
+
     async loadBundleStructure(courseId) {
       const stored = await store.loadBundleStructure(userId, courseId);
       return stored ? record(stored) : null;

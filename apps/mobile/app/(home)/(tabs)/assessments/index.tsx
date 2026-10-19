@@ -80,6 +80,7 @@ export default function PracticeTab() {
   return (
     <TabScreen
       title="Latihan"
+      titleIcon={{ symbol: "pencil.and.list.clipboard", fallback: "✎" }}
       keyboardAvoiding
       automaticallyAdjustKeyboardInsets
       scrollViewRef={scrollViewRef}

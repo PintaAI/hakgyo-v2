@@ -1,42 +1,44 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { supportEmail } from "@hakgyo/shared";
 import Constants from "expo-constants";
-import { router } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import * as Updates from "expo-updates";
 import * as WebBrowser from "expo-web-browser";
 import { useUpdates } from "expo-updates";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Text } from "react-native";
 
-import { AppSegmentedControl } from "../../../../src/components/app-segmented-control";
+import { AppSegmentedControl } from "../../src/components/app-segmented-control";
 import {
   formatDuration,
   LocalDataReport,
-} from "../../../../src/components/local-data-report";
-import { TabScreen } from "../../../../src/components/tab-screen";
+} from "../../src/components/local-data-report";
+import { StudyScreen } from "../../src/components/learning-ui";
 import {
   MilestoneTrail,
   ProfileHero,
   RecentActivity,
-} from "../../../../src/components/profile-learner";
+} from "../../src/components/profile-learner";
 import {
   SettingsRow,
   SettingsSection,
   SettingsToggleRow,
-} from "../../../../src/components/settings-ui";
-import { WeeklyStreak } from "../../../../src/components/weekly-streak";
-import { apiUrl } from "../../../../src/config";
-import { authClient } from "../../../../src/lib/auth-client";
-import { api } from "../../../../src/lib/trpc";
-import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
-import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
+} from "../../src/components/settings-ui";
+import { WeeklyStreak } from "../../src/components/weekly-streak";
+import { apiUrl } from "../../src/config";
+import { authClient } from "../../src/lib/auth-client";
+import { api } from "../../src/lib/trpc";
+import { firstParam } from "../../src/lib/route-params";
+import { useAppTheme } from "../../src/providers/AppThemeProvider";
+import { useMobileSync } from "../../src/providers/MobileSyncProvider";
 import {
   type PushStatus,
   usePushNotifications,
-} from "../../../../src/providers/PushNotificationsProvider";
-import { useSyncIndex } from "../../../../src/sync/hooks";
-import type { LocalDataStats } from "../../../../src/sync/store";
-import type { ResyncReport } from "../../../../src/sync/types";
+} from "../../src/providers/PushNotificationsProvider";
+import { useSyncIndex } from "../../src/sync/hooks";
+import { toolbarIcons } from "../../src/theme/toolbar-icons";
+import type { LocalDataStats } from "../../src/sync/store";
+import type { ResyncReport } from "../../src/sync/types";
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 const UPDATE_CHANNEL = Updates.channel ?? "unpublished";
@@ -68,13 +70,17 @@ function contactSupport() {
   );
 }
 
-export default function ProfileTab() {
+export default function ProfileScreen() {
   const queryClient = useQueryClient();
   const { data: session, refetch: refetchSession } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const { isUpdatePending } = useUpdates();
-  const [segment, setSegment] = useState(0);
+  const params = useLocalSearchParams<{ segment?: string | string[] }>();
+  // The header gear opens the sheet straight on Pengaturan.
+  const [segment, setSegment] = useState(
+    firstParam(params.segment) === "settings" ? 1 : 0,
+  );
   const [error, setError] = useState<string | null>(null);
   const {
     activeBrand,
@@ -247,8 +253,16 @@ export default function ProfileTab() {
 
   return (
     <>
-      <TabScreen
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          accessibilityLabel="Tutup profil"
+          icon={toolbarIcons.close}
+          onPress={() => router.back()}
+        />
+      </Stack.Toolbar>
+      <StudyScreen
         title="Profil"
+        headerShown
         onRefresh={() => {
           void syncNow(activeOrganizationId ?? undefined);
           void refreshOrganizations();
@@ -291,7 +305,7 @@ export default function ProfileTab() {
                 detail={session?.user.email ?? "Belum masuk"}
                 symbol="person.crop.circle"
                 fallback="?"
-                onPress={() => router.push("/(home)/(tabs)/profile/account")}
+                onPress={() => router.push("/profile/account")}
               />
               <SettingsRow
                 label="Keluar"
@@ -495,7 +509,7 @@ export default function ProfileTab() {
             ) : null}
           </>
         )}
-      </TabScreen>
+      </StudyScreen>
     </>
   );
 }

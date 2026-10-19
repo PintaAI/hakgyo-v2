@@ -17,9 +17,12 @@ import { useDrawer } from "../../providers/DrawerProvider";
  * Android tab roots are meant to have no header.
  */
 export function AndroidTabActions({
+  left,
   right,
   floating = false,
 }: {
+  /** Shown right after the menu button. */
+  left?: ReactNode;
   right?: ReactNode;
   /** Overlay the row under the status bar for full-bleed screens. */
   floating?: boolean;
@@ -48,12 +51,15 @@ export function AndroidTabActions({
       }
       pointerEvents="box-none"
     >
-      <TabActionButton
-        symbol={{ ios: "sidebar.left", android: "menu" }}
-        accessibilityLabel="Buka menu"
-        badgeCount={unreadCount}
-        onPress={open}
-      />
+      <View className="min-w-0 flex-1 flex-row items-center gap-2">
+        <TabActionButton
+          symbol={{ ios: "sidebar.left", android: "menu" }}
+          accessibilityLabel="Buka menu"
+          badgeCount={unreadCount}
+          onPress={open}
+        />
+        {left}
+      </View>
       {right}
     </View>
   );

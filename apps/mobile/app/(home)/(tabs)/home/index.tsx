@@ -35,6 +35,7 @@ export default function HomeTab() {
 
   return (
     <TabScreen
+      doodle
       scrollGesture={scrollGesture}
       refreshing={refreshing}
       onRefresh={() => void refresh()}
@@ -51,9 +52,9 @@ export default function HomeTab() {
         <Pressable
           accessibilityRole="link"
           accessibilityLabel="Buka profil"
-          accessibilityHint="Membuka tab profil kamu"
+          accessibilityHint="Membuka profil kamu"
           className="min-w-0 flex-1 active:opacity-60"
-          onPress={() => router.navigate("/(home)/(tabs)/profile")}
+          onPress={() => router.push("/profile")}
         >
           <Text
             className="text-muted-foreground text-xl leading-7 tracking-tight underline"

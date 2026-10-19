@@ -243,6 +243,14 @@ function RootNavigator() {
                 />
                 <Stack.Screen name="(home)" />
                 <Stack.Screen
+                  name="profile"
+                  options={{
+                    headerShown: false,
+                    // Android has no page sheet; it falls back to a modal.
+                    presentation: "pageSheet",
+                  }}
+                />
+                <Stack.Screen
                   name="organization-switcher"
                   options={{
                     headerShown: Platform.OS === "ios",
