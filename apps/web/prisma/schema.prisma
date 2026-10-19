@@ -76,6 +76,7 @@ model User {
   adminActions                AdminAuditLog[]               @relation("AdminAuditActor")
   adminActionTargets          AdminAuditLog[]               @relation("AdminAuditTarget")
   pushTargets                 PushTarget[]
+  mobileClientVersions        MobileClientVersion[]
   notifications               Notification[]
   sidebarSeen                 LearnerSidebarSeen[]
   payments                    Payment[]                     @relation("PaymentLearner")
@@ -177,6 +178,26 @@ model PushTarget {
   @@unique([userId, deviceId])
   @@index([userId, disabledAt])
   @@map("pushTarget")
+}
+
+/// Newest mobile build seen per user and platform, from the `x-hakgyo-client`
+/// header of `mobileSyncV2.getManifest`. Shows who still runs an old build
+/// before raising `MIN_SYNC_PROTOCOL` or retiring a runtime (see
+/// docs/mobile-releases.md). `lastSeenAt` is refreshed at most hourly.
+model MobileClientVersion {
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform   String // "ios" | "android"
+  protocol   Int
+  /// Expo runtime version; equals the app version (`runtimeVersion` policy `appVersion`).
+  runtime    String?
+  /// EAS Update id; null while the binary runs its embedded bundle.
+  updateId   String?
+  lastSeenAt DateTime @default(now())
+
+  @@id([userId, platform])
+  @@index([lastSeenAt])
+  @@map("mobileClientVersion")
 }
 
 /// Expo push ticket awaiting its delivery receipt. Expo reports most dead

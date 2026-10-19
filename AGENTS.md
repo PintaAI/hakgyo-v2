@@ -9,7 +9,7 @@ Hakgyo V2 is a Bun/Turborepo monorepo containing the web and mobile clients for 
 - `packages/api`: type-only tRPC contract (`AppRouter`) consumed by Expo.
 - `packages/shared`: code shared by both clients, including the mobile sync protocol (`@hakgyo/shared/mobile-sync`), learning helpers, colors and organization themes.
 
-Core domain: organizations with members (OWNER, ADMIN, TEACHER) and a SIMPLE or ADVANCED permission mode; courses built from modules and items that place materials, vocabulary sets, PDF books and assessments; cohorts (study groups) with staff, enrollments and meetings; assessment attempts, teacher review and assessment events (Latihan and Tryout for one or more classes, see `docs/assessment-events.md`); vocabulary progress, practice and gamification. Topic docs live in `docs/` (for example `docs/api.md`, `docs/database.md`, `docs/mobile-sync.md`, `docs/mcp-server.md`).
+Core domain: organizations with members (OWNER, ADMIN, TEACHER) and a SIMPLE or ADVANCED permission mode; courses built from modules and items that place materials, vocabulary sets, PDF books and assessments; cohorts (study groups) with staff, enrollments and meetings; assessment attempts, teacher review and assessment events (Latihan and Tryout for one or more classes, see `docs/assessment-events.md`); vocabulary progress, practice and gamification. Topic docs live in `docs/` (for example `docs/api.md`, `docs/database.md`, `docs/mobile-sync.md`, `docs/mobile-releases.md`, `docs/mcp-server.md`).
 
 ## Repository Layout
 
@@ -63,6 +63,7 @@ bun run --cwd apps/mobile start
 bun run --cwd apps/mobile android
 bun run --cwd apps/mobile ios
 bun run --cwd apps/mobile typecheck
+bun run --cwd apps/mobile ota:publish --channel production --message "…"  # guarded EAS Update
 ```
 
 `bun run dev` starts both workspace apps through Turbo. The mobile app can also be started independently with Expo.
@@ -116,6 +117,7 @@ bun run --cwd apps/mobile typecheck
 - Import `global.css` in the root layout and use NativeWind classes for styling unless a native API requires a `StyleSheet`.
 - Reuse the shared UI primitives in `src/components/ui` (re-exported from `src/components/learning-ui.tsx`: `Action`, `Card`, `Eyebrow`, `ProgressBar`, `Badge`, `FullScreenState`, `TextField` and so on) instead of hand-rolling buttons, cards, labels and loading or error states. `Action` buttons and `Card` surfaces are `rounded-2xl` rectangles (`StudyGlass` glass surfaces default to a radius of 20), and screens use the `px-5` gutter. `Action` takes a `variant` (`primary`, `secondary`, `outline`, `destructive`, `destructiveTinted`, `link`, `ghost`) and a `size` (`default`, `sm`, and `inline` for text-only links within content). For glass tints use `glassTint()`, and open course items and assessment events with the helpers in `src/lib/navigation.ts`.
 - Learner data flows through the offline sync layer in `src/sync/` (see `docs/mobile-sync.md`); queue writes as sync operations instead of calling mutations directly when the flow must work offline.
+- Publish EAS Updates with `ota:publish`, never plain `eas update`: it refuses when an installed build on the channel has different native code. Bump `version` in `app.config.ts` when native code changes (see `docs/mobile-releases.md`).
 - Keep the `hakgyo` deep-link scheme aligned between `apps/mobile/app.json`, the Expo auth client, and Better Auth `trustedOrigins`.
 - Native tabs use a nested `Stack` layout per tab, and each layout takes its screen options from `useTabStackScreenOptions()` (`src/navigation/tab-stack-options.ts`). Tab roots show a transparent native header on iOS (it carries the sidebar button followed by the org switcher, plus a settings gear on the right that turns into the updates bell while updates are unread, or just the updates bell, as `Stack.Toolbar` items; a screen has one toolbar per side, and `Stack.Toolbar` ignores children wrapped in fragments) and no header on Android, where `AndroidTabActions` renders the same buttons inside the content. There is no native large title: Home, Latihan and Cari render their own in-content title, and Belajar (Learn) bleeds its cohort cards under the header instead. Build tab roots with `TabScreen` (`src/components/tab-screen.tsx`), which wires up the header actions, the optional `PageTitle` (with an optional icon) and, on Home only, the doodle background. Profil is not a tab: it is a page sheet (`app/profile`) opened from the sidebar, the Home greeting and the header gear.
 - The tab headers use `scrollEdgeEffects: { top: "soft" }` for iOS 26+ Liquid Glass behavior; older iOS versions ignore it and keep the transparent header. Do not add `headerBlurEffect` alongside `scrollEdgeEffects`, because Expo documents that the effects can overlap.

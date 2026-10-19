@@ -62,7 +62,9 @@
     "android": "tailscale serve --bg --https=8082 127.0.0.1:8083 && EXPO_UNSTABLE_HEADLESS=1 EXPO_PACKAGER_PROXY_URL=https://jennie-linux.tail2268a1.ts.net:8082 expo start --dev-client --localhost --port 8083 --android",
     "ios": "tailscale serve --bg --https=8082 127.0.0.1:8083 && EXPO_UNSTABLE_HEADLESS=1 EXPO_PACKAGER_PROXY_URL=https://jennie-linux.tail2268a1.ts.net:8082 expo start --dev-client --localhost --port 8083 --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ota:check": "bun scripts/ota-publish.ts --check",
+    "ota:publish": "bun scripts/ota-publish.ts"
   },
   "private": true
 }

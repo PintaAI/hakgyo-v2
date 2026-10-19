@@ -9,6 +9,7 @@ import { httpBatchLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import * as Updates from "expo-updates";
 import { useState } from "react";
+import { Platform } from "react-native";
 import SuperJSON from "superjson";
 
 import { apiUrl } from "../config";
@@ -19,14 +20,16 @@ export const api = createTRPCReact<AppRouter>();
 
 /**
  * Identifies this client to the server on every request: sync protocol,
- * Expo runtime version and OTA update id. The server rejects outdated
- * protocols with `UPGRADE_REQUIRED`. The bundle download (data layer) sends
- * the same header.
+ * Expo runtime version, OTA update id and platform. The server rejects
+ * outdated protocols with `UPGRADE_REQUIRED` and records which builds are in
+ * use (`MobileClientVersion`). The bundle download (data layer) sends the
+ * same header without the platform.
  */
 export const clientHeaderValue = formatClientHeader({
   protocol: SYNC_PROTOCOL,
   runtime: Updates.runtimeVersion,
   update: Updates.updateId,
+  platform: Platform.OS,
 });
 
 export function TRPCProvider({ children }: { children: React.ReactNode }) {

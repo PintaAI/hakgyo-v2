@@ -15,12 +15,13 @@ type Phase =
 
 /**
  * Store listings, shown when no OTA update can satisfy the server. Kept out of
- * app.config.ts so changing them never alters the native fingerprint. Null
- * until the app is published; the gate then offers only the OTA retry.
+ * app.config.ts so changing them never alters the native fingerprint. A null
+ * entry makes the gate offer only the OTA retry. The iOS id is the App Store
+ * Connect "Apple ID" of com.rorez.hakgyo (also `ascAppId` in eas.json).
  */
 const STORE_URLS: { ios: string | null; android: string | null } = {
-  ios: null,
-  android: null,
+  ios: "https://apps.apple.com/app/id6759476908",
+  android: "https://play.google.com/store/apps/details?id=com.rorez.hakgyo",
 };
 
 export function storeUrl() {

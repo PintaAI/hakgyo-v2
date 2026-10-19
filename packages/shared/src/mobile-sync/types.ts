@@ -350,6 +350,7 @@ export function parseClientHeader(value: string | null | undefined) {
     protocol: Number.isFinite(protocol) ? protocol : null,
     runtime: fields.runtime ?? null,
     update: fields.update ?? null,
+    platform: fields.platform ?? null,
   };
 }
 
@@ -357,11 +358,13 @@ export function formatClientHeader(input: {
   protocol: number;
   runtime?: string | null;
   update?: string | null;
+  platform?: string | null;
 }) {
   return [
     `protocol=${input.protocol}`,
     input.runtime ? `runtime=${input.runtime}` : null,
     input.update ? `update=${input.update}` : null,
+    input.platform ? `platform=${input.platform}` : null,
   ]
     .filter(Boolean)
     .join(";");
