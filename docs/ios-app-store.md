@@ -21,14 +21,14 @@ What the Hakgyo iOS app needs to pass App Review, what the code already covers, 
    - Create a *Sign in with Apple* key (Keys > +). Download the `.p8`.
 2. **Vercel (production env)**: set `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (the `.p8` contents, newlines escaped as `\n`), then redeploy. Without them deletion still works but Apple tokens are not revoked, which App Review requires.
 3. **App Store Connect**
-   - Create the app record for `com.rorez.hakgyo`, then put its Apple ID in `apps/mobile/eas.json` under `submit.production.ios.ascAppId`.
+   - The app record for `com.rorez.hakgyo` exists (Apple ID `6759476908`, set as `submit.production.ios.ascAppId` in `apps/mobile/eas.json`).
    - Privacy Policy URL: `https://hakgyo.id/privacy`. Support URL: `https://hakgyo.id/support`.
    - App Privacy: name, email, user ID, device ID (push token), other user content (answers), product interaction (learning progress). All linked to the user, none used for tracking, purpose *App Functionality*. Audio is turned into text by Apple's speech recognition; Hakgyo never receives recordings.
    - Age rating: answer the current questionnaire (including the social-media question). No user-to-user messaging; account creation is available.
    - iPad screenshots are required because `supportsTablet` is true.
 4. **Production data**: make sure the Hangeul Mastery course is `PUBLISHED`, otherwise a new reviewer account starts empty.
 5. **Review account**: create a learner account in production that is enrolled in a Group belajar with materials, an open assessment and vocabulary, and put its credentials in App Review Information.
-6. After the listing is live, set `STORE_URLS.ios` in `apps/mobile/src/components/forced-update-gate.tsx`.
+6. Run the update-path checks in `docs/mobile-releases.md` on a production build. `STORE_URLS` in `apps/mobile/src/components/forced-update-gate.tsx` already points at the listing.
 
 ## Review notes template
 

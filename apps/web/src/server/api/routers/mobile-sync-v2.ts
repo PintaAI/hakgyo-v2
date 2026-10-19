@@ -23,6 +23,7 @@ import {
   startEventAssessmentForLearner,
   startEventAssessmentInput,
 } from "~/server/mobile/apply-operations";
+import { recordMobileClientVersionInBackground } from "~/server/mobile/client-version";
 import {
   buildLearnerIndex,
   getIndexToken,
@@ -89,6 +90,11 @@ export const mobileSyncV2Router = createTRPCRouter({
         input.organizationId,
       );
       const { indexToken, courses } = await getIndexToken(ctx, input);
+      await recordMobileClientVersionInBackground(
+        ctx.db,
+        ctx.actorUserId,
+        ctx.headers,
+      );
       return {
         protocol: SYNC_PROTOCOL,
         minProtocol: MIN_SYNC_PROTOCOL,
