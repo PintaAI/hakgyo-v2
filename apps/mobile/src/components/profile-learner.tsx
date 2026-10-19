@@ -171,14 +171,18 @@ export function RecentActivity({
       )}
 
       {activities.length > 3 ? (
-        <Action
-          variant="link"
-          onPress={() => setExpanded((current) => !current)}
-        >
-          {expanded
-            ? "Tampilkan lebih sedikit"
-            : `Tampilkan semua (${activities.length})`}
-        </Action>
+        <View className="-mt-2">
+          <Action
+            align="start"
+            size="inline"
+            variant="link"
+            onPress={() => setExpanded((current) => !current)}
+          >
+            {expanded
+              ? "Tampilkan lebih sedikit"
+              : `Tampilkan semua (${activities.length})`}
+          </Action>
+        </View>
       ) : null}
     </View>
   );

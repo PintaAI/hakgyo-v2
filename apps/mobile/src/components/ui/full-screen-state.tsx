@@ -12,7 +12,6 @@ export function FullScreenState({
   title,
   message,
   onBack,
-  backLabel = "Kembali",
   onRetry,
 }: {
   kind: "loading" | "error" | "empty";
@@ -20,7 +19,6 @@ export function FullScreenState({
   /** For `loading` this is the caption under the spinner. */
   message?: string;
   onBack?: () => void;
-  backLabel?: string;
   onRetry?: () => void;
 }) {
   if (kind === "loading") {
@@ -61,7 +59,7 @@ export function FullScreenState({
           {onBack ? (
             <View className="flex-1">
               <Action variant="secondary" onPress={onBack}>
-                {backLabel}
+                Kembali
               </Action>
             </View>
           ) : null}

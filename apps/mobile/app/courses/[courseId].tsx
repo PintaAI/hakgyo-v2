@@ -139,6 +139,7 @@ export default function CourseDetailScreen() {
             className="absolute bottom-0 left-0 right-0 z-30"
             max={allItems.length}
             size="sm"
+            square
             value={completedCount}
           />
         </View>

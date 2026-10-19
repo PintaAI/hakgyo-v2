@@ -29,7 +29,7 @@ import { Spinner } from "./ui/spinner";
 
 // The shared UI primitives live in ./ui; they are re-exported here so screens
 // can keep importing from one place.
-export { Action, type ActionVariant } from "./ui/action";
+export { Action, type ActionSize, type ActionVariant } from "./ui/action";
 export { Avatar } from "./ui/avatar";
 export { Badge } from "./ui/badge";
 export { Callout } from "./ui/callout";

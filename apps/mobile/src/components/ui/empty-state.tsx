@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Text, View } from "react-native";
 
 const variants = {
-  bordered: "rounded-2xl border border-border",
   dashed: "rounded-2xl border border-dashed border-border",
   /** Edge-to-edge between hairlines, for phone layouts without a card. */
   flush: "border-y border-border",
@@ -12,7 +11,7 @@ const variants = {
 export function EmptyState({
   title,
   children,
-  variant = "bordered",
+  variant = "flush",
   action,
 }: {
   title?: string;

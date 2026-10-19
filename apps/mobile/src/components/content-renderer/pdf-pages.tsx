@@ -197,6 +197,7 @@ export function PdfPages({ block }: BlockRendererProps) {
           accessibilityLabel="Halaman sebelumnya"
           disabled={index === 0}
           onPress={() => goTo(index - 1)}
+          size="sm"
           variant="secondary"
         >
           ‹ Sebelumnya
@@ -206,6 +207,7 @@ export function PdfPages({ block }: BlockRendererProps) {
           accessibilityLabel="Halaman berikutnya"
           disabled={finished}
           onPress={() => goTo(index + 1)}
+          size="sm"
           variant="secondary"
         >
           Berikutnya ›

@@ -260,7 +260,9 @@ export default function AuthScreen() {
           </Action>
           {!isSignUp ? (
             <Action
+              accessibilityRole="link"
               disabled={isPending}
+              size="inline"
               variant="ghost"
               onPress={() =>
                 void Linking.openURL(`${apiUrl}/auth/forgot-password`)
@@ -304,6 +306,7 @@ export default function AuthScreen() {
         <View className="items-center gap-2">
           <Action
             disabled={isPending}
+            size="inline"
             variant="link"
             onPress={() => switchMode(isSignUp ? "sign-in" : "sign-up")}
           >
@@ -312,7 +315,7 @@ export default function AuthScreen() {
               : "Baru di Hakgyo? Daftar gratis"}
           </Action>
           {Platform.OS === "android" ? (
-            <Action variant="ghost" onPress={() => router.back()}>
+            <Action size="inline" variant="ghost" onPress={() => router.back()}>
               Tutup
             </Action>
           ) : null}

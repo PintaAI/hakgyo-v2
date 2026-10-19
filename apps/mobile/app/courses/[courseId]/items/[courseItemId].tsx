@@ -368,12 +368,10 @@ function CourseItemContent({
           vocabulary={vocabulary}
         />
       ) : !material ? (
-        <View className="flex-1 items-center justify-center bg-background px-6">
-          <Text className="text-center text-sm text-muted-foreground">
-            Materi ini belum tersimpan di perangkat. Sambungkan ke internet,
-            lalu sinkronkan dari Profil &gt; Pengaturan.
-          </Text>
-        </View>
+        <FullScreenState
+          kind="empty"
+          message="Materi ini belum tersimpan di perangkat. Sambungkan ke internet, lalu sinkronkan dari Profil > Pengaturan."
+        />
       ) : (
         <ScrollView
           onContentSizeChange={(_width, height) => {

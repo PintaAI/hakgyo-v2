@@ -730,6 +730,7 @@ export function CohortCard({
         {hasProgress ? (
           <ProgressBar
             size="sm"
+            square
             className="absolute bottom-0 left-0 right-0 z-30"
             value={completedCount}
             max={outlineItems.length}

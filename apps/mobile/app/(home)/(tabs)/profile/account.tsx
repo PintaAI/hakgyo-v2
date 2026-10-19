@@ -186,7 +186,7 @@ export default function ProfileAccountScreen() {
           )}
           {blockers.error || accounts.error ? (
             <Action
-              variant="secondary"
+              variant="outline"
               onPress={() => {
                 void blockers.refetch();
                 void accounts.refetch();

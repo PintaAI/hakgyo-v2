@@ -11,6 +11,8 @@ export function ProgressBar({
   max,
   size = "md",
   className = "w-full",
+  track = "muted",
+  square = false,
   accessibilityLabel,
 }: {
   value: number;
@@ -18,6 +20,10 @@ export function ProgressBar({
   size?: keyof typeof heights;
   /** Width and flex classes; defaults to the full width. */
   className?: string;
+  /** Track colour: `border` for bars that sit on a muted surface. */
+  track?: "muted" | "border";
+  /** Square ends, for bars that run along the edge of a surface. */
+  square?: boolean;
   accessibilityLabel?: string;
 }) {
   const fraction = max === undefined ? value : max > 0 ? value / max : 0;
@@ -31,10 +37,10 @@ export function ProgressBar({
           ? { min: 0, max: 100, now: percent }
           : { min: 0, max, now: value }
       }
-      className={`${heights[size]} ${className} overflow-hidden rounded-full bg-muted`}
+      className={`${heights[size]} ${className} overflow-hidden ${square ? "" : "rounded-full"} ${track === "border" ? "bg-border" : "bg-muted"}`}
     >
       <View
-        className="h-full rounded-full bg-primary"
+        className={`h-full bg-primary ${square ? "" : "rounded-full"}`}
         style={{ width: `${percent}%` }}
       />
     </View>

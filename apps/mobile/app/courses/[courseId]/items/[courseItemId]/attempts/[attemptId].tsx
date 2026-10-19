@@ -15,6 +15,7 @@ import {
 } from "../../../../../../src/components/assessment-ui";
 import {
   FullScreenState,
+  IconCircle,
   StudyScreen,
 } from "../../../../../../src/components/learning-ui";
 import {
@@ -483,8 +484,10 @@ function AssessmentAttemptContent({
       ) : result ? (
         <StudyScreen scrollViewRef={resultScrollRef} title={screenTitle}>
           <StudyGlass>
-            <View className="size-16 self-center items-center justify-center rounded-full bg-primary/10">
-              <Text className="text-2xl font-black text-primary">✓</Text>
+            <View className="self-center">
+              <IconCircle size="lg">
+                <Text className="text-2xl font-black text-primary">✓</Text>
+              </IconCircle>
             </View>
             <Text className="text-center text-2xl font-black text-foreground">
               {result.status === "IN_REVIEW"
@@ -682,11 +685,10 @@ function AssessmentAttemptContent({
           </View>
         </StudyScreen>
       ) : (
-        <View className="flex-1 items-center justify-center bg-background px-6">
-          <Text className="text-muted-foreground">
-            Tugas ini belum memiliki soal.
-          </Text>
-        </View>
+        <FullScreenState
+          kind="empty"
+          message="Tugas ini belum memiliki soal."
+        />
       )}
     </>
   );

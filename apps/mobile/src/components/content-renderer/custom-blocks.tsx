@@ -242,14 +242,21 @@ function AssessmentReference({ block }: BlockRendererProps) {
           </Text>
         ) : null}
       </View>
-      <Action
-        disabled={!resource.courseItemId}
-        onPress={() =>
-          onOpenResource?.("assessment", resource.id, resource.courseItemId)
-        }
-      >
-        {resource.courseItemId ? "Mulai tugas →" : "Tidak tersedia"}
-      </Action>
+      {resource.courseItemId ? (
+        <Action
+          onPress={() =>
+            onOpenResource?.("assessment", resource.id, resource.courseItemId)
+          }
+        >
+          Mulai tugas →
+        </Action>
+      ) : (
+        <View className="min-h-12 items-center justify-center rounded-2xl bg-muted px-5 py-3">
+          <Text className="text-base font-semibold text-muted-foreground">
+            Tidak tersedia
+          </Text>
+        </View>
+      )}
     </View>
   );
 }

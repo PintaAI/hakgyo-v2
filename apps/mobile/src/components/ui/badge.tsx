@@ -3,7 +3,6 @@ import { Text, View } from "react-native";
 
 const tones = {
   primary: { box: "bg-primary/10", text: "text-primary" },
-  muted: { box: "bg-muted", text: "text-muted-foreground" },
   destructive: { box: "bg-destructive", text: "text-destructive-foreground" },
 } as const;
 

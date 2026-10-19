@@ -188,6 +188,7 @@ function AudioPlayer({
             {fileName || "Audio"}
           </Text>
           <ProgressBar
+            track="border"
             value={status.duration ? status.currentTime / status.duration : 0}
           />
           <Text className="text-xs tabular-nums text-muted-foreground">

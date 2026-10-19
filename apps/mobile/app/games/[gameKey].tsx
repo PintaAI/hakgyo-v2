@@ -241,7 +241,7 @@ function GameUnavailable({
   title: string;
 }) {
   return (
-    <>
+    <View className="flex-1 bg-background">
       <GameBackToolbar onPress={leave} />
       <Stack.Screen
         options={{
@@ -251,13 +251,11 @@ function GameUnavailable({
           title,
         }}
       />
-      <FullScreenState
-        backLabel="Kembali ke latihan"
-        kind="empty"
-        message={children}
-        onBack={leave}
-      />
-    </>
+      <GamePage>
+        <Empty>{children}</Empty>
+        <Action onPress={leave}>Kembali ke latihan</Action>
+      </GamePage>
+    </View>
   );
 }
 

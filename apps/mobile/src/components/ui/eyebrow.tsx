@@ -6,7 +6,6 @@ const tones = {
   primary: "text-primary",
   foreground: "text-foreground",
   destructive: "text-destructive",
-  onPrimary: "text-primary-foreground/70",
 } as const;
 
 const sizes = {

@@ -48,9 +48,6 @@ export function GlassInput({
       glassEffectStyle="clear"
       style={{ borderRadius: 9999, flex: 1, height }}
     >
-      {leading ? (
-        <View style={[slotStyle, { left: SLOT_INSET }]}>{leading}</View>
-      ) : null}
       {value.length === 0 ? (
         <View
           pointerEvents="none"
@@ -83,6 +80,10 @@ export function GlassInput({
           width: "100%",
         }}
       />
+      {/* After the input so the slots sit above it and receive touches. */}
+      {leading ? (
+        <View style={[slotStyle, { left: SLOT_INSET }]}>{leading}</View>
+      ) : null}
       {trailing ? (
         <View style={[slotStyle, { right: SLOT_INSET }]}>{trailing}</View>
       ) : null}

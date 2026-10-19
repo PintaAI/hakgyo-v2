@@ -3,11 +3,10 @@ import { Text } from "react-native";
 
 const tones = {
   info: "bg-primary/10 text-foreground",
-  success: "bg-primary/10 text-primary",
   destructive: "bg-destructive/10 text-destructive",
 } as const;
 
-/** An inline message (notice, success or error) announced to screen readers. */
+/** An inline message (notice or error) announced to screen readers. */
 export function Callout({
   children,
   tone = "info",
