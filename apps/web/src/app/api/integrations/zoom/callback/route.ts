@@ -8,9 +8,10 @@ import {
   integrationForbiddenResponse,
   redirectToIntegrationSettings,
 } from "~/server/integrations/oauth-routes";
+import { guardRoute } from "~/server/maintenance";
 import { encryptZoomToken, exchangeZoomCode } from "~/server/integrations/zoom";
 
-export async function GET(request: Request) {
+async function handler(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -87,3 +88,6 @@ export async function GET(request: Request) {
   });
   return redirectToIntegrationSettings(organizationId, { zoom: "connected" });
 }
+
+// Connecting stores the grant, so the whole flow waits while writes are blocked.
+export const GET = guardRoute("write", handler);

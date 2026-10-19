@@ -45,6 +45,7 @@ function RootNavigator() {
   const { transition } = useTransitionOverride();
   const {
     checkForUpdates,
+    getMaintenanceRetryAt,
     getNextCheckAfterMs,
     pendingCount,
     upgradeRequired,
@@ -103,7 +104,13 @@ function RootNavigator() {
       void checkForUpdates(activeOrganizationId ?? undefined)
         .then((result) => {
           if (!active) return;
-          if (result.state === "queued") {
+          if (result.state === "queued" && result.reason === "maintenance") {
+            // Not a failure: try again when the engine resumes (the announced
+            // end of maintenance, or a few minutes), spread over a minute.
+            state.nextAttemptAt =
+              (getMaintenanceRetryAt() ?? Date.now() + 5 * 60_000) +
+              Math.random() * 60_000;
+          } else if (result.state === "queued") {
             backOff();
           } else {
             state.failures = 0;
@@ -152,6 +159,7 @@ function RootNavigator() {
   }, [
     activeOrganizationId,
     checkForUpdates,
+    getMaintenanceRetryAt,
     getNextCheckAfterMs,
     hasIndex,
     indexLoading,

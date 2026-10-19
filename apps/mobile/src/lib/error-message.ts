@@ -11,6 +11,9 @@ const trpcCodeMessages: Record<string, string> = {
   TOO_MANY_REQUESTS:
     "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
   INTERNAL_SERVER_ERROR: "Terjadi kesalahan di server. Coba lagi nanti.",
+  // Maintenance errors carry their own message; this covers a bare code.
+  SERVICE_UNAVAILABLE:
+    "Hakgyo sedang dalam pemeliharaan. Coba lagi beberapa saat lagi.",
 };
 
 const authCodeMessages: Record<string, string> = {

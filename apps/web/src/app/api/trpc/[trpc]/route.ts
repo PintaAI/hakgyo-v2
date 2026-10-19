@@ -5,6 +5,7 @@ import { type NextRequest } from "next/server";
 import { env } from "~/env";
 import { appRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
+import { MaintenanceError, retryAfterSeconds } from "~/server/maintenance";
 
 // Copying a starter kurikulum duplicates every file it uses inside R2, which
 // takes a while for PDF books with hundreds of pages. That fits in Fluid
@@ -39,7 +40,22 @@ const handler = (req: NextRequest) =>
     req,
     router: appRouter,
     createContext: () => createContext(req),
+    // Lets clients and proxies back off until the announced end of maintenance.
+    responseMeta: ({ errors }) => {
+      const cause = errors.find(
+        (error) => error.cause instanceof MaintenanceError,
+      )?.cause;
+      const retryAfter =
+        cause instanceof MaintenanceError
+          ? retryAfterSeconds(cause.state)
+          : null;
+      return retryAfter
+        ? { headers: new Headers({ "Retry-After": String(retryAfter) }) }
+        : {};
+    },
     onError: ({ path, type, error }) => {
+      // Maintenance rejections are expected while the switch is on.
+      if (error.cause instanceof MaintenanceError) return;
       if (env.NODE_ENV === "development") {
         console.error(
           `❌ tRPC failed on ${path ?? "<no-path>"}: ${error.message}`,

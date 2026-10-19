@@ -32,6 +32,10 @@ import {
 } from "~/server/mobile/learner-index";
 import { buildLearnerState } from "~/server/mobile/learner-state";
 import { mobileProtocolProcedure } from "~/server/mobile/protocol";
+import {
+  getMaintenanceState,
+  isBlockedByMaintenance,
+} from "~/server/maintenance";
 import { createRequestCache } from "~/server/request-cache";
 
 /** Server-suggested poll interval for `getManifest`. */
@@ -90,11 +94,16 @@ export const mobileSyncV2Router = createTRPCRouter({
         input.organizationId,
       );
       const { indexToken, courses } = await getIndexToken(ctx, input);
-      await recordMobileClientVersionInBackground(
-        ctx.db,
-        ctx.actorUserId,
-        ctx.headers,
-      );
+      const maintenance = await getMaintenanceState();
+      // A query, so it runs in read_only (and for superadmins in full); the
+      // version record is a write and waits until maintenance ends.
+      if (!isBlockedByMaintenance(maintenance?.mode, "write")) {
+        await recordMobileClientVersionInBackground(
+          ctx.db,
+          ctx.actorUserId,
+          ctx.headers,
+        );
+      }
       return {
         protocol: SYNC_PROTOCOL,
         minProtocol: MIN_SYNC_PROTOCOL,
@@ -107,6 +116,7 @@ export const mobileSyncV2Router = createTRPCRouter({
           revision: course.revisions.bundle,
         })),
         checkAfterMs: MANIFEST_CHECK_AFTER_MS,
+        maintenance,
       };
     }),
 

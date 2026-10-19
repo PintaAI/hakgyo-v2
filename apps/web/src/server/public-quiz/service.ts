@@ -550,6 +550,15 @@ export async function recordPublicQuizCtaClick(
   return quiz?.organization.slug ?? null;
 }
 
+/** The organization slug of a quiz's call to action, without counting the click. */
+export async function getPublicQuizCtaSlug(db: PrismaClient, quizId: string) {
+  const quiz = await db.publicQuiz.findUnique({
+    where: { id: quizId },
+    select: { organization: { select: { slug: true } } },
+  });
+  return quiz?.organization.slug ?? null;
+}
+
 /** What the shareable result image shows; null for hidden or unknown attempts. */
 export async function getPublicQuizResultCard(
   db: PrismaClient,

@@ -1,3 +1,7 @@
+import {
+  maintenanceFromError,
+  type MaintenanceState,
+} from "@hakgyo/shared/mobile-sync";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as Network from "expo-network";
 import { Image } from "expo-image";
@@ -94,6 +98,11 @@ type MobileSyncStatusValue = {
   deadLetterCount: number;
   /** Set once the server rejects this client's protocol; polling stops. */
   upgradeRequired: UpgradeRequired | null;
+  /**
+   * Announced or active server maintenance. Learning continues offline: the
+   * outbox keeps queueing and syncs once maintenance is over.
+   */
+  maintenance: MaintenanceState | null;
   bundles: MobileSyncEngineState["bundles"] | null;
 };
 
@@ -120,6 +129,8 @@ type MobileSyncActionsValue = {
   checkpoint: (organizationId?: string) => Promise<SyncCheckpointResult>;
   /** Server-suggested poll delay from the last manifest, if any. */
   getNextCheckAfterMs: () => number | undefined;
+  /** When sync resumes after a maintenance rejection (ms since epoch), if paused. */
+  getMaintenanceRetryAt: () => number | undefined;
   /** Persists a freshly started attempt so it resumes offline. */
   saveStartedAttempt: (input: {
     attempt: LearnerAttempt;
@@ -190,6 +201,8 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
   );
   const [transportUpgrade, setTransportUpgrade] =
     useState<UpgradeRequired | null>(null);
+  const [transportMaintenance, setTransportMaintenance] =
+    useState<MaintenanceState | null>(null);
   const [syncError, setSyncError] = useState<Error | null>(null);
   const [engine, setEngine] = useState<MobileSyncEngine | null>(null);
   const engineRef = useRef<MobileSyncEngine | null>(null);
@@ -288,6 +301,7 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     setEngine(null);
     setEngineState(null);
     setTransportUpgrade(null);
+    setTransportMaintenance(null);
     setSyncError(null);
     setHydratedUserId(undefined);
     setPendingCount(0);
@@ -317,13 +331,18 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
 
     const v2 = utils.client.mobileSyncV2;
     // Next to the engine's own detection: any v2 call the server rejects for
-    // an outdated protocol flips the forced-update gate.
+    // an outdated protocol flips the forced-update gate, and one rejected for
+    // maintenance shows the maintenance banner until a call succeeds.
     const guarded = async <T,>(work: () => Promise<T>) => {
       try {
-        return await work();
+        const result = await work();
+        if (active) setTransportMaintenance(null);
+        return result;
       } catch (error) {
         const upgrade = upgradeRequiredFromError(error);
         if (upgrade && active) setTransportUpgrade(upgrade);
+        const maintenance = maintenanceFromError(error);
+        if (maintenance && active) setTransportMaintenance(maintenance);
         throw error;
       }
     };
@@ -644,6 +663,8 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         const value = state?.nextCheckAfterMs;
         return typeof value === "number" && value > 0 ? value : undefined;
       },
+      getMaintenanceRetryAt: () =>
+        engineRef.current?.getState().maintenanceRetryAt ?? undefined,
       saveStartedAttempt: async (input) => {
         utils.assessment.getMyAttempt.setData(
           { attemptId: input.attempt.id },
@@ -685,6 +706,7 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       pendingCount,
       deadLetterCount,
       upgradeRequired: engineState?.upgradeRequired ?? transportUpgrade,
+      maintenance: engineState?.maintenance ?? transportMaintenance,
       bundles: engineState?.bundles ?? null,
     }),
     [
@@ -694,6 +716,7 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       isSessionPending,
       isSyncing,
       pendingCount,
+      transportMaintenance,
       transportUpgrade,
       userId,
     ],

@@ -6,6 +6,7 @@ import { useUpdatesBadgeCount } from "../lib/sidebar-indicators";
 import { useDrawer } from "../providers/DrawerProvider";
 import { toolbarIcons } from "../theme/toolbar-icons";
 import { DoodleBackground } from "./doodle-background";
+import { MaintenanceBanner } from "./maintenance-banner";
 import { PageTitle, StudyScreen } from "./learning-ui";
 import type { PageTitleIcon } from "./ui/page-title";
 import { OrganizationSwitcherTrigger } from "./organization-switcher";
@@ -182,7 +183,11 @@ export function TabScreen({
       <StudyScreen {...screenProps} title="" headerShown={ios}>
         {floating ? null : <TabActions right={right} floating={false} />}
         {title ? <PageTitle icon={titleIcon}>{title}</PageTitle> : null}
+        {/* Full-bleed content starts under the header, where the notice
+            would hide; there it follows the content instead. */}
+        {floating ? null : <MaintenanceBanner />}
         {children}
+        {floating ? <MaintenanceBanner /> : null}
       </StudyScreen>
       {floating ? <TabActions right={right} floating /> : null}
     </>

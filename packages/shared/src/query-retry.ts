@@ -1,3 +1,5 @@
+import { maintenanceFromError } from "./mobile-sync/maintenance";
+
 const NON_RETRYABLE_CODES = new Set([
   "BAD_REQUEST",
   "UNAUTHORIZED",
@@ -7,7 +9,8 @@ const NON_RETRYABLE_CODES = new Set([
 
 /**
  * React Query `retry` for tRPC calls: up to two retries, none for errors a
- * retry cannot fix (bad input, auth, missing data).
+ * retry cannot fix (bad input, auth, missing data) or that will not change
+ * within seconds (maintenance).
  */
 export function shouldRetryQuery(failureCount: number, error: unknown) {
   const code =
@@ -20,5 +23,9 @@ export function shouldRetryQuery(failureCount: number, error: unknown) {
       ? error.data.code
       : undefined;
 
-  return failureCount < 2 && !NON_RETRYABLE_CODES.has(String(code));
+  return (
+    failureCount < 2 &&
+    !NON_RETRYABLE_CODES.has(String(code)) &&
+    !maintenanceFromError(error)
+  );
 }

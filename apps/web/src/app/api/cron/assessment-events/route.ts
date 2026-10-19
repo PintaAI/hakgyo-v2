@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "~/env";
 import { runAssessmentEventLifecycle } from "~/server/assessment/event-lifecycle";
 import { db } from "~/server/db";
+import { skipCronDuringMaintenance } from "~/server/maintenance";
 
 export const runtime = "nodejs";
 // Runs under Fluid compute's default 300-second limit (vercel.json enables
@@ -34,6 +35,8 @@ async function handler(request: Request) {
   if (!isAuthorized(request)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const skipped = await skipCronDuringMaintenance();
+  if (skipped) return skipped;
   const startedAt = Date.now();
   const result = await runAssessmentEventLifecycle(
     db,

@@ -7,6 +7,10 @@
  * need to use are documented accordingly near the end.
  */
 
+import {
+  isMaintenanceState,
+  type MaintenanceState,
+} from "@hakgyo/shared/mobile-sync";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
@@ -21,7 +25,30 @@ import {
   type RequestCache,
 } from "~/server/request-cache";
 import { hasAuthenticatedActor } from "~/server/api/trpc-principal";
-import { getSuperadminUser } from "~/server/authorization/superadmin";
+import {
+  getSuperadminUser,
+  isSuperadminEmail,
+} from "~/server/authorization/superadmin";
+import {
+  getMaintenanceState,
+  isBlockedByMaintenance,
+  maintenanceError,
+  procedureAccess,
+} from "~/server/maintenance";
+
+/**
+ * During `full` maintenance the database may be down; a failed session lookup
+ * then reads as signed out so procedures answer with the maintenance error
+ * instead of a server error.
+ */
+async function lookupSession(headers: Headers) {
+  try {
+    return await auth.api.getSession({ headers });
+  } catch (error) {
+    if ((await getMaintenanceState())?.mode === "full") return null;
+    throw error;
+  }
+}
 
 /**
  * 1. CONTEXT
@@ -43,7 +70,7 @@ export const createTRPCContext = async (opts: {
   const authSession =
     opts.authSession !== undefined
       ? opts.authSession
-      : await auth.api.getSession({ headers: opts.headers });
+      : await lookupSession(opts.headers);
   const session =
     authSession && isActiveUser(authSession.user) ? authSession : null;
   return {
@@ -78,6 +105,17 @@ function isUpgradeRequiredCause(
   );
 }
 
+function isMaintenanceCause(
+  cause: unknown,
+): cause is Error & { state: MaintenanceState } {
+  return (
+    cause instanceof Error &&
+    cause.name === "MaintenanceError" &&
+    "state" in cause &&
+    isMaintenanceState(cause.state)
+  );
+}
+
 /**
  * 2. INITIALIZATION
  *
@@ -100,6 +138,9 @@ const t = initTRPC.context<TRPCContext>().create({
         upgradeRequired: isUpgradeRequiredCause(error.cause)
           ? { minProtocol: error.cause.minProtocol }
           : null,
+        // Maintenance mode (see `~/server/maintenance`): clients show the
+        // notice and the mobile sync engine pauses instead of failing.
+        maintenance: isMaintenanceCause(error.cause) ? error.cause.state : null,
       },
     };
   },
@@ -149,13 +190,37 @@ const timingMiddleware = t.middleware(async ({ ctx, next, path, type }) => {
 });
 
 /**
+ * Rejects procedures while maintenance mode blocks them: everything in `full`,
+ * mutations in `read_only`. Superadmins (by session email, no database lookup)
+ * pass so they can verify the system; MCP callers have no session and never
+ * bypass.
+ */
+const maintenanceMiddleware = t.middleware(async ({ ctx, next, type }) => {
+  const state = await getMaintenanceState();
+  if (
+    state &&
+    isBlockedByMaintenance(state.mode, procedureAccess(type), {
+      superadmin: isSuperadminEmail(ctx.session?.user.email ?? ""),
+    })
+  ) {
+    throw maintenanceError(state);
+  }
+  return next();
+});
+
+/** Every procedure type below builds on this one. */
+const baseProcedure = t.procedure
+  .use(maintenanceMiddleware)
+  .use(timingMiddleware);
+
+/**
  * Public (unauthenticated) procedure
  *
  * This is the base piece you use to build new queries and mutations on your tRPC API. It does not
  * guarantee that a user querying is authorized, but you can still access user session data if they
  * are logged in.
  */
-export const publicProcedure = t.procedure.use(timingMiddleware);
+export const publicProcedure = baseProcedure;
 
 /**
  * Protected (authenticated) procedure
@@ -165,25 +230,23 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  *
  * @see https://trpc.io/docs/procedures
  */
-export const protectedProcedure = t.procedure
-  .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (
-      !ctx.actorUserId ||
-      !hasAuthenticatedActor({
-        actorKind: ctx.actorKind,
-        actorUserId: ctx.actorUserId,
-        sessionUserId: ctx.session?.user.id,
-      })
-    ) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
-    return next({
-      ctx: {
-        actorUserId: ctx.actorUserId,
-      },
-    });
+export const protectedProcedure = baseProcedure.use(({ ctx, next }) => {
+  if (
+    !ctx.actorUserId ||
+    !hasAuthenticatedActor({
+      actorKind: ctx.actorKind,
+      actorUserId: ctx.actorUserId,
+      sessionUserId: ctx.session?.user.id,
+    })
+  ) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return next({
+    ctx: {
+      actorUserId: ctx.actorUserId,
+    },
   });
+});
 
 export const superadminProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {

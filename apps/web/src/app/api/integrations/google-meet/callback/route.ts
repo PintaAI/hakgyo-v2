@@ -12,8 +12,9 @@ import {
   integrationForbiddenResponse,
   redirectToIntegrationSettings,
 } from "~/server/integrations/oauth-routes";
+import { guardRoute } from "~/server/maintenance";
 
-export async function GET(request: Request) {
+async function handler(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -111,3 +112,6 @@ export async function GET(request: Request) {
     googleMeet: "connected",
   });
 }
+
+// Connecting stores the grant, so the whole flow waits while writes are blocked.
+export const GET = guardRoute("write", handler);

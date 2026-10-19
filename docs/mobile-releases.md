@@ -43,6 +43,10 @@ Rules that keep old clients and queued work safe:
 - Cached data (course bundles, the learner index) is disposable: bump `BUNDLE_SCHEMA` or `INDEX_SCHEMA` instead of migrating it on the device.
 - Temporary server unavailability (maintenance, overload) must use a transient error code such as `SERVICE_UNAVAILABLE`. `BAD_REQUEST`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT` and `PRECONDITION_FAILED` are terminal for the sync engine and eventually move operations to the dead-letter list.
 
+## Maintenance mode
+
+For big backend changes and incidents, switch the server to maintenance (`MAINTENANCE_MODE`: `scheduled`, `read_only` or `full`) instead of forcing an update. The app keeps working like offline: learners study from the device, the outbox queues and syncs when maintenance ends. Modes, toggling on Vercel, what each mode blocks and the runbook are in `docs/maintenance.md`.
+
 ## Who runs which build
 
 `mobileSyncV2.getManifest` stores the newest build per user and platform in `mobileClientVersion` (written after the response, at most hourly per user). Builds older than the `platform` header field are not recorded.

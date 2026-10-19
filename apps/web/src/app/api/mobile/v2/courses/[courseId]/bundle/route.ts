@@ -12,6 +12,7 @@ import type { NextRequest } from "next/server";
 
 import { createTRPCContext } from "~/server/api/trpc";
 import { enrolledCourseWhere } from "~/server/learning/enrolled-courses";
+import { guardRoute } from "~/server/maintenance";
 import { courseBundleCache } from "~/server/mobile/course-bundle-cache";
 import { getCourseRevisions } from "~/server/mobile/sync-log";
 
@@ -23,7 +24,7 @@ import { getCourseRevisions } from "~/server/mobile/sync-log";
  * response is still private: it is only sent to learners enrolled in the
  * course, and `no-store` keeps intermediaries out of the picture.
  */
-export async function GET(
+async function handler(
   request: NextRequest,
   context: { params: Promise<{ courseId: string }> },
 ) {
@@ -86,3 +87,6 @@ export async function GET(
     },
   });
 }
+
+// A read: served in `read_only`, 503 in `full` (the app pauses syncing).
+export const GET = guardRoute("read", handler);

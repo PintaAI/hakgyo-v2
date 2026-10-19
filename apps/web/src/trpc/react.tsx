@@ -1,10 +1,12 @@
 "use client";
 
+import { maintenanceFromError } from "@hakgyo/shared/mobile-sync";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { httpBatchStreamLink, loggerLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useState } from "react";
+import { toast } from "sonner";
 import SuperJSON from "superjson";
 
 import type { AppRouter } from "~/server/api/root";
@@ -17,10 +19,22 @@ const getQueryClient = () => {
     return createQueryClient();
   }
   // Browser: use singleton pattern to keep the same query client
-  clientQueryClientSingleton ??= createQueryClient();
+  clientQueryClientSingleton ??= createQueryClient({
+    onMutationError: showMaintenanceError,
+  });
 
   return clientQueryClientSingleton;
 };
+
+/**
+ * A write rejected by `read_only` maintenance shows the server's message
+ * (Indonesian, with the expected end) wherever it happened. One toast at a
+ * time: the id replaces an earlier one.
+ */
+function showMaintenanceError(error: unknown) {
+  if (!maintenanceFromError(error)) return;
+  toast.error((error as Error).message, { id: "maintenance" });
+}
 
 export const api = createTRPCReact<AppRouter>();
 

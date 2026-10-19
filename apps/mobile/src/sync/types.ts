@@ -1,5 +1,9 @@
 import type { RouterInputs, RouterOutputs } from "@hakgyo/api";
-import type { CourseBundle, LearnerState } from "@hakgyo/shared/mobile-sync";
+import type {
+  CourseBundle,
+  LearnerState,
+  MaintenanceState,
+} from "@hakgyo/shared/mobile-sync";
 
 import type { LocalDataStats } from "./store";
 
@@ -79,7 +83,9 @@ export type BundleFetchResult =
       /** From the `X-Bundle-Revision` header (falls back to the body). */
       revision: string;
     }
-  | { status: "upgrade-required"; minProtocol: number };
+  | { status: "upgrade-required"; minProtocol: number }
+  /** 503 from the bundle route during `full` maintenance. */
+  | { status: "maintenance"; maintenance: MaintenanceState };
 
 /** Timing of one course bundle download (development diagnostics). */
 export type BundleTiming = {
@@ -120,7 +126,8 @@ export type MobileSyncTransport = {
 // Engine results and state
 // ---------------------------------------------------------------------------
 
-export type SyncQueuedReason = "offline" | "unavailable" | "upgrade-required";
+export type SyncQueuedReason =
+  "offline" | "unavailable" | "upgrade-required" | "maintenance";
 
 export type SyncCheckpointResult =
   | { state: "synced"; result: MobileSyncCommitResult }
@@ -145,6 +152,16 @@ export type BundleSyncProgress = {
 
 export type MobileSyncEngineState = {
   upgradeRequired: UpgradeRequired | null;
+  /**
+   * Maintenance announced by the manifest (`scheduled`, `read_only`) or met
+   * as a rejected request. Cleared by the next successful sync call.
+   */
+  maintenance: MaintenanceState | null;
+  /**
+   * Set while a rejected request paused network sync: no commit, manifest,
+   * index or bundle request is sent before this time (ms since epoch).
+   */
+  maintenanceRetryAt: number | null;
   isRefreshing: boolean;
   bundles: BundleSyncProgress;
   /** Server-suggested delay before the next manifest poll. */

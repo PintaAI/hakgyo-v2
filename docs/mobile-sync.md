@@ -6,6 +6,8 @@ Database triggers append rows to the `MobileSyncChange` log whenever learner-vis
 
 Every v2 request announces its sync protocol. Clients older than `MIN_SYNC_PROTOCOL` receive `UPGRADE_REQUIRED` and show the update screen; raise `MIN_SYNC_PROTOCOL` in `@hakgyo/shared/mobile-sync` to force an update. See `docs/mobile-releases.md` for the rollout order and the OTA publish guard.
 
+During server maintenance the manifest carries a `maintenance` notice, and requests rejected with `SERVICE_UNAVAILABLE` (`data.maintenance`) pause network sync without failing any operation; see `docs/maintenance.md`.
+
 ## Operation versions
 
 Outbox operations (`CONTENT_COMPLETED`, `VOCABULARY_SESSION_COMPLETED`, `ASSESSMENT_COMPLETED`) can sit on a device for a long time and are replayed by whatever JavaScript the app runs later, against the newest server. Each operation therefore carries a version `v`; an operation without `v` is version 1, which is what every client built before versioning sends. The current version is `OPERATION_VERSION` in `@hakgyo/shared/mobile-sync` (`packages/shared/src/mobile-sync/operations.ts`).

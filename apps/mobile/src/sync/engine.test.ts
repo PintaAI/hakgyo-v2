@@ -4,16 +4,21 @@ import SuperJSON from "superjson";
 import {
   BUNDLE_SCHEMA,
   INDEX_SCHEMA,
+  MAINTENANCE_ERROR_CODE,
+  maintenanceMessage,
   OPERATION_VERSION,
   SYNC_PROTOCOL,
   UPGRADE_REQUIRED_MESSAGE,
   type CourseBundle,
+  type MaintenanceState,
 } from "@hakgyo/shared/mobile-sync";
 
 import {
   createMobileSyncEngine,
   DEAD_LETTER_MIN_AGE_MS,
   DEAD_LETTER_MIN_FAILURES,
+  isTerminalSyncFailure,
+  MAINTENANCE_RETRY_MS,
   persistedQueryKey,
   readQueuedOperation,
   upgradeRequiredFromError,
@@ -162,7 +167,10 @@ function engineFor(
   } & Partial<
     Pick<
       Parameters<typeof createMobileSyncEngine>[0],
-      "onPendingCountChange" | "onDeadLetterCountChange" | "onStateChange"
+      | "onPendingCountChange"
+      | "onDeadLetterCountChange"
+      | "onStateChange"
+      | "now"
     >
   > = {},
 ) {
@@ -178,6 +186,7 @@ function engineFor(
     onDeadLetterCountChange: input.onDeadLetterCountChange,
     onStateChange: input.onStateChange,
     bundleSync: { backgroundJitterMs: 0, backoffBaseMs: 1, random: () => 0 },
+    now: input.now,
   });
   return { engine, store, queryClient };
 }
@@ -1642,5 +1651,233 @@ describe("mobile sync notices", () => {
     await store.clearAllData();
     expect(store.noticeBaselines.size).toBe(0);
     expect(await engine.listNotices()).toEqual([]);
+  });
+});
+
+describe("mobile sync engine maintenance", () => {
+  const HOUR = 60 * 60 * 1000;
+
+  /** What the tRPC client throws for a procedure rejected by maintenance. */
+  function maintenanceRejection(state: MaintenanceState) {
+    return Object.assign(new Error(maintenanceMessage(state)), {
+      data: { code: MAINTENANCE_ERROR_CODE, maintenance: state },
+    });
+  }
+
+  function clock(start = Date.parse("2026-10-20T15:00:00.000Z")) {
+    let current = start;
+    return {
+      now: () => current,
+      advance: (ms: number) => {
+        current += ms;
+      },
+    };
+  }
+
+  test("maintenance errors are transient for the outbox", () => {
+    expect(isTerminalSyncFailure(MAINTENANCE_ERROR_CODE)).toBe(false);
+    expect(isTerminalSyncFailure("SERVICE_UNAVAILABLE")).toBe(false);
+  });
+
+  test("pauses sync until the announced end without counting failures, then resumes", async () => {
+    const time = clock();
+    const readOnly: MaintenanceState = {
+      mode: "read_only",
+      message: null,
+      startsAt: null,
+      until: new Date(time.now() + HOUR).toISOString(),
+    };
+    let blocked = true;
+    let commitCalls = 0;
+    let manifestCalls = 0;
+    const store = memoryStore();
+    const recordedFailures: string[] = [];
+    const recordFailures = store.recordOperationFailures;
+    store.recordOperationFailures = async (userId, ids, failedAt) => {
+      recordedFailures.push(...ids);
+      return recordFailures(userId, ids, failedAt);
+    };
+    const { engine } = engineFor({
+      store,
+      now: time.now,
+      transport: {
+        commit: async ({ operations }) => {
+          commitCalls += 1;
+          if (blocked) throw maintenanceRejection(readOnly);
+          return commitResult(operations);
+        },
+        getManifest: async () => {
+          manifestCalls += 1;
+          return manifest({ courses: [] });
+        },
+      },
+    });
+    await engine.initialize();
+    await engine.putOperation({
+      id: "content:item-1",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-1",
+    });
+
+    expect(await engine.checkpoint()).toEqual({
+      state: "queued",
+      reason: "maintenance",
+    });
+    expect(engine.getState().maintenance).toEqual(readOnly);
+    expect(engine.getState().maintenanceRetryAt).toBe(
+      Date.parse(readOnly.until!),
+    );
+    expect(engine.getState().upgradeRequired).toBeNull();
+
+    // Still studying: the outbox keeps queueing while sync is paused.
+    await engine.putOperation({
+      id: "content:item-2",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-2",
+    });
+    time.advance(HOUR / 2);
+    expect(await engine.checkForUpdates()).toEqual({
+      state: "queued",
+      reason: "maintenance",
+    });
+    expect(await engine.refresh(undefined, { force: true })).toEqual({
+      state: "queued",
+      reason: "maintenance",
+    });
+    expect(commitCalls).toBe(1);
+    expect(manifestCalls).toBe(0);
+    expect(await store.countOperations("user-1")).toBe(2);
+    expect(recordedFailures).toEqual([]);
+    expect(await store.countDeadLetters("user-1")).toBe(0);
+
+    // Maintenance is over at the announced end.
+    blocked = false;
+    time.advance(HOUR / 2);
+    expect((await engine.checkForUpdates()).state).toBe("refreshed");
+    expect(commitCalls).toBe(2);
+    expect(manifestCalls).toBe(1);
+    expect(await store.countOperations("user-1")).toBe(0);
+    expect(recordedFailures).toEqual([]);
+    expect(engine.getState().maintenance).toBeNull();
+    expect(engine.getState().maintenanceRetryAt).toBeNull();
+    await engine.dispose();
+  });
+
+  test("retries every few minutes without an end, and a manual sync tries at once", async () => {
+    const time = clock();
+    const full: MaintenanceState = {
+      mode: "full",
+      message: "Migrasi database.",
+      startsAt: null,
+      until: null,
+    };
+    let blocked = true;
+    let manifestCalls = 0;
+    const { engine } = engineFor({
+      now: time.now,
+      transport: {
+        getManifest: async () => {
+          manifestCalls += 1;
+          if (blocked) throw maintenanceRejection(full);
+          return manifest({ courses: [] });
+        },
+      },
+    });
+    await engine.initialize();
+
+    expect((await engine.refresh()).state).toBe("queued");
+    expect(engine.getState().maintenanceRetryAt).toBe(
+      time.now() + MAINTENANCE_RETRY_MS,
+    );
+    time.advance(MAINTENANCE_RETRY_MS - 1);
+    expect(await engine.refresh()).toEqual({
+      state: "queued",
+      reason: "maintenance",
+    });
+    expect(manifestCalls).toBe(1);
+    time.advance(1);
+    expect((await engine.refresh()).state).toBe("queued");
+    expect(manifestCalls).toBe(2);
+
+    // Pull-to-refresh asks the server even while paused.
+    blocked = false;
+    expect(
+      (await engine.checkForUpdates(undefined, { manual: true })).state,
+    ).toBe("refreshed");
+    expect(manifestCalls).toBe(3);
+    expect(engine.getState().maintenance).toBeNull();
+    await engine.dispose();
+  });
+
+  test("announcements from the manifest show without pausing sync", async () => {
+    const time = clock();
+    const scheduled: MaintenanceState = {
+      mode: "scheduled",
+      message: null,
+      startsAt: new Date(time.now() + HOUR).toISOString(),
+      until: new Date(time.now() + 2 * HOUR).toISOString(),
+    };
+    let announced: MaintenanceState | null = scheduled;
+    let manifestCalls = 0;
+    const { engine } = engineFor({
+      now: time.now,
+      transport: {
+        getManifest: async () => {
+          manifestCalls += 1;
+          return manifest({ courses: [], maintenance: announced });
+        },
+      },
+    });
+    await engine.initialize();
+
+    expect((await engine.refresh()).state).toBe("refreshed");
+    expect(engine.getState().maintenance).toEqual(scheduled);
+    expect(engine.getState().maintenanceRetryAt).toBeNull();
+    expect((await engine.refresh(undefined, { force: true })).state).not.toBe(
+      "queued",
+    );
+    expect(manifestCalls).toBe(2);
+
+    announced = null;
+    await engine.refresh(undefined, { force: true });
+    expect(engine.getState().maintenance).toBeNull();
+    await engine.dispose();
+  });
+
+  test("a bundle answered with maintenance stops the queue without failing", async () => {
+    const time = clock();
+    const full: MaintenanceState = {
+      mode: "full",
+      message: null,
+      startsAt: null,
+      until: new Date(time.now() + HOUR).toISOString(),
+    };
+    let fetches = 0;
+    const failedCounts: number[] = [];
+    const { engine, store } = engineFor({
+      now: time.now,
+      onStateChange: (state) => failedCounts.push(state.bundles.failed),
+      transport: {
+        fetchBundle: async () => {
+          fetches += 1;
+          return { status: "maintenance", maintenance: full };
+        },
+      },
+    });
+    await engine.initialize();
+
+    await engine.refresh();
+    await engine.whenBundlesIdle();
+    expect(fetches).toBe(1);
+    expect(failedCounts.length).toBeGreaterThan(0);
+    expect(failedCounts.every((count) => count === 0)).toBe(true);
+    expect(engine.getState().maintenance).toEqual(full);
+    expect(engine.getState().maintenanceRetryAt).toBe(Date.parse(full.until!));
+    expect(await store.loadBundleStructure("user-1", "course-1")).toBeNull();
+    expect(await engine.refresh()).toEqual({
+      state: "queued",
+      reason: "maintenance",
+    });
+    await engine.dispose();
   });
 });

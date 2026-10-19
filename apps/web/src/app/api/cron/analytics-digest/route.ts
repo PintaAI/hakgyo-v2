@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "~/env";
 import { sendWeeklyAnalyticsDigests } from "~/server/analytics/weekly-digest";
 import { db } from "~/server/db";
+import { skipCronDuringMaintenance } from "~/server/maintenance";
 
 export const runtime = "nodejs";
 // Runs under Fluid compute's default 300-second limit, like the other cron
@@ -27,6 +28,8 @@ async function handler(request: Request) {
   if (!isAuthorized(request)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const skipped = await skipCronDuringMaintenance();
+  if (skipped) return skipped;
   return Response.json(await sendWeeklyAnalyticsDigests(db));
 }
 
