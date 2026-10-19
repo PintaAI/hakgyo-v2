@@ -1,8 +1,9 @@
-import { router } from "expo-router";
 import { View } from "react-native";
 
+import { openCourseItem } from "../../lib/navigation";
 import { dayLabel } from "../../lib/study";
 import { LearningItemRow } from "./learning-item-row";
+import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 
 export type CohortMilestone = {
   courseItemId: string;
@@ -24,12 +25,6 @@ export type CohortMilestoneGroup = {
   progressPercent: number;
   milestones: CohortMilestone[];
 };
-
-function milestoneTypeLabel(type: CohortMilestone["type"]) {
-  if (type === "VOCABULARY_SET") return "Kosakata";
-  if (type === "ASSESSMENT") return "Tugas";
-  return "Materi";
-}
 
 function milestoneStatus(milestone: CohortMilestone) {
   const parts = [milestone.moduleTitle];
@@ -60,21 +55,15 @@ export function CohortMilestoneTimeline({
           key={milestone.courseItemId}
           title={milestone.title}
           type={milestone.type}
-          typeLabel={milestoneTypeLabel(milestone.type)}
+          typeLabel={getLearningItemTypeMeta(milestone.type).label}
           statusText={milestoneStatus(milestone)}
           completed={false}
           isLast={index === milestones.length - 1}
           titleLines={2}
           onPress={() =>
-            router.push({
-              pathname: "/courses/[courseId]/items/[courseItemId]",
-              params: {
-                courseId,
-                courseItemId: milestone.courseItemId,
-              },
-            })
+            openCourseItem({ courseId, courseItemId: milestone.courseItemId })
           }
-          accessibilityHint={`Buka ${milestoneTypeLabel(milestone.type).toLowerCase()} yang sudah selesai`}
+          accessibilityHint={`Buka ${getLearningItemTypeMeta(milestone.type).label.toLowerCase()} yang sudah selesai`}
         />
       ))}
     </View>

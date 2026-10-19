@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import {
   ActivityIndicator,
   Platform,
@@ -12,36 +11,24 @@ import { getOrganizationSwitcherOptions } from "../lib/organization-switcher";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { GlassBox } from "./GlassBox";
+import { Avatar, SectionHeader } from "./learning-ui";
 
 function OrganizationMark({
   logoUrl,
   name,
-  size = "size-9",
+  size = 36,
 }: {
   logoUrl: string | null;
   name: string;
-  size?: string;
+  size?: number;
 }) {
   return (
-    <View
-      className={`${size} items-center justify-center overflow-hidden rounded-full border border-border bg-muted`}
-    >
-      {logoUrl ? (
-        <Image
-          accessibilityIgnoresInvertColors
-          cachePolicy="memory-disk"
-          className="size-full"
-          contentFit="cover"
-          source={{ uri: logoUrl }}
-          style={{ width: "100%", height: "100%" }}
-          transition={0}
-        />
-      ) : (
-        <Text className="text-xs font-black text-primary">
-          {name.trim().charAt(0).toUpperCase() || "H"}
-        </Text>
-      )}
-    </View>
+    <Avatar
+      initials={name.trim().charAt(0).toUpperCase() || "H"}
+      size={size}
+      tone="muted"
+      uri={logoUrl}
+    />
   );
 }
 
@@ -69,7 +56,7 @@ export function OrganizationSwitcherTrigger({
       <OrganizationMark
         logoUrl={activeBrand.logoUrl}
         name={activeBrand.name}
-        size={compact ? "size-8" : "size-9"}
+        size={compact ? 32 : 36}
       />
       <Text
         className={`min-w-0 shrink text-sm font-bold ${compact ? "" : "text-foreground"}`}
@@ -142,19 +129,19 @@ export function OrganizationSwitcherContent({
       showsVerticalScrollIndicator={false}
     >
       {Platform.OS !== "ios" ? (
-        <View className="flex-row items-center justify-between gap-4">
-          <Text className="text-xl font-black text-foreground">
-            Pilih organisasi
-          </Text>
-          <Pressable
-            accessibilityLabel="Tutup pemilih organisasi"
-            accessibilityRole="button"
-            className="rounded-full px-3 py-2 active:opacity-60"
-            onPress={onClose}
-          >
-            <Text className="text-xl font-bold text-primary">×</Text>
-          </Pressable>
-        </View>
+        <SectionHeader
+          title="Pilih organisasi"
+          trailing={
+            <Pressable
+              accessibilityLabel="Tutup pemilih organisasi"
+              accessibilityRole="button"
+              className="rounded-full px-3 py-2 active:opacity-60"
+              onPress={onClose}
+            >
+              <Text className="text-xl font-bold text-primary">×</Text>
+            </Pressable>
+          }
+        />
       ) : null}
       <View className="h-5 justify-center">
         <ActivityIndicator
@@ -187,7 +174,7 @@ export function OrganizationSwitcherContent({
             <OrganizationMark
               logoUrl={organization.logoUrl}
               name={organization.name}
-              size="size-11"
+              size={44}
             />
             <View className="min-w-0 flex-1 gap-0.5">
               <Text

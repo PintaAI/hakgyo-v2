@@ -6,15 +6,14 @@ import * as Updates from "expo-updates";
 import * as WebBrowser from "expo-web-browser";
 import { useUpdates } from "expo-updates";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Linking, Platform, Text } from "react-native";
+import { Alert, Linking, Text } from "react-native";
 
 import { AppSegmentedControl } from "../../../../src/components/app-segmented-control";
-import { DoodleBackground } from "../../../../src/components/doodle-background";
 import {
   formatDuration,
   LocalDataReport,
 } from "../../../../src/components/local-data-report";
-import { StudyScreen } from "../../../../src/components/learning-ui";
+import { TabScreen } from "../../../../src/components/tab-screen";
 import {
   MilestoneTrail,
   ProfileHero,
@@ -248,22 +247,14 @@ export default function ProfileTab() {
 
   return (
     <>
-      <DoodleBackground />
-      <StudyScreen
-        title=""
-        headerShown={Platform.OS === "ios"}
+      <TabScreen
+        title="Profil"
         onRefresh={() => {
           void syncNow(activeOrganizationId ?? undefined);
           void refreshOrganizations();
         }}
         refreshing={isSyncing || isRefreshingOrganizations}
       >
-        <Text
-          accessibilityRole="header"
-          className="text-[26px] font-black leading-8 tracking-tight text-foreground"
-        >
-          Profil
-        </Text>
         <AppSegmentedControl
           values={["Profil", "Pengaturan"]}
           selectedIndex={segment}
@@ -504,7 +495,7 @@ export default function ProfileTab() {
             ) : null}
           </>
         )}
-      </StudyScreen>
+      </TabScreen>
     </>
   );
 }

@@ -22,6 +22,18 @@ export function withOpacity(color: string, opacity: number) {
   return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
 }
 
+/**
+ * The translucent tint for glass surfaces: stronger in dark mode, where the
+ * backdrop would otherwise swallow it.
+ */
+export function glassTint(
+  colors: ThemeColors,
+  colorScheme: ColorScheme,
+  tone: "primary" | "destructive" = "primary",
+) {
+  return withOpacity(colors[tone], colorScheme === "dark" ? 0.35 : 0.18);
+}
+
 function parseColor(color: string) {
   const hex = color.match(/^#([0-9a-f]{6})$/i)?.[1];
   if (hex) {

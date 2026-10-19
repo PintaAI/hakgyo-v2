@@ -27,6 +27,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Action, EmptyState, ProgressBar } from "../learning-ui";
 import { useContentRenderer } from "./context";
 import type { AssetUrlResolver, BlockRendererProps } from "./types";
 
@@ -113,11 +114,9 @@ export function PdfPages({ block }: BlockRendererProps) {
 
   if (!book || !range || pages.length === 0) {
     return (
-      <View className="rounded-xl border border-dashed border-border p-5">
-        <Text className="text-sm text-muted-foreground">
-          Halaman PDF tidak tersedia. Sambungkan ke internet untuk mengunduhnya.
-        </Text>
-      </View>
+      <EmptyState variant="dashed">
+        Halaman PDF tidak tersedia. Sambungkan ke internet untuk mengunduhnya.
+      </EmptyState>
     );
   }
 
@@ -194,34 +193,25 @@ export function PdfPages({ block }: BlockRendererProps) {
       </View>
 
       <View className="flex-row items-center gap-3">
-        <Pressable
-          accessibilityRole="button"
+        <Action
           accessibilityLabel="Halaman sebelumnya"
           disabled={index === 0}
           onPress={() => goTo(index - 1)}
-          className="rounded-lg border border-border px-4 py-2.5 disabled:opacity-40"
+          size="sm"
+          variant="secondary"
         >
-          <Text className="text-sm font-semibold text-foreground">
-            ‹ Sebelumnya
-          </Text>
-        </Pressable>
-        <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-          <View
-            className="h-full rounded-full bg-primary"
-            style={{ width: `${((index + 1) / pages.length) * 100}%` }}
-          />
-        </View>
-        <Pressable
-          accessibilityRole="button"
+          ‹ Sebelumnya
+        </Action>
+        <ProgressBar className="flex-1" max={pages.length} value={index + 1} />
+        <Action
           accessibilityLabel="Halaman berikutnya"
           disabled={finished}
           onPress={() => goTo(index + 1)}
-          className="rounded-lg border border-border px-4 py-2.5 disabled:opacity-40"
+          size="sm"
+          variant="secondary"
         >
-          <Text className="text-sm font-semibold text-foreground">
-            Berikutnya ›
-          </Text>
-        </Pressable>
+          Berikutnya ›
+        </Action>
       </View>
       <Text className="text-center text-xs text-muted-foreground">
         Geser untuk membalik halaman · ketuk halaman untuk memperbesar

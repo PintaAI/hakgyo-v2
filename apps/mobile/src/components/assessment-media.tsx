@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../providers/MobileSyncProvider";
-import { DownloadProgressBar } from "./offline-download";
+import { ProgressBar } from "./learning-ui";
 import type { AssetPrefetchProgress } from "../sync/asset-resolver";
 
 /**
@@ -85,14 +85,14 @@ export function AssessmentMediaStatus({
             {amount}
           </Text>
         </View>
-        <DownloadProgressBar fraction={fraction} />
+        <ProgressBar value={fraction} />
       </View>
     );
   }
   if (progress.failed.length) {
     return (
       <View className="gap-2">
-        <DownloadProgressBar fraction={fraction} />
+        <ProgressBar value={fraction} />
         <View className="flex-row flex-wrap items-center gap-2">
           <Text className="flex-1 text-sm text-destructive">
             {progress.failed.length} dari {progress.total} media belum terunduh.

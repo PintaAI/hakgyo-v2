@@ -1,23 +1,20 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Text, TextInput, Pressable, View } from "react-native";
-import { SymbolView } from "expo-symbols";
+import { Keyboard, Text, TextInput, View } from "react-native";
 import type { NativeGesture } from "react-native-gesture-handler";
 
 import { localSample } from "../lib/local-sample";
-import { useAppTheme } from "../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../providers/MobileSyncProvider";
-import { withOpacity } from "../theme/colors";
 import { isDefinitionCorrect } from "../lib/today-vocabulary-practice";
 import { isVocabularyAnswerCorrect } from "../lib/vocabulary-practice";
 import {
   matchSpeechAlternative,
   type VocabularySpeechMode,
 } from "../lib/vocabulary-speech";
-import { useVocabularySpeech } from "../lib/use-vocabulary-speech";
+import { useHandsFreeSpeech } from "../lib/use-hands-free-speech";
+import { HandsFreeAnswerField } from "./hands-free-answer-field";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
-import { Action, Empty } from "./learning-ui";
-import { GlassBox } from "./GlassBox";
+import { Action, Empty, Eyebrow } from "./learning-ui";
 import {
   VocabularyPracticeDeck,
   type VocabularyPracticeDeckHandle,
@@ -44,7 +41,6 @@ export function TodayVocabularyPractice({
   scrollGesture: NativeGesture;
   pool: VocabularyPool;
 }) {
-  const { colors, colorScheme } = useAppTheme();
   const [seed, setSeed] = useState(randomSeed);
   const { finishVocabularySession, recordVocabularyAttempt } =
     useMobileSyncActions();
@@ -65,16 +61,9 @@ export function TodayVocabularyPractice({
   const [revealed, setRevealed] = useState(false);
   const [revealSaved, setRevealSaved] = useState(false);
   const [mode, setMode] = useState<VocabularySpeechMode>("ID");
-  // Hands-free mic session: on = auto-listen every card, auto-advance when
-  // correct, auto-clear + retry when wrong, until the user stops it.
-  const [handsFree, setHandsFree] = useState(false);
-  const [typing, setTyping] = useState(false);
   const initializedPool = useRef<string | undefined>(undefined);
   const inputRef = useRef<TextInput>(null);
   const restoreInputFocus = useRef(false);
-  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
 
   function poolSignature(items: readonly VocabularyCard[]) {
     return items.map((item) => `${item.entryId}:${item.setVersion}`).join(",");
@@ -135,6 +124,7 @@ export function TodayVocabularyPractice({
     const value = spokenDisplay ?? answer;
     if (!value.trim()) return;
     submitted.current = true;
+    speech.clearMiss();
     // Exact match against any STT alternative; fall back to the first
     // transcript so wrong answers are still recorded.
     const matched = spokenTranscripts?.length
@@ -144,13 +134,13 @@ export function TodayVocabularyPractice({
     if (spokenDisplay) setAnswer(matched);
     const correct = isAnswerCorrect(matched);
     setFeedback({ correct, saved: false });
-    if (!handsFree) inputRef.current?.focus();
+    if (!speech.handsFree) inputRef.current?.focus();
 
     await saveAnswer(correct);
   }
 
-  async function saveAnswer(correct: boolean) {
-    if (!card) return;
+  async function recordAttempt(result: "CORRECT" | "INCORRECT" | "REVEALED") {
+    if (!card) return false;
     const sessionId = roundSessionId.current;
     setRecordError(null);
     setRecordPending(true);
@@ -160,47 +150,51 @@ export function TodayVocabularyPractice({
         sessionId,
         timeZone: deviceTimeZone(),
         attempt: {
-          attemptId: `${sessionId}:${index}:${card.entryId}`,
+          attemptId: `${sessionId}:${index}:${card.entryId}${result === "REVEALED" ? ":revealed" : ""}`,
           entryId: card.entryId,
           evidence: "RECALL",
-          result: correct ? "CORRECT" : "INCORRECT",
+          result,
           sourceCourseItemId: card.sourceCourseItemId,
           vocabularySetId: card.vocabularySetId,
         },
       });
-      if (roundSessionId.current !== sessionId) return;
-      setFeedback({ correct, saved: true });
+      return roundSessionId.current === sessionId;
     } catch (cause) {
-      if (roundSessionId.current !== sessionId) return;
-      setRecordError(
-        cause instanceof Error
-          ? cause
-          : new Error("Tidak dapat menyimpan di perangkat"),
-      );
-      setFeedback({ correct, saved: false });
+      if (roundSessionId.current === sessionId)
+        setRecordError(
+          cause instanceof Error
+            ? cause
+            : new Error("Tidak dapat menyimpan di perangkat"),
+        );
+      throw cause;
     } finally {
       setRecordPending(false);
     }
   }
 
-  function clearAutoTimer() {
-    if (autoAdvanceTimer.current !== undefined) {
-      clearTimeout(autoAdvanceTimer.current);
-      autoAdvanceTimer.current = undefined;
+  async function saveAnswer(correct: boolean) {
+    const sessionId = roundSessionId.current;
+    try {
+      if (await recordAttempt(correct ? "CORRECT" : "INCORRECT"))
+        setFeedback({ correct, saved: true });
+    } catch {
+      if (roundSessionId.current === sessionId)
+        setFeedback({ correct, saved: false });
     }
   }
 
-  function stopSession() {
-    clearAutoTimer();
-    setHandsFree(false);
-    speech.abort();
+  async function saveReveal() {
+    try {
+      if (await recordAttempt("REVEALED")) setRevealSaved(true);
+    } catch {
+      // Keep the card blocked so the learner can retry this exact outcome.
+    }
   }
 
   function nextCard() {
-    clearAutoTimer();
-    speech.abort();
+    speech.interrupt();
     deckRef.current?.advance();
-    if (!handsFree) inputRef.current?.focus();
+    if (!speech.handsFree) inputRef.current?.focus();
   }
 
   function revealAnswer() {
@@ -208,57 +202,22 @@ export function TodayVocabularyPractice({
     // Claim the card synchronously: a queued keyboard submit must not award
     // credit after the learner has seen the answer.
     submitted.current = true;
-    clearAutoTimer();
-    speech.abort();
-    setTyping(false);
+    speech.interrupt();
     setRevealed(true);
     setRevealSaved(false);
     setAnswer("");
     // Keep the keyboard open: the input becomes "Siap untuk kata berikutnya?"
     // with a Next return key, so the learner can advance without re-tapping.
-    if (!handsFree) inputRef.current?.focus();
+    if (!speech.handsFree) inputRef.current?.focus();
     void saveReveal();
-  }
-
-  async function saveReveal() {
-    if (!card) return;
-    const sessionId = roundSessionId.current;
-    setRecordError(null);
-    setRecordPending(true);
-    try {
-      await recordVocabularyAttempt({
-        gameKey: "today-cards",
-        sessionId,
-        timeZone: deviceTimeZone(),
-        attempt: {
-          attemptId: `${sessionId}:${index}:${card.entryId}:revealed`,
-          entryId: card.entryId,
-          evidence: "RECALL",
-          result: "REVEALED",
-          sourceCourseItemId: card.sourceCourseItemId,
-          vocabularySetId: card.vocabularySetId,
-        },
-      });
-      if (roundSessionId.current === sessionId) setRevealSaved(true);
-    } catch (cause) {
-      setRecordError(
-        cause instanceof Error
-          ? cause
-          : new Error("Tidak dapat menyimpan di perangkat"),
-      );
-      // Keep the card blocked so the learner can retry this exact outcome.
-    } finally {
-      setRecordPending(false);
-    }
   }
 
   function handleInteractionChange(busy: boolean) {
     if (busy) {
-      if (handsFree) {
+      if (speech.handsFree) {
         restoreInputFocus.current = false;
-        setTyping(false);
         Keyboard.dismiss();
-        speech.abort();
+        speech.interrupt();
       } else {
         restoreInputFocus.current = inputRef.current?.isFocused() ?? false;
       }
@@ -267,19 +226,17 @@ export function TodayVocabularyPractice({
   }
 
   function finishAdvance() {
-    clearAutoTimer();
-    speech.abort();
+    speech.interrupt();
     setIndex((value) => value + 1);
     setAnswer("");
     setFeedback(undefined);
     setRevealed(false);
-    setTyping(false);
     setRecordError(null);
     setMoving(false);
     submitted.current = false;
     if (index + 1 >= round.length) {
       Keyboard.dismiss();
-      stopSession();
+      speech.stop();
       void finishVocabularySession(organizationId);
     }
   }
@@ -293,17 +250,14 @@ export function TodayVocabularyPractice({
   function handleAnswerChange(value: string) {
     // Keep the keyboard mounted, but preserve the submitted answer during review.
     if (submitted.current || moving) return;
-    if (handsFree) {
-      setTyping(true);
-      speech.abort();
-    }
+    speech.beginTyping();
     setAnswer(value);
   }
 
   function handleInputSubmit() {
-    setTyping(false);
+    speech.endTyping();
     if (feedback?.saved || (revealed && revealSaved)) {
-      if (handsFree) Keyboard.dismiss();
+      if (speech.handsFree) Keyboard.dismiss();
       nextCard();
       return;
     }
@@ -315,96 +269,77 @@ export function TodayVocabularyPractice({
       void saveAnswer(feedback.correct);
       return;
     }
-    if (handsFree) {
-      Keyboard.dismiss();
-      if (!matchSpeechAlternative(expectedAnswer, [answer])) {
-        setAnswer("");
-        return;
-      }
+    if (speech.handsFree) Keyboard.dismiss();
+    if (speech.rejectTyped(answer)) {
+      setAnswer("");
+      return;
     }
     void checkAnswer();
   }
 
-  const speech = useVocabularySpeech({
+  const speech = useHandsFreeSpeech({
     mode,
     contextualStrings: useMemo(
       () => round.map((item) => (mode === "KR" ? item.term : item.definition)),
       [mode, round],
     ),
-    disabled: !card || moving || typing,
-    onInterim: (text) => {
-      if (!submitted.current && !moving) setAnswer(text);
-    },
-    onFinal: (transcripts) => {
-      if (handsFree && !matchSpeechAlternative(expectedAnswer, transcripts)) {
-        setAnswer("");
-        return;
-      }
-      void checkAnswer(transcripts);
-    },
+    expectedAnswer,
+    blocked: !card || moving,
+    canAnswer:
+      !!card && !moving && !feedback && !revealed && !submitted.current,
+    canAutoAdvance: !!feedback?.correct && feedback.saved && !moving,
+    onAdvance: nextCard,
+    onInterim: setAnswer,
+    onAnswer: (transcripts) => void checkAnswer(transcripts),
+    onMiss: () => setAnswer(""),
   });
-  const listening = speech.status === "listening";
-  const speechBusy = speech.status !== "idle";
-
-  useEffect(() => {
-    if (
-      !handsFree ||
-      !card ||
-      moving ||
-      typing ||
-      feedback ||
-      revealed ||
-      submitted.current ||
-      (speech.errorMessage && !speech.recoverableError) ||
-      speech.status !== "idle"
-    )
-      return;
-    void speech.start();
-  }, [card, feedback, handsFree, moving, revealed, speech, typing]);
-
-  useEffect(() => {
-    if (handsFree && speech.errorMessage && !speech.recoverableError)
-      setHandsFree(false);
-  }, [handsFree, speech.errorMessage, speech.recoverableError]);
-
-  useEffect(() => {
-    if (!handsFree || !feedback?.correct || !feedback.saved || moving) return;
-    clearAutoTimer();
-    autoAdvanceTimer.current = setTimeout(() => {
-      autoAdvanceTimer.current = undefined;
-      nextCard();
-    }, 650);
-    return clearAutoTimer;
-  }, [feedback, handsFree, moving]);
-
-  useEffect(() => clearAutoTimer, []);
+  const { handsFree, listening } = speech;
 
   function toggleSpeechSession() {
-    if (handsFree) {
-      stopSession();
-      return;
-    }
-    speech.clearError();
-    setTyping(false);
-    Keyboard.dismiss();
-    setHandsFree(true);
+    if (!handsFree) Keyboard.dismiss();
+    speech.toggle();
   }
 
   function handleModeChange(next: VocabularySpeechMode) {
     if (next === mode || moving) return;
-    stopSession();
-    setTyping(false);
+    speech.stop();
     Keyboard.dismiss();
     setMode(next);
     setAnswer("");
   }
 
   async function newMix() {
-    stopSession();
+    speech.stop();
     setRecordError(null);
     await finishVocabularySession(organizationId);
     setSeed(randomSeed());
   }
+
+  const hint = moving
+    ? "Menyiapkan kartu berikutnya…"
+    : listening
+      ? mode === "KR"
+        ? "Mendengarkan bahasa Korea… ketuk mikrofon untuk berhenti."
+        : "Mendengarkan bahasa Indonesia… ketuk mikrofon untuk berhenti."
+      : revealed
+        ? "Hanya belajar · XP dan streak tidak berubah. Geser ke atas atau samping atau ketuk Lanjut."
+        : feedback
+          ? feedback.saved
+            ? "Geser ke atas atau samping atau ketuk Lanjut jika sudah siap."
+            : "Menyimpan jawaban kamu…"
+          : mode === "KR"
+            ? "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."
+            : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati.";
+  const placeholder = revealed
+    ? "Siap untuk kata berikutnya?"
+    : listening
+      ? speech.retryPrompt
+        ? "Ucapkan lagi…"
+        : "Mendengarkan…"
+      : mode === "KR"
+        ? "Ketik kata Koreanya"
+        : "Ketik artinya";
+  const answered = Boolean(feedback || revealed);
 
   return (
     <View className="gap-3" style={{ overflow: "visible", zIndex: 1 }}>
@@ -412,16 +347,16 @@ export function TodayVocabularyPractice({
         <Empty>Belum ada kata untuk dilatih.</Empty>
       ) : round.length > 0 ? (
         <>
-          <Text className="text-center text-xs font-bold uppercase tracking-[1.2px] text-muted-foreground">
+          <Eyebrow size="md" className="text-center">
             {card
               ? `${card.vocabularySetTitle} · ${card.courseTitle}`
               : "Siap untuk campuran berikutnya?"}
-          </Text>
+          </Eyebrow>
           <View className="items-center">
             <VocabularyModeSwitch
               mode={mode}
               onChange={handleModeChange}
-              disabled={moving || speechBusy}
+              disabled={moving || speech.speechBusy}
             />
           </View>
           <VocabularyPracticeDeck
@@ -444,28 +379,14 @@ export function TodayVocabularyPractice({
           {card ? (
             <View className="gap-3">
               <Text className="text-center text-xs text-muted-foreground">
-                {moving
-                  ? "Menyiapkan kartu berikutnya…"
-                  : listening
-                    ? mode === "KR"
-                      ? "Mendengarkan bahasa Korea… ketuk mikrofon untuk berhenti."
-                      : "Mendengarkan bahasa Indonesia… ketuk mikrofon untuk berhenti."
-                    : revealed
-                      ? "Hanya belajar · XP dan streak tidak berubah. Geser ke atas atau samping atau ketuk Lanjut."
-                      : feedback
-                        ? feedback.saved
-                          ? "Geser ke atas atau samping atau ketuk Lanjut jika sudah siap."
-                          : "Menyimpan jawaban kamu…"
-                        : mode === "KR"
-                          ? "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."
-                          : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."}
+                {hint}
               </Text>
-              {speech.errorMessage && !feedback && !revealed ? (
+              {speech.speechError && !answered ? (
                 <Text
                   accessibilityRole="alert"
                   className="text-center text-sm text-destructive"
                 >
-                  {speech.errorMessage}
+                  {speech.speechError}
                 </Text>
               ) : null}
               {recordError ? (
@@ -477,217 +398,72 @@ export function TodayVocabularyPractice({
                 </Text>
               ) : null}
               <View className="flex-row items-center gap-2">
-                <GlassBox
-                  isInteractive
-                  tintColor={withOpacity(
-                    colors.primary,
-                    colorScheme === "dark" ? 0.35 : 0.18,
-                  )}
-                  glassEffectStyle="clear"
-                  style={{ borderRadius: 9999, flex: 1, height: 44 }}
-                >
-                  {answer.length === 0 ? (
-                    <View
-                      pointerEvents="none"
-                      className="absolute inset-0 items-center justify-center px-14"
-                    >
-                      <Text
-                        className="text-center text-base"
-                        style={{ color: colors.mutedForeground }}
-                      >
-                        {revealed
-                          ? "Siap untuk kata berikutnya?"
-                          : listening
-                            ? "Mendengarkan…"
-                            : mode === "KR"
-                              ? "Ketik kata Koreanya"
-                              : "Ketik artinya"}
-                      </Text>
-                    </View>
-                  ) : null}
-                  <TextInput
-                    ref={inputRef}
-                    accessibilityLabel={
-                      mode === "KR"
-                        ? `Kata Korea untuk ${card.definition}`
-                        : `Arti dari ${card.term}`
-                    }
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    blurOnSubmit={false}
-                    onBlur={() => setTyping(false)}
-                    onChangeText={handleAnswerChange}
-                    onFocus={() => {
-                      if (!handsFree) return;
-                      clearAutoTimer();
-                      setTyping(true);
-                      speech.abort();
-                    }}
-                    onSubmitEditing={handleInputSubmit}
-                    returnKeyType={feedback || revealed ? "next" : "done"}
-                    selectionColor={colors.primary}
-                    value={answer}
-                    style={{
-                      color: colors.foreground,
-                      fontSize: 16,
-                      height: 44,
-                      includeFontPadding: false,
-                      paddingHorizontal: 62,
-                      paddingVertical: 0,
-                      textAlign: "center",
-                      textAlignVertical: "center",
-                      width: "100%",
-                    }}
-                  />
-                  {handsFree || (!feedback && !revealed) ? (
-                    <Pressable
-                      accessibilityLabel={
-                        handsFree
-                          ? "Hentikan latihan tanpa sentuh"
-                          : "Mulai latihan tanpa sentuh"
-                      }
-                      accessibilityRole="button"
-                      accessibilityState={{
-                        busy: speechBusy,
-                        disabled: moving && !handsFree,
-                      }}
-                      disabled={moving && !handsFree}
-                      onPress={toggleSpeechSession}
-                      className="rounded-full active:opacity-75"
-                      style={{
-                        opacity: moving ? 0.5 : 1,
-                        position: "absolute",
-                        left: 2,
-                        top: 2,
-                      }}
-                    >
-                      <View
-                        className="size-10 items-center justify-center"
-                        style={{
-                          transform: [{ translateX: 2 }, { translateY: 2 }],
-                        }}
-                      >
-                        <SymbolView
-                          fallback={
-                            <Text
-                              className="text-xl font-black"
-                              style={{
-                                color: handsFree
-                                  ? colors.destructive
-                                  : colors.primary,
-                              }}
-                            >
-                              {handsFree ? "■" : "🎙"}
-                            </Text>
-                          }
-                          name={handsFree ? "stop.fill" : "mic.fill"}
-                          size={22}
-                          style={{ height: 22, width: 22 }}
-                          tintColor={
-                            handsFree ? colors.destructive : colors.primary
-                          }
-                          weight="bold"
-                        />
-                      </View>
-                    </Pressable>
-                  ) : null}
-                  {feedback || revealed ? (
-                    <Pressable
-                      accessibilityLabel={
-                        feedback && !feedback.saved
-                          ? "Coba simpan jawaban lagi"
-                          : revealed && !revealSaved
-                            ? "Coba simpan lagi"
-                            : "Kata berikutnya"
-                      }
-                      accessibilityRole="button"
-                      accessibilityState={{
-                        disabled: moving || recordPending,
-                        busy: moving || recordPending,
-                      }}
-                      disabled={moving || recordPending}
-                      style={{
-                        opacity: moving ? 0.5 : 1,
-                        position: "absolute",
-                        right: 2,
-                        top: 2,
-                      }}
-                      onPress={() => {
-                        if (feedback && !feedback.saved) {
-                          void saveAnswer(feedback.correct);
-                        } else if (revealed && !revealSaved) {
-                          void saveReveal();
-                        } else {
-                          nextCard();
+                <HandsFreeAnswerField
+                  inputRef={inputRef}
+                  accessibilityLabel={
+                    mode === "KR"
+                      ? `Kata Korea untuk ${card.definition}`
+                      : `Arti dari ${card.term}`
+                  }
+                  value={answer}
+                  placeholder={placeholder}
+                  misheard={speech.misheard}
+                  shakeStyle={speech.shakeStyle}
+                  levels={
+                    listening && !speech.retryPrompt ? speech.levels : undefined
+                  }
+                  returnKeyType={answered ? "next" : "done"}
+                  onChangeText={handleAnswerChange}
+                  onFocus={speech.beginTyping}
+                  onBlur={speech.endTyping}
+                  onSubmitEditing={handleInputSubmit}
+                  mic={
+                    handsFree || !answered
+                      ? {
+                          active: handsFree,
+                          busy: speech.speechBusy,
+                          disabled: moving && !handsFree,
+                          dimmed: moving,
+                          onPress: toggleSpeechSession,
                         }
-                      }}
-                      className="rounded-full active:opacity-75"
-                    >
-                      <View
-                        className="size-10 items-center justify-center"
-                        style={{ transform: [{ translateY: 2 }] }}
-                      >
-                        <SymbolView
-                          fallback={
-                            <Text
-                              className="text-xl font-black"
-                              style={{ color: colors.primary }}
-                            >
-                              →
-                            </Text>
-                          }
-                          name="arrow.right"
-                          size={22}
-                          tintColor={colors.primary}
-                          weight="bold"
-                        />
-                      </View>
-                    </Pressable>
-                  ) : (
-                    <Pressable
-                      accessibilityLabel={
-                        mode === "KR" ? "Periksa kata Korea" : "Periksa arti"
-                      }
-                      accessibilityRole="button"
-                      accessibilityState={{
-                        busy: recordPending,
-                        disabled: moving || !answer.trim(),
-                      }}
-                      disabled={moving || !answer.trim()}
-                      onPress={() => void checkAnswer()}
-                      className="rounded-full active:opacity-75"
-                      style={{
-                        opacity: answer.trim() ? 1 : 0.4,
-                        position: "absolute",
-                        right: 2,
-                        top: 2,
-                      }}
-                    >
-                      <View
-                        className="size-10 items-center justify-center"
-                        style={{
-                          transform: [{ translateX: -2 }, { translateY: 2 }],
-                        }}
-                      >
-                        <SymbolView
-                          fallback={
-                            <Text
-                              className="text-xl font-black"
-                              style={{ color: colors.primary }}
-                            >
-                              ➤
-                            </Text>
-                          }
-                          name="paperplane.fill"
-                          size={22}
-                          style={{ height: 22, width: 22 }}
-                          tintColor={colors.primary}
-                          weight="bold"
-                        />
-                      </View>
-                    </Pressable>
-                  )}
-                </GlassBox>
+                      : undefined
+                  }
+                  action={
+                    answered
+                      ? {
+                          kind: "next",
+                          accessibilityLabel:
+                            feedback && !feedback.saved
+                              ? "Coba simpan jawaban lagi"
+                              : revealed && !revealSaved
+                                ? "Coba simpan lagi"
+                                : "Kata berikutnya",
+                          busy: moving || recordPending,
+                          disabled: moving || recordPending,
+                          dimmed: moving,
+                          onPress: () => {
+                            if (feedback && !feedback.saved) {
+                              void saveAnswer(feedback.correct);
+                            } else if (revealed && !revealSaved) {
+                              void saveReveal();
+                            } else {
+                              nextCard();
+                            }
+                          },
+                        }
+                      : {
+                          kind: "check",
+                          accessibilityLabel:
+                            mode === "KR"
+                              ? "Periksa kata Korea"
+                              : "Periksa arti",
+                          busy: recordPending,
+                          disabled: moving || !answer.trim(),
+                          dimmed: !answer.trim(),
+                          onPress: () => void checkAnswer(),
+                        }
+                  }
+                />
               </View>
             </View>
           ) : (

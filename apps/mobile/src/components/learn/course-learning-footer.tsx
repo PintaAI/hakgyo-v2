@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import {
   getLearningMilestone,
@@ -10,9 +10,11 @@ import {
   type LearningPathItem,
 } from "../../lib/course-learning-path";
 import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
+import { openCourseItem } from "../../lib/navigation";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../providers/MobileSyncProvider";
 import { readCourseOutline, useCourseOutline } from "../../sync/hooks";
+import { Action, Eyebrow, ProgressBar } from "../learning-ui";
 import { StudyAction } from "../study-glass";
 
 type Milestone = NonNullable<ReturnType<typeof getLearningMilestone>>;
@@ -96,25 +98,10 @@ export function CourseLearningFooter({
   function navigate(nextItem?: LearningPathItem) {
     setMilestone(undefined);
     if (nextItem) {
-      if (
-        nextItem.type === "ASSESSMENT" &&
-        nextItem.attempt?.status === "IN_PROGRESS"
-      ) {
-        router.replace({
-          pathname:
-            "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-          params: {
-            courseId,
-            courseItemId: nextItem.id,
-            attemptId: nextItem.attempt.id,
-          },
-        });
-        return;
-      }
-      router.replace({
-        pathname: "/courses/[courseId]/items/[courseItemId]",
-        params: { courseId, courseItemId: nextItem.id },
-      });
+      openCourseItem(
+        { courseId, courseItemId: nextItem.id, attempt: nextItem.attempt },
+        { replace: true },
+      );
     } else {
       router.replace({ pathname: "/courses/[courseId]", params: { courseId } });
     }
@@ -233,14 +220,11 @@ export function CourseLearningFooter({
     <View className="gap-6">
       <View className="gap-3">
         <View className="gap-1.5">
-          <Text
-            className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary"
-            numberOfLines={1}
-          >
+          <Eyebrow tone="primary" numberOfLines={1}>
             {path
               ? `Bab ${path.moduleIndex + 1} · ${path.module.title}`
               : "Jalur belajar kamu"}
-          </Text>
+          </Eyebrow>
           {/* An unfinished tugas has its own call to action above the footer,
               so the footer only reports progress instead of inviting a
               "continue" the learner can't take yet. */}
@@ -256,31 +240,18 @@ export function CourseLearningFooter({
           </Text>
         </View>
         {path ? (
-          <View
-            accessibilityRole="progressbar"
-            accessibilityValue={{
-              min: 0,
-              max: path.module.items.length,
-              now: path.completedCount,
-            }}
-            className="h-1 overflow-hidden rounded-full bg-muted"
-          >
-            <View
-              className="h-full rounded-full bg-primary"
-              style={{
-                width: `${(path.completedCount / path.module.items.length) * 100}%`,
-              }}
-            />
-          </View>
+          <ProgressBar
+            size="sm"
+            value={path.completedCount}
+            max={path.module.items.length}
+          />
         ) : null}
       </View>
       {path?.nextItem ? (
         <View className="flex-row items-center gap-4 border-t border-border pt-5">
           <View className="min-w-0 flex-1 gap-1">
             <View className="flex-row items-center gap-2">
-              <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-                Berikutnya
-              </Text>
+              <Eyebrow tone="primary">Berikutnya</Eyebrow>
               <View className="flex-row items-center gap-1.5">
                 <View
                   className={`size-1.5 rounded-full ${getLearningItemTypeMeta(path.nextItem.type).dotClass}`}
@@ -331,9 +302,7 @@ export function CourseLearningFooter({
           className="gap-4 border-t border-border pt-5"
         >
           <View className="gap-1.5">
-            <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-              Sebelum melanjutkan
-            </Text>
+            <Eyebrow tone="primary">Sebelum melanjutkan</Eyebrow>
             <Text className="text-base font-black text-foreground">
               Tinggal satu langkah lagi
             </Text>
@@ -346,21 +315,16 @@ export function CourseLearningFooter({
             </Text>
           </View>
           {requirementActions.map((action) => (
-            <Pressable
+            <Action
               key={action.id}
-              accessibilityRole="button"
               accessibilityHint={`Membuka ${action.type === "VOCABULARY_SET" ? "latihan kosakata" : "tugas"} yang wajib`}
-              className="min-h-12 items-center justify-center rounded-full bg-primary px-5 py-3 active:opacity-80"
               onPress={() => {
                 setIssue(undefined);
                 action.onPress();
               }}
             >
-              <Text className="text-center font-bold text-primary-foreground">
-                {action.type === "VOCABULARY_SET" ? "Latih" : "Buka"}{" "}
-                {action.title} →
-              </Text>
-            </Pressable>
+              {`${action.type === "VOCABULARY_SET" ? "Latih" : "Buka"} ${action.title} →`}
+            </Action>
           ))}
         </View>
       ) : null}
@@ -383,16 +347,9 @@ export function CourseLearningFooter({
           </StudyAction>
         ) : null}
         {onReadAgain ? (
-          <Pressable
-            accessibilityRole="button"
-            className="min-h-12 items-center justify-center rounded-full px-5 py-3"
-            onPress={onReadAgain}
-            disabled={busy}
-          >
-            <Text className="font-semibold text-muted-foreground">
-              ↑ Baca lagi
-            </Text>
-          </Pressable>
+          <Action variant="ghost" onPress={onReadAgain} disabled={busy}>
+            ↑ Baca lagi
+          </Action>
         ) : null}
       </View>
       {issue?.kind === "error" || outline.isError ? (
@@ -413,9 +370,9 @@ export function CourseLearningFooter({
   return (
     <View className="gap-6">
       <View className="items-center gap-2">
-        <Text className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
+        <Eyebrow tone="primary" className="text-center">
           {milestone.courseCompleted ? "Kurikulum selesai" : "Bab selesai"}
-        </Text>
+        </Eyebrow>
         <Text
           accessibilityRole="header"
           className="text-center text-[28px] font-black leading-8 tracking-tight text-foreground"
@@ -431,9 +388,9 @@ export function CourseLearningFooter({
 
       {milestone.unlockedModuleTitle || milestone.nextItem ? (
         <View className="gap-1 border-t border-border pt-5">
-          <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
+          <Eyebrow tone="primary">
             {milestone.unlockedModuleTitle ? "Terbuka" : "Berikutnya"}
-          </Text>
+          </Eyebrow>
           <Text className="text-base font-bold leading-6 text-foreground">
             {milestone.unlockedModuleTitle ?? milestone.nextItem?.title}
           </Text>
@@ -447,15 +404,9 @@ export function CourseLearningFooter({
             : "Lihat progres kurikulum"}
         </StudyAction>
         {milestone.nextItem ? (
-          <Pressable
-            accessibilityRole="button"
-            className="min-h-12 items-center justify-center px-5"
-            onPress={() => navigate()}
-          >
-            <Text className="font-semibold text-muted-foreground">
-              Kembali ke kurikulum
-            </Text>
-          </Pressable>
+          <Action variant="ghost" onPress={() => navigate()}>
+            Kembali ke kurikulum
+          </Action>
         ) : null}
       </View>
     </View>

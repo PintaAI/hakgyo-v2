@@ -3,21 +3,19 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
 import { router, Stack } from "expo-router";
 import { useState } from "react";
+import { Alert, Platform, ScrollView, Text, View } from "react-native";
+
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  Action,
+  Callout,
+  Card,
+  Eyebrow,
+  TextField,
+} from "../../../../src/components/learning-ui";
 
 import { authClient } from "../../../../src/lib/auth-client";
 import { userErrorMessage as errorMessage } from "../../../../src/lib/error-message";
 import { api } from "../../../../src/lib/trpc";
-import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { usePushNotifications } from "../../../../src/providers/PushNotificationsProvider";
 
 function isAppleCancel(error: unknown) {
@@ -30,7 +28,6 @@ function isAppleCancel(error: unknown) {
 }
 
 export default function ProfileAccountScreen() {
-  const { colors } = useAppTheme();
   const queryClient = useQueryClient();
   const push = usePushNotifications();
   const { data: session } = authClient.useSession();
@@ -146,50 +143,26 @@ export default function ProfileAccountScreen() {
       <Stack.Screen options={{ title: "Akun" }} />
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="gap-4 px-4 pb-20 pt-4"
+        contentContainerClassName="gap-4 px-5 pb-20 pt-4"
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="gap-3 rounded-3xl border border-border bg-card p-4">
-          <Text className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-            Detail akun
-          </Text>
+        <Card>
+          <Eyebrow size="md">Detail akun</Eyebrow>
           <View className="gap-2">
-            <View className="min-h-12 flex-row items-center gap-3 rounded-2xl bg-muted px-3">
-              <Text
-                className="flex-1 text-base font-semibold text-foreground"
-                numberOfLines={1}
-              >
-                Nama
-              </Text>
-              <Text
-                className="max-w-[58%] text-right text-base text-muted-foreground"
-                numberOfLines={1}
-              >
-                {session?.user.name ?? "Pelajar Hakgyo"}
-              </Text>
-            </View>
-            <View className="min-h-12 flex-row items-center gap-3 rounded-2xl bg-muted px-3">
-              <Text
-                className="flex-1 text-base font-semibold text-foreground"
-                numberOfLines={1}
-              >
-                Email
-              </Text>
-              <Text
-                className="max-w-[58%] text-right text-base text-muted-foreground"
-                numberOfLines={1}
-              >
-                {session?.user.email ?? "Belum masuk"}
-              </Text>
-            </View>
+            <AccountField
+              label="Nama"
+              value={session?.user.name ?? "Pelajar Hakgyo"}
+            />
+            <AccountField
+              label="Email"
+              value={session?.user.email ?? "Belum masuk"}
+            />
           </View>
-        </View>
+        </Card>
 
-        <View className="gap-3 rounded-3xl border border-border bg-card p-4">
-          <Text className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-            Zona berbahaya
-          </Text>
+        <Card>
+          <Eyebrow size="md">Zona berbahaya</Eyebrow>
           {blockers.isPending ? (
             <Text className="text-sm leading-5 text-muted-foreground">
               Memeriksa keterkaitan akun…
@@ -212,18 +185,15 @@ export default function ProfileAccountScreen() {
             </Text>
           )}
           {blockers.error || accounts.error ? (
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-12 items-center justify-center rounded-2xl border border-border px-4"
+            <Action
+              variant="outline"
               onPress={() => {
                 void blockers.refetch();
                 void accounts.refetch();
               }}
             >
-              <Text className="text-base font-semibold text-primary">
-                Coba lagi
-              </Text>
-            </Pressable>
+              Coba lagi
+            </Action>
           ) : null}
 
           {isConfirming ? (
@@ -232,27 +202,23 @@ export default function ProfileAccountScreen() {
                 Ketik <Text className="font-bold">{email}</Text> untuk
                 mengonfirmasi.
               </Text>
-              <TextInput
+              <TextField
                 autoCapitalize="none"
                 autoComplete="email"
                 autoCorrect={false}
-                className="rounded-2xl border border-input bg-background px-4 py-3 text-base text-foreground"
                 editable={!isDeleting}
                 keyboardType="email-address"
                 onChangeText={setConfirmEmail}
                 placeholder="Alamat email"
-                placeholderTextColor={colors.mutedForeground}
                 value={confirmEmail}
               />
               {hasPassword ? (
-                <TextInput
+                <TextField
                   autoCapitalize="none"
                   autoComplete="current-password"
-                  className="rounded-2xl border border-input bg-background px-4 py-3 text-base text-foreground"
                   editable={!isDeleting}
                   onChangeText={setPassword}
                   placeholder="Kata sandi saat ini"
-                  placeholderTextColor={colors.mutedForeground}
                   secureTextEntry
                   textContentType="password"
                   value={password}
@@ -264,60 +230,58 @@ export default function ProfileAccountScreen() {
                     : "Kamu akan diminta masuk dengan Google sekali lagi untuk mengonfirmasi."}
                 </Text>
               )}
-              {error ? (
-                <Text
-                  accessibilityLiveRegion="polite"
-                  className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive"
-                >
-                  {error}
-                </Text>
-              ) : null}
-              <Pressable
-                accessibilityRole="button"
+              {error ? <Callout tone="destructive">{error}</Callout> : null}
+              <Action
                 disabled={!canSubmit}
+                loading={isDeleting}
+                variant="destructive"
                 onPress={() => void deleteAccount()}
-                className="min-h-12 flex-row items-center justify-center gap-2 rounded-2xl bg-destructive px-4"
-                style={{ opacity: canSubmit ? 1 : 0.45 }}
               >
-                {isDeleting ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text className="text-base font-semibold text-white">
-                    Hapus akun permanen
-                  </Text>
-                )}
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
+                Hapus akun permanen
+              </Action>
+              <Action
                 disabled={isDeleting}
+                variant="secondary"
                 onPress={() => {
                   setIsConfirming(false);
                   setConfirmEmail("");
                   setPassword("");
                   setError(null);
                 }}
-                className="min-h-12 items-center justify-center rounded-2xl border border-border px-4"
               >
-                <Text className="text-base font-semibold text-foreground">
-                  Batal
-                </Text>
-              </Pressable>
+                Batal
+              </Action>
             </View>
           ) : (
-            <Pressable
-              accessibilityRole="button"
+            <Action
               disabled={!canStartDelete}
+              variant="destructiveTinted"
               onPress={openDeleteRequest}
-              className="min-h-12 flex-row items-center justify-center gap-2 rounded-2xl bg-destructive/10 px-4"
-              style={{ opacity: canStartDelete ? 1 : 0.55 }}
             >
-              <Text className="text-base font-semibold text-destructive">
-                Hapus akun…
-              </Text>
-            </Pressable>
+              Hapus akun…
+            </Action>
           )}
-        </View>
+        </Card>
       </ScrollView>
     </>
+  );
+}
+
+function AccountField({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="min-h-12 flex-row items-center gap-3 rounded-2xl bg-muted px-3">
+      <Text
+        className="flex-1 text-base font-semibold text-foreground"
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+      <Text
+        className="max-w-[58%] text-right text-base text-muted-foreground"
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+    </View>
   );
 }

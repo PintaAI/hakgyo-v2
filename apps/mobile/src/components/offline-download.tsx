@@ -9,23 +9,7 @@ import {
   useOfflineMedia,
   useOfflineRevision,
 } from "../providers/MobileSyncProvider";
-
-/** A thin progress bar; `fraction` is clamped to 0..1. */
-export function DownloadProgressBar({ fraction }: { fraction: number }) {
-  const percent = Math.round(Math.min(1, Math.max(0, fraction)) * 100);
-  return (
-    <View
-      accessibilityRole="progressbar"
-      accessibilityValue={{ min: 0, max: 100, now: percent }}
-      className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
-    >
-      <View
-        className="h-full rounded-full bg-primary"
-        style={{ width: `${percent}%` }}
-      />
-    </View>
-  );
-}
+import { Eyebrow, ProgressBar } from "./learning-ui";
 
 function sumBytes(
   assetIds: readonly string[],
@@ -123,7 +107,7 @@ export function CourseOfflineCard({
               : `${Math.round(status.fraction * 100)}%`}
           </Text>
         </View>
-        <DownloadProgressBar fraction={status.fraction} />
+        <ProgressBar value={status.fraction} />
       </View>
     );
   }
@@ -201,7 +185,7 @@ export function ModuleOfflineBadge({
         <Text className="text-right text-[10px] font-bold tabular-nums text-primary">
           {Math.round(status.fraction * 100)}%
         </Text>
-        <DownloadProgressBar fraction={status.fraction} />
+        <ProgressBar value={status.fraction} />
       </View>
     );
   }
@@ -218,9 +202,9 @@ export function ModuleOfflineBadge({
           tintColor={colors.primary}
           fallback={<Text className="text-[10px] text-primary">✓</Text>}
         />
-        <Text className="text-[10px] font-bold uppercase tracking-[1px] text-primary">
+        <Eyebrow size="xs" tone="primary">
           Offline
-        </Text>
+        </Eyebrow>
       </View>
     );
   }

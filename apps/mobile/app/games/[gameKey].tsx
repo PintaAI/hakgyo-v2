@@ -1,9 +1,14 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState, type ReactNode } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 
-import { Action, Empty, StudyScreen } from "../../src/components/learning-ui";
+import {
+  Action,
+  Empty,
+  FullScreenState,
+  StudyScreen,
+} from "../../src/components/learning-ui";
 import { VocabularySession } from "../../src/components/vocabulary-session";
 import { gameCatalog, isGameKey } from "../../src/games/catalog";
 import { GameBackToolbar, GamePage } from "../../src/games/game-screens";
@@ -17,11 +22,7 @@ import { WordBuilderScreen } from "../../src/games/word-builder/word-builder-scr
 import { authClient } from "../../src/lib/auth-client";
 import { useCourseItem } from "../../src/sync/hooks";
 import { useVocabularyProgressReporter } from "../../src/lib/use-vocabulary-progress";
-import { useAppTheme } from "../../src/providers/AppThemeProvider";
-
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
+import { firstParam } from "../../src/lib/route-params";
 
 function leave() {
   router.dismissTo("/(home)/(tabs)/assessments");
@@ -33,9 +34,9 @@ export default function GameRoute() {
     sourceCourseItemId?: string | string[];
     courseId?: string | string[];
   }>();
-  const key = first(params.gameKey);
-  const sourceCourseItemId = first(params.sourceCourseItemId);
-  const courseIdParam = first(params.courseId);
+  const key = firstParam(params.gameKey);
+  const sourceCourseItemId = firstParam(params.sourceCourseItemId);
+  const courseIdParam = firstParam(params.courseId);
   const { data: session } = authClient.useSession();
   const game = isGameKey(key) ? gameCatalog[key] : undefined;
 
@@ -216,9 +217,8 @@ function VocabularyCardsRoute({
 }
 
 function GameLoading({ title }: { title: string }) {
-  const { colors } = useAppTheme();
   return (
-    <View className="flex-1 items-center justify-center bg-background">
+    <>
       <GameBackToolbar onPress={leave} />
       <Stack.Screen
         options={{
@@ -228,8 +228,8 @@ function GameLoading({ title }: { title: string }) {
           title,
         }}
       />
-      <ActivityIndicator color={colors.primary} />
-    </View>
+      <FullScreenState kind="loading" />
+    </>
   );
 }
 

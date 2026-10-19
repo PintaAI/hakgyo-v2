@@ -1,9 +1,8 @@
-import { Stack, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
-  Platform,
   View,
   type LayoutChangeEvent,
   type NativeScrollEvent,
@@ -19,26 +18,18 @@ import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment
 import type { CohortMilestoneGroup } from "../../../../src/components/learn/milestone-section";
 import {
   Empty,
+  FullBleed,
   QueryState,
-  StudyScreen,
 } from "../../../../src/components/learning-ui";
-import { DoodleBackground } from "../../../../src/components/doodle-background";
+import { TabScreen } from "../../../../src/components/tab-screen";
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { authClient } from "../../../../src/lib/auth-client";
 import {
   completeLearnCohortFocus,
   useLearnCohortFocus,
 } from "../../../../src/lib/learn-cohort-focus";
-import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
-import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
-import {
-  AndroidTabActions,
-  TabActionButton,
-} from "../../../../src/components/sidebar/AndroidTabActions";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
-import { useDrawer } from "../../../../src/providers/DrawerProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
-import { useUpdatesBadgeCount } from "../../../../src/lib/sidebar-indicators";
 import {
   useCourseOutlines,
   useSyncIndex,
@@ -201,8 +192,6 @@ export default function LearnTab() {
   // Composed per course from the local bundles (progress, resume item).
   const { outlines } = useCourseOutlines(cohortCourseIds);
   const { isSyncing, syncNow } = useMobileSync();
-  const { openUpdates } = useDrawer();
-  const unreadCount = useUpdatesBadgeCount();
   const [now, setNow] = useState(Date.now);
 
   useFocusEffect(
@@ -251,78 +240,43 @@ export default function LearnTab() {
     [dashboard.data?.milestones],
   );
   return (
-    <>
-      <DoodleBackground />
-      {Platform.OS === "ios" ? (
-        <>
-          <SidebarToolbarButton />
-          <Stack.Toolbar placement="right">
-            <Stack.Toolbar.Button
-              icon={toolbarIcons.notifications}
-              accessibilityLabel="Buka pembaruan belajar"
-              onPress={openUpdates}
-            >
-              {unreadCount > 0 ? (
-                <Stack.Toolbar.Badge>
-                  {unreadCount > 99 ? "99+" : String(unreadCount)}
-                </Stack.Toolbar.Badge>
-              ) : null}
-            </Stack.Toolbar.Button>
-          </Stack.Toolbar>
-        </>
+    <TabScreen
+      right="updates"
+      bleedTop
+      contentInsetAdjustmentBehavior="never"
+      refreshing={dashboard.isRefetching || isSyncing}
+      onRefresh={() => {
+        void syncNow(activeOrganizationId ?? undefined);
+      }}
+    >
+      <QueryState
+        pending={dashboard.isPending}
+        error={dashboard.error}
+        retry={() => void dashboard.refetch()}
+      />
+      {cohorts.length > 0 ? (
+        <FullBleed>
+          <CohortCarousel
+            key={activeOrganizationId}
+            cohorts={cohorts}
+            eventsByCohort={eventsByCohort}
+            eventsError={dashboard.error}
+            eventsPending={dashboard.isPending}
+            milestonesByCohort={milestonesByCohort}
+            now={now}
+            onRetryEvents={() => void dashboard.refetch()}
+            organizationId={activeOrganizationId!}
+            outlines={outlines}
+            userId={session!.user.id}
+          />
+        </FullBleed>
+      ) : dashboard.data && !dashboard.error ? (
+        <Empty>
+          Belum ada kelas di organisasi ini. Kelas muncul di sini setelah
+          lembaga mendaftarkan kamu. Sementara itu, lanjutkan latihan Hangeul
+          dan kosakata dari tab Hari Ini.
+        </Empty>
       ) : null}
-      <StudyScreen
-        title=""
-        headerShown={Platform.OS === "ios"}
-        bleedTop
-        contentInsetAdjustmentBehavior="never"
-        refreshing={dashboard.isRefetching || isSyncing}
-        onRefresh={() => {
-          void syncNow(activeOrganizationId ?? undefined);
-        }}
-      >
-        <QueryState
-          pending={dashboard.isPending}
-          error={dashboard.error}
-          retry={() => void dashboard.refetch()}
-        />
-        {cohorts.length > 0 ? (
-          <View className="-mx-5">
-            <CohortCarousel
-              key={activeOrganizationId}
-              cohorts={cohorts}
-              eventsByCohort={eventsByCohort}
-              eventsError={dashboard.error}
-              eventsPending={dashboard.isPending}
-              milestonesByCohort={milestonesByCohort}
-              now={now}
-              onRetryEvents={() => void dashboard.refetch()}
-              organizationId={activeOrganizationId!}
-              outlines={outlines}
-              userId={session!.user.id}
-            />
-          </View>
-        ) : dashboard.data && !dashboard.error ? (
-          <Empty>
-            Belum ada kelas di organisasi ini. Kelas muncul di sini setelah
-            lembaga mendaftarkan kamu. Sementara itu, lanjutkan latihan Hangeul
-            dan kosakata dari tab Hari Ini.
-          </Empty>
-        ) : null}
-      </StudyScreen>
-      {Platform.OS !== "ios" ? (
-        <AndroidTabActions
-          floating
-          right={
-            <TabActionButton
-              symbol={{ ios: "bell", android: "notifications" }}
-              accessibilityLabel="Buka pembaruan belajar"
-              badgeCount={unreadCount}
-              onPress={openUpdates}
-            />
-          }
-        />
-      ) : null}
-    </>
+    </TabScreen>
   );
 }

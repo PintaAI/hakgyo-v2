@@ -5,7 +5,7 @@ import { Text, View } from "react-native";
 import { getStreakProgressDays } from "../lib/streak";
 import { api } from "../lib/trpc";
 import { useAppTheme } from "../providers/AppThemeProvider";
-import { QueryState } from "./learning-ui";
+import { Badge, QueryState } from "./learning-ui";
 
 export function WeeklyStreak({
   summary,
@@ -32,11 +32,9 @@ export function WeeklyStreak({
             <Text className="text-sm font-bold text-foreground">
               Streak {data.summary.currentStreak} hari
             </Text>
-            <View className="rounded-full bg-primary/10 px-2.5 py-1">
-              <Text className="text-xs font-bold text-primary">
-                {data.weeklyActivity.xp.toLocaleString("id-ID")} XP minggu ini
-              </Text>
-            </View>
+            <Badge>
+              {data.weeklyActivity.xp.toLocaleString("id-ID")} XP minggu ini
+            </Badge>
           </View>
 
           <View className="flex-row">

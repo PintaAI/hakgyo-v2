@@ -28,15 +28,24 @@ import {
 } from "../../lib/study";
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { useAppTheme } from "../../providers/AppThemeProvider";
-import { withOpacity } from "../../theme/colors";
+import { glassTint, withOpacity } from "../../theme/colors";
 import { AppSegmentedControl } from "../app-segmented-control";
 import { GlassBox } from "../GlassBox";
-import { Eyebrow, QueryState } from "../learning-ui";
+import {
+  Chevron,
+  Eyebrow,
+  IconCircle,
+  ProgressBar,
+  QueryState,
+} from "../learning-ui";
+import { StudyGlass } from "../study-glass";
 import { CourseOutlineList } from "./course-outline-list";
 import {
   CohortMilestoneTimeline,
   type CohortMilestoneGroup,
 } from "./milestone-section";
+import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
+import { openAssessmentEvent, openCourseItem } from "../../lib/navigation";
 
 // Official brand assets (see apps/mobile/assets/brands/README.md for sources).
 // Used unmodified for Zoom meetings and WhatsApp invitations.
@@ -217,11 +226,9 @@ function HeroCopy({
         {hero.live ? (
           <View className="size-2 rounded-full bg-destructive" />
         ) : null}
-        <Text
-          className={`text-[11px] font-bold uppercase tracking-[1.5px] ${hero.live ? "text-destructive" : "text-primary"}`}
-        >
+        <Eyebrow tone={hero.live ? "destructive" : "primary"}>
           {hero.eyebrow}
-        </Text>
+        </Eyebrow>
       </View>
       <Text
         className={
@@ -265,7 +272,7 @@ function HeroPill({ hero }: { hero: CohortHero }) {
   );
 }
 
-function HeroBlock({ hero, tint }: { hero: CohortHero; tint: string }) {
+function HeroBlock({ hero }: { hero: CohortHero }) {
   // Heroes with an action stay on one row: copy left (flex-1, truncates),
   // pill pinned right so a long title never pushes the button down.
   const compact = hero.kind === "assessment";
@@ -278,11 +285,11 @@ function HeroBlock({ hero, tint }: { hero: CohortHero; tint: string }) {
       disabled={!hero.onPress}
       onPress={hero.onPress}
     >
-      <GlassBox
+      <StudyGlass
         isInteractive={!!hero.onPress}
-        tintColor={tint}
-        glassEffectStyle="clear"
-        style={styles.heroGlass}
+        radius={SURFACE_RADIUS}
+        bordered={false}
+        contentClassName=""
       >
         {hasAction ? (
           <View
@@ -304,7 +311,7 @@ function HeroBlock({ hero, tint }: { hero: CohortHero; tint: string }) {
             <HeroCopy hero={hero} />
           </View>
         )}
-      </GlassBox>
+      </StudyGlass>
     </Pressable>
   );
 }
@@ -326,7 +333,7 @@ function PlateRowView({
       disabled={!row.onPress}
       onPress={row.onPress}
     >
-      <View className="size-9 items-center justify-center rounded-full bg-muted">
+      <IconCircle tone="muted">
         <SymbolView
           fallback={
             <Text className="text-xs font-black text-primary">
@@ -338,7 +345,7 @@ function PlateRowView({
           tintColor={colors.primary}
           weight="semibold"
         />
-      </View>
+      </IconCircle>
       <View className="min-w-0 flex-1 gap-0.5">
         <Text
           className="text-sm font-semibold text-foreground"
@@ -379,7 +386,7 @@ function PlateRowView({
           </View>
         </GlassBox>
       ) : row.onPress ? (
-        <Text className="text-lg text-muted-foreground">›</Text>
+        <Chevron />
       ) : null}
     </Pressable>
   );
@@ -474,29 +481,11 @@ export function CohortCard({
   const openFeaturedAssessment = () => {
     if (!featured) return;
     markEntitySeen("ASSESSMENT", featured.id);
-    const attempt = featured.attempts[0];
-    if (featured.entry.destination === "ATTEMPT" && attempt) {
-      router.push({
-        pathname:
-          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-        params: {
-          courseId: featured.course.id,
-          courseItemId: featured.courseItem.id,
-          attemptId: attempt.id,
-        },
-      });
-      return;
-    }
-    router.push({
-      pathname: "/events/[eventId]",
-      params: { eventId: featured.id },
-    });
+    openAssessmentEvent(featured);
   };
   const outlineItems = outline?.modules.flatMap((module) => module.items) ?? [];
   const completedCount = outlineItems.filter((item) => item.isCompleted).length;
-  const progress = outlineItems.length
-    ? Math.round((completedCount / outlineItems.length) * 100)
-    : null;
+  const hasProgress = outlineItems.length > 0;
   const nextOutlineItem = outline?.modules
     .flatMap((module) =>
       module.items.map((item) => ({
@@ -507,18 +496,11 @@ export function CohortCard({
       })),
     )
     .find((item) => item.available && !item.isCompleted);
-  const nextTypeLabel = !nextOutlineItem
-    ? null
-    : nextOutlineItem.type === "VOCABULARY_SET"
-      ? "Kosakata"
-      : nextOutlineItem.type === "ASSESSMENT"
-        ? "Tugas"
-        : "Materi";
+  const nextTypeLabel = nextOutlineItem
+    ? getLearningItemTypeMeta(nextOutlineItem.type).label
+    : null;
   const { colors, colorScheme } = useAppTheme();
-  const glassTint = withOpacity(
-    colors.primary,
-    colorScheme === "dark" ? 0.35 : 0.18,
-  );
+  const tint = glassTint(colors, colorScheme);
   const insets = useSafeAreaInsets();
   // Full-bleed first card sits under the transparent native header: keep
   // the image bleeding but push the titles below the toolbar + breathing
@@ -528,48 +510,21 @@ export function CohortCard({
   const openOutlineItem: ComponentProps<
     typeof CourseOutlineList
   >["onOpenItem"] = (item, attempt) => {
-    if (attempt?.status === "IN_PROGRESS") {
-      router.push({
-        pathname:
-          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-        params: {
-          courseId: cohort.course.id,
-          courseItemId: item.id,
-          attemptId: attempt.id,
-        },
-      });
-      return;
-    }
-    router.push({
-      pathname: "/courses/[courseId]/items/[courseItemId]",
-      params: {
-        courseId: cohort.course.id,
-        courseItemId: item.id,
-      },
+    openCourseItem({
+      courseId: cohort.course.id,
+      courseItemId: item.id,
+      attempt,
     });
   };
   const openNextItem =
     nextOutlineItem && nextTypeLabel
       ? () => {
           markEntitySeen("MODULE", nextOutlineItem.moduleId);
-          return nextOutlineItem.type === "ASSESSMENT" &&
-            nextOutlineItem.attempt?.status === "IN_PROGRESS"
-            ? router.push({
-                pathname:
-                  "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                params: {
-                  courseId: cohort.course.id,
-                  courseItemId: nextOutlineItem.id,
-                  attemptId: nextOutlineItem.attempt.id,
-                },
-              })
-            : router.push({
-                pathname: "/courses/[courseId]/items/[courseItemId]",
-                params: {
-                  courseId: cohort.course.id,
-                  courseItemId: nextOutlineItem.id,
-                },
-              });
+          openCourseItem({
+            courseId: cohort.course.id,
+            courseItemId: nextOutlineItem.id,
+            attempt: nextOutlineItem.attempt,
+          });
         }
       : undefined;
 
@@ -725,13 +680,10 @@ export function CohortCard({
         >
           <View className="min-w-0 flex-1 gap-1.5">
             <View className="flex-row items-center gap-2">
-              <Text
-                className="flex-1 text-xs font-semibold uppercase tracking-[1px] text-muted-foreground"
-                numberOfLines={1}
-              >
+              <Eyebrow size="md" className="flex-1" numberOfLines={1}>
                 {cohort.course.title}
-              </Text>
-              {progress !== null ? (
+              </Eyebrow>
+              {hasProgress ? (
                 <Text className="text-xs font-semibold text-muted-foreground">
                   {completedCount}/{outlineItems.length}
                 </Text>
@@ -770,23 +722,24 @@ export function CohortCard({
                   cohort.whatsappGroupUrl &&
                   void openExternalLink(cohort.whatsappGroupUrl, "whatsapp")
                 }
-                tint={glassTint}
+                tint={tint}
               />
             ) : null}
           </View>
         </View>
-        {progress !== null ? (
-          <View className="absolute bottom-0 left-0 right-0 z-30 h-1 bg-muted">
-            <View
-              className="h-full bg-primary"
-              style={{ width: `${progress}%` }}
-            />
-          </View>
+        {hasProgress ? (
+          <ProgressBar
+            size="sm"
+            square
+            className="absolute bottom-0 left-0 right-0 z-30"
+            value={completedCount}
+            max={outlineItems.length}
+          />
         ) : null}
       </View>
 
       <View className="gap-4 p-4">
-        {hero ? <HeroBlock hero={hero} tint={glassTint} /> : null}
+        {hero ? <HeroBlock hero={hero} /> : null}
 
         <QueryState
           pending={eventsPending}
@@ -803,7 +756,7 @@ export function CohortCard({
                   isLast={index === plateRows.length - 1}
                   key={row.key}
                   row={row}
-                  tint={glassTint}
+                  tint={tint}
                 />
               ))}
             </View>
@@ -846,16 +799,6 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: SURFACE_RADIUS,
     overflow: "hidden",
-  },
-  surface: {
-    borderRadius: SURFACE_RADIUS,
-  },
-  // No overflow here: the docs only put borderRadius on the glass view
-  // (the native side rounds the effect itself), and our padded content
-  // never bleeds to the edge. Clipping the glass view can cut its edge
-  // highlight and make the shape sit off against native glass.
-  heroGlass: {
-    borderRadius: SURFACE_RADIUS,
   },
   chipGlass: {
     borderRadius: 999,

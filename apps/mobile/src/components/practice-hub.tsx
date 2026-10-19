@@ -3,12 +3,10 @@ import { router } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type LayoutChangeEvent,
 } from "react-native";
@@ -21,15 +19,24 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { openAssessmentEvent, openCourseItem } from "../lib/navigation";
 import { canOpenModule } from "../lib/study";
 import { isGameKey, type GameKey } from "../games/catalog";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
-import { GlassBox } from "./GlassBox";
 import { dateLabel } from "../lib/study";
 import { closesLabel } from "./learn/cohort-card";
 import { LearningItemRow } from "./learn/learning-item-row";
-import { Action, Empty, Eyebrow, QueryState } from "./learning-ui";
+import {
+  Action,
+  Chevron,
+  Chip,
+  Empty,
+  Eyebrow,
+  GlassInput,
+  QueryState,
+} from "./learning-ui";
+import { StudyGlass } from "./study-glass";
 
 export type Course = RouterOutputs["learning"]["listMyCourses"][number];
 type Event = RouterOutputs["assessmentEvent"]["listForLearner"][number];
@@ -226,13 +233,6 @@ function GameTile({
   onSelect: (key: string) => void;
   fullWidth?: boolean;
 }) {
-  const { colors, colorScheme } = useAppTheme();
-  // Plain glass like the cohort "Continue learning" hero: tint only, no
-  // border or solid card background. Selection reads from the icon + pill.
-  const glassTint = withOpacity(
-    colors.primary,
-    colorScheme === "dark" ? 0.35 : 0.18,
-  );
   // A game can replace the default "Soon" badge with a domain label.
   // The badge turns primary when the tile is selected.
   const badgeLabel = tool.available
@@ -263,14 +263,21 @@ function GameTile({
         width: fullWidth ? "100%" : "48%",
       }}
     >
-      <GlassBox
+      {/* Plain glass like the cohort "Continue learning" hero: tint only, no
+          border. Selection reads from the icon + pill. */}
+      <StudyGlass
+        bordered={false}
+        contentClassName={
+          fullWidth
+            ? "flex-row items-center gap-3 p-4"
+            : "min-h-28 justify-between gap-3 p-4"
+        }
         isInteractive={!disabled}
-        tintColor={selected ? glassTint : undefined}
-        glassEffectStyle="clear"
-        style={styles.tile}
+        radius={SURFACE_RADIUS}
+        tinted={selected}
       >
         {fullWidth ? (
-          <View className="flex-row items-center gap-3 p-4">
+          <>
             <GameIcon selected={selected} size={44} tool={tool} />
             <View className="min-w-0 flex-1 gap-0.5">
               <Text
@@ -284,9 +291,9 @@ function GameTile({
               </Text>
             </View>
             {badge}
-          </View>
+          </>
         ) : (
-          <View className="min-h-28 justify-between gap-3 p-4">
+          <>
             <View className="flex-row items-start justify-between gap-2">
               <GameIcon selected={selected} size={44} tool={tool} />
               {badge}
@@ -302,9 +309,9 @@ function GameTile({
                 {tool.subtitle}
               </Text>
             </View>
-          </View>
+          </>
         )}
-      </GlassBox>
+      </StudyGlass>
     </Pressable>
   );
 }
@@ -337,68 +344,45 @@ function GamePicker({
   );
 }
 
-function openEvent(event: Event) {
-  const attempt = event.attempts[0];
-  if (event.entry.destination === "ATTEMPT" && attempt) {
-    router.push({
-      pathname: "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-      params: {
-        courseId: event.course.id,
-        courseItemId: event.courseItem.id,
-        attemptId: attempt.id,
-      },
-    });
-    return;
-  }
-  router.push({ pathname: "/events/[eventId]", params: { eventId: event.id } });
-}
-
 function AssessmentQueue({ events, now }: { events: Event[]; now: number }) {
-  const { colors, colorScheme } = useAppTheme();
   if (events.length === 0) return null;
   return (
-    <GlassBox
-      isInteractive={false}
-      tintColor={withOpacity(
-        colors.primary,
-        colorScheme === "dark" ? 0.35 : 0.18,
-      )}
-      glassEffectStyle="clear"
-      style={styles.surface}
+    <StudyGlass
+      bordered={false}
+      contentClassName="px-4"
+      radius={SURFACE_RADIUS}
     >
-      <View className="px-4">
-        {events.map((event, index) => (
-          <Pressable
-            key={event.id}
-            accessibilityHint={`Membuka ${event.title}`}
-            accessibilityRole="button"
-            className={`flex-row items-center gap-3 py-3.5 active:opacity-70 ${index === events.length - 1 ? "" : "border-b border-primary/20"}`}
-            onPress={() => openEvent(event)}
-          >
-            <GameIcon size={36} tool={tools[1]!} />
-            <View className="min-w-0 flex-1 gap-0.5">
-              <Text
-                className="text-sm font-semibold text-foreground"
-                numberOfLines={1}
-              >
-                {event.title}
-              </Text>
-              <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-                {event.course.title}
-                {event.status === "SCHEDULED" &&
-                event.opensAt &&
-                event.opensAt.getTime() > now
-                  ? ` · dibuka ${dateLabel(event.opensAt)}`
-                  : event.closesAt
-                    ? ` · ${closesLabel(event.closesAt, now)}`
-                    : ""}
-              </Text>
-            </View>
-            <Text className="text-lg text-muted-foreground">›</Text>
-          </Pressable>
-        ))}
-      </View>
-    </GlassBox>
+      {events.map((event, index) => (
+        <Pressable
+          key={event.id}
+          accessibilityHint={`Membuka ${event.title}`}
+          accessibilityRole="button"
+          className={`flex-row items-center gap-3 py-3.5 active:opacity-70 ${index === events.length - 1 ? "" : "border-b border-primary/20"}`}
+          onPress={() => openAssessmentEvent(event)}
+        >
+          <GameIcon size={36} tool={tools[1]!} />
+          <View className="min-w-0 flex-1 gap-0.5">
+            <Text
+              className="text-sm font-semibold text-foreground"
+              numberOfLines={1}
+            >
+              {event.title}
+            </Text>
+            <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+              {event.course.title}
+              {event.status === "SCHEDULED" &&
+              event.opensAt &&
+              event.opensAt.getTime() > now
+                ? ` · dibuka ${dateLabel(event.opensAt)}`
+                : event.closesAt
+                  ? ` · ${closesLabel(event.closesAt, now)}`
+                  : ""}
+            </Text>
+          </View>
+          <Chevron />
+        </Pressable>
+      ))}
+    </StudyGlass>
   );
 }
 
@@ -443,20 +427,10 @@ function openLibraryItem(item: LibraryItem, gameKey?: GameKey) {
     });
     return;
   }
-  if (item.type === "ASSESSMENT" && item.attempt?.status === "IN_PROGRESS") {
-    router.push({
-      pathname: "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-      params: {
-        courseId: item.courseId,
-        courseItemId: item.id,
-        attemptId: item.attempt.id,
-      },
-    });
-    return;
-  }
-  router.push({
-    pathname: "/courses/[courseId]/items/[courseItemId]",
-    params: { courseId: item.courseId, courseItemId: item.id },
+  openCourseItem({
+    courseId: item.courseId,
+    courseItemId: item.id,
+    attempt: item.type === "ASSESSMENT" ? item.attempt : null,
   });
 }
 
@@ -510,7 +484,7 @@ export function ResourceLibrary({
   onRetry: () => void;
   outlines: Record<string, CourseOutline>;
 }) {
-  const { colors, colorScheme } = useAppTheme();
+  const { colors } = useAppTheme();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [courseFilter, setCourseFilter] = useState<string | null>(null);
@@ -578,105 +552,66 @@ export function ResourceLibrary({
   return (
     <View className="gap-4">
       <View className="gap-1.5 pt-1">
-        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-          {sourceLabel}
-        </Text>
+        <Eyebrow tone="primary">{sourceLabel}</Eyebrow>
       </View>
       <View className="flex-row items-center gap-2">
-        <GlassBox
-          isInteractive
-          tintColor={withOpacity(
-            colors.primary,
-            colorScheme === "dark" ? 0.35 : 0.18,
-          )}
-          glassEffectStyle="clear"
-          style={{ borderRadius: 9999, flex: 1, height: 48 }}
-        >
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              left: 2,
-              top: 4,
-              width: 40,
-              height: 40,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <SymbolView
-              fallback={
-                <Text className="text-base" style={{ color: colors.primary }}>
-                  ⌕
-                </Text>
-              }
-              name="magnifyingglass"
-              size={20}
-              tintColor={colors.primary}
-              weight="bold"
-            />
-          </View>
-          {query.length === 0 ? (
+        <GlassInput
+          accessibilityLabel="Cari latihan"
+          autoCapitalize="none"
+          autoCorrect={false}
+          height={48}
+          onChangeText={setQuery}
+          placeholder={
+            filter === "ASSESSMENT" ? "Cari quiz…" : "Cari set kosakata…"
+          }
+          returnKeyType="search"
+          value={query}
+          leading={
             <View
               pointerEvents="none"
-              className="absolute inset-0 items-center justify-center px-14"
+              className="size-10 items-center justify-center"
             >
-              <Text
-                className="text-center text-base"
-                numberOfLines={1}
-                style={{ color: colors.mutedForeground }}
-              >
-                {filter === "ASSESSMENT" ? "Cari quiz…" : "Cari set kosakata…"}
-              </Text>
+              <SymbolView
+                fallback={
+                  <Text className="text-base" style={{ color: colors.primary }}>
+                    ⌕
+                  </Text>
+                }
+                name="magnifyingglass"
+                size={20}
+                tintColor={colors.primary}
+                weight="bold"
+              />
             </View>
-          ) : null}
-          <TextInput
-            accessibilityLabel="Cari latihan"
-            autoCapitalize="none"
-            autoCorrect={false}
-            onChangeText={setQuery}
-            returnKeyType="search"
-            selectionColor={colors.primary}
-            value={query}
-            style={{
-              color: colors.foreground,
-              fontSize: 16,
-              height: 48,
-              includeFontPadding: false,
-              paddingHorizontal: 48,
-              paddingVertical: 0,
-              textAlign: "center",
-              textAlignVertical: "center",
-              width: "100%",
-            }}
-          />
-          {query.length > 0 ? (
-            <Pressable
-              accessibilityLabel="Hapus pencarian"
-              accessibilityRole="button"
-              onPress={() => setQuery("")}
-              className="rounded-full active:opacity-75"
-              style={{ position: "absolute", right: 4, top: 4 }}
-            >
-              <View className="size-10 items-center justify-center">
-                <SymbolView
-                  fallback={
-                    <Text
-                      className="text-base"
-                      style={{ color: colors.primary }}
-                    >
-                      ×
-                    </Text>
-                  }
-                  name="xmark.circle.fill"
-                  size={20}
-                  tintColor={colors.primary}
-                  weight="bold"
-                />
-              </View>
-            </Pressable>
-          ) : null}
-        </GlassBox>
+          }
+          trailing={
+            query.length > 0 ? (
+              <Pressable
+                accessibilityLabel="Hapus pencarian"
+                accessibilityRole="button"
+                onPress={() => setQuery("")}
+                className="rounded-full active:opacity-75"
+              >
+                <View className="size-10 items-center justify-center">
+                  <SymbolView
+                    fallback={
+                      <Text
+                        className="text-base"
+                        style={{ color: colors.primary }}
+                      >
+                        ×
+                      </Text>
+                    }
+                    name="xmark.circle.fill"
+                    size={20}
+                    tintColor={colors.primary}
+                    weight="bold"
+                  />
+                </View>
+              </Pressable>
+            ) : undefined
+          }
+        />
         <Pressable
           accessibilityLabel={`Filter: ${activeFilter.label}. Ketuk untuk mengubah.`}
           accessibilityRole="button"
@@ -710,43 +645,20 @@ export function ResourceLibrary({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 8 }}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: courseFilter === null }}
-            className="active:opacity-70"
+          <Chip
+            label="Semua kurikulum"
+            selected={courseFilter === null}
             onPress={() => setCourseFilter(null)}
-          >
-            <View
-              className={`min-h-9 items-center justify-center rounded-full px-3.5 ${courseFilter === null ? "bg-primary" : "bg-muted"}`}
-            >
-              <Text
-                className={`text-xs font-bold ${courseFilter === null ? "text-primary-foreground" : "text-foreground"}`}
-              >
-                Semua kurikulum
-              </Text>
-            </View>
-          </Pressable>
+          />
           {courses.map((course) => {
             const selected = courseFilter === course.id;
             return (
-              <Pressable
+              <Chip
                 key={course.id}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                className="active:opacity-70"
+                label={course.title}
+                selected={selected}
                 onPress={() => setCourseFilter(selected ? null : course.id)}
-              >
-                <View
-                  className={`min-h-9 max-w-52 items-center justify-center rounded-full px-3.5 ${selected ? "bg-primary" : "bg-muted"}`}
-                >
-                  <Text
-                    className={`text-xs font-bold ${selected ? "text-primary-foreground" : "text-foreground"}`}
-                    numberOfLines={1}
-                  >
-                    {course.title}
-                  </Text>
-                </View>
-              </Pressable>
+              />
             );
           })}
         </ScrollView>
@@ -756,7 +668,7 @@ export function ResourceLibrary({
           <Text accessibilityRole="alert" className="text-sm text-destructive">
             Bahan latihan kamu tidak dapat dimuat.
           </Text>
-          <Action secondary onPress={onRetry}>
+          <Action variant="secondary" onPress={onRetry}>
             Coba lagi
           </Action>
         </View>
@@ -917,73 +829,62 @@ export function PracticeHub(props: HubProps) {
       {!props.coursesPending && !props.coursesError ? (
         <>
           {activeSource ? (
-            <GlassBox
-              isInteractive={false}
-              tintColor={withOpacity(
-                colors.primary,
-                colorScheme === "dark" ? 0.35 : 0.18,
-              )}
-              glassEffectStyle="clear"
-              style={styles.surface}
+            <StudyGlass
+              bordered={false}
+              contentClassName="flex-row items-center gap-2 p-4"
+              radius={SURFACE_RADIUS}
             >
-              <View className="flex-row items-center gap-2 p-4">
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Buka detail ${activeSource.title ?? "set kosakata"}`}
-                  accessibilityHint="Membuka layar detail set kosakata"
-                  className="min-w-0 flex-1 active:opacity-70"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/courses/[courseId]/items/[courseItemId]",
-                      params: {
-                        courseId: activeSource.courseId,
-                        courseItemId: activeSource.sourceCourseItemId,
-                      },
-                    })
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Buka detail ${activeSource.title ?? "set kosakata"}`}
+                accessibilityHint="Membuka layar detail set kosakata"
+                className="min-w-0 flex-1 active:opacity-70"
+                onPress={() =>
+                  openCourseItem({
+                    courseId: activeSource.courseId,
+                    courseItemId: activeSource.sourceCourseItemId,
+                  })
+                }
+              >
+                <View className="gap-0.5">
+                  <Eyebrow tone="primary">Sedang dilatih</Eyebrow>
+                  <Text
+                    className="text-[15px] font-bold text-foreground"
+                    numberOfLines={1}
+                  >
+                    {activeSource.title ?? "Set kosakata terpilih"}
+                  </Text>
+                  <Text
+                    className="text-xs text-muted-foreground"
+                    numberOfLines={1}
+                  >
+                    Ketuk untuk melihat set · Pilih game untuk mulai
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Hapus pilihan set kosakata"
+                accessibilityHint="Menampilkan semua set kosakata lagi"
+                className="size-8 items-center justify-center rounded-full active:opacity-60"
+                onPress={() => setSourceDismissed(true)}
+              >
+                <SymbolView
+                  fallback={
+                    <Text
+                      className="text-base font-black"
+                      style={{ color: colors.mutedForeground }}
+                    >
+                      ×
+                    </Text>
                   }
-                >
-                  <View className="gap-0.5">
-                    <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">
-                      Sedang dilatih
-                    </Text>
-                    <Text
-                      className="text-[15px] font-bold text-foreground"
-                      numberOfLines={1}
-                    >
-                      {activeSource.title ?? "Set kosakata terpilih"}
-                    </Text>
-                    <Text
-                      className="text-xs text-muted-foreground"
-                      numberOfLines={1}
-                    >
-                      Ketuk untuk melihat set · Pilih game untuk mulai
-                    </Text>
-                  </View>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Hapus pilihan set kosakata"
-                  accessibilityHint="Menampilkan semua set kosakata lagi"
-                  className="size-8 items-center justify-center rounded-full active:opacity-60"
-                  onPress={() => setSourceDismissed(true)}
-                >
-                  <SymbolView
-                    fallback={
-                      <Text
-                        className="text-base font-black"
-                        style={{ color: colors.mutedForeground }}
-                      >
-                        ×
-                      </Text>
-                    }
-                    name="xmark"
-                    size={14}
-                    tintColor={colors.mutedForeground}
-                    weight="bold"
-                  />
-                </Pressable>
-              </View>
-            </GlassBox>
+                  name="xmark"
+                  size={14}
+                  tintColor={colors.mutedForeground}
+                  weight="bold"
+                />
+              </Pressable>
+            </StudyGlass>
           ) : null}
           <View className="gap-3 pt-1">
             <Eyebrow>Pilih game</Eyebrow>
@@ -1028,14 +929,6 @@ export function PracticeHub(props: HubProps) {
 }
 
 const styles = StyleSheet.create({
-  surface: {
-    borderRadius: SURFACE_RADIUS,
-    overflow: "hidden",
-  },
-  tile: {
-    borderRadius: SURFACE_RADIUS,
-    overflow: "hidden",
-  },
   resourceSection: {
     borderRadius: SURFACE_RADIUS,
     padding: 8,

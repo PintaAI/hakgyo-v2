@@ -4,6 +4,7 @@ import { useAppTheme } from "../providers/AppThemeProvider";
 import type { LocalDataStats } from "../sync/store";
 import type { ResyncReport } from "../sync/types";
 import { withOpacity } from "../theme/colors";
+import { Eyebrow } from "./learning-ui";
 
 export function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -59,9 +60,7 @@ export function LocalDataReport({
       }}
     >
       <View className="gap-1">
-        <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Tersimpan di perangkat ini
-        </Text>
+        <Eyebrow size="md">Tersimpan di perangkat ini</Eyebrow>
         {stats ? (
           <>
             <Line
@@ -92,14 +91,14 @@ export function LocalDataReport({
         </Text>
       ) : report ? (
         <View className="gap-1">
-          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          <Eyebrow size="md">
             Last resync ·{" "}
             {new Date(report.startedAt).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
               second: "2-digit",
             })}
-          </Text>
+          </Eyebrow>
           <Line label="Total" value={formatDuration(report.totalMs)} />
           <Line
             label="Kirim progres yang antre"

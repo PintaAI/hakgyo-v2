@@ -3,6 +3,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { Image } from "expo-image";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
+import { EmptyState, ProgressBar } from "../learning-ui";
 import { useContentRenderer } from "./context";
 
 const assetUrlPrefix = "hakgyo-asset:";
@@ -160,9 +161,6 @@ function AudioPlayer({
       player.play();
     }
   }, [player, status.isLoaded]);
-  const progress = status.duration
-    ? Math.min(100, (status.currentTime / status.duration) * 100)
-    : 0;
 
   return (
     <View className="gap-3 rounded-xl border border-border bg-muted/40 p-4">
@@ -189,12 +187,10 @@ function AudioPlayer({
           <Text className="font-bold text-foreground" numberOfLines={1}>
             {fileName || "Audio"}
           </Text>
-          <View className="h-1.5 overflow-hidden rounded-full bg-border">
-            <View
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${progress}%` }}
-            />
-          </View>
+          <ProgressBar
+            track="border"
+            value={status.duration ? status.currentTime / status.duration : 0}
+          />
           <Text className="text-xs tabular-nums text-muted-foreground">
             {formatTime(status.currentTime)} / {formatTime(status.duration)}
           </Text>
@@ -232,13 +228,7 @@ export function ContentAudio({
     );
   }
   if (resolved.status !== "ready") {
-    return (
-      <View className="rounded-xl border border-dashed border-border p-5">
-        <Text className="text-center text-sm text-muted-foreground">
-          Audio tidak tersedia
-        </Text>
-      </View>
-    );
+    return <EmptyState variant="dashed">Audio tidak tersedia</EmptyState>;
   }
 
   if (activeUrl !== resolved.url) {

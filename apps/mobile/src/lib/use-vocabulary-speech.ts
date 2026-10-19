@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSharedValue } from "react-native-reanimated";
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
@@ -19,6 +20,18 @@ const TRAILING_SILENCE_MS = 1_100;
 const SPEECH_END_GRACE_MS = 300;
 const RESTART_GUARD_MS = 400;
 const MAX_SERVICE_RETRIES = 4;
+/** Readings kept for the voice meter, newest last. */
+export const VOICE_LEVEL_HISTORY = 24;
+const VOLUME_INTERVAL_MS = 80;
+
+function silentLevels() {
+  return new Array<number>(VOICE_LEVEL_HISTORY).fill(0);
+}
+
+/** Maps the recognizer's -2..10 volume (0 and below is inaudible) to 0..1. */
+function normalizeVolume(value: number) {
+  return Math.min(1, Math.max(0, value / 10)) ** 0.7;
+}
 
 function wait(delay: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, delay));
@@ -49,7 +62,9 @@ export function useVocabularySpeech({
   const [status, setStatus] = useState<VocabularySpeechStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string>();
   const [recoverableError, setRecoverableError] = useState(false);
-  const [volume, setVolume] = useState(0);
+  // Recent input levels for the voice meter. A shared value, so ~12 readings
+  // a second animate on the UI thread without re-rendering the screen.
+  const levels = useSharedValue<number[]>(silentLevels());
   const state = useRef({ mode, disabled, onInterim, onFinal, status });
   state.current = { mode, disabled, onInterim, onFinal, status };
   const contextRef = useRef<readonly string[]>(contextualStrings ?? []);
@@ -207,6 +222,7 @@ export function useVocabularySpeech({
 
   useSpeechRecognitionEvent("end", () => {
     clearEndpointTimer();
+    levels.value = silentLevels();
     const current = state.current;
     const active =
       current.status === "listening" || current.status === "stopping";
@@ -223,7 +239,8 @@ export function useVocabularySpeech({
   });
 
   useSpeechRecognitionEvent("volumechange", (event) => {
-    setVolume(event.value);
+    if (state.current.status !== "listening") return;
+    levels.value = [...levels.value.slice(1), normalizeVolume(event.value)];
   });
 
   const start = useCallback(async () => {
@@ -283,6 +300,10 @@ export function useVocabularySpeech({
         maxAlternatives: 5,
         continuous: false,
         contextualStrings: [...contextRef.current].slice(0, 20),
+        volumeChangeEventOptions: {
+          enabled: true,
+          intervalMillis: VOLUME_INTERVAL_MS,
+        },
         androidIntentOptions: {
           EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 500,
           EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 700,
@@ -335,7 +356,7 @@ export function useVocabularySpeech({
     status,
     errorMessage,
     recoverableError,
-    volume,
+    levels,
     start,
     stop,
     abort,

@@ -10,7 +10,7 @@ import {
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
-import { Empty } from "./learning-ui";
+import { Empty, Eyebrow } from "./learning-ui";
 import {
   AssessmentFeedback,
   AssessmentOption,
@@ -162,12 +162,9 @@ export function TodayAssessmentPractice({
           <Text className="text-lg font-bold tracking-tight text-foreground">
             Tugas hari ini
           </Text>
-          <Text
-            className="text-xs font-bold uppercase tracking-[1.2px] text-muted-foreground"
-            numberOfLines={2}
-          >
+          <Eyebrow size="md" numberOfLines={2}>
             {question.assessmentTitle} · {question.courseTitle}
-          </Text>
+          </Eyebrow>
           <AssessmentQuestion
             current={index}
             total={questions.length}

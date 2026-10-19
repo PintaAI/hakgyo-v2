@@ -18,6 +18,13 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import {
+  Action,
+  Badge,
+  Card,
+  Eyebrow,
+  HeroHeader,
+} from "../../src/components/learning-ui";
 import { LearningItemRow } from "../../src/components/learn/learning-item-row";
 import {
   DeckTutorialCoach,
@@ -135,11 +142,8 @@ function sampleStreakDays() {
 
 function PreviewCard({ children }: { children: ReactNode }) {
   return (
-    <View
-      className="gap-4 rounded-[28px] border border-border bg-card p-5"
-      pointerEvents="none"
-    >
-      {children}
+    <View pointerEvents="none">
+      <Card className="gap-4 p-5">{children}</Card>
     </View>
   );
 }
@@ -148,9 +152,9 @@ function CoursePreview() {
   return (
     <PreviewCard>
       <View className="gap-1">
-        <Text className="text-xs font-bold uppercase tracking-[1.5px] text-primary">
+        <Eyebrow tone="primary" size="md">
           Kurikulum gratis
-        </Text>
+        </Eyebrow>
         <Text className="text-xl font-black text-foreground">
           Hangeul Mastery
         </Text>
@@ -239,11 +243,7 @@ function StreakPreview() {
     <PreviewCard>
       <View className="flex-row items-center justify-between gap-3">
         <Text className="text-sm font-bold text-foreground">Streak 4 hari</Text>
-        <View className="rounded-full bg-primary/10 px-2.5 py-1">
-          <Text className="text-xs font-bold text-primary">
-            320 XP minggu ini
-          </Text>
-        </View>
+        <Badge>320 XP minggu ini</Badge>
       </View>
       <View className="flex-row">
         {days.map((day) => (
@@ -358,7 +358,7 @@ export default function OnboardingScreen() {
       className="flex-1 bg-background"
       style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }}
     >
-      <View className="h-10 flex-row items-center px-6">
+      <View className="h-10 flex-row items-center px-5">
         <Text className="w-16 text-xs font-black tracking-[3px] text-primary">
           HAKGYO
         </Text>
@@ -407,18 +407,13 @@ export default function OnboardingScreen() {
           pagingEnabled
           ref={pagerRef}
           renderItem={({ item: slide }) => (
-            <View className="flex-1 gap-8 px-6 pt-8" style={{ width }}>
-              <View className="gap-3">
-                <Text className="text-xs font-bold tracking-[2px] text-primary">
-                  {slide.eyebrow}
-                </Text>
-                <Text className="text-4xl font-black leading-tight tracking-tight text-foreground">
-                  {slide.title}
-                </Text>
-                <Text className="text-base leading-6 text-muted-foreground">
-                  {slide.description}
-                </Text>
-              </View>
+            <View className="flex-1 gap-8 px-5 pt-8" style={{ width }}>
+              <HeroHeader
+                description={slide.description}
+                eyebrow={slide.eyebrow}
+                size="lg"
+                title={slide.title}
+              />
               <SlidePreview scrollGesture={scrollGesture} slide={slide} />
             </View>
           )}
@@ -426,36 +421,16 @@ export default function OnboardingScreen() {
         />
       </GestureDetector>
 
-      <View className="gap-2 px-6">
+      <View className="gap-2 px-5">
         {isLastPage ? (
           <>
-            <Pressable
-              accessibilityRole="button"
-              className="items-center rounded-full bg-primary px-6 py-4 active:opacity-80"
-              onPress={() => openAuth("sign-up")}
-            >
-              <Text className="font-bold text-primary-foreground">
-                Daftar gratis
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              className="items-center rounded-full px-6 py-3 active:opacity-60"
-              onPress={() => openAuth("sign-in")}
-            >
-              <Text className="font-bold text-primary">
-                Sudah punya akun? Masuk
-              </Text>
-            </Pressable>
+            <Action onPress={() => openAuth("sign-up")}>Daftar gratis</Action>
+            <Action variant="link" onPress={() => openAuth("sign-in")}>
+              Sudah punya akun? Masuk
+            </Action>
           </>
         ) : (
-          <Pressable
-            accessibilityRole="button"
-            className="items-center rounded-full bg-primary px-6 py-4 active:opacity-80"
-            onPress={() => goToPage(page + 1)}
-          >
-            <Text className="font-bold text-primary-foreground">Lanjut</Text>
-          </Pressable>
+          <Action onPress={() => goToPage(page + 1)}>Lanjut</Action>
         )}
       </View>
     </View>

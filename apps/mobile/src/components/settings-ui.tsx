@@ -4,6 +4,7 @@ import { Pressable, Switch, Text, View } from "react-native";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
+import { Eyebrow } from "./learning-ui";
 
 export function SettingsSection({
   title,
@@ -20,9 +21,9 @@ export function SettingsSection({
   );
   return (
     <View className="gap-px">
-      <Text className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+      <Eyebrow className="mb-2 px-1" size="md">
         {title}
-      </Text>
+      </Eyebrow>
       <View className="overflow-hidden rounded-2xl">
         {items.map((child, index) => (
           <Fragment key={index}>

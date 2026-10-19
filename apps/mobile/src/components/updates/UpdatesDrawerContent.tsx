@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMemo } from "react";
 
 import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
+import { openAssessmentEvent, openCourseItem } from "../../lib/navigation";
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { dateLabel } from "../../lib/study";
 import {
@@ -88,9 +89,9 @@ export function UpdatesDrawerContent({
       const firstItem = courseModule?.items[0];
       onNavigate(() => {
         if (firstItem) {
-          router.push({
-            pathname: "/courses/[courseId]/items/[courseItemId]",
-            params: { courseId: item.courseId, courseItemId: firstItem.id },
+          openCourseItem({
+            courseId: item.courseId,
+            courseItemId: firstItem.id,
           });
           return;
         }
@@ -106,18 +107,9 @@ export function UpdatesDrawerContent({
       const event = dashboard.data?.events.find(
         (candidate) => candidate.id === item.entityId,
       );
-      const attempt = event?.attempts[0];
       onNavigate(() => {
-        if (event?.entry.destination === "ATTEMPT" && attempt) {
-          router.push({
-            pathname:
-              "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-            params: {
-              courseId: event.course.id,
-              courseItemId: event.courseItem.id,
-              attemptId: attempt.id,
-            },
-          });
+        if (event) {
+          openAssessmentEvent(event);
           return;
         }
         router.push({
@@ -181,12 +173,9 @@ export function UpdatesDrawerContent({
           // the course outline.
           const itemId = contentNoticeItemId(notice, outlines[notice.courseId]);
           if (itemId) {
-            router.push({
-              pathname: "/courses/[courseId]/items/[courseItemId]",
-              params: {
-                courseId: notice.courseId,
-                courseItemId: itemId,
-              },
+            openCourseItem({
+              courseId: notice.courseId,
+              courseItemId: itemId,
             });
             return;
           }

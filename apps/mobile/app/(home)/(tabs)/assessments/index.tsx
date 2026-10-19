@@ -1,24 +1,15 @@
-import {
-  type Href,
-  Stack,
-  router,
-  useFocusEffect,
-  useLocalSearchParams,
-} from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Platform, ScrollView, Text } from "react-native";
-import { DoodleBackground } from "../../../../src/components/doodle-background";
-import { StudyScreen } from "../../../../src/components/learning-ui";
+import { ScrollView } from "react-native";
 import { PracticeHub } from "../../../../src/components/practice-hub";
-import { OrganizationSwitcherTrigger } from "../../../../src/components/organization-switcher";
+import { TabScreen } from "../../../../src/components/tab-screen";
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 import { usePushNotifications } from "../../../../src/providers/PushNotificationsProvider";
 import { useCourseOutlines, useSyncIndex } from "../../../../src/sync/hooks";
-import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
-import { AndroidTabActions } from "../../../../src/components/sidebar/AndroidTabActions";
 import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
+import { firstParam } from "../../../../src/lib/route-params";
 
 export default function PracticeTab() {
   const { activeOrganizationId } = useAppTheme();
@@ -28,8 +19,6 @@ export default function PracticeTab() {
     vocabularySetId?: string | string[];
     vocabularyTitle?: string | string[];
   }>();
-  const firstParam = (value: string | string[] | undefined) =>
-    Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
   const preselectedCourseId = firstParam(incoming.courseId);
   const preselectedSourceCourseItemId = firstParam(incoming.sourceCourseItemId);
   const preselectedSource =
@@ -89,62 +78,30 @@ export default function PracticeTab() {
     return !attempt || attempt.status === "IN_PROGRESS";
   });
   return (
-    <>
-      <DoodleBackground />
-      {Platform.OS === "ios" ? (
-        <>
-          <SidebarToolbarButton />
-          <Stack.Toolbar placement="right">
-            <Stack.Toolbar.View hidesSharedBackground>
-              <OrganizationSwitcherTrigger
-                compact
-                onPress={() => router.push("/organization-switcher" as Href)}
-              />
-            </Stack.Toolbar.View>
-          </Stack.Toolbar>
-        </>
-      ) : null}
-      <StudyScreen
-        title=""
-        headerShown={Platform.OS === "ios"}
-        keyboardAvoiding
-        automaticallyAdjustKeyboardInsets
-        scrollViewRef={scrollViewRef}
-        refreshing={dashboard.isRefetching || isSyncing}
-        onRefresh={() => {
-          void syncNow(activeOrganizationId ?? undefined);
-        }}
-      >
-        {Platform.OS !== "ios" ? (
-          <AndroidTabActions
-            right={
-              <OrganizationSwitcherTrigger
-                onPress={() => router.push("/organization-switcher" as Href)}
-              />
-            }
-          />
-        ) : null}
-        <Text
-          accessibilityRole="header"
-          className="text-[26px] font-black leading-8 tracking-tight text-foreground"
-        >
-          Latihan
-        </Text>
-        <PracticeHub
-          courses={dashboard.data?.courses ?? []}
-          coursesError={dashboard.error}
-          coursesPending={dashboard.isPending}
-          events={actionableEvents}
-          eventsError={dashboard.error}
-          eventsPending={dashboard.isPending}
-          now={now}
-          outlines={outlines}
-          onResourceFocus={focusResources}
-          onRetryCourses={() => void dashboard.refetch()}
-          onRetryEvents={() => void dashboard.refetch()}
-          preselectedSource={preselectedSource}
-        />
-      </StudyScreen>
-    </>
+    <TabScreen
+      title="Latihan"
+      keyboardAvoiding
+      automaticallyAdjustKeyboardInsets
+      scrollViewRef={scrollViewRef}
+      refreshing={dashboard.isRefetching || isSyncing}
+      onRefresh={() => {
+        void syncNow(activeOrganizationId ?? undefined);
+      }}
+    >
+      <PracticeHub
+        courses={dashboard.data?.courses ?? []}
+        coursesError={dashboard.error}
+        coursesPending={dashboard.isPending}
+        events={actionableEvents}
+        eventsError={dashboard.error}
+        eventsPending={dashboard.isPending}
+        now={now}
+        outlines={outlines}
+        onResourceFocus={focusResources}
+        onRetryCourses={() => void dashboard.refetch()}
+        onRetryEvents={() => void dashboard.refetch()}
+        preselectedSource={preselectedSource}
+      />
+    </TabScreen>
   );
 }
