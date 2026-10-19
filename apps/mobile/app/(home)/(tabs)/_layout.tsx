@@ -44,15 +44,11 @@ export default function HomeTabsLayout() {
           md="edit_note"
         />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label>Profil</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{
-            default: "person.crop.circle",
-            selected: "person.crop.circle.fill",
-          }}
-          md="account_circle"
-        />
+      {/* iOS draws the system search item (detached on iOS 26) and ignores
+          the label; Android shows an ordinary tab. */}
+      <NativeTabs.Trigger name="search" role="search">
+        <NativeTabs.Trigger.Label>Cari</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

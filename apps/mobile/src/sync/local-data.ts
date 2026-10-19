@@ -30,6 +30,10 @@ export type LocalBundleRecord<T> = {
 
 export type LocalData<TIndex> = {
   loadIndex(scope: string): Promise<LocalIndexRecord<TIndex> | null>;
+  /** Scopes with a stored index ("all" or organization ids). */
+  listIndexScopes(): Promise<string[]>;
+  /** Course id and revision of every stored bundle. */
+  listBundleRevisions(): Promise<{ courseId: string; revision: string }[]>;
   loadBundleStructure(
     courseId: string,
   ): Promise<LocalBundleRecord<BundleStructure> | null>;

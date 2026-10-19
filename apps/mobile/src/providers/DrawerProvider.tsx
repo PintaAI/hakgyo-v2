@@ -107,7 +107,7 @@ export function DrawerProvider({
   );
 
   const openProfile = useCallback(() => {
-    navigate(() => router.replace("/(home)/(tabs)/profile"));
+    navigate(() => router.push("/profile"));
   }, [navigate]);
 
   useEffect(() => {

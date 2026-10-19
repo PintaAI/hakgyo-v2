@@ -34,9 +34,12 @@ function OrganizationMark({
 
 export function OrganizationSwitcherTrigger({
   compact = false,
+  align = "end",
   onPress,
 }: {
   compact?: boolean;
+  /** Which edge the trigger hugs within its container. */
+  align?: "start" | "end";
   onPress: () => void;
 }) {
   const { activeBrand, colorScheme, colors } = useAppTheme();
@@ -48,7 +51,7 @@ export function OrganizationSwitcherTrigger({
       accessibilityRole="button"
       className={
         compact
-          ? "h-10 max-w-44 flex-row items-center gap-2 rounded-full pl-1 pr-3 active:opacity-70"
+          ? "h-11 max-w-44 flex-row items-center gap-2 rounded-full pl-1.5 pr-3.5 active:opacity-70"
           : "max-w-[80%] flex-row items-center gap-2 rounded-full border border-border bg-card py-1.5 pl-1.5 pr-3 active:opacity-70"
       }
       onPress={onPress}
@@ -81,7 +84,7 @@ export function OrganizationSwitcherTrigger({
   );
 
   return (
-    <View className="items-end">
+    <View className={align === "start" ? "items-start" : "items-end"}>
       {compact ? (
         <GlassBox
           isInteractive

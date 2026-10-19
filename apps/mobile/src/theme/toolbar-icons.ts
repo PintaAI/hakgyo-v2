@@ -17,6 +17,10 @@ export const toolbarIcons = {
     ios: "magnifyingglass",
     android: import("@expo/material-symbols/search.xml"),
   }),
+  settings: Icon.select({
+    ios: "gearshape",
+    android: import("@expo/material-symbols/settings.xml"),
+  }),
   notifications: Icon.select({
     ios: "bell",
     android: import("@expo/material-symbols/notifications.xml"),

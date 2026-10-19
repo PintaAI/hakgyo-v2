@@ -75,6 +75,8 @@ export type MobileSyncStore = {
   setMeta: (userId: string, key: string, value: string) => Promise<void>;
 
   loadIndex: (userId: string, scope: string) => Promise<StoredIndex | null>;
+  /** Scopes of every stored index ("all" or organization ids). */
+  listIndexScopes: (userId: string) => Promise<string[]>;
   saveIndex: (
     userId: string,
     index: Omit<StoredIndex, "updatedAt"> & { updatedAt?: number },
@@ -515,6 +517,17 @@ export function createMobileSyncStore(
             updatedAt: row.updated_at,
           }
         : null;
+    },
+
+    async listIndexScopes(userId) {
+      await initialize();
+      const rows = await (
+        await database()
+      ).getAllAsync<{ scope: string }>(
+        "SELECT scope FROM mobile_sync_index WHERE user_id = ?",
+        userId,
+      );
+      return rows.map((row) => row.scope);
     },
 
     async saveIndex(userId, index) {

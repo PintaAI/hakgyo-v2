@@ -161,6 +161,10 @@ export function createMemoryStore(): MobileSyncStore & {
     },
     loadIndex: async (userId, scope) =>
       structuredClone(indexes.get(key(userId, scope)) ?? null),
+    listIndexScopes: async (userId) =>
+      [...indexes.entries()]
+        .filter(([indexKey]) => indexKey.startsWith(`${userId}:`))
+        .map(([, index]) => index.scope),
     saveIndex: async (userId, index) => {
       indexes.set(key(userId, index.scope), {
         ...index,
