@@ -251,7 +251,11 @@ function AssessmentReference({ block }: BlockRendererProps) {
           Mulai tugas →
         </Action>
       ) : (
-        <View className="min-h-12 items-center justify-center rounded-2xl bg-muted px-5 py-3">
+        <View
+          accessibilityRole="button"
+          accessibilityState={{ disabled: true }}
+          className="min-h-12 items-center justify-center rounded-2xl bg-muted px-5 py-3"
+        >
           <Text className="text-base font-semibold text-muted-foreground">
             Tidak tersedia
           </Text>

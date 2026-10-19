@@ -82,10 +82,10 @@ export function GlassInput({
       />
       {/* After the input so the slots sit above it and receive touches. */}
       {leading ? (
-        <View style={[slotStyle, { left: SLOT_INSET }]}>{leading}</View>
+        <View pointerEvents="box-none" style={[slotStyle, { left: SLOT_INSET }]}>{leading}</View>
       ) : null}
       {trailing ? (
-        <View style={[slotStyle, { right: SLOT_INSET }]}>{trailing}</View>
+        <View pointerEvents="box-none" style={[slotStyle, { right: SLOT_INSET }]}>{trailing}</View>
       ) : null}
     </GlassBox>
   );
