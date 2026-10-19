@@ -28,7 +28,7 @@ Every mobile request sends `x-hakgyo-client: protocol=…;runtime=…;update=…
 
 The outbox stays on the device and syncs after the update.
 
-Order of a breaking change:
+Order of a breaking change (the full playbook for large backend changes is `docs/backend-changes.md`):
 
 1. Deploy a server that accepts the old and the new client.
 2. Ship the new client (an update, or a store build when native code changed).

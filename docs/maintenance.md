@@ -78,6 +78,8 @@ The tab screens show a notice (`MaintenanceBanner`) saying learners can keep stu
 
 ## Runbook
 
+Maintenance is the fallback for changes that cannot run side by side with the old version; `docs/backend-changes.md` describes the zero-downtime path to try first.
+
 1. Announce: set `MAINTENANCE_MODE=scheduled` with `MAINTENANCE_STARTS_AT` (and `MAINTENANCE_UNTIL` if known), redeploy. Give mobile clients time to fetch a manifest; they poll about every 15 minutes while open.
 2. Start: switch to `read_only` (or `full` when the database itself goes away or the auth tables change), update `MAINTENANCE_UNTIL`, redeploy.
 3. Work: run the migration or deploy the change. Verify as a superadmin, who bypasses the block.
