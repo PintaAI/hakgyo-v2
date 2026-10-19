@@ -42,6 +42,7 @@ import { assessmentTerminalResult } from "../../../../../../src/lib/assessment-s
 import { useAppTheme } from "../../../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../../../src/providers/MobileSyncProvider";
 import { useLearnerAttempt } from "../../../../../../src/sync/hooks";
+import { firstParam } from "../../../../../../src/lib/route-params";
 
 type Answer = { content?: string; optionIds: string[] };
 
@@ -112,10 +113,6 @@ const AssessmentDeadline = memo(function AssessmentDeadline({
     </Text>
   );
 });
-
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
 
 export default function AssessmentAttemptScreen() {
   const params = useLocalSearchParams<{

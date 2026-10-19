@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { canOpenModule } from "../lib/study";
 import { useCourseOutline } from "../sync/hooks";
 import { Empty, QueryState, Row } from "./learning-ui";
+import { getLearningItemTypeMeta } from "../lib/learning-item-type";
 
 export function CourseActivities({
   courseId,
@@ -46,7 +47,7 @@ export function CourseActivities({
           key={item.id}
           title={item.title}
           disabled={!item.available}
-          detail={`${item.isCompleted ? "Selesai · " : ""}${item.type === "VOCABULARY_SET" ? "Kosakata" : item.type === "ASSESSMENT" ? "Tugas" : "Materi"} · ${item.module}`}
+          detail={`${item.isCompleted ? "Selesai · " : ""}${getLearningItemTypeMeta(item.type).label} · ${item.module}`}
           onPress={() => {
             if (
               item.type === "ASSESSMENT" &&

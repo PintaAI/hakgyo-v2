@@ -7,16 +7,13 @@ import { CourseSidebarContent } from "./CourseSidebarContent";
 import { MainSidebarContent } from "./MainSidebarContent";
 import { SidebarShell } from "./SidebarShell";
 import { getCurrentAppArea } from "./routing";
+import { firstParam } from "../../lib/route-params";
 
 type SidebarProps = {
   onClose: () => void;
   onNavigate: (action: () => void) => void;
   onOpenProfile: () => void;
 };
-
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
 
 export const Sidebar = memo(function Sidebar({
   onClose,

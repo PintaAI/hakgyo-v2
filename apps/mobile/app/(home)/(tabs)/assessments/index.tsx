@@ -19,6 +19,7 @@ import { useCourseOutlines, useSyncIndex } from "../../../../src/sync/hooks";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import { AndroidTabActions } from "../../../../src/components/sidebar/AndroidTabActions";
 import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
+import { firstParam } from "../../../../src/lib/route-params";
 
 export default function PracticeTab() {
   const { activeOrganizationId } = useAppTheme();
@@ -28,8 +29,6 @@ export default function PracticeTab() {
     vocabularySetId?: string | string[];
     vocabularyTitle?: string | string[];
   }>();
-  const firstParam = (value: string | string[] | undefined) =>
-    Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
   const preselectedCourseId = firstParam(incoming.courseId);
   const preselectedSourceCourseItemId = firstParam(incoming.sourceCourseItemId);
   const preselectedSource =

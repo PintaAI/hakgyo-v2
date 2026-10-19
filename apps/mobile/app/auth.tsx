@@ -16,6 +16,7 @@ import { apiUrl } from "../src/config";
 import { authClient } from "../src/lib/auth-client";
 import { userErrorMessage as errorMessage } from "../src/lib/error-message";
 import { useAppTheme } from "../src/providers/AppThemeProvider";
+import { firstParam } from "../src/lib/route-params";
 
 type SignInMethod = "email" | "google" | "apple";
 type AuthMode = "sign-in" | "sign-up";
@@ -31,16 +32,12 @@ export default function AuthScreen() {
     redirectTo?: string | string[];
     mode?: string | string[];
   }>();
-  const requestedRedirect = Array.isArray(params.redirectTo)
-    ? params.redirectTo[0]
-    : params.redirectTo;
+  const requestedRedirect = firstParam(params.redirectTo);
   const postSignInPath: Href =
     requestedRedirect?.startsWith("/courses/") === true
       ? (requestedRedirect as Href)
       : "/";
-  const requestedMode = Array.isArray(params.mode)
-    ? params.mode[0]
-    : params.mode;
+  const requestedMode = firstParam(params.mode);
   const [mode, setMode] = useState<AuthMode>(
     requestedMode === "sign-up" ? "sign-up" : "sign-in",
   );

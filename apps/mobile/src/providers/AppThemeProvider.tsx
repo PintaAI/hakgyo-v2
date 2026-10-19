@@ -20,6 +20,7 @@ import { api } from "../lib/trpc";
 import { resolveActiveBrand } from "../theme/active-brand";
 import { type ColorScheme, type ThemeColors } from "../theme/colors";
 import { createMobileTheme } from "../theme/organization-theme";
+import { firstParam } from "../lib/route-params";
 
 const STORAGE_VERSION = 2;
 // How long the organization list counts as fresh, on mount and on returning
@@ -63,10 +64,6 @@ const AppThemeContext = createContext<AppThemeContextValue | null>(null);
 
 function storageKey(userId: string) {
   return `hakgyo:brand-workspaces:v${STORAGE_VERSION}:${userId}`;
-}
-
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
 }
 
 function parseStoredOrganization(
@@ -150,8 +147,8 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     courseId?: string | string[];
   }>();
   const userId = session?.user.id ?? null;
-  const routeCohortId = firstParam(routeParams.cohortId);
-  const routeCourseId = firstParam(routeParams.courseId);
+  const routeCohortId = firstParam(routeParams.cohortId) || undefined;
+  const routeCourseId = firstParam(routeParams.courseId) || undefined;
   const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
   const [hydratedUserId, setHydratedUserId] = useState<string | null>();
   const [availableOrganizations, setAvailableOrganizations] = useState<

@@ -17,12 +17,11 @@ import { authClient } from "../../src/lib/auth-client";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { useCourseOfflineMedia, useCourseOutline } from "../../src/sync/hooks";
 import { withOpacity } from "../../src/theme/colors";
+import { firstParam } from "../../src/lib/route-params";
 
 export default function CourseDetailScreen() {
   const params = useLocalSearchParams<{ courseId: string | string[] }>();
-  const courseId = Array.isArray(params.courseId)
-    ? (params.courseId[0] ?? "")
-    : (params.courseId ?? "");
+  const courseId = firstParam(params.courseId);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
   const { colors } = useAppTheme();

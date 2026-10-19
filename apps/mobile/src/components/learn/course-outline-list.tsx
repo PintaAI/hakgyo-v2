@@ -17,12 +17,7 @@ import {
 import { QueryState } from "../learning-ui";
 import { ModuleOfflineBadge } from "../offline-download";
 import { LearningItemRow } from "./learning-item-row";
-
-const itemLabels = {
-  MATERIAL: "Materi",
-  ASSESSMENT: "Tugas",
-  VOCABULARY_SET: "Kosakata",
-} as const;
+import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 
 export function CourseOutlineList({
   courseId,
@@ -220,7 +215,7 @@ export function CourseOutlineList({
                         key={item.id}
                         title={item.title}
                         type={item.type}
-                        typeLabel={itemLabels[item.type]}
+                        typeLabel={getLearningItemTypeMeta(item.type).label}
                         statusText={
                           status &&
                           `${status}${attempt && assessmentState?.action ? ` · ${assessmentState.action}` : ""}`

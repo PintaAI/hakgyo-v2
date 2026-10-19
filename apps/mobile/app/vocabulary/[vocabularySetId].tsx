@@ -5,10 +5,7 @@ import { Empty, QueryState } from "../../src/components/learning-ui";
 import { VocabularySetDetail } from "../../src/components/learn/vocabulary-set-detail";
 import { authClient } from "../../src/lib/auth-client";
 import { useVocabularyPractice } from "../../src/sync/hooks";
-
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
+import { firstParam } from "../../src/lib/route-params";
 
 export default function VocabularySetScreen() {
   const params = useLocalSearchParams<{
@@ -16,9 +13,9 @@ export default function VocabularySetScreen() {
     sourceCourseItemId?: string | string[];
     courseId?: string | string[];
   }>();
-  const vocabularySetId = first(params.vocabularySetId);
-  const sourceCourseItemId = first(params.sourceCourseItemId);
-  const courseId = first(params.courseId);
+  const vocabularySetId = firstParam(params.vocabularySetId);
+  const sourceCourseItemId = firstParam(params.sourceCourseItemId);
+  const courseId = firstParam(params.courseId);
   const { data: session } = authClient.useSession();
   // Composed from the local course bundle; online only when it is missing.
   const query = useVocabularyPractice(vocabularySetId, sourceCourseItemId, {

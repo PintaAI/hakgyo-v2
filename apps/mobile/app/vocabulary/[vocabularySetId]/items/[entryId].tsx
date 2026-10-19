@@ -8,10 +8,7 @@ import { StudyAction } from "../../../../src/components/study-glass";
 import { VocabularyAudioButton } from "../../../../src/components/vocabulary-audio-button";
 import { authClient } from "../../../../src/lib/auth-client";
 import { useVocabularyPractice } from "../../../../src/sync/hooks";
-
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
+import { firstParam } from "../../../../src/lib/route-params";
 
 function exampleLines(value: unknown) {
   if (Array.isArray(value))
@@ -31,10 +28,10 @@ export default function VocabularyItemSheet() {
     sourceCourseItemId?: string | string[];
     courseId?: string | string[];
   }>();
-  const vocabularySetId = first(params.vocabularySetId);
-  const entryId = first(params.entryId);
-  const sourceCourseItemId = first(params.sourceCourseItemId);
-  const courseId = first(params.courseId);
+  const vocabularySetId = firstParam(params.vocabularySetId);
+  const entryId = firstParam(params.entryId);
+  const sourceCourseItemId = firstParam(params.sourceCourseItemId);
+  const courseId = firstParam(params.courseId);
   const { data: session } = authClient.useSession();
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const query = useVocabularyPractice(vocabularySetId, sourceCourseItemId, {

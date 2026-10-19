@@ -36,10 +36,7 @@ import {
   StudyAction,
   StudyGlass,
 } from "../../../../src/components/study-glass";
-
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
+import { firstParam } from "../../../../src/lib/route-params";
 
 export default function CourseItemScreen() {
   const params = useLocalSearchParams<{

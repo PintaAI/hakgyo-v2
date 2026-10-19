@@ -6,10 +6,7 @@ import {
   type LearningRequirementAction,
 } from "../../../../../src/components/learn/course-learning-footer";
 import { useCourseItem } from "../../../../../src/sync/hooks";
-
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
+import { firstParam } from "../../../../../src/lib/route-params";
 
 export default function LearningProgressSheet() {
   const params = useLocalSearchParams<{

@@ -22,6 +22,7 @@ import {
   TransitionOverrideProvider,
   useTransitionOverride,
 } from "../src/navigation/screen-transition";
+import { formSheetOptions } from "../src/navigation/sheet-options";
 import {
   MobileSyncProvider,
   useMobileSync,
@@ -209,23 +210,10 @@ function RootNavigator() {
                 name="courses/[courseId]"
                 options={{
                   headerShown: false,
-                  ...Platform.select({
-                    ios: {
-                      presentation: "formSheet",
-                      sheetAllowedDetents: [1],
-                      sheetGrabberVisible: false,
-                      sheetCornerRadius: 28,
-                      sheetExpandsWhenScrolledToEdge: true,
-                    },
-                    default: {
-                      presentation: "formSheet",
-                      sheetAllowedDetents: [1],
-                      sheetInitialDetentIndex: 0,
-                      sheetCornerRadius: 28,
-                      sheetElevation: 24,
-                      sheetGrabberVisible: false,
-                      sheetLargestUndimmedDetentIndex: "none",
-                    },
+                  ...formSheetOptions({
+                    detents: [1],
+                    grabber: false,
+                    expandsWhenScrolledToEdge: true,
                   }),
                 }}
               />
@@ -234,27 +222,10 @@ function RootNavigator() {
                 <Stack.Screen name="(onboarding)" />
                 <Stack.Screen
                   name="auth"
-                  options={Platform.select({
-                    ios: {
-                      presentation: "formSheet",
-                      headerLargeTitle: false,
-                      headerTransparent: true,
-                      sheetAllowedDetents: "fitToContents",
-                      sheetExpandsWhenScrolledToEdge: false,
-                      sheetGrabberVisible: true,
-                    },
-                    default: {
-                      presentation: "formSheet",
-                      headerLargeTitle: false,
-                      headerTransparent: false,
-                      sheetAllowedDetents: "fitToContents",
-                      sheetInitialDetentIndex: 0,
-                      sheetCornerRadius: 28,
-                      sheetElevation: 24,
-                      sheetShouldOverflowTopInset: false,
-                      sheetLargestUndimmedDetentIndex: "none",
-                      sheetResizeAnimationEnabled: true,
-                    },
+                  options={formSheetOptions({
+                    detents: "fitToContents",
+                    transparentHeader: true,
+                    systemCornerRadius: true,
                   })}
                 />
               </Stack.Protected>
@@ -263,14 +234,11 @@ function RootNavigator() {
                 <Stack.Screen
                   name="assessment-questions"
                   options={{
-                    presentation: "formSheet",
                     headerShown: false,
-                    sheetAllowedDetents: [0.55, 0.9],
-                    sheetInitialDetentIndex: 0,
-                    sheetCornerRadius: 28,
-                    sheetGrabberVisible: true,
-                    sheetExpandsWhenScrolledToEdge: true,
-                    sheetLargestUndimmedDetentIndex: "none",
+                    ...formSheetOptions({
+                      detents: [0.55, 0.9],
+                      expandsWhenScrolledToEdge: true,
+                    }),
                   }}
                 />
                 <Stack.Screen name="(home)" />
@@ -290,14 +258,11 @@ function RootNavigator() {
                           ? "transparent"
                           : colors.background,
                     },
-                    presentation: "formSheet",
-                    sheetAllowedDetents: [0.55, 0.9],
-                    sheetInitialDetentIndex: 0,
-                    sheetCornerRadius: 28,
-                    sheetElevation: 24,
-                    sheetGrabberVisible: false,
-                    sheetExpandsWhenScrolledToEdge: true,
-                    sheetLargestUndimmedDetentIndex: "none",
+                    ...formSheetOptions({
+                      detents: [0.55, 0.9],
+                      grabber: false,
+                      expandsWhenScrolledToEdge: true,
+                    }),
                   }}
                   listeners={{
                     transitionEnd: (event) => {
@@ -312,30 +277,14 @@ function RootNavigator() {
                 <Stack.Screen name="vocabulary/[vocabularySetId]" />
                 <Stack.Screen
                   name="vocabulary/[vocabularySetId]/items/[entryId]"
-                  options={Platform.select({
-                    ios: {
-                      presentation: "formSheet",
-                      headerShown: false,
-                      contentStyle: { backgroundColor: colors.background },
-                      sheetAllowedDetents: [0.55, 0.9],
-                      sheetInitialDetentIndex: 0,
-                      sheetCornerRadius: 28,
-                      sheetGrabberVisible: true,
-                      sheetExpandsWhenScrolledToEdge: true,
-                    },
-                    default: {
-                      presentation: "formSheet",
-                      headerShown: false,
-                      contentStyle: { backgroundColor: colors.background },
-                      sheetAllowedDetents: [0.55, 0.9],
-                      sheetInitialDetentIndex: 0,
-                      sheetCornerRadius: 28,
-                      sheetElevation: 24,
-                      sheetGrabberVisible: true,
-                      sheetExpandsWhenScrolledToEdge: true,
-                      sheetLargestUndimmedDetentIndex: "none",
-                    },
-                  })}
+                  options={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.background },
+                    ...formSheetOptions({
+                      detents: [0.55, 0.9],
+                      expandsWhenScrolledToEdge: true,
+                    }),
+                  }}
                 />
                 <Stack.Screen
                   name="games/[gameKey]"
@@ -351,29 +300,20 @@ function RootNavigator() {
                 />
                 <Stack.Screen
                   name="courses/[courseId]/items/[courseItemId]/learning-progress"
-                  options={Platform.select({
-                    ios: {
-                      presentation: "formSheet",
-                      headerShown: false,
-                      contentStyle: { backgroundColor: "transparent" },
-                      sheetAllowedDetents: "fitToContents",
-                      sheetExpandsWhenScrolledToEdge: false,
-                      sheetGrabberVisible: false,
+                  options={{
+                    headerShown: false,
+                    contentStyle: {
+                      backgroundColor:
+                        Platform.OS === "ios"
+                          ? "transparent"
+                          : colors.background,
                     },
-                    default: {
-                      presentation: "formSheet",
-                      headerShown: false,
-                      contentStyle: { backgroundColor: colors.background },
-                      sheetAllowedDetents: "fitToContents",
-                      sheetInitialDetentIndex: 0,
-                      sheetCornerRadius: 28,
-                      sheetElevation: 24,
-                      sheetGrabberVisible: false,
-                      sheetShouldOverflowTopInset: false,
-                      sheetLargestUndimmedDetentIndex: "none",
-                      sheetResizeAnimationEnabled: true,
-                    },
-                  })}
+                    ...formSheetOptions({
+                      detents: "fitToContents",
+                      grabber: false,
+                      systemCornerRadius: true,
+                    }),
+                  }}
                 />
                 <Stack.Screen
                   name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"

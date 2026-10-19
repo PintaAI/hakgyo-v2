@@ -210,50 +210,6 @@ export function Eyebrow({
   );
 }
 
-export function PrimaryAction({
-  eyebrow,
-  title,
-  detail,
-  onPress,
-  accessibilityHint,
-}: {
-  eyebrow: string;
-  title: string;
-  detail?: string;
-  onPress: () => void;
-  accessibilityHint?: string;
-}) {
-  return (
-    <Pressable
-      accessibilityHint={accessibilityHint}
-      accessibilityRole="button"
-      className="flex-row items-center gap-3 rounded-2xl bg-primary px-5 py-4 active:opacity-80"
-      onPress={onPress}
-    >
-      <View className="min-w-0 flex-1 gap-1">
-        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary-foreground/70">
-          {eyebrow}
-        </Text>
-        <Text
-          className="text-lg font-black leading-6 text-primary-foreground"
-          numberOfLines={2}
-        >
-          {title}
-        </Text>
-        {detail ? (
-          <Text
-            className="text-xs font-semibold text-primary-foreground/70"
-            numberOfLines={2}
-          >
-            {detail}
-          </Text>
-        ) : null}
-      </View>
-      <Text className="text-2xl text-primary-foreground">›</Text>
-    </Pressable>
-  );
-}
-
 export function TintedAction({
   eyebrow,
   title,
@@ -295,40 +251,6 @@ export function TintedAction({
       </View>
       <Text className="text-2xl text-primary">›</Text>
     </Pressable>
-  );
-}
-
-export function Section({
-  title,
-  children,
-  isFirst = false,
-  titleAlign = "left",
-}: {
-  title: string;
-  children: ReactNode;
-  isFirst?: boolean;
-  titleAlign?: "left" | "center";
-}) {
-  const insets = useSafeAreaInsets();
-  const centered = titleAlign === "center";
-  return (
-    <View
-      className="gap-3"
-      style={
-        isFirst
-          ? { paddingTop: insets.top + (centered ? 24 : 12) }
-          : centered
-            ? { paddingTop: 12 }
-            : undefined
-      }
-    >
-      <Text
-        className={`text-xl font-bold text-foreground ${centered ? "text-center" : "text-left"}`}
-      >
-        {title}
-      </Text>
-      {children}
-    </View>
   );
 }
 

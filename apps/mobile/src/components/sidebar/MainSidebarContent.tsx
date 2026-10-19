@@ -59,18 +59,11 @@ function SidebarActionRow({
   onPress: () => void;
 }) {
   const { colors } = useAppTheme();
-  const iconName =
-    icon === "timer"
-      ? "timer"
-      : icon === "video.fill"
-        ? "video.fill"
-        : "checkmark.seal.fill";
   return (
     <Pressable
       accessibilityRole="button"
       className="overflow-hidden rounded-xl px-2.5 py-2"
       onPress={onPress}
-      style={{ backgroundColor: "transparent" }}
     >
       <View className="flex-row items-center gap-2.5">
         <View
@@ -81,7 +74,7 @@ function SidebarActionRow({
             fallback={
               <Text style={{ color: colors.primary, fontSize: 14 }}>•</Text>
             }
-            name={iconName}
+            name={icon}
             size={14}
             tintColor={colors.primary}
           />

@@ -146,7 +146,7 @@ export default function ProfileAccountScreen() {
       <Stack.Screen options={{ title: "Akun" }} />
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="gap-4 px-4 pb-20 pt-4"
+        contentContainerClassName="gap-4 px-5 pb-20 pt-4"
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
       >
@@ -280,9 +280,9 @@ export default function ProfileAccountScreen() {
                 style={{ opacity: canSubmit ? 1 : 0.45 }}
               >
                 {isDeleting ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.destructiveForeground} />
                 ) : (
-                  <Text className="text-base font-semibold text-white">
+                  <Text className="text-base font-semibold text-destructive-foreground">
                     Hapus akun permanen
                   </Text>
                 )}

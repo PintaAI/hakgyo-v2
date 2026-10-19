@@ -18,10 +18,7 @@ import { authClient } from "../../src/lib/auth-client";
 import { useCourseItem } from "../../src/sync/hooks";
 import { useVocabularyProgressReporter } from "../../src/lib/use-vocabulary-progress";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
-
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
+import { firstParam } from "../../src/lib/route-params";
 
 function leave() {
   router.dismissTo("/(home)/(tabs)/assessments");
@@ -33,9 +30,9 @@ export default function GameRoute() {
     sourceCourseItemId?: string | string[];
     courseId?: string | string[];
   }>();
-  const key = first(params.gameKey);
-  const sourceCourseItemId = first(params.sourceCourseItemId);
-  const courseIdParam = first(params.courseId);
+  const key = firstParam(params.gameKey);
+  const sourceCourseItemId = firstParam(params.sourceCourseItemId);
+  const courseIdParam = firstParam(params.courseId);
   const { data: session } = authClient.useSession();
   const game = isGameKey(key) ? gameCatalog[key] : undefined;
 

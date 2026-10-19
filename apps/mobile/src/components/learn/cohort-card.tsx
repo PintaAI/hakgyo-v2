@@ -37,6 +37,7 @@ import {
   CohortMilestoneTimeline,
   type CohortMilestoneGroup,
 } from "./milestone-section";
+import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 
 // Official brand assets (see apps/mobile/assets/brands/README.md for sources).
 // Used unmodified for Zoom meetings and WhatsApp invitations.
@@ -507,13 +508,9 @@ export function CohortCard({
       })),
     )
     .find((item) => item.available && !item.isCompleted);
-  const nextTypeLabel = !nextOutlineItem
-    ? null
-    : nextOutlineItem.type === "VOCABULARY_SET"
-      ? "Kosakata"
-      : nextOutlineItem.type === "ASSESSMENT"
-        ? "Tugas"
-        : "Materi";
+  const nextTypeLabel = nextOutlineItem
+    ? getLearningItemTypeMeta(nextOutlineItem.type).label
+    : null;
   const { colors, colorScheme } = useAppTheme();
   const glassTint = withOpacity(
     colors.primary,
@@ -846,9 +843,6 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: SURFACE_RADIUS,
     overflow: "hidden",
-  },
-  surface: {
-    borderRadius: SURFACE_RADIUS,
   },
   // No overflow here: the docs only put borderRadius on the glass view
   // (the native side rounds the effect itself), and our padded content
