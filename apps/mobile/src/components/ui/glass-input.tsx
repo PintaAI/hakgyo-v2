@@ -22,6 +22,7 @@ export function GlassInput({
   inputRef,
   leading,
   trailing,
+  textColor,
   ...inputProps
 }: Omit<TextInputProps, "style" | "placeholder" | "value" | "onChangeText"> & {
   value: string;
@@ -32,6 +33,8 @@ export function GlassInput({
   inputRef?: Ref<TextInput>;
   leading?: ReactNode;
   trailing?: ReactNode;
+  /** Overrides the text colour, e.g. to flag a wrong answer. */
+  textColor?: string;
 }) {
   const { colors, colorScheme } = useAppTheme();
   const gutter = SLOT_SIZE + SLOT_INSET + 8;
@@ -69,7 +72,7 @@ export function GlassInput({
         selectionColor={colors.primary}
         value={value}
         style={{
-          color: colors.foreground,
+          color: textColor ?? colors.foreground,
           fontSize: 16,
           height,
           includeFontPadding: false,
@@ -82,10 +85,20 @@ export function GlassInput({
       />
       {/* After the input so the slots sit above it and receive touches. */}
       {leading ? (
-        <View pointerEvents="box-none" style={[slotStyle, { left: SLOT_INSET }]}>{leading}</View>
+        <View
+          pointerEvents="box-none"
+          style={[slotStyle, { left: SLOT_INSET }]}
+        >
+          {leading}
+        </View>
       ) : null}
       {trailing ? (
-        <View pointerEvents="box-none" style={[slotStyle, { right: SLOT_INSET }]}>{trailing}</View>
+        <View
+          pointerEvents="box-none"
+          style={[slotStyle, { right: SLOT_INSET }]}
+        >
+          {trailing}
+        </View>
       ) : null}
     </GlassBox>
   );

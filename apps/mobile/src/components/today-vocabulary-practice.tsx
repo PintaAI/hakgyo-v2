@@ -1,6 +1,19 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Pressable, Text, TextInput, View } from "react-native";
+import {
+  AccessibilityInfo,
+  Keyboard,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { SymbolView } from "expo-symbols";
 import type { NativeGesture } from "react-native-gesture-handler";
 
@@ -67,9 +80,17 @@ export function TodayVocabularyPractice({
   // correct, auto-clear + retry when wrong, until the user stops it.
   const [handsFree, setHandsFree] = useState(false);
   const [typing, setTyping] = useState(false);
-  // What hands-free last heard when it did not match. Kept across the
-  // recognizer's restarts so the hint does not flash on every retry.
+  // A hands-free word that did not match: shown in red in the input for a
+  // moment, then the input asks the learner to say it again.
   const [misheard, setMisheard] = useState<string | null>(null);
+  const [retryPrompt, setRetryPrompt] = useState(false);
+  const missTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const shake = useSharedValue(0);
+  const shakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shake.value }],
+  }));
   const initializedPool = useRef<string | undefined>(undefined);
   const inputRef = useRef<TextInput>(null);
   const restoreInputFocus = useRef(false);
@@ -136,7 +157,7 @@ export function TodayVocabularyPractice({
     const value = spokenDisplay ?? answer;
     if (!value.trim()) return;
     submitted.current = true;
-    setMisheard(null);
+    clearMiss();
     // Exact match against any STT alternative; fall back to the first
     // transcript so wrong answers are still recorded.
     const matched = spokenTranscripts?.length
@@ -192,10 +213,43 @@ export function TodayVocabularyPractice({
     }
   }
 
+  function clearMissTimer() {
+    if (missTimer.current !== undefined) {
+      clearTimeout(missTimer.current);
+      missTimer.current = undefined;
+    }
+  }
+
+  function clearMiss() {
+    clearMissTimer();
+    setMisheard(null);
+    setRetryPrompt(false);
+  }
+
+  function showMiss(text: string) {
+    clearMissTimer();
+    setMisheard(text);
+    setRetryPrompt(false);
+    shake.value = withSequence(
+      withTiming(-7, { duration: 60 }),
+      withTiming(7, { duration: 70 }),
+      withTiming(-4, { duration: 60 }),
+      withTiming(0, { duration: 60 }),
+    );
+    AccessibilityInfo.announceForAccessibility(
+      `Terdengar ${text}. Ucapkan lagi.`,
+    );
+    missTimer.current = setTimeout(() => {
+      missTimer.current = undefined;
+      setMisheard(null);
+      setRetryPrompt(true);
+    }, 1_500);
+  }
+
   function stopSession() {
     clearAutoTimer();
     setHandsFree(false);
-    setMisheard(null);
+    clearMiss();
     speech.abort();
   }
 
@@ -216,7 +270,7 @@ export function TodayVocabularyPractice({
     setTyping(false);
     setRevealed(true);
     setRevealSaved(false);
-    setMisheard(null);
+    clearMiss();
     setAnswer("");
     // Keep the keyboard open: the input becomes "Siap untuk kata berikutnya?"
     // with a Next return key, so the learner can advance without re-tapping.
@@ -278,7 +332,7 @@ export function TodayVocabularyPractice({
     setFeedback(undefined);
     setRevealed(false);
     setTyping(false);
-    setMisheard(null);
+    clearMiss();
     setRecordError(null);
     setMoving(false);
     submitted.current = false;
@@ -300,7 +354,7 @@ export function TodayVocabularyPractice({
     if (submitted.current || moving) return;
     if (handsFree) {
       setTyping(true);
-      setMisheard(null);
+      clearMiss();
       speech.abort();
     }
     setAnswer(value);
@@ -324,7 +378,7 @@ export function TodayVocabularyPractice({
     if (handsFree) {
       Keyboard.dismiss();
       if (!matchSpeechAlternative(expectedAnswer, [answer])) {
-        if (answer.trim()) setMisheard(answer.trim());
+        if (answer.trim()) showMiss(answer.trim());
         setAnswer("");
         return;
       }
@@ -340,11 +394,17 @@ export function TodayVocabularyPractice({
     ),
     disabled: !card || moving || typing,
     onInterim: (text) => {
-      if (!submitted.current && !moving) setAnswer(text);
+      if (submitted.current || moving) return;
+      // The learner is speaking again: replace the red miss right away.
+      if (misheard !== null) {
+        clearMissTimer();
+        setMisheard(null);
+      }
+      setAnswer(text);
     },
     onFinal: (transcripts) => {
       if (handsFree && !matchSpeechAlternative(expectedAnswer, transcripts)) {
-        setMisheard(transcripts[0] ?? null);
+        if (transcripts[0]) showMiss(transcripts[0]);
         setAnswer("");
         return;
       }
@@ -355,8 +415,7 @@ export function TodayVocabularyPractice({
   // Hands-free restarts the recognizer after every miss or silence. Treat the
   // whole session as listening so the hint and placeholder stay steady across
   // those restarts, and hide the errors it retries on its own.
-  const listening =
-    handsFree && !typing && !moving && !feedback && !revealed;
+  const listening = handsFree && !typing && !moving && !feedback && !revealed;
   const speechError =
     speech.errorMessage && !(handsFree && speech.recoverableError)
       ? speech.errorMessage
@@ -394,6 +453,7 @@ export function TodayVocabularyPractice({
   }, [feedback, handsFree, moving]);
 
   useEffect(() => clearAutoTimer, []);
+  useEffect(() => clearMissTimer, []);
 
   function toggleSpeechSession() {
     if (handsFree) {
@@ -483,13 +543,6 @@ export function TodayVocabularyPractice({
                 >
                   {speechError}
                 </Text>
-              ) : misheard && listening ? (
-                <Text
-                  accessibilityLiveRegion="polite"
-                  className="text-center text-sm text-muted-foreground"
-                >
-                  {`Terdengar “${misheard}”. Coba ucapkan lagi.`}
-                </Text>
               ) : null}
               {recordError ? (
                 <Text
@@ -500,162 +553,169 @@ export function TodayVocabularyPractice({
                 </Text>
               ) : null}
               <View className="flex-row items-center gap-2">
-                <GlassInput
-                  inputRef={inputRef}
-                  accessibilityLabel={
-                    mode === "KR"
-                      ? `Kata Korea untuk ${card.definition}`
-                      : `Arti dari ${card.term}`
-                  }
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  blurOnSubmit={false}
-                  height={44}
-                  onBlur={() => setTyping(false)}
-                  onChangeText={handleAnswerChange}
-                  onFocus={() => {
-                    if (!handsFree) return;
-                    clearAutoTimer();
-                    setTyping(true);
-                    speech.abort();
-                  }}
-                  onSubmitEditing={handleInputSubmit}
-                  placeholder={
-                    revealed
-                      ? "Siap untuk kata berikutnya?"
-                      : listening
-                        ? "Mendengarkan…"
-                        : mode === "KR"
-                          ? "Ketik kata Koreanya"
-                          : "Ketik artinya"
-                  }
-                  returnKeyType={feedback || revealed ? "next" : "done"}
-                  value={answer}
-                  leading={
-                    handsFree || (!feedback && !revealed) ? (
-                      <Pressable
-                        accessibilityLabel={
-                          handsFree
-                            ? "Hentikan latihan tanpa sentuh"
-                            : "Mulai latihan tanpa sentuh"
-                        }
-                        accessibilityRole="button"
-                        accessibilityState={{
-                          busy: speechBusy,
-                          disabled: moving && !handsFree,
-                        }}
-                        disabled={moving && !handsFree}
-                        onPress={toggleSpeechSession}
-                        className="rounded-full active:opacity-75"
-                        style={{ opacity: moving ? 0.5 : 1 }}
-                      >
-                        <View className="size-10 items-center justify-center">
-                          <SymbolView
-                            fallback={
-                              <Text
-                                className="text-xl font-black"
-                                style={{
-                                  color: handsFree
-                                    ? colors.destructive
-                                    : colors.primary,
-                                }}
-                              >
-                                {handsFree ? "■" : "🎙"}
-                              </Text>
-                            }
-                            name={handsFree ? "stop.fill" : "mic.fill"}
-                            size={22}
-                            style={{ height: 22, width: 22 }}
-                            tintColor={
-                              handsFree ? colors.destructive : colors.primary
-                            }
-                            weight="bold"
-                          />
-                        </View>
-                      </Pressable>
-                    ) : undefined
-                  }
-                  trailing={
-                    feedback || revealed ? (
-                      <Pressable
-                        accessibilityLabel={
-                          feedback && !feedback.saved
-                            ? "Coba simpan jawaban lagi"
-                            : revealed && !revealSaved
-                              ? "Coba simpan lagi"
-                              : "Kata berikutnya"
-                        }
-                        accessibilityRole="button"
-                        accessibilityState={{
-                          disabled: moving || recordPending,
-                          busy: moving || recordPending,
-                        }}
-                        disabled={moving || recordPending}
-                        style={{ opacity: moving ? 0.5 : 1 }}
-                        onPress={() => {
-                          if (feedback && !feedback.saved) {
-                            void saveAnswer(feedback.correct);
-                          } else if (revealed && !revealSaved) {
-                            void saveReveal();
-                          } else {
-                            nextCard();
+                <Animated.View style={[{ flex: 1, height: 44 }, shakeStyle]}>
+                  <GlassInput
+                    inputRef={inputRef}
+                    accessibilityLabel={
+                      mode === "KR"
+                        ? `Kata Korea untuk ${card.definition}`
+                        : `Arti dari ${card.term}`
+                    }
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    blurOnSubmit={false}
+                    height={44}
+                    onBlur={() => setTyping(false)}
+                    onChangeText={handleAnswerChange}
+                    onFocus={() => {
+                      if (!handsFree) return;
+                      clearAutoTimer();
+                      setTyping(true);
+                      speech.abort();
+                    }}
+                    onSubmitEditing={handleInputSubmit}
+                    placeholder={
+                      revealed
+                        ? "Siap untuk kata berikutnya?"
+                        : listening
+                          ? retryPrompt
+                            ? "Ucapkan lagi…"
+                            : "Mendengarkan…"
+                          : mode === "KR"
+                            ? "Ketik kata Koreanya"
+                            : "Ketik artinya"
+                    }
+                    returnKeyType={feedback || revealed ? "next" : "done"}
+                    value={misheard ?? answer}
+                    textColor={misheard ? colors.destructive : undefined}
+                    leading={
+                      handsFree || (!feedback && !revealed) ? (
+                        <Pressable
+                          accessibilityLabel={
+                            handsFree
+                              ? "Hentikan latihan tanpa sentuh"
+                              : "Mulai latihan tanpa sentuh"
                           }
-                        }}
-                        className="rounded-full active:opacity-75"
-                      >
-                        <View className="size-10 items-center justify-center">
-                          <SymbolView
-                            fallback={
-                              <Text
-                                className="text-xl font-black"
-                                style={{ color: colors.primary }}
-                              >
-                                →
-                              </Text>
+                          accessibilityRole="button"
+                          accessibilityState={{
+                            busy: speechBusy,
+                            disabled: moving && !handsFree,
+                          }}
+                          disabled={moving && !handsFree}
+                          onPress={toggleSpeechSession}
+                          className="rounded-full active:opacity-75"
+                          style={{ opacity: moving ? 0.5 : 1 }}
+                        >
+                          <View className="size-10 items-center justify-center">
+                            <SymbolView
+                              fallback={
+                                <Text
+                                  className="text-xl font-black"
+                                  style={{
+                                    color: handsFree
+                                      ? colors.destructive
+                                      : colors.primary,
+                                  }}
+                                >
+                                  {handsFree ? "■" : "🎙"}
+                                </Text>
+                              }
+                              name={handsFree ? "stop.fill" : "mic.fill"}
+                              size={22}
+                              style={{ height: 22, width: 22 }}
+                              tintColor={
+                                handsFree ? colors.destructive : colors.primary
+                              }
+                              weight="bold"
+                            />
+                          </View>
+                        </Pressable>
+                      ) : undefined
+                    }
+                    trailing={
+                      feedback || revealed ? (
+                        <Pressable
+                          accessibilityLabel={
+                            feedback && !feedback.saved
+                              ? "Coba simpan jawaban lagi"
+                              : revealed && !revealSaved
+                                ? "Coba simpan lagi"
+                                : "Kata berikutnya"
+                          }
+                          accessibilityRole="button"
+                          accessibilityState={{
+                            disabled: moving || recordPending,
+                            busy: moving || recordPending,
+                          }}
+                          disabled={moving || recordPending}
+                          style={{ opacity: moving ? 0.5 : 1 }}
+                          onPress={() => {
+                            if (feedback && !feedback.saved) {
+                              void saveAnswer(feedback.correct);
+                            } else if (revealed && !revealSaved) {
+                              void saveReveal();
+                            } else {
+                              nextCard();
                             }
-                            name="arrow.right"
-                            size={22}
-                            tintColor={colors.primary}
-                            weight="bold"
-                          />
-                        </View>
-                      </Pressable>
-                    ) : (
-                      <Pressable
-                        accessibilityLabel={
-                          mode === "KR" ? "Periksa kata Korea" : "Periksa arti"
-                        }
-                        accessibilityRole="button"
-                        accessibilityState={{
-                          busy: recordPending,
-                          disabled: moving || !answer.trim(),
-                        }}
-                        disabled={moving || !answer.trim()}
-                        onPress={() => void checkAnswer()}
-                        className="rounded-full active:opacity-75"
-                        style={{ opacity: answer.trim() ? 1 : 0.4 }}
-                      >
-                        <View className="size-10 items-center justify-center">
-                          <SymbolView
-                            fallback={
-                              <Text
-                                className="text-xl font-black"
-                                style={{ color: colors.primary }}
-                              >
-                                ➤
-                              </Text>
-                            }
-                            name="paperplane.fill"
-                            size={22}
-                            style={{ height: 22, width: 22 }}
-                            tintColor={colors.primary}
-                            weight="bold"
-                          />
-                        </View>
-                      </Pressable>
-                    )
-                  }
-                />
+                          }}
+                          className="rounded-full active:opacity-75"
+                        >
+                          <View className="size-10 items-center justify-center">
+                            <SymbolView
+                              fallback={
+                                <Text
+                                  className="text-xl font-black"
+                                  style={{ color: colors.primary }}
+                                >
+                                  →
+                                </Text>
+                              }
+                              name="arrow.right"
+                              size={22}
+                              tintColor={colors.primary}
+                              weight="bold"
+                            />
+                          </View>
+                        </Pressable>
+                      ) : (
+                        <Pressable
+                          accessibilityLabel={
+                            mode === "KR"
+                              ? "Periksa kata Korea"
+                              : "Periksa arti"
+                          }
+                          accessibilityRole="button"
+                          accessibilityState={{
+                            busy: recordPending,
+                            disabled: moving || !answer.trim(),
+                          }}
+                          disabled={moving || !answer.trim()}
+                          onPress={() => void checkAnswer()}
+                          className="rounded-full active:opacity-75"
+                          style={{ opacity: answer.trim() ? 1 : 0.4 }}
+                        >
+                          <View className="size-10 items-center justify-center">
+                            <SymbolView
+                              fallback={
+                                <Text
+                                  className="text-xl font-black"
+                                  style={{ color: colors.primary }}
+                                >
+                                  ➤
+                                </Text>
+                              }
+                              name="paperplane.fill"
+                              size={22}
+                              style={{ height: 22, width: 22 }}
+                              tintColor={colors.primary}
+                              weight="bold"
+                            />
+                          </View>
+                        </Pressable>
+                      )
+                    }
+                  />
+                </Animated.View>
               </View>
             </View>
           ) : (
