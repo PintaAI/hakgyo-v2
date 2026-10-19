@@ -3,8 +3,10 @@ import SuperJSON from "superjson";
 import {
   BUNDLE_SCHEMA,
   mergeLearnerState,
+  OPERATION_VERSION,
   SYNC_PROTOCOL,
   UPGRADE_REQUIRED_MESSAGE,
+  upcastOperation,
   type BundleStructure,
   type LearnerState,
 } from "@hakgyo/shared/mobile-sync";
@@ -103,6 +105,32 @@ export function upgradeRequiredFromError(
     return { minProtocol: SYNC_PROTOCOL + 1 };
   }
   return null;
+}
+
+/**
+ * A queued operation brought up to `OPERATION_VERSION`, as it is sent. Rows
+ * written before operations carried `v` are version 1. An operation this
+ * JavaScript cannot upcast (written by a newer update that was rolled back)
+ * is returned unchanged with `current: false`: it is sent as it is, because
+ * the server is always at least as new as the newest client, but never
+ * edited here.
+ */
+export function readQueuedOperation(stored: MobileSyncOperation): {
+  operation: MobileSyncOperation;
+  current: boolean;
+} {
+  try {
+    const result = upcastOperation(stored);
+    if (result.status === "ok") {
+      return {
+        operation: result.operation as MobileSyncOperation,
+        current: true,
+      };
+    }
+  } catch {
+    // A gap in the upcaster registry: let the (newer) server handle it.
+  }
+  return { operation: stored, current: false };
 }
 
 function vocabularyOperationId(sessionId: string, chunk: number) {
@@ -639,9 +667,20 @@ export function createMobileSyncEngine({
   // Outbox
   // ---------------------------------------------------------------------------
 
+  /** Oldest first, upcast to the current version (see `readQueuedOperation`). */
+  async function listQueuedOperations(limit: number) {
+    const stored = await store.listOperations(userId, limit);
+    return stored.map((operation) => readQueuedOperation(operation).operation);
+  }
+
+  async function getQueuedOperation(id: string) {
+    const stored = await store.getOperation(userId, id);
+    return stored ? readQueuedOperation(stored) : null;
+  }
+
   async function putOperation(operation: MobileSyncOperation) {
     await serialized(async () => {
-      await store.putOperation(userId, operation);
+      await store.putOperation(userId, { ...operation, v: OPERATION_VERSION });
       writeVersion += 1;
       await updatePendingCount();
     });
@@ -653,15 +692,20 @@ export function createMobileSyncEngine({
       // MAX_VOCABULARY_ATTEMPTS_PER_OPERATION attempts. A re-recorded attempt
       // replaces its previous version in whichever chunk holds it.
       const baseId = vocabularyOperationId(input.sessionId, 1);
-      const listed = await store.listOperationsByIdPrefix(userId, baseId);
-      // Any listed id is taken, even by another session's operation.
-      const takenIds = new Set(listed.map((operation) => operation.id));
-      const chunks = listed.filter(
-        (operation): operation is VocabularyOperation =>
-          operation.kind === "VOCABULARY_SESSION_COMPLETED" &&
-          operation.sessionId === input.sessionId &&
-          (operation.id === baseId || operation.id.startsWith(`${baseId}#`)),
+      const listed = (await store.listOperationsByIdPrefix(userId, baseId)).map(
+        readQueuedOperation,
       );
+      // Any listed id is taken, even by another session's operation.
+      const takenIds = new Set(listed.map(({ operation }) => operation.id));
+      // A chunk written by newer JavaScript is left as it is.
+      const chunks = listed
+        .flatMap(({ operation, current }) => (current ? [operation] : []))
+        .filter(
+          (operation): operation is VocabularyOperation =>
+            operation.kind === "VOCABULARY_SESSION_COMPLETED" &&
+            operation.sessionId === input.sessionId &&
+            (operation.id === baseId || operation.id.startsWith(`${baseId}#`)),
+        );
       let target:
         | {
             id: string;
@@ -706,6 +750,7 @@ export function createMobileSyncEngine({
       operation.attempts.push(input.attempt);
       await store.putOperation(userId, {
         id: operation.id,
+        v: OPERATION_VERSION,
         kind: "VOCABULARY_SESSION_COMPLETED",
         gameKey: input.gameKey,
         sessionId: input.sessionId,
@@ -730,7 +775,8 @@ export function createMobileSyncEngine({
     if (!oversized.length) return false;
     await serialized(async () => {
       for (const listed of oversized) {
-        const operation = await store.getOperation(userId, listed.id);
+        const queued = await getQueuedOperation(listed.id);
+        const operation = queued?.current ? queued.operation : null;
         if (
           operation?.kind !== "VOCABULARY_SESSION_COMPLETED" ||
           operation.attempts.length <= MAX_VOCABULARY_ATTEMPTS_PER_OPERATION
@@ -798,10 +844,10 @@ export function createMobileSyncEngine({
     }
     const scope = indexScope(organizationId);
 
-    let operations = await store.listOperations(userId, 5000);
+    let operations = await listQueuedOperations(5000);
     try {
       if (await splitOversizedVocabularyOperations(operations)) {
-        operations = await store.listOperations(userId, 5000);
+        operations = await listQueuedOperations(5000);
       }
       const acknowledgedOperationIds: string[] = [];
       const failures: MobileSyncCommitResult["failures"] = [];
@@ -831,12 +877,12 @@ export function createMobileSyncEngine({
           // Only settle an operation that was not changed while in flight;
           // a changed one (e.g. more vocabulary attempts) is sent again.
           const unchanged = async (id: string) => {
-            const current = await store.getOperation(userId, id);
+            const current = await getQueuedOperation(id);
             const sent = sentById.get(id);
             return (
               !!current &&
               !!sent &&
-              JSON.stringify(current) === JSON.stringify(sent)
+              JSON.stringify(current.operation) === JSON.stringify(sent)
             );
           };
           const safeToRemove: string[] = [];

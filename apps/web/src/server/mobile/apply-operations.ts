@@ -11,9 +11,25 @@ import {
 import type { TRPCContext } from "~/server/api/trpc";
 import { requireCourseItemAccess } from "~/server/authorization";
 import {
+  parseSyncOperation,
+  type syncOperation,
+  type SyncOperationAnswer,
+  type SyncOperationKind,
+} from "~/server/mobile/sync-operation-schema";
+import {
   createRequestCache,
   runWithRequestCache,
 } from "~/server/request-cache";
+
+// The operation schemas live in an env-free module for the fixture tests.
+export {
+  looseSyncOperation,
+  parseSyncOperation,
+  syncOperation,
+  UNSUPPORTED_OPERATION_VERSION,
+  type SyncOperation,
+  type SyncOperationKind,
+} from "~/server/mobile/sync-operation-schema";
 
 /**
  * Applies a batch of offline sync operations for `mobileSyncV2.commit`, which
@@ -30,67 +46,6 @@ async function parseVocabularyAttempts(input: unknown) {
     throw new TRPCError({ code: "BAD_REQUEST", cause });
   }
 }
-
-const vocabularyAttempt = z.object({
-  attemptId: z.string().trim().min(1).max(200),
-  sourceCourseItemId: z.string().min(1),
-  vocabularySetId: z.string().min(1),
-  entryId: z.string().min(1),
-  evidence: z.enum(["RECOGNITION", "RECALL", "APPLICATION"]),
-  result: z.enum(["CORRECT", "INCORRECT", "REVEALED"]),
-});
-
-const answer = z.object({
-  questionId: z.string().min(1),
-  optionIds: z.array(z.string().min(1)).max(100),
-  content: z.string().max(20_000).optional(),
-});
-
-export const syncOperation = z.discriminatedUnion("kind", [
-  z.object({
-    id: z.string().min(1).max(240),
-    kind: z.literal("CONTENT_COMPLETED"),
-    courseItemId: z.string().min(1),
-  }),
-  z.object({
-    id: z.string().min(1).max(240),
-    kind: z.literal("VOCABULARY_SESSION_COMPLETED"),
-    gameKey: z.string().trim().min(1).max(100),
-    sessionId: z.string().trim().min(1).max(200),
-    timeZone: z.string().trim().min(1).max(100).optional(),
-    attempts: z.array(vocabularyAttempt).min(1).max(500),
-  }),
-  z.object({
-    id: z.string().min(1).max(240),
-    kind: z.literal("ASSESSMENT_COMPLETED"),
-    attemptId: z.string().min(1),
-    answers: z.array(answer).max(200),
-  }),
-]);
-
-export type SyncOperation = z.infer<typeof syncOperation>;
-export type SyncOperationKind = SyncOperation["kind"];
-
-// Only the fields needed to report a per-operation failure. Typed as the full
-// operation so the client contract (RouterInputs) is unchanged.
-const syncOperationEnvelope = z.looseObject({
-  id: z.string().min(1).max(240),
-  kind: z.enum([
-    "CONTENT_COMPLETED",
-    "VOCABULARY_SESSION_COMPLETED",
-    "ASSESSMENT_COMPLETED",
-  ] satisfies SyncOperationKind[]),
-});
-
-/**
- * Each operation is validated on its own inside `applySyncOperations`, so one
- * malformed operation fails alone instead of rejecting (and blocking) the
- * whole batch.
- */
-export const looseSyncOperation = z.custom<z.input<typeof syncOperation>>(
-  (value) => syncOperationEnvelope.safeParse(value).success,
-  { message: "Sync operation needs a valid id and kind" },
-);
 
 /** Up to this many operations per commit. */
 export const MAX_OPERATIONS_PER_COMMIT = 500;
@@ -118,7 +73,7 @@ function hasTRPCCode(cause: unknown, ...codes: TRPCError["code"][]) {
 export async function storedAnswersMatch(
   ctx: Pick<TRPCContext, "db">,
   attemptId: string,
-  answers: Array<z.infer<typeof answer>>,
+  answers: SyncOperationAnswer[],
 ) {
   if (!answers.length) return true;
   const stored = await ctx.db.assessmentAnswer.findMany({
@@ -236,17 +191,21 @@ export async function applySyncOperations(
       budgetExhausted = true;
       break;
     }
-    const parsed = syncOperation.safeParse(rawOperation);
-    if (!parsed.success) {
+    // Upcasts operations queued by older app versions before validating.
+    const parsed = parseSyncOperation(rawOperation);
+    if (!parsed.ok) {
       failures.push({
         id: rawOperation.id,
         kind: rawOperation.kind,
-        code: "BAD_REQUEST",
-        message: z.prettifyError(parsed.error),
+        code: parsed.code,
+        message: parsed.message,
       });
+      // An operation from a newer client (UNSUPPORTED_OPERATION_VERSION) is
+      // retried later; keep the operations after it in order, like below.
+      if (!TERMINAL_FAILURE_CODES.has(parsed.code)) break;
       continue;
     }
-    const operation = parsed.data;
+    const operation = parsed.operation;
     try {
       if (operation.kind === "CONTENT_COMPLETED") {
         await learning.markContentProgress({

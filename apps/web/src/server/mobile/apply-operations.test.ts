@@ -1,10 +1,14 @@
 import { describe, expect, mock, test } from "bun:test";
+import { OPERATION_VERSION } from "@hakgyo/shared/mobile-sync";
 
 import {
+  applySyncOperations,
   looseSyncOperation,
   storedAnswersMatch,
   syncOperation,
   TERMINAL_FAILURE_CODES,
+  UNSUPPORTED_OPERATION_VERSION,
+  type LearnerContext,
 } from "./apply-operations";
 
 function answersDb(
@@ -59,6 +63,52 @@ describe("TERMINAL_FAILURE_CODES", () => {
     }
     expect(TERMINAL_FAILURE_CODES.has("INTERNAL_SERVER_ERROR")).toBe(false);
     expect(TERMINAL_FAILURE_CODES.has("TIMEOUT")).toBe(false);
+    expect(TERMINAL_FAILURE_CODES.has(UNSUPPORTED_OPERATION_VERSION)).toBe(
+      false,
+    );
+  });
+});
+
+describe("applySyncOperations versions", () => {
+  // Neither operation below may reach the database.
+  const ctx = { db: {}, actorUserId: "user-1" } as unknown as LearnerContext;
+  const content = (id: string, v?: number) => ({
+    id,
+    kind: "CONTENT_COMPLETED" as const,
+    courseItemId: id,
+    ...(v === undefined ? {} : { v }),
+  });
+
+  test("stops at an operation from a newer client without processing later ones", async () => {
+    const result = await applySyncOperations(ctx, {
+      operations: [
+        content("content:item-1", OPERATION_VERSION + 1),
+        content("content:item-2"),
+      ],
+    });
+    expect(result.acknowledgedOperationIds).toEqual([]);
+    expect(
+      result.failures.map(({ id, kind, code }) => [id, kind, code]),
+    ).toEqual([
+      ["content:item-1", "CONTENT_COMPLETED", UNSUPPORTED_OPERATION_VERSION],
+    ]);
+    expect(result.failures[0]?.message).toContain("newer than this server");
+    expect(result.affectedCourseItemIds).toEqual([]);
+  });
+
+  test("continues after a malformed operation but stops at a too-new one", async () => {
+    const result = await applySyncOperations(ctx, {
+      operations: [
+        { id: "content:bad", kind: "CONTENT_COMPLETED" } as never,
+        content("content:item-1", OPERATION_VERSION + 1),
+        content("content:item-2"),
+      ],
+    });
+    expect(result.failures.map(({ id, code }) => [id, code])).toEqual([
+      ["content:bad", "BAD_REQUEST"],
+      ["content:item-1", UNSUPPORTED_OPERATION_VERSION],
+    ]);
+    expect(result.acknowledgedOperationIds).toEqual([]);
   });
 });
 
