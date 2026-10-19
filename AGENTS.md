@@ -9,7 +9,7 @@ Hakgyo V2 is a Bun/Turborepo monorepo containing the web and mobile clients for 
 - `packages/api`: type-only tRPC contract (`AppRouter`) consumed by Expo.
 - `packages/shared`: code shared by both clients, including the mobile sync protocol (`@hakgyo/shared/mobile-sync`), learning helpers, colors and organization themes.
 
-Core domain: organizations with members (OWNER, ADMIN, TEACHER) and a SIMPLE or ADVANCED permission mode; courses built from modules and items that place materials, vocabulary sets, PDF books and assessments; cohorts (study groups) with staff, enrollments and meetings; assessment attempts, teacher review and assessment events (Latihan and Tryout for one or more classes, see `docs/assessment-events.md`); vocabulary progress, practice and gamification. Topic docs live in `docs/` (for example `docs/api.md`, `docs/database.md`, `docs/mobile-sync.md`, `docs/mobile-releases.md`, `docs/maintenance.md`, `docs/mcp-server.md`).
+Core domain: organizations with members (OWNER, ADMIN, TEACHER) and a SIMPLE or ADVANCED permission mode; courses built from modules and items that place materials, vocabulary sets, PDF books and assessments; cohorts (study groups) with staff, enrollments and meetings; assessment attempts, teacher review and assessment events (Latihan and Tryout for one or more classes, see `docs/assessment-events.md`); vocabulary progress, practice and gamification. Topic docs live in `docs/` (for example `docs/api.md`, `docs/database.md`, `docs/mobile-sync.md`, `docs/mobile-releases.md`, `docs/maintenance.md`, `docs/backend-changes.md`, `docs/mcp-server.md`).
 
 ## Repository Layout
 
@@ -81,7 +81,7 @@ bun run --cwd apps/mobile ota:publish --channel production --message "…"  # gu
 - The Expo client reads `EXPO_PUBLIC_API_URL` from `apps/mobile/.env` (see `apps/mobile/.env.example`). It must be the Next.js origin without `/api/trpc`; use a LAN address when testing on a physical device.
 - `DATABASE_URL` is the pooled Neon connection used by the application. `DIRECT_URL` is the direct connection used by Prisma CLI commands.
 - Never commit `apps/web/.env` or secrets.
-- Edit `apps/web/prisma/schema.prisma` for schema changes, then use the appropriate Prisma command. The generated client under `apps/web/generated/prisma` is generated output and should not be edited manually.
+- Edit `apps/web/prisma/schema.prisma` for schema changes, then use the appropriate Prisma command. Deploys do not run migrations: apply them with `db:migrate` before merging code that needs them, and keep migrations additive while running code still uses the old shape. Follow `docs/backend-changes.md` for large changes. The generated client under `apps/web/generated/prisma` is generated output and should not be edited manually.
 
 ## Browser Verification
 
