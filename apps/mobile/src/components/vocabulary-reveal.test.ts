@@ -104,6 +104,7 @@ function screenHarness(kind: "today" | "course") {
       Pressable: "Pressable",
       ActivityIndicator: "ActivityIndicator",
       Keyboard: { dismiss() {} },
+      AccessibilityInfo: { announceForAccessibility() {} },
       useWindowDimensions: () => ({ width: 390 }),
     },
     "../lib/trpc": {
@@ -167,7 +168,7 @@ function screenHarness(kind: "today" | "course") {
       useVocabularySpeech: () => ({
         status: "idle",
         errorMessage: undefined,
-        volume: 0,
+        levels: { value: [] },
         start: async () => undefined,
         stop: () => undefined,
         abort: () => undefined,
@@ -199,6 +200,14 @@ function screenHarness(kind: "today" | "course") {
       useGameExitGuard: () => () => undefined,
     },
     "./vocabulary-practice-deck": { VocabularyPracticeDeck: "Deck" },
+    "./voice-level-meter": { VoiceLevelMeter: "VoiceLevelMeter" },
+    "react-native-reanimated": {
+      default: { View: "AnimatedView" },
+      useAnimatedStyle: () => ({}),
+      useSharedValue: (value: unknown) => ({ value }),
+      withSequence: () => 0,
+      withTiming: (value: unknown) => value,
+    },
   };
   const filename = new URL(
     kind === "today"

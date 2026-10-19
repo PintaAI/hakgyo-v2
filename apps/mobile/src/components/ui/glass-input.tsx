@@ -23,6 +23,7 @@ export function GlassInput({
   leading,
   trailing,
   textColor,
+  placeholderContent,
   ...inputProps
 }: Omit<TextInputProps, "style" | "placeholder" | "value" | "onChangeText"> & {
   value: string;
@@ -35,6 +36,8 @@ export function GlassInput({
   trailing?: ReactNode;
   /** Overrides the text colour, e.g. to flag a wrong answer. */
   textColor?: string;
+  /** Shown instead of the placeholder text while the field is empty. */
+  placeholderContent?: ReactNode;
 }) {
   const { colors, colorScheme } = useAppTheme();
   const gutter = SLOT_SIZE + SLOT_INSET + 8;
@@ -56,13 +59,15 @@ export function GlassInput({
           pointerEvents="none"
           className="absolute inset-0 items-center justify-center px-14"
         >
-          <Text
-            className="text-center text-base"
-            numberOfLines={1}
-            style={{ color: colors.mutedForeground }}
-          >
-            {placeholder}
-          </Text>
+          {placeholderContent ?? (
+            <Text
+              className="text-center text-base"
+              numberOfLines={1}
+              style={{ color: colors.mutedForeground }}
+            >
+              {placeholder}
+            </Text>
+          )}
         </View>
       ) : null}
       <TextInput

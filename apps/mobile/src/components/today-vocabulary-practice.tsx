@@ -28,6 +28,7 @@ import {
 } from "../lib/vocabulary-speech";
 import { useVocabularySpeech } from "../lib/use-vocabulary-speech";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
+import { VoiceLevelMeter } from "./voice-level-meter";
 import { Action, Empty, Eyebrow, GlassInput } from "./learning-ui";
 import {
   VocabularyPracticeDeck,
@@ -588,6 +589,14 @@ export function TodayVocabularyPractice({
                     returnKeyType={feedback || revealed ? "next" : "done"}
                     value={misheard ?? answer}
                     textColor={misheard ? colors.destructive : undefined}
+                    placeholderContent={
+                      listening && !retryPrompt ? (
+                        <VoiceLevelMeter
+                          levels={speech.levels}
+                          color={colors.primary}
+                        />
+                      ) : undefined
+                    }
                     leading={
                       handsFree || (!feedback && !revealed) ? (
                         <Pressable
