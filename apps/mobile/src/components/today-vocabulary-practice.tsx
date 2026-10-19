@@ -67,6 +67,9 @@ export function TodayVocabularyPractice({
   // correct, auto-clear + retry when wrong, until the user stops it.
   const [handsFree, setHandsFree] = useState(false);
   const [typing, setTyping] = useState(false);
+  // What hands-free last heard when it did not match. Kept across the
+  // recognizer's restarts so the hint does not flash on every retry.
+  const [misheard, setMisheard] = useState<string | null>(null);
   const initializedPool = useRef<string | undefined>(undefined);
   const inputRef = useRef<TextInput>(null);
   const restoreInputFocus = useRef(false);
@@ -133,6 +136,7 @@ export function TodayVocabularyPractice({
     const value = spokenDisplay ?? answer;
     if (!value.trim()) return;
     submitted.current = true;
+    setMisheard(null);
     // Exact match against any STT alternative; fall back to the first
     // transcript so wrong answers are still recorded.
     const matched = spokenTranscripts?.length
@@ -191,6 +195,7 @@ export function TodayVocabularyPractice({
   function stopSession() {
     clearAutoTimer();
     setHandsFree(false);
+    setMisheard(null);
     speech.abort();
   }
 
@@ -211,6 +216,7 @@ export function TodayVocabularyPractice({
     setTyping(false);
     setRevealed(true);
     setRevealSaved(false);
+    setMisheard(null);
     setAnswer("");
     // Keep the keyboard open: the input becomes "Siap untuk kata berikutnya?"
     // with a Next return key, so the learner can advance without re-tapping.
@@ -272,6 +278,7 @@ export function TodayVocabularyPractice({
     setFeedback(undefined);
     setRevealed(false);
     setTyping(false);
+    setMisheard(null);
     setRecordError(null);
     setMoving(false);
     submitted.current = false;
@@ -293,6 +300,7 @@ export function TodayVocabularyPractice({
     if (submitted.current || moving) return;
     if (handsFree) {
       setTyping(true);
+      setMisheard(null);
       speech.abort();
     }
     setAnswer(value);
@@ -316,6 +324,7 @@ export function TodayVocabularyPractice({
     if (handsFree) {
       Keyboard.dismiss();
       if (!matchSpeechAlternative(expectedAnswer, [answer])) {
+        if (answer.trim()) setMisheard(answer.trim());
         setAnswer("");
         return;
       }
@@ -335,14 +344,23 @@ export function TodayVocabularyPractice({
     },
     onFinal: (transcripts) => {
       if (handsFree && !matchSpeechAlternative(expectedAnswer, transcripts)) {
+        setMisheard(transcripts[0] ?? null);
         setAnswer("");
         return;
       }
       void checkAnswer(transcripts);
     },
   });
-  const listening = speech.status === "listening";
   const speechBusy = speech.status !== "idle";
+  // Hands-free restarts the recognizer after every miss or silence. Treat the
+  // whole session as listening so the hint and placeholder stay steady across
+  // those restarts, and hide the errors it retries on its own.
+  const listening =
+    handsFree && !typing && !moving && !feedback && !revealed;
+  const speechError =
+    speech.errorMessage && !(handsFree && speech.recoverableError)
+      ? speech.errorMessage
+      : undefined;
 
   useEffect(() => {
     if (
@@ -458,12 +476,19 @@ export function TodayVocabularyPractice({
                           ? "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."
                           : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."}
               </Text>
-              {speech.errorMessage && !feedback && !revealed ? (
+              {speechError && !feedback && !revealed ? (
                 <Text
                   accessibilityRole="alert"
                   className="text-center text-sm text-destructive"
                 >
-                  {speech.errorMessage}
+                  {speechError}
+                </Text>
+              ) : misheard && listening ? (
+                <Text
+                  accessibilityLiveRegion="polite"
+                  className="text-center text-sm text-muted-foreground"
+                >
+                  {`Terdengar “${misheard}”. Coba ucapkan lagi.`}
                 </Text>
               ) : null}
               {recordError ? (
