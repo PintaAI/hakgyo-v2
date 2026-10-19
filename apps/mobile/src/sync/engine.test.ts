@@ -4,6 +4,7 @@ import SuperJSON from "superjson";
 import {
   BUNDLE_SCHEMA,
   INDEX_SCHEMA,
+  OPERATION_VERSION,
   SYNC_PROTOCOL,
   UPGRADE_REQUIRED_MESSAGE,
   type CourseBundle,
@@ -14,6 +15,7 @@ import {
   DEAD_LETTER_MIN_AGE_MS,
   DEAD_LETTER_MIN_FAILURES,
   persistedQueryKey,
+  readQueuedOperation,
   upgradeRequiredFromError,
 } from "./engine";
 import { createMemoryStore } from "./memory-store";
@@ -788,6 +790,225 @@ describe("mobile sync engine outbox", () => {
 
     expect(batches).toEqual([["content:item-1"], ["content:item-2"]]);
     await engine.dispose();
+  });
+});
+
+describe("mobile sync operation versions", () => {
+  const vocabularyAttempt = (index: number) => ({
+    attemptId: `session-1:${index}`,
+    entryId: `entry-${index}`,
+    evidence: "RECALL" as const,
+    result: "CORRECT" as const,
+    sourceCourseItemId: "item-1",
+    vocabularySetId: "set-1",
+  });
+
+  function recordingEngine(store = memoryStore()) {
+    const sent: MobileSyncOperation[] = [];
+    const { engine } = engineFor({
+      store,
+      transport: {
+        commit: async ({ operations }) => {
+          sent.push(...structuredClone(operations));
+          return commitResult(operations);
+        },
+      },
+    });
+    return { engine, store, sent };
+  }
+
+  test("stamps the current version on every queued operation", async () => {
+    const store = memoryStore();
+    const { engine } = engineFor({ store, isOnline: async () => false });
+    await engine.initialize();
+    await engine.putOperation({
+      id: "content:item-1",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-1",
+    });
+    await engine.putOperation({
+      id: "assessment:attempt-1",
+      kind: "ASSESSMENT_COMPLETED",
+      attemptId: "attempt-1",
+      answers: [],
+    });
+    await engine.recordVocabularyAttempt({
+      gameKey: "cards",
+      sessionId: "session-1",
+      attempt: vocabularyAttempt(1),
+    });
+
+    const stored = await store.listOperations("user-1");
+    expect(stored.map(({ id, v }) => [id, v])).toEqual([
+      ["content:item-1", OPERATION_VERSION],
+      ["assessment:attempt-1", OPERATION_VERSION],
+      ["vocabulary:session-1", OPERATION_VERSION],
+    ]);
+    await engine.dispose();
+  });
+
+  test("sends a legacy stored operation without v upcast to the current version", async () => {
+    const store = memoryStore();
+    // Written by app JavaScript from before operations carried `v`.
+    await store.putOperation("user-1", {
+      id: "content:item-1",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-1",
+    });
+    const { engine, sent } = recordingEngine(store);
+    await engine.initialize();
+
+    expect((await engine.checkpoint()).state).toBe("synced");
+    expect(sent).toEqual([
+      {
+        id: "content:item-1",
+        kind: "CONTENT_COMPLETED",
+        courseItemId: "item-1",
+        v: OPERATION_VERSION,
+      },
+    ]);
+    // Acknowledged although the stored row itself still lacks `v`.
+    expect(await store.countOperations("user-1")).toBe(0);
+    await engine.dispose();
+  });
+
+  test("sends an operation from newer JavaScript unchanged", async () => {
+    const store = memoryStore();
+    // Queued by a newer update that was rolled back.
+    const tooNew = {
+      id: "content:item-1",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-1",
+      completedAt: "2026-10-19T08:00:00.000Z",
+      v: OPERATION_VERSION + 1,
+    } as MobileSyncOperation;
+    await store.putOperation("user-1", tooNew);
+    const { engine, sent } = recordingEngine(store);
+    await engine.initialize();
+
+    expect((await engine.checkpoint()).state).toBe("synced");
+    expect(sent).toEqual([tooNew]);
+    expect(await store.countOperations("user-1")).toBe(0);
+    await engine.dispose();
+  });
+
+  test("keeps a too-new operation queued after the server's transient failure", async () => {
+    const store = memoryStore();
+    const tooNew = {
+      id: "content:item-1",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-1",
+      v: OPERATION_VERSION + 1,
+    } as MobileSyncOperation;
+    await store.putOperation("user-1", tooNew);
+    await store.putOperation("user-1", {
+      id: "content:item-2",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-2",
+    });
+    const { engine } = engineFor({
+      store,
+      transport: {
+        // A server older than the client that queued the operation.
+        commit: async ({ operations }) =>
+          ({
+            ...commitResult([]),
+            failures: [
+              {
+                id: operations[0]!.id,
+                kind: operations[0]!.kind,
+                code: "UNSUPPORTED_OPERATION_VERSION",
+                message: "Sync operation version 2 is newer than this server",
+              },
+            ],
+          }) as MobileSyncCommitResult,
+      },
+    });
+    const start = new Date("2026-01-01T00:00:00Z").getTime();
+    try {
+      setSystemTime(start);
+      await engine.initialize();
+      for (let day = 0; day <= DEAD_LETTER_MIN_FAILURES; day += 1) {
+        setSystemTime(start + day * DEAD_LETTER_MIN_AGE_MS);
+        await engine.checkpoint();
+      }
+      expect(await store.countDeadLetters("user-1")).toBe(0);
+      expect(await store.listOperations("user-1")).toEqual([
+        tooNew,
+        {
+          id: "content:item-2",
+          kind: "CONTENT_COMPLETED",
+          courseItemId: "item-2",
+        },
+      ]);
+    } finally {
+      setSystemTime();
+      await engine.dispose();
+    }
+  });
+
+  test("records vocabulary attempts into a legacy chunk but not into a too-new one", async () => {
+    const store = memoryStore();
+    await store.putOperation("user-1", {
+      id: "vocabulary:session-1",
+      kind: "VOCABULARY_SESSION_COMPLETED",
+      gameKey: "cards",
+      sessionId: "session-1",
+      attempts: [vocabularyAttempt(1)],
+    });
+    const tooNew = {
+      id: "vocabulary:session-2",
+      kind: "VOCABULARY_SESSION_COMPLETED",
+      gameKey: "cards",
+      sessionId: "session-2",
+      attempts: [vocabularyAttempt(1)],
+      v: OPERATION_VERSION + 1,
+    } as MobileSyncOperation;
+    await store.putOperation("user-1", tooNew);
+    const { engine } = engineFor({ store, isOnline: async () => false });
+    await engine.initialize();
+
+    for (const sessionId of ["session-1", "session-2"]) {
+      await engine.recordVocabularyAttempt({
+        gameKey: "cards",
+        sessionId,
+        attempt: vocabularyAttempt(2),
+      });
+    }
+
+    const stored = await store.listOperations("user-1");
+    expect(
+      stored.map((operation) => [
+        operation.id,
+        operation.v,
+        operation.kind === "VOCABULARY_SESSION_COMPLETED"
+          ? operation.attempts.length
+          : 0,
+      ]),
+    ).toEqual([
+      ["vocabulary:session-1", OPERATION_VERSION, 2],
+      ["vocabulary:session-2", OPERATION_VERSION + 1, 1],
+      ["vocabulary:session-2#2", OPERATION_VERSION, 1],
+    ]);
+    expect(stored[1]).toEqual(tooNew);
+    await engine.dispose();
+  });
+
+  test("readQueuedOperation reports whether this JavaScript understands the version", () => {
+    const legacy = {
+      id: "content:item-1",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-1",
+    } as const;
+    expect(readQueuedOperation(legacy)).toEqual({
+      operation: { ...legacy, v: OPERATION_VERSION },
+      current: true,
+    });
+    const tooNew = { ...legacy, v: OPERATION_VERSION + 1 };
+    expect(readQueuedOperation(tooNew)).toEqual({
+      operation: tooNew,
+      current: false,
+    });
   });
 });
 

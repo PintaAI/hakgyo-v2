@@ -1,0 +1,152 @@
+{
+  "description": "Frozen version 1 sync operations exactly as mobile clients queue them. Never edit or delete this file; add vN+1.json for a new OPERATION_VERSION (see docs/mobile-sync.md).",
+  "operations": [
+    {
+      "name": "content completed, queued before operations carried v",
+      "operation": {
+        "id": "content:cmf3k9x2a0007lb08h4q2v1zd",
+        "kind": "CONTENT_COMPLETED",
+        "courseItemId": "cmf3k9x2a0007lb08h4q2v1zd"
+      }
+    },
+    {
+      "name": "content completed with v",
+      "operation": {
+        "id": "content:cmf3ka1q90009lb08y7c6t3pe",
+        "kind": "CONTENT_COMPLETED",
+        "courseItemId": "cmf3ka1q90009lb08y7c6t3pe",
+        "v": 1
+      }
+    },
+    {
+      "name": "cards session, queued before operations carried v",
+      "operation": {
+        "id": "vocabulary:cards:1760850000000:k3j9x2a1b",
+        "kind": "VOCABULARY_SESSION_COMPLETED",
+        "gameKey": "cards",
+        "sessionId": "cards:1760850000000:k3j9x2a1b",
+        "timeZone": "Asia/Jakarta",
+        "attempts": [
+          {
+            "attemptId": "cards:1760850000000:k3j9x2a1b:cmf3kb7rk000blb08u2d9w4nf:1",
+            "sourceCourseItemId": "cmf3kb2ze000alb08a5x1r8mc",
+            "vocabularySetId": "cmf3k7h1t0003lb08q0v6n2sx",
+            "entryId": "cmf3kb7rk000blb08u2d9w4nf",
+            "evidence": "RECALL",
+            "result": "CORRECT"
+          },
+          {
+            "attemptId": "cards:1760850000000:k3j9x2a1b:cmf3kb9s1000clb08b8k3z5ph:2",
+            "sourceCourseItemId": "cmf3kb2ze000alb08a5x1r8mc",
+            "vocabularySetId": "cmf3k7h1t0003lb08q0v6n2sx",
+            "entryId": "cmf3kb9s1000clb08b8k3z5ph",
+            "evidence": "RECALL",
+            "result": "INCORRECT"
+          }
+        ]
+      }
+    },
+    {
+      "name": "match game session without a time zone (older clients)",
+      "operation": {
+        "id": "vocabulary:match:1760850120000:p0w8m3c7z",
+        "kind": "VOCABULARY_SESSION_COMPLETED",
+        "gameKey": "match",
+        "sessionId": "match:1760850120000:p0w8m3c7z",
+        "attempts": [
+          {
+            "attemptId": "match:1760850120000:p0w8m3c7z:cmf3kb7rk000blb08u2d9w4nf:1",
+            "sourceCourseItemId": "cmf3kb2ze000alb08a5x1r8mc",
+            "vocabularySetId": "cmf3k7h1t0003lb08q0v6n2sx",
+            "entryId": "cmf3kb7rk000blb08u2d9w4nf",
+            "evidence": "RECOGNITION",
+            "result": "CORRECT"
+          }
+        ]
+      }
+    },
+    {
+      "name": "second chunk of a today-cards session with a revealed answer, with v",
+      "operation": {
+        "id": "vocabulary:1760850300000:0.4183920571#2",
+        "kind": "VOCABULARY_SESSION_COMPLETED",
+        "gameKey": "today-cards",
+        "sessionId": "1760850300000:0.4183920571",
+        "timeZone": "Asia/Makassar",
+        "attempts": [
+          {
+            "attemptId": "1760850300000:0.4183920571:500:cmf3kc4d2000dlb08f6j1y9qa:revealed",
+            "sourceCourseItemId": "cmf3kb2ze000alb08a5x1r8mc",
+            "vocabularySetId": "cmf3k7h1t0003lb08q0v6n2sx",
+            "entryId": "cmf3kc4d2000dlb08f6j1y9qa",
+            "evidence": "RECALL",
+            "result": "REVEALED"
+          }
+        ],
+        "v": 1
+      }
+    },
+    {
+      "name": "sentence builder session, with v",
+      "operation": {
+        "id": "vocabulary:sentences:1760850600000:t5n2q8r4e",
+        "kind": "VOCABULARY_SESSION_COMPLETED",
+        "gameKey": "sentences",
+        "sessionId": "sentences:1760850600000:t5n2q8r4e",
+        "timeZone": "Asia/Jakarta",
+        "attempts": [
+          {
+            "attemptId": "sentences:1760850600000:t5n2q8r4e:cmf3kc9h7000elb08r3m5v7tb:1",
+            "sourceCourseItemId": "cmf3kb2ze000alb08a5x1r8mc",
+            "vocabularySetId": "cmf3k7h1t0003lb08q0v6n2sx",
+            "entryId": "cmf3kc9h7000elb08r3m5v7tb",
+            "evidence": "APPLICATION",
+            "result": "CORRECT"
+          }
+        ],
+        "v": 1
+      }
+    },
+    {
+      "name": "assessment with single choice, multiple choice and written answers, queued before operations carried v",
+      "operation": {
+        "id": "assessment:cmf3kd0w1000flb08n9e2c4ug",
+        "kind": "ASSESSMENT_COMPLETED",
+        "attemptId": "cmf3kd0w1000flb08n9e2c4ug",
+        "answers": [
+          {
+            "questionId": "cmf3k8a2l0004lb08x1p7d3fh",
+            "optionIds": ["cmf3k8b4m0005lb08c2q8e4gi"]
+          },
+          {
+            "questionId": "cmf3k8c6n0006lb08d3r9f5hj",
+            "optionIds": [
+              "cmf3k8d8p0007lb08e4s0g6ik",
+              "cmf3k8e0q0008lb08f5t1h7jl"
+            ]
+          },
+          {
+            "questionId": "cmf3k8f2r0009lb08g6u2i8km",
+            "optionIds": [],
+            "content": "저는 학생이에요."
+          },
+          {
+            "questionId": "cmf3k8g4s000alb08h7v3j9ln",
+            "optionIds": [],
+            "content": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "assessment submitted without answers, with v",
+      "operation": {
+        "id": "assessment:cmf3kd5y3000glb08p0f3d5vh",
+        "kind": "ASSESSMENT_COMPLETED",
+        "attemptId": "cmf3kd5y3000glb08p0f3d5vh",
+        "answers": [],
+        "v": 1
+      }
+    }
+  ]
+}

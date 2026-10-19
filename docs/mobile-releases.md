@@ -39,7 +39,7 @@ Never raise the minimum in the same deploy that changes the contract.
 
 Rules that keep old clients and queued work safe:
 
-- Operations in the outbox were written by older JavaScript and replay after an update. Never change an existing operation `kind` incompatibly: add optional fields or a new kind, and keep accepting the old shape on the server.
+- Operations in the outbox were written by older JavaScript and replay after an update. Prefer adding optional fields or a new kind. An incompatible change to an existing operation `kind` needs an `OPERATION_VERSION` bump, an upcaster from the previous version and a new frozen fixture file, and the server keeps accepting the old versions; follow "Changing an operation" in `docs/mobile-sync.md`.
 - Cached data (course bundles, the learner index) is disposable: bump `BUNDLE_SCHEMA` or `INDEX_SCHEMA` instead of migrating it on the device.
 - Temporary server unavailability (maintenance, overload) must use a transient error code such as `SERVICE_UNAVAILABLE`. `BAD_REQUEST`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT` and `PRECONDITION_FAILED` are terminal for the sync engine and eventually move operations to the dead-letter list.
 
