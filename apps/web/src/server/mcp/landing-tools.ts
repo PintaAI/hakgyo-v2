@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import { db } from "~/server/db";
+import { assertMaintenanceAllows } from "~/server/maintenance";
 import { MAX_LANDING_HTML_BYTES } from "~/server/organization-landing/html";
 import {
   LANDING_GUIDELINES_VERSION,
@@ -199,8 +200,10 @@ export function registerLandingTools(server: McpServer) {
     ({ organizationId, html, summary, baseRevisionId }, ctx) =>
       run(
         ctx.http?.authInfo,
-        (actorUserId) =>
-          saveLandingDraft({
+        // Calls the service directly, so it checks maintenance itself.
+        async (actorUserId) => {
+          await assertMaintenanceAllows("write");
+          return saveLandingDraft({
             db,
             organizationId,
             actorUserId,
@@ -208,7 +211,8 @@ export function registerLandingTools(server: McpServer) {
             summary,
             baseRevisionId,
             source: "MCP",
-          }),
+          });
+        },
         saved,
       ),
   );
@@ -247,13 +251,15 @@ export function registerLandingTools(server: McpServer) {
     ({ organizationId, revisionId }, ctx) =>
       run(
         ctx.http?.authInfo,
-        (actorUserId) =>
-          restoreLandingRevision({
+        async (actorUserId) => {
+          await assertMaintenanceAllows("write");
+          return restoreLandingRevision({
             db,
             organizationId,
             actorUserId,
             revisionId,
-          }),
+          });
+        },
         saved,
       ),
   );

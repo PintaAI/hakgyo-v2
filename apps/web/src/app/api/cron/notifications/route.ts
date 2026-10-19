@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { env } from "~/env";
 import { db } from "~/server/db";
+import { skipCronDuringMaintenance } from "~/server/maintenance";
 import { checkPushReceipts } from "~/server/notifications/receipts";
 import { sendDueReminders } from "~/server/notifications/reminders";
 
@@ -33,6 +34,8 @@ async function handler(request: Request) {
   if (!isAuthorized(request)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const skipped = await skipCronDuringMaintenance();
+  if (skipped) return skipped;
   const now = new Date();
   const reminders = await sendDueReminders(now);
   const receipts = await checkPushReceipts(now);

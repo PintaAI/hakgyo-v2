@@ -11,6 +11,8 @@
  * client (`import type`) can never drift apart.
  */
 
+import type { MaintenanceState } from "./maintenance";
+
 /** Bumped when the request/response contract changes incompatibly. */
 export const SYNC_PROTOCOL = 2;
 /** Oldest protocol the server still accepts; older clients must update. */
@@ -88,6 +90,11 @@ export type SyncManifest = {
   courses: SyncManifestCourse[];
   /** Server-suggested delay before the next poll (lets the server shed load). */
   checkAfterMs: number;
+  /**
+   * Announced or active maintenance (`scheduled` or `read_only`; `full`
+   * rejects the manifest itself). Missing from servers that predate it.
+   */
+  maintenance?: MaintenanceState | null;
 };
 
 // ---------------------------------------------------------------------------

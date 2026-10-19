@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { env } from "~/env";
 import { db } from "~/server/db";
+import { skipCronDuringMaintenance } from "~/server/maintenance";
 import { compactMobileSyncLog } from "~/server/mobile/sync-log";
 
 export const runtime = "nodejs";
@@ -29,6 +30,8 @@ async function handler(request: Request) {
   if (!isAuthorized(request)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const skipped = await skipCronDuringMaintenance();
+  if (skipped) return skipped;
   const result = await compactMobileSyncLog(db);
   return Response.json(result);
 }

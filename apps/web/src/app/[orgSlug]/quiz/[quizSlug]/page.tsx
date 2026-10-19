@@ -10,6 +10,7 @@ import { PublicQuizPlayer } from "~/components/public-quiz/public-quiz-player";
 import { env } from "~/env";
 import { parseOrganizationTheme } from "~/lib/organization-theme";
 import { db } from "~/server/db";
+import { writesBlockedByMaintenance } from "~/server/maintenance";
 import {
   getPublicQuiz,
   recordPublicQuizView,
@@ -65,7 +66,12 @@ export default async function PublicQuizPage({ params }: Props) {
   const { orgSlug, quizSlug } = await params;
   const quiz = await loadQuiz(orgSlug, quizSlug);
   const userAgent = (await headers()).get("user-agent") ?? "";
-  if (userAgent && !CRAWLER_PATTERN.test(userAgent)) {
+  // The view count is a write; it is skipped while maintenance blocks writes.
+  if (
+    userAgent &&
+    !CRAWLER_PATTERN.test(userAgent) &&
+    !(await writesBlockedByMaintenance())
+  ) {
     after(() =>
       recordPublicQuizView(db, quiz.id).catch((error: unknown) =>
         console.error("Failed to record a public quiz view", error),

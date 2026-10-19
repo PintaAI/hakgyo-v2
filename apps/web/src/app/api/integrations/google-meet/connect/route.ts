@@ -7,8 +7,9 @@ import {
   findIntegrationManager,
   integrationForbiddenResponse,
 } from "~/server/integrations/oauth-routes";
+import { guardRoute } from "~/server/maintenance";
 
-export async function GET(request: Request) {
+async function handler(request: Request) {
   const session = await getActiveSession(request.headers);
   if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
   const organizationId = new URL(request.url).searchParams.get(
@@ -38,3 +39,6 @@ export async function GET(request: Request) {
   }
   return response;
 }
+
+// Connecting stores the grant, so the whole flow waits while writes are blocked.
+export const GET = guardRoute("write", handler);

@@ -10,10 +10,17 @@ import {
 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
+import { MaintenanceBanner } from "~/components/maintenance/maintenance-banner";
+import { MaintenanceGate } from "~/components/maintenance/maintenance-gate";
+import { MaintenancePage } from "~/components/maintenance/maintenance-page";
 import { PwaProvider } from "~/components/pwa/serwist-provider";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { Toaster } from "~/components/ui/sonner";
 import { env } from "~/env";
+import { isSuperadminEmail } from "~/server/authorization/superadmin";
+import { isActiveUser } from "~/server/better-auth/active-user";
+import { getSession } from "~/server/better-auth/server";
+import { getMaintenanceState } from "~/server/maintenance";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
@@ -88,9 +95,33 @@ const jetBrainsMono = JetBrains_Mono({
   preload: false,
 });
 
-export default function RootLayout({
+/**
+ * Superadmins see the real pages during `full` maintenance, like the API lets
+ * them through. Only called in `full`; a failed lookup (the database may be
+ * down) reads as signed out.
+ */
+async function isSuperadminViewer() {
+  try {
+    const session = await getSession();
+    return (
+      !!session &&
+      isActiveUser(session.user) &&
+      isSuperadminEmail(session.user.email)
+    );
+  } catch {
+    return false;
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const maintenance = await getMaintenanceState();
+  // In `full`, pages other than sign-in and /superadmin show this instead.
+  const gate =
+    maintenance?.mode === "full" && !(await isSuperadminViewer())
+      ? maintenance
+      : null;
   return (
     <html
       lang="id"
@@ -106,7 +137,16 @@ export default function RootLayout({
         >
           <TooltipProvider>
             <TRPCReactProvider>
-              <PwaProvider>{children}</PwaProvider>
+              <PwaProvider>
+                {maintenance ? <MaintenanceBanner state={maintenance} /> : null}
+                {gate ? (
+                  <MaintenanceGate page={<MaintenancePage state={gate} />}>
+                    {children}
+                  </MaintenanceGate>
+                ) : (
+                  children
+                )}
+              </PwaProvider>
             </TRPCReactProvider>
           </TooltipProvider>
           <Toaster />

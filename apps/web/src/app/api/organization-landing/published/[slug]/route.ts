@@ -1,4 +1,5 @@
 import { db } from "~/server/db";
+import { guardRoute } from "~/server/maintenance";
 import {
   landingDocumentResponse,
   landingNotFoundResponse,
@@ -7,7 +8,7 @@ import { renderPublishedLanding } from "~/server/organization-landing/service";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
+async function handler(
   _request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
@@ -18,3 +19,5 @@ export async function GET(
     ? landingDocumentResponse(document)
     : landingNotFoundResponse();
 }
+
+export const GET = guardRoute("read", handler);

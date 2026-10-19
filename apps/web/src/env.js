@@ -74,6 +74,14 @@ export const env = createEnv({
     VAPID_PRIVATE_KEY: z.string().min(1).optional(),
     VAPID_CONTACT_EMAIL: z.string().email().optional(),
     EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
+    // Maintenance mode (docs/maintenance.md), read through `~/server/maintenance`. Change on
+    // Vercel and redeploy to toggle.
+    MAINTENANCE_MODE: z
+      .enum(["off", "scheduled", "read_only", "full"])
+      .default("off"),
+    MAINTENANCE_MESSAGE: z.string().trim().min(1).max(500).optional(),
+    MAINTENANCE_STARTS_AT: z.string().datetime({ offset: true }).optional(),
+    MAINTENANCE_UNTIL: z.string().datetime({ offset: true }).optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -123,6 +131,10 @@ export const env = createEnv({
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     VAPID_CONTACT_EMAIL: process.env.VAPID_CONTACT_EMAIL,
     EXPO_ACCESS_TOKEN: process.env.EXPO_ACCESS_TOKEN,
+    MAINTENANCE_MODE: process.env.MAINTENANCE_MODE,
+    MAINTENANCE_MESSAGE: process.env.MAINTENANCE_MESSAGE,
+    MAINTENANCE_STARTS_AT: process.env.MAINTENANCE_STARTS_AT,
+    MAINTENANCE_UNTIL: process.env.MAINTENANCE_UNTIL,
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     NODE_ENV: process.env.NODE_ENV,
   },

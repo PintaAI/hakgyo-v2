@@ -4,10 +4,12 @@ import {
   bundleEtag,
   CLIENT_HEADER,
   formatClientHeader,
+  maintenanceFromError,
   SYNC_PROTOCOL,
   type BundleContent,
   type BundleStructure,
   type CourseBundle,
+  type MaintenanceState,
 } from "@hakgyo/shared/mobile-sync";
 
 import type { LocalBundleRecord } from "./local-data";
@@ -52,6 +54,8 @@ export type BundleSyncOptions = {
   now?: () => number;
   onProgress?: (progress: BundleSyncProgress) => void;
   onUpgradeRequired?: (upgrade: UpgradeRequired) => void;
+  /** The server is under maintenance; the queue stops until the next enqueue. */
+  onMaintenance?: (maintenance: MaintenanceState) => void;
   onBundleTiming?: (timing: BundleTiming) => void;
   /**
    * Compares a downloaded bundle with the previous one; the result is saved
@@ -222,6 +226,16 @@ export function createBundleSync(options: BundleSyncOptions) {
       options.onUpgradeRequired?.({ minProtocol: result.minProtocol });
       return 0;
     }
+    if (result.status === "maintenance") {
+      // Not a failure: the next refresh after maintenance enqueues the
+      // courses again.
+      stopped = true;
+      for (const [courseId, pending] of jobs) {
+        if (!pending.running) jobs.delete(courseId);
+      }
+      options.onMaintenance?.(result.maintenance);
+      return 0;
+    }
     const checkedAt = now();
     if (result.status === "not-modified") {
       const meta = metaByCourse.get(job.courseId);
@@ -298,7 +312,7 @@ export function createBundleSync(options: BundleSyncOptions) {
       const fetchedAt = now();
       const bytes = await applyResult(job, result);
       jobs.delete(job.courseId);
-      if (result.status !== "upgrade-required") {
+      if (result.status === "ok" || result.status === "not-modified") {
         completed += 1;
         options.onBundleTiming?.({
           courseId: job.courseId,
@@ -483,6 +497,12 @@ export function createBundleFetcher(
         status: "upgrade-required",
         minProtocol: body?.upgradeRequired?.minProtocol ?? SYNC_PROTOCOL + 1,
       };
+    }
+    if (response.status === 503) {
+      const maintenance = maintenanceFromError(
+        await response.json().catch(() => null),
+      );
+      if (maintenance) return { status: "maintenance", maintenance };
     }
     if (!response.ok) throw new BundleFetchError(response.status);
     const bundle = (await response.json()) as CourseBundle;

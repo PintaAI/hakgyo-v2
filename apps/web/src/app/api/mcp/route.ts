@@ -3,6 +3,7 @@ import { requireMcpAuth } from "@better-auth/mcp";
 import { loadAllRouters } from "~/server/api/root";
 import { auth } from "~/server/better-auth";
 import { isActiveUserId } from "~/server/better-auth/active-user";
+import { guardRoute } from "~/server/maintenance";
 import { createMcpAuthInfo, requireMcpUserId } from "~/server/mcp/auth";
 import { mcpResource, mcpScope } from "~/server/mcp/config";
 import { mcpHandler } from "~/server/mcp/server";
@@ -43,4 +44,7 @@ async function handler(request: Request) {
   return authenticatedHandler(request);
 }
 
-export { handler as POST };
+// `full` maintenance rejects every request before authentication (which reads
+// the database). In `read_only`, tools that call tRPC procedures are rejected
+// by the procedure middleware and the other write tools check on their own.
+export const POST = guardRoute("read", handler);

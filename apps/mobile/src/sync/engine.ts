@@ -2,6 +2,7 @@ import type { QueryCacheNotifyEvent, QueryClient } from "@tanstack/react-query";
 import SuperJSON from "superjson";
 import {
   BUNDLE_SCHEMA,
+  maintenanceFromError,
   mergeLearnerState,
   OPERATION_VERSION,
   SYNC_PROTOCOL,
@@ -9,6 +10,7 @@ import {
   upcastOperation,
   type BundleStructure,
   type LearnerState,
+  type MaintenanceState,
 } from "@hakgyo/shared/mobile-sync";
 
 import { createBundleSync, type BundleSyncOptions } from "./bundle-sync";
@@ -53,7 +55,8 @@ export const MAX_VOCABULARY_ATTEMPTS_PER_OPERATION = 500;
 // racing replay or a server-side recovery may still settle it) and moves to
 // the dead-letter list only once it keeps failing, so it cannot block every
 // later sync forever. Everything else (server errors, timeouts, rate limits,
-// auth, network) is transient and retried indefinitely.
+// auth, network, maintenance's SERVICE_UNAVAILABLE) is transient and retried
+// indefinitely.
 /** Terminal failures of one payload before it may be dead-lettered... */
 export const DEAD_LETTER_MIN_FAILURES = 5;
 /** ...and the minimum time since its first terminal failure. */
@@ -62,6 +65,11 @@ export const DEAD_LETTER_MIN_AGE_MS = 24 * 60 * 60 * 1000;
 export const BUNDLE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** Default poll spacing when the manifest did not suggest one. */
 export const DEFAULT_CHECK_AFTER_MS = 60_000;
+/**
+ * Pause after a maintenance rejection when the server did not announce an
+ * end; with an announced end, sync waits until then.
+ */
+export const MAINTENANCE_RETRY_MS = 5 * 60_000;
 /** Debounce for persisting a whitelisted query result. */
 const QUERY_PERSIST_DELAY_MS = 250;
 const TERMINAL_FAILURE_CODES = new Set([
@@ -254,6 +262,8 @@ export function createMobileSyncEngine({
   let unsubscribe: (() => void) | undefined;
   const state: MobileSyncEngineState = {
     upgradeRequired: null,
+    maintenance: null,
+    maintenanceRetryAt: null,
     isRefreshing: false,
     bundles: { pending: 0, completed: 0, failed: 0, activeCourseIds: [] },
     nextCheckAfterMs: DEFAULT_CHECK_AFTER_MS,
@@ -290,6 +300,7 @@ export function createMobileSyncEngine({
     ...bundleSyncOptions,
     onProgress: (progress) => publishState({ bundles: progress }),
     onUpgradeRequired: (upgrade) => publishState({ upgradeRequired: upgrade }),
+    onMaintenance: (maintenance) => enterMaintenance(maintenance),
     onBundleTiming: (timing) => {
       for (const listener of bundleTimingListeners) listener(timing);
     },
@@ -825,6 +836,54 @@ export function createMobileSyncEngine({
     return true;
   }
 
+  // ---------------------------------------------------------------------------
+  // Maintenance: like being offline. The outbox keeps queueing; network sync
+  // pauses until the announced end (or MAINTENANCE_RETRY_MS) and nothing
+  // counts as a failed operation.
+  // ---------------------------------------------------------------------------
+
+  function enterMaintenance(maintenance: MaintenanceState) {
+    const until = maintenance.until ? Date.parse(maintenance.until) : NaN;
+    const current = now();
+    publishState({
+      maintenance,
+      maintenanceRetryAt:
+        Number.isFinite(until) && until > current
+          ? until
+          : current + MAINTENANCE_RETRY_MS,
+    });
+  }
+
+  function noteMaintenance(error: unknown) {
+    const maintenance = maintenanceFromError(error);
+    if (maintenance) enterMaintenance(maintenance);
+    return maintenance;
+  }
+
+  function maintenancePaused() {
+    return (
+      state.maintenanceRetryAt !== null && now() < state.maintenanceRetryAt
+    );
+  }
+
+  /**
+   * A request went through, so a blocking maintenance is over. An announced
+   * (`scheduled`) one stays until the next manifest says otherwise.
+   */
+  function leaveMaintenance() {
+    if (
+      state.maintenanceRetryAt === null &&
+      (!state.maintenance || state.maintenance.mode === "scheduled")
+    ) {
+      return;
+    }
+    publishState({
+      maintenance:
+        state.maintenance?.mode === "scheduled" ? state.maintenance : null,
+      maintenanceRetryAt: null,
+    });
+  }
+
   function noteUpgradeRequired(error: unknown) {
     const upgrade = upgradeRequiredFromError(error);
     if (upgrade) publishState({ upgradeRequired: upgrade });
@@ -837,6 +896,7 @@ export function createMobileSyncEngine({
     await writeTail;
     if (state.upgradeRequired)
       return { state: "queued", reason: "upgrade-required" };
+    if (maintenancePaused()) return { state: "queued", reason: "maintenance" };
     try {
       if (!(await isOnline())) return { state: "queued", reason: "offline" };
     } catch {
@@ -866,6 +926,7 @@ export function createMobileSyncEngine({
           organizationId,
           operations: batch,
         } as Parameters<MobileSyncTransport["commit"]>[0]);
+        leaveMaintenance();
         acknowledgedOperationIds.push(...result.acknowledgedOperationIds);
         failures.push(...result.failures);
         results.push(...result.results);
@@ -987,6 +1048,9 @@ export function createMobileSyncEngine({
     } catch (error) {
       if (noteUpgradeRequired(error))
         return { state: "queued", reason: "upgrade-required" };
+      // The whole request was rejected: no operation failed.
+      if (noteMaintenance(error))
+        return { state: "queued", reason: "maintenance" };
       return { state: "queued", reason: "unavailable" };
     }
   }
@@ -1022,6 +1086,7 @@ export function createMobileSyncEngine({
   ): Promise<SyncRefreshResult> {
     if (state.upgradeRequired)
       return { state: "queued", reason: "upgrade-required" };
+    if (maintenancePaused()) return { state: "queued", reason: "maintenance" };
     try {
       if (!(await isOnline())) return { state: "queued", reason: "offline" };
     } catch {
@@ -1033,6 +1098,12 @@ export function createMobileSyncEngine({
       const manifest = await transport.getManifest({
         protocol: SYNC_PROTOCOL,
         organizationId,
+      });
+      // The manifest is authoritative: it announces `scheduled` and
+      // `read_only` (reads still work), and its absence ends maintenance.
+      publishState({
+        maintenance: manifest.maintenance ?? null,
+        maintenanceRetryAt: null,
       });
       if (manifest.minProtocol > SYNC_PROTOCOL) {
         publishState({
@@ -1117,6 +1188,8 @@ export function createMobileSyncEngine({
     } catch (error) {
       if (noteUpgradeRequired(error))
         return { state: "queued", reason: "upgrade-required" };
+      if (noteMaintenance(error))
+        return { state: "queued", reason: "maintenance" };
       return { state: "queued", reason: "unavailable" };
     } finally {
       publishState({ isRefreshing: false });
@@ -1155,6 +1228,11 @@ export function createMobileSyncEngine({
     options: { force?: boolean; manual?: boolean } = {},
   ): Promise<SyncUpdateResult> {
     await writeTail;
+    // A learner pulling to refresh tries the server once even while paused,
+    // so an early end of maintenance is picked up.
+    if (options.manual && maintenancePaused()) {
+      publishState({ maintenanceRetryAt: now() });
+    }
     if (pendingCount > 0) {
       const result = await checkpoint(organizationId);
       if (result.state !== "synced") return result;

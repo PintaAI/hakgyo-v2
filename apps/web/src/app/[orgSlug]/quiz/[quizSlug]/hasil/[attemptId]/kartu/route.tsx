@@ -1,8 +1,9 @@
 import { loadResultCard } from "../card";
+import { guardRoute } from "~/server/maintenance";
 import { renderPublicQuizResult } from "~/server/public-quiz/images";
 
 /** A 9:16 result image participants save or share to their stories. */
-export async function GET(
+async function handler(
   _request: Request,
   {
     params,
@@ -14,3 +15,5 @@ export async function GET(
   if (!card) return new Response("Not found", { status: 404 });
   return renderPublicQuizResult(card, "story");
 }
+
+export const GET = guardRoute("read", handler);

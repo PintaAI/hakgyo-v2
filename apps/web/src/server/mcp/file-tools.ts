@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import { db } from "~/server/db";
+import { assertMaintenanceAllows } from "~/server/maintenance";
 import { importOrganizationFileFromUrl } from "~/server/storage/import-file";
 
 import { requireMcpUserId } from "./auth";
@@ -52,6 +53,8 @@ export function registerFileTools(server: McpServer) {
     },
     async (input, ctx) => {
       try {
+        // Calls the service directly, so it checks maintenance itself.
+        await assertMaintenanceAllows("write");
         const asset = await importOrganizationFileFromUrl(db, {
           actorUserId: requireMcpUserId(ctx.http?.authInfo),
           organizationId: input.organizationId,

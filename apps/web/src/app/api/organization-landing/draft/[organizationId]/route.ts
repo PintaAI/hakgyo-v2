@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 
 import { getActiveSession } from "~/server/better-auth/active-user";
 import { db } from "~/server/db";
+import { guardRoute } from "~/server/maintenance";
 import {
   landingDocumentResponse,
   landingNotFoundResponse,
@@ -11,7 +12,7 @@ import { renderDraftLanding } from "~/server/organization-landing/service";
 export const dynamic = "force-dynamic";
 
 /** Owner-only draft or revision preview framed by the landing page editor. */
-export async function GET(
+async function handler(
   request: Request,
   { params }: { params: Promise<{ organizationId: string }> },
 ) {
@@ -38,3 +39,5 @@ export async function GET(
     throw error;
   }
 }
+
+export const GET = guardRoute("read", handler);

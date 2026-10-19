@@ -7,7 +7,12 @@ import SuperJSON from "superjson";
 
 import { shouldRetryQuery } from "@hakgyo/shared";
 
-export const createQueryClient = () => {
+export const createQueryClient = (
+  options: {
+    /** Runs for every failed mutation, after its own `onError`. */
+    onMutationError?: (error: unknown) => void;
+  } = {},
+) => {
   const queryClient: QueryClient = new QueryClient({
     // After any successful mutation, mark every cached query stale without
     // refetching it. Screens visited later load fresh data even when the
@@ -15,6 +20,7 @@ export const createQueryClient = () => {
     // relies on the mutation's own invalidation.
     mutationCache: new MutationCache({
       onSuccess: () => queryClient.invalidateQueries({ refetchType: "none" }),
+      onError: options.onMutationError,
     }),
     defaultOptions: {
       queries: {
