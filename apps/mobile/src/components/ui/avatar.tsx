@@ -31,7 +31,7 @@ export function Avatar({
       ) : (
         <Text
           className={`font-extrabold ${tone === "primary" ? "text-primary-foreground" : "text-primary"}`}
-          style={{ fontSize: Math.max(10, Math.round(size / 2.75)) }}
+          style={{ fontSize: Math.max(12, Math.round(size / 2.75)) }}
         >
           {initials}
         </Text>

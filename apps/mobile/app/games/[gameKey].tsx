@@ -1,9 +1,14 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState, type ReactNode } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 
-import { Action, Empty, StudyScreen } from "../../src/components/learning-ui";
+import {
+  Action,
+  Empty,
+  FullScreenState,
+  StudyScreen,
+} from "../../src/components/learning-ui";
 import { VocabularySession } from "../../src/components/vocabulary-session";
 import { gameCatalog, isGameKey } from "../../src/games/catalog";
 import { GameBackToolbar, GamePage } from "../../src/games/game-screens";
@@ -17,7 +22,6 @@ import { WordBuilderScreen } from "../../src/games/word-builder/word-builder-scr
 import { authClient } from "../../src/lib/auth-client";
 import { useCourseItem } from "../../src/sync/hooks";
 import { useVocabularyProgressReporter } from "../../src/lib/use-vocabulary-progress";
-import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { firstParam } from "../../src/lib/route-params";
 
 function leave() {
@@ -213,9 +217,8 @@ function VocabularyCardsRoute({
 }
 
 function GameLoading({ title }: { title: string }) {
-  const { colors } = useAppTheme();
   return (
-    <View className="flex-1 items-center justify-center bg-background">
+    <>
       <GameBackToolbar onPress={leave} />
       <Stack.Screen
         options={{
@@ -225,8 +228,8 @@ function GameLoading({ title }: { title: string }) {
           title,
         }}
       />
-      <ActivityIndicator color={colors.primary} />
-    </View>
+      <FullScreenState kind="loading" />
+    </>
   );
 }
 
@@ -238,7 +241,7 @@ function GameUnavailable({
   title: string;
 }) {
   return (
-    <View className="flex-1 bg-background">
+    <>
       <GameBackToolbar onPress={leave} />
       <Stack.Screen
         options={{
@@ -248,11 +251,13 @@ function GameUnavailable({
           title,
         }}
       />
-      <GamePage>
-        <Empty>{children}</Empty>
-        <Action onPress={leave}>Kembali ke latihan</Action>
-      </GamePage>
-    </View>
+      <FullScreenState
+        backLabel="Kembali ke latihan"
+        kind="empty"
+        message={children}
+        onBack={leave}
+      />
+    </>
   );
 }
 

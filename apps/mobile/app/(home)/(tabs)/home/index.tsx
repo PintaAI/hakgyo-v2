@@ -1,20 +1,13 @@
-import { router, Stack, type Href } from "expo-router";
-import { Image } from "expo-image";
+import { router } from "expo-router";
 import { useState } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
-import { DoodleBackground } from "../../../../src/components/doodle-background";
-import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
-import { AndroidTabActions } from "../../../../src/components/sidebar/AndroidTabActions";
-import {
-  QueryState,
-  StudyScreen,
-} from "../../../../src/components/learning-ui";
+import { Avatar, QueryState } from "../../../../src/components/learning-ui";
+import { TabScreen } from "../../../../src/components/tab-screen";
 import { WeeklyStreak } from "../../../../src/components/weekly-streak";
 import { authClient } from "../../../../src/lib/auth-client";
 import { TodayVocabularyPractice } from "../../../../src/components/today-vocabulary-practice";
 import { TodayAssessmentPractice } from "../../../../src/components/today-assessment-practice";
-import { OrganizationSwitcherTrigger } from "../../../../src/components/organization-switcher";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
 import { useSyncIndex } from "../../../../src/sync/hooks";
@@ -30,8 +23,6 @@ export default function HomeTab() {
 
   const displayName = session?.user.name || "Pelajar Hakgyo";
   const nameInitial = displayName.trim()[0]?.toUpperCase() ?? "H";
-  const openOrganizationSwitcher = () =>
-    router.push("/organization-switcher" as Href);
 
   async function refresh() {
     setRefreshing(true);
@@ -43,100 +34,60 @@ export default function HomeTab() {
   }
 
   return (
-    <>
-      <DoodleBackground />
-      {Platform.OS === "ios" ? (
+    <TabScreen
+      scrollGesture={scrollGesture}
+      refreshing={refreshing}
+      onRefresh={() => void refresh()}
+      automaticallyAdjustKeyboardInsets
+    >
+      <View className="-mb-3 flex-row items-center gap-2">
+        <Text
+          accessibilityRole="header"
+          className="shrink-0 text-[26px] font-black leading-8 tracking-tight text-foreground"
+        >
+          안녕하세요 ·
+        </Text>
+        <Avatar initials={nameInitial} size={24} uri={session?.user.image} />
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Buka profil"
+          accessibilityHint="Membuka tab profil kamu"
+          className="min-w-0 flex-1 active:opacity-60"
+          onPress={() => router.navigate("/(home)/(tabs)/profile")}
+        >
+          <Text
+            className="text-muted-foreground text-xl leading-7 tracking-tight underline"
+            numberOfLines={1}
+          >
+            {displayName}
+          </Text>
+        </Pressable>
+      </View>
+      <QueryState
+        pending={dashboard.isPending}
+        error={dashboard.error}
+        retry={() => void dashboard.refetch()}
+      />
+      {dashboard.data ? (
         <>
-          <SidebarToolbarButton />
-          <Stack.Toolbar placement="right">
-            <Stack.Toolbar.View hidesSharedBackground>
-              <OrganizationSwitcherTrigger
-                compact
-                onPress={openOrganizationSwitcher}
-              />
-            </Stack.Toolbar.View>
-          </Stack.Toolbar>
+          <WeeklyStreak summary={dashboard.data.gamification} />
+          {session && activeOrganizationId ? (
+            <TodayVocabularyPractice
+              key={`${session.user.id}:${activeOrganizationId}`}
+              organizationId={activeOrganizationId}
+              pool={dashboard.data.practice.vocabulary}
+              scrollGesture={scrollGesture}
+            />
+          ) : null}
+          {activeOrganizationId ? (
+            <TodayAssessmentPractice
+              key={activeOrganizationId}
+              organizationId={activeOrganizationId}
+              pool={dashboard.data.practice.assessment}
+            />
+          ) : null}
         </>
       ) : null}
-      <StudyScreen
-        title=""
-        headerShown={Platform.OS === "ios"}
-        scrollGesture={scrollGesture}
-        refreshing={refreshing}
-        onRefresh={() => void refresh()}
-        automaticallyAdjustKeyboardInsets
-      >
-        {Platform.OS !== "ios" ? (
-          <AndroidTabActions
-            right={
-              <OrganizationSwitcherTrigger onPress={openOrganizationSwitcher} />
-            }
-          />
-        ) : null}
-        <View className="-mb-3 flex-row items-center gap-2">
-          <Text
-            accessibilityRole="header"
-            className="shrink-0 text-[26px] font-black leading-8 tracking-tight text-foreground"
-          >
-            안녕하세요 ·
-          </Text>
-          <View className="size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary">
-            {session?.user.image ? (
-              <Image
-                cachePolicy="memory-disk"
-                className="size-full"
-                contentFit="cover"
-                source={{ uri: session.user.image }}
-                style={{ width: 24, height: 24 }}
-                transition={0}
-              />
-            ) : (
-              <Text className="text-xs font-bold text-primary-foreground">
-                {nameInitial}
-              </Text>
-            )}
-          </View>
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel="Buka profil"
-            accessibilityHint="Membuka tab profil kamu"
-            className="min-w-0 flex-1 active:opacity-60"
-            onPress={() => router.navigate("/(home)/(tabs)/profile")}
-          >
-            <Text
-              className="text-muted-foreground text-xl leading-7 tracking-tight underline"
-              numberOfLines={1}
-            >
-              {displayName}
-            </Text>
-          </Pressable>
-        </View>
-        <QueryState
-          pending={dashboard.isPending}
-          error={dashboard.error}
-          retry={() => void dashboard.refetch()}
-        />
-        {dashboard.data ? (
-          <>
-            <WeeklyStreak summary={dashboard.data.gamification} />
-            {session && activeOrganizationId ? (
-              <TodayVocabularyPractice
-                key={`${session.user.id}:${activeOrganizationId}`}
-                organizationId={activeOrganizationId}
-                pool={dashboard.data.practice.vocabulary}
-                scrollGesture={scrollGesture}
-              />
-            ) : null}
-            {activeOrganizationId ? (
-              <TodayAssessmentPractice
-                key={activeOrganizationId}
-                organizationId={activeOrganizationId}
-                pool={dashboard.data.practice.assessment}
-              />
-            ) : null}
-          </>
-        ) : null}
-      </StudyScreen>
-    </>
+    </TabScreen>
   );
 }

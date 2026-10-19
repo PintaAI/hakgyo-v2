@@ -2,15 +2,7 @@ import { assessmentContentAssetIds } from "@hakgyo/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Alert, ScrollView, Text, TextInput, View } from "react-native";
 
 import {
   AssessmentMediaStatus,
@@ -21,6 +13,10 @@ import {
   AssessmentOption,
   AssessmentQuestion,
 } from "../../../../../../src/components/assessment-ui";
+import {
+  FullScreenState,
+  StudyScreen,
+} from "../../../../../../src/components/learning-ui";
 import {
   StudyAction,
   StudyGlass,
@@ -430,6 +426,7 @@ function AssessmentAttemptContent({
     }
   }
 
+  const screenTitle = assessment.data?.title ?? "Tugas";
   const loading = assessment.isPending || attempt.isPending;
   const error = assessment.error ?? attempt.error;
   function confirmSubmit() {
@@ -467,33 +464,24 @@ function AssessmentAttemptContent({
     <>
       <Stack.Screen
         options={{
-          title: assessment.data?.title ?? "Tugas",
+          title: screenTitle,
           headerBackButtonDisplayMode: "minimal",
         }}
       />
       {loading ? (
-        <View className="flex-1 items-center justify-center bg-background">
-          <ActivityIndicator />
-        </View>
+        <FullScreenState kind="loading" message="Memuat tugas…" />
       ) : error || !assessment.data || !attempt.data ? (
-        <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
-          <Text className="text-center text-sm text-destructive">
-            {error?.message ?? "Tugas tidak tersedia."}
-          </Text>
-          <Pressable
-            className="rounded-full border border-border px-5 py-3"
-            onPress={() => router.back()}
-          >
-            <Text className="font-bold text-foreground">Kembali</Text>
-          </Pressable>
-        </View>
+        <FullScreenState
+          kind="error"
+          message={
+            error?.message ??
+            "Tugas ini tidak tersedia atau kamu tidak lagi memiliki akses."
+          }
+          onBack={() => router.back()}
+          title="Tugas tidak tersedia"
+        />
       ) : result ? (
-        <ScrollView
-          ref={resultScrollRef}
-          className="flex-1 bg-background"
-          contentContainerClassName="gap-6 px-5 pb-14 pt-6"
-          contentInsetAdjustmentBehavior="automatic"
-        >
+        <StudyScreen scrollViewRef={resultScrollRef} title={screenTitle}>
           <StudyGlass>
             <View className="size-16 self-center items-center justify-center rounded-full bg-primary/10">
               <Text className="text-2xl font-black text-primary">✓</Text>
@@ -529,15 +517,13 @@ function AssessmentAttemptContent({
               Lihat skor & leaderboard
             </StudyAction>
           ) : null}
-        </ScrollView>
+        </StudyScreen>
       ) : question ? (
-        <ScrollView
-          ref={scrollRef}
-          className="flex-1 bg-background"
-          contentContainerClassName="gap-4 px-5 pb-14 pt-4"
-          contentInsetAdjustmentBehavior="automatic"
-          keyboardShouldPersistTaps="handled"
+        <StudyScreen
           automaticallyAdjustKeyboardInsets
+          contentClassName="gap-4"
+          scrollViewRef={scrollRef}
+          title={screenTitle}
         >
           {deadline !== null ? (
             <AssessmentDeadline deadline={deadline} onExpire={expireAttempt} />
@@ -694,7 +680,7 @@ function AssessmentAttemptContent({
               </StudyAction>
             ) : null}
           </View>
-        </ScrollView>
+        </StudyScreen>
       ) : (
         <View className="flex-1 items-center justify-center bg-background px-6">
           <Text className="text-muted-foreground">

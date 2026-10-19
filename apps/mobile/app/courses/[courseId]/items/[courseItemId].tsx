@@ -2,14 +2,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { resolveAssessmentEntry } from "@hakgyo/shared";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import {
   NativeContentRenderer,
@@ -32,7 +25,11 @@ import {
 } from "../../../../src/sync/hooks";
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
-import { Eyebrow } from "../../../../src/components/learning-ui";
+import {
+  Eyebrow,
+  FullScreenState,
+  StudyScreen,
+} from "../../../../src/components/learning-ui";
 import {
   StudyAction,
   StudyGlass,
@@ -229,32 +226,17 @@ function CourseItemContent({
       />
 
       {loading ? (
-        <View className="flex-1 items-center justify-center gap-3 bg-background">
-          <ActivityIndicator color={colors.primary} />
-          <Text className="text-sm text-muted-foreground">Memuat materi…</Text>
-        </View>
+        <FullScreenState kind="loading" message="Memuat materi…" />
       ) : itemQuery.isError || !item ? (
-        <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
-          <Text className="text-xl font-black text-foreground">
-            Materi tidak tersedia
-          </Text>
-          <Text className="text-center text-sm leading-5 text-muted-foreground">
-            Aktivitas ini tidak tersedia atau kamu tidak lagi memiliki akses.
-          </Text>
-          <Pressable
-            className="rounded-full border border-border px-5 py-3"
-            onPress={() => router.back()}
-          >
-            <Text className="font-bold text-foreground">Kembali</Text>
-          </Pressable>
-        </View>
+        <FullScreenState
+          kind="error"
+          message="Aktivitas ini tidak tersedia atau kamu tidak lagi memiliki akses."
+          onBack={() => router.back()}
+          title="Materi tidak tersedia"
+        />
       ) : item.assessment ? (
         assessment ? (
-          <ScrollView
-            className="flex-1 bg-background"
-            contentContainerClassName="gap-6 px-5 pb-14 pt-4"
-            contentInsetAdjustmentBehavior="automatic"
-          >
+          <StudyScreen title="">
             <StudyGlass>
               <View className="gap-2">
                 <Eyebrow size="md">
@@ -371,13 +353,13 @@ function CourseItemContent({
                 initialOutline={initialOutline.current}
               />
             ) : null}
-          </ScrollView>
+          </StudyScreen>
         ) : (
-          <View className="flex-1 items-center justify-center bg-background px-6">
-            <Text className="text-center text-sm text-destructive">
-              Tugas tidak tersedia.
-            </Text>
-          </View>
+          <FullScreenState
+            kind="error"
+            onBack={() => router.back()}
+            title="Tugas tidak tersedia"
+          />
         )
       ) : vocabulary ? (
         <VocabularySetDetail

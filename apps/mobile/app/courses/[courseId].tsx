@@ -1,18 +1,20 @@
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { useEffect } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { Eyebrow } from "../../src/components/learning-ui";
+import {
+  Card,
+  Eyebrow,
+  FullBleed,
+  FullScreenState,
+  ProgressBar,
+  StudyScreen,
+  TintedAction,
+} from "../../src/components/learning-ui";
 import { CourseOutlineList } from "../../src/components/learn/course-outline-list";
 import { CourseOfflineCard } from "../../src/components/offline-download";
+import { openCourseItem } from "../../src/lib/navigation";
 import { getCourseResumeItem } from "../../src/lib/course-learning-path";
 import { authClient } from "../../src/lib/auth-client";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
@@ -55,9 +57,6 @@ export default function CourseDetailScreen() {
   const resumeItem = course && getCourseResumeItem(course);
   const allItems = course?.modules.flatMap((module) => module.items) ?? [];
   const completedCount = allItems.filter((item) => item.isCompleted).length;
-  const progress = allItems.length
-    ? Math.round((completedCount / allItems.length) * 100)
-    : 0;
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -67,203 +66,134 @@ export default function CourseDetailScreen() {
     router.replace("/(home)/(tabs)/home");
   };
 
+  if (isSessionPending || (!session && Boolean(courseId))) {
+    return <FullScreenState kind="loading" message="Membuka kurikulum kamu…" />;
+  }
+  if (courseQuery.isPending && !course) {
+    return <FullScreenState kind="loading" message="Memuat kurikulum…" />;
+  }
+  if (courseQuery.error || !course) {
+    return (
+      <FullScreenState
+        kind="error"
+        message="Akses kamu mungkin sudah berakhir, atau kurikulum ini tidak lagi dipublikasikan."
+        onBack={goBack}
+        onRetry={() => void courseQuery.refetch()}
+        title="Kurikulum tidak tersedia"
+      />
+    );
+  }
+
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      {isSessionPending || (!session && Boolean(courseId)) ? (
-        <View className="flex-1 items-center justify-center gap-3 bg-background">
-          <ActivityIndicator color={colors.primary} />
-          <Text className="text-sm text-muted-foreground">
-            Membuka kurikulum kamu…
-          </Text>
-        </View>
-      ) : courseQuery.isPending && !course ? (
-        <View className="flex-1 items-center justify-center gap-3 bg-background">
-          <ActivityIndicator color={colors.primary} />
-          <Text className="text-sm text-muted-foreground">
-            Memuat kurikulum…
-          </Text>
-        </View>
-      ) : courseQuery.error || !course ? (
-        <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
-          <View className="size-12 items-center justify-center rounded-lg bg-destructive/10">
-            <Text className="text-lg font-black text-destructive">!</Text>
-          </View>
-          <View className="items-center gap-2">
-            <Text className="text-xl font-black text-foreground">
-              Kurikulum tidak tersedia
-            </Text>
-            <Text className="text-center text-sm leading-5 text-muted-foreground">
-              Akses kamu mungkin sudah berakhir, atau kurikulum ini tidak lagi
-              dipublikasikan.
-            </Text>
-          </View>
-          <View className="flex-row gap-3">
-            <Pressable
-              className="rounded-full border border-border px-5 py-3"
-              onPress={goBack}
-            >
-              <Text className="font-bold text-foreground">Kembali</Text>
-            </Pressable>
-            <Pressable
-              className="rounded-full bg-primary px-5 py-3"
-              onPress={() => void courseQuery.refetch()}
-            >
-              <Text className="font-bold text-primary-foreground">
-                Coba lagi
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : (
-        <ScrollView
-          className="flex-1 bg-background"
-          contentContainerClassName="gap-8 px-5 pb-14"
-          contentInsetAdjustmentBehavior="never"
-        >
-          <View className="-mx-5 overflow-hidden bg-muted">
-            {course.thumbnailUrl ? (
-              <>
-                <Image
-                  accessibilityIgnoresInvertColors
-                  blurRadius={5}
-                  cachePolicy="memory-disk"
-                  className="absolute inset-0 z-0 h-full w-full"
-                  contentFit="cover"
-                  source={{ uri: course.thumbnailUrl }}
-                  style={StyleSheet.absoluteFill}
-                  transition={0}
-                />
-                <View
-                  className="absolute inset-0 z-10"
-                  style={{
-                    backgroundColor: withOpacity(colors.background, 0.72),
-                  }}
-                />
-              </>
-            ) : null}
-            <View className="relative z-20 justify-end gap-2 px-5 pb-6 pt-6">
-              <View className="gap-2">
-                <Eyebrow size="md" className="text-center">
-                  {course.organization.name}
-                </Eyebrow>
-                <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
-                  {course.title}
-                </Text>
-                {course.description ? (
-                  <Text
-                    className="text-sm leading-5 text-muted-foreground"
-                    numberOfLines={3}
-                  >
-                    {course.description}
-                  </Text>
-                ) : null}
-                <Text className="mt-1 text-xs font-semibold text-muted-foreground">
-                  {completedCount} dari {allItems.length} selesai
-                </Text>
-              </View>
-            </View>
-            <View className="absolute bottom-0 left-0 right-0 z-30 h-1 bg-muted">
-              <View
-                className="h-full bg-primary"
-                style={{ width: `${progress}%` }}
+    <StudyScreen
+      bleedTop
+      contentClassName="gap-8"
+      contentInsetAdjustmentBehavior="never"
+      headerShown={false}
+      title=""
+    >
+      <FullBleed>
+        <View className="overflow-hidden bg-muted">
+          {course.thumbnailUrl ? (
+            <>
+              <Image
+                accessibilityIgnoresInvertColors
+                blurRadius={5}
+                cachePolicy="memory-disk"
+                className="absolute inset-0 z-0 h-full w-full"
+                contentFit="cover"
+                source={{ uri: course.thumbnailUrl }}
+                style={StyleSheet.absoluteFill}
+                transition={0}
               />
+              <View
+                className="absolute inset-0 z-10"
+                style={{
+                  backgroundColor: withOpacity(colors.background, 0.72),
+                }}
+              />
+            </>
+          ) : null}
+          <View className="relative z-20 justify-end gap-2 px-5 pb-6 pt-6">
+            <View className="gap-2">
+              <Eyebrow size="md" className="text-center">
+                {course.organization.name}
+              </Eyebrow>
+              <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
+                {course.title}
+              </Text>
+              {course.description ? (
+                <Text
+                  className="text-sm leading-5 text-muted-foreground"
+                  numberOfLines={3}
+                >
+                  {course.description}
+                </Text>
+              ) : null}
+              <Text className="mt-1 text-xs font-semibold text-muted-foreground">
+                {completedCount} dari {allItems.length} selesai
+              </Text>
             </View>
           </View>
-
-          {resumeItem ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityHint={`Buka ${resumeItem.title}`}
-              className="flex-row items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 active:opacity-80"
-              onPress={() => {
-                if (
-                  resumeItem.type === "ASSESSMENT" &&
-                  resumeItem.attempt?.status === "IN_PROGRESS"
-                ) {
-                  router.replace({
-                    pathname:
-                      "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                    params: {
-                      courseId,
-                      courseItemId: resumeItem.id,
-                      attemptId: resumeItem.attempt.id,
-                    },
-                  });
-                  return;
-                }
-                router.replace({
-                  pathname: "/courses/[courseId]/items/[courseItemId]",
-                  params: { courseId, courseItemId: resumeItem.id },
-                });
-              }}
-            >
-              <View className="min-w-0 flex-1 gap-0.5">
-                <Eyebrow tone="primary" size="xs">
-                  {completedCount ? "Lanjutkan belajar" : "Mulai belajar"}
-                </Eyebrow>
-                <Text
-                  className="text-base font-black text-foreground"
-                  numberOfLines={1}
-                >
-                  {resumeItem.title}
-                </Text>
-              </View>
-              <Text className="text-xl font-bold text-primary">→</Text>
-            </Pressable>
-          ) : allItems.length > 0 && completedCount === allItems.length ? (
-            <View className="gap-2 rounded-2xl border border-primary/30 bg-primary/10 p-5">
-              <Text className="text-xl font-black text-foreground">
-                🏆 Kurikulum selesai!
-              </Text>
-              <Text className="text-sm leading-6 text-muted-foreground">
-                Kamu berhasil! Semua aktivitas sudah selesai — buka lagi materi
-                di bawah kapan pun kamu ingin mengulang.
-              </Text>
-            </View>
-          ) : null}
-
-          {offlineMedia ? (
-            <CourseOfflineCard
-              courseId={courseId}
-              assetIds={offlineAssetIds}
-              sizes={offlineMedia.sizes}
-            />
-          ) : null}
-
-          <CourseOutlineList
-            courseId={courseId}
-            showActiveState={false}
-            offlineMedia={offlineMedia}
-            onOpenItem={(item, attempt) => {
-              if (attempt?.status === "IN_PROGRESS") {
-                router.push({
-                  pathname:
-                    "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                  params: {
-                    courseId,
-                    courseItemId: item.id,
-                    attemptId: attempt.id,
-                  },
-                });
-                return;
-              }
-              // Replace (not push) so the item renders as a
-              // full-screen card instead of inside the
-              // course formSheet. Trade-off: no back stack
-              // to the course outline.
-              router.replace({
-                pathname: "/courses/[courseId]/items/[courseItemId]",
-                params: {
-                  courseId,
-                  courseItemId: item.id,
-                },
-              });
-            }}
+          <ProgressBar
+            className="absolute bottom-0 left-0 right-0 z-30"
+            max={allItems.length}
+            size="sm"
+            value={completedCount}
           />
-        </ScrollView>
-      )}
-    </>
+        </View>
+      </FullBleed>
+
+      {resumeItem ? (
+        <TintedAction
+          accessibilityHint={`Buka ${resumeItem.title}`}
+          eyebrow={completedCount ? "Lanjutkan belajar" : "Mulai belajar"}
+          onPress={() =>
+            openCourseItem(
+              {
+                courseId,
+                courseItemId: resumeItem.id,
+                attempt: resumeItem.attempt,
+              },
+              { replace: true },
+            )
+          }
+          title={resumeItem.title}
+        />
+      ) : allItems.length > 0 && completedCount === allItems.length ? (
+        <Card className="gap-2 p-5" tone="primary">
+          <Text className="text-xl font-black text-foreground">
+            🏆 Kurikulum selesai!
+          </Text>
+          <Text className="text-sm leading-6 text-muted-foreground">
+            Kamu berhasil! Semua aktivitas sudah selesai — buka lagi materi di
+            bawah kapan pun kamu ingin mengulang.
+          </Text>
+        </Card>
+      ) : null}
+
+      {offlineMedia ? (
+        <CourseOfflineCard
+          assetIds={offlineAssetIds}
+          courseId={courseId}
+          sizes={offlineMedia.sizes}
+        />
+      ) : null}
+
+      <CourseOutlineList
+        courseId={courseId}
+        offlineMedia={offlineMedia}
+        onOpenItem={(item, attempt) =>
+          // Replace (not push) a plain item so it renders as a full-screen
+          // card instead of inside the course formSheet. Trade-off: no back
+          // stack to the course outline. A started attempt is pushed.
+          openCourseItem(
+            { courseId, courseItemId: item.id, attempt },
+            { replace: attempt?.status !== "IN_PROGRESS" },
+          )
+        }
+        showActiveState={false}
+      />
+    </StudyScreen>
   );
 }
