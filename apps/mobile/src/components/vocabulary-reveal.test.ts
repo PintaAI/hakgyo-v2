@@ -104,7 +104,6 @@ function screenHarness(kind: "today" | "course") {
       Pressable: "Pressable",
       ActivityIndicator: "ActivityIndicator",
       Keyboard: { dismiss() {} },
-      AccessibilityInfo: { announceForAccessibility() {} },
       useWindowDimensions: () => ({ width: 390 }),
     },
     "../lib/trpc": {
@@ -164,15 +163,24 @@ function screenHarness(kind: "today" | "course") {
     },
     "../lib/vocabulary-practice": vocabularyPractice,
     "../lib/vocabulary-speech": vocabularySpeech,
-    "../lib/use-vocabulary-speech": {
-      useVocabularySpeech: () => ({
-        status: "idle",
-        errorMessage: undefined,
+    "../lib/use-hands-free-speech": {
+      useHandsFreeSpeech: () => ({
+        handsFree: false,
+        typing: false,
+        listening: false,
+        speechBusy: false,
+        speechError: undefined,
+        misheard: null,
+        retryPrompt: false,
+        shakeStyle: {},
         levels: { value: [] },
-        start: async () => undefined,
-        stop: () => undefined,
-        abort: () => undefined,
-        toggle: () => undefined,
+        toggle() {},
+        stop() {},
+        interrupt() {},
+        clearMiss() {},
+        beginTyping() {},
+        endTyping() {},
+        rejectTyped: () => false,
       }),
     },
     "./vocabulary-mode-switch": { VocabularyModeSwitch: "ModeSwitch" },
@@ -186,8 +194,15 @@ function screenHarness(kind: "today" | "course") {
     "../theme/toolbar-icons": { toolbarIcons: {} },
     "./learning-ui": {
       Action: "Action",
+      Card: "Card",
       Empty: "Empty",
+      Eyebrow: "Eyebrow",
+      ProgressBar: "ProgressBar",
       QueryState: "QueryState",
+      Spinner: "Spinner",
+    },
+    "./hands-free-answer-field": {
+      HandsFreeAnswerField: "HandsFreeAnswerField",
     },
     "./GlassBox": { GlassBox: "GlassBox" },
     "../games/game-modals": {
@@ -200,14 +215,6 @@ function screenHarness(kind: "today" | "course") {
       useGameExitGuard: () => () => undefined,
     },
     "./vocabulary-practice-deck": { VocabularyPracticeDeck: "Deck" },
-    "./voice-level-meter": { VoiceLevelMeter: "VoiceLevelMeter" },
-    "react-native-reanimated": {
-      default: { View: "AnimatedView" },
-      useAnimatedStyle: () => ({}),
-      useSharedValue: (value: unknown) => ({ value }),
-      withSequence: () => 0,
-      withTiming: (value: unknown) => value,
-    },
   };
   const filename = new URL(
     kind === "today"
@@ -316,12 +323,15 @@ function screenHarness(kind: "today" | "course") {
 
 for (const kind of ["today", "course"] as const) {
   describe(`${kind} study reveal`, () => {
+    // Today practice wraps its input in HandsFreeAnswerField, which takes the
+    // same text props.
+    const answerField = kind === "today" ? "HandsFreeAnswerField" : "TextInput";
     async function setup() {
       const screen = screenHarness(kind);
       if (kind === "course") screen.find("GameStartModal").props.onPrimary();
       await screen.flush();
       screen
-        .find("TextInput")
+        .find(answerField)
         .props.onChangeText(kind === "today" ? "School" : "학교");
       screen.render();
       return screen;
@@ -329,7 +339,7 @@ for (const kind of ["today", "course"] as const) {
 
     test("corner peel earns no credit, including a queued submit and repeated gesture", async () => {
       const screen = await setup();
-      const queuedSubmit = screen.find("TextInput").props.onSubmitEditing;
+      const queuedSubmit = screen.find(answerField).props.onSubmitEditing;
       const reveal = screen.find("Deck").props.onReveal;
       reveal();
       reveal();
@@ -340,7 +350,7 @@ for (const kind of ["today", "course"] as const) {
       expect(screen.record).toHaveBeenCalledTimes(1);
       expect(screen.recordedResult(0)).toBe("REVEALED");
       expect(screen.complete).not.toHaveBeenCalled();
-      screen.find("TextInput").props.onSubmitEditing();
+      screen.find(answerField).props.onSubmitEditing();
       expect(screen.advance).toHaveBeenCalledTimes(1);
 
       screen.find("Deck").props.onAdvanceComplete();
@@ -348,10 +358,10 @@ for (const kind of ["today", "course"] as const) {
       expect(screen.find("Deck").props.revealed).toBeFalse();
       expect(screen.find("Deck").props.correct).toBeUndefined();
       screen
-        .find("TextInput")
+        .find(answerField)
         .props.onChangeText(kind === "today" ? "Book" : "책");
       screen.render();
-      screen.find("TextInput").props.onSubmitEditing();
+      screen.find(answerField).props.onSubmitEditing();
       await screen.flush();
       expect(screen.record).toHaveBeenCalledTimes(2);
       expect(screen.recordedResult(1)).toBe("CORRECT");
@@ -361,7 +371,7 @@ for (const kind of ["today", "course"] as const) {
     test("an answer submitted first keeps its graded feedback when reveal follows", async () => {
       const screen = await setup();
       const reveal = screen.find("Deck").props.onReveal;
-      screen.find("TextInput").props.onSubmitEditing();
+      screen.find(answerField).props.onSubmitEditing();
       reveal();
       await screen.flush();
       expect(screen.find("Deck").props.revealed).toBeFalse();

@@ -19,7 +19,7 @@ import {
   matchSpeechAlternative,
   type VocabularySpeechMode,
 } from "../lib/vocabulary-speech";
-import { useVocabularySpeech } from "../lib/use-vocabulary-speech";
+import { useHandsFreeSpeech } from "../lib/use-hands-free-speech";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
 import { api } from "../lib/trpc";
 import {
@@ -43,10 +43,24 @@ import {
 } from "./learning-ui";
 import {
   VocabularyPracticeDeck,
+  type VocabularyPracticeDeckCard,
   type VocabularyPracticeDeckHandle,
 } from "./vocabulary-practice-deck";
 
 type ProgressEvidence = RouterOutputs["learning"]["getVocabularyProgress"];
+
+function toDeckCards(
+  words: readonly Word[],
+  mode: VocabularySpeechMode,
+): VocabularyPracticeDeckCard[] {
+  return words.map((word) => ({
+    id: word.id,
+    prompt: mode === "KR" ? word.definition : word.term,
+    answer: mode === "KR" ? word.term : word.definition,
+    imageAssetId: word.imageAssetId,
+    imageAccessibilityLabel: `Ilustrasi ${word.term}`,
+  }));
+}
 
 export function VocabularySession({
   words,
@@ -94,14 +108,9 @@ export function VocabularySession({
   const [sessionError, setSessionError] = useState<string>();
   const [moving, setMoving] = useState(false);
   const [mode, setMode] = useState<VocabularySpeechMode>("KR");
-  const [handsFree, setHandsFree] = useState(false);
-  const [typing, setTyping] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const deckRef = useRef<VocabularyPracticeDeckHandle>(null);
   const answerInputRef = useRef<TextInput>(null);
-  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
   const usableWords = useMemo(
     () => words.filter((word) => word.term.trim() && word.definition.trim()),
     [words],
@@ -111,20 +120,28 @@ export function VocabularySession({
     () => new Map(evidence?.items.map((item) => [item.entryId, item]) ?? []),
     [evidence?.items],
   );
-  const unpracticedWords = usableWords.filter(
-    (word) => !progressByEntry.get(word.id)?.practiced,
-  );
-  const reviewDueWords = usableWords.filter((word) => {
-    const progress = progressByEntry.get(word.id);
-    return progress?.due;
-  });
-  const readyWords = unpracticedWords.length
-    ? unpracticedWords
-    : reviewDueWords;
-  const practicedCount =
-    evidence?.items.filter((item) => item.practiced).length ?? 0;
-  const masteredCount =
-    evidence?.items.filter((item) => item.mastered).length ?? 0;
+  // Memoized so the preview deck keeps stable cards while the learner types.
+  const { reviewDueWords, readyWords } = useMemo(() => {
+    const unpracticed = usableWords.filter(
+      (word) => !progressByEntry.get(word.id)?.practiced,
+    );
+    const reviewDue = usableWords.filter(
+      (word) => progressByEntry.get(word.id)?.due,
+    );
+    return {
+      reviewDueWords: reviewDue,
+      readyWords: unpracticed.length ? unpracticed : reviewDue,
+    };
+  }, [progressByEntry, usableWords]);
+  const { practicedCount, masteredCount } = useMemo(() => {
+    let practiced = 0;
+    let mastered = 0;
+    for (const item of evidence?.items ?? []) {
+      if (item.practiced) practiced += 1;
+      if (item.mastered) mastered += 1;
+    }
+    return { practicedCount: practiced, masteredCount: mastered };
+  }, [evidence?.items]);
   const progress = usableWords.length
     ? Math.min(100, Math.round((practicedCount / usableWords.length) * 100))
     : 0;
@@ -135,33 +152,16 @@ export function VocabularySession({
       ? currentWord.definition
       : currentWord.term
     : "";
-  const deckCards = useMemo(
-    () =>
-      queue.map((word) => ({
-        id: word.id,
-        // Both directions are graded recall; the switch only changes which
-        // side of the card is used as the prompt.
-        prompt: mode === "KR" ? word.definition : word.term,
-        answer: mode === "KR" ? word.term : word.definition,
-        imageAssetId: word.imageAssetId,
-        imageAccessibilityLabel: `Ilustrasi ${word.term}`,
-      })),
-    [mode, queue],
-  );
+  // Both directions are graded recall; the switch only changes which side of
+  // the card is used as the prompt.
+  const deckCards = useMemo(() => toDeckCards(queue, mode), [mode, queue]);
   const requestBusy = reporter.isPending;
   const busy = requestBusy || moving;
   // Match / Word Fall pattern: the game board stays mounted behind the
   // start / finish sheets. Before the round starts the deck shows a
   // non-interactive preview of the upcoming words.
   const previewCards = useMemo(
-    () =>
-      readyWords.map((word) => ({
-        id: word.id,
-        prompt: mode === "KR" ? word.definition : word.term,
-        answer: mode === "KR" ? word.term : word.definition,
-        imageAssetId: word.imageAssetId,
-        imageAccessibilityLabel: `Ilustrasi ${word.term}`,
-      })),
+    () => toDeckCards(readyWords, mode),
     [mode, readyWords],
   );
   // Reserve room for mic + submit/next and the native toolbar's item spacing.
@@ -267,17 +267,8 @@ export function VocabularySession({
     }
   }
 
-  function clearAutoTimer() {
-    if (autoAdvanceTimer.current !== undefined) {
-      clearTimeout(autoAdvanceTimer.current);
-      autoAdvanceTimer.current = undefined;
-    }
-  }
-
   function stopSession() {
-    clearAutoTimer();
-    setHandsFree(false);
-    speech.abort();
+    speech.stop();
   }
 
   async function nextWord() {
@@ -313,9 +304,7 @@ export function VocabularySession({
     )
       return;
     answerClaim.current = "revealed";
-    clearAutoTimer();
-    speech.abort();
-    setTyping(false);
+    speech.interrupt();
     setRevealed(true);
     setRevealSaved(false);
     setAnswer("");
@@ -341,8 +330,7 @@ export function VocabularySession({
   }
 
   function finishAdvance() {
-    clearAutoTimer();
-    speech.abort();
+    speech.interrupt();
     setMoving(false);
     void nextWord();
   }
@@ -352,104 +340,54 @@ export function VocabularySession({
   }
 
   function handleInteractionChange(interacting: boolean) {
-    if (interacting && handsFree) {
-      setTyping(false);
+    if (interacting && speech.handsFree) {
       dismissKeyboard();
-      speech.abort();
+      speech.interrupt();
     }
     setMoving(interacting);
   }
 
-  const speech = useVocabularySpeech({
+  const speech = useHandsFreeSpeech({
     mode,
     contextualStrings: useMemo(
       () => queue.map((word) => (mode === "KR" ? word.term : word.definition)),
       [mode, queue],
     ),
-    disabled: !currentWord || busy || typing,
-    onInterim: (text) => {
-      if (answerClaim.current === "unanswered" && !busy) setAnswer(text);
-    },
-    onFinal: (transcripts) => {
-      if (handsFree && !matchSpeechAlternative(expectedAnswer, transcripts)) {
-        setAnswer("");
-        return;
-      }
-      void checkAnswer(transcripts);
-    },
+    expectedAnswer,
+    blocked: !currentWord || busy,
+    canAnswer:
+      !!currentWord &&
+      !busy &&
+      !feedback &&
+      !revealed &&
+      answerClaim.current === "unanswered",
+    canAutoAdvance: !!feedback?.correct && feedback.saved && !busy,
+    onAdvance: advanceCard,
+    onInterim: setAnswer,
+    onAnswer: (transcripts) => void checkAnswer(transcripts),
+    onMiss: () => setAnswer(""),
   });
-  const listening = speech.status === "listening";
-
-  useEffect(() => {
-    if (
-      !handsFree ||
-      !currentWord ||
-      busy ||
-      typing ||
-      feedback ||
-      revealed ||
-      answerClaim.current !== "unanswered" ||
-      (speech.errorMessage && !speech.recoverableError) ||
-      speech.status !== "idle"
-    )
-      return;
-    void speech.start();
-  }, [
-    busy,
-    currentWord,
-    feedback,
-    handsFree,
-    isStudyMode,
-    revealed,
-    speech,
-    typing,
-  ]);
-
-  useEffect(() => {
-    if (handsFree && speech.errorMessage && !speech.recoverableError)
-      setHandsFree(false);
-  }, [handsFree, speech.errorMessage, speech.recoverableError]);
-
-  useEffect(() => {
-    const ready = feedback?.correct && feedback.saved;
-    if (!handsFree || !ready || busy) return;
-    clearAutoTimer();
-    autoAdvanceTimer.current = setTimeout(() => {
-      autoAdvanceTimer.current = undefined;
-      advanceCard();
-    }, 650);
-    return clearAutoTimer;
-  }, [busy, feedback, handsFree]);
-
-  useEffect(() => clearAutoTimer, []);
+  const { handsFree, listening } = speech;
 
   function toggleSpeechSession() {
-    if (handsFree) {
-      stopSession();
-      return;
-    }
-    speech.clearError();
-    setTyping(false);
-    dismissKeyboard();
-    setHandsFree(true);
+    if (!handsFree) dismissKeyboard();
+    speech.toggle();
   }
 
   function handleInputSubmit() {
     const canAdvance = (revealed && revealSaved) || feedback?.saved;
     if (canAdvance) {
-      setTyping(false);
+      speech.endTyping();
       dismissKeyboard();
       advanceCard();
       return;
     }
     if (feedback) return;
-    setTyping(false);
-    if (handsFree) {
-      dismissKeyboard();
-      if (!matchSpeechAlternative(expectedAnswer, [answer])) {
-        setAnswer("");
-        return;
-      }
+    speech.endTyping();
+    if (handsFree) dismissKeyboard();
+    if (speech.rejectTyped(answer)) {
+      setAnswer("");
+      return;
     }
     void checkAnswer();
   }
@@ -457,7 +395,6 @@ export function VocabularySession({
   function handleModeChange(next: VocabularySpeechMode) {
     if (next === mode || busy) return;
     stopSession();
-    setTyping(false);
     dismissKeyboard();
     setMode(next);
     if (currentWord) prepareWord();
@@ -587,30 +524,26 @@ export function VocabularySession({
             autoCorrect={false}
             onBlur={() => {
               setKeyboardVisible(false);
-              setTyping(false);
+              speech.endTyping();
             }}
             onChangeText={(value) => {
               if (answerClaim.current === "unanswered" && !busy) {
-                if (handsFree) {
-                  setTyping(true);
-                  speech.abort();
-                }
+                speech.beginTyping();
                 setAnswer(value);
               }
             }}
             onFocus={() => {
               setKeyboardVisible(true);
-              if (!handsFree) return;
-              clearAutoTimer();
-              setTyping(true);
-              speech.abort();
+              speech.beginTyping();
             }}
             onSubmitEditing={handleInputSubmit}
             placeholder={
               revealed
                 ? "Siap untuk kata berikutnya?"
                 : listening
-                  ? "Mendengarkan…"
+                  ? speech.retryPrompt
+                    ? "Ucapkan lagi…"
+                    : "Mendengarkan…"
                   : isStudyMode
                     ? "Ketik artinya"
                     : "Ketik kata Koreanya"
@@ -620,14 +553,14 @@ export function VocabularySession({
             selectionColor={colors.primary}
             submitBehavior="submit"
             style={{
-              color: colors.foreground,
+              color: speech.misheard ? colors.destructive : colors.foreground,
               fontSize: 16,
               height: 44,
               paddingHorizontal: 16,
               textAlign: "center",
               width: toolbarInputWidth,
             }}
-            value={answer}
+            value={speech.misheard ?? answer}
           />
         </Stack.Toolbar.View>
         <Stack.Toolbar.Button
@@ -683,12 +616,12 @@ export function VocabularySession({
                           : "Disimpan untuk diulang lebih cepat. Geser ke atas atau samping atau ketuk Lanjut."
                       : "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."}
         </Text>
-        {speech.errorMessage && !feedback && !revealed ? (
+        {speech.speechError && !feedback && !revealed ? (
           <Text
             accessibilityRole="alert"
             className="text-center text-sm text-destructive"
           >
-            {speech.errorMessage}
+            {speech.speechError}
           </Text>
         ) : null}
         <View className="items-center">
