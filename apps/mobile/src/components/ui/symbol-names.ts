@@ -25,6 +25,7 @@ export const materialSymbols = {
   "checkmark.circle.fill": "check_circle",
   "checkmark.seal.fill": "verified",
   "chevron.down": "expand_more",
+  "chevron.left": "chevron_left",
   "chevron.right": "chevron_right",
   "clock.badge.exclamationmark": "schedule",
   "doc.text": "description",

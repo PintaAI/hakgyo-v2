@@ -28,6 +28,7 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Action, EmptyState, ProgressBar } from "../learning-ui";
+import { SymbolIcon } from "../ui/symbol-icon";
 import { useContentRenderer } from "./context";
 import type { AssetUrlResolver, BlockRendererProps } from "./types";
 
@@ -199,8 +200,9 @@ export function PdfPages({ block }: BlockRendererProps) {
           onPress={() => goTo(index - 1)}
           size="sm"
           variant="secondary"
+          leadingIcon="chevron.left"
         >
-          ‹ Sebelumnya
+          Sebelumnya
         </Action>
         <ProgressBar className="flex-1" max={pages.length} value={index + 1} />
         <Action
@@ -209,8 +211,9 @@ export function PdfPages({ block }: BlockRendererProps) {
           onPress={() => goTo(index + 1)}
           size="sm"
           variant="secondary"
+          trailingIcon="chevron.right"
         >
-          Berikutnya ›
+          Berikutnya
         </Action>
       </View>
       <Text className="text-center text-xs text-muted-foreground">
@@ -340,7 +343,15 @@ function PdfZoomViewer({
               onPress={() => index && onIndexChange(index - 1)}
               className="rounded-lg bg-white/15 px-5 py-3 disabled:opacity-40"
             >
-              <Text className="text-white">‹ Sebelumnya</Text>
+              <View className="flex-row items-center gap-1.5">
+                <SymbolIcon
+                  name="chevron.left"
+                  size={16}
+                  weight="semibold"
+                  tintColor="#ffffff"
+                />
+                <Text className="text-white">Sebelumnya</Text>
+              </View>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -348,7 +359,15 @@ function PdfZoomViewer({
               onPress={() => index !== null && onIndexChange(index + 1)}
               className="rounded-lg bg-white/15 px-5 py-3 disabled:opacity-40"
             >
-              <Text className="text-white">Berikutnya ›</Text>
+              <View className="flex-row items-center gap-1.5">
+                <Text className="text-white">Berikutnya</Text>
+                <SymbolIcon
+                  name="chevron.right"
+                  size={16}
+                  weight="semibold"
+                  tintColor="#ffffff"
+                />
+              </View>
             </Pressable>
           </View>
         </SafeAreaView>

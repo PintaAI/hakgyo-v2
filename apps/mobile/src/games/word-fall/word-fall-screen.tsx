@@ -70,6 +70,7 @@ import {
   type WordFallReviewItem,
   type WordFallWord,
 } from "./engine";
+import { SymbolIcon } from "../../components/ui/symbol-icon";
 
 type FallingWord = {
   id: string;
@@ -676,9 +677,12 @@ function LevelSelector({
                 </Text>
               </View>
               {active ? (
-                <Text style={[styles.levelRowCheck, { color: colors.primary }]}>
-                  ✓
-                </Text>
+                <SymbolIcon
+                  name="checkmark"
+                  size={18}
+                  weight="bold"
+                  tintColor={colors.primary}
+                />
               ) : null}
             </Pressable>
           );

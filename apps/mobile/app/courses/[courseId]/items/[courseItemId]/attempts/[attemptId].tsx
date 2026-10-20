@@ -658,10 +658,11 @@ function AssessmentAttemptContent({
                       if (expired) setCurrentIndex(next);
                       else void save(next);
                     }}
+                    trailingIcon="arrow.right"
                   >
                     {currentIndex < assessment.data.questions.length - 1
-                      ? "Berikutnya →"
-                      : "Soal belum dijawab berikutnya →"}
+                      ? "Berikutnya"
+                      : "Soal belum dijawab berikutnya"}
                   </StudyAction>
                 </View>
               ) : null}

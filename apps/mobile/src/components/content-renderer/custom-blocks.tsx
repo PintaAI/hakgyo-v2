@@ -206,8 +206,9 @@ function VocabularyReference({ block }: BlockRendererProps) {
           onPress={() =>
             onOpenResource?.("vocabulary", resource.id, resource.courseItemId)
           }
+          trailingIcon="arrow.right"
         >
-          Hafalkan kosakata →
+          Hafalkan kosakata
         </Action>
       </View>
     </View>
@@ -248,8 +249,9 @@ function AssessmentReference({ block }: BlockRendererProps) {
           onPress={() =>
             onOpenResource?.("assessment", resource.id, resource.courseItemId)
           }
+          trailingIcon="arrow.right"
         >
-          Mulai tugas →
+          Mulai tugas
         </Action>
       ) : (
         <View

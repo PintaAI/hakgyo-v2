@@ -74,7 +74,12 @@ function AndroidSearchField({
               className="size-10 items-center justify-center active:opacity-60"
               onPress={() => onChangeText("")}
             >
-              <Text className="text-base text-muted-foreground">✕</Text>
+              <SymbolIcon
+                name="xmark"
+                size={16}
+                weight="semibold"
+                tintColor={colors.mutedForeground}
+              />
             </Pressable>
           ) : null
         }

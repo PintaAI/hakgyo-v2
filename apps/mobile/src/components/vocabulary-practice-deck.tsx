@@ -1071,17 +1071,31 @@ function CardContent({
         ]}
       >
         {correct !== undefined ? (
-          <Text
+          <View
             accessibilityLiveRegion="polite"
-            style={{
-              color: feedbackColor,
-              fontSize: 12,
-              fontWeight: "800",
-              letterSpacing: 1.2,
-            }}
+            accessible
+            accessibilityLabel={correct ? "Benar" : "Ayo ingat ini"}
+            style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
           >
-            {correct ? "✓  BENAR" : "AYO INGAT INI"}
-          </Text>
+            {correct ? (
+              <SymbolIcon
+                name="checkmark"
+                size={14}
+                weight="bold"
+                tintColor={feedbackColor}
+              />
+            ) : null}
+            <Text
+              style={{
+                color: feedbackColor,
+                fontSize: 12,
+                fontWeight: "800",
+                letterSpacing: 1.2,
+              }}
+            >
+              {correct ? "BENAR" : "AYO INGAT INI"}
+            </Text>
+          </View>
         ) : null}
         <Text
           numberOfLines={answerText.numberOfLines}

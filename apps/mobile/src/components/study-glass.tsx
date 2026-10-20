@@ -4,6 +4,8 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { glassTint, withOpacity } from "../theme/colors";
 import { GlassBox } from "./GlassBox";
+import { SymbolIcon } from "./ui/symbol-icon";
+import type { SymbolName } from "./ui/symbol-names";
 
 // Shared visual primitives: callers own their domain behavior and content.
 export function StudyGlass({
@@ -56,6 +58,7 @@ export function StudyAction({
   disabled = false,
   loading = false,
   secondary = false,
+  trailingIcon,
   accessibilityLabel,
 }: {
   children: ReactNode;
@@ -63,6 +66,8 @@ export function StudyAction({
   disabled?: boolean;
   loading?: boolean;
   secondary?: boolean;
+  /** Icon after the label, such as a forward arrow. */
+  trailingIcon?: SymbolName;
   accessibilityLabel?: string;
 }) {
   const { colors, colorScheme } = useAppTheme();
@@ -97,6 +102,14 @@ export function StudyAction({
           <Text className="text-center text-sm font-bold text-foreground">
             {children}
           </Text>
+          {trailingIcon ? (
+            <SymbolIcon
+              name={trailingIcon}
+              size={18}
+              weight="semibold"
+              tintColor={colors.foreground}
+            />
+          ) : null}
         </View>
       </GlassBox>
     </Pressable>

@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../providers/MobileSyncProvider";
 import { ProgressBar } from "./learning-ui";
+import { SymbolIcon } from "./ui/symbol-icon";
 import type { AssetPrefetchProgress } from "../sync/asset-resolver";
 
 /**
@@ -112,11 +113,21 @@ export function AssessmentMediaStatus({
     );
   }
   return (
-    <Text className="text-sm text-muted-foreground">
-      ✓ Gambar & audio soal siap
-      {totalBytes > 0 ? ` (${formatByteSize(totalBytes)})` : ""}, aman jika
-      koneksi terputus.
-    </Text>
+    <View className="flex-row items-start gap-2">
+      <View className="pt-0.5">
+        <SymbolIcon
+          name="checkmark"
+          size={16}
+          weight="bold"
+          tintColor={colors.primary}
+        />
+      </View>
+      <Text className="min-w-0 flex-1 text-sm text-muted-foreground">
+        Gambar & audio soal siap
+        {totalBytes > 0 ? ` (${formatByteSize(totalBytes)})` : ""}, aman jika
+        koneksi terputus.
+      </Text>
+    </View>
   );
 }
 

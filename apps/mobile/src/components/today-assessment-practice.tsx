@@ -218,10 +218,15 @@ export function TodayAssessmentPractice({
                   </Text>
                 )}
               </AssessmentFeedback>
-              <StudyAction onPress={nextQuestion}>
+              <StudyAction
+                onPress={nextQuestion}
+                trailingIcon={
+                  answered === questions.length ? undefined : "arrow.right"
+                }
+              >
                 {answered === questions.length
                   ? "Lihat hasil latihan"
-                  : "Soal belum dijawab berikutnya →"}
+                  : "Soal belum dijawab berikutnya"}
               </StudyAction>
             </>
           ) : null}

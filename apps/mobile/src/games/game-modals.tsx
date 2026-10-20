@@ -190,14 +190,24 @@ function GameModalContent({
               {tertiaryLabel}
             </Text>
             {tertiaryDetail ? (
-              <Text
-                style={[
-                  styles.menuActionDetail,
-                  { color: colors.mutedForeground },
-                ]}
+              <View
+                style={{ alignItems: "center", flexDirection: "row", gap: 2 }}
               >
-                {tertiaryDetail} ›
-              </Text>
+                <Text
+                  style={[
+                    styles.menuActionDetail,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  {tertiaryDetail}
+                </Text>
+                <SymbolIcon
+                  name="chevron.right"
+                  size={12}
+                  weight="semibold"
+                  tintColor={colors.mutedForeground}
+                />
+              </View>
             ) : null}
           </Pressable>
         ) : null}
