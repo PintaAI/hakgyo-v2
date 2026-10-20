@@ -19,6 +19,7 @@ async function getMembershipsWithCreatedContent(userId: string) {
       OR EXISTS (SELECT 1 FROM "EnrollmentInvite" WHERE "createdByMembershipId" = m."id")
       OR EXISTS (SELECT 1 FROM "AssessmentAnswer" WHERE "reviewedByMembershipId" = m."id")
       OR EXISTS (SELECT 1 FROM "ZoomConnection" WHERE "connectedByMembershipId" = m."id")
+      OR EXISTS (SELECT 1 FROM "WhatsappConnection" WHERE "connectedByMembershipId" = m."id")
       OR EXISTS (SELECT 1 FROM "CohortMeeting" WHERE "createdByMembershipId" = m."id"))
   `);
   return new Set(rows.map((row) => row.id));
