@@ -175,6 +175,11 @@ export function useVocabularySpeech({
     if (!CONTINUOUS) finalizeAfter(INITIAL_SILENCE_MS);
   });
 
+  useSpeechRecognitionEvent("nomatch", () => {
+    // The segment ended without a usable result; do not grade its old partial.
+    pendingInterim.current = null;
+  });
+
   useSpeechRecognitionEvent("speechstart", () => {
     clearEndpointTimer();
   });

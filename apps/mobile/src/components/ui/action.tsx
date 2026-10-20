@@ -128,7 +128,7 @@ export function Action({
         />
       ) : null}
       <Text
-        className={`text-center ${sizes[size].text} ${style.text}`}
+        className={`shrink text-center ${sizes[size].text} ${style.text}`}
         numberOfLines={2}
       >
         {children}

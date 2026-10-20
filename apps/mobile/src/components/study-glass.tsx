@@ -99,7 +99,7 @@ export function StudyAction({
           {loading ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : null}
-          <Text className="text-center text-sm font-bold text-foreground">
+          <Text className="shrink text-center text-sm font-bold text-foreground">
             {children}
           </Text>
           {trailingIcon ? (

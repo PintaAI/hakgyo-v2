@@ -128,6 +128,9 @@ export function useHandsFreeSpeech({
     },
     onFinal: (transcripts) => {
       const current = latest.current;
+      // A continuous session can outlive the answer; ignore what it hears
+      // once the card is graded so it cannot flag a miss on a saved answer.
+      if (!current.canAnswer) return;
       if (
         current.handsFree &&
         !matchSpeechAlternative(current.expectedAnswer, transcripts)
@@ -147,6 +150,13 @@ export function useHandsFreeSpeech({
       return;
     void start();
   }, [canAnswer, fatalError, handsFree, start, status, typing]);
+
+  const { abort: abortSpeech } = speech;
+  // Close the mic once the card no longer takes an answer (graded, saving or
+  // revealed), instead of leaving a continuous session open until the next card.
+  useEffect(() => {
+    if (handsFree && !canAnswer && status === "listening") abortSpeech();
+  }, [abortSpeech, canAnswer, handsFree, status]);
 
   useEffect(() => {
     if (handsFree && fatalError) setHandsFree(false);
