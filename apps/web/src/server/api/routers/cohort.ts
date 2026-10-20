@@ -19,6 +19,10 @@ import {
   notifyMeetingScheduled,
   notifyMeetingUpdated,
 } from "~/server/notifications/triggers";
+import {
+  cancelMeetingMessages,
+  enqueueAutoCohortGroup,
+} from "~/server/whatsapp/cohort";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 import {
   createZoomMeeting,
@@ -398,9 +402,15 @@ export const cohortRouter = createTRPCRouter({
       if (!course.access.canCreateCohort) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      return db.cohort.create({
+      const created = await db.cohort.create({
         data: { ...input, organizationId: course.organizationId },
       });
+      if (created.status === "OPEN") {
+        await notifyInBackground("cohort opened (WhatsApp group)", () =>
+          enqueueAutoCohortGroup(created.id),
+        );
+      }
+      return created;
     }),
   update: protectedProcedure
     .input(cohortFields.partial().extend({ cohortId: id }))
@@ -411,7 +421,24 @@ export const cohortRouter = createTRPCRouter({
         userId: ctx.actorUserId,
       });
       const { cohortId, ...data } = input;
-      return ctx.db.$transaction(async (tx) => {
+      if (data.whatsappGroupUrl !== undefined) {
+        const current = await ctx.db.cohort.findUniqueOrThrow({
+          where: { id: cohortId },
+          select: { whatsappGroupJid: true, whatsappGroupUrl: true },
+        });
+        // A group Hakgyo created keeps its link until staff unlink it.
+        if (
+          current.whatsappGroupJid &&
+          data.whatsappGroupUrl !== current.whatsappGroupUrl
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Link grup diatur oleh Hakgyo. Lepaskan grup terlebih dahulu untuk menggantinya.",
+          });
+        }
+      }
+      const saved = await ctx.db.$transaction(async (tx) => {
         const updated = await tx.cohort.update({
           where: { id: cohortId },
           data,
@@ -434,6 +461,12 @@ export const cohortRouter = createTRPCRouter({
         }
         return updated;
       });
+      if (data.status === "OPEN") {
+        await notifyInBackground("cohort opened (WhatsApp group)", () =>
+          enqueueAutoCohortGroup(cohortId),
+        );
+      }
+      return saved;
     }),
   delete: protectedProcedure
     .input(z.object({ cohortId: id }))
@@ -817,6 +850,12 @@ export const cohortRouter = createTRPCRouter({
       const meeting = await db.cohortMeeting.findUniqueOrThrow({
         where: { id: meetingId },
       });
+      // The queued WhatsApp reminder announces the old time.
+      if (rescheduled) {
+        await notifyInBackground("meeting moved (WhatsApp)", () =>
+          cancelMeetingMessages(meetingId),
+        );
+      }
       // Only schedule changes are worth a push; title/agenda edits are not.
       if (shouldNotify && rescheduled) {
         await notifyInBackground("meeting updated", () =>
@@ -842,6 +881,9 @@ export const cohortRouter = createTRPCRouter({
         where: { id: input.meetingId, cohortId: input.cohortId },
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
+      await notifyInBackground("meeting deleted (WhatsApp)", () =>
+        cancelMeetingMessages(input.meetingId),
+      );
       // Past meetings need no cancellation notice.
       if (input.notify && meeting.startsAt > new Date()) {
         await notifyInBackground("meeting cancelled", () =>

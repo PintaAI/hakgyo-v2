@@ -39,6 +39,7 @@ export default async function CohortPage({
       ["overview", "learners", "invites"].includes(requestedView));
   const showsMeetings =
     !requestedView || ["overview", "meetings"].includes(requestedView);
+  const showsSettings = cohort.access.update && requestedView === "settings";
   await Promise.all([
     showsLearners
       ? api.enrollment.listCohortEnrollments.prefetchInfinite({
@@ -51,6 +52,9 @@ export default async function CohortPage({
           cohortId: cohort.id,
           includeTotal: true,
         })
+      : undefined,
+    showsSettings
+      ? api.whatsapp.getCohortStatus.prefetch({ cohortId: cohort.id })
       : undefined,
   ]);
 

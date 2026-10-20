@@ -7,6 +7,7 @@ import {
   formatMeetingTime,
   formatRelativeDuration,
 } from "~/server/notifications/format";
+import { enqueueMeetingReminder } from "~/server/whatsapp/cohort";
 
 /**
  * Reminder windows used by the notifications cron. They are wider than the
@@ -360,6 +361,11 @@ export async function notifyMeetingStartingSoon(meetingId: string, now: Date) {
   if (claimed.count !== 1) return;
   const meeting = await db.cohortMeeting.findUniqueOrThrow({
     where: { id: meetingId },
+  });
+  // The class's WhatsApp group gets the reminder too (queued, sent by the
+  // outbox); a failure there must not stop the push.
+  await enqueueMeetingReminder(meetingId).catch((error: unknown) => {
+    console.error("Failed to queue the WhatsApp meeting reminder", error);
   });
   const { recipients, content, cohortName } = await meetingContext(
     meeting,

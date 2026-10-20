@@ -53,8 +53,7 @@ const integrations: readonly {
       />
     ),
     description:
-      "Setiap kelas terhubung ke grup WhatsApp-nya. Integrasi penuh sedang disiapkan.",
-    soon: true,
+      "Hubungkan nomor lembaga, lalu Hakgyo membuat grup tiap kelas dengan nama dan fotonya. Pengingat meeting dan jadwal tryout terkirim ke grup.",
   },
 ];
 

@@ -71,6 +71,18 @@ export const env = createEnv({
     ZOOM_CLIENT_ID: z.string().min(1),
     ZOOM_CLIENT_SECRET: z.string().min(1),
     ZOOM_TOKEN_ENCRYPTION_KEY: z.string().base64(),
+    // WhatsApp groups for cohorts through Hakgyo's Evolution API server (docs/whatsapp.md).
+    // Optional: the WhatsApp integration stays hidden until all four are set.
+    EVOLUTION_API_URL: z
+      .string()
+      .url()
+      .refine((url) => !url.endsWith("/"), {
+        message: "EVOLUTION_API_URL must not have a trailing slash",
+      })
+      .optional(),
+    EVOLUTION_API_KEY: z.string().min(1).optional(),
+    WHATSAPP_WEBHOOK_SECRET: z.string().min(16).optional(),
+    WHATSAPP_TOKEN_ENCRYPTION_KEY: z.string().base64().optional(),
     VAPID_PRIVATE_KEY: z.string().min(1).optional(),
     VAPID_CONTACT_EMAIL: z.string().email().optional(),
     EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
@@ -128,6 +140,10 @@ export const env = createEnv({
     ZOOM_CLIENT_ID: process.env.ZOOM_CLIENT_ID,
     ZOOM_CLIENT_SECRET: process.env.ZOOM_CLIENT_SECRET,
     ZOOM_TOKEN_ENCRYPTION_KEY: process.env.ZOOM_TOKEN_ENCRYPTION_KEY,
+    EVOLUTION_API_URL: process.env.EVOLUTION_API_URL,
+    EVOLUTION_API_KEY: process.env.EVOLUTION_API_KEY,
+    WHATSAPP_WEBHOOK_SECRET: process.env.WHATSAPP_WEBHOOK_SECRET,
+    WHATSAPP_TOKEN_ENCRYPTION_KEY: process.env.WHATSAPP_TOKEN_ENCRYPTION_KEY,
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     VAPID_CONTACT_EMAIL: process.env.VAPID_CONTACT_EMAIL,
     EXPO_ACCESS_TOKEN: process.env.EXPO_ACCESS_TOKEN,

@@ -20,9 +20,20 @@ Domain routers call a trigger from `apps/web/src/server/notifications/triggers.t
 
 Teachers choose per action with the "Beri tahu peserta" checkbox (default on); the `notify` input defaults to `true` for MCP callers. Event times in copy are relative because learner time zones are not stored reliably; meeting times use the meeting's time zone.
 
+## WhatsApp groups
+
+Cohorts with a WhatsApp group created by Hakgyo also get two messages in that group, queued in `WhatsappOutbox` next to the push and sent by the same cron (see `docs/whatsapp.md`):
+
+| Message                | Queued when                                                                                                 | Expires       |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
+| Meeting starts soon    | `notifyMeetingStartingSoon` claims `reminderSentAt`                                                         | Meeting start |
+| Latihan/Tryout planned | `assessmentEvent.schedule` / `create` with a schedule, or classes added to a scheduled event, with `notify` | Event opening |
+
+Moving or deleting a meeting, and opening early, cancelling or deleting an event, cancel the queued message. A WhatsApp failure never blocks the push.
+
 ## Cron
 
-`.github/workflows/notifications.yml` calls `POST /api/cron/notifications` every 10 minutes with `Authorization: Bearer $CRON_SECRET` (the same secret as the sync compaction job). It sends due reminders (claimed through `AssessmentEvent.closingReminderSentAt` and `CohortMeeting.reminderSentAt`, so overlapping runs send once; rescheduling a meeting clears its flag) and checks Expo receipts: `PushTicket` rows older than 15 minutes are resolved, `DeviceNotRegistered` disables the device, and tickets older than a day are dropped. GitHub may start scheduled runs late; the reminder windows are wider than the interval to absorb that.
+`.github/workflows/notifications.yml` calls `POST /api/cron/notifications` every 10 minutes with `Authorization: Bearer $CRON_SECRET` (the same secret as the sync compaction job). It sends due reminders (claimed through `AssessmentEvent.closingReminderSentAt` and `CohortMeeting.reminderSentAt`, so overlapping runs send once; rescheduling a meeting clears its flag), sends queued WhatsApp group work within each number's pacing limits, and checks Expo receipts: `PushTicket` rows older than 15 minutes are resolved, `DeviceNotRegistered` disables the device, and tickets older than a day are dropped. GitHub may start scheduled runs late; the reminder windows are wider than the interval to absorb that.
 
 ## Mobile client
 

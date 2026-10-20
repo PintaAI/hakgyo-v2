@@ -28,6 +28,10 @@ import {
   notifyEventOpenedOnce,
   notifyInBackground,
 } from "~/server/notifications/triggers";
+import {
+  cancelEventMessages,
+  enqueueEventScheduled,
+} from "~/server/whatsapp/cohort";
 
 /**
  * Staff actions on assessment events. Every change is authorized twice: up front for a quick
@@ -287,6 +291,10 @@ export async function createAssessmentEvent(
     await notifyInBackground("event opened", () =>
       notifyEventOpenedOnce(created.id),
     );
+  } else if (input.start.mode === "schedule") {
+    await notifyInBackground("event scheduled (WhatsApp)", () =>
+      enqueueEventScheduled(created.id),
+    );
   }
   return { eventId: created.id, participantCount };
 }
@@ -319,6 +327,10 @@ export async function openEvent(
   await notifyInBackground("event opened", () =>
     notifyEventOpenedOnce(input.eventId),
   );
+  // "Scheduled for later" messages still queued would now be wrong.
+  await notifyInBackground("event opened (WhatsApp)", () =>
+    cancelEventMessages(input.eventId),
+  );
   return {
     opened: true,
     participantCount: result.opened ? result.participantCount : 0,
@@ -331,12 +343,16 @@ export async function scheduleEvent(
   userId: string,
 ) {
   const membership = await requireManager(db, input.eventId, userId);
-  return scheduleAssessmentEvent(db, {
+  const result = await scheduleAssessmentEvent(db, {
     ...input,
     actorMembershipId: membership.id,
     now: new Date(),
     authorize: authorizeEventManager(userId),
   });
+  await notifyInBackground("event scheduled (WhatsApp)", () =>
+    enqueueEventScheduled(input.eventId),
+  );
+  return result;
 }
 
 /** Grades a few batches right away; the lifecycle cron finishes larger events. */
@@ -419,6 +435,9 @@ export async function cancelEvent(
     });
     return { cancelled: true };
   });
+  await notifyInBackground("event cancelled (WhatsApp)", () =>
+    cancelEventMessages(input.eventId),
+  );
   // Only opened events have participants to notify.
   if (input.notify) {
     await notifyInBackground("event cancelled", () =>
@@ -439,6 +458,9 @@ export async function deleteEvent(
     await authorize(await lockEventTargets(tx, eventId));
     return deleteAssessmentEventWithProgress(tx, eventId);
   });
+  await notifyInBackground("event deleted (WhatsApp)", () =>
+    cancelEventMessages(eventId),
+  );
   return { deleted: true, actorMembershipId: membership.id, removed };
 }
 
@@ -466,6 +488,11 @@ export async function addCohortsToEvent(
       notifyEventOpened(input.eventId, result.addedParticipantIds),
     );
   }
+  // A scheduled event announces itself to the new classes' groups too
+  // (no-op unless it is SCHEDULED with notifications on).
+  await notifyInBackground("event classes added (WhatsApp)", () =>
+    enqueueEventScheduled(input.eventId),
+  );
   return {
     added: result.added.length,
     participantCount: result.participantCount,

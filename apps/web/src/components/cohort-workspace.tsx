@@ -38,6 +38,7 @@ import {
   usePendingPaymentReviews,
 } from "~/components/cohort-payments";
 import { AssessmentEventManager } from "~/components/assessment-event-manager";
+import { CohortWhatsappGroup } from "~/components/cohort-whatsapp-group";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -507,6 +508,7 @@ export function CohortWorkspace({
             canDelete={cohort.access.delete}
             cohort={cohort}
             courseRoot={courseRoot}
+            organizationSlug={organizationSlug}
           />
         </TabsContent>
       </Tabs>
@@ -1737,10 +1739,12 @@ function Settings({
   canDelete,
   cohort,
   courseRoot,
+  organizationSlug,
 }: {
   canDelete: boolean;
   cohort: Cohort;
   courseRoot: string;
+  organizationSlug: string;
 }) {
   const router = useRouter();
   const utils = api.useUtils();
@@ -1959,16 +1963,12 @@ function Settings({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 py-5">
-              <div className="space-y-2">
-                <Label htmlFor="settings-cohort-whatsapp">WhatsApp URL</Label>
-                <Input
-                  id="settings-cohort-whatsapp"
-                  type="url"
-                  placeholder="https://chat.whatsapp.com/..."
-                  value={whatsapp}
-                  onChange={(event) => setWhatsapp(event.target.value)}
-                />
-              </div>
+              <CohortWhatsappGroup
+                cohort={cohort}
+                organizationSlug={organizationSlug}
+                manualUrl={whatsapp}
+                onManualUrlChange={setWhatsapp}
+              />
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="settings-cohort-start">Mulai</Label>
