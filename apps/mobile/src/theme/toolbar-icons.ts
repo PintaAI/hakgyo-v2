@@ -62,3 +62,5 @@ export const toolbarIcons = {
     android: import("@expo/material-symbols/stop.xml"),
   }),
 } as const;
+
+export type ToolbarIconName = keyof typeof toolbarIcons;

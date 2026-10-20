@@ -26,6 +26,7 @@ import { Chevron } from "./ui/chevron";
 import { Eyebrow } from "./ui/eyebrow";
 import { Action } from "./ui/action";
 import { Spinner } from "./ui/spinner";
+import { SymbolIcon } from "./ui/symbol-icon";
 
 // The shared UI primitives live in ./ui; they are re-exported here so screens
 // can keep importing from one place.
@@ -209,6 +210,7 @@ export function TintedAction({
   onPress: () => void;
   accessibilityHint?: string;
 }) {
+  const { colors } = useAppTheme();
   return (
     <Pressable
       accessibilityHint={accessibilityHint}
@@ -233,7 +235,12 @@ export function TintedAction({
           </Text>
         ) : null}
       </View>
-      <Text className="text-2xl text-primary">›</Text>
+      <SymbolIcon
+        name="chevron.right"
+        size={18}
+        weight="semibold"
+        tintColor={colors.primary}
+      />
     </Pressable>
   );
 }

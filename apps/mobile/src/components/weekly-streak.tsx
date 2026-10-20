@@ -1,11 +1,11 @@
 import type { RouterOutputs } from "@hakgyo/api";
-import { SymbolView } from "expo-symbols";
 import { Text, View } from "react-native";
 
 import { getStreakProgressDays } from "../lib/streak";
 import { api } from "../lib/trpc";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { Badge, QueryState } from "./learning-ui";
+import { SymbolIcon } from "./ui/symbol-icon";
 
 export function WeeklyStreak({
   summary,
@@ -49,8 +49,7 @@ export function WeeklyStreak({
                   className={`h-9 w-9 items-center justify-center rounded-full border ${day.today ? "border-foreground" : "border-transparent"} ${day.active ? "bg-primary/10" : "bg-muted"}`}
                 >
                   {day.active ? (
-                    <SymbolView
-                      fallback={<Text className="text-base">🔥</Text>}
+                    <SymbolIcon
                       name="flame.fill"
                       size={18}
                       tintColor={colors.primary}

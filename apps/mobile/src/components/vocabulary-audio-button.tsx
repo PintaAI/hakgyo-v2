@@ -1,10 +1,10 @@
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text } from "react-native";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { useApiAssetResolver } from "./content-renderer/use-api-asset-resolver";
+import { SymbolIcon } from "./ui/symbol-icon";
 
 function PlayableButton({
   url,
@@ -48,12 +48,7 @@ function PlayableButton({
         }
       }}
     >
-      <SymbolView
-        fallback={
-          <Text className="text-xs font-black text-primary">
-            {status.playing ? "Ⅱ" : "▶"}
-          </Text>
-        }
+      <SymbolIcon
         name={status.playing ? "pause.fill" : "play.fill"}
         size={13}
         tintColor={colors.primary}
@@ -122,8 +117,7 @@ export function VocabularyAudioButton({
       {resolving ? (
         <ActivityIndicator color={colors.primary} size="small" />
       ) : (
-        <SymbolView
-          fallback={<Text className="text-xs font-black text-primary">▶</Text>}
+        <SymbolIcon
           name="play.fill"
           size={13}
           tintColor={colors.primary}

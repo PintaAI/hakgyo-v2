@@ -96,7 +96,7 @@ function screenHarness(kind: "today" | "course") {
         }),
       },
     },
-    "expo-symbols": { SymbolView: "SymbolView" },
+    "./ui/symbol-icon": { SymbolIcon: "SymbolIcon" },
     "react-native": {
       View: "View",
       Text: "Text",

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 import {
   ExpoSpeechRecognitionModule,
@@ -20,6 +21,16 @@ const TRAILING_SILENCE_MS = 1_100;
 const SPEECH_END_GRACE_MS = 300;
 const RESTART_GUARD_MS = 400;
 const MAX_SERVICE_RETRIES = 4;
+// Android ends a non-continuous session after every utterance or silence, so
+// hands-free restarted it over and over, and each restart plays the system
+// beep and blinks the mic indicator. Android 13+ supports continuous
+// recognition: one session that delivers a final result per utterance, ends
+// segments on its own silence detection and does not beep. Older Android and
+// iOS keep the single-utterance sessions with our own endpoint timers.
+const CONTINUOUS =
+  Platform.OS === "android" &&
+  typeof Platform.Version === "number" &&
+  Platform.Version >= 33;
 /** Readings kept for the voice meter, newest last. */
 export const VOICE_LEVEL_HISTORY = 24;
 const VOLUME_INTERVAL_MS = 80;
@@ -153,14 +164,15 @@ export function useVocabularySpeech({
     } else {
       pendingInterim.current = transcripts[0]!;
       current.onInterim?.(transcripts[0]!);
-      finalizeAfter(TRAILING_SILENCE_MS);
+      if (!CONTINUOUS) finalizeAfter(TRAILING_SILENCE_MS);
     }
   });
 
   useSpeechRecognitionEvent("start", () => {
     // Restart quietly if the learner has not begun speaking yet. Hands-free
-    // mode will open a fresh recognition session after this one ends.
-    finalizeAfter(INITIAL_SILENCE_MS);
+    // mode will open a fresh recognition session after this one ends. A
+    // continuous session simply keeps waiting.
+    if (!CONTINUOUS) finalizeAfter(INITIAL_SILENCE_MS);
   });
 
   useSpeechRecognitionEvent("speechstart", () => {
@@ -169,8 +181,9 @@ export function useVocabularySpeech({
 
   useSpeechRecognitionEvent("speechend", () => {
     // Give the recognizer a brief window to deliver its last partial before
-    // requesting the final result.
-    finalizeAfter(SPEECH_END_GRACE_MS);
+    // requesting the final result. A continuous session finalizes each
+    // utterance itself and must keep running.
+    if (!CONTINUOUS) finalizeAfter(SPEECH_END_GRACE_MS);
   });
 
   useSpeechRecognitionEvent(
@@ -298,7 +311,7 @@ export function useVocabularySpeech({
         lang: speechLangForMode(current.mode),
         interimResults: true,
         maxAlternatives: 5,
-        continuous: false,
+        continuous: CONTINUOUS,
         contextualStrings: [...contextRef.current].slice(0, 20),
         volumeChangeEventOptions: {
           enabled: true,

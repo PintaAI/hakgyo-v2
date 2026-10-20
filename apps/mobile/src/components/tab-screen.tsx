@@ -52,7 +52,7 @@ function UpdatesActionButton() {
   const unreadCount = useUpdatesBadgeCount();
   return (
     <TabActionButton
-      symbol={{ ios: "bell", android: "notifications" }}
+      icon="notifications"
       accessibilityLabel="Buka pembaruan belajar"
       badgeCount={unreadCount}
       onPress={openUpdates}
@@ -83,7 +83,7 @@ function SettingsActionButton() {
   if (unreadCount > 0) return <UpdatesActionButton />;
   return (
     <TabActionButton
-      symbol={{ ios: "gearshape", android: "settings" }}
+      icon="settings"
       accessibilityLabel="Buka pengaturan"
       onPress={openSettings}
     />

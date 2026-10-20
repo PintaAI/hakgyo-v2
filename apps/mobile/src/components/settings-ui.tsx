@@ -1,10 +1,11 @@
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { Children, Fragment, type ReactNode } from "react";
 import { Pressable, Switch, Text, View } from "react-native";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { Eyebrow } from "./learning-ui";
+import { SymbolIcon } from "./ui/symbol-icon";
+import type { SymbolName } from "./ui/symbol-names";
 
 export function SettingsSection({
   title,
@@ -52,7 +53,6 @@ export function SettingsRow({
   subtitle,
   detail,
   symbol,
-  fallback,
   onPress,
   destructive = false,
 }: {
@@ -61,8 +61,7 @@ export function SettingsRow({
   subtitle?: string;
   /** Short status on the right; truncated so it never squeezes the label. */
   detail?: string;
-  symbol: SymbolViewProps["name"];
-  fallback: string;
+  symbol: SymbolName;
   onPress: () => void;
   destructive?: boolean;
 }) {
@@ -83,12 +82,7 @@ export function SettingsRow({
     >
       <View className="min-w-0 flex-1 flex-row items-center gap-3">
         <View className="w-5 items-center">
-          <SymbolView
-            name={symbol}
-            size={20}
-            tintColor={accent}
-            fallback={<Text style={{ color: accent }}>{fallback}</Text>}
-          />
+          <SymbolIcon name={symbol} size={20} tintColor={accent} />
         </View>
         <View className="min-w-0 flex-1">
           <Text
@@ -116,12 +110,11 @@ export function SettingsRow({
           </Text>
         ) : null}
         {destructive ? null : (
-          <SymbolView
+          <SymbolIcon
             name="chevron.right"
             size={13}
             weight="semibold"
             tintColor={colors.mutedForeground}
-            fallback={<Text style={{ color: colors.mutedForeground }}>›</Text>}
           />
         )}
       </View>
@@ -132,14 +125,12 @@ export function SettingsRow({
 export function SettingsToggleRow({
   label,
   symbol,
-  fallback,
   value,
   onValueChange,
   detail,
 }: {
   label: string;
-  symbol: SymbolViewProps["name"];
-  fallback: string;
+  symbol: SymbolName;
   value: boolean;
   onValueChange: (value: boolean) => void;
   detail?: string;
@@ -158,12 +149,7 @@ export function SettingsToggleRow({
     >
       <View className="min-w-0 flex-1 flex-row items-center gap-3">
         <View className="w-5 items-center">
-          <SymbolView
-            name={symbol}
-            size={20}
-            tintColor={colors.primary}
-            fallback={<Text style={{ color: colors.primary }}>{fallback}</Text>}
-          />
+          <SymbolIcon name={symbol} size={20} tintColor={colors.primary} />
         </View>
         <View className="min-w-0 flex-1">
           <Text className="font-semibold text-foreground">{label}</Text>

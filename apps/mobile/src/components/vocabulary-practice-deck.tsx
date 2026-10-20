@@ -62,6 +62,7 @@ import {
 } from "../lib/vocabulary-sticker-peel";
 import { withOpacity } from "../theme/colors";
 import { useApiAssetResolver, type AssetUrlResolver } from "./content-renderer";
+import { SymbolIcon } from "./ui/symbol-icon";
 
 export type VocabularyPracticeDeckCard = {
   id: string;
@@ -742,7 +743,12 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
                 { backgroundColor: withOpacity(colors.primary, 0.15) },
               ]}
             >
-              <Text style={{ color: colors.primary, fontSize: 28 }}>✓</Text>
+              <SymbolIcon
+                name="checkmark"
+                size={28}
+                weight="bold"
+                tintColor={colors.primary}
+              />
             </View>
             <Text className="text-center text-2xl font-black text-foreground">
               Ronde selesai

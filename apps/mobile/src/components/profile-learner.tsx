@@ -1,4 +1,3 @@
-import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -12,6 +11,7 @@ import {
   QueryState,
   SectionHeader,
 } from "./learning-ui";
+import { SymbolIcon } from "./ui/symbol-icon";
 
 export type LearnerStats = {
   vocabularyMastered: number;
@@ -234,12 +234,7 @@ export function MilestoneTrail({
                 <View className="flex-row">
                   <View className="w-10 items-center">
                     <View className="size-8 items-center justify-center rounded-full border border-primary bg-primary">
-                      <SymbolView
-                        fallback={
-                          <Text className="text-xs font-black text-primary-foreground">
-                            ✓
-                          </Text>
-                        }
+                      <SymbolIcon
                         name="checkmark"
                         size={14}
                         tintColor={colors.primaryForeground}

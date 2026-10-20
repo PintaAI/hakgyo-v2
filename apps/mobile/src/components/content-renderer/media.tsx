@@ -5,6 +5,8 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { EmptyState, ProgressBar } from "../learning-ui";
 import { useContentRenderer } from "./context";
+import { SymbolIcon } from "../ui/symbol-icon";
+import { useAppTheme } from "../../providers/AppThemeProvider";
 
 const assetUrlPrefix = "hakgyo-asset:";
 
@@ -152,6 +154,7 @@ function AudioPlayer({
   fileName?: string;
   url: string;
 }) {
+  const { colors } = useAppTheme();
   const player = useAudioPlayer(url, { updateInterval: 250 });
   const status = useAudioPlayerStatus(player);
   const started = useRef(false);
@@ -179,9 +182,15 @@ function AudioPlayer({
             }
           }}
         >
-          <Text className="text-base font-black text-primary-foreground">
-            {status.isBuffering ? "…" : status.playing ? "Ⅱ" : "▶"}
-          </Text>
+          {status.isBuffering ? (
+            <ActivityIndicator color={colors.primaryForeground} size="small" />
+          ) : (
+            <SymbolIcon
+              name={status.playing ? "pause.fill" : "play.fill"}
+              size={18}
+              tintColor={colors.primaryForeground}
+            />
+          )}
         </Pressable>
         <View className="min-w-0 flex-1 gap-1.5">
           <Text className="font-bold text-foreground" numberOfLines={1}>
@@ -217,6 +226,7 @@ export function ContentAudio({
   fileName?: string;
   source?: string;
 }) {
+  const { colors } = useAppTheme();
   const resolved = useResolvedSource(source);
   const [activeUrl, setActiveUrl] = useState<string | null>(null);
 
@@ -240,9 +250,11 @@ export function ContentAudio({
         onPress={() => setActiveUrl(resolved.url)}
       >
         <View className="size-11 items-center justify-center rounded-full bg-primary">
-          <Text className="text-base font-black text-primary-foreground">
-            ▶
-          </Text>
+          <SymbolIcon
+            name="play.fill"
+            size={18}
+            tintColor={colors.primaryForeground}
+          />
         </View>
         <View className="min-w-0 flex-1">
           <Text className="font-bold text-foreground" numberOfLines={1}>

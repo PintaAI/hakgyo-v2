@@ -1,7 +1,6 @@
 import { router, Stack } from "expo-router";
 import { Asset } from "expo-asset";
 import { Image } from "expo-image";
-import { SymbolView } from "expo-symbols";
 import { useMemo, useState } from "react";
 import {
   Modal,
@@ -25,6 +24,7 @@ import {
   HANGEUL_LETTERS,
   type HangeulLetter,
 } from "./hangeul-data";
+import { SymbolIcon } from "../../components/ui/symbol-icon";
 
 const introImage = require("../../../assets/games/hangeul-intro.png");
 const introImageAsset = Asset.fromModule(introImage);
@@ -318,17 +318,7 @@ function HangeulCheatSheetModal({
                 onPress={onClose}
                 style={styles.modalCloseButton}
               >
-                <SymbolView
-                  fallback={
-                    <Text
-                      style={[
-                        styles.modalCloseFallback,
-                        { color: colors.foreground },
-                      ]}
-                    >
-                      ×
-                    </Text>
-                  }
+                <SymbolIcon
                   name="xmark"
                   size={16}
                   tintColor={colors.foreground}

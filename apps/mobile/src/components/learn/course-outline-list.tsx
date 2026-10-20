@@ -1,4 +1,3 @@
-import { SymbolView } from "expo-symbols";
 import { Text, View } from "react-native";
 
 import {
@@ -24,6 +23,7 @@ import {
 import { ModuleOfflineBadge } from "../offline-download";
 import { LearningItemRow } from "./learning-item-row";
 import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 export function CourseOutlineList({
   courseId,
@@ -145,13 +145,8 @@ export function CourseOutlineList({
                     </Badge>
                   ) : null}
                   {locked ? (
-                    <SymbolView
+                    <SymbolIcon
                       accessibilityLabel="Terkunci"
-                      fallback={
-                        <Text className="text-xs text-muted-foreground">
-                          🔒
-                        </Text>
-                      }
                       name="lock.fill"
                       size={14}
                       tintColor={colors.mutedForeground}

@@ -1,6 +1,5 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { router } from "expo-router";
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
@@ -37,6 +36,8 @@ import {
   QueryState,
 } from "./learning-ui";
 import { StudyGlass } from "./study-glass";
+import { SymbolIcon } from "./ui/symbol-icon";
+import type { SymbolName } from "./ui/symbol-names";
 
 export type Course = RouterOutputs["learning"]["listMyCourses"][number];
 type Event = RouterOutputs["assessmentEvent"]["listForLearner"][number];
@@ -71,8 +72,9 @@ type Tool = {
   subtitle: string;
   sourceLabel: string;
   unavailableLabel?: string;
-  icon: SymbolViewProps["name"];
-  fallback: string;
+  icon: SymbolName;
+  /** Text drawn in place of the symbol when `textIcon` is set. */
+  fallback?: string;
   textIcon?: boolean;
   resource: PracticeFilter;
   available: boolean;
@@ -88,7 +90,6 @@ const tools: Tool[] = [
     subtitle: "Balik & ingat",
     sourceLabel: "Kosakata",
     icon: "rectangle.stack.fill",
-    fallback: "Aa",
     resource: "VOCABULARY_SET",
     available: true,
   },
@@ -98,7 +99,6 @@ const tools: Tool[] = [
     subtitle: "Uji dirimu",
     sourceLabel: "Tugas",
     icon: "checkmark.circle.fill",
-    fallback: "✓",
     resource: "ASSESSMENT",
     available: true,
   },
@@ -108,7 +108,6 @@ const tools: Tool[] = [
     subtitle: "Ketik sebelum jatuh",
     sourceLabel: "Kosakata",
     icon: "arrow.down.circle.fill",
-    fallback: "↓",
     resource: "VOCABULARY_SET",
     available: true,
   },
@@ -118,7 +117,6 @@ const tools: Tool[] = [
     subtitle: "Susun contoh kalimat",
     sourceLabel: "Kosakata",
     icon: "text.word.spacing",
-    fallback: "↔",
     resource: "VOCABULARY_SET",
     available: true,
   },
@@ -128,7 +126,6 @@ const tools: Tool[] = [
     subtitle: "Hubungkan pasangannya",
     sourceLabel: "Kosakata",
     icon: "square.grid.2x2.fill",
-    fallback: "⊞",
     resource: "VOCABULARY_SET",
     available: true,
   },
@@ -166,7 +163,6 @@ const hangeulTools: Tool[] = [
     sourceLabel: "한글",
     unavailableLabel: "한글",
     icon: "text.word.spacing",
-    fallback: "가나",
     resource: "VOCABULARY_SET",
     available: true,
   },
@@ -206,12 +202,7 @@ function GameIcon({
           {tool.fallback}
         </Text>
       ) : (
-        <SymbolView
-          fallback={
-            <Text className="text-base font-black" style={{ color: glyph }}>
-              {tool.fallback}
-            </Text>
-          }
+        <SymbolIcon
           name={tool.icon}
           size={Math.round(size * 0.42)}
           tintColor={glyph}
@@ -571,12 +562,7 @@ export function ResourceLibrary({
               pointerEvents="none"
               className="size-10 items-center justify-center"
             >
-              <SymbolView
-                fallback={
-                  <Text className="text-base" style={{ color: colors.primary }}>
-                    ⌕
-                  </Text>
-                }
+              <SymbolIcon
                 name="magnifyingglass"
                 size={20}
                 tintColor={colors.primary}
@@ -593,15 +579,7 @@ export function ResourceLibrary({
                 className="rounded-full active:opacity-75"
               >
                 <View className="size-10 items-center justify-center">
-                  <SymbolView
-                    fallback={
-                      <Text
-                        className="text-base"
-                        style={{ color: colors.primary }}
-                      >
-                        ×
-                      </Text>
-                    }
+                  <SymbolIcon
                     name="xmark.circle.fill"
                     size={20}
                     tintColor={colors.primary}
@@ -624,10 +602,7 @@ export function ResourceLibrary({
           }}
         >
           <View className="min-h-12 flex-row items-center gap-1.5 rounded-full bg-muted px-4">
-            <SymbolView
-              fallback={
-                <Text className="text-sm font-black text-foreground">☰</Text>
-              }
+            <SymbolIcon
               name="line.3.horizontal.decrease.circle"
               size={16}
               tintColor={colors.foreground}
@@ -869,15 +844,7 @@ export function PracticeHub(props: HubProps) {
                 className="size-8 items-center justify-center rounded-full active:opacity-60"
                 onPress={() => setSourceDismissed(true)}
               >
-                <SymbolView
-                  fallback={
-                    <Text
-                      className="text-base font-black"
-                      style={{ color: colors.mutedForeground }}
-                    >
-                      ×
-                    </Text>
-                  }
+                <SymbolIcon
                   name="xmark"
                   size={14}
                   tintColor={colors.mutedForeground}

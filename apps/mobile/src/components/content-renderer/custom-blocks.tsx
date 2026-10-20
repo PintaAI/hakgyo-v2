@@ -11,6 +11,7 @@ import { booleanProp, isRecord, parseJsonArray, stringProp } from "./normalize";
 import { useContentRenderer } from "./context";
 import { PdfPages } from "./pdf-pages";
 import type { BlockRendererProps, ContentBlockRenderer } from "./types";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 const accentPalettes = {
   teal: "#14b8a6",
@@ -789,9 +790,12 @@ function Culture({ block }: BlockRendererProps) {
               className="size-9 items-center justify-center rounded-lg"
               style={{ backgroundColor: accent }}
             >
-              <Text className="font-black" style={{ color: accentForeground }}>
-                ✓
-              </Text>
+              <SymbolIcon
+                name="checkmark"
+                size={18}
+                weight="bold"
+                tintColor={accentForeground}
+              />
             </View>
             <View className="min-w-0 flex-1">
               <Text className="text-sm font-black text-foreground">

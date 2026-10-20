@@ -4,12 +4,13 @@ import Animated, {
   type AnimatedStyle,
   type SharedValue,
 } from "react-native-reanimated";
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import type { ViewStyle } from "react-native";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { GlassInput } from "./learning-ui";
 import { VoiceLevelMeter } from "./voice-level-meter";
+import { SymbolIcon } from "./ui/symbol-icon";
+import type { SymbolName } from "./ui/symbol-names";
 
 const FIELD_HEIGHT = 44;
 
@@ -19,7 +20,6 @@ function FieldIconButton({
   disabled = false,
   dimmed = false,
   symbol,
-  fallback,
   color,
   onPress,
 }: {
@@ -28,8 +28,7 @@ function FieldIconButton({
   disabled?: boolean;
   /** Fades the icon without disabling it. */
   dimmed?: boolean;
-  symbol: SymbolViewProps["name"];
-  fallback: string;
+  symbol: SymbolName;
   color: string;
   onPress: () => void;
 }) {
@@ -44,12 +43,7 @@ function FieldIconButton({
       style={{ opacity: dimmed ? 0.4 : 1 }}
     >
       <View className="size-10 items-center justify-center">
-        <SymbolView
-          fallback={
-            <Text className="text-xl font-black" style={{ color }}>
-              {fallback}
-            </Text>
-          }
+        <SymbolIcon
           name={symbol}
           size={22}
           style={{ height: 22, width: 22 }}
@@ -147,7 +141,6 @@ export function HandsFreeAnswerField({
               disabled={mic.disabled}
               dimmed={mic.dimmed}
               symbol={mic.active ? "stop.fill" : "mic.fill"}
-              fallback={mic.active ? "■" : "🎙"}
               color={mic.active ? colors.destructive : colors.primary}
               onPress={mic.onPress}
             />
@@ -160,7 +153,6 @@ export function HandsFreeAnswerField({
             disabled={action.disabled}
             dimmed={action.dimmed}
             symbol={action.kind === "next" ? "arrow.right" : "paperplane.fill"}
-            fallback={action.kind === "next" ? "→" : "➤"}
             color={colors.primary}
             onPress={action.onPress}
           />
