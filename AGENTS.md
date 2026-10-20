@@ -128,6 +128,7 @@ bun run --cwd apps/mobile typecheck
 
 - Keep changes scoped to the relevant workspace package.
 - Update environment examples and validation together when adding configuration.
+- When a change adds or alters something users see (a page, menu, label or flow), update the in-app guide in `apps/web/src/components/user-docs/<audience>/` in the same PR, in the guide's plain Indonesian, not just the developer notes in `docs/`. A new guide page shows "Video pengantar segera hadir" until it has an entry in `apps/web/src/lib/user-doc-videos.ts`; say in the PR when its video is still missing.
 - After web changes, run `bun run --cwd apps/web typecheck` and `bun run --cwd apps/web lint` when applicable.
 - After shared or workspace configuration changes, run the corresponding root Turbo command.
 - Do not add generated files, local environment files, build output, or dependency directories to commits.
