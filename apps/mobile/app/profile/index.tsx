@@ -304,13 +304,11 @@ export default function ProfileScreen() {
                 label="Detail akun"
                 detail={session?.user.email ?? "Belum masuk"}
                 symbol="person.crop.circle"
-                fallback="?"
                 onPress={() => router.push("/profile/account")}
               />
               <SettingsRow
                 label="Keluar"
                 symbol="arrow.right"
-                fallback="→"
                 destructive
                 onPress={() => void handleSignOut()}
               />
@@ -321,7 +319,6 @@ export default function ProfileScreen() {
                 label="Organisasi"
                 detail={activeBrand.name}
                 symbol="square.grid.2x2"
-                fallback="#"
                 onPress={() => router.push("/organization-switcher")}
               />
             </SettingsSection>
@@ -331,7 +328,6 @@ export default function ProfileScreen() {
                 label="Notifikasi push"
                 detail={PUSH_STATUS_DETAIL[push.status]}
                 symbol="bell.fill"
-                fallback="!"
                 value={push.status === "enabled"}
                 onValueChange={(enabled) => {
                   if (push.status === "unsupported") {
@@ -348,7 +344,6 @@ export default function ProfileScreen() {
                 label="Pengingat dan peringatan"
                 detail="Pengaturan sistem"
                 symbol="speaker.fill"
-                fallback="♪"
                 onPress={() => void Linking.openSettings()}
               />
             </SettingsSection>
@@ -359,7 +354,6 @@ export default function ProfileScreen() {
                   label="Pembaruan diperlukan"
                   subtitle={`Server membutuhkan protokol sinkronisasi ${upgradeRequired.minProtocol}. Progres tetap tersimpan di perangkat ini sampai kamu memperbarui aplikasi.`}
                   symbol="exclamationmark.triangle.fill"
-                  fallback="!"
                   destructive
                   onPress={() => void handleCheckForUpdates()}
                 />
@@ -376,7 +370,6 @@ export default function ProfileScreen() {
                         : "Sudah terbaru"
                 }
                 symbol="arrow.triangle.2.circlepath"
-                fallback="↻"
                 onPress={() => void syncNow(activeOrganizationId ?? undefined)}
               />
               <SettingsRow
@@ -389,7 +382,6 @@ export default function ProfileScreen() {
                       : `v${APP_VERSION}`
                 }
                 symbol="checkmark"
-                fallback="✓"
                 onPress={() => void handleCheckForUpdates()}
               />
               <SettingsRow
@@ -400,7 +392,6 @@ export default function ProfileScreen() {
                     : UPDATE_CHANNEL
                 }
                 symbol="list.bullet"
-                fallback="i"
                 onPress={() =>
                   Alert.alert(
                     "Versi aplikasi",
@@ -419,7 +410,6 @@ export default function ProfileScreen() {
                   subtitle="Hapus data lokal, lalu unduh ulang materi dan gambar"
                   detail={isResetting ? "Memproses…" : undefined}
                   symbol="arrow.clockwise"
-                  fallback="↻"
                   onPress={() => {
                     if (isResetting || isSyncing) return;
                     Alert.alert(
@@ -475,26 +465,22 @@ export default function ProfileScreen() {
               <SettingsRow
                 label="Pusat bantuan"
                 symbol="questionmark.circle"
-                fallback="?"
                 onPress={() => openWebPage("/support")}
               />
               <SettingsRow
                 label="Hubungi dukungan"
                 detail={supportEmail}
                 symbol="envelope.fill"
-                fallback="@"
                 onPress={contactSupport}
               />
               <SettingsRow
                 label="Kebijakan privasi"
                 symbol="hand.raised.fill"
-                fallback="i"
                 onPress={() => openWebPage("/privacy")}
               />
               <SettingsRow
                 label="Syarat dan ketentuan"
                 symbol="doc.text"
-                fallback="§"
                 onPress={() => openWebPage("/terms")}
               />
             </SettingsSection>

@@ -12,6 +12,7 @@ import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { GlassBox } from "./GlassBox";
 import { Avatar, SectionHeader } from "./learning-ui";
+import { SymbolIcon } from "./ui/symbol-icon";
 
 function OrganizationMark({
   logoUrl,
@@ -52,8 +53,11 @@ export function OrganizationSwitcherTrigger({
       className={
         compact
           ? "h-11 max-w-44 flex-row items-center gap-2 rounded-full pl-1.5 pr-3.5 active:opacity-70"
-          : "max-w-[80%] flex-row items-center gap-2 rounded-full border border-border bg-card py-1.5 pl-1.5 pr-3 active:opacity-70"
+          : "min-w-0 shrink flex-row items-center gap-2 py-1.5 pl-1.5 pr-3"
       }
+      // Android: no container, like the toolbar icon buttons beside it, with
+      // the platform ripple as press feedback.
+      android_ripple={compact ? undefined : { color: colors.border }}
       onPress={onPress}
     >
       <OrganizationMark
@@ -78,13 +82,21 @@ export function OrganizationSwitcherTrigger({
         {activeBrand.name}
       </Text>
       {!compact ? (
-        <Text className="text-xs text-muted-foreground">⌄</Text>
+        <SymbolIcon
+          name="chevron.down"
+          size={16}
+          tintColor={colors.mutedForeground}
+        />
       ) : null}
     </Pressable>
   );
 
   return (
-    <View className={align === "start" ? "items-start" : "items-end"}>
+    // A row that can shrink, so a long name truncates instead of the pill
+    // measuring itself against its own content.
+    <View
+      className={`min-w-0 shrink flex-row ${align === "start" ? "justify-start" : "justify-end"}`}
+    >
       {compact ? (
         <GlassBox
           isInteractive
@@ -101,7 +113,11 @@ export function OrganizationSwitcherTrigger({
           {trigger}
         </GlassBox>
       ) : (
-        trigger
+        // Android only draws the ripple inside a rounded shape when an
+        // ancestor clips it; the trigger's own radius leaves it square.
+        <View className="min-w-0 shrink overflow-hidden rounded-full">
+          {trigger}
+        </View>
       )}
     </View>
   );
@@ -141,7 +157,7 @@ export function OrganizationSwitcherContent({
               className="rounded-full px-3 py-2 active:opacity-60"
               onPress={onClose}
             >
-              <Text className="text-xl font-bold text-primary">×</Text>
+              <SymbolIcon name="xmark" size={20} tintColor={colors.primary} />
             </Pressable>
           }
         />
@@ -191,12 +207,12 @@ export function OrganizationSwitcherContent({
               </Text>
             </View>
             {selected ? (
-              <Text
-                className="text-lg font-black"
-                style={{ color: colors.primary }}
-              >
-                ✓
-              </Text>
+              <SymbolIcon
+                name="checkmark"
+                size={18}
+                weight="bold"
+                tintColor={colors.primary}
+              />
             ) : null}
           </Pressable>
         );

@@ -1,13 +1,13 @@
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { Text, View } from "react-native";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
+import { SymbolIcon } from "./symbol-icon";
+import type { SymbolName } from "./symbol-names";
 
 export type PageTitleIcon = {
   /** SF Symbol, matching the tab's icon. */
-  symbol: SymbolViewProps["name"];
+  symbol: SymbolName;
   /** Glyph shown where SF Symbols are unavailable (Android). */
-  fallback: string;
 };
 
 function TitleIcon({ icon }: { icon: PageTitleIcon }) {
@@ -17,12 +17,7 @@ function TitleIcon({ icon }: { icon: PageTitleIcon }) {
       accessible={false}
       className="size-9 items-center justify-center rounded-xl bg-primary/10"
     >
-      <SymbolView
-        fallback={
-          <Text className="text-base font-black text-primary">
-            {icon.fallback}
-          </Text>
-        }
+      <SymbolIcon
         name={icon.symbol}
         size={18}
         tintColor={colors.primary}

@@ -1,6 +1,5 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { router } from "expo-router";
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { Image } from "expo-image";
 import { useState, type ComponentProps, type ReactNode } from "react";
 import {
@@ -46,6 +45,8 @@ import {
 } from "./milestone-section";
 import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { openAssessmentEvent, openCourseItem } from "../../lib/navigation";
+import { SymbolIcon } from "../ui/symbol-icon";
+import type { SymbolName } from "../ui/symbol-names";
 
 // Official brand assets (see apps/mobile/assets/brands/README.md for sources).
 // Used unmodified for Zoom meetings and WhatsApp invitations.
@@ -203,9 +204,8 @@ type CohortHero = {
 
 type PlateRow = {
   key: string;
-  icon: SymbolViewProps["name"];
+  icon: SymbolName;
   brandIcon?: ImageSourcePropType;
-  fallback: string;
   title: string;
   detail: string;
   onPress?: () => void;
@@ -334,12 +334,7 @@ function PlateRowView({
       onPress={row.onPress}
     >
       <IconCircle tone="muted">
-        <SymbolView
-          fallback={
-            <Text className="text-xs font-black text-primary">
-              {row.fallback}
-            </Text>
-          }
+        <SymbolIcon
           name={row.icon}
           size={15}
           tintColor={colors.primary}
@@ -374,10 +369,7 @@ function PlateRowView({
               transition={0}
             />
             <Text className="text-xs font-semibold text-foreground">Zoom</Text>
-            <SymbolView
-              fallback={
-                <Text className="text-xs text-muted-foreground">↗</Text>
-              }
+            <SymbolIcon
               name="arrow.up.right"
               size={13}
               tintColor={colors.mutedForeground}
@@ -594,7 +586,6 @@ export function CohortCard({
       key: "next-class",
       icon: "calendar",
       brandIcon: next.provider === "ZOOM" ? zoomBrandIcon : undefined,
-      fallback: "◷",
       title: next.title,
       detail: joinUrl
         ? `${dateLabel(next.startsAt)} · ${next.durationMinutes} menit${next.module ? ` · ${next.module.title}` : ""} · Ketuk untuk bergabung`
@@ -609,7 +600,6 @@ export function CohortCard({
     plateRows.push({
       key: "featured-assessment",
       icon: "doc.text",
-      fallback: "✎",
       title: featured.title,
       detail: `${assessmentSourceBadge(featured)} · ${assessmentAttemptPresentation(featuredAttempt).detail}${featured.closesAt ? ` · ${closesLabel(featured.closesAt, now)}` : ""}`,
       onPress: openFeaturedAssessment,
@@ -620,7 +610,6 @@ export function CohortCard({
     plateRows.push({
       key: "upcoming-assessment",
       icon: "calendar",
-      fallback: "◷",
       title: upcomingEvent.title,
       detail: `${assessmentSourceBadge(upcomingEvent)} · dibuka ${dateLabel(upcomingEvent.opensAt)}`,
       onPress: () =>
@@ -634,7 +623,6 @@ export function CohortCard({
     plateRows.push({
       key: "next-lesson",
       icon: "book.closed",
-      fallback: "Aa",
       title: nextOutlineItem.title,
       detail: `${nextTypeLabel} · ${nextOutlineItem.moduleTitle}`,
       onPress: openNextItem,
@@ -644,7 +632,6 @@ export function CohortCard({
     plateRows.push({
       key: "more-assessments",
       icon: "tray.full",
-      fallback: "+",
       title: `${remaining} lagi di Latihan`,
       detail: `${open.length} terbuka secara keseluruhan`,
       onPress: () => router.navigate("/(home)/(tabs)/assessments"),

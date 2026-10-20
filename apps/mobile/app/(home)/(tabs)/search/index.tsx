@@ -1,5 +1,4 @@
 import { Stack, useFocusEffect } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import {
   useCallback,
   useDeferredValue,
@@ -24,6 +23,7 @@ import type { SearchKind } from "../../../../src/search/documents";
 import { searchDocuments } from "../../../../src/search/match";
 import { openSearchTarget } from "../../../../src/search/open-result";
 import { useSearchCorpus } from "../../../../src/search/use-search-corpus";
+import { SymbolIcon } from "../../../../src/components/ui/symbol-icon";
 
 const ios = Platform.OS === "ios";
 const PLACEHOLDER = "Cari kosakata, materi, kelas…";
@@ -59,8 +59,7 @@ function AndroidSearchField({
         returnKeyType="search"
         leading={
           <View className="size-10 items-center justify-center">
-            <SymbolView
-              fallback={<Text className="text-muted-foreground">⌕</Text>}
+            <SymbolIcon
               name="magnifyingglass"
               size={16}
               tintColor={colors.mutedForeground}
@@ -75,7 +74,12 @@ function AndroidSearchField({
               className="size-10 items-center justify-center active:opacity-60"
               onPress={() => onChangeText("")}
             >
-              <Text className="text-base text-muted-foreground">✕</Text>
+              <SymbolIcon
+                name="xmark"
+                size={16}
+                weight="semibold"
+                tintColor={colors.mutedForeground}
+              />
             </Pressable>
           ) : null
         }
@@ -142,7 +146,7 @@ export default function SearchTab() {
       ) : null}
       <TabScreen
         title="Cari"
-        titleIcon={{ symbol: "magnifyingglass", fallback: "⌕" }}
+        titleIcon={{ symbol: "magnifyingglass" }}
         contentClassName="gap-4"
         automaticallyAdjustKeyboardInsets
       >

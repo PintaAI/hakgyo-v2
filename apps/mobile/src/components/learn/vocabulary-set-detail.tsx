@@ -1,6 +1,5 @@
 import { router } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
-import { SymbolView } from "expo-symbols";
 import { Image } from "expo-image";
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
@@ -10,6 +9,7 @@ import { useApiAssetResolver } from "../content-renderer";
 import { Eyebrow } from "../learning-ui";
 import { StudyAction, StudyGlass } from "../study-glass";
 import { VocabularyAudioButton } from "../vocabulary-audio-button";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 const VIEW_MODE_KEY = "hakgyo:vocab-view-mode:v1";
 
@@ -305,8 +305,7 @@ export function VocabularySetDetail({
                   className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "list" ? "bg-background" : ""}`}
                   onPress={() => setViewMode("list")}
                 >
-                  <SymbolView
-                    fallback={<Text className="text-xs font-black">≡</Text>}
+                  <SymbolIcon
                     name="list.bullet"
                     size={14}
                     tintColor={
@@ -323,8 +322,7 @@ export function VocabularySetDetail({
                   className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "grid" ? "bg-background" : ""}`}
                   onPress={() => setViewMode("grid")}
                 >
-                  <SymbolView
-                    fallback={<Text className="text-xs font-black">⊞</Text>}
+                  <SymbolIcon
                     name="square.grid.2x2"
                     size={14}
                     tintColor={

@@ -1,5 +1,4 @@
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import {
@@ -43,6 +42,7 @@ import {
 } from "../../src/lib/onboarding";
 import { getStreakProgressDays } from "../../src/lib/streak";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
+import { SymbolIcon } from "../../src/components/ui/symbol-icon";
 
 type Slide = {
   key: "course" | "vocabulary" | "streak";
@@ -255,8 +255,7 @@ function StreakPreview() {
               className={`h-9 w-9 items-center justify-center rounded-full border ${day.today ? "border-foreground" : "border-transparent"} ${day.active ? "bg-primary/10" : "bg-muted"}`}
             >
               {day.active ? (
-                <SymbolView
-                  fallback={<Text className="text-base">🔥</Text>}
+                <SymbolIcon
                   name="flame.fill"
                   size={18}
                   tintColor={colors.primary}

@@ -1,7 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { SymbolView } from "expo-symbols";
 
 import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
 import { openAssessmentEvent } from "../../lib/navigation";
@@ -23,6 +22,7 @@ import {
   closesLabel,
   openMeeting,
 } from "../learn/cohort-card";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 function SectionHeader({ label, count }: { label: string; count: number }) {
   const { colors } = useAppTheme();
@@ -71,14 +71,7 @@ function SidebarActionRow({
           className="size-7 items-center justify-center rounded-full"
           style={{ backgroundColor: colors.sidebarAccent }}
         >
-          <SymbolView
-            fallback={
-              <Text style={{ color: colors.primary, fontSize: 14 }}>•</Text>
-            }
-            name={icon}
-            size={14}
-            tintColor={colors.primary}
-          />
+          <SymbolIcon name={icon} size={14} tintColor={colors.primary} />
         </View>
         <View className="min-w-0 flex-1">
           <View className="flex-row items-center gap-1.5">

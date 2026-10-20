@@ -9,6 +9,8 @@ import {
   tableColumnCount,
 } from "./table-layout";
 import type { BlockRendererProps, ContentBlockRenderer } from "./types";
+import { SymbolIcon } from "../ui/symbol-icon";
+import { useAppTheme } from "../../providers/AppThemeProvider";
 
 function Paragraph({ block }: BlockRendererProps) {
   return (
@@ -60,6 +62,7 @@ function NumberedListItem({ block, orderedIndex }: BlockRendererProps) {
 }
 
 function CheckListItem({ block }: BlockRendererProps) {
+  const { colors } = useAppTheme();
   const checked = block.props.checked === true;
 
   return (
@@ -68,7 +71,12 @@ function CheckListItem({ block }: BlockRendererProps) {
         className={`mt-1 size-5 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary" : "border-border"}`}
       >
         {checked ? (
-          <Text className="text-xs font-black text-primary-foreground">✓</Text>
+          <SymbolIcon
+            name="checkmark"
+            size={14}
+            weight="bold"
+            tintColor={colors.primaryForeground}
+          />
         ) : null}
       </View>
       <InlineContent

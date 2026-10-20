@@ -1,4 +1,4 @@
-import type { SFSymbol } from "expo-symbols";
+import type { SymbolName } from "../components/ui/symbol-names";
 
 import type { CourseContentNotice, SyncNotice } from "../sync/notices";
 import type { SidebarIndicatorKind } from "./sidebar-indicator-count";
@@ -162,7 +162,7 @@ function scoreLabel(score: number | null, maxScore: number | null) {
 export function describeSyncNotice(notice: SyncNotice): {
   title: string;
   detail: string;
-  icon: SFSymbol;
+  icon: SymbolName;
 } {
   switch (notice.kind) {
     case "COURSE_ADDED":

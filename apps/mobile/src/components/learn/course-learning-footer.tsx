@@ -322,8 +322,9 @@ export function CourseLearningFooter({
                 setIssue(undefined);
                 action.onPress();
               }}
+              trailingIcon="arrow.right"
             >
-              {`${action.type === "VOCABULARY_SET" ? "Latih" : "Buka"} ${action.title} →`}
+              {`${action.type === "VOCABULARY_SET" ? "Latih" : "Buka"} ${action.title}`}
             </Action>
           ))}
         </View>
@@ -334,16 +335,21 @@ export function CourseLearningFooter({
             disabled={busy}
             loading={busy}
             onPress={() => void continueLearning()}
+            trailingIcon={
+              busy || (path?.courseCompleted && !path.nextItem)
+                ? undefined
+                : "arrow.right"
+            }
           >
             {busy
               ? "Menyimpan progres kamu…"
               : path?.courseCompleted && !path.nextItem
                 ? "Selesaikan kurikulum"
                 : path?.item.isCompleted || completionMode === "assessment"
-                  ? "Lanjutkan belajar →"
+                  ? "Lanjutkan belajar"
                   : finishingModule
-                    ? "Selesaikan bab →"
-                    : "Selesai & lanjutkan →"}
+                    ? "Selesaikan bab"
+                    : "Selesai & lanjutkan"}
           </StudyAction>
         ) : null}
         {onReadAgain ? (
@@ -398,10 +404,11 @@ export function CourseLearningFooter({
       ) : null}
 
       <View className="gap-2">
-        <StudyAction onPress={() => navigate(milestone.nextItem)}>
-          {milestone.nextItem
-            ? "Lanjutkan belajar →"
-            : "Lihat progres kurikulum"}
+        <StudyAction
+          onPress={() => navigate(milestone.nextItem)}
+          trailingIcon={milestone.nextItem ? "arrow.right" : undefined}
+        >
+          {milestone.nextItem ? "Lanjutkan belajar" : "Lihat progres kurikulum"}
         </StudyAction>
         {milestone.nextItem ? (
           <Action variant="ghost" onPress={() => navigate()}>

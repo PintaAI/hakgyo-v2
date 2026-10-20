@@ -55,7 +55,7 @@ describe("game routes", () => {
     expect(modalSource).toContain('presentationStyle="formSheet"');
     expect(modalSource).toContain("allowSwipeDismissal={false}");
     expect(modalSource).toContain("gameSymbols");
-    expect(modalSource).toContain("<SymbolView");
+    expect(modalSource).toContain("<SymbolIcon");
     expect(modalSource).not.toContain("StudyGlass");
     expect(modalSource).toContain("StudyAction");
     expect(modalSource).not.toContain("useGameSheetSync");

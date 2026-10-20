@@ -1,5 +1,4 @@
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, {
   interpolate,
@@ -27,6 +26,7 @@ import {
   useSyncNotices,
 } from "../../sync/hooks";
 import { openMeeting } from "../learn/cohort-card";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 type UpdatesDrawerContentProps = {
   onClose: () => void;
@@ -217,19 +217,7 @@ export function UpdatesDrawerContent({
                   : colors.primary,
               }}
             >
-              <SymbolView
-                fallback={
-                  <Text
-                    style={{
-                      color: entry.read
-                        ? colors.mutedForeground
-                        : colors.primaryForeground,
-                      fontSize: 14,
-                    }}
-                  >
-                    •
-                  </Text>
-                }
+              <SymbolIcon
                 name={icon}
                 size={14}
                 tintColor={
@@ -268,12 +256,7 @@ export function UpdatesDrawerContent({
             hitSlop={4}
             onPress={() => markRead(entry.ids)}
           >
-            <SymbolView
-              fallback={
-                <Text style={{ color: colors.mutedForeground, fontSize: 16 }}>
-                  ✓
-                </Text>
-              }
+            <SymbolIcon
               name="checkmark"
               size={12}
               tintColor={colors.mutedForeground}
@@ -383,19 +366,7 @@ export function UpdatesDrawerContent({
             className="size-7 items-center justify-center rounded-full"
             style={{ backgroundColor: colors.sidebarAccent }}
           >
-            <SymbolView
-              fallback={
-                <Text
-                  style={{
-                    color: item.unread
-                      ? colors.primary
-                      : colors.mutedForeground,
-                    fontSize: 14,
-                  }}
-                >
-                  •
-                </Text>
-              }
+            <SymbolIcon
               name={icon}
               size={14}
               tintColor={item.unread ? colors.primary : colors.mutedForeground}
@@ -437,9 +408,12 @@ export function UpdatesDrawerContent({
               {detail}
             </Text>
           </View>
-          <Text className="text-xl" style={{ color: colors.mutedForeground }}>
-            ›
-          </Text>
+          <SymbolIcon
+            name="chevron.right"
+            size={14}
+            weight="semibold"
+            tintColor={colors.mutedForeground}
+          />
         </View>
       </Pressable>
     );
@@ -494,10 +468,7 @@ export function UpdatesDrawerContent({
           className="size-11 items-center justify-center rounded-2xl"
           style={{ backgroundColor: colors.primary }}
         >
-          <SymbolView
-            fallback={
-              <Text style={{ color: colors.primaryForeground }}>•</Text>
-            }
+          <SymbolIcon
             name="bell.fill"
             size={19}
             tintColor={colors.primaryForeground}
@@ -544,12 +515,7 @@ export function UpdatesDrawerContent({
           onPress={onClose}
           style={{ backgroundColor: colors.sidebarAccent }}
         >
-          <SymbolView
-            fallback={<Text style={{ color: colors.foreground }}>×</Text>}
-            name="xmark"
-            size={15}
-            tintColor={colors.foreground}
-          />
+          <SymbolIcon name="xmark" size={15} tintColor={colors.foreground} />
         </Pressable>
       </View>
 

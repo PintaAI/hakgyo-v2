@@ -1,5 +1,4 @@
 import { downloadedBytes, formatByteSize } from "@hakgyo/shared";
-import { SymbolView } from "expo-symbols";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
@@ -10,6 +9,7 @@ import {
   useOfflineRevision,
 } from "../providers/MobileSyncProvider";
 import { Eyebrow, ProgressBar } from "./learning-ui";
+import { SymbolIcon } from "./ui/symbol-icon";
 
 function sumBytes(
   assetIds: readonly string[],
@@ -115,11 +115,10 @@ export function CourseOfflineCard({
   if (status.complete) {
     return (
       <View className="flex-row items-center gap-2 px-1">
-        <SymbolView
+        <SymbolIcon
           name="checkmark.circle.fill"
           size={16}
           tintColor={colors.primary}
-          fallback={<Text className="text-primary">✓</Text>}
         />
         <Text className="text-sm text-muted-foreground">
           Tersedia offline
@@ -138,11 +137,10 @@ export function CourseOfflineCard({
       onPress={() => void status.start()}
       className="flex-row items-center gap-3 rounded-xl border border-border px-4 py-3 active:opacity-70"
     >
-      <SymbolView
+      <SymbolIcon
         name="arrow.down.circle"
         size={22}
         tintColor={colors.primary}
-        fallback={<Text className="text-lg text-primary">↓</Text>}
       />
       <View className="min-w-0 flex-1 gap-0.5">
         <Text className="text-sm font-bold text-foreground">
@@ -196,11 +194,10 @@ export function ModuleOfflineBadge({
         accessibilityLabel="Bab tersedia offline"
         className="flex-row items-center gap-1"
       >
-        <SymbolView
+        <SymbolIcon
           name="checkmark.circle.fill"
           size={12}
           tintColor={colors.primary}
-          fallback={<Text className="text-[10px] text-primary">✓</Text>}
         />
         <Eyebrow size="xs" tone="primary">
           Offline
@@ -221,11 +218,10 @@ export function ModuleOfflineBadge({
       onPress={() => void status.start()}
       className="flex-row items-center gap-1 rounded-full border border-border px-2 py-0.5 active:opacity-70"
     >
-      <SymbolView
+      <SymbolIcon
         name="arrow.down.circle"
         size={12}
         tintColor={colors.mutedForeground}
-        fallback={<Text className="text-[10px] text-muted-foreground">↓</Text>}
       />
       <Text className="text-[10px] font-bold text-muted-foreground">
         {status.failed

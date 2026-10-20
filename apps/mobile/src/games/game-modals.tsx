@@ -1,5 +1,4 @@
 import { Image } from "expo-image";
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import type { ReactNode } from "react";
 import {
   Modal,
@@ -17,6 +16,8 @@ import { StudyAction } from "../components/study-glass";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { gameCatalog, type GameKey } from "./catalog";
+import { SymbolIcon } from "../components/ui/symbol-icon";
+import type { SymbolName } from "../components/ui/symbol-names";
 
 const gameSymbols = {
   cards: "rectangle.stack.fill",
@@ -26,7 +27,7 @@ const gameSymbols = {
   "syllable-forge": "character.book.closed.fill",
   "stroke-master": "pencil",
   "word-builder": "text.word.spacing",
-} satisfies Record<GameKey, SymbolViewProps["name"]>;
+} satisfies Record<GameKey, SymbolName>;
 
 const gameHeroAssets = {
   cards: require("../../assets/games/cards-intro.png"),
@@ -108,12 +109,7 @@ function GameModalContent({
               {game.icon}
             </Text>
           ) : (
-            <SymbolView
-              fallback={
-                <Text style={[styles.iconFallback, { color: colors.primary }]}>
-                  {game.icon}
-                </Text>
-              }
+            <SymbolIcon
               name={gameSymbols[gameKey]}
               size={24}
               tintColor={colors.primary}
@@ -148,14 +144,7 @@ function GameModalContent({
               onPress={onSecondary}
               style={styles.closeButton}
             >
-              <SymbolView
-                fallback={
-                  <Text
-                    style={[styles.closeFallback, { color: colors.foreground }]}
-                  >
-                    ×
-                  </Text>
-                }
+              <SymbolIcon
                 name="xmark"
                 size={16}
                 tintColor={colors.foreground}
@@ -201,14 +190,24 @@ function GameModalContent({
               {tertiaryLabel}
             </Text>
             {tertiaryDetail ? (
-              <Text
-                style={[
-                  styles.menuActionDetail,
-                  { color: colors.mutedForeground },
-                ]}
+              <View
+                style={{ alignItems: "center", flexDirection: "row", gap: 2 }}
               >
-                {tertiaryDetail} ›
-              </Text>
+                <Text
+                  style={[
+                    styles.menuActionDetail,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  {tertiaryDetail}
+                </Text>
+                <SymbolIcon
+                  name="chevron.right"
+                  size={12}
+                  weight="semibold"
+                  tintColor={colors.mutedForeground}
+                />
+              </View>
             ) : null}
           </Pressable>
         ) : null}

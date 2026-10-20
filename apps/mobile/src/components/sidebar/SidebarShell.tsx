@@ -13,6 +13,7 @@ import { authClient } from "../../lib/auth-client";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { GlassBox } from "../GlassBox";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 type SidebarShellProps = {
   title: string;
@@ -226,12 +227,12 @@ export function SidebarShell({
               </Text>
             </View>
 
-            <Text
-              className="text-2xl"
-              style={{ color: colors.mutedForeground }}
-            >
-              ›
-            </Text>
+            <SymbolIcon
+              name="chevron.right"
+              size={16}
+              weight="semibold"
+              tintColor={colors.mutedForeground}
+            />
           </View>
         </Pressable>
       </GlassBox>

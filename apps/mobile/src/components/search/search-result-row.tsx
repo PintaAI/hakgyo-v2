@@ -1,72 +1,63 @@
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { Pressable, Text, View } from "react-native";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import type { SearchKind } from "../../search/documents";
 import type { SearchResult } from "../../search/match";
 import { Chevron } from "../learning-ui";
+import { SymbolIcon } from "../ui/symbol-icon";
+import type { SymbolName } from "../ui/symbol-names";
 
 export const searchKindMeta: Record<
   SearchKind,
   {
     label: string;
-    symbol: SymbolViewProps["name"];
-    fallback: string;
+    symbol: SymbolName;
     textClass: string;
   }
 > = {
   course: {
     label: "Kurikulum",
     symbol: "books.vertical.fill",
-    fallback: "▤",
     textClass: "text-primary",
   },
   module: {
     label: "Bab",
     symbol: "list.bullet.rectangle.fill",
-    fallback: "≡",
     textClass: "text-primary",
   },
   material: {
     label: "Materi",
     symbol: "doc.text.fill",
-    fallback: "•",
     textClass: "text-primary",
   },
   vocabularySet: {
     label: "Set kosakata",
     symbol: "character.book.closed.fill",
-    fallback: "Aa",
     textClass: "text-emerald-600 dark:text-emerald-400",
   },
   vocabularyEntry: {
     label: "Kosakata",
     symbol: "textformat.abc",
-    fallback: "가",
     textClass: "text-emerald-600 dark:text-emerald-400",
   },
   assessment: {
     label: "Tugas",
     symbol: "checkmark.seal.fill",
-    fallback: "✓",
     textClass: "text-amber-600 dark:text-amber-400",
   },
   event: {
     label: "Latihan",
     symbol: "pencil.and.list.clipboard",
-    fallback: "✎",
     textClass: "text-amber-600 dark:text-amber-400",
   },
   cohort: {
     label: "Kelas",
     symbol: "person.3.fill",
-    fallback: "◎",
     textClass: "text-sky-600 dark:text-sky-400",
   },
   game: {
     label: "Game",
     symbol: "gamecontroller.fill",
-    fallback: "▶",
     textClass: "text-violet-600 dark:text-violet-400",
   },
 };
@@ -125,12 +116,7 @@ export function SearchResultRow({
       onPress={onPress}
     >
       <View className="mt-0.5 size-9 items-center justify-center rounded-full bg-primary/10">
-        <SymbolView
-          fallback={
-            <Text className="text-xs font-black text-primary">
-              {meta.fallback}
-            </Text>
-          }
+        <SymbolIcon
           name={meta.symbol}
           size={15}
           tintColor={colors.primary}

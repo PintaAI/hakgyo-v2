@@ -194,8 +194,9 @@ export function AssessmentResultReview({
           <StudyAction
             disabled={index === assessment.questions.length - 1}
             onPress={() => goToQuestion(index + 1)}
+            trailingIcon="arrow.right"
           >
-            Berikutnya →
+            Berikutnya
           </StudyAction>
         </View>
       </View>

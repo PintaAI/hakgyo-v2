@@ -7,6 +7,8 @@ import {
   type QuestionStatus,
 } from "../src/lib/question-progress";
 import { useQuestionNavigatorSession } from "../src/providers/QuestionNavigatorProvider";
+import { SymbolIcon } from "../src/components/ui/symbol-icon";
+import { useAppTheme } from "../src/providers/AppThemeProvider";
 
 const labels: Record<QuestionStatus, string> = {
   unanswered: "Belum dijawab",
@@ -17,6 +19,7 @@ const labels: Record<QuestionStatus, string> = {
 
 export default function AssessmentQuestionsScreen() {
   const { session } = useQuestionNavigatorSession();
+  const { colors } = useAppTheme();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const active = useRef(true);
@@ -82,8 +85,12 @@ export default function AssessmentQuestionsScreen() {
             membukanya
           </Text>
           {next >= 0 ? (
-            <StudyAction loading={busy} onPress={() => void select(next)}>
-              Soal belum dijawab berikutnya →
+            <StudyAction
+              loading={busy}
+              onPress={() => void select(next)}
+              trailingIcon="arrow.right"
+            >
+              Soal belum dijawab berikutnya
             </StudyAction>
           ) : (
             <Text className="font-bold text-primary">
@@ -113,14 +120,26 @@ export default function AssessmentQuestionsScreen() {
                 className={`min-h-24 grow items-center justify-center gap-1 rounded-2xl border p-3 active:opacity-75 ${index === session.current ? "border-primary bg-primary/20" : status === "incorrect" ? "border-destructive/50 bg-destructive/10" : status !== "unanswered" ? "border-primary/40 bg-primary/10" : "border-border bg-card"}`}
                 style={{ width: "28%" }}
               >
-                <Text className="text-xl font-black text-foreground">
-                  {index + 1}
-                  {status === "correct" || status === "answered"
-                    ? " ✓"
-                    : status === "incorrect"
-                      ? " ×"
-                      : ""}
-                </Text>
+                <View className="flex-row items-center gap-1">
+                  <Text className="text-xl font-black text-foreground">
+                    {index + 1}
+                  </Text>
+                  {status === "correct" || status === "answered" ? (
+                    <SymbolIcon
+                      name="checkmark"
+                      size={18}
+                      weight="bold"
+                      tintColor={colors.primary}
+                    />
+                  ) : status === "incorrect" ? (
+                    <SymbolIcon
+                      name="xmark"
+                      size={16}
+                      weight="bold"
+                      tintColor={colors.destructive}
+                    />
+                  ) : null}
+                </View>
                 <Text className="text-xs text-muted-foreground">
                   {labels[status]}
                 </Text>

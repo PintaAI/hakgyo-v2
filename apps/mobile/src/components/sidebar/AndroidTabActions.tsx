@@ -1,6 +1,13 @@
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import type { ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import {
+  Badge,
+  BadgedBox,
+  Host,
+  Icon,
+  IconButton,
+  Text,
+} from "@expo/ui/jetpack-compose";
+import { type ImageSourcePropType, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -10,6 +17,7 @@ import {
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useDrawer } from "../../providers/DrawerProvider";
+import { type ToolbarIconName, toolbarIcons } from "../../theme/toolbar-icons";
 
 /**
  * In-content replacement for the tab root `Stack.Toolbar` buttons on Android.
@@ -37,14 +45,18 @@ export function AndroidTabActions({
 
   return (
     <View
-      className="flex-row items-center justify-between gap-3"
+      // Off the floating overlay, pull the 48dp buttons into the gutter so
+      // their icons line up with the content.
+      className={`flex-row items-center justify-between gap-3 ${floating ? "" : "-mx-3"}`}
       style={
         floating
           ? {
               position: "absolute",
               top: insets.top + 8,
-              left: 20,
-              right: 20,
+              // The 48dp buttons pad their 24dp icons by 12dp; this keeps
+              // the icons on the screen's 20dp gutter.
+              left: 8,
+              right: 8,
               zIndex: 2,
             }
           : undefined
@@ -53,7 +65,7 @@ export function AndroidTabActions({
     >
       <View className="min-w-0 flex-1 flex-row items-center gap-2">
         <TabActionButton
-          symbol={{ ios: "sidebar.left", android: "menu" }}
+          icon="menu"
           accessibilityLabel="Buka menu"
           badgeCount={unreadCount}
           onPress={open}
@@ -65,41 +77,59 @@ export function AndroidTabActions({
   );
 }
 
+/**
+ * A Material 3 standard icon button: a 48dp touch target around a 24dp
+ * vector icon with no container, as top app bar actions are on Android.
+ */
 export function TabActionButton({
-  symbol,
+  icon: name,
   accessibilityLabel,
   badgeCount = 0,
   onPress,
 }: {
-  symbol: SymbolViewProps["name"];
+  icon: ToolbarIconName;
   accessibilityLabel: string;
   badgeCount?: number;
   onPress: () => void;
 }) {
-  const { colors } = useAppTheme();
+  const { colorScheme, colors } = useAppTheme();
+  const icon = (
+    <Icon
+      // On Android `Icon.select` resolves to the XML vector drawable.
+      source={toolbarIcons[name] as ImageSourcePropType}
+      size={24}
+      contentDescription={accessibilityLabel}
+    />
+  );
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      hitSlop={4}
-      onPress={onPress}
-      className="size-11 items-center justify-center rounded-full border border-border bg-card active:opacity-70"
+    <Host
+      matchContents
+      colorScheme={colorScheme === "dark" ? "dark" : "light"}
+      seedColor={colors.primary}
     >
-      <SymbolView name={symbol} size={22} tintColor={colors.foreground} />
-      {badgeCount > 0 ? (
-        <View
-          className="absolute -right-1 -top-1 h-5 min-w-5 items-center justify-center rounded-full px-1"
-          style={{ backgroundColor: colors.destructive }}
-        >
-          <Text
-            className="text-[10px] font-bold"
-            style={{ color: colors.destructiveForeground }}
-          >
-            {badgeCount > 99 ? "99+" : String(badgeCount)}
-          </Text>
-        </View>
-      ) : null}
-    </Pressable>
+      <IconButton
+        onClick={onPress}
+        colors={{ contentColor: colors.foreground }}
+      >
+        {/* Without a badge slot, BadgedBox draws an empty dot, so only use it
+            when there is a count to show. */}
+        {badgeCount > 0 ? (
+          <BadgedBox>
+            <BadgedBox.Badge>
+              <Badge
+                containerColor={colors.destructive}
+                contentColor={colors.destructiveForeground}
+              >
+                <Text>{badgeCount > 99 ? "99+" : String(badgeCount)}</Text>
+              </Badge>
+            </BadgedBox.Badge>
+            {icon}
+          </BadgedBox>
+        ) : (
+          icon
+        )}
+      </IconButton>
+    </Host>
   );
 }

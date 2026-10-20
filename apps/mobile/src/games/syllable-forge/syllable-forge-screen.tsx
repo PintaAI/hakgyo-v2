@@ -1,5 +1,4 @@
 import { router, Stack, useFocusEffect } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import {
   AccessibilityInfo,
@@ -30,6 +29,7 @@ import { HangeulKeyboard } from "./hangeul-keyboard";
 import { SYLLABLE_CHALLENGES } from "./syllable-forge-data";
 import { initialSession, syllableSessionReducer } from "./syllable-session";
 import { SyllableStage } from "./syllable-stage";
+import { SymbolIcon } from "../../components/ui/symbol-icon";
 
 const leave = () => router.dismissTo("/(home)/(tabs)/assessments");
 
@@ -77,17 +77,7 @@ function SyllableHintModal({
                 onPress={onClose}
                 style={styles.modalCloseButton}
               >
-                <SymbolView
-                  fallback={
-                    <Text
-                      style={[
-                        styles.modalCloseFallback,
-                        { color: colors.foreground },
-                      ]}
-                    >
-                      ×
-                    </Text>
-                  }
+                <SymbolIcon
                   name="xmark"
                   size={16}
                   tintColor={colors.foreground}

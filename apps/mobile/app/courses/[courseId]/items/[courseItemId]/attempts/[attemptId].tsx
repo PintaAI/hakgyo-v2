@@ -40,6 +40,7 @@ import { useAppTheme } from "../../../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../../../src/providers/MobileSyncProvider";
 import { useLearnerAttempt } from "../../../../../../src/sync/hooks";
 import { firstParam } from "../../../../../../src/lib/route-params";
+import { SymbolIcon } from "../../../../../../src/components/ui/symbol-icon";
 
 type Answer = { content?: string; optionIds: string[] };
 
@@ -144,7 +145,7 @@ function AssessmentAttemptContent({
   const operationPending = useRef(false);
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
-  const { activeOrganizationId } = useAppTheme();
+  const { activeOrganizationId, colors } = useAppTheme();
   const { completeAssessment } = useMobileSyncActions();
   const resolveAssetUrl = useApiAssetResolver();
   // Resumable attempts come from the local index / persisted start result;
@@ -486,7 +487,12 @@ function AssessmentAttemptContent({
           <StudyGlass>
             <View className="self-center">
               <IconCircle size="lg">
-                <Text className="text-2xl font-black text-primary">✓</Text>
+                <SymbolIcon
+                  name="checkmark"
+                  size={24}
+                  weight="bold"
+                  tintColor={colors.primary}
+                />
               </IconCircle>
             </View>
             <Text className="text-center text-2xl font-black text-foreground">
@@ -652,10 +658,11 @@ function AssessmentAttemptContent({
                       if (expired) setCurrentIndex(next);
                       else void save(next);
                     }}
+                    trailingIcon="arrow.right"
                   >
                     {currentIndex < assessment.data.questions.length - 1
-                      ? "Berikutnya →"
-                      : "Soal belum dijawab berikutnya →"}
+                      ? "Berikutnya"
+                      : "Soal belum dijawab berikutnya"}
                   </StudyAction>
                 </View>
               ) : null}

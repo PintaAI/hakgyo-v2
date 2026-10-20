@@ -1,4 +1,3 @@
-import { SymbolView } from "expo-symbols";
 import { useEffect } from "react";
 import { Text, View } from "react-native";
 import Animated, {
@@ -15,6 +14,7 @@ import Animated, {
 import { DECK_TOP_SPACE } from "../lib/vocabulary-deck-motion";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { Card, IconCircle } from "./learning-ui";
+import { SymbolIcon } from "./ui/symbol-icon";
 
 export type DeckTutorialStep = "peel" | "swipe" | "done";
 
@@ -47,8 +47,7 @@ function demoPhase(t: number) {
 function Hand() {
   const { colors } = useAppTheme();
   return (
-    <SymbolView
-      fallback={<Text style={{ fontSize: 34 }}>👆</Text>}
+    <SymbolIcon
       name="hand.point.up.left.fill"
       size={40}
       tintColor={colors.foreground}
@@ -100,9 +99,11 @@ export function DeckTutorialOverlay({ step }: { step: DeckTutorialStep }) {
 
   const swipeHandStyle = useAnimatedStyle(() => {
     if (reducedMotion) return { opacity: 1 };
-    const segment = Math.min(
-      SWIPE_PATHS.length - 1,
-      Math.floor(progress.value),
+    // The value can read as NaN or slightly negative on the first frames of
+    // a repeating animation; keep the index inside the path list.
+    const segment = Math.max(
+      0,
+      Math.min(SWIPE_PATHS.length - 1, Math.floor(progress.value) || 0),
     );
     const path = SWIPE_PATHS[segment]!;
     const { eased, opacity, press } = demoPhase(progress.value - segment);
@@ -186,7 +187,7 @@ const COACH_COPY: Record<
     detail: "Kartu berikutnya langsung muncul.",
   },
   done: {
-    badge: "✓",
+    badge: "",
     title: "Mantap, kamu siap berlatih!",
     detail: "Coba lagi sesukamu, kartunya terus berputar.",
   },
@@ -194,14 +195,24 @@ const COACH_COPY: Record<
 
 /** The current tutorial step, shown under the deck. */
 export function DeckTutorialCoach({ step }: { step: DeckTutorialStep }) {
+  const { colors } = useAppTheme();
   const copy = COACH_COPY[step];
   return (
     <View accessibilityLiveRegion="polite">
       <Card className="flex-row items-center gap-3 px-4 py-3" tone="primary">
         <IconCircle size="sm" tone="solid">
-          <Text className="text-xs font-black text-primary-foreground">
-            {copy.badge}
-          </Text>
+          {step === "done" ? (
+            <SymbolIcon
+              name="checkmark"
+              size={14}
+              weight="bold"
+              tintColor={colors.primaryForeground}
+            />
+          ) : (
+            <Text className="text-xs font-black text-primary-foreground">
+              {copy.badge}
+            </Text>
+          )}
         </IconCircle>
         <View className="min-w-0 flex-1">
           <Text className="text-sm font-bold text-foreground">

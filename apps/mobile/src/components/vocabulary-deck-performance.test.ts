@@ -168,6 +168,7 @@ function harness() {
     "../lib/vocabulary-card-text": textLayout,
     "../lib/vocabulary-sticker-peel": peel,
     "./content-renderer": { useApiAssetResolver: () => async () => null },
+    "./ui/symbol-icon": { SymbolIcon: "SymbolIcon" },
   };
   const exports: Record<string, any> = {};
   runInNewContext(`(function(require, exports) { ${code}\n })`, {

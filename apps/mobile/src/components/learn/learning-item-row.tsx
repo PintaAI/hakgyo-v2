@@ -1,4 +1,3 @@
-import { SymbolView } from "expo-symbols";
 import { Pressable, Text, View } from "react-native";
 
 import {
@@ -7,17 +6,12 @@ import {
 } from "../../lib/learning-item-type";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { Chevron } from "../learning-ui";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 function typeIcon(type: LearningItemType) {
   if (type === "VOCABULARY_SET") return "character.book.closed.fill";
   if (type === "ASSESSMENT") return "checkmark.seal.fill";
   return "doc.text.fill";
-}
-
-function typeFallback(type: LearningItemType) {
-  if (type === "VOCABULARY_SET") return "Aa";
-  if (type === "ASSESSMENT") return "✓";
-  return "•";
 }
 
 // Shared learning-item row: icon circle + connecting rail + title + detail
@@ -68,14 +62,7 @@ export function LearningItemRow({
           <View
             className={`size-8 items-center justify-center rounded-full border ${completed ? "border-primary bg-primary" : locked ? "border-border bg-background" : `${meta.borderClass} ${meta.softClass}`}`}
           >
-            <SymbolView
-              fallback={
-                <Text
-                  className={`text-xs font-black ${completed ? "text-primary-foreground" : "text-primary"}`}
-                >
-                  {completed ? "✓" : typeFallback(type)}
-                </Text>
-              }
+            <SymbolIcon
               name={
                 completed ? "checkmark" : locked ? "lock.fill" : typeIcon(type)
               }

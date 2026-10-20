@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Eyebrow, ProgressBar } from "./learning-ui";
 import { StudyGlass } from "./study-glass";
+import { SymbolIcon } from "./ui/symbol-icon";
+import { useAppTheme } from "../providers/AppThemeProvider";
 
 export function AssessmentQuestion({
   children,
@@ -83,6 +85,7 @@ export function AssessmentOption({
   correct?: boolean;
   onPress?: () => void;
 }) {
+  const { colors } = useAppTheme();
   const wrong = correct === false && selected;
   const label =
     correct === true
@@ -102,15 +105,22 @@ export function AssessmentOption({
         <View
           className={`size-8 items-center justify-center rounded-xl border ${wrong ? "border-destructive bg-destructive" : selected || correct === true ? "border-primary bg-primary" : "border-border bg-muted"}`}
         >
-          <Text
-            className={`text-sm font-black ${wrong ? "text-destructive-foreground" : selected || correct === true ? "text-primary-foreground" : "text-muted-foreground"}`}
-          >
-            {correct === true
-              ? "✓"
-              : wrong
-                ? "×"
-                : String.fromCharCode(65 + index)}
-          </Text>
+          {correct === true || wrong ? (
+            <SymbolIcon
+              name={wrong ? "xmark" : "checkmark"}
+              size={16}
+              weight="bold"
+              tintColor={
+                wrong ? colors.destructiveForeground : colors.primaryForeground
+              }
+            />
+          ) : (
+            <Text
+              className={`text-sm font-black ${selected ? "text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              {String.fromCharCode(65 + index)}
+            </Text>
+          )}
         </View>
         <View className="min-w-0 flex-1 gap-2">
           {label ? (

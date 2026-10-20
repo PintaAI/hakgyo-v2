@@ -1,24 +1,46 @@
 import { ActivityIndicator, Pressable, Text } from "react-native";
 
+import type { ThemeColors } from "../../theme/colors";
 import { useAppTheme } from "../../providers/AppThemeProvider";
+import { SymbolIcon } from "./symbol-icon";
+import type { SymbolName } from "./symbol-names";
 
 const variants = {
   primary: {
     box: "border-primary bg-primary",
     text: "text-primary-foreground",
+    icon: (c: ThemeColors) => c.primaryForeground,
   },
-  secondary: { box: "border-border bg-card", text: "text-foreground" },
+  secondary: {
+    box: "border-border bg-card",
+    text: "text-foreground",
+    icon: (c: ThemeColors) => c.foreground,
+  },
   destructive: {
     box: "border-destructive bg-destructive",
     text: "text-destructive-foreground",
+    icon: (c: ThemeColors) => c.destructiveForeground,
   },
   destructiveTinted: {
     box: "border-destructive/30 bg-destructive/10",
     text: "text-destructive",
+    icon: (c: ThemeColors) => c.destructive,
   },
-  outline: { box: "border-border", text: "text-primary" },
-  link: { box: "border-transparent", text: "text-primary" },
-  ghost: { box: "border-transparent", text: "text-muted-foreground" },
+  outline: {
+    box: "border-border",
+    text: "text-primary",
+    icon: (c: ThemeColors) => c.primary,
+  },
+  link: {
+    box: "border-transparent",
+    text: "text-primary",
+    icon: (c: ThemeColors) => c.primary,
+  },
+  ghost: {
+    box: "border-transparent",
+    text: "text-muted-foreground",
+    icon: (c: ThemeColors) => c.mutedForeground,
+  },
 } as const;
 
 const sizes = {
@@ -44,6 +66,8 @@ export function Action({
   variant = "primary",
   size = "default",
   align = "stretch",
+  leadingIcon,
+  trailingIcon,
   accessibilityRole = "button",
   accessibilityLabel,
   accessibilityHint,
@@ -57,6 +81,10 @@ export function Action({
   size?: ActionSize;
   /** `start` hugs the left edge instead of filling the row. */
   align?: "stretch" | "start";
+  /** Icon before the label, such as a back arrow. */
+  leadingIcon?: SymbolName;
+  /** Icon after the label, such as a forward arrow. */
+  trailingIcon?: SymbolName;
   accessibilityRole?: "button" | "link";
   accessibilityLabel?: string;
   accessibilityHint?: string;
@@ -71,6 +99,8 @@ export function Action({
         : variant === "destructiveTinted"
           ? colors.destructive
           : colors.primary;
+  const iconColor = variants[variant].icon(colors);
+  const iconSize = size === "sm" || size === "inline" ? 16 : 18;
   return (
     <Pressable
       accessibilityRole={accessibilityRole}
@@ -89,12 +119,28 @@ export function Action({
       }}
     >
       {loading ? <ActivityIndicator size="small" color={spinnerColor} /> : null}
+      {leadingIcon ? (
+        <SymbolIcon
+          name={leadingIcon}
+          size={iconSize}
+          weight="semibold"
+          tintColor={iconColor}
+        />
+      ) : null}
       <Text
-        className={`text-center ${sizes[size].text} ${style.text}`}
+        className={`shrink text-center ${sizes[size].text} ${style.text}`}
         numberOfLines={2}
       >
         {children}
       </Text>
+      {trailingIcon ? (
+        <SymbolIcon
+          name={trailingIcon}
+          size={iconSize}
+          weight="semibold"
+          tintColor={iconColor}
+        />
+      ) : null}
     </Pressable>
   );
 }
