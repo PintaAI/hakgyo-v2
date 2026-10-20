@@ -95,6 +95,9 @@ export const appRouter = createTRPCRouter({
   superadmin: lazy(() =>
     import("~/server/api/routers/superadmin").then((m) => m.superadminRouter),
   ),
+  whatsapp: lazy(() =>
+    import("~/server/api/routers/whatsapp").then((m) => m.whatsappRouter),
+  ),
 });
 
 // export type definition of API

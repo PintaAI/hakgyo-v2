@@ -481,6 +481,29 @@ enum ZoomConnectionStatus {
   REVOKED
 }
 
+enum WhatsappConnectionStatus {
+  /// Instance created on the Evolution API server, waiting for the QR scan.
+  PENDING
+  CONNECTED
+  /// Logged out, session expired, or the phone removed the linked device.
+  DISCONNECTED
+}
+
+enum WhatsappOutboxKind {
+  CREATE_GROUP
+  GROUP_MESSAGE
+}
+
+enum WhatsappOutboxStatus {
+  PENDING
+  SENDING
+  SENT
+  /// Failed permanently or ran out of attempts.
+  FAILED
+  /// No longer relevant: expired, event cancelled, or the number disconnected.
+  CANCELLED
+}
+
 enum CohortMeetingStatus {
   SCHEDULED
   STARTED
@@ -608,6 +631,8 @@ model Organization {
   vocabularySets           VocabularySet[]
   zoomConnection           ZoomConnection?
   googleCalendarConnection GoogleCalendarConnection?
+  whatsappConnection       WhatsappConnection?
+  whatsappOutbox           WhatsappOutbox[]
   assets                   Asset[]
   pdfBooks                 PdfBook[]
   activityEvents           UserActivityEvent[]
@@ -654,6 +679,7 @@ model OrganizationMember {
   reviewedAssessmentAnswers       AssessmentAnswer[]           @relation("AssessmentAnswerReviewer")
   connectedZoomAccounts           ZoomConnection[]             @relation("ZoomConnectionCreator")
   connectedGoogleCalendarAccounts GoogleCalendarConnection[]   @relation("GoogleCalendarConnectionCreator")
+  connectedWhatsappAccounts       WhatsappConnection[]         @relation("WhatsappConnectionCreator")
   createdCohortMeetings           CohortMeeting[]              @relation("CohortMeetingCreator")
   createdAssessmentEvents         AssessmentEvent[]            @relation("AssessmentEventCreator")
   assessmentEventAudits           AssessmentEventAudit[]       @relation("AssessmentEventAuditActor")
@@ -740,33 +766,38 @@ model CourseCollaborator {
 }
 
 model Cohort {
-  id                 String                       @id @default(cuid())
-  courseId           String
-  organizationId     String
-  name               String
-  description        String?
-  whatsappGroupUrl   String?
-  status             CohortStatus                 @default(DRAFT)
-  enrollmentMode     EnrollmentMode?
-  price              Int?
-  capacity           Int?
-  startsAt           DateTime?
-  endsAt             DateTime?
+  id                     String                       @id @default(cuid())
+  courseId               String
+  organizationId         String
+  name                   String
+  description            String?
+  whatsappGroupUrl       String?
+  /// The WhatsApp group Hakgyo created for this cohort ("<id>@g.us"). Group
+  /// messages go only to linked groups; a manual `whatsappGroupUrl` has none.
+  whatsappGroupJid       String?                      @unique
+  whatsappGroupCreatedAt DateTime?
+  status                 CohortStatus                 @default(DRAFT)
+  enrollmentMode         EnrollmentMode?
+  price                  Int?
+  capacity               Int?
+  startsAt               DateTime?
+  endsAt                 DateTime?
   // Set to courseId on the course's system self-paced cohort, which holds
   // learners who study without a class cohort. A CHECK constraint keeps it
   // equal to courseId, and the unique index allows one per course.
-  defaultForCourseId String?                      @unique
-  createdAt          DateTime                     @default(now())
-  updatedAt          DateTime                     @updatedAt
-  course             Course                       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  staff              CohortStaff[]
-  enrollments        CohortEnrollment[]
-  enrollmentInvites  EnrollmentInvite[]
-  payments           Payment[]
-  meetings           CohortMeeting[]
-  assessmentAttempts AssessmentAttempt[]
-  assessmentEvents   AssessmentEventCohort[]
-  eventParticipants  AssessmentEventParticipant[]
+  defaultForCourseId     String?                      @unique
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  course                 Course                       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  staff                  CohortStaff[]
+  enrollments            CohortEnrollment[]
+  enrollmentInvites      EnrollmentInvite[]
+  payments               Payment[]
+  meetings               CohortMeeting[]
+  assessmentAttempts     AssessmentAttempt[]
+  assessmentEvents       AssessmentEventCohort[]
+  eventParticipants      AssessmentEventParticipant[]
+  whatsappOutbox         WhatsappOutbox[]
 
   @@unique([id, courseId])
   @@unique([id, organizationId])
@@ -793,6 +824,57 @@ model ZoomConnection {
 
   @@index([connectedByMembershipId])
   @@index([zoomAccountId])
+}
+
+/// One WhatsApp number per organization, linked through an instance on
+/// Hakgyo's Evolution API server (see docs/whatsapp.md).
+model WhatsappConnection {
+  id                      String                   @id @default(cuid())
+  organizationId          String                   @unique
+  connectedByMembershipId String
+  instanceName            String                   @unique
+  encryptedInstanceToken  String
+  /// The linked number ("628...@s.whatsapp.net"), reported once connected.
+  phoneJid                String?
+  /// Group creation needs one participant besides the linked number.
+  initialParticipantPhone String?
+  status                  WhatsappConnectionStatus @default(PENDING)
+  autoCreateGroups        Boolean                  @default(false)
+  connectedAt             DateTime?
+  disconnectedAt          DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  connectedBy             OrganizationMember       @relation("WhatsappConnectionCreator", fields: [connectedByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([connectedByMembershipId])
+}
+
+/// Paced queue of WhatsApp work: group creation and messages to cohort groups.
+model WhatsappOutbox {
+  id             String               @id @default(cuid())
+  organizationId String
+  cohortId       String
+  kind           WhatsappOutboxKind
+  /// Makes every trigger safe to repeat, e.g. "meeting-reminder:<id>:<startsAt>".
+  dedupeKey      String               @unique
+  /// `{ text }` for GROUP_MESSAGE; `{ participant? }` for CREATE_GROUP.
+  payload        Json
+  status         WhatsappOutboxStatus @default(PENDING)
+  attempts       Int                  @default(0)
+  sendAfter      DateTime             @default(now())
+  expiresAt      DateTime?
+  claimedAt      DateTime?
+  lastError      String?
+  sentAt         DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cohort         Cohort               @relation(fields: [cohortId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([status, sendAfter])
+  @@index([organizationId, kind, status, sentAt])
+  @@index([cohortId])
 }
 
 model GoogleCalendarConnection {

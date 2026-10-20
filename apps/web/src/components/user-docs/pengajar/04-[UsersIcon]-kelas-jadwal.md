@@ -61,7 +61,7 @@ Di tab **Pengaturan** kelas:
 - **Tipe akses**: **Ikuti kurikulum**, **Kurikulum publik** (bisa diikuti tanpa undangan), atau **Kurikulum privat** (hanya lewat undangan). Walaupun namanya "kurikulum", pilihan di sini hanya berlaku untuk kelas ini.
 - **Kapasitas**: kosongkan untuk tanpa batas.
 - **Harga (IDR)**: kosongkan untuk memakai harga kurikulum; isi **0** untuk gratis.
-- **WhatsApp URL**: tautan grup WhatsApp kelas, misalnya `https://chat.whatsapp.com/...`. Murid melihatnya sebagai tombol **Grup**.
+- **WhatsApp URL**: tautan grup WhatsApp kelas, misalnya `https://chat.whatsapp.com/...`. Murid melihatnya sebagai tombol **Grup**. Jika nomor WhatsApp lembaga sudah terhubung, klik **Buat grup WhatsApp** agar Hakgyo membuatkan grupnya dan mengirim pengingat pertemuan serta jadwal latihan ke grup itu. Lihat [Grup WhatsApp Kelas](/docs/pengajar/grup-whatsapp).
 - **Mulai** dan **Selesai**.
 
 Klik **Simpan pengaturan**.

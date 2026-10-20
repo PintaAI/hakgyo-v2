@@ -52,4 +52,4 @@ Jika kelasmu punya pertemuan online lewat Zoom atau Google Meet:
 
 Kamu juga mendapat notifikasi saat pertemuan dijadwalkan, diubah, dibatalkan, atau akan mulai dalam 60 menit.
 
-Klik tombol **Grup** di kartu kelas untuk membuka grup WhatsApp kelasmu, jika lembaga sudah mengaturnya.
+Klik tombol **Grup** di kartu kelas untuk membuka grup WhatsApp kelasmu, jika lembaga sudah mengaturnya. Di sebagian kelas, grup itu juga menerima pengingat pertemuan dan jadwal latihan dari Hakgyo.

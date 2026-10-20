@@ -5,6 +5,7 @@ import { db } from "~/server/db";
 import { skipCronDuringMaintenance } from "~/server/maintenance";
 import { checkPushReceipts } from "~/server/notifications/receipts";
 import { sendDueReminders } from "~/server/notifications/reminders";
+import { processWhatsappOutbox } from "~/server/whatsapp/outbox";
 
 export const runtime = "nodejs";
 // Runs under Fluid compute's default 300-second limit (vercel.json enables
@@ -27,7 +28,8 @@ const INBOX_RETENTION_MS = 30 * 24 * 60 * 60_000;
 /**
  * Notification sweep, called every 10 minutes by the GitHub Actions workflow
  * `.github/workflows/notifications.yml` with
- * `Authorization: Bearer ${CRON_SECRET}`: sends due event/meeting reminders
+ * `Authorization: Bearer ${CRON_SECRET}`: sends due event/meeting reminders,
+ * sends queued WhatsApp group work (paced per number, see docs/whatsapp.md),
  * processes Expo push receipts, and drops inbox rows older than 30 days.
  */
 async function handler(request: Request) {
@@ -38,11 +40,16 @@ async function handler(request: Request) {
   if (skipped) return skipped;
   const now = new Date();
   const reminders = await sendDueReminders(now);
+  // After the reminders, so meeting reminders queued for WhatsApp go out now.
+  const whatsapp = await processWhatsappOutbox(now).catch((error: unknown) => {
+    console.error("WhatsApp outbox sweep failed", error);
+    return null;
+  });
   const receipts = await checkPushReceipts(now);
   const { count: expiredInbox } = await db.notification.deleteMany({
     where: { createdAt: { lt: new Date(now.getTime() - INBOX_RETENTION_MS) } },
   });
-  return Response.json({ reminders, receipts, expiredInbox });
+  return Response.json({ reminders, whatsapp, receipts, expiredInbox });
 }
 
 export { handler as GET, handler as POST };

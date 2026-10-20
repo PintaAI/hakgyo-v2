@@ -36,6 +36,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "~/components/ui/select";
+import { WhatsappIntegration } from "~/components/whatsapp-integration";
 import { api } from "~/trpc/react";
 
 function errorMessage(error: unknown) {
@@ -385,6 +386,8 @@ export function OrganizationIntegrations({
           )}
         </CardContent>
       </Card>
+
+      <WhatsappIntegration organizationId={organizationId} />
 
       <AlertDialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
         <AlertDialogContent>

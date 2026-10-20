@@ -38,7 +38,7 @@ Setiap latihan tampil sebagai kartu berisi jenis, status, kelas yang ikut, duras
    - **Draft**: disimpan dulu dan belum terlihat murid.
 6. Isi **Durasi pengerjaan (menit)**, yaitu waktu untuk setiap murid sejak ia mulai mengerjakan. Ada pilihan cepat 30, 60, 90, dan 120 menit.
 7. Isi **Ditutup pada**, yaitu batas terakhir murid bisa mengerjakan. Ada pilihan cepat **+1 hari**, **+3 hari**, dan **+1 minggu**.
-8. Centang **Beri tahu murid** agar murid mendapat notifikasi saat latihan dibuka.
+8. Centang **Beri tahu murid** agar murid mendapat notifikasi saat latihan dibuka. Untuk latihan terjadwal, kelas yang punya grup WhatsApp buatan Hakgyo juga langsung menerima pesan jadwalnya. Lihat [Grup WhatsApp Kelas](/docs/pengajar/grup-whatsapp).
 9. Baca ringkasan di bagian bawah panel, misalnya "Latihan untuk 30 murid di 2 kelas", lalu klik **Buka sekarang**, **Jadwalkan**, atau **Simpan draft**.
 
 <doc-preview name="latihan-tryout-buat" caption="Panel pembuatan dengan data contoh. Coba pilih tugas dan waktu, lalu simpan untuk melihatnya masuk ke daftar."></doc-preview>
