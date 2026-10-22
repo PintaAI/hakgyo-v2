@@ -15,6 +15,8 @@ bun run --cwd apps/mobile ota:check --channel production
 bun run --cwd apps/mobile ota:publish --channel production --message "Fix vocabulary audio"
 ```
 
+Add a "Yang baru" entry first (see "What's new" below). Without `--message`, the update is named after that entry.
+
 `scripts/ota-publish.ts` lists every finished build on the channel with the current runtime and compares the fingerprint EAS recorded for it with the project's fingerprint. It publishes (`eas update`) only when all of them match. A mismatch means some installed binary has different native code, and the update could crash it on launch. The fix is a `version` bump and new builds, not a forced publish. `--platform ios|android` limits the check and the update to one platform; it is required while only one platform has builds on the channel.
 
 `apps/mobile/fingerprint.config.js` leaves `package.json` scripts and `eas.json` out of the fingerprint, so editing dev scripts or submit settings does not block updates. If you add a native build hook (`eas-build-*` or `postinstall` scripts), bump `version` yourself.
@@ -24,7 +26,7 @@ bun run --cwd apps/mobile ota:publish --channel production --message "Fix vocabu
 Every mobile request sends `x-hakgyo-client: protocol=…;runtime=…;update=…;platform=…`. Sync procedures reject clients older than `MIN_SYNC_PROTOCOL` (`@hakgyo/shared/mobile-sync`) with `UPGRADE_REQUIRED`, and the app shows `ForcedUpdateGate`:
 
 1. It checks for an EAS Update on the binary's channel and runtime, downloads it and reloads.
-2. When none exists (the fix needs a new binary), it links to the store listing in `STORE_URLS` (`apps/mobile/src/components/forced-update-gate.tsx`).
+2. When none exists (the fix needs a new binary), it links to the store listing in `STORE_URLS` (`apps/mobile/src/components/forced-update-gate.tsx`) and lists the "Yang baru" entries of newer versions, which it loads from `mobileRelease.storeNotes` because the old binary cannot contain them.
 
 The outbox stays on the device and syncs after the update.
 
@@ -42,6 +44,14 @@ Rules that keep old clients and queued work safe:
 - Operations in the outbox were written by older JavaScript and replay after an update. Prefer adding optional fields or a new kind. An incompatible change to an existing operation `kind` needs an `OPERATION_VERSION` bump, an upcaster from the previous version and a new frozen fixture file, and the server keeps accepting the old versions; follow "Changing an operation" in `docs/mobile-sync.md`.
 - Cached data (course bundles, the learner index) is disposable: bump `BUNDLE_SCHEMA` or `INDEX_SCHEMA` instead of migrating it on the device.
 - Temporary server unavailability (maintenance, overload) must use a transient error code such as `SERVICE_UNAVAILABLE`. `BAD_REQUEST`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT` and `PRECONDITION_FAILED` are terminal for the sync engine and eventually move operations to the dead-letter list.
+
+## What's new
+
+Release notes live in `packages/shared/src/release-notes.ts` (`@hakgyo/shared/release-notes`), newest first. Each entry has an `id` (the release date, plus `.2`, `.3` for later releases that day), the app `version` that first ships it, a title and short Indonesian bullet points written for learners.
+
+- Every bundle ships the entries up to its own `version`. After an update brings an entry the learner has not seen, the app shows it once in the "Yang baru" sheet (`WhatsNewPrompt`), and Pengaturan → Yang baru (`app/profile/whats-new.tsx`) lists them all. The newest id shown is remembered in SecureStore; a fresh install remembers the newest entry without showing it.
+- The forced update gate uses the same `ReleaseNotesPanel`. On the store path it shows the entries whose `version` is newer than the binary.
+- Add the entry in the PR that makes the change. For a store release, add the first entry of the new `version`; the web deploy then shows it to outdated binaries in the gate. An update without a new entry (a silent fix) shows no prompt.
 
 ## Maintenance mode
 

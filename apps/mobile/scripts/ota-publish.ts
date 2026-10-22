@@ -13,8 +13,12 @@
  *   bun run --cwd apps/mobile ota:publish --channel production --message "…"
  *
  * Options: --platform ios|android|all (default all), --check (compare only).
+ * `--message` defaults to the newest "Yang baru" entry for the runtime
+ * (`@hakgyo/shared/release-notes`), which the update shows after it applies.
  */
 import { parseArgs } from "node:util";
+
+import { releaseNotesUpTo } from "@hakgyo/shared/release-notes";
 
 import config from "../app.config";
 
@@ -91,9 +95,6 @@ const platforms: readonly Platform[] =
     : isOneOf<Platform>(PLATFORMS, platformOption)
       ? [platformOption]
       : fail("--platform must be ios, android or all.");
-if (!values.check && !values.message?.trim()) {
-  fail('Pass --message "…" to describe the update.');
-}
 if (config.expo.runtimeVersion.policy !== "appVersion") {
   fail(
     "This guard assumes the `appVersion` runtime policy in app.config.ts; " +
@@ -101,6 +102,15 @@ if (config.expo.runtimeVersion.policy !== "appVersion") {
   );
 }
 const runtime = config.expo.version;
+const releaseNote = releaseNotesUpTo(runtime)[0];
+const message =
+  values.message?.trim() ||
+  (releaseNote ? `${releaseNote.title} (${releaseNote.id})` : "");
+if (!values.check && !message) {
+  fail(
+    'Pass --message "…", or add a "Yang baru" entry to packages/shared/src/release-notes.ts.',
+  );
+}
 
 console.log(`Channel ${channel}, runtime ${runtime}`);
 let safe = true;
@@ -166,6 +176,18 @@ if (!safe) {
       "(a new runtime), ship new builds, and publish updates to that runtime.",
   );
 }
+if (releaseNote) {
+  console.log(
+    `\n"Yang baru" shown after the update: ${releaseNote.id} ${releaseNote.title}`,
+  );
+  for (const item of releaseNote.items) console.log(`    • ${item}`);
+  console.log(
+    "  Learners who already saw this entry get no prompt. For changes they notice, " +
+      "add a newer entry to packages/shared/src/release-notes.ts first.",
+  );
+} else {
+  console.warn(`\n! No "Yang baru" entry for runtime ${runtime}.`);
+}
 if (values.check) process.exit(0);
 
 const publish = Bun.spawnSync(
@@ -179,7 +201,7 @@ const publish = Bun.spawnSync(
     "--platform",
     platformOption ?? "all",
     "--message",
-    values.message!.trim(),
+    message,
     "--non-interactive",
   ],
   { cwd: PROJECT_DIR, stdout: "inherit", stderr: "inherit" },

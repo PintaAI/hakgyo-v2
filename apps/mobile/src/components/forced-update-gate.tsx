@@ -1,9 +1,11 @@
 import * as Updates from "expo-updates";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Platform, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, Linking, Platform, Text } from "react-native";
 
+import { api } from "../lib/trpc";
+import { APP_VERSION } from "../lib/release-notes";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { ReleaseNotesPanel } from "./release-notes";
 import { Action } from "./ui/action";
 
 type Phase =
@@ -34,17 +36,22 @@ export function storeUrl() {
 
 /**
  * Full-screen gate shown when the server requires a newer client protocol.
- * Mirrors the manual "Check for updates" flow: check → fetch → reload. When
- * no OTA update can fix it (updates disabled, dev client, nothing published)
- * it points to the app store. The outbox is untouched; progress syncs after
- * the update.
+ * Mirrors the manual "Check for updates" flow: check → fetch → reload; the
+ * "Yang baru" prompt then shows the update's notes. When no OTA update can
+ * fix it (updates disabled, dev client, nothing published) it points to the
+ * app store and lists what the store build adds, which only the server knows.
+ * The outbox is untouched; progress syncs after the update.
  */
 export function ForcedUpdateGate({ minProtocol }: { minProtocol: number }) {
   const { colors } = useAppTheme();
-  const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<Phase>({ kind: "checking" });
   const [attempt, setAttempt] = useState(0);
   const listing = storeUrl();
+  const storeNotes = api.mobileRelease.storeNotes.useQuery(
+    { version: APP_VERSION },
+    { enabled: phase.kind === "store", staleTime: Infinity },
+  );
+  const notes = phase.kind === "store" ? (storeNotes.data ?? []) : [];
 
   useEffect(() => {
     let active = true;
@@ -91,65 +98,58 @@ export function ForcedUpdateGate({ minProtocol }: { minProtocol: number }) {
     phase.kind === "checking" ||
     phase.kind === "downloading" ||
     phase.kind === "restarting";
+  const storeName = Platform.OS === "ios" ? "App Store" : "Google Play";
 
   return (
-    <View
-      accessibilityViewIsModal
-      className="flex-1 items-center justify-center gap-6 bg-background px-8"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
-    >
-      <View className="size-16 items-center justify-center rounded-2xl bg-primary/10">
-        <Text className="text-3xl">⬆️</Text>
-      </View>
-      <View className="items-center gap-2">
-        <Text
-          accessibilityRole="header"
-          className="text-center text-2xl font-black tracking-tight text-foreground"
-        >
-          Pembaruan diperlukan
-        </Text>
-        <Text className="text-center text-sm leading-5 text-muted-foreground">
-          {busy
-            ? phase.kind === "checking"
-              ? "Memeriksa pembaruan…"
-              : phase.kind === "downloading"
-                ? "Mengunduh pembaruan…"
-                : "Memulai ulang untuk menerapkan pembaruan…"
-            : phase.kind === "error"
-              ? phase.message
-              : "Versi Hakgyo ini tidak dapat lagi disinkronkan dengan server. Pasang versi terbaru untuk melanjutkan belajar."}
-        </Text>
-        <Text className="text-center text-xs text-muted-foreground">
-          Progres kamu tetap tersimpan di perangkat ini dan akan disinkronkan
-          setelah pembaruan.
-        </Text>
-      </View>
-
-      {busy ? (
-        <ActivityIndicator color={colors.primary} />
-      ) : (
-        <View className="w-full gap-3">
-          {listing ? (
-            <Action onPress={openStore}>
-              {Platform.OS === "ios" ? "Buka App Store" : "Buka Google Play"}
+    <ReleaseNotesPanel
+      symbol="arrow.down.circle.fill"
+      title="Pembaruan diperlukan"
+      description={
+        phase.kind === "checking"
+          ? "Memeriksa pembaruan…"
+          : phase.kind === "downloading"
+            ? "Mengunduh pembaruan…"
+            : phase.kind === "restarting"
+              ? "Memulai ulang untuk menerapkan pembaruan…"
+              : phase.kind === "error"
+                ? phase.message
+                : `Versi Hakgyo ini tidak dapat lagi disinkronkan dengan server. Pasang versi terbaru dari ${storeName} untuk melanjutkan belajar.`
+      }
+      notesTitle={
+        notes[0] ? `Yang baru di versi ${notes[0].version}` : undefined
+      }
+      notes={notes}
+      status={
+        <>
+          {busy ? <ActivityIndicator color={colors.primary} /> : null}
+          <Text className="text-center text-xs text-muted-foreground">
+            Progres kamu tetap tersimpan di perangkat ini dan akan disinkronkan
+            setelah pembaruan.
+          </Text>
+          <Text className="text-center text-[11px] text-muted-foreground">
+            Requires sync protocol {minProtocol} or newer.
+          </Text>
+        </>
+      }
+      actions={
+        busy ? null : (
+          <>
+            {listing ? (
+              <Action onPress={openStore}>{`Buka ${storeName}`}</Action>
+            ) : (
+              <Text className="text-center text-sm text-muted-foreground">
+                Pasang versi Hakgyo terbaru dari {storeName}.
+              </Text>
+            )}
+            <Action
+              variant="secondary"
+              onPress={() => setAttempt((value) => value + 1)}
+            >
+              Periksa pembaruan lagi
             </Action>
-          ) : (
-            <Text className="text-center text-sm text-muted-foreground">
-              Pasang versi Hakgyo terbaru dari{" "}
-              {Platform.OS === "ios" ? "App Store" : "Google Play"}.
-            </Text>
-          )}
-          <Action
-            variant="secondary"
-            onPress={() => setAttempt((value) => value + 1)}
-          >
-            Periksa pembaruan lagi
-          </Action>
-        </View>
-      )}
-      <Text className="text-center text-[11px] text-muted-foreground">
-        Requires sync protocol {minProtocol} or newer.
-      </Text>
-    </View>
+          </>
+        )
+      }
+    />
   );
 }

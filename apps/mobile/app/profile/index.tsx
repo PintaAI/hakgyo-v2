@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { supportEmail } from "@hakgyo/shared";
-import Constants from "expo-constants";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import * as Updates from "expo-updates";
 import * as WebBrowser from "expo-web-browser";
@@ -27,6 +26,11 @@ import {
 import { WeeklyStreak } from "../../src/components/weekly-streak";
 import { apiUrl } from "../../src/config";
 import { authClient } from "../../src/lib/auth-client";
+import {
+  APP_VERSION,
+  installedReleaseNotes,
+  releaseDateLabel,
+} from "../../src/lib/release-notes";
 import { api } from "../../src/lib/trpc";
 import { firstParam } from "../../src/lib/route-params";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
@@ -40,7 +44,7 @@ import { toolbarIcons } from "../../src/theme/toolbar-icons";
 import type { LocalDataStats } from "../../src/sync/store";
 import type { ResyncReport } from "../../src/sync/types";
 
-const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
+const latestReleaseNote = installedReleaseNotes[0];
 const UPDATE_CHANNEL = Updates.channel ?? "unpublished";
 const CURRENT_UPDATE_ID = Updates.updateId ?? null;
 
@@ -383,6 +387,16 @@ export default function ProfileScreen() {
                 }
                 symbol="checkmark"
                 onPress={() => void handleCheckForUpdates()}
+              />
+              <SettingsRow
+                label="Yang baru"
+                detail={
+                  latestReleaseNote
+                    ? releaseDateLabel(latestReleaseNote.date)
+                    : undefined
+                }
+                symbol="sparkles"
+                onPress={() => router.push("/profile/whats-new")}
               />
               <SettingsRow
                 label={`Versi aplikasi ${APP_VERSION}`}

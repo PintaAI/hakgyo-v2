@@ -54,6 +54,11 @@ export const appRouter = createTRPCRouter({
   learning: lazy(() =>
     import("~/server/api/routers/learning").then((m) => m.learningRouter),
   ),
+  mobileRelease: lazy(() =>
+    import("~/server/api/routers/mobile-release").then(
+      (m) => m.mobileReleaseRouter,
+    ),
+  ),
   mobileSyncV2: lazy(() =>
     import("~/server/api/routers/mobile-sync-v2").then(
       (m) => m.mobileSyncV2Router,
