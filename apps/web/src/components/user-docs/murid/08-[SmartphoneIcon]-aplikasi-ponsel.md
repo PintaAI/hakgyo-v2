@@ -55,7 +55,13 @@ Untuk menjalankannya sendiri:
 2. Ketuk **Sinkronkan materi dan progres**.
 3. Tunggu sampai muncul **Sudah terbaru**. Jika ada tulisan seperti "3 perubahan menunggu sinkronisasi", artinya masih ada kemajuan yang belum terkirim.
 
-Jika muncul **Pembaruan diperlukan**, perbarui aplikasi dari App Store atau Google Play.
+Jika muncul **Pembaruan diperlukan**, ikuti petunjuk di layar. Biasanya aplikasi mengunduh pembaruan sendiri lalu dibuka ulang. Jika pembaruan harus dipasang dari toko aplikasi, ketuk **Buka App Store** atau **Buka Google Play**; layar itu juga menampilkan apa saja yang baru di versi tersebut.
+
+## Yang baru di aplikasi
+
+Aplikasi Hakgyo sering mendapat pembaruan kecil yang terpasang otomatis saat aplikasi dibuka ulang. Setelah pembaruan terpasang, muncul layar **Yang baru di Hakgyo** berisi daftar perubahannya. Ketuk **Lanjut belajar** untuk menutupnya.
+
+Untuk membaca lagi semua catatan pembaruan, buka **Profil**, lalu **Pengaturan**, lalu ketuk **Yang baru**.
 
 > **Sebelum keluar dari akun**, pastikan semua kemajuan sudah tersinkron. Keluar akan menghapus materi yang diunduh dan kemajuan yang belum terkirim dari ponsel ini. Akun dan kemajuan yang sudah terkirim tetap aman. Aplikasi akan memperingatkanmu jika masih ada yang belum terkirim.
 

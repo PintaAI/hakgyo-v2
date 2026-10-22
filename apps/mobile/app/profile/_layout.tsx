@@ -36,6 +36,7 @@ export default function ProfileLayout() {
     >
       <Stack.Screen name="index" options={{ title: "Profil" }} />
       <Stack.Screen name="account" options={detailOptions} />
+      <Stack.Screen name="whats-new" options={{ title: "Yang baru" }} />
     </Stack>
   );
 }

@@ -57,6 +57,7 @@ export const materialSymbols = {
   "questionmark.circle": "help",
   "rectangle.stack.fill": "style",
   "sidebar.left": "menu",
+  sparkles: "auto_awesome",
   "speaker.fill": "volume_up",
   "square.grid.2x2": "grid_view",
   "square.grid.2x2.fill": "grid_view",
