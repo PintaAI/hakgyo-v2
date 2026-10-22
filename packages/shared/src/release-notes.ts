@@ -31,13 +31,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
-    id: "2026-10-21",
+    id: "2026-10-22",
     version: "1.0.0",
-    date: "2026-10-21",
-    title: "Catatan pembaruan",
+    date: "2026-10-22",
+    title: "Pencarian offline dan catatan pembaruan",
     items: [
-      "Setelah aplikasi diperbarui, kamu langsung melihat apa saja yang baru.",
-      "Riwayat semua pembaruan ada di Pengaturan → Yang baru.",
+      "Tab Cari baru untuk mencari kursus, materi, kosakata, dan tugas yang sudah tersimpan, juga tanpa internet.",
+      "Profil kini dibuka dari menu samping, sapaan di Hari Ini, atau ikon gerigi di pojok kanan atas.",
+      "Saat Hakgyo sedang dalam perbaikan, kamu tetap bisa belajar. Progresmu dikirim setelah perbaikan selesai.",
+      "Di Android, ikon kini bergaya Material, dan menjawab dengan suara jadi lebih lancar di Android 13 ke atas.",
+      "Setelah aplikasi diperbarui, kamu langsung melihat apa saja yang baru. Riwayatnya ada di Pengaturan → Yang baru.",
     ],
   },
 ];
