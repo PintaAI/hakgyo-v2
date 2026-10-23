@@ -1,4 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import {
+  HANGEUL_GAME_KEYS,
+  HANGEUL_GAME_STAGE_IDS,
+  parseHangeulContrastRows,
+  parseHangeulLetterCards,
+  parseJamoList,
+} from "@hakgyo/shared/hangeul";
 
 import {
   assetAudioBlockType,
@@ -13,6 +20,10 @@ import {
   grammarBlockThemes,
   grammarBlockType,
   hakgyoBlockCatalog,
+  hangeulContrastBlockType,
+  hangeulGameBlockType,
+  hangeulLettersBlockType,
+  hangeulSyllableGridBlockType,
   lessonPageBlockType,
   lessonPageThemes,
   pdfPagesBlockType,
@@ -36,6 +47,10 @@ describe("Hakgyo BlockNote catalog", () => {
       assetAudioBlockType,
       assetImageBlockType,
       pdfPagesBlockType,
+      hangeulLettersBlockType,
+      hangeulContrastBlockType,
+      hangeulSyllableGridBlockType,
+      hangeulGameBlockType,
     ]);
     const callout = hakgyoBlockCatalog.customBlocks.find(
       (block) => block.type === calloutBlockType,
@@ -80,5 +95,29 @@ describe("Hakgyo BlockNote catalog", () => {
     expect(culture.example.type).toBe(cultureBlockType);
     expect(cultureBlockThemes).toContain(culture.example.props.theme);
     expect(culture.example.props.checklistItems).not.toBe("");
+  });
+
+  test("gives the Hangeul blocks examples the shared parsers accept", () => {
+    const example = (type: string) => {
+      const block = hakgyoBlockCatalog.customBlocks.find(
+        (candidate) => candidate.type === type,
+      );
+      if (!block || !("example" in block)) throw new Error(type);
+      return block.example.props as Record<string, unknown>;
+    };
+
+    expect(
+      parseHangeulLetterCards(example(hangeulLettersBlockType).letters),
+    ).toHaveLength(2);
+    expect(
+      parseHangeulContrastRows(example(hangeulContrastBlockType).rows),
+    ).toHaveLength(2);
+    expect(
+      parseJamoList(example(hangeulSyllableGridBlockType).consonants),
+    ).toEqual(["ㄱ", "ㄴ", "ㄷ"]);
+
+    const game = example(hangeulGameBlockType);
+    expect(HANGEUL_GAME_KEYS).toContain(game.gameKey as never);
+    expect(HANGEUL_GAME_STAGE_IDS).toContain(game.stage as never);
   });
 });

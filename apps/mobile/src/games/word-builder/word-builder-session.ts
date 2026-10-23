@@ -1,4 +1,4 @@
-import { WORD_CHALLENGES } from "./word-builder-data";
+import { WORD_CHALLENGES, type WordChallenge } from "./word-builder-data";
 
 export type WordBuilderSession = {
   phase: "intro" | "playing" | "correct" | "complete";
@@ -26,7 +26,16 @@ export type WordBuilderAction =
   | { type: "start" | "clear" | "hint" | "next" }
   | { type: "add" | "remove"; tileIndex: number };
 
-export function wordBuilderReducer(
+/** A session reducer over one word set (a stage's, or the general one). */
+export function createWordBuilderReducer(words: readonly WordChallenge[]) {
+  return (state: WordBuilderSession, action: WordBuilderAction) =>
+    reduceWordBuilder(words, state, action);
+}
+
+export const wordBuilderReducer = createWordBuilderReducer(WORD_CHALLENGES);
+
+function reduceWordBuilder(
+  words: readonly WordChallenge[],
   state: WordBuilderSession,
   action: WordBuilderAction,
 ): WordBuilderSession {
@@ -35,7 +44,7 @@ export function wordBuilderReducer(
 
   if (action.type === "next") {
     if (state.phase !== "correct") return state;
-    if (state.index === WORD_CHALLENGES.length - 1)
+    if (state.index === words.length - 1)
       return { ...state, phase: "complete" };
     return {
       ...state,
@@ -49,7 +58,7 @@ export function wordBuilderReducer(
   }
 
   if (state.phase !== "playing") return state;
-  const challenge = WORD_CHALLENGES[state.index]!;
+  const challenge = words[state.index]!;
 
   switch (action.type) {
     case "add": {

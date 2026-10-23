@@ -1,8 +1,13 @@
+import { collectContentAssetIds } from "@hakgyo/shared";
+
 import {
   assetAudioBlockType,
   assetImageBlockType,
   conversationBlockType,
   cultureBlockType,
+  hangeulContrastBlockType,
+  hangeulLettersBlockType,
+  hangeulSyllableGridBlockType,
   lessonPageBlockType,
 } from "./block-catalog";
 import { getCultureAssetIds } from "./culture-content";
@@ -17,6 +22,12 @@ const assetIdBlockTypes = new Set<string>([
   lessonPageBlockType,
 ]);
 const assetUrlBlockTypes = new Set(["audio", "file", "image", "video"]);
+// Hangeul blocks keep their audio clips as `assetId` keys inside JSON props.
+const hangeulAssetProps = new Map<string, readonly string[]>([
+  [hangeulLettersBlockType, ["letters"]],
+  [hangeulContrastBlockType, ["rows"]],
+  [hangeulSyllableGridBlockType, ["audio"]],
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -30,7 +41,8 @@ export function getAssetIdFromUrl(url: unknown) {
 
 /**
  * The stored files a BlockNote document shows: custom block asset props,
- * culture section images and `hakgyo-asset:` URLs on built-in media blocks.
+ * culture section images, Hangeul block audio clips and `hakgyo-asset:` URLs
+ * on built-in media blocks.
  * PDF page images are linked separately by the pdfPages block sync.
  */
 export function collectMaterialAssetIds(document: unknown) {
@@ -49,6 +61,12 @@ export function collectMaterialAssetIds(document: unknown) {
     } else if (type === cultureBlockType) {
       if (typeof props.sections === "string") {
         getCultureAssetIds(props.sections).forEach(add);
+      }
+    } else if (typeof type === "string" && hangeulAssetProps.has(type)) {
+      for (const name of hangeulAssetProps.get(type)!) {
+        if (typeof props[name] === "string") {
+          collectContentAssetIds(props[name]).forEach(add);
+        }
       }
     } else if (typeof type === "string" && assetUrlBlockTypes.has(type)) {
       add(getAssetIdFromUrl(props.url));

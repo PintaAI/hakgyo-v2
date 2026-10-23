@@ -8,7 +8,7 @@ Selamat datang di Hakgyo! Halaman ini membantumu membuat akun, bergabung ke kela
 2. Isi **Nama lengkap**, **Alamat email**, dan **Kata sandi** (minimal 8 karakter).
 3. Klik **Buat akun**. Kamu juga bisa memakai **Lanjutkan dengan Google**. Di aplikasi iPhone, tersedia juga masuk dengan Apple.
 
-Akun baru umumnya langsung mendapat kurikulum gratis **Hangeul Mastery** untuk belajar huruf Korea dari nol. Jika tidak muncul, cari di **Jelajahi kurikulum**.
+Akun baru umumnya langsung mendapat kurikulum gratis **Hangeul Mastery** untuk belajar huruf Korea dari nol. Jika tidak muncul, cari di **Jelajahi kurikulum**. Baca [Hangeul Mastery](/docs/murid/hangeul-mastery) untuk tahu isinya.
 
 > Pakai email yang sama dengan yang didaftarkan lembaga kursusmu, supaya kelas yang ditambahkan untukmu langsung muncul.
 
@@ -65,6 +65,7 @@ Halaman **Belajar** menjawab pertanyaan "apa yang harus dikerjakan sekarang?":
 
 ## Langkah berikutnya
 
+- [Hangeul Mastery](/docs/murid/hangeul-mastery)
 - [Belajar Materi](/docs/murid/belajar-materi)
 - [Kosakata dan Kartu Hafalan](/docs/murid/kosakata)
 - [Mengerjakan Tugas](/docs/murid/mengerjakan-tugas)

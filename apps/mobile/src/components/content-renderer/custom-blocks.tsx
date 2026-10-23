@@ -9,6 +9,7 @@ import { InlineContent } from "./inline-content";
 import { assetSource, ContentAudio, ContentImage } from "./media";
 import { booleanProp, isRecord, parseJsonArray, stringProp } from "./normalize";
 import { useContentRenderer } from "./context";
+import { hangeulBlockRenderers } from "./hangeul-blocks";
 import { PdfPages } from "./pdf-pages";
 import type { BlockRendererProps, ContentBlockRenderer } from "./types";
 import { SymbolIcon } from "../ui/symbol-icon";
@@ -1164,4 +1165,5 @@ export const customBlockRenderers: Readonly<
   vocabularyReference: VocabularyReference,
   assessmentReference: AssessmentReference,
   pdfPages: PdfPages,
+  ...hangeulBlockRenderers,
 };

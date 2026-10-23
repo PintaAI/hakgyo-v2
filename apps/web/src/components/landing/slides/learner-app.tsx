@@ -10,7 +10,7 @@ const games = [
   {
     glyph: "한",
     name: "Hangeul",
-    description: "Kenali 10 vokal dan 14 konsonan dasar Hangeul.",
+    description: "Kenali 21 vokal dan 19 konsonan Hangeul.",
   },
   {
     glyph: "글",

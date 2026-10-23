@@ -483,7 +483,10 @@ export async function submitAttempt(
       }
       const full = await tx.assessmentAttempt.findUnique({
         where: { id: attemptId },
-        select: gradableAttemptSelect,
+        select: {
+          ...gradableAttemptSelect,
+          courseItem: { select: { module: { select: { courseId: true } } } },
+        },
       });
       if (
         full?.userId !== userId ||
@@ -503,7 +506,13 @@ export async function submitAttempt(
       const graded = await gradeInProgressAttempt(tx, full, now);
       await recordAssessmentSubmitted(tx, full, now);
       if (graded.passed && !full.assessmentEvent) {
-        await markCourseItemCompleted(tx, full.courseItemId, userId, now);
+        await markCourseItemCompleted(
+          tx,
+          full.courseItemId,
+          userId,
+          now,
+          full.courseItem.module.courseId,
+        );
         await recordAssessmentPassed(tx, full, now);
       }
       return {

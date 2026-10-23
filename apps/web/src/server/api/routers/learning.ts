@@ -25,6 +25,7 @@ import {
   meetsMaterialRequirements,
 } from "~/server/vocabulary/evidence";
 import { createVocabularyProgressService } from "~/server/vocabulary/progress-service";
+import { awardHangeulMasteryIfComplete } from "~/server/foundation/hangeul-mastery-completion";
 import { isValidTimeZone } from "~/server/gamification/logic";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import { organizationBrandSelect } from "~/server/brand/context";
@@ -433,6 +434,7 @@ export const learningRouter = createTRPCRouter({
             vocabularySetId: true,
             materialId: true,
             organizationId: true,
+            module: { select: { courseId: true } },
           },
         });
         if (!item) throw new TRPCError({ code: "NOT_FOUND" });
@@ -503,6 +505,12 @@ export const learningRouter = createTRPCRouter({
             organizationId: item.organizationId,
             occurredAt: completedAt ?? undefined,
             userId: ctx.actorUserId,
+          });
+          await awardHangeulMasteryIfComplete(tx, {
+            userId: ctx.actorUserId,
+            courseItemIds: [input.courseItemId],
+            courseId: item.module.courseId,
+            now: completedAt ?? undefined,
           });
         }
         return progress;

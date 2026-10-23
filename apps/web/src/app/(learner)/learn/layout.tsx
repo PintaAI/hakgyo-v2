@@ -12,7 +12,7 @@ import {
 } from "~/components/ui/sidebar";
 import { requireSession } from "~/server/auth/dal";
 import { api, HydrateClient } from "~/trpc/server";
-import { getMyCourses } from "./learner-data";
+import { getMySidebarCourses } from "./learner-data";
 
 export default async function LearnerLayout({
   children,
@@ -21,7 +21,7 @@ export default async function LearnerLayout({
 }) {
   // Start the course list with the session check; the redirect for signed-out
   // visitors must still win over the procedure's UNAUTHORIZED error.
-  const coursesPromise = getMyCourses();
+  const coursesPromise = getMySidebarCourses();
   coursesPromise.catch(() => undefined);
   const [session, cookieStore] = await Promise.all([
     requireSession(),

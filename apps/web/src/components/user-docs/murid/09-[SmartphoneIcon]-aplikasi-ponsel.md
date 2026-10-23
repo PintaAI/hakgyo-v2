@@ -17,7 +17,7 @@ Gunakan akun yang sama dengan di situs web supaya kelasmu muncul.
 |---|---|
 | **Hari Ini** | Latihan harian dan streak |
 | **Belajar** | Kelas, materi, dan pembaruan terbaru |
-| **Latihan** | Kartu kosakata, permainan, serta latihan dan tryout |
+| **Latihan** | Kartu kosakata, permainan Hangeul, serta latihan dan tryout |
 | **Profil** | XP, pencapaian, pengaturan, dan bantuan |
 
 Jika kamu belajar di lebih dari satu lembaga, pilih lembaganya dengan tombol di pojok kanan atas. Tarik layar ke bawah untuk memperbarui.

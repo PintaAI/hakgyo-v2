@@ -48,6 +48,39 @@ describe("remapIds", () => {
     ]);
   });
 
+  test("remaps audio clips inside Hangeul block JSON props", () => {
+    const rows = (assetId: string) =>
+      JSON.stringify([
+        {
+          id: "r1",
+          note: "",
+          items: [
+            { text: "사다", assetId },
+            { text: "싸다", assetId: "" },
+          ],
+        },
+      ]);
+    const content = [
+      { type: "hangeulContrast", props: { rows: rows("asset-old") } },
+      {
+        type: "hangeulSyllableGrid",
+        props: {
+          audio: JSON.stringify([{ syllable: "가", assetId: "asset-old" }]),
+        },
+      },
+    ];
+
+    expect(remapIds(content, ids)).toEqual([
+      { type: "hangeulContrast", props: { rows: rows("asset-new") } },
+      {
+        type: "hangeulSyllableGrid",
+        props: {
+          audio: JSON.stringify([{ syllable: "가", assetId: "asset-new" }]),
+        },
+      },
+    ]);
+  });
+
   test("leaves numbers, nulls and unrelated strings untouched", () => {
     const value = { points: 2, note: null, text: "Halo dunia" };
     expect(remapIds(value, ids)).toEqual(value);

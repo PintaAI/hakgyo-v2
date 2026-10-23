@@ -5,16 +5,18 @@ import { ScrollView } from "react-native";
 import { toolbarIcons } from "../theme/toolbar-icons";
 
 export function GameBackToolbar({
+  accessibilityLabel = "Kembali ke Latihan",
   disabled = false,
   onPress,
 }: {
+  accessibilityLabel?: string;
   disabled?: boolean;
   onPress: () => void;
 }) {
   return (
     <Stack.Toolbar placement="left">
       <Stack.Toolbar.Button
-        accessibilityLabel="Kembali ke Latihan"
+        accessibilityLabel={accessibilityLabel}
         disabled={disabled}
         icon={toolbarIcons.back}
         onPress={onPress}

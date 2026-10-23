@@ -3,11 +3,13 @@ import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 
 import { CourseCover } from "~/components/course-cover";
 import { CourseOutlineList } from "~/components/learner/learn/course-outline-list";
+import { HangeulMasteryCompletionNote } from "~/components/learner/learn/hangeul-mastery-badge";
 import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { getCourseResumeItem } from "~/lib/learner/course-learning-path";
 import { learningItemHref } from "~/lib/learner/hrefs";
 import { cn } from "~/lib/utils";
+import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = { title: "Kurikulum" };
@@ -18,7 +20,10 @@ export default async function LearningCoursePage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
-  const course = await api.learning.getCourseOutline({ courseId });
+  const [course, hangeul] = await Promise.all([
+    api.learning.getCourseOutline({ courseId }),
+    courseId === HANGEUL_MASTERY_COURSE_ID ? api.preferences.get() : null,
+  ]);
   const allItems = course.modules.flatMap((module) => module.items);
   const completedCount = allItems.filter((item) => item.isCompleted).length;
   const progress = allItems.length
@@ -103,6 +108,12 @@ export default async function LearningCoursePage({
             Kamu berhasil! Semua aktivitas sudah selesai — buka lagi materi di
             bawah kapan pun kamu ingin mengulang.
           </p>
+          {hangeul?.hangeulMastered ? (
+            <HangeulMasteryCompletionNote
+              hidden={hangeul.hangeulHidden}
+              className="bg-background/60 mt-2"
+            />
+          ) : null}
         </div>
       ) : null}
 

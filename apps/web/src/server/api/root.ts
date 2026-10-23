@@ -91,6 +91,11 @@ export const appRouter = createTRPCRouter({
   practice: lazy(() =>
     import("~/server/api/routers/practice").then((m) => m.practiceRouter),
   ),
+  preferences: lazy(() =>
+    import("~/server/api/routers/preferences").then(
+      (m) => m.preferencesRouter,
+    ),
+  ),
   publicQuiz: lazy(() =>
     import("~/server/api/routers/public-quiz").then((m) => m.publicQuizRouter),
   ),

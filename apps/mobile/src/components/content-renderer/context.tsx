@@ -12,6 +12,7 @@ import type {
 
 type ContentRendererContextValue = {
   colors: ThemeColors;
+  courseItemId?: string;
   onOpenUrl: (url: string) => void | Promise<void>;
   onOpenResource?: (
     type: ResourceReferenceType,
@@ -34,6 +35,7 @@ function openExternalUrl(url: string) {
 
 export function ContentRendererProvider({
   children,
+  courseItemId,
   onOpenUrl,
   onOpenResource,
   onReadingProgress,
@@ -42,6 +44,7 @@ export function ContentRendererProvider({
   resolveAssetUrl,
 }: {
   children: ReactNode;
+  courseItemId?: string;
   onReadingProgress?: (key: string, finished: boolean) => void;
   onOpenUrl?: (url: string) => void | Promise<void>;
   onOpenResource?: (
@@ -57,6 +60,7 @@ export function ContentRendererProvider({
   const value = useMemo<ContentRendererContextValue>(
     () => ({
       colors,
+      courseItemId,
       onOpenUrl: onOpenUrl ?? openExternalUrl,
       onOpenResource,
       onReadingProgress,
@@ -66,6 +70,7 @@ export function ContentRendererProvider({
     }),
     [
       colors,
+      courseItemId,
       onOpenResource,
       onReadingProgress,
       onOpenUrl,

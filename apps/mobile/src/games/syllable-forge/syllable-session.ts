@@ -4,7 +4,10 @@ import {
   syllableKeys,
   VOWELS,
 } from "./hangul-composer";
-import { SYLLABLE_CHALLENGES } from "./syllable-forge-data";
+import {
+  SYLLABLE_CHALLENGES,
+  type SyllableChallenge,
+} from "./syllable-forge-data";
 
 export type SyllableSession = {
   phase: "intro" | "playing" | "correct" | "complete";
@@ -34,14 +37,26 @@ export type SessionAction =
     }
   | { type: "key"; key: string };
 
-export function syllableSessionReducer(
+/** A session reducer over one challenge set (a stage's, or the general one). */
+export function createSyllableSessionReducer(
+  challenges: readonly SyllableChallenge[],
+) {
+  return (state: SyllableSession, action: SessionAction) =>
+    reduceSyllableSession(challenges, state, action);
+}
+
+export const syllableSessionReducer =
+  createSyllableSessionReducer(SYLLABLE_CHALLENGES);
+
+function reduceSyllableSession(
+  challenges: readonly SyllableChallenge[],
   state: SyllableSession,
   action: SessionAction,
 ): SyllableSession {
   if (action.type === "start") return { ...initialSession, phase: "playing" };
   if (action.type === "next") {
     if (state.phase !== "correct") return state;
-    if (state.index === SYLLABLE_CHALLENGES.length - 1)
+    if (state.index === challenges.length - 1)
       return { ...state, phase: "complete" };
     return {
       ...state,
@@ -72,7 +87,7 @@ export function syllableSessionReducer(
         !(INITIALS.includes(action.key) || VOWELS.includes(action.key))
       )
         return state;
-      const challenge = SYLLABLE_CHALLENGES[state.index]!;
+      const challenge = challenges[state.index]!;
       const expectedKey = syllableKeys(challenge.target)[state.keys.length];
       const keys = [...state.keys, action.key];
       if (action.key !== expectedKey) {

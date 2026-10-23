@@ -1,7 +1,12 @@
+import { HANGEUL_MASTERY_ACHIEVEMENT_CODE } from "@hakgyo/shared/hangeul";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
 import { achievementLabel, dateLabel } from "../lib/study";
+import {
+  HangeulMasteryBadge,
+  HangeulMasteryMedal,
+} from "./hangeul-mastery-medal";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import {
   Action,
@@ -206,6 +211,9 @@ export function MilestoneTrail({
   if (isPending || error || !achievements) {
     return <QueryState pending={isPending} error={error} retry={onRetry} />;
   }
+  const hangeulMastery = achievements.find(
+    (achievement) => achievement.code === HANGEUL_MASTERY_ACHIEVEMENT_CODE,
+  );
 
   return (
     <View className="gap-5">
@@ -217,6 +225,12 @@ export function MilestoneTrail({
           </Text>
         }
       />
+
+      {hangeulMastery ? (
+        <HangeulMasteryBadge
+          detail={`Semua huruf dan batchim dikuasai · ${dateLabel(new Date(hangeulMastery.earnedAt))}`}
+        />
+      ) : null}
 
       {achievements.length === 0 ? (
         <EmptyState title="Belum ada pencapaian" variant="flush">
@@ -233,14 +247,18 @@ export function MilestoneTrail({
                 ) : null}
                 <View className="flex-row">
                   <View className="w-10 items-center">
-                    <View className="size-8 items-center justify-center rounded-full border border-primary bg-primary">
-                      <SymbolIcon
-                        name="checkmark"
-                        size={14}
-                        tintColor={colors.primaryForeground}
-                        weight="semibold"
-                      />
-                    </View>
+                    {achievement.code === HANGEUL_MASTERY_ACHIEVEMENT_CODE ? (
+                      <HangeulMasteryMedal size={32} />
+                    ) : (
+                      <View className="size-8 items-center justify-center rounded-full border border-primary bg-primary">
+                        <SymbolIcon
+                          name="checkmark"
+                          size={14}
+                          tintColor={colors.primaryForeground}
+                          weight="semibold"
+                        />
+                      </View>
+                    )}
                   </View>
                   <View className="min-w-0 flex-1 pl-3">
                     <View className="flex-row items-start gap-3">

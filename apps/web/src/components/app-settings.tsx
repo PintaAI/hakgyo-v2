@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   BellIcon,
   CheckIcon,
   CircleCheckIcon,
+  GraduationCapIcon,
   LanguagesIcon,
   MonitorIcon,
   MoonIcon,
@@ -26,6 +27,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Label } from "~/components/ui/label";
+import { LearningSettings } from "~/components/learning-settings";
 import {
   ShadowEditor,
   isShadowValue,
@@ -64,6 +66,7 @@ import {
   type OrganizationTheme,
 } from "~/lib/organization-theme";
 import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
 
 const fontLabels = {
   geist: "Geist · Modern sans",
@@ -387,8 +390,35 @@ function ChoiceButton({
   );
 }
 
+type SettingsSection = "appearance" | "learning";
+
 export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
   const { resolvedTheme, setTheme, theme } = useTheme();
+  const [selectedSection, setSection] = useState<SettingsSection>("appearance");
+  // Loaded when the dialog opens; only learners who mastered Hangeul get the
+  // Pembelajaran section.
+  const learning = api.preferences.get.useQuery(undefined, {
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const hasLearningSettings = learning.data?.hangeulMastered === true;
+  const section = hasLearningSettings ? selectedSection : "appearance";
+  const sections: {
+    key: SettingsSection;
+    label: string;
+    icon: typeof PaletteIcon;
+  }[] = [
+    { key: "appearance", label: "Tampilan", icon: PaletteIcon },
+    ...(hasLearningSettings
+      ? [
+          {
+            key: "learning" as const,
+            label: "Pembelajaran",
+            icon: GraduationCapIcon,
+          },
+        ]
+      : []),
+  ];
   const organizationTheme = useOrganizationTheme();
   const preferences = usePreferences();
   const effectivePreferences = useMemo(
@@ -465,12 +495,17 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
                 <SidebarGroupLabel>Aplikasi</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton isActive>
-                        <PaletteIcon />
-                        <span>Tampilan</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    {sections.map((option) => (
+                      <SidebarMenuItem key={option.key}>
+                        <SidebarMenuButton
+                          isActive={section === option.key}
+                          onClick={() => setSection(option.key)}
+                        >
+                          <option.icon />
+                          <span>{option.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
                     <SidebarMenuItem>
                       <SidebarMenuButton disabled>
                         <LanguagesIcon />
@@ -507,400 +542,438 @@ export function AppSettings({ open, onOpenChange }: AppSettingsProps) {
           </Sidebar>
 
           <main className="bg-background min-w-0 flex-1 overflow-y-auto">
+            {sections.length > 1 ? (
+              <div
+                role="tablist"
+                aria-label="Bagian pengaturan"
+                className="flex gap-2 border-b px-5 pt-5 pb-3 sm:hidden"
+              >
+                {sections.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={section === option.key}
+                    onClick={() => setSection(option.key)}
+                    className={cn(
+                      "flex min-h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold",
+                      section === option.key
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground",
+                    )}
+                  >
+                    <option.icon className="size-3.5" />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div className="px-5 pt-6 sm:px-7 sm:pt-7">
-              <h2 className="font-heading text-lg font-semibold">Tampilan</h2>
+              <h2 className="font-heading text-lg font-semibold">
+                {section === "learning" ? "Pembelajaran" : "Tampilan"}
+              </h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                Sesuaikan Hakgyo dengan cara Anda membaca dan bekerja.
+                {section === "learning"
+                  ? "Atur apa yang tampil di daftar belajarmu."
+                  : "Sesuaikan Hakgyo dengan cara Anda membaca dan bekerja."}
               </p>
             </div>
 
-            <div className="grid gap-8 p-5 sm:p-7">
-              <section className="grid gap-3">
-                <div>
-                  <Label>Tema</Label>
-                  <p className="text-muted-foreground text-xs">
-                    Pilih antarmuka terang, gelap, atau mengikuti sistem.
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: "light", label: "Terang", icon: SunIcon },
-                    { value: "dark", label: "Gelap", icon: MoonIcon },
-                    { value: "system", label: "Sistem", icon: MonitorIcon },
-                  ].map((option) => (
-                    <ChoiceButton
-                      active={activeTheme === option.value}
-                      key={option.value}
-                      onClick={() => setTheme(option.value)}
-                    >
-                      <span className="grid justify-items-center gap-1.5">
-                        <option.icon className="size-4" />
-                        {option.label}
-                      </span>
-                    </ChoiceButton>
-                  ))}
-                </div>
-              </section>
-
-              <section className="grid gap-3">
-                <div className="flex items-start justify-between gap-4">
+            {section === "learning" && learning.data ? (
+              <LearningSettings
+                showHangeulAfterMastery={learning.data.showHangeulAfterMastery}
+              />
+            ) : (
+              <div className="grid gap-8 p-5 sm:p-7">
+                <section className="grid gap-3">
                   <div>
-                    <Label htmlFor="dark-mode-brightness">
-                      Kecerahan mode gelap
-                    </Label>
+                    <Label>Tema</Label>
                     <p className="text-muted-foreground text-xs">
-                      Atur seluruh palet gelap tanpa mengubah warna terang.
+                      Pilih antarmuka terang, gelap, atau mengikuti sistem.
                     </p>
                   </div>
-                  <output
-                    className="bg-muted min-w-12 rounded-md px-2 py-1 text-center font-mono text-xs"
-                    htmlFor="dark-mode-brightness"
-                  >
-                    {effectivePreferences.darkBrightness}%
-                  </output>
-                </div>
-
-                <div className="grid gap-3 rounded-xl border p-4">
-                  <input
-                    aria-valuetext={`${effectivePreferences.darkBrightness}%`}
-                    className="accent-primary h-5 w-full cursor-pointer"
-                    id="dark-mode-brightness"
-                    disabled={Boolean(organizationTheme)}
-                    max={100}
-                    min={0}
-                    onChange={(event) =>
-                      updatePreference(
-                        "darkBrightness",
-                        Number(event.target.value),
-                      )
-                    }
-                    step={5}
-                    type="range"
-                    value={effectivePreferences.darkBrightness}
-                  />
-                  <div className="text-muted-foreground flex justify-between text-[0.7rem]">
-                    <span>Lebih gelap</span>
-                    <span>Lebih terang</span>
-                  </div>
-
-                  <div
-                    className="grid grid-cols-[1fr_auto] overflow-hidden rounded-lg border text-xs"
-                    style={{
-                      backgroundColor: palette.background.dark,
-                      color: palette.foreground.dark,
-                    }}
-                  >
-                    <div
-                      className="flex items-center px-3 py-2 font-medium"
-                      style={{ backgroundColor: palette.sidebar.dark }}
-                    >
-                      Sidebar
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-2">
-                      <span>Teks</span>
-                      <span
-                        className="rounded-md px-2 py-1 font-medium"
-                        style={{
-                          backgroundColor: palette.primary.dark,
-                          color: getReadableForeground(palette.primary.dark),
-                        }}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "light", label: "Terang", icon: SunIcon },
+                      { value: "dark", label: "Gelap", icon: MoonIcon },
+                      { value: "system", label: "Sistem", icon: MonitorIcon },
+                    ].map((option) => (
+                      <ChoiceButton
+                        active={activeTheme === option.value}
+                        key={option.value}
+                        onClick={() => setTheme(option.value)}
                       >
-                        Aksi
-                      </span>
-                    </div>
+                        <span className="grid justify-items-center gap-1.5">
+                          <option.icon className="size-4" />
+                          {option.label}
+                        </span>
+                      </ChoiceButton>
+                    ))}
                   </div>
-                </div>
-              </section>
+                </section>
 
-              <section className="grid gap-3">
-                <div>
-                  <Label>Warna</Label>
-                  <p className="text-muted-foreground text-xs">
-                    Pilih warna dasar; pasangan terang dan gelap dibuat
-                    otomatis.
-                  </p>
-                  {organizationTheme ? (
-                    <p className="text-primary mt-1 text-xs">
-                      Warna mengikuti organisasi dan sama di web serta mobile.
-                    </p>
-                  ) : null}
-                </div>
-
-                <fieldset
-                  disabled={Boolean(organizationTheme)}
-                  className="grid gap-4 rounded-xl border p-4 disabled:opacity-60"
-                >
-                  <div className="grid gap-2 sm:grid-cols-[1fr_15rem] sm:items-center">
+                <section className="grid gap-3">
+                  <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Label htmlFor="app-accent-color">Warna aksi</Label>
-                      <p className="text-muted-foreground text-xs">
-                        Tombol utama, link, fokus, dan sorotan.
-                      </p>
-                    </div>
-                    <ColorPicker
-                      defaultValue={
-                        organizationTheme?.primary ?? defaultColorSeeds.color
-                      }
-                      fallbackLabel={
-                        organizationTheme ? "Organisasi" : "Default"
-                      }
-                      id="app-accent-color"
-                      label="Warna aksi"
-                      onValueChange={(value) =>
-                        updatePreference("color", value)
-                      }
-                      previewColors={palette.primary}
-                      presets={accentPresets}
-                      value={organizationTheme ? null : preferences.color}
-                    />
-                  </div>
-
-                  <div className="border-border grid gap-2 border-t pt-4 sm:grid-cols-[1fr_15rem] sm:items-center">
-                    <div>
-                      <Label htmlFor="app-background-color">
-                        Warna sekunder
+                      <Label htmlFor="dark-mode-brightness">
+                        Kecerahan mode gelap
                       </Label>
                       <p className="text-muted-foreground text-xs">
-                        Warna dasar untuk tombol sekunder dan permukaan
-                        pendukung.
+                        Atur seluruh palet gelap tanpa mengubah warna terang.
                       </p>
                     </div>
-                    <ColorPicker
-                      defaultValue={
-                        organizationTheme?.secondary ??
-                        defaultColorSeeds.secondary
-                      }
-                      fallbackLabel={
-                        organizationTheme ? "Organisasi" : "Default"
-                      }
-                      id="app-background-color"
-                      label="Warna sekunder"
-                      onValueChange={(value) =>
-                        updatePreference("secondary", value)
-                      }
-                      previewColors={palette.secondary}
-                      presets={accentPresets}
-                      value={organizationTheme ? null : preferences.secondary}
-                    />
+                    <output
+                      className="bg-muted min-w-12 rounded-md px-2 py-1 text-center font-mono text-xs"
+                      htmlFor="dark-mode-brightness"
+                    >
+                      {effectivePreferences.darkBrightness}%
+                    </output>
                   </div>
 
-                  <div className="border-border grid gap-2 border-t pt-4 sm:grid-cols-[1fr_15rem] sm:items-center">
-                    <div>
-                      <Label htmlFor="app-foreground-color">Warna aksen</Label>
-                      <p className="text-muted-foreground text-xs">
-                        Warna dasar untuk hover, pilihan, dan sorotan.
-                      </p>
+                  <div className="grid gap-3 rounded-xl border p-4">
+                    <input
+                      aria-valuetext={`${effectivePreferences.darkBrightness}%`}
+                      className="accent-primary h-5 w-full cursor-pointer"
+                      id="dark-mode-brightness"
+                      disabled={Boolean(organizationTheme)}
+                      max={100}
+                      min={0}
+                      onChange={(event) =>
+                        updatePreference(
+                          "darkBrightness",
+                          Number(event.target.value),
+                        )
+                      }
+                      step={5}
+                      type="range"
+                      value={effectivePreferences.darkBrightness}
+                    />
+                    <div className="text-muted-foreground flex justify-between text-[0.7rem]">
+                      <span>Lebih gelap</span>
+                      <span>Lebih terang</span>
                     </div>
-                    <ColorPicker
-                      defaultValue={
-                        organizationTheme?.accent ?? defaultColorSeeds.accent
-                      }
-                      fallbackLabel={
-                        organizationTheme ? "Organisasi" : "Default"
-                      }
-                      id="app-foreground-color"
-                      label="Warna aksen"
-                      onValueChange={(value) =>
-                        updatePreference("accent", value)
-                      }
-                      previewColors={palette.accent}
-                      presets={accentPresets}
-                      value={organizationTheme ? null : preferences.accent}
-                    />
-                  </div>
 
-                  <div
-                    aria-live="polite"
-                    className={cn(
-                      "flex items-start gap-2 rounded-lg border px-3 py-2 text-xs",
-                      readableContrast
-                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                        : "border-destructive/20 bg-destructive/10 text-destructive",
-                    )}
-                  >
-                    {readableContrast ? (
-                      <CircleCheckIcon className="mt-0.5 size-4 shrink-0" />
-                    ) : (
-                      <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                    )}
-                    <span>
-                      Kontras teks {textContrast.toFixed(1)}:1 ·{" "}
-                      {readableContrast
-                        ? "nyaman dibaca."
-                        : "rendah; pilih warna latar atau teks yang lebih berbeda."}
-                    </span>
-                  </div>
-                </fieldset>
-              </section>
-
-              <section className="grid gap-3">
-                <div>
-                  <Label>Bayangan</Label>
-                  <p className="text-muted-foreground text-xs">
-                    Mulai dari preset, lalu atur arah, kelembutan, penyebaran,
-                    dan intensitasnya.
-                  </p>
-                </div>
-                <ShadowEditor
-                  onValueChange={(value) => updatePreference("shadow", value)}
-                  value={effectivePreferences.shadow}
-                />
-              </section>
-
-              <section className="grid gap-3">
-                <div>
-                  <Label>Gaya font</Label>
-                  <p className="text-muted-foreground text-xs">
-                    Pilih karakter tipografi yang dipakai di seluruh aplikasi.
-                  </p>
-                </div>
-                <Select
-                  value={effectivePreferences.font}
-                  items={fontLabels}
-                  onValueChange={(value) => {
-                    if (value) updatePreference("font", value);
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="geist">Geist · Modern sans</SelectItem>
-                    <SelectItem value="inter">Inter · UI sans</SelectItem>
-                    <SelectItem value="poppins">
-                      Poppins · Geometric sans
-                    </SelectItem>
-                    <SelectItem value="merriweather">
-                      Merriweather · Reading serif
-                    </SelectItem>
-                    <SelectItem value="jetbrains">
-                      JetBrains Mono · Monospace
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </section>
-
-              <section className="grid gap-3">
-                <div>
-                  <Label>Ukuran teks</Label>
-                  <p className="text-muted-foreground text-xs">
-                    Sesuaikan skala teks dan antarmuka dasar.
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: "small", label: "Kecil", sample: "text-xs" },
-                    { value: "default", label: "Default", sample: "text-sm" },
-                    { value: "large", label: "Besar", sample: "text-base" },
-                  ].map((option) => (
-                    <ChoiceButton
-                      active={effectivePreferences.size === option.value}
-                      key={option.value}
-                      onClick={() =>
-                        updatePreference(
-                          "size",
-                          option.value as Preferences["size"],
-                        )
-                      }
+                    <div
+                      className="grid grid-cols-[1fr_auto] overflow-hidden rounded-lg border text-xs"
+                      style={{
+                        backgroundColor: palette.background.dark,
+                        color: palette.foreground.dark,
+                      }}
                     >
-                      <span className={option.sample}>{option.label}</span>
-                    </ChoiceButton>
-                  ))}
-                </div>
-              </section>
-
-              <section className="grid gap-3">
-                <div>
-                  <Label>Spasi</Label>
-                  <p className="text-muted-foreground text-xs">
-                    Atur seberapa banyak ruang antar elemen antarmuka.
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: "compact", label: "Padat", bars: "gap-0.5" },
-                    {
-                      value: "comfortable",
-                      label: "Nyaman",
-                      bars: "gap-1.5",
-                    },
-                    { value: "spacious", label: "Luas", bars: "gap-2.5" },
-                  ].map((option) => (
-                    <ChoiceButton
-                      active={effectivePreferences.density === option.value}
-                      key={option.value}
-                      onClick={() =>
-                        updatePreference(
-                          "density",
-                          option.value as Preferences["density"],
-                        )
-                      }
-                    >
-                      <span className="grid justify-items-center gap-2">
-                        <span className={cn("grid w-8", option.bars)}>
-                          <span className="bg-foreground/70 h-0.5 rounded-full" />
-                          <span className="bg-foreground/70 h-0.5 rounded-full" />
-                          <span className="bg-foreground/70 h-0.5 rounded-full" />
-                        </span>
-                        {option.label}
-                      </span>
-                    </ChoiceButton>
-                  ))}
-                </div>
-              </section>
-
-              <section className="grid gap-3">
-                <div>
-                  <Label>Radius sudut</Label>
-                  <p className="text-muted-foreground text-xs">
-                    Pilih seberapa tajam atau lembut permukaan terasa.
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: "none", label: "Kotak", radius: "rounded-none" },
-                    { value: "small", label: "Halus", radius: "rounded-sm" },
-                    { value: "large", label: "Bulat", radius: "rounded-2xl" },
-                  ].map((option) => (
-                    <ChoiceButton
-                      active={effectivePreferences.radius === option.value}
-                      key={option.value}
-                      onClick={() =>
-                        updatePreference(
-                          "radius",
-                          option.value as Preferences["radius"],
-                        )
-                      }
-                    >
-                      <span className="grid justify-items-center gap-2">
+                      <div
+                        className="flex items-center px-3 py-2 font-medium"
+                        style={{ backgroundColor: palette.sidebar.dark }}
+                      >
+                        Sidebar
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <span>Teks</span>
                         <span
-                          className={cn(
-                            "border-foreground/50 size-7 border-2",
-                            option.radius,
-                          )}
-                        />
-                        {option.label}
-                      </span>
-                    </ChoiceButton>
-                  ))}
-                </div>
-              </section>
+                          className="rounded-md px-2 py-1 font-medium"
+                          style={{
+                            backgroundColor: palette.primary.dark,
+                            color: getReadableForeground(palette.primary.dark),
+                          }}
+                        >
+                          Aksi
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
 
-              <div className="bg-muted/50 rounded-lg border p-4">
-                <p className="font-medium">Pratinjau langsung</p>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  Perubahan diterapkan langsung. Pengaturan yang tidak diubah
-                  mengikuti tema organisasi; override personal tersimpan di
-                  perangkat ini. Mode saat ini: {resolvedTheme ?? "sistem"}.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button size="sm">Action utama</Button>
-                  <Button size="sm" variant="outline">
-                    Sekunder
-                  </Button>
+                <section className="grid gap-3">
+                  <div>
+                    <Label>Warna</Label>
+                    <p className="text-muted-foreground text-xs">
+                      Pilih warna dasar; pasangan terang dan gelap dibuat
+                      otomatis.
+                    </p>
+                    {organizationTheme ? (
+                      <p className="text-primary mt-1 text-xs">
+                        Warna mengikuti organisasi dan sama di web serta mobile.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <fieldset
+                    disabled={Boolean(organizationTheme)}
+                    className="grid gap-4 rounded-xl border p-4 disabled:opacity-60"
+                  >
+                    <div className="grid gap-2 sm:grid-cols-[1fr_15rem] sm:items-center">
+                      <div>
+                        <Label htmlFor="app-accent-color">Warna aksi</Label>
+                        <p className="text-muted-foreground text-xs">
+                          Tombol utama, link, fokus, dan sorotan.
+                        </p>
+                      </div>
+                      <ColorPicker
+                        defaultValue={
+                          organizationTheme?.primary ?? defaultColorSeeds.color
+                        }
+                        fallbackLabel={
+                          organizationTheme ? "Organisasi" : "Default"
+                        }
+                        id="app-accent-color"
+                        label="Warna aksi"
+                        onValueChange={(value) =>
+                          updatePreference("color", value)
+                        }
+                        previewColors={palette.primary}
+                        presets={accentPresets}
+                        value={organizationTheme ? null : preferences.color}
+                      />
+                    </div>
+
+                    <div className="border-border grid gap-2 border-t pt-4 sm:grid-cols-[1fr_15rem] sm:items-center">
+                      <div>
+                        <Label htmlFor="app-background-color">
+                          Warna sekunder
+                        </Label>
+                        <p className="text-muted-foreground text-xs">
+                          Warna dasar untuk tombol sekunder dan permukaan
+                          pendukung.
+                        </p>
+                      </div>
+                      <ColorPicker
+                        defaultValue={
+                          organizationTheme?.secondary ??
+                          defaultColorSeeds.secondary
+                        }
+                        fallbackLabel={
+                          organizationTheme ? "Organisasi" : "Default"
+                        }
+                        id="app-background-color"
+                        label="Warna sekunder"
+                        onValueChange={(value) =>
+                          updatePreference("secondary", value)
+                        }
+                        previewColors={palette.secondary}
+                        presets={accentPresets}
+                        value={organizationTheme ? null : preferences.secondary}
+                      />
+                    </div>
+
+                    <div className="border-border grid gap-2 border-t pt-4 sm:grid-cols-[1fr_15rem] sm:items-center">
+                      <div>
+                        <Label htmlFor="app-foreground-color">
+                          Warna aksen
+                        </Label>
+                        <p className="text-muted-foreground text-xs">
+                          Warna dasar untuk hover, pilihan, dan sorotan.
+                        </p>
+                      </div>
+                      <ColorPicker
+                        defaultValue={
+                          organizationTheme?.accent ?? defaultColorSeeds.accent
+                        }
+                        fallbackLabel={
+                          organizationTheme ? "Organisasi" : "Default"
+                        }
+                        id="app-foreground-color"
+                        label="Warna aksen"
+                        onValueChange={(value) =>
+                          updatePreference("accent", value)
+                        }
+                        previewColors={palette.accent}
+                        presets={accentPresets}
+                        value={organizationTheme ? null : preferences.accent}
+                      />
+                    </div>
+
+                    <div
+                      aria-live="polite"
+                      className={cn(
+                        "flex items-start gap-2 rounded-lg border px-3 py-2 text-xs",
+                        readableContrast
+                          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          : "border-destructive/20 bg-destructive/10 text-destructive",
+                      )}
+                    >
+                      {readableContrast ? (
+                        <CircleCheckIcon className="mt-0.5 size-4 shrink-0" />
+                      ) : (
+                        <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                      )}
+                      <span>
+                        Kontras teks {textContrast.toFixed(1)}:1 ·{" "}
+                        {readableContrast
+                          ? "nyaman dibaca."
+                          : "rendah; pilih warna latar atau teks yang lebih berbeda."}
+                      </span>
+                    </div>
+                  </fieldset>
+                </section>
+
+                <section className="grid gap-3">
+                  <div>
+                    <Label>Bayangan</Label>
+                    <p className="text-muted-foreground text-xs">
+                      Mulai dari preset, lalu atur arah, kelembutan, penyebaran,
+                      dan intensitasnya.
+                    </p>
+                  </div>
+                  <ShadowEditor
+                    onValueChange={(value) => updatePreference("shadow", value)}
+                    value={effectivePreferences.shadow}
+                  />
+                </section>
+
+                <section className="grid gap-3">
+                  <div>
+                    <Label>Gaya font</Label>
+                    <p className="text-muted-foreground text-xs">
+                      Pilih karakter tipografi yang dipakai di seluruh aplikasi.
+                    </p>
+                  </div>
+                  <Select
+                    value={effectivePreferences.font}
+                    items={fontLabels}
+                    onValueChange={(value) => {
+                      if (value) updatePreference("font", value);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="geist">Geist · Modern sans</SelectItem>
+                      <SelectItem value="inter">Inter · UI sans</SelectItem>
+                      <SelectItem value="poppins">
+                        Poppins · Geometric sans
+                      </SelectItem>
+                      <SelectItem value="merriweather">
+                        Merriweather · Reading serif
+                      </SelectItem>
+                      <SelectItem value="jetbrains">
+                        JetBrains Mono · Monospace
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </section>
+
+                <section className="grid gap-3">
+                  <div>
+                    <Label>Ukuran teks</Label>
+                    <p className="text-muted-foreground text-xs">
+                      Sesuaikan skala teks dan antarmuka dasar.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "small", label: "Kecil", sample: "text-xs" },
+                      { value: "default", label: "Default", sample: "text-sm" },
+                      { value: "large", label: "Besar", sample: "text-base" },
+                    ].map((option) => (
+                      <ChoiceButton
+                        active={effectivePreferences.size === option.value}
+                        key={option.value}
+                        onClick={() =>
+                          updatePreference(
+                            "size",
+                            option.value as Preferences["size"],
+                          )
+                        }
+                      >
+                        <span className={option.sample}>{option.label}</span>
+                      </ChoiceButton>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="grid gap-3">
+                  <div>
+                    <Label>Spasi</Label>
+                    <p className="text-muted-foreground text-xs">
+                      Atur seberapa banyak ruang antar elemen antarmuka.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "compact", label: "Padat", bars: "gap-0.5" },
+                      {
+                        value: "comfortable",
+                        label: "Nyaman",
+                        bars: "gap-1.5",
+                      },
+                      { value: "spacious", label: "Luas", bars: "gap-2.5" },
+                    ].map((option) => (
+                      <ChoiceButton
+                        active={effectivePreferences.density === option.value}
+                        key={option.value}
+                        onClick={() =>
+                          updatePreference(
+                            "density",
+                            option.value as Preferences["density"],
+                          )
+                        }
+                      >
+                        <span className="grid justify-items-center gap-2">
+                          <span className={cn("grid w-8", option.bars)}>
+                            <span className="bg-foreground/70 h-0.5 rounded-full" />
+                            <span className="bg-foreground/70 h-0.5 rounded-full" />
+                            <span className="bg-foreground/70 h-0.5 rounded-full" />
+                          </span>
+                          {option.label}
+                        </span>
+                      </ChoiceButton>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="grid gap-3">
+                  <div>
+                    <Label>Radius sudut</Label>
+                    <p className="text-muted-foreground text-xs">
+                      Pilih seberapa tajam atau lembut permukaan terasa.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "none", label: "Kotak", radius: "rounded-none" },
+                      { value: "small", label: "Halus", radius: "rounded-sm" },
+                      { value: "large", label: "Bulat", radius: "rounded-2xl" },
+                    ].map((option) => (
+                      <ChoiceButton
+                        active={effectivePreferences.radius === option.value}
+                        key={option.value}
+                        onClick={() =>
+                          updatePreference(
+                            "radius",
+                            option.value as Preferences["radius"],
+                          )
+                        }
+                      >
+                        <span className="grid justify-items-center gap-2">
+                          <span
+                            className={cn(
+                              "border-foreground/50 size-7 border-2",
+                              option.radius,
+                            )}
+                          />
+                          {option.label}
+                        </span>
+                      </ChoiceButton>
+                    ))}
+                  </div>
+                </section>
+
+                <div className="bg-muted/50 rounded-lg border p-4">
+                  <p className="font-medium">Pratinjau langsung</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Perubahan diterapkan langsung. Pengaturan yang tidak diubah
+                    mengikuti tema organisasi; override personal tersimpan di
+                    perangkat ini. Mode saat ini: {resolvedTheme ?? "sistem"}.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button size="sm">Action utama</Button>
+                    <Button size="sm" variant="outline">
+                      Sekunder
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </main>
         </SidebarProvider>
       </DialogContent>

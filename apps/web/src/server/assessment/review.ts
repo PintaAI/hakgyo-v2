@@ -186,6 +186,7 @@ export async function reviewAttempt(
           status: true,
           maxScore: true,
           courseItemId: true,
+          courseItem: { select: { module: { select: { courseId: true } } } },
           assessment: { select: { passingScore: true } },
           assessmentEvent: {
             select: {
@@ -284,6 +285,7 @@ export async function reviewAttempt(
           attempt.courseItemId,
           attempt.userId,
           now,
+          attempt.courseItem.module.courseId,
         );
         // Dated in the learner's stored time zone; the reviewer's request carries none.
         await recordAssessmentPassed(tx, attempt, now);

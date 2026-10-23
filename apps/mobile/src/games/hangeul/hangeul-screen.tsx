@@ -1,4 +1,5 @@
-import { router, Stack } from "expo-router";
+import type { HangeulGameStage } from "@hakgyo/shared/hangeul";
+import { Stack } from "expo-router";
 import { Asset } from "expo-asset";
 import { Image } from "expo-image";
 import { useMemo, useState } from "react";
@@ -16,24 +17,21 @@ import { StudyAction } from "../../components/study-glass";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { GameStartModal } from "../game-modals";
+import { gameLeaveLabel, type GameSource } from "../game-exit";
+import { leaveGame } from "../game-navigation";
 import { GameBackToolbar, GamePage } from "../game-screens";
 import {
   getHangeulLetter,
   getQuizOptions,
-  HANGEUL_FAMILIES,
   HANGEUL_LETTERS,
   type HangeulLetter,
 } from "./hangeul-data";
+import { hangeulLessonPlan, type HangeulFamilyGroup } from "./hangeul-stage";
 import { SymbolIcon } from "../../components/ui/symbol-icon";
 
 const introImage = require("../../../assets/games/hangeul-intro.png");
 const introImageAsset = Asset.fromModule(introImage);
 void introImageAsset.downloadAsync().catch(() => undefined);
-const INTRO_STEP_COUNT = HANGEUL_FAMILIES.length + 1;
-const VOWEL_COUNT = HANGEUL_LETTERS.filter(
-  (letter) => letter.kind === "vowel",
-).length;
-const CONSONANT_COUNT = HANGEUL_LETTERS.length - VOWEL_COUNT;
 
 type Phase = "intro" | "learn" | "quiz" | "complete";
 
@@ -222,12 +220,9 @@ function EquationTile({
   );
 }
 
-function FamilyStep({ index }: { index: number }) {
+function FamilyStep({ group }: { group: HangeulFamilyGroup }) {
   const { colors } = useAppTheme();
-  const family = HANGEUL_FAMILIES[index]!;
-  const letters = family.letterIds
-    .map(getHangeulLetter)
-    .filter((letter): letter is HangeulLetter => Boolean(letter));
+  const { family, letters } = group;
 
   return (
     <View style={styles.stepContent}>
@@ -251,14 +246,11 @@ function FamilyStep({ index }: { index: number }) {
   );
 }
 
-function CheatSheet() {
+function CheatSheet({ groups }: { groups: HangeulFamilyGroup[] }) {
   const { colors } = useAppTheme();
   return (
     <View style={styles.cheatSheet}>
-      {HANGEUL_FAMILIES.map((family) => {
-        const letters = family.letterIds
-          .map(getHangeulLetter)
-          .filter((letter): letter is HangeulLetter => Boolean(letter));
+      {groups.map(({ family, letters }) => {
         return (
           <View key={family.id} style={styles.cheatSheetFamilySection}>
             <Text
@@ -279,9 +271,11 @@ function CheatSheet() {
 }
 
 function HangeulCheatSheetModal({
+  groups,
   visible,
   onClose,
 }: {
+  groups: HangeulFamilyGroup[];
   visible: boolean;
   onClose: () => void;
 }) {
@@ -327,7 +321,7 @@ function HangeulCheatSheetModal({
               </Pressable>
             </GlassBox>
           </View>
-          <CheatSheet />
+          <CheatSheet groups={groups} />
           <StudyAction accessibilityLabel="Kembali ke kuis" onPress={onClose}>
             Kembali ke kuis
           </StudyAction>
@@ -425,29 +419,70 @@ function QuizOption({
   );
 }
 
-export function HangeulScreen() {
+function introCopy(plan: ReturnType<typeof hangeulLessonPlan>) {
+  const { newLetters, reviewLetters, stage } = plan;
+  const vowels = newLetters.filter((letter) => letter.kind === "vowel").length;
+  const consonants = newLetters.length - vowels;
+  if (!stage) {
+    return {
+      body: `Pelajari ${vowels} vokal dan ${consonants} konsonan, termasuk bentuk dasar dan ganda, lewat keluarga yang mudah diingat.`,
+      detail: `Kenali keluarga bentuk, bunyi bantu Indonesia, dan ${newLetters.length} huruf Hangeul dasar maupun ganda. Huruf yang salah akan muncul lagi sampai kamu bisa.`,
+      done: "Kamu sudah mengenali semua vokal dan konsonan dasar maupun ganda pada sesi ini. Ulangi lagi untuk memperkuat ingatan.",
+      title: "Kenalan dengan Hangeul",
+    };
+  }
+  if (stage.batchim) {
+    return {
+      body: `Ulangi semua ${newLetters.length} huruf Hangeul sebelum membaca batchim.`,
+      detail: `Ulangi ${newLetters.length} huruf Hangeul lewat keluarga bentuk dan bunyi bantu Indonesia. Huruf yang salah akan muncul lagi sampai kamu bisa.`,
+      done: "Kamu sudah mengenali semua huruf Hangeul. Sekarang kamu siap membaca batchim.",
+      title: stage.title,
+    };
+  }
+  const letters = newLetters.map((letter) => letter.character).join(" ");
+  const review = reviewLetters.length
+    ? ` Kuis juga mengulang ${reviewLetters.length} huruf sebelumnya.`
+    : "";
+  return {
+    body: `Pelajari ${newLetters.length} huruf baru: ${letters}.${review}`,
+    detail: `Kenali ${newLetters.length} huruf baru (${letters}) lewat keluarga bentuk dan bunyi bantu Indonesia.${review} Huruf yang salah akan muncul lagi sampai kamu bisa.`,
+    done: `Kamu sudah mengenali huruf ${letters}. Ulangi lagi untuk memperkuat ingatan.`,
+    title: stage.title,
+  };
+}
+
+export function HangeulScreen({
+  source,
+  stage,
+}: {
+  source?: GameSource;
+  stage?: HangeulGameStage;
+}) {
   const { colors } = useAppTheme();
+  const plan = useMemo(() => hangeulLessonPlan(stage), [stage]);
+  const copy = introCopy(plan);
+  const introStepCount = plan.learnFamilies.length + 1;
+  const quizLength = plan.quizIds.length;
   const [phase, setPhase] = useState<Phase>("intro");
   const [lessonIndex, setLessonIndex] = useState(0);
-  const [quizQueue, setQuizQueue] = useState(() =>
-    HANGEUL_LETTERS.map((letter) => letter.id),
-  );
+  const [quizQueue, setQuizQueue] = useState(() => plan.quizIds);
   const [masteredIds, setMasteredIds] = useState<Set<string>>(() => new Set());
   const [selectedCue, setSelectedCue] = useState<string>();
   const [quizRound, setQuizRound] = useState(0);
   const [showCheatSheet, setShowCheatSheet] = useState(false);
 
-  const leave = () => router.dismissTo("/(home)/(tabs)/assessments");
+  const leave = () => leaveGame(source);
+  const leaveLabel = gameLeaveLabel(source);
   const currentLetter =
-    getHangeulLetter(quizQueue[0] ?? "") ?? HANGEUL_LETTERS[0]!;
+    getHangeulLetter(quizQueue[0] ?? "") ?? plan.pool[0] ?? HANGEUL_LETTERS[0]!;
   const options = useMemo(
-    () => getQuizOptions(currentLetter, quizRound),
-    [currentLetter, quizRound],
+    () => getQuizOptions(currentLetter, quizRound, plan.pool),
+    [currentLetter, quizRound, plan.pool],
   );
   const answerCorrect = selectedCue === currentLetter.cue;
 
   const startQuiz = () => {
-    setQuizQueue(HANGEUL_LETTERS.map((letter) => letter.id));
+    setQuizQueue(plan.quizIds);
     setMasteredIds(new Set());
     setSelectedCue(undefined);
     setQuizRound(0);
@@ -456,7 +491,7 @@ export function HangeulScreen() {
   };
 
   const continueLearning = () => {
-    if (lessonIndex + 1 < INTRO_STEP_COUNT) {
+    if (lessonIndex + 1 < introStepCount) {
       setLessonIndex((current) => current + 1);
       return;
     }
@@ -496,7 +531,10 @@ export function HangeulScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <GameBackToolbar onPress={leave} />
+      <GameBackToolbar
+        accessibilityLabel={source?.sourceCourseItemId ? leaveLabel : undefined}
+        onPress={leave}
+      />
       {phase === "quiz" ? (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.View hidesSharedBackground>
@@ -528,12 +566,10 @@ export function HangeulScreen() {
                 한글
               </Text>
               <Text style={[styles.heading, { color: colors.foreground }]}>
-                Kenalan dengan Hangeul
+                {copy.title}
               </Text>
               <Text style={[styles.body, { color: colors.mutedForeground }]}>
-                Pelajari {VOWEL_COUNT} vokal dan {CONSONANT_COUNT} konsonan,
-                termasuk bentuk dasar dan ganda, lewat keluarga yang mudah
-                diingat.
+                {copy.body}
               </Text>
             </View>
           </View>
@@ -541,7 +577,7 @@ export function HangeulScreen() {
 
         {phase === "learn" ? (
           <>
-            <ProgressBar progress={(lessonIndex + 1) / INTRO_STEP_COUNT} />
+            <ProgressBar progress={(lessonIndex + 1) / introStepCount} />
             <View style={styles.progressHeader}>
               <Text
                 style={[
@@ -557,13 +593,13 @@ export function HangeulScreen() {
                   { color: colors.mutedForeground },
                 ]}
               >
-                {lessonIndex + 1}/{INTRO_STEP_COUNT}
+                {lessonIndex + 1}/{introStepCount}
               </Text>
             </View>
             {lessonIndex === 0 ? (
               <OverviewStep />
             ) : (
-              <FamilyStep index={lessonIndex - 1} />
+              <FamilyStep group={plan.learnFamilies[lessonIndex - 1]!} />
             )}
             <View
               style={[
@@ -591,13 +627,13 @@ export function HangeulScreen() {
               >
                 <StudyAction
                   accessibilityLabel={
-                    lessonIndex + 1 === INTRO_STEP_COUNT
+                    lessonIndex + 1 === introStepCount
                       ? "Mulai cek ingatan"
                       : "Bagian selanjutnya"
                   }
                   onPress={continueLearning}
                 >
-                  {lessonIndex + 1 === INTRO_STEP_COUNT
+                  {lessonIndex + 1 === introStepCount
                     ? "Mulai cek ingatan"
                     : "Lanjut"}
                 </StudyAction>
@@ -608,7 +644,7 @@ export function HangeulScreen() {
 
         {phase === "quiz" ? (
           <>
-            <ProgressBar progress={masteredIds.size / HANGEUL_LETTERS.length} />
+            <ProgressBar progress={masteredIds.size / quizLength} />
             <View style={styles.progressHeader}>
               <Text
                 style={[
@@ -624,7 +660,7 @@ export function HangeulScreen() {
                   { color: colors.mutedForeground },
                 ]}
               >
-                {masteredIds.size}/{HANGEUL_LETTERS.length}
+                {masteredIds.size}/{quizLength}
               </Text>
             </View>
             <View style={styles.quizPrompt}>
@@ -703,14 +739,13 @@ export function HangeulScreen() {
             />
             <View style={styles.centeredCopy}>
               <Text style={[styles.eyebrow, { color: colors.primary }]}>
-                {HANGEUL_LETTERS.length}/{HANGEUL_LETTERS.length} DIKENALI
+                {quizLength}/{quizLength} DIKENALI
               </Text>
               <Text style={[styles.heading, { color: colors.foreground }]}>
-                Dasar Hangeul lengkap!
+                {stage ? `${stage.title} selesai!` : "Dasar Hangeul lengkap!"}
               </Text>
               <Text style={[styles.body, { color: colors.mutedForeground }]}>
-                Kamu sudah mengenali semua vokal dan konsonan dasar maupun ganda
-                pada sesi ini. Ulangi lagi untuk memperkuat ingatan.
+                {copy.done}
               </Text>
             </View>
             <StudyAction
@@ -720,28 +755,29 @@ export function HangeulScreen() {
               Ulangi pelajaran
             </StudyAction>
             <StudyAction
-              accessibilityLabel="Kembali ke latihan"
+              accessibilityLabel={leaveLabel}
               onPress={leave}
               secondary
             >
-              Kembali ke latihan
+              {leaveLabel}
             </StudyAction>
           </View>
         ) : null}
       </GamePage>
 
       <HangeulCheatSheetModal
+        groups={plan.sheetFamilies}
         onClose={() => setShowCheatSheet(false)}
         visible={phase === "quiz" && showCheatSheet}
       />
 
       <GameStartModal
-        detail={`Kenali keluarga bentuk, bunyi bantu Indonesia, dan ${HANGEUL_LETTERS.length} huruf Hangeul dasar maupun ganda. Huruf yang salah akan muncul lagi sampai kamu bisa.`}
+        detail={copy.detail}
         gameKey="stroke-master"
         onPrimary={() => setPhase("learn")}
         onSecondary={leave}
         primaryLabel="Mulai belajar"
-        title="Kenalan dengan Hangeul"
+        title={copy.title}
         visible={phase === "intro"}
       />
     </View>

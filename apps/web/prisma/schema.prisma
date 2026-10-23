@@ -79,6 +79,7 @@ model User {
   mobileClientVersions        MobileClientVersion[]
   notifications               Notification[]
   sidebarSeen                 LearnerSidebarSeen[]
+  preference                  UserPreference?
   payments                    Payment[]                     @relation("PaymentLearner")
   reviewedPayments            Payment[]                     @relation("PaymentReviewer")
 
@@ -642,6 +643,16 @@ model Organization {
   bankAccounts             OrganizationBankAccount[]
   payments                 Payment[]
   publicQuizzes            PublicQuiz[]
+}
+
+/// Per-user settings that follow the learner across web and mobile.
+model UserPreference {
+  userId                  String   @id
+  /// Keep showing the Hangeul Mastery course and games after mastering it.
+  showHangeulAfterMastery Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// A durable read receipt for one version of a learner-facing sidebar item.

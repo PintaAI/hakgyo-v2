@@ -1,3 +1,4 @@
+import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
 import { router, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { useEffect } from "react";
@@ -12,13 +13,22 @@ import {
   StudyScreen,
   TintedAction,
 } from "../../src/components/learning-ui";
+import { HangeulMasteryBadge } from "../../src/components/hangeul-mastery-medal";
 import { CourseOutlineList } from "../../src/components/learn/course-outline-list";
 import { CourseOfflineCard } from "../../src/components/offline-download";
 import { openCourseItem } from "../../src/lib/navigation";
 import { getCourseResumeItem } from "../../src/lib/course-learning-path";
 import { authClient } from "../../src/lib/auth-client";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
-import { useCourseOfflineMedia, useCourseOutline } from "../../src/sync/hooks";
+import {
+  hangeulCompletionBadgeCopy,
+  isHangeulShownAgain,
+} from "../../src/lib/hangeul-visibility";
+import {
+  useCourseOfflineMedia,
+  useCourseOutline,
+  useSyncIndex,
+} from "../../src/sync/hooks";
 import { withOpacity } from "../../src/theme/colors";
 import { firstParam } from "../../src/lib/route-params";
 
@@ -27,7 +37,10 @@ export default function CourseDetailScreen() {
   const courseId = firstParam(params.courseId);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
-  const { colors } = useAppTheme();
+  const { activeOrganizationId, colors } = useAppTheme();
+  const index = useSyncIndex(activeOrganizationId);
+  const isHangeulCourse = courseId === HANGEUL_MASTERY_COURSE_ID;
+  const hangeulShownAgain = isHangeulShownAgain(index.data);
   // Local bundle + learner index; online only when the bundle is missing.
   const courseQuery = useCourseOutline(courseId, {
     enabled: Boolean(session && courseId),
@@ -171,6 +184,15 @@ export default function CourseDetailScreen() {
             bawah kapan pun kamu ingin mengulang.
           </Text>
         </Card>
+      ) : null}
+
+      {isHangeulCourse &&
+      !resumeItem &&
+      allItems.length > 0 &&
+      completedCount === allItems.length ? (
+        <HangeulMasteryBadge
+          {...hangeulCompletionBadgeCopy(hangeulShownAgain)}
+        />
       ) : null}
 
       {offlineMedia ? (

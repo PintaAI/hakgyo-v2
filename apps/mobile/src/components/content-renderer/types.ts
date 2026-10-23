@@ -64,6 +64,12 @@ export type ContentBlockRenderer = ComponentType<BlockRendererProps>;
 
 export type NativeContentRendererProps = {
   content: unknown;
+  /**
+   * The course item the content belongs to. Hangeul game blocks open their
+   * game from it and return to it; without one (assessment questions) they
+   * only describe the game.
+   */
+  courseItemId?: string;
   emptyState?: ReactNode;
   onOpenUrl?: (url: string) => void | Promise<void>;
   onOpenResource?: (

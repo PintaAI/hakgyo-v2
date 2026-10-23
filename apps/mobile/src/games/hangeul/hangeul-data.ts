@@ -28,7 +28,7 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
     id: "eo",
     character: "ㅓ",
     cue: "eo",
-    note: "bunyi khas Korea; dengarkan contoh",
+    note: "rahang turun seperti o, tetapi bibir tidak bulat",
     kind: "vowel",
   },
   {
@@ -42,8 +42,8 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
     id: "o",
     character: "ㅗ",
     cue: "o",
-    note: "seperti o pada obat",
-    example: "obat",
+    note: "o tertutup seperti pada toko, bibir bulat",
+    example: "toko",
     kind: "vowel",
   },
   {
@@ -58,8 +58,8 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
     id: "u",
     character: "ㅜ",
     cue: "u",
-    note: "seperti u pada umur",
-    example: "umur",
+    note: "seperti u pada buku, bibir bulat dan maju",
+    example: "buku",
     kind: "vowel",
   },
   {
@@ -73,7 +73,7 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
     id: "eu",
     character: "ㅡ",
     cue: "eu",
-    note: "bunyi khas Korea; bibir rileks",
+    note: "ucapkan u dengan bibir datar, tidak bulat",
     kind: "vowel",
   },
   {
@@ -88,21 +88,22 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
     id: "ae",
     character: "ㅐ",
     cue: "ae",
-    note: "vokal ganda ㅏ + ㅣ; kini terdengar mirip e",
+    note: "ditulis ㅏ + ㅣ; e taling seperti sate, sama dengan ㅔ",
+    example: "sate",
     kind: "vowel",
   },
   {
     id: "yae",
     character: "ㅒ",
     cue: "yae",
-    note: "vokal ganda ㅑ + ㅣ; kini terdengar mirip ye",
+    note: "ditulis ㅑ + ㅣ; ye dengan e taling, sama dengan ㅖ",
     kind: "vowel",
   },
   {
     id: "e",
     character: "ㅔ",
     cue: "e",
-    note: "vokal ganda ㅓ + ㅣ; seperti e pada enak",
+    note: "ditulis ㅓ + ㅣ; e taling seperti pada enak",
     example: "enak",
     kind: "vowel",
   },
@@ -110,63 +111,65 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
     id: "ye",
     character: "ㅖ",
     cue: "ye",
-    note: "vokal ganda ㅕ + ㅣ; ㅔ dengan awalan y",
+    note: "ditulis ㅕ + ㅣ; ㅔ dengan awalan y",
     kind: "vowel",
   },
   {
     id: "wa",
     character: "ㅘ",
     cue: "wa",
-    note: "gabungan ㅗ + ㅏ",
+    note: "ㅗ + ㅏ; seperti wa pada wajah",
+    example: "wajah",
     kind: "vowel",
   },
   {
     id: "wae",
     character: "ㅙ",
     cue: "wae",
-    note: "gabungan ㅗ + ㅐ",
+    note: "ㅗ + ㅐ; we dengan e taling",
     kind: "vowel",
   },
   {
     id: "oe",
     character: "ㅚ",
     cue: "oe",
-    note: "gabungan ㅗ + ㅣ; sering terdengar seperti we",
+    note: "ㅗ + ㅣ; kini dibaca we dengan e taling",
     kind: "vowel",
   },
   {
     id: "wo",
     character: "ㅝ",
     cue: "wo",
-    note: "gabungan ㅜ + ㅓ",
+    note: "ㅜ + ㅓ; w lalu ㅓ, bibir tidak bulat di akhir",
     kind: "vowel",
   },
   {
     id: "we",
     character: "ㅞ",
     cue: "we",
-    note: "gabungan ㅜ + ㅔ",
+    note: "ㅜ + ㅔ; we dengan e taling",
     kind: "vowel",
   },
   {
     id: "wi",
     character: "ㅟ",
     cue: "wi",
-    note: "gabungan ㅜ + ㅣ",
+    note: "ㅜ + ㅣ; seperti wi pada wisata",
+    example: "wisata",
     kind: "vowel",
   },
   {
     id: "ui",
     character: "ㅢ",
     cue: "ui",
-    note: "gabungan ㅡ + ㅣ; pengucapannya berubah menurut posisi",
+    note: "ㅡ + ㅣ; bacaannya berubah menurut posisi",
     kind: "vowel",
   },
   {
     id: "gk",
     character: "ㄱ",
     cue: "g / k",
-    note: "di antara g dan k",
+    note: "di antara g dan k, tanpa hembusan",
     kind: "consonant",
   },
   {
@@ -181,14 +184,15 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
     id: "dt",
     character: "ㄷ",
     cue: "d / t",
-    note: "di antara d dan t",
+    note: "di antara d dan t, tanpa hembusan",
     kind: "consonant",
   },
   {
     id: "rl",
     character: "ㄹ",
     cue: "r / l",
-    note: "berubah menurut posisinya",
+    note: "r ringan tanpa getar; di akhir l seperti mobil",
+    example: "mobil",
     kind: "consonant",
   },
   {
@@ -203,7 +207,7 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
     id: "bp",
     character: "ㅂ",
     cue: "b / p",
-    note: "di antara b dan p",
+    note: "di antara b dan p, tanpa hembusan",
     kind: "consonant",
   },
   {
@@ -232,29 +236,33 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
   {
     id: "ch",
     character: "ㅊ",
-    cue: "ch",
-    note: "c dengan hembusan udara",
+    cue: "c berhembus",
+    note: "c seperti pada cari, ditambah hembusan udara",
+    example: "cari",
     kind: "consonant",
   },
   {
     id: "kh",
     character: "ㅋ",
-    cue: "kh",
-    note: "k dengan hembusan udara",
+    cue: "k berhembus",
+    note: "k seperti pada kita, ditambah hembusan udara",
+    example: "kita",
     kind: "consonant",
   },
   {
     id: "th",
     character: "ㅌ",
-    cue: "th",
-    note: "t dengan hembusan udara",
+    cue: "t berhembus",
+    note: "t seperti pada tahu, ditambah hembusan udara",
+    example: "tahu",
     kind: "consonant",
   },
   {
     id: "ph",
     character: "ㅍ",
-    cue: "ph",
-    note: "p dengan hembusan udara",
+    cue: "p berhembus",
+    note: "p seperti pada pagi, ditambah hembusan udara",
+    example: "pagi",
     kind: "consonant",
   },
   {
@@ -268,36 +276,36 @@ export const HANGEUL_LETTERS: HangeulLetter[] = [
   {
     id: "kk",
     character: "ㄲ",
-    cue: "kk",
-    note: "ㄱ ganda; bunyi k tegang tanpa hembusan kuat",
+    cue: "k tegang",
+    note: "k Indonesia dengan otot tegang, tanpa hembusan",
     kind: "consonant",
   },
   {
     id: "tt",
     character: "ㄸ",
-    cue: "tt",
-    note: "ㄷ ganda; bunyi t tegang tanpa hembusan kuat",
+    cue: "t tegang",
+    note: "t Indonesia dengan otot tegang, tanpa hembusan",
     kind: "consonant",
   },
   {
     id: "pp",
     character: "ㅃ",
-    cue: "pp",
-    note: "ㅂ ganda; bunyi p tegang tanpa hembusan kuat",
+    cue: "p tegang",
+    note: "p Indonesia dengan otot tegang, tanpa hembusan",
     kind: "consonant",
   },
   {
     id: "ss",
     character: "ㅆ",
-    cue: "ss",
-    note: "ㅅ ganda; bunyi s lebih tegang",
+    cue: "s tegang",
+    note: "s yang lebih tegang dan tajam daripada ㅅ",
     kind: "consonant",
   },
   {
     id: "jj",
     character: "ㅉ",
-    cue: "jj",
-    note: "ㅈ ganda; bunyi j tegang tanpa hembusan kuat",
+    cue: "c tegang",
+    note: "c Indonesia dengan otot tegang, tanpa hembusan",
     kind: "consonant",
   },
 ];
@@ -343,7 +351,7 @@ export const HANGEUL_FAMILIES: HangeulFamily[] = [
   {
     id: "giyeok-family",
     title: "Keluarga ㄱ",
-    detail: "Tambahan garis membuat bunyinya lebih kuat.",
+    detail: "Garis tambahan menandai hembusan udara.",
     letterIds: ["gk", "kh"],
   },
   {
@@ -382,17 +390,39 @@ export function getHangeulLetter(id: string) {
   return HANGEUL_LETTERS.find((letter) => letter.id === id);
 }
 
-export function getQuizOptions(letter: HangeulLetter, round: number) {
-  const peers = HANGEUL_LETTERS.filter(
-    (candidate) => candidate.kind === letter.kind && candidate.id !== letter.id,
-  );
-  const distractors = Array.from({ length: 3 }, (_, offset) => {
-    const index = (round * 3 + offset * 5) % peers.length;
-    return peers[index]!.cue;
-  });
-  const options = [...new Set([letter.cue, ...distractors])];
+/**
+ * Four answer cues for a letter: its own and three distractors of the same
+ * kind. Distractors come from `pool` (the letters a stage has taught) and
+ * only fall back to other letters of the same kind when the pool is too small.
+ */
+export function getQuizOptions(
+  letter: HangeulLetter,
+  round: number,
+  pool: readonly HangeulLetter[] = HANGEUL_LETTERS,
+) {
+  const sameKind = (candidate: HangeulLetter) =>
+    candidate.kind === letter.kind && candidate.cue !== letter.cue;
+  const poolPeers = pool.filter(sameKind);
+  const options = [letter.cue];
 
-  for (const peer of peers) {
+  if (poolPeers.length >= 3) {
+    const distractors = Array.from({ length: 3 }, (_, offset) => {
+      const index = (round * 3 + offset * 5) % poolPeers.length;
+      return poolPeers[index]!.cue;
+    });
+    for (const cue of distractors) {
+      if (!options.includes(cue)) options.push(cue);
+    }
+  }
+
+  const fallback = HANGEUL_LETTERS.filter(
+    (candidate) => sameKind(candidate) && !poolPeers.includes(candidate),
+  );
+  const rotate = <T>(items: readonly T[]) => {
+    const start = items.length ? (round * 3) % items.length : 0;
+    return [...items.slice(start), ...items.slice(0, start)];
+  };
+  for (const peer of [...rotate(poolPeers), ...rotate(fallback)]) {
     if (options.length === 4) break;
     if (!options.includes(peer.cue)) options.push(peer.cue);
   }

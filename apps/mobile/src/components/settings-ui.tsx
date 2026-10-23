@@ -128,12 +128,15 @@ export function SettingsToggleRow({
   value,
   onValueChange,
   detail,
+  disabled = false,
 }: {
   label: string;
   symbol: SymbolName;
   value: boolean;
   onValueChange: (value: boolean) => void;
   detail?: string;
+  /** Locks the switch, for example while the change is saved. */
+  disabled?: boolean;
 }) {
   const { colorScheme, colors } = useAppTheme();
 
@@ -161,6 +164,8 @@ export function SettingsToggleRow({
         </View>
       </View>
       <Switch
+        accessibilityState={{ disabled }}
+        disabled={disabled}
         value={value}
         onValueChange={onValueChange}
         trackColor={{ true: colors.primary }}

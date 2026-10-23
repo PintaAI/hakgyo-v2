@@ -64,6 +64,8 @@ type HubProps = {
   outlines: Record<string, CourseOutline>;
   onResourceFocus?: (offsetY: number) => void;
   preselectedSource?: PreselectedVocabularySource;
+  /** Leaves out the "Penguasaan Hangeul" games once Hangeul is mastered. */
+  hangeulHidden?: boolean;
 };
 
 type Tool = {
@@ -782,20 +784,22 @@ export function PracticeHub(props: HubProps) {
 
   return (
     <>
-      <View className="gap-3 pt-1">
-        <Eyebrow>Penguasaan Hangeul</Eyebrow>
-        <GamePicker
-          tools={hangeulTools}
-          onSelect={(key) => {
-            if (!isGameKey(key)) return;
-            router.push({
-              pathname: "/games/[gameKey]",
-              params: { gameKey: key },
-            });
-          }}
-          selectedKey={null}
-        />
-      </View>
+      {props.hangeulHidden ? null : (
+        <View className="gap-3 pt-1">
+          <Eyebrow>Penguasaan Hangeul</Eyebrow>
+          <GamePicker
+            tools={hangeulTools}
+            onSelect={(key) => {
+              if (!isGameKey(key)) return;
+              router.push({
+                pathname: "/games/[gameKey]",
+                params: { gameKey: key },
+              });
+            }}
+            selectedKey={null}
+          />
+        </View>
+      )}
       <QueryState
         error={props.coursesError}
         pending={props.coursesPending}

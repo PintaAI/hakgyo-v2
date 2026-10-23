@@ -27,7 +27,7 @@ export const gameCatalog = {
   "stroke-master": {
     title: "Hangeul",
     icon: "한",
-    description: "Kenali 10 vokal dan 14 konsonan dasar Hangeul.",
+    description: "Kenali 21 vokal dan 19 konsonan Hangeul.",
   },
   "word-builder": {
     title: "Susun kata",

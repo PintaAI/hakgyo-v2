@@ -2,6 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import { recordGamificationActivities } from "~/server/gamification/record-activity";
+import { HANGEUL_MASTERY_COURSE_ID } from "~/server/foundation/constants";
+import { awardHangeulMasteryIfComplete } from "~/server/foundation/hangeul-mastery-completion";
 import {
   getVocabularyEvidence,
   getVocabularyEvidenceForSets,
@@ -49,6 +51,7 @@ export function createVocabularyProgressService(
         select: {
           organizationId: true,
           moduleId: true,
+          module: { select: { courseId: true } },
           isPublished: true,
           type: true,
           vocabularySetId: true,
@@ -100,7 +103,12 @@ export function createVocabularyProgressService(
     if (!sourceIsPlacement) {
       await authorize({ courseItemId: placement.id, userId });
     }
-    return { organizationId: source.organizationId, placementId: placement.id };
+    // The placement is in the source's module, so in the same course.
+    return {
+      organizationId: source.organizationId,
+      placementId: placement.id,
+      courseId: source.module.courseId,
+    };
   }
 
   return {
@@ -135,7 +143,7 @@ export function createVocabularyProgressService(
       );
       const authorized = new Map<
         string,
-        { organizationId: string; placementId: string }
+        { organizationId: string; placementId: string; courseId: string }
       >();
       for (const [index, result] of scopeResults.entries()) {
         if (result.status === "rejected") throw result.reason;
@@ -287,18 +295,36 @@ export function createVocabularyProgressService(
           userId,
           [...scopes.values()].map((scope) => scope.vocabularySetId),
         );
-        const completedPlacementIds = new Set<string>();
+        // Placement id -> course id of the practised sets.
+        const practicedPlacements = new Map<string, string>();
         const sets = [...scopes].map(([key, scope]) => {
           const evidence = evidenceBySet.get(scope.vocabularySetId)!;
           if (evidence.practiced) {
-            completedPlacementIds.add(authorized.get(key)!.placementId);
+            const { placementId, courseId } = authorized.get(key)!;
+            practicedPlacements.set(placementId, courseId);
           }
           return { vocabularySetId: scope.vocabularySetId, ...evidence };
         });
-        if (completedPlacementIds.size) {
-          // Completion is durable: missing rows are created completed, and
-          // only rows that are not completed yet get a completion time.
-          const courseItemIds = [...completedPlacementIds];
+        // Completion is durable, so placements completed earlier need no
+        // writes; only the ones completing now are written and checked for
+        // Hangeul Mastery.
+        const alreadyCompleted = practicedPlacements.size
+          ? await tx.contentProgress.findMany({
+              where: {
+                userId,
+                courseItemId: { in: [...practicedPlacements.keys()] },
+                status: "COMPLETED",
+              },
+              select: { courseItemId: true },
+            })
+          : [];
+        for (const { courseItemId } of alreadyCompleted) {
+          practicedPlacements.delete(courseItemId);
+        }
+        if (practicedPlacements.size) {
+          // Missing rows are created completed, and only rows that are not
+          // completed yet get a completion time.
+          const courseItemIds = [...practicedPlacements.keys()];
           await tx.contentProgress.createMany({
             data: courseItemIds.map((courseItemId) => ({
               courseItemId,
@@ -315,6 +341,15 @@ export function createVocabularyProgressService(
               status: { not: "COMPLETED" },
             },
             data: { status: "COMPLETED", completedAt: now },
+          });
+          const hangeulItemIds = courseItemIds.filter(
+            (id) => practicedPlacements.get(id) === HANGEUL_MASTERY_COURSE_ID,
+          );
+          await awardHangeulMasteryIfComplete(tx, {
+            userId,
+            courseItemIds: hangeulItemIds,
+            courseId: HANGEUL_MASTERY_COURSE_ID,
+            now,
           });
         }
 

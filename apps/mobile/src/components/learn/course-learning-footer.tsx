@@ -1,3 +1,4 @@
+import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -13,7 +14,16 @@ import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { openCourseItem } from "../../lib/navigation";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../providers/MobileSyncProvider";
-import { readCourseOutline, useCourseOutline } from "../../sync/hooks";
+import {
+  hangeulCompletionBadgeCopy,
+  isHangeulShownAgain,
+} from "../../lib/hangeul-visibility";
+import {
+  readCourseOutline,
+  useCourseOutline,
+  useSyncIndex,
+} from "../../sync/hooks";
+import { HangeulMasteryBadge } from "../hangeul-mastery-medal";
 import { Action, Eyebrow, ProgressBar } from "../learning-ui";
 import { StudyAction } from "../study-glass";
 
@@ -69,6 +79,7 @@ export function CourseLearningFooter({
   const queryClient = useQueryClient();
   const outline = useCourseOutline(courseId);
   const { activeOrganizationId } = useAppTheme();
+  const index = useSyncIndex(activeOrganizationId);
   const { completeContent } = useMobileSyncActions();
   const baseline = useRef(initialOutline);
   const inFlight = useRef(false);
@@ -391,6 +402,12 @@ export function CourseLearningFooter({
           Kamu menyelesaikan {milestone.moduleTitle}.
         </Text>
       </View>
+
+      {milestone.courseCompleted && courseId === HANGEUL_MASTERY_COURSE_ID ? (
+        <HangeulMasteryBadge
+          {...hangeulCompletionBadgeCopy(isHangeulShownAgain(index.data))}
+        />
+      ) : null}
 
       {milestone.unlockedModuleTitle || milestone.nextItem ? (
         <View className="gap-1 border-t border-border pt-5">

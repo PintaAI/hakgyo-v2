@@ -1,5 +1,6 @@
+import { getHangeulGameStage } from "@hakgyo/shared/hangeul";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 
@@ -11,6 +12,7 @@ import {
 } from "../../src/components/learning-ui";
 import { VocabularySession } from "../../src/components/vocabulary-session";
 import { gameCatalog, isGameKey } from "../../src/games/catalog";
+import type { GameSource } from "../../src/games/game-exit";
 import { GameBackToolbar, GamePage } from "../../src/games/game-screens";
 import { HangeulScreen } from "../../src/games/hangeul/hangeul-screen";
 import { exampleSentences } from "../../src/games/sentence-builder/engine";
@@ -33,23 +35,43 @@ export default function GameRoute() {
     gameKey?: string | string[];
     sourceCourseItemId?: string | string[];
     courseId?: string | string[];
+    stage?: string | string[];
   }>();
   const key = firstParam(params.gameKey);
   const sourceCourseItemId = firstParam(params.sourceCourseItemId);
   const courseIdParam = firstParam(params.courseId);
+  // Hangeul games opened from a lesson: an unknown stage plays everything.
+  const stage = getHangeulGameStage(firstParam(params.stage));
+  const hangeulSource = useMemo<GameSource | undefined>(
+    () =>
+      sourceCourseItemId
+        ? { sourceCourseItemId, courseId: courseIdParam || undefined }
+        : undefined,
+    [courseIdParam, sourceCourseItemId],
+  );
   const { data: session } = authClient.useSession();
   const game = isGameKey(key) ? gameCatalog[key] : undefined;
 
   if (key === "stroke-master") {
-    return <HangeulScreen />;
+    return (
+      <HangeulScreen key={stage?.id} source={hangeulSource} stage={stage} />
+    );
   }
 
   if (key === "syllable-forge") {
-    return <SyllableForgeScreen />;
+    return (
+      <SyllableForgeScreen
+        key={stage?.id}
+        source={hangeulSource}
+        stage={stage}
+      />
+    );
   }
 
   if (key === "word-builder") {
-    return <WordBuilderScreen />;
+    return (
+      <WordBuilderScreen key={stage?.id} source={hangeulSource} stage={stage} />
+    );
   }
 
   if (key === "cards") {

@@ -55,7 +55,7 @@ export const calloutBlock = createReactBlockSpec(
         calloutTones[(currentToneIndex + 1) % calloutTones.length];
 
       return (
-        <div className="my-1 w-full" data-custom-block>
+        <div className="@container my-1 w-full" data-custom-block>
           <div className="mb-1 flex justify-end">
             <CustomBlockToolbar
               block={block}
@@ -68,7 +68,7 @@ export const calloutBlock = createReactBlockSpec(
             />
           </div>
           <div
-            className="grid grid-cols-[auto_1fr] gap-x-3 rounded-xl border-l-4 px-4 py-3"
+            className="grid grid-cols-1 gap-x-3 gap-y-1 rounded-xl border-l-4 px-4 py-3 @md:grid-cols-[auto_1fr]"
             style={{
               backgroundColor: `var(--bn-colors-highlights-${tone.color}-background)`,
               borderColor: `var(--bn-colors-highlights-${tone.color}-text)`,
@@ -77,7 +77,7 @@ export const calloutBlock = createReactBlockSpec(
           >
             <button
               aria-label="Ubah nada callout"
-              className="hover:bg-foreground/5 dark:hover:bg-background/10 mt-0.5 flex h-fit items-center gap-1.5 rounded-md px-1 py-0.5 text-xs font-bold tracking-wide uppercase transition"
+              className="hover:bg-foreground/5 dark:hover:bg-background/10 mt-0.5 flex h-fit items-center gap-1.5 justify-self-start rounded-md px-1 py-0.5 text-xs font-bold tracking-wide uppercase transition"
               contentEditable={false}
               disabled={!editor.isEditable}
               onClick={() =>

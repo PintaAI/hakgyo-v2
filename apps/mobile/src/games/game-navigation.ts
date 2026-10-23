@@ -1,5 +1,15 @@
-import { useNavigation } from "expo-router";
+import { router, useNavigation } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
+
+import { gameExitAction, type GameSource } from "./game-exit";
+
+/** Leaves a game: to the lesson that opened it, or to the Latihan tab. */
+export function leaveGame(source?: GameSource) {
+  const action = gameExitAction(source, router.canGoBack());
+  if (action.type === "back") router.back();
+  else if (action.type === "replace") router.replace(action.href);
+  else router.dismissTo(action.href);
+}
 
 /**
  * Routes every active-game back action through the game's exit handler and

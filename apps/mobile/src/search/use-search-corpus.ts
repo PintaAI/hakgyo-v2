@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
 
+import {
+  isHangeulHiddenInIndexes,
+  isHiddenHangeulDocument,
+} from "../lib/hangeul-visibility";
 import { SyncDataContext, type SyncLocalData } from "../sync/hooks";
 import type { LearnerIndex } from "../sync/types";
 import {
@@ -110,8 +114,15 @@ async function loadSearchCorpus(
   gameCache ??= gameDocuments().map(prepareDocument);
   for (const document of gameCache) byKey.set(document.document.key, document);
 
+  // A mastered Hangeul course and its games leave Cari unless the learner
+  // shows them again in Pengaturan; its vocabulary stays findable.
+  const hangeulHidden = isHangeulHiddenInIndexes(indexes);
+  const documents = [...byKey.values()].filter(
+    (document) => !isHiddenHangeulDocument(document.document, hangeulHidden),
+  );
+
   return {
-    documents: [...byKey.values()],
+    documents,
     organizationNames,
     courseCount: revisions.length,
   };
