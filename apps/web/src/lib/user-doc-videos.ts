@@ -110,6 +110,11 @@ export const userDocVideos: Partial<Record<string, UserDocVideo>> = {
     poster: `${guideVideos}/pengajar/landing-page-749ee58c.jpg`,
     durationLabel: "1 menit",
   },
+  "pengajar/grup-whatsapp": {
+    src: `${guideVideos}/pengajar/grup-whatsapp-a19392ee.mp4`,
+    poster: `${guideVideos}/pengajar/grup-whatsapp-75af4159.jpg`,
+    durationLabel: "1 menit",
+  },
   "pengajar/analitik": {
     src: `${guideVideos}/pengajar/analitik-26c1492a.mp4`,
     poster: `${guideVideos}/pengajar/analitik-45b3e270.jpg`,
