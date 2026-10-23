@@ -44,6 +44,65 @@ describe("material asset ids", () => {
     ]);
   });
 
+  test("collects the audio clips inside Hangeul block JSON props", () => {
+    const document = [
+      {
+        type: "hangeulLetters",
+        props: {
+          letters: JSON.stringify([
+            {
+              id: "a",
+              character: "ㅏ",
+              assetId: "letter-1",
+              example: { word: "아이", assetId: "example-1" },
+            },
+            { id: "eo", character: "ㅓ", assetId: "", example: null },
+          ]),
+        },
+      },
+      {
+        type: "hangeulContrast",
+        props: {
+          rows: JSON.stringify([
+            {
+              id: "r1",
+              items: [
+                { text: "사다", assetId: "pair-1" },
+                { text: "싸다", assetId: "pair-2" },
+              ],
+            },
+          ]),
+        },
+      },
+      {
+        type: "hangeulSyllableGrid",
+        props: {
+          consonants: JSON.stringify(["ㄱ"]),
+          vowels: JSON.stringify(["ㅏ"]),
+          audio: JSON.stringify([{ syllable: "가", assetId: "grid-1" }]),
+        },
+      },
+      {
+        type: "hangeulGame",
+        props: {
+          gameKey: "stroke-master",
+          stage: "",
+          title: "",
+          description: "",
+        },
+      },
+      { type: "hangeulLetters", props: { letters: "not json" } },
+    ];
+
+    expect([...collectMaterialAssetIds(document)].toSorted()).toEqual([
+      "example-1",
+      "grid-1",
+      "letter-1",
+      "pair-1",
+      "pair-2",
+    ]);
+  });
+
   test("ignores malformed documents", () => {
     expect(collectMaterialAssetIds("text").size).toBe(0);
     expect(

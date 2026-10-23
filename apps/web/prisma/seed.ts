@@ -145,59 +145,9 @@ async function main() {
     },
   });
 
-  const hangeulModule = await db.courseModule.upsert({
-    where: { id: "hakgyo-foundation-hangeul-module" },
-    update: {},
-    create: {
-      id: "hakgyo-foundation-hangeul-module",
-      courseId: hangeulMasteryCourse.id,
-      organizationId: systemOrganization.id,
-      title: "Mulai dengan Hangeul",
-      description: "Mulai dari struktur dasar aksara Hangeul.",
-      position: 1,
-    },
-  });
-
-  const hangeulIntroduction = await db.material.upsert({
-    where: { id: "hakgyo-foundation-hangeul-introduction" },
-    update: {},
-    create: {
-      id: "hakgyo-foundation-hangeul-introduction",
-      organizationId: systemOrganization.id,
-      createdByMembershipId: systemOwnerMembership.id,
-      title: "Mengenal Hangeul",
-      description: "Pengenalan konsonan, vokal, dan blok suku kata Korea.",
-      content: [
-        {
-          id: "hakgyo-foundation-hangeul-block-create",
-          type: "paragraph",
-          props: {},
-          content: [
-            {
-              type: "text",
-              text: "Hangeul adalah sistem tulisan Korea. Di course ini kamu akan belajar mengenali konsonan, vokal, dan menyusunnya menjadi blok suku kata.",
-              styles: {},
-            },
-          ],
-          children: [],
-        },
-      ],
-    },
-  });
-
-  await db.courseItem.upsert({
-    where: { id: "hakgyo-foundation-hangeul-introduction-item" },
-    update: {},
-    create: {
-      id: "hakgyo-foundation-hangeul-introduction-item",
-      organizationId: systemOrganization.id,
-      moduleId: hangeulModule.id,
-      type: "MATERIAL",
-      position: 1,
-      materialId: hangeulIntroduction.id,
-      isPublished: true,
-    },
-  });
+  // The course content (modules, lessons, vocabulary, quizzes and audio) comes from
+  // scripts/hangeul-mastery: run `bun run hangeul:audio --execute` and then
+  // `bun run hangeul:import --execute` after seeding (see docs/hangeul-mastery.md).
 
   for (const { id } of [owner, teacher, student, systemOwner]) {
     await upsertDefaultCohortEnrollment(db, {

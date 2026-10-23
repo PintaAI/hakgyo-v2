@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRightIcon, LoaderCircleIcon } from "lucide-react";
+import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
 
 import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -16,6 +17,7 @@ import { learningItemHref } from "~/lib/learner/hrefs";
 import { getLearningItemTypeMeta } from "~/lib/learner/learning-item-type";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
+import { HangeulMasteryCompletionNote } from "./hangeul-mastery-badge";
 import { MilestoneTrophy } from "./milestone-trophy";
 
 type Milestone = NonNullable<ReturnType<typeof getLearningMilestone>>;
@@ -86,6 +88,13 @@ export function CourseLearningFooter({
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState<FooterIssue>();
   const [milestone, setMilestone] = useState<Milestone>();
+  const finishedHangeul =
+    !!milestone?.courseCompleted && courseId === HANGEUL_MASTERY_COURSE_ID;
+  // Only fetched once the learner finishes Hangeul Mastery: whether the
+  // course now leaves their lists depends on the Pengaturan switch.
+  const preferences = api.preferences.get.useQuery(undefined, {
+    enabled: finishedHangeul,
+  });
   baseline.current ??= outline.data;
 
   const path = outline.data && getLearningPath(outline.data, courseItemId);
@@ -160,6 +169,13 @@ export function CourseLearningFooter({
           courseItemId,
         );
         baseline.current = after;
+        // Mastering Hangeul hides the course from the sidebar the layout
+        // rendered; refresh the server components so it leaves now.
+        if (
+          celebration?.courseCompleted &&
+          courseId === HANGEUL_MASTERY_COURSE_ID
+        )
+          router.refresh();
         if (celebration) setMilestone(celebration);
         else if (next.nextItem) navigate(next.nextItem);
         else if (next.courseCompleted) navigate();
@@ -213,6 +229,12 @@ export function CourseLearningFooter({
             Kamu menyelesaikan {milestone.moduleTitle}.
           </p>
         </div>
+        {finishedHangeul ? (
+          <HangeulMasteryCompletionNote
+            className="text-left"
+            hidden={!preferences.data?.showHangeulAfterMastery}
+          />
+        ) : null}
         {milestone.unlockedModuleTitle || milestone.nextItem ? (
           <div className="border-border flex flex-col gap-1 border-t pt-5">
             <Eyebrow>

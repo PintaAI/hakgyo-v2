@@ -1,3 +1,5 @@
+import { HANGEUL_MASTERY_ACHIEVEMENT_CODE } from "@hakgyo/shared/hangeul";
+
 export function canOpenModule(access: string) {
   return access === "AVAILABLE" || access === "COMPLETED";
 }
@@ -63,6 +65,7 @@ export function timeLabel(date: Date) {
 
 export function achievementLabel(code: string) {
   if (code === "FIRST_ACTIVITY") return "Langkah pertama";
+  if (code === HANGEUL_MASTERY_ACHIEVEMENT_CODE) return "Hangeul Mastery";
   const [kind, count] = code.split("_");
   if (kind === "STREAK") return `Streak ${count} hari`;
   if (kind === "XP") return `${count} XP diraih`;

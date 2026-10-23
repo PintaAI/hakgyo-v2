@@ -2,6 +2,10 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import {
+  isHangeulHidden,
+  withoutHiddenHangeulCourse,
+} from "../../lib/hangeul-visibility";
 import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
 import { openAssessmentEvent } from "../../lib/navigation";
 import { useSyncIndex } from "../../sync/hooks";
@@ -177,10 +181,12 @@ export function MainSidebarContent({
   const cohorts = dashboard.data?.cohorts ?? [];
   // Cohort cards on Belajar already cover their course; only direct
   // enrollments (Hangeul foundation, open or invited courses) need a row.
+  // Hangeul Mastery leaves once mastered, unless shown again in Pengaturan.
   const cohortCourseIds = new Set(cohorts.map((cohort) => cohort.course.id));
-  const standaloneCourses = (dashboard.data?.courses ?? []).filter(
-    (course) => !cohortCourseIds.has(course.id),
-  );
+  const standaloneCourses = withoutHiddenHangeulCourse(
+    dashboard.data?.courses ?? [],
+    isHangeulHidden(dashboard.data),
+  ).filter((course) => !cohortCourseIds.has(course.id));
 
   return (
     <>

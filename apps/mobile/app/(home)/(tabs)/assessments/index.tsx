@@ -10,6 +10,7 @@ import { usePushNotifications } from "../../../../src/providers/PushNotification
 import { useCourseOutlines, useSyncIndex } from "../../../../src/sync/hooks";
 import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
 import { firstParam } from "../../../../src/lib/route-params";
+import { isHangeulHidden } from "../../../../src/lib/hangeul-visibility";
 
 export default function PracticeTab() {
   const { activeOrganizationId } = useAppTheme();
@@ -93,6 +94,7 @@ export default function PracticeTab() {
         courses={dashboard.data?.courses ?? []}
         coursesError={dashboard.error}
         coursesPending={dashboard.isPending}
+        hangeulHidden={isHangeulHidden(dashboard.data)}
         events={actionableEvents}
         eventsError={dashboard.error}
         eventsPending={dashboard.isPending}

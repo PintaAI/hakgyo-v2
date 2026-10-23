@@ -4,6 +4,10 @@ import {
   conversationBlockDefaults,
   cultureBlockDefaults,
   grammarBlockDefaults,
+  hangeulContrastBlockDefaults,
+  hangeulGameBlockDefaults,
+  hangeulLettersBlockDefaults,
+  hangeulSyllableGridBlockDefaults,
   lessonPageDefaults,
 } from "./block-catalog";
 import { findBlockNoteDocumentIssues } from "./document-validation";
@@ -31,6 +35,42 @@ describe("BlockNote document validation", () => {
         { type: "grammar" },
       ]),
     ).toEqual([]);
+  });
+
+  test("accepts the Hangeul blocks and rejects bad game keys and lists", () => {
+    expect(
+      findBlockNoteDocumentIssues([
+        { type: "hangeulLetters", props: hangeulLettersBlockDefaults },
+        { type: "hangeulContrast", props: hangeulContrastBlockDefaults },
+        {
+          type: "hangeulSyllableGrid",
+          props: hangeulSyllableGridBlockDefaults,
+        },
+        { type: "hangeulGame", props: hangeulGameBlockDefaults },
+        {
+          type: "hangeulGame",
+          props: { gameKey: "word-builder", stage: "batchim" },
+        },
+      ]),
+    ).toEqual([]);
+
+    expect(
+      findBlockNoteDocumentIssues([
+        { type: "hangeulGame", props: { gameKey: "tetris" } },
+        { type: "hangeulGame", props: { stage: "level-99" } },
+        { type: "hangeulLetters", props: { letters: [{ character: "ㅏ" }] } },
+        {
+          type: "hangeulSyllableGrid",
+          props: { vowels: "ㅏ ㅓ", showRomanization: "yes" },
+        },
+      ]).map((issue) => issue.path),
+    ).toEqual([
+      [0, "props", "gameKey"],
+      [1, "props", "stage"],
+      [2, "props", "letters"],
+      [3, "props", "vowels"],
+      [3, "props", "showRomanization"],
+    ]);
   });
 
   test("rejects unknown block types, including nested ones", () => {

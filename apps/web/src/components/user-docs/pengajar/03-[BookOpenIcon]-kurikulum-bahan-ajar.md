@@ -126,6 +126,17 @@ Setelah tersimpan pertama kali, perubahan berikutnya tersimpan otomatis. Perhati
 
 Jika Anda menyisipkan kumpulan kosakata atau tugas ke dalam materi, tambahkan juga kosakata atau tugas itu sebagai item yang tampil di bab yang sama. Jika tidak, materi akan berstatus **Belum siap**.
 
+### Blok Hangeul
+
+Untuk mengajar huruf Hangeul, ketik `/` lalu pilih salah satu blok ini:
+
+- **Kartu huruf Hangeul**: satu kartu per huruf, berisi huruf besar, nama huruf, petunjuk bunyi dalam bahasa Indonesia, romanisasi, catatan, dan contoh kata.
+- **Pasangan bunyi**: dua atau tiga kata yang bunyinya mirip, misalnya 사다 dan 싸다, ditampilkan berdampingan.
+- **Tabel suku kata**: isi konsonan dan vokal, lalu tabel suku katanya (가, 나, 다, dan seterusnya) dibuat otomatis. Pilih batchim bila perlu.
+- **Permainan Hangeul**: pilih permainan dan tahapnya. Di aplikasi, murid langsung bisa bermain lalu kembali ke materi. Di web, murid melihat ajakan untuk membuka aplikasi Hakgyo.
+
+Klik **Audio** di kartu huruf, contoh kata, atau kata dalam pasangan bunyi untuk mengunggah rekaman suaranya. Audio tabel suku kata diunggah dari daftar **Audio suku kata** di bawah tabel. Murid mengetuk huruf, kata, atau suku kata itu untuk mendengarnya. Tombol **Tampilkan romanisasi** menampilkan atau menyembunyikan tulisan latin.
+
 ## Membuat kumpulan kosakata
 
 1. Buka **Bahan ajar**, lalu **Kosakata**, dan buat kumpulan baru.

@@ -1,4 +1,17 @@
 import { PDF_PAGES_BLOCK_TYPE } from "@hakgyo/shared";
+import {
+  HANGEUL_CONTRAST_BLOCK_TYPE,
+  HANGEUL_GAME_BLOCK_TYPE,
+  HANGEUL_GAME_KEYS,
+  HANGEUL_GAME_STAGE_IDS,
+  HANGEUL_GAME_STAGES,
+  HANGEUL_LETTERS_BLOCK_TYPE,
+  HANGEUL_SYLLABLE_GRID_BLOCK_TYPE,
+  MAX_HANGEUL_CONTRAST_ITEMS,
+  MAX_HANGEUL_CONTRAST_ROWS,
+  MAX_HANGEUL_GRID_AXIS,
+  MAX_HANGEUL_LETTER_CARDS,
+} from "@hakgyo/shared/hangeul";
 
 import {
   cultureImageAspects,
@@ -16,6 +29,13 @@ export const cultureBlockType = "culture";
 export const vocabularyReferenceBlockType = "vocabularyReference";
 export const assessmentReferenceBlockType = "assessmentReference";
 export const pdfPagesBlockType = PDF_PAGES_BLOCK_TYPE;
+export const hangeulLettersBlockType = HANGEUL_LETTERS_BLOCK_TYPE;
+export const hangeulContrastBlockType = HANGEUL_CONTRAST_BLOCK_TYPE;
+export const hangeulSyllableGridBlockType = HANGEUL_SYLLABLE_GRID_BLOCK_TYPE;
+export const hangeulGameBlockType = HANGEUL_GAME_BLOCK_TYPE;
+export const hangeulGameKeys = HANGEUL_GAME_KEYS;
+/** Stage ids a hangeulGame block accepts; empty means every letter. */
+export const hangeulGameStageValues = ["", ...HANGEUL_GAME_STAGE_IDS] as const;
 export const calloutTones = ["info", "tip", "warning", "success"] as const;
 export const grammarBlockThemes = ["amber", "blue", "green", "rose"] as const;
 export const lessonPageThemes = ["rose", "ocean", "forest", "sunset"] as const;
@@ -263,8 +283,84 @@ const lessonPageTextProps = Object.fromEntries(
   ]),
 );
 
+export const hangeulLettersExample = [
+  {
+    id: "0-ㅏ",
+    character: "ㅏ",
+    name: "",
+    cue: "seperti 'a' di 'apa', mulut terbuka lebar",
+    romanization: "a",
+    note: "Garis pendek menghadap ke kanan.",
+    assetId: "",
+    example: { word: "아이", meaning: "anak", romanization: "ai", assetId: "" },
+  },
+  {
+    id: "1-ㅓ",
+    character: "ㅓ",
+    name: "",
+    cue: "antara 'o' dan 'a', mulut terbuka, bibir tidak bulat",
+    romanization: "eo",
+    note: "Bukan 'e' pepet. Garis pendek menghadap ke kiri.",
+    assetId: "",
+    example: null,
+  },
+] as const;
+
+export const hangeulContrastExample = [
+  {
+    id: "row-0",
+    note: "ㅅ biasa lembut, ㅆ tegang tanpa hembusan.",
+    items: [
+      { text: "사다", romanization: "sada", meaning: "membeli", assetId: "" },
+      { text: "싸다", romanization: "ssada", meaning: "murah", assetId: "" },
+    ],
+  },
+  {
+    id: "row-1",
+    note: "",
+    items: [
+      { text: "자다", romanization: "jada", meaning: "tidur", assetId: "" },
+      { text: "차다", romanization: "chada", meaning: "dingin", assetId: "" },
+      { text: "짜다", romanization: "jjada", meaning: "asin", assetId: "" },
+    ],
+  },
+] as const;
+
+export const hangeulLettersBlockDefaults = {
+  title: "",
+  showRomanization: true,
+  letters: "[]",
+} as const;
+
+export const hangeulContrastBlockDefaults = {
+  title: "",
+  instructions: "",
+  showRomanization: true,
+  rows: "[]",
+} as const;
+
+export const hangeulSyllableGridBlockDefaults = {
+  title: "",
+  consonants: "[]",
+  vowels: "[]",
+  final: "",
+  showRomanization: false,
+  audio: "[]",
+} as const;
+
+export const hangeulGameBlockDefaults = {
+  gameKey: "stroke-master",
+  stage: "",
+  title: "",
+  description: "",
+} as const;
+
+const hangeulGameStageList = HANGEUL_GAME_STAGES.map(
+  (stage) => `"${stage.id}" (${stage.title})`,
+).join(", ");
+
 export const hakgyoBlockCatalog = {
-  catalogVersion: 13,
+  catalogVersion: 14,
   editor: "BlockNote",
   format: {
     description:
@@ -692,6 +788,185 @@ export const hakgyoBlockCatalog = {
         avoidWhen: [
           "The content needs to be editable text, searchable, or interactive.",
         ],
+      },
+    },
+    {
+      type: hangeulLettersBlockType,
+      purpose:
+        "Teach Hangeul letters (or syllables) as cards: a large character with its sound, letter name, Indonesian sound cue, optional romanization, a note and an example word, each with optional audio.",
+      content: "none",
+      props: {
+        title: { type: "string", default: hangeulLettersBlockDefaults.title },
+        showRomanization: {
+          type: "boolean",
+          default: hangeulLettersBlockDefaults.showRomanization,
+        },
+        letters: {
+          type: "string",
+          default: hangeulLettersBlockDefaults.letters,
+        },
+      },
+      guidance: {
+        useWhen: [
+          "A lesson introduces new jamo (ㅏ, ㄱ, ...) or a handful of key syllables.",
+          "Learners should hear each letter and see an example word that uses it.",
+        ],
+        avoidWhen: [
+          "The content is a vocabulary list; embed a vocabulary set with vocabularyReference instead.",
+        ],
+        jsonProps: {
+          letters: `JSON array of up to ${MAX_HANGEUL_LETTER_CARDS} cards { id, character, name, cue, romanization, note, assetId, example }. id is a unique string; character is the jamo or syllable (required); name is the letter name such as "기역" (may be empty); cue is the Indonesian sound aid such as "seperti 'o' di 'toko', bibir bulat"; assetId is an audio file of the letter's sound, usually the letter in a syllable (아 for ㅏ), or "" for none; example is { word, meaning, romanization, assetId } or null. Cards without a character are dropped.`,
+        },
+      },
+      example: {
+        type: hangeulLettersBlockType,
+        props: {
+          title: "Vokal dasar",
+          showRomanization: true,
+          letters: JSON.stringify(hangeulLettersExample),
+        },
+        children: [],
+      },
+    },
+    {
+      type: hangeulContrastBlockType,
+      purpose:
+        "Contrast two or three Hangeul words or syllables that sound alike (minimal pairs such as 사다 / 싸다), each with its own audio, so learners hear the difference back to back.",
+      content: "none",
+      props: {
+        title: { type: "string", default: hangeulContrastBlockDefaults.title },
+        instructions: {
+          type: "string",
+          default: hangeulContrastBlockDefaults.instructions,
+        },
+        showRomanization: {
+          type: "boolean",
+          default: hangeulContrastBlockDefaults.showRomanization,
+        },
+        rows: { type: "string", default: hangeulContrastBlockDefaults.rows },
+      },
+      guidance: {
+        useWhen: [
+          "Learners confuse similar sounds: plain, aspirated and tense consonants, ㅓ/ㅗ, ㅐ/ㅔ, or batchim.",
+        ],
+        jsonProps: {
+          rows: `JSON array of up to ${MAX_HANGEUL_CONTRAST_ROWS} rows { id, note, items }. id is a unique string; note is an optional Indonesian hint; items holds 2 to ${MAX_HANGEUL_CONTRAST_ITEMS} { text, romanization, meaning, assetId } objects (text required, assetId an audio file or ""). Rows with fewer than two items are dropped.`,
+        },
+      },
+      example: {
+        type: hangeulContrastBlockType,
+        props: {
+          title: "Biasa atau tegang?",
+          instructions: "Dengarkan setiap pasangan, lalu ucapkan bergantian.",
+          showRomanization: true,
+          rows: JSON.stringify(hangeulContrastExample),
+        },
+        children: [],
+      },
+    },
+    {
+      type: hangeulSyllableGridBlockType,
+      purpose:
+        "Show a consonant × vowel table of composed Hangeul syllables (가 나 다 ...), optionally with one batchim on every syllable; cells with audio play when tapped.",
+      content: "none",
+      props: {
+        title: {
+          type: "string",
+          default: hangeulSyllableGridBlockDefaults.title,
+        },
+        consonants: {
+          type: "string",
+          default: hangeulSyllableGridBlockDefaults.consonants,
+        },
+        vowels: {
+          type: "string",
+          default: hangeulSyllableGridBlockDefaults.vowels,
+        },
+        final: {
+          type: "string",
+          default: hangeulSyllableGridBlockDefaults.final,
+        },
+        showRomanization: {
+          type: "boolean",
+          default: hangeulSyllableGridBlockDefaults.showRomanization,
+        },
+        audio: {
+          type: "string",
+          default: hangeulSyllableGridBlockDefaults.audio,
+        },
+      },
+      guidance: {
+        useWhen: [
+          "Learners combine newly learned consonants and vowels into syllables.",
+          "A batchim should be practised across many syllables at once (set final).",
+        ],
+        notes: [
+          `Rows are consonants and columns are vowels, up to ${MAX_HANGEUL_GRID_AXIS} each. Each cell is the syllable composed from its consonant, vowel and final. Use ㅇ as the consonant for a vowel-only row.`,
+          "final is one compatibility jamo usable as batchim (ㄱ, ㄴ, ㄹ, ㅁ, ㅂ, ㅇ, ...) or an empty string for open syllables.",
+          "showRomanization shows the Revised Romanization of each syllable read on its own.",
+        ],
+        jsonProps: {
+          consonants:
+            'JSON array of initial consonants as compatibility jamo, for example ["ㄱ","ㄴ","ㄷ"].',
+          vowels:
+            'JSON array of vowels as compatibility jamo, for example ["ㅏ","ㅓ","ㅗ"].',
+          audio:
+            'JSON array of { syllable, assetId } objects giving a cell its audio file, for example [{ "syllable": "가", "assetId": "<assetId>" }]. Cells without an entry are shown without audio.',
+        },
+      },
+      example: {
+        type: hangeulSyllableGridBlockType,
+        props: {
+          title: "Konsonan + vokal",
+          consonants: JSON.stringify(["ㄱ", "ㄴ", "ㄷ"]),
+          vowels: JSON.stringify(["ㅏ", "ㅓ", "ㅗ"]),
+          final: "",
+          showRomanization: true,
+          audio: "[]",
+        },
+        children: [],
+      },
+    },
+    {
+      type: hangeulGameBlockType,
+      purpose:
+        "Send learners to a Hangeul game in the Hakgyo mobile app, optionally narrowed to the letters a module has taught. In the app it opens the game and returns to the lesson; on the web it explains that the game is in the app and links to it.",
+      content: "none",
+      props: {
+        gameKey: {
+          type: "string",
+          enum: hangeulGameKeys,
+          default: hangeulGameBlockDefaults.gameKey,
+        },
+        stage: {
+          type: "string",
+          enum: hangeulGameStageValues,
+          default: hangeulGameBlockDefaults.stage,
+        },
+        title: { type: "string", default: hangeulGameBlockDefaults.title },
+        description: {
+          type: "string",
+          default: hangeulGameBlockDefaults.description,
+        },
+      },
+      guidance: {
+        useWhen: [
+          "Learners should practise the letters of a module through play: stroke-master traces letters, syllable-forge builds syllables from jamo, word-builder spells words.",
+        ],
+        notes: [
+          `stage is one of ${hangeulGameStageList}, or an empty string for every letter. Pick the stage that matches what the module has taught so far.`,
+          "title and description are optional; the game's own title is shown when title is empty.",
+        ],
+      },
+      example: {
+        type: hangeulGameBlockType,
+        props: {
+          gameKey: "syllable-forge",
+          stage: "core-consonants",
+          title: "Latihan menyusun suku kata",
+          description: "Susun konsonan dan vokal yang sudah kamu pelajari.",
+        },
+        children: [],
       },
     },
   ],

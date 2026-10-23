@@ -1,5 +1,6 @@
-import { router, Stack, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useReducer, useState } from "react";
+import type { HangeulGameStage } from "@hakgyo/shared/hangeul";
+import { Stack, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import {
   AccessibilityInfo,
   BackHandler,
@@ -14,25 +15,32 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StudyAction } from "../../components/study-glass";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
+import { gameLeaveLabel, type GameSource } from "../game-exit";
 import { GameModal, GameStartModal } from "../game-modals";
+import { leaveGame } from "../game-navigation";
 import { GameBackToolbar } from "../game-screens";
-import { WORD_CHALLENGES } from "./word-builder-data";
+import { getWordChallenges } from "./word-builder-data";
 import {
+  createWordBuilderReducer,
   initialWordBuilderSession,
-  wordBuilderReducer,
 } from "./word-builder-session";
 
-const leave = () => router.dismissTo("/(home)/(tabs)/assessments");
-
-export function WordBuilderScreen() {
+export function WordBuilderScreen({
+  source,
+  stage,
+}: {
+  source?: GameSource;
+  stage?: HangeulGameStage;
+}) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const [session, dispatch] = useReducer(
-    wordBuilderReducer,
-    initialWordBuilderSession,
-  );
+  const words = getWordChallenges(stage?.id);
+  const reducer = useMemo(() => createWordBuilderReducer(words), [words]);
+  const [session, dispatch] = useReducer(reducer, initialWordBuilderSession);
   const [showExit, setShowExit] = useState(false);
-  const challenge = WORD_CHALLENGES[session.index]!;
+  const leave = useCallback(() => leaveGame(source), [source]);
+  const leaveLabel = gameLeaveLabel(source);
+  const challenge = words[session.index]!;
   const correct = session.phase === "correct";
   const completed =
     session.index + (correct || session.phase === "complete" ? 1 : 0);
@@ -50,7 +58,7 @@ export function WordBuilderScreen() {
   const requestLeave = useCallback(() => {
     if (session.phase === "intro" || session.phase === "complete") leave();
     else setShowExit(true);
-  }, [session.phase]);
+  }, [leave, session.phase]);
 
   useFocusEffect(
     useCallback(() => {
@@ -75,7 +83,10 @@ export function WordBuilderScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <GameBackToolbar onPress={requestLeave} />
+      <GameBackToolbar
+        accessibilityLabel={source?.sourceCourseItemId ? leaveLabel : undefined}
+        onPress={requestLeave}
+      />
       <Stack.Screen
         options={{
           headerBackButtonDisplayMode: "minimal",
@@ -90,7 +101,7 @@ export function WordBuilderScreen() {
         accessibilityRole="progressbar"
         accessibilityValue={{
           min: 0,
-          max: WORD_CHALLENGES.length,
+          max: words.length,
           now: completed,
         }}
         style={[styles.progressTrack, { backgroundColor: colors.border }]}
@@ -100,7 +111,7 @@ export function WordBuilderScreen() {
             styles.progressFill,
             {
               backgroundColor: colors.primary,
-              width: `${(completed / WORD_CHALLENGES.length) * 100}%`,
+              width: `${(completed / words.length) * 100}%`,
             },
           ]}
         />
@@ -119,7 +130,7 @@ export function WordBuilderScreen() {
             {challenge.family}
           </Text>
           <Text style={[styles.smallLabel, { color: colors.mutedForeground }]}>
-            {session.index + 1}/{WORD_CHALLENGES.length}
+            {session.index + 1}/{words.length}
           </Text>
         </View>
 
@@ -296,9 +307,7 @@ export function WordBuilderScreen() {
 
         {correct ? (
           <StudyAction onPress={() => dispatch({ type: "next" })}>
-            {session.index === WORD_CHALLENGES.length - 1
-              ? "Lihat hasil"
-              : "Lanjut"}
+            {session.index === words.length - 1 ? "Lihat hasil" : "Lanjut"}
           </StudyAction>
         ) : !session.showHint ? (
           <Pressable
@@ -317,13 +326,16 @@ export function WordBuilderScreen() {
       <GameStartModal
         gameKey="word-builder"
         visible={session.phase === "intro"}
-        title="Susun kata"
-        detail="Rangkai blok suku kata Hangeul menjadi kata yang sesuai dengan artinya. Mulai dari dua blok, lalu coba tiga blok."
+        title={stage ? `Susun kata: ${stage.title}` : "Susun kata"}
+        detail={
+          stage
+            ? `Rangkai blok suku kata Hangeul menjadi kata yang sesuai dengan artinya. Semua kata hanya memakai huruf tahap ${stage.title}.`
+            : "Rangkai blok suku kata Hangeul menjadi kata yang sesuai dengan artinya. Mulai dari dua blok, lalu coba tiga blok."
+        }
         content={
           <Text style={[styles.modalCopy, { color: colors.mutedForeground }]}>
-            {WORD_CHALLENGES.length} kata · Tanpa batas waktu{"\n"}Ketuk blok
-            untuk menyusun. Kamu bisa melepasnya atau meminta petunjuk kapan
-            pun.
+            {words.length} kata · Tanpa batas waktu{"\n"}Ketuk blok untuk
+            menyusun. Kamu bisa melepasnya atau meminta petunjuk kapan pun.
           </Text>
         }
         primaryLabel="Mulai menyusun"
@@ -335,11 +347,11 @@ export function WordBuilderScreen() {
         visible={session.phase === "complete"}
         eyebrow="LATIHAN SELESAI"
         title="Kata demi kata, bisa!"
-        detail={`Kamu berhasil menyusun ${WORD_CHALLENGES.length} kata Hangeul.`}
+        detail={`Kamu berhasil menyusun ${words.length} kata Hangeul.`}
         content={
           <View style={styles.result}>
             <Text style={[styles.resultNumber, { color: colors.primary }]}>
-              {session.independent}/{WORD_CHALLENGES.length}
+              {session.independent}/{words.length}
             </Text>
             <Text style={[styles.modalCopy, { color: colors.mutedForeground }]}>
               Tepat pada percobaan pertama tanpa petunjuk.
@@ -347,7 +359,7 @@ export function WordBuilderScreen() {
           </View>
         }
         primaryLabel="Main lagi"
-        secondaryLabel="Kembali ke latihan"
+        secondaryLabel={leaveLabel}
         onPrimary={() => dispatch({ type: "start" })}
         onSecondary={leave}
       />

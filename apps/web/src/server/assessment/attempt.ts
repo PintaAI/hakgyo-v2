@@ -8,6 +8,7 @@ import {
   assessmentSubmittedActivityKey,
 } from "../gamification/activity-keys";
 import { recordGamificationActivity } from "../gamification/record-activity";
+import { awardHangeulMasteryIfComplete } from "../foundation/hangeul-mastery-completion";
 
 /**
  * Serializes attempt creation for one learner and course item (standalone and event attempts
@@ -55,17 +56,28 @@ export function isPassingScore(
   );
 }
 
-/** Marks a standalone course item completed after a passing attempt. */
+/**
+ * Marks a standalone course item completed after a passing attempt. Call it after the attempt is
+ * graded in the same transaction: finishing the Hangeul Mastery course awards its badge here.
+ * Pass the item's `courseId` when it is at hand, so other courses skip the course lookup.
+ */
 export async function markCourseItemCompleted(
   tx: Prisma.TransactionClient,
   courseItemId: string,
   userId: string,
   now: Date,
+  courseId?: string,
 ) {
   await tx.contentProgress.upsert({
     where: { courseItemId_userId: { courseItemId, userId } },
     create: { courseItemId, userId, status: "COMPLETED", completedAt: now },
     update: { status: "COMPLETED", completedAt: now },
+  });
+  await awardHangeulMasteryIfComplete(tx, {
+    userId,
+    courseItemIds: [courseItemId],
+    courseId,
+    now,
   });
 }
 

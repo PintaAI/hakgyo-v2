@@ -22,7 +22,7 @@ Hal yang perlu diketahui:
 - Streak tetap aman selama kamu mendapat XP hari ini atau kemarin. Jika sehari penuh terlewat, streak dimulai lagi dari awal.
 - Minggu dihitung mulai hari Senin.
 
-Di aplikasi ponsel, tab **Profil** juga menampilkan total XP, jumlah kosakata, aktivitas terbaru, dan pencapaian seperti **Langkah pertama** dan streak beberapa hari.
+Di aplikasi ponsel, tab **Profil** juga menampilkan total XP, jumlah kosakata, aktivitas terbaru, dan pencapaian seperti **Langkah pertama** dan streak beberapa hari. Setelah menyelesaikan kurikulum Hangeul Mastery, kamu juga mendapat lencana **Hangeul Mastery** di sana. Lihat [Hangeul Mastery](/docs/murid/hangeul-mastery).
 
 ## Notifikasi
 

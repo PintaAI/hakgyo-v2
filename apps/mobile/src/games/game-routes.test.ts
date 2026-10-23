@@ -80,6 +80,26 @@ describe("game routes", () => {
     expect(cardsSource).not.toContain("finishGameAndLeave");
   });
 
+  test("returns Hangeul games launched from a lesson to the lesson", () => {
+    const routeSource = readFileSync(
+      resolve(import.meta.dir, "../../app/games/[gameKey].tsx"),
+      "utf8",
+    );
+    expect(routeSource).toContain(
+      "getHangeulGameStage(firstParam(params.stage))",
+    );
+    for (const screen of [
+      "./hangeul/hangeul-screen.tsx",
+      "./syllable-forge/syllable-forge-screen.tsx",
+      "./word-builder/word-builder-screen.tsx",
+    ]) {
+      const source = readFileSync(resolve(import.meta.dir, screen), "utf8");
+      expect(source).toContain("leaveGame(source)");
+      expect(source).toContain("gameLeaveLabel(source)");
+      expect(source).not.toContain("router.dismissTo");
+    }
+  });
+
   test("keeps keyboard controls and progress in the Cards native header", () => {
     const cardsSource = readFileSync(
       resolve(import.meta.dir, "../components/vocabulary-session.tsx"),

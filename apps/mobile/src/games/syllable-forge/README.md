@@ -1,6 +1,6 @@
 # Susun 한글
 
-Local, untimed practice with twelve fixtures in `syllable-forge-data.ts`. No network calls or persisted progress. The Practice hub opens this game without a vocabulary source.
+Local, untimed practice with twelve general fixtures in `syllable-forge-data.ts`, plus one set per Hangeul Mastery stage (`SYLLABLE_CHALLENGES_BY_STAGE`) that lessons open with `?stage=<id>&sourceCourseItemId=<id>`. A stage set only uses that stage's letters, and only `batchim` has final consonants (`../hangeul-stage-sets.test.ts`). Leaving a game opened from a lesson returns to the lesson. No network calls or persisted progress. The Practice hub opens this game without a vocabulary source or stage.
 
 `hangul-composer.ts` owns two-set keyboard composition: initial/vowel/final, compound vowels, final clusters, and final migration before a vowel. Input is replayed from keystrokes so delete reverses one tap. Shift produces tense consonants and ㅒ/ㅖ. Initial ㅇ must be entered explicitly. Composition uses the modern syllable formula from [Unicode §3.12](https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/).
 

@@ -11,6 +11,7 @@ import type { NativeContentRendererProps } from "./types";
 
 export function NativeContentRenderer({
   content,
+  courseItemId,
   emptyState,
   onOpenUrl,
   onOpenResource,
@@ -31,6 +32,7 @@ export function NativeContentRenderer({
 
   return (
     <ContentRendererProvider
+      courseItemId={courseItemId}
       onOpenUrl={onOpenUrl}
       onOpenResource={onOpenResource}
       onReadingProgress={onReadingProgress}

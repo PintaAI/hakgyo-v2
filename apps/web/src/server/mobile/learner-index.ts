@@ -32,6 +32,7 @@ import {
   ZERO_REVISION,
   type CourseRevisions,
 } from "~/server/mobile/sync-log";
+import { getHangeulVisibility } from "~/server/preferences/hangeul-visibility";
 import { createRequestCache } from "~/server/request-cache";
 
 type LearnerContext = TRPCContext & { actorUserId: string };
@@ -300,6 +301,7 @@ export async function buildLearnerIndex(
     resumableAttemptEntries,
     learner,
     enrollments,
+    hangeulVisibility,
   ] = await Promise.all([
     coursesPromise,
     cohortsPromise,
@@ -318,6 +320,7 @@ export async function buildLearnerIndex(
       where: { userId: actorUserId, expiresAt: { gt: now } },
       select: { expiresAt: true },
     }),
+    getHangeulVisibility(ctx.db, actorUserId),
   ]);
 
   const organizations: Record<
@@ -403,6 +406,12 @@ export async function buildLearnerIndex(
       items: sidebarItems,
     },
     resumableAttempts: Object.fromEntries(resumableAttemptEntries),
+    // Added without an INDEX_SCHEMA bump: indexes cached before it lack the
+    // field, which clients read as "not hidden".
+    hangeul: {
+      mastered: hangeulVisibility.hangeulMastered,
+      hidden: hangeulVisibility.hangeulHidden,
+    },
   };
 }
 

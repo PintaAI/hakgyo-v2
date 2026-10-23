@@ -9,6 +9,10 @@ import {
   cultureBlockType,
   grammarBlockType,
   type hakgyoBlockCatalog,
+  hangeulContrastBlockType,
+  hangeulGameBlockType,
+  hangeulLettersBlockType,
+  hangeulSyllableGridBlockType,
   lessonPageBlockType,
   pdfPagesBlockType,
   vocabularyReferenceBlockType,
@@ -19,6 +23,10 @@ import { calloutBlock } from "./blocks/callout-block";
 import { conversationBlock } from "./blocks/conversation-block";
 import { cultureBlock } from "./blocks/culture-block";
 import { grammarBlock } from "./blocks/grammar-block";
+import { hangeulContrastBlock } from "./blocks/hangeul-contrast-block";
+import { hangeulGameBlock } from "./blocks/hangeul-game-block";
+import { hangeulLettersBlock } from "./blocks/hangeul-letters-block";
+import { hangeulSyllableGridBlock } from "./blocks/hangeul-syllable-grid-block";
 import { lessonPageBlock } from "./blocks/lesson-page-block";
 import { pdfPagesBlock } from "./blocks/pdf-pages-block";
 import {
@@ -39,6 +47,10 @@ export const hakgyoBlockNoteSchema = BlockNoteSchema.create({
     [vocabularyReferenceBlockType]: vocabularyReferenceBlock,
     [assessmentReferenceBlockType]: assessmentReferenceBlock,
     [pdfPagesBlockType]: pdfPagesBlock,
+    [hangeulLettersBlockType]: hangeulLettersBlock,
+    [hangeulContrastBlockType]: hangeulContrastBlock,
+    [hangeulSyllableGridBlockType]: hangeulSyllableGridBlock,
+    [hangeulGameBlockType]: hangeulGameBlock,
   },
 });
 

@@ -405,6 +405,7 @@ function CourseItemContent({
         >
           <NativeContentRenderer
             content={material.content}
+            courseItemId={courseItemId}
             resourceReferences={item.embeddedResources}
             resolveAssetUrl={resolveAssetUrl}
             onReadingProgress={onReadingProgress}

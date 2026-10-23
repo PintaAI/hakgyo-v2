@@ -16,8 +16,12 @@ import {
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import {
+  AudioLinesIcon,
   BookOpenIcon,
   Building2Icon,
+  CaseSensitiveIcon,
+  Gamepad2Icon,
+  Grid3x3Icon,
   HeadphonesIcon,
   LayoutTemplateIcon,
   LightbulbIcon,
@@ -35,6 +39,10 @@ import {
   conversationBlockType,
   cultureBlockType,
   grammarBlockType,
+  hangeulContrastBlockType,
+  hangeulGameBlockType,
+  hangeulLettersBlockType,
+  hangeulSyllableGridBlockType,
   lessonPageBlockType,
   pdfPagesBlockType,
   vocabularyReferenceBlockType,
@@ -265,6 +273,60 @@ export function BlockNoteEditor({
       onItemClick: () =>
         insertOrUpdateBlockForSlashMenu(editor, {
           type: cultureBlockType,
+        }),
+    },
+    {
+      title: "Kartu huruf Hangeul",
+      subtext: "Huruf besar dengan bunyi, petunjuk pelafalan, dan contoh kata.",
+      aliases: ["hangeul", "hangul", "huruf", "letter", "jamo", "한글", "자모"],
+      group: "Blok Hakgyo",
+      icon: <CaseSensitiveIcon className="size-4" />,
+      onItemClick: () =>
+        insertOrUpdateBlockForSlashMenu(editor, {
+          type: hangeulLettersBlockType,
+        }),
+    },
+    {
+      title: "Pasangan bunyi",
+      subtext:
+        "Bandingkan dua atau tiga kata yang bunyinya mirip, dengan audio.",
+      aliases: [
+        "pasangan",
+        "minimal pair",
+        "contrast",
+        "bunyi",
+        "pelafalan",
+        "hangeul",
+        "발음",
+      ],
+      group: "Blok Hakgyo",
+      icon: <AudioLinesIcon className="size-4" />,
+      onItemClick: () =>
+        insertOrUpdateBlockForSlashMenu(editor, {
+          type: hangeulContrastBlockType,
+        }),
+    },
+    {
+      title: "Tabel suku kata",
+      subtext:
+        "Tabel konsonan × vokal berisi suku kata Hangeul yang bisa diputar.",
+      aliases: ["tabel", "suku kata", "syllable", "grid", "hangeul", "음절"],
+      group: "Blok Hakgyo",
+      icon: <Grid3x3Icon className="size-4" />,
+      onItemClick: () =>
+        insertOrUpdateBlockForSlashMenu(editor, {
+          type: hangeulSyllableGridBlockType,
+        }),
+    },
+    {
+      title: "Permainan Hangeul",
+      subtext: "Ajak murid berlatih huruf lewat permainan di aplikasi Hakgyo.",
+      aliases: ["permainan", "game", "main", "hangeul", "latihan", "게임"],
+      group: "Blok Hakgyo",
+      icon: <Gamepad2Icon className="size-4" />,
+      onItemClick: () =>
+        insertOrUpdateBlockForSlashMenu(editor, {
+          type: hangeulGameBlockType,
         }),
     },
     ...(resourceLibrary

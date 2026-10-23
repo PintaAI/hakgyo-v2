@@ -22,6 +22,52 @@ slash menu and AI clients discover it through
 
 Supported tones are `info`, `tip`, `warning`, and `success`.
 
+## Hangeul Blocks
+
+Four blocks teach Hangeul, mainly in the Hangeul Mastery foundation course.
+Their props are defined in `docs/hangeul-mastery.md` ("Hangeul blocks"); the
+type names, parsers, game keys and stages live in `@hakgyo/shared/hangeul`, so
+the web editor, the web learner view and the mobile renderer read the JSON
+props the same way.
+
+| Type                  | Slash menu          | Shows                                                                                       |
+| --------------------- | ------------------- | ------------------------------------------------------------------------------------------- |
+| `hangeulLetters`      | Kartu huruf Hangeul | Letter cards: large character, name, Indonesian sound cue, romanization, note, example word |
+| `hangeulContrast`     | Pasangan bunyi      | Rows of two or three similar-sounding words side by side                                    |
+| `hangeulSyllableGrid` | Tabel suku kata     | Consonant × vowel table of composed syllables, optional batchim                             |
+| `hangeulGame`         | Permainan Hangeul   | A card that opens a mobile Hangeul game at a stage                                          |
+
+- Every clip is an `assetId` inside a JSON prop. `collectMaterialAssetIds`
+  reads them with `collectContentAssetIds`, so saving links the files to the
+  material (learner access, offline bundles, starter-course cloning through
+  `remapIds`), and the editor deletes a clip's file when it leaves the
+  document.
+- Web components: `components/editor/blocks/hangeul-*.tsx`, with the shared
+  play button, upload control and header in `hangeul-block-parts.tsx`. Clip
+  URLs are signed when a block mounts (batched like other media) so a click can
+  start playback right away; one clip plays at a time on the page. A missing or
+  unavailable asset hides its play button.
+- Authors edit titles, cues and rows in place. Each letter, example word,
+  contrast item and grid syllable has its own audio upload (`audio/*`, up to
+  50 MB, through the editor's asset storage); there is no picker for files
+  already in the library. Grid audio is listed under the table in "Audio suku
+  kata"; entries whose syllable is no longer in the table stay until removed
+  there.
+- While editing, empty cards and rows with fewer than two items are kept so
+  they can be filled in; learners only see what the shared parsers accept.
+- Grid romanization is `romanizeHangeulSyllable`, the Revised Romanization of
+  each syllable read on its own (no sound changes between syllables).
+- `hangeulGame` on the web explains that the game is in the app and links to
+  `hangeulGameDeepLink(...)` plus the store badges (`components/store-badges.tsx`).
+  On mobile it pushes `hangeulGamePath({ gameKey, stage, courseItemId })` with
+  the `courseItemId` passed to `NativeContentRenderer`. Content rendered without
+  one (assessment questions and options) shows the card without opening the
+  game, so a learner never leaves an attempt by accident.
+- Mobile renderers: `apps/mobile/src/components/content-renderer/hangeul-blocks.tsx`,
+  one expo-audio player per block, resolving clips through the renderer's asset
+  resolver (offline copies first). The grid keeps its consonant column fixed
+  while the vowels scroll horizontally.
+
 ## Source Of Truth
 
 - `apps/web/src/lib/blocknote/block-catalog.ts` contains AI-facing metadata,

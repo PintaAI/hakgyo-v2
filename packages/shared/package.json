@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./learning": "./src/learning/index.ts",
     "./learning/*": "./src/learning/*.ts",
+    "./hangeul": "./src/hangeul/index.ts",
     "./mobile-sync": "./src/mobile-sync/index.ts",
     "./release-notes": "./src/release-notes.ts"
   },

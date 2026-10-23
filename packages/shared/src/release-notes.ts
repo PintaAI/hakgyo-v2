@@ -31,6 +31,17 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    id: "2026-10-22.2",
+    version: "1.0.0",
+    date: "2026-10-22",
+    title: "Hangeul Mastery versi lengkap",
+    items: [
+      "Kurikulum Hangeul Mastery kini lengkap: dari sejarah Hangeul sampai batchim, dengan audio di setiap huruf, kosakata, dan kuis.",
+      "Kartu permainan di materi membuka permainan Hangeul sesuai huruf yang sudah kamu pelajari, lalu kembali ke materinya.",
+      "Selesaikan semuanya untuk mendapat lencana Hangeul Mastery. Setelah itu kurikulumnya disembunyikan, dan bisa ditampilkan lagi di Pengaturan.",
+    ],
+  },
+  {
     id: "2026-10-22",
     version: "1.0.0",
     date: "2026-10-22",

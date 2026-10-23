@@ -1,4 +1,5 @@
-import { router, Stack, useFocusEffect } from "expo-router";
+import type { HangeulGameStage } from "@hakgyo/shared/hangeul";
+import { Stack, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import {
   AccessibilityInfo,
@@ -22,16 +23,22 @@ import { GlassBox } from "../../components/GlassBox";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
+import { gameLeaveLabel, type GameSource } from "../game-exit";
 import { GameModal, GameStartModal } from "../game-modals";
+import { leaveGame } from "../game-navigation";
 import { GameBackToolbar } from "../game-screens";
 import { composeHangul, syllableKeys } from "./hangul-composer";
 import { HangeulKeyboard } from "./hangeul-keyboard";
-import { SYLLABLE_CHALLENGES } from "./syllable-forge-data";
-import { initialSession, syllableSessionReducer } from "./syllable-session";
+import {
+  getSyllableChallenges,
+  type SyllableChallenge,
+} from "./syllable-forge-data";
+import {
+  createSyllableSessionReducer,
+  initialSession,
+} from "./syllable-session";
 import { SyllableStage } from "./syllable-stage";
 import { SymbolIcon } from "../../components/ui/symbol-icon";
-
-const leave = () => router.dismissTo("/(home)/(tabs)/assessments");
 
 function SyllableHintModal({
   challenge,
@@ -40,7 +47,7 @@ function SyllableHintModal({
   visible,
   onClose,
 }: {
-  challenge: (typeof SYLLABLE_CHALLENGES)[number];
+  challenge: SyllableChallenge;
   expectedKeys: string[];
   enteredCount: number;
   visible: boolean;
@@ -167,16 +174,26 @@ function SyllableHintModal({
   );
 }
 
-export function SyllableForgeScreen() {
+export function SyllableForgeScreen({
+  source,
+  stage,
+}: {
+  source?: GameSource;
+  stage?: HangeulGameStage;
+}) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const [session, dispatch] = useReducer(
-    syllableSessionReducer,
-    initialSession,
+  const challenges = getSyllableChallenges(stage?.id);
+  const reducer = useMemo(
+    () => createSyllableSessionReducer(challenges),
+    [challenges],
   );
+  const [session, dispatch] = useReducer(reducer, initialSession);
   const [showExit, setShowExit] = useState(false);
   const [showHintModal, setShowHintModal] = useState(false);
-  const challenge = SYLLABLE_CHALLENGES[session.index]!;
+  const leave = useCallback(() => leaveGame(source), [source]);
+  const leaveLabel = gameLeaveLabel(source);
+  const challenge = challenges[session.index]!;
   const blocks = useMemo(() => composeHangul(session.keys), [session.keys]);
   const expectedKeys = useMemo(
     () => syllableKeys(challenge.target),
@@ -190,7 +207,7 @@ export function SyllableForgeScreen() {
     session.index + (correct || session.phase === "complete" ? 1 : 0);
   const progress = useSharedValue(0);
   useEffect(() => {
-    progress.value = withTiming(completed / SYLLABLE_CHALLENGES.length, {
+    progress.value = withTiming(completed / challenges.length, {
       duration: 280,
     });
   }, [completed, progress]);
@@ -209,7 +226,7 @@ export function SyllableForgeScreen() {
   const requestLeave = useCallback(() => {
     if (session.phase === "intro" || session.phase === "complete") leave();
     else setShowExit(true);
-  }, [session.phase]);
+  }, [leave, session.phase]);
   const openHint = useCallback(() => {
     if (!session.showHint) dispatch({ type: "hint" });
     setShowHintModal(true);
@@ -242,7 +259,10 @@ export function SyllableForgeScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <GameBackToolbar onPress={requestLeave} />
+      <GameBackToolbar
+        accessibilityLabel={source?.sourceCourseItemId ? leaveLabel : undefined}
+        onPress={requestLeave}
+      />
       {session.phase === "playing" ? (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
@@ -267,7 +287,7 @@ export function SyllableForgeScreen() {
         accessibilityLabel="Blok selesai"
         accessibilityValue={{
           min: 0,
-          max: SYLLABLE_CHALLENGES.length,
+          max: challenges.length,
           now: completed,
         }}
         style={[styles.progressTrack, { backgroundColor: colors.border }]}
@@ -286,7 +306,7 @@ export function SyllableForgeScreen() {
             {challenge.family}
           </Text>
           <Text style={[styles.smallLabel, { color: colors.mutedForeground }]}>
-            {session.index + 1}/{SYLLABLE_CHALLENGES.length}
+            {session.index + 1}/{challenges.length}
           </Text>
         </View>
         <View style={styles.prompt}>
@@ -362,7 +382,7 @@ export function SyllableForgeScreen() {
         <View style={styles.nextActionSlot}>
           {correct ? (
             <StudyAction onPress={nextChallenge}>
-              {session.index === SYLLABLE_CHALLENGES.length - 1
+              {session.index === challenges.length - 1
                 ? "Lihat hasil"
                 : "Lanjut"}
             </StudyAction>
@@ -383,13 +403,17 @@ export function SyllableForgeScreen() {
       <GameStartModal
         gameKey="syllable-forge"
         visible={session.phase === "intro"}
-        title="Susun 한글"
-        detail="Ketik huruf dan lihat mereka menyatu menjadi suku kata. Mulai dari blok sederhana, lalu coba vokal gabungan dan batchim."
+        title={stage ? `Susun 한글: ${stage.title}` : "Susun 한글"}
+        detail={
+          stage
+            ? `Ketik huruf dan lihat mereka menyatu menjadi suku kata. Semua blok hanya memakai huruf tahap ${stage.title}.`
+            : "Ketik huruf dan lihat mereka menyatu menjadi suku kata. Mulai dari blok sederhana, lalu coba vokal gabungan dan batchim."
+        }
         content={
           <Text style={[styles.modalCopy, { color: colors.mutedForeground }]}>
-            12 tantangan · Tanpa batas waktu{"\n"}Keyboard Korea dengan bunyi
-            bantu Indonesia. Gunakan Shift untuk huruf rangkap, ⌫ untuk
-            menghapus, dan petunjuk kapan pun dibutuhkan.
+            {challenges.length} tantangan · Tanpa batas waktu{"\n"}Keyboard
+            Korea dengan bunyi bantu Indonesia. Gunakan Shift untuk huruf
+            rangkap, ⌫ untuk menghapus, dan petunjuk kapan pun dibutuhkan.
           </Text>
         }
         primaryLabel="Mulai menyusun"
@@ -401,11 +425,11 @@ export function SyllableForgeScreen() {
         visible={session.phase === "complete"}
         eyebrow="LATIHAN SELESAI"
         title="Blok demi blok, bisa!"
-        detail={`Kamu berhasil menyusun ${SYLLABLE_CHALLENGES.length} blok Hangeul.`}
+        detail={`Kamu berhasil menyusun ${challenges.length} blok Hangeul.`}
         content={
           <View style={styles.result}>
             <Text style={[styles.resultNumber, { color: colors.primary }]}>
-              {session.independent}/{SYLLABLE_CHALLENGES.length}
+              {session.independent}/{challenges.length}
             </Text>
             <Text style={[styles.modalCopy, { color: colors.mutedForeground }]}>
               Tepat pada percobaan pertama tanpa petunjuk.{"\n"}Ulangi latihan
@@ -414,7 +438,7 @@ export function SyllableForgeScreen() {
           </View>
         }
         primaryLabel="Main lagi"
-        secondaryLabel="Kembali ke latihan"
+        secondaryLabel={leaveLabel}
         onPrimary={() => dispatch({ type: "start" })}
         onSecondary={leave}
       />
