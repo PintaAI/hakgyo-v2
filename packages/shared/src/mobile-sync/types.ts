@@ -250,6 +250,13 @@ export type BundleMaterial = {
 export type BundleVocabularyEntry = {
   id: string;
   term: string;
+  /**
+   * Every meaning of the term. Optional because bundles cached before it
+   * existed lack it; read it through `entryMeanings`, which falls back to
+   * `definition`.
+   */
+  meanings?: string[];
+  /** Meanings joined with "; ", for clients that predate `meanings`. */
   definition: string;
   examples: JsonValue;
   metadata: JsonValue;

@@ -129,6 +129,7 @@ export async function getLearnerMaterialReferencesForSources(
               select: {
                 id: true,
                 term: true,
+                meanings: true,
                 definition: true,
                 examples: true,
                 audioAsset: { select: { id: true, fileName: true } },

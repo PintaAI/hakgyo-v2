@@ -5,6 +5,7 @@ import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 
+import { vocabularyMeaningFields } from "@hakgyo/shared";
 import { PrismaNeon } from "@prisma/adapter-neon";
 
 import { Prisma, PrismaClient } from "../../generated/prisma/client";
@@ -154,7 +155,7 @@ async function importLesson(input: {
       where: { id: entryId },
       update: {
         term: entry.term,
-        definition: entry.definition,
+        ...vocabularyMeaningFields([entry.definition]),
         examples: entry.examples,
         metadata: {
           source: "HRDK textbook",
@@ -168,7 +169,7 @@ async function importLesson(input: {
         vocabularySetId: vocabulary.id,
         organizationId,
         term: entry.term,
-        definition: entry.definition,
+        ...vocabularyMeaningFields([entry.definition]),
         examples: entry.examples,
         metadata: {
           source: "HRDK textbook",

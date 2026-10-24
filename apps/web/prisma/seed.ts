@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { vocabularyMeaningFields } from "@hakgyo/shared";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { hashPassword } from "better-auth/crypto";
 
@@ -412,8 +413,9 @@ async function main() {
   }
 
   for (const entry of vocabularyEntries) {
-    const { image, ...data } = entry;
+    const { image, definition, ...rest } = entry;
     void image;
+    const data = { ...rest, ...vocabularyMeaningFields([definition]) };
     const imageAssetId = vocabularyEntryAssets.get(entry.id);
     await db.vocabularyEntry.upsert({
       where: { id: entry.id },

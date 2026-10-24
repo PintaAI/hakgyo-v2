@@ -152,6 +152,7 @@ function bundle(
             {
               id: "entry-1",
               term: "안녕",
+              // No `meanings`: bundles cached before it fall back to `definition`.
               definition: "hello",
               examples: ["안녕하세요"],
               metadata: null,
@@ -369,6 +370,7 @@ describe("composeCourseItem", () => {
           {
             id: "entry-1",
             term: "안녕",
+            meanings: ["hello"],
             definition: "hello",
             examples: ["안녕하세요"],
             audioAsset: { id: "asset-audio", fileName: "audio.mp3" },
@@ -562,6 +564,7 @@ describe("composeVocabularyPractice", () => {
         {
           id: "entry-1",
           term: "안녕",
+          meanings: ["hello"],
           definition: "hello",
           examples: ["안녕하세요"],
           audioAssetId: "asset-audio",

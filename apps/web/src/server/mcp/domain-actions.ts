@@ -313,7 +313,7 @@ export const mcpDomainTools = {
       name: "add_vocabulary_entry",
       title: "Add kosakata entry",
       description:
-        "Add a word or phrase with its definition and optional examples to a kosakata (vocabulary) set.",
+        "Add a word or phrase with its meanings (a word can have several) and optional examples to a kosakata (vocabulary) set.",
       effect: "add",
     },
     {
@@ -321,7 +321,7 @@ export const mcpDomainTools = {
       name: "update_vocabulary_entry",
       title: "Update kosakata entry",
       description:
-        "Change a kosakata entry's term, definition, examples or attached audio and image. Only the fields you send are changed.",
+        "Change a kosakata entry's term, meanings, examples or attached audio and image. Only the fields you send are changed; sending meanings replaces all of them.",
       effect: "change",
     },
   ],

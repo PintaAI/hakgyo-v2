@@ -1,10 +1,11 @@
-import { getReadableForeground } from "@hakgyo/shared";
+import { entryMeanings, getReadableForeground } from "@hakgyo/shared";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 import { Action, EmptyState, Eyebrow } from "../learning-ui";
 import { VocabularyAudioButton } from "../vocabulary-audio-button";
+import { VocabularyMeanings } from "../vocabulary-meanings";
 import { InlineContent } from "./inline-content";
 import { assetSource, ContentAudio, ContentImage } from "./media";
 import { booleanProp, isRecord, parseJsonArray, stringProp } from "./normalize";
@@ -93,7 +94,7 @@ function VocabularyReference({ block }: BlockRendererProps) {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return resource?.entries ?? [];
     return (resource?.entries ?? []).filter((entry) =>
-      `${entry.term} ${entry.definition}`
+      `${entry.term} ${entryMeanings(entry).join(" ")}`
         .toLowerCase()
         .includes(normalizedQuery),
     );
@@ -176,9 +177,10 @@ function VocabularyReference({ block }: BlockRendererProps) {
                 <Text className="text-lg font-black text-foreground">
                   {entry.term}
                 </Text>
-                <Text className="text-sm leading-5 text-muted-foreground">
-                  {entry.definition}
-                </Text>
+                <VocabularyMeanings
+                  className="text-sm leading-5 text-muted-foreground"
+                  meanings={entryMeanings(entry)}
+                />
                 {firstExample(entry.examples) ? (
                   <Text className="mt-1 text-sm italic leading-5 text-foreground">
                     “{firstExample(entry.examples)}”

@@ -1,3 +1,4 @@
+import { entryMeanings } from "@hakgyo/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -27,7 +28,7 @@ export default async function CardsPage({
       words={vocabulary.entries.map((entry) => ({
         id: entry.id,
         term: entry.term,
-        definition: entry.definition,
+        meanings: entryMeanings(entry),
         imageAssetId: entry.imageAsset?.id,
       }))}
     />

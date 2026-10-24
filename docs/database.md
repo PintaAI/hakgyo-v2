@@ -198,11 +198,22 @@ setiap kata. Entri ditampilkan secara stabil berdasarkan waktu pembuatannya.
 
 | Field `VocabularyEntry` | Contoh                                            |
 | ----------------------- | ------------------------------------------------- |
-| `term`                  | `이름`                                            |
-| `definition`            | `nama`                                            |
+| `term`                  | `배`                                              |
+| `meanings`              | `["perut", "kapal", "buah pir"]`                  |
+| `definition`            | `perut; kapal; buah pir`                          |
 | `examples`              | List contoh kalimat dalam format JSON             |
 | `audioAssetId`          | File audio pelafalan yang tersimpan sebagai asset |
 | `metadata`              | Romanisasi, jenis kata, atau catatan tambahan     |
+
+`meanings` adalah sumber kebenaran: satu kata bisa punya beberapa arti, urut
+sesuai tulisan pengajar. `definition` adalah cerminan `meanings` yang digabung
+dengan `"; "`. Kolom ini tetap ditulis karena dipakai pencarian (indeks trigram),
+hash konten progres (`vocabularyContentHash`, jadi kata dengan satu arti tidak
+kehilangan progres) dan aplikasi ponsel versi lama yang belum membaca
+`meanings`. Selalu tulis keduanya lewat `vocabularyMeaningFields()` dari
+`@hakgyo/shared`, dan baca lewat `entryMeanings()`, yang jatuh kembali ke
+`definition` untuk bundle lama. Prosedur tRPC dan tool MCP menerima `meanings`
+dan masih menerima `definition` tunggal dari klien lama.
 
 Contoh isi `examples`:
 

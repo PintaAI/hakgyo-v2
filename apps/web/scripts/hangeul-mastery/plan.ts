@@ -482,6 +482,7 @@ export function planImport(
     ...diffModel(entriesWanted, byId(snapshot.entries), [
       "vocabularySetId",
       "term",
+      "meanings",
       "definition",
       "examples",
       "metadata",

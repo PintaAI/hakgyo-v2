@@ -1,3 +1,4 @@
+import { entryMeanings, joinMeanings } from "@hakgyo/shared";
 import type {
   BundleContent,
   BundleStructure,
@@ -208,15 +209,16 @@ export function courseBundleDocuments({
       },
     });
     for (const entry of set.entries) {
+      const meanings = entryMeanings(entry);
       documents.push({
         key: `vocabularyEntry:${set.id}:${entry.id}`,
         kind: "vocabularyEntry",
         title: entry.term,
-        context: joinContext(entry.definition, set.title),
+        context: joinContext(joinMeanings(meanings), set.title),
         organizationId,
         fields: [
           ...field(entry.term, TERM),
-          ...field(entry.definition, MEANING),
+          ...meanings.flatMap((meaning) => field(meaning, MEANING)),
         ],
         body: vocabularyExamples(entry.examples),
         target: {

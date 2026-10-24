@@ -4,7 +4,9 @@ import { readFileSync } from "node:fs";
 import {
   addWordFallReviewItem,
   analyzeTyping,
+  answerOptionsForWord,
   answerTextForWord,
+  bestTypingAnswer,
   comboMultiplier,
   destroyedForLevel,
   fallDurationForLevel,
@@ -92,7 +94,7 @@ describe("word fall engine", () => {
     const word = {
       id: "korea",
       term: "한국",
-      definition: "South Korea",
+      meanings: ["South Korea"],
     };
 
     expect(promptTextForWord(word, "ID")).toBe("한국");
@@ -105,6 +107,25 @@ describe("word fall engine", () => {
         "한",
       ),
     ).toBe(word.id);
+  });
+
+  test("accepts any meaning and follows the one being typed", () => {
+    const word = { id: "bae", term: "배", meanings: ["perut", "kapal"] };
+    const options = answerOptionsForWord(word, "ID");
+
+    expect(promptTextForWord(word, "KR")).toBe("perut; kapal");
+    expect(answerTextForWord(word, "ID")).toBe("perut");
+    expect(answerOptionsForWord(word, "KR")).toEqual(["배"]);
+    expect(bestTypingAnswer(options, "", "perut")).toBe("perut");
+    expect(bestTypingAnswer(options, "ka", "perut")).toBe("kapal");
+    expect(bestTypingAnswer(options, "x", "kapal")).toBe("kapal");
+    expect(
+      selectWordTarget(
+        options.map((answer) => ({ id: word.id, answer, impactAt: 1 })),
+        "kap",
+      ),
+    ).toBe(word.id);
+    expect(pointsForWord(word, 1, 1, "ID", "kapal")).toBe(50);
   });
 
   test("tracks the correct prefix and blocks progress after a mistake", () => {
@@ -162,7 +183,7 @@ describe("word fall engine", () => {
   });
 
   test("grows the combo multiplier gradually and caps it", () => {
-    const word = { id: "school", term: "학교", definition: "school" };
+    const word = { id: "school", term: "학교", meanings: ["school"] };
 
     expect(comboMultiplier(1)).toBe(1);
     expect(comboMultiplier(4)).toBeCloseTo(1.3);
@@ -172,7 +193,7 @@ describe("word fall engine", () => {
   });
 
   test("deduplicates recap vocabulary while preserving review reasons", () => {
-    const word = { id: "school", term: "학교", definition: "school" };
+    const word = { id: "school", term: "학교", meanings: ["school"] };
     const mistyped = addWordFallReviewItem([], word, "mistyped");
     const repeated = addWordFallReviewItem(mistyped, word, "mistyped");
     const missed = addWordFallReviewItem(repeated, word, "missed");

@@ -54,7 +54,8 @@ function vocabularySet(id: string): NonNullable<Item["vocabularySet"]> {
       {
         id: `${id}-e1`,
         term: "term",
-        definition: "definition",
+        meanings: ["perut", "kapal"],
+        definition: "perut; kapal",
         examples: [],
         metadata: null,
         audioAssetId: `${id}-audio`,
@@ -387,6 +388,11 @@ describe("loadCourseBundle", () => {
     expect(
       bundle.content.vocabularySets["set-a"]?.entries[0]?.audioAssetId,
     ).toBe("set-a-audio");
+    // Meanings ship next to the joined definition older apps still read.
+    expect(bundle.content.vocabularySets["set-a"]?.entries[0]).toMatchObject({
+      meanings: ["perut", "kapal"],
+      definition: "perut; kapal",
+    });
   });
 
   test("throws NOT_FOUND for a missing course", async () => {

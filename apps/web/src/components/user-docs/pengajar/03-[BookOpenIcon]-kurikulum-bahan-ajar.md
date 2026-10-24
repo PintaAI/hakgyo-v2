@@ -141,15 +141,17 @@ Klik **Audio** di kartu huruf, contoh kata, atau kata dalam pasangan bunyi untuk
 
 1. Buka **Bahan ajar**, lalu **Kosakata**, dan buat kumpulan baru.
 2. Ketik judul. Kumpulan otomatis tersimpan setelah judul diisi.
-3. Di baris kosong untuk kata baru, ketik katanya, misalnya `안녕하세요`, lalu artinya, dan tekan Enter.
-4. Klik sebuah kata untuk menambahkan **Contoh pemakaian**, **Gambar ilustrasi**, atau **Audio pelafalan**. Anda juga bisa menyeret file gambar atau audio ke kata tersebut.
+3. Di baris kosong untuk kata baru, ketik katanya, misalnya `안녕하세요`, lalu artinya, dan tekan Enter. Jika kata itu punya beberapa arti, pisahkan dengan titik koma, misalnya `perut; kapal; buah pir` untuk `배`.
+4. Klik sebuah kata untuk mengubah **Arti**, atau menambahkan **Contoh pemakaian**, **Gambar ilustrasi**, atau **Audio pelafalan**. Setiap arti punya kolomnya sendiri: klik **Tambah arti** atau tekan Enter di kolom arti untuk menambah arti baru, dan klik tanda silang untuk menghapusnya. Anda juga bisa menyeret file gambar atau audio ke kata tersebut.
+
+Murid melihat semua arti sebuah kata. Saat latihan, menjawab salah satu artinya sudah dianggap benar.
 
 Bantuan AI:
 
 - **Tambah 3–4 contoh dengan AI** membuat contoh kalimat untuk satu kata.
-- Ikon bintang **Impor kosakata dengan AI** membaca daftar kata dari foto atau gambar. Periksa hasilnya di tabel, hapus centang yang tidak perlu, lalu klik **Simpan**. Kata yang sudah ada ditandai **Sudah ada**.
+- Ikon bintang **Impor kosakata dengan AI** membaca daftar kata dari foto atau gambar. Periksa hasilnya di tabel, hapus centang yang tidak perlu, lalu klik **Simpan**. Kata yang sudah ada ditandai **Sudah ada**. Jika satu kata punya beberapa arti, artinya ditulis dalam satu kolom dan dipisahkan dengan titik koma.
 
-Jika sebuah kata atau artinya diubah, progres murid untuk kata itu dimulai lagi dari awal.
+Jika sebuah kata atau artinya diubah (termasuk menambah atau menghapus arti), progres murid untuk kata itu dimulai lagi dari awal.
 
 ## Membuat tugas
 

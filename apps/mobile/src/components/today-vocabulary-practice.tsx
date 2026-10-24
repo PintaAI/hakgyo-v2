@@ -1,4 +1,5 @@
 import type { RouterOutputs } from "@hakgyo/api";
+import { entryMeanings, joinMeanings } from "@hakgyo/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Text, TextInput, View } from "react-native";
 import type { NativeGesture } from "react-native-gesture-handler";
@@ -98,24 +99,24 @@ export function TodayVocabularyPractice({
       round.map((item) => ({
         id: `${item.entryId}:${item.setVersion}`,
         // KR mode answers in Korean (productive); ID mode answers in Indonesian (receptive).
-        prompt: mode === "KR" ? item.definition : item.term,
-        answer: mode === "KR" ? item.term : item.definition,
+        prompt: mode === "KR" ? joinMeanings(entryMeanings(item)) : item.term,
+        answer: mode === "KR" ? item.term : joinMeanings(entryMeanings(item)),
         imageAssetId: item.imageAssetId,
         imageAccessibilityLabel: `${item.term} illustration`,
       })),
     [mode, round],
   );
-  const expectedAnswer = card
-    ? mode === "KR"
-      ? card.term
-      : card.definition
-    : "";
+  // Any one meaning counts when the learner answers with the meaning.
+  const expectedAnswer = useMemo(
+    () => (card ? (mode === "KR" ? card.term : entryMeanings(card)) : ""),
+    [card, mode],
+  );
 
   function isAnswerCorrect(value: string) {
     if (!card) return false;
     return mode === "KR"
       ? isVocabularyAnswerCorrect(value, card.term)
-      : isDefinitionCorrect(card, value);
+      : isDefinitionCorrect({ meanings: entryMeanings(card) }, value);
   }
 
   async function checkAnswer(spokenTranscripts?: readonly string[]) {
@@ -280,7 +281,10 @@ export function TodayVocabularyPractice({
   const speech = useHandsFreeSpeech({
     mode,
     contextualStrings: useMemo(
-      () => round.map((item) => (mode === "KR" ? item.term : item.definition)),
+      () =>
+        round.flatMap((item) =>
+          mode === "KR" ? [item.term] : entryMeanings(item),
+        ),
       [mode, round],
     ),
     expectedAnswer,
@@ -402,7 +406,7 @@ export function TodayVocabularyPractice({
                   inputRef={inputRef}
                   accessibilityLabel={
                     mode === "KR"
-                      ? `Kata Korea untuk ${card.definition}`
+                      ? `Kata Korea untuk ${joinMeanings(entryMeanings(card))}`
                       : `Arti dari ${card.term}`
                   }
                   value={answer}

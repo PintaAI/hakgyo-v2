@@ -18,9 +18,10 @@ const MISS_DISPLAY_MS = 1_500;
 
 type UseHandsFreeSpeechOptions = {
   mode: VocabularySpeechMode;
-  /** Bias the recognizer towards the current queue (terms or definitions). */
+  /** Bias the recognizer towards the current queue (terms or meanings). */
   contextualStrings: readonly string[];
-  expectedAnswer: string;
+  /** Accepted answers: the term, or every meaning of the word. */
+  expectedAnswer: string | readonly string[];
   /** Speech must stay off, e.g. there is no card or the deck is moving. */
   blocked: boolean;
   /** The current card is still waiting for an answer. */

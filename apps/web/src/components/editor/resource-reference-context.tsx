@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-import type { PdfBookResource } from "@hakgyo/shared";
+import { entryMeanings, type PdfBookResource } from "@hakgyo/shared";
 
 import { api } from "~/trpc/react";
 
@@ -14,7 +14,7 @@ export type VocabularyReferenceResource = {
   entries: Array<{
     id: string;
     term: string;
-    definition: string;
+    meanings: string[];
     examples: unknown;
     audioAsset: { id: string; fileName: string } | null;
     imageAsset: { id: string; fileName: string } | null;
@@ -180,7 +180,7 @@ export function useVocabularyReference(vocabularySetId: string): {
             entries: query.data.entries.map((entry) => ({
               id: entry.id,
               term: entry.term,
-              definition: entry.definition,
+              meanings: entryMeanings(entry),
               examples: entry.examples,
               audioAsset: entry.audioAsset
                 ? {

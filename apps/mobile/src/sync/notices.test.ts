@@ -402,6 +402,7 @@ describe("bundle notices", () => {
         {
           id: "word-1",
           term: "안녕",
+          meanings: ["hello"],
           definition: "hello",
           examples: null,
           metadata: null,
@@ -411,6 +412,13 @@ describe("bundle notices", () => {
       ],
     };
     const previous = bundle("1", vocabularyStructure, vocabularyContent);
+    // Bundles from before `meanings` existed are not a change.
+    const legacy = structuredClone(vocabularyContent);
+    delete legacy.vocabularySets.v1!.entries[0]!.meanings;
+    expect(
+      diffBundle(bundle("0", vocabularyStructure, legacy), previous)
+        ?.itemsUpdated ?? [],
+    ).toEqual([]);
     const changed = structuredClone(vocabularyContent);
     changed.vocabularySets.v1!.entries[0]!.metadata = {
       pronunciation: "annyeong",

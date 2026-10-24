@@ -1,4 +1,4 @@
-import { assessmentContentAssetIds } from "@hakgyo/shared";
+import { assessmentContentAssetIds, entryMeanings } from "@hakgyo/shared";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import {
   BUNDLE_SCHEMA,
@@ -136,6 +136,7 @@ const courseBundleSelect = {
                 select: {
                   id: true,
                   term: true,
+                  meanings: true,
                   definition: true,
                   examples: true,
                   metadata: true,
@@ -335,6 +336,7 @@ export function shapeCourseBundle(course: CourseBundleSource) {
             return {
               id: entry.id,
               term: entry.term,
+              meanings: entryMeanings(entry),
               definition: entry.definition,
               examples: entry.examples,
               metadata: entry.metadata,

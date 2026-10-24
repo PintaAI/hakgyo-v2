@@ -32,6 +32,12 @@ import {
   type ExtractedVocabularyEntry,
 } from "~/server/ai/vocabulary-extraction";
 import { generateVocabularyExamples } from "~/server/ai/vocabulary-examples";
+import {
+  requireVocabularyMeanings,
+  resolveVocabularyMeanings,
+  vocabularyDefinitionInput,
+  vocabularyMeaningsInput,
+} from "~/server/vocabulary/meanings";
 import { syncMaterialPdfPageAssets } from "~/server/pdf-book/service";
 import {
   blockNoteDocument,
@@ -1141,7 +1147,7 @@ export const contentRouter = createTRPCRouter({
     .input(
       z.object({
         organizationId: id,
-        /** Matches title, description, or any entry term/definition. */
+        /** Matches title, description, or any entry term or meaning. */
         search: z.string().trim().max(200).optional(),
       }),
     )
@@ -1364,7 +1370,10 @@ export const contentRouter = createTRPCRouter({
         organizationId: id,
         vocabularySetId: id,
         term: z.string().trim().min(1).max(500),
-        definition: z.string().trim().min(1).max(5000),
+        /** Every meaning of the term; at least one must be non-empty. */
+        meanings: vocabularyMeaningsInput.optional(),
+        /** Single meaning for callers that predate `meanings`. */
+        definition: vocabularyDefinitionInput.optional(),
         examples: json.optional(),
         audioAssetId: id.nullable().optional(),
         imageAssetId: id.nullable().optional(),
@@ -1398,7 +1407,13 @@ export const contentRouter = createTRPCRouter({
           "image",
         );
       }
-      return db.vocabularyEntry.create({ data: input });
+      const { meanings, definition, ...data } = input;
+      return db.vocabularyEntry.create({
+        data: {
+          ...data,
+          ...requireVocabularyMeanings({ meanings, definition }),
+        },
+      });
     }),
   updateVocabularyEntry: protectedProcedure
     .input(
@@ -1406,7 +1421,10 @@ export const contentRouter = createTRPCRouter({
         organizationId: id,
         entryId: id,
         term: z.string().trim().min(1).max(500).optional(),
-        definition: z.string().trim().min(1).max(5000).optional(),
+        /** Replaces every meaning of the term. */
+        meanings: vocabularyMeaningsInput.optional(),
+        /** Single meaning for callers that predate `meanings`. */
+        definition: vocabularyDefinitionInput.optional(),
         examples: json.optional(),
         audioAssetId: id.nullable().optional(),
         imageAssetId: id.nullable().optional(),
@@ -1438,10 +1456,13 @@ export const contentRouter = createTRPCRouter({
           "image",
         );
       }
-      const { organizationId, entryId, ...data } = input;
+      const { organizationId, entryId, meanings, definition, ...data } = input;
       const result = await db.vocabularyEntry.updateMany({
         where: { id: entryId, organizationId },
-        data,
+        data: {
+          ...data,
+          ...resolveVocabularyMeanings({ meanings, definition }),
+        },
       });
       if (!result.count) throw new TRPCError({ code: "NOT_FOUND" });
       return db.vocabularyEntry.findUniqueOrThrow({ where: { id: entryId } });
@@ -1472,7 +1493,8 @@ export const contentRouter = createTRPCRouter({
         organizationId: id,
         entryId: id,
         term: z.string().trim().min(1).max(500),
-        definition: z.string().trim().min(1).max(5000),
+        meanings: vocabularyMeaningsInput.optional(),
+        definition: vocabularyDefinitionInput.optional(),
         existingExamples: z.array(z.string().trim().min(1).max(5000)).max(20),
       }),
     )
@@ -1492,7 +1514,7 @@ export const contentRouter = createTRPCRouter({
         return {
           examples: await generateVocabularyExamples({
             term: input.term,
-            definition: input.definition,
+            meanings: requireVocabularyMeanings(input).meanings,
             existingExamples: input.existingExamples,
           }),
         };
@@ -1596,7 +1618,8 @@ export const contentRouter = createTRPCRouter({
             z.object({
               term: z.string().trim().min(1).max(500),
               romanization: z.string().trim().max(500),
-              definition: z.string().trim().min(1).max(5000),
+              meanings: vocabularyMeaningsInput.optional(),
+              definition: vocabularyDefinitionInput.optional(),
               examples: z.array(z.string().trim().min(1).max(5000)).max(20),
             }),
           )
@@ -1622,13 +1645,16 @@ export const contentRouter = createTRPCRouter({
       // each by a millisecond to keep the order the author reviewed.
       const createdAt = Date.now();
       const result = await db.vocabularyEntry.createMany({
-        data: input.entries.map(({ romanization, ...entry }, index) => ({
-          ...entry,
-          metadata: romanization ? { romanization } : undefined,
-          createdAt: new Date(createdAt + index),
-          organizationId: input.organizationId,
-          vocabularySetId: input.vocabularySetId,
-        })),
+        data: input.entries.map(
+          ({ romanization, meanings, definition, ...entry }, index) => ({
+            ...entry,
+            ...requireVocabularyMeanings({ meanings, definition }),
+            metadata: romanization ? { romanization } : undefined,
+            createdAt: new Date(createdAt + index),
+            organizationId: input.organizationId,
+            vocabularySetId: input.vocabularySetId,
+          }),
+        ),
       });
       return { created: result.count };
     }),

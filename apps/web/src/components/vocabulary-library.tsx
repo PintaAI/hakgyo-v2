@@ -45,7 +45,7 @@ export function VocabularyLibrary({
       <PageHeader
         eyebrow="Bahan ajar"
         title="Kosakata"
-        description="Buat kumpulan kata dengan definisi dan contoh untuk pelajaran dan persyaratan kurikulum."
+        description="Buat kumpulan kata dengan arti dan contoh untuk pelajaran dan persyaratan kurikulum."
         actions={
           <Link
             href={`/workspace/${organizationSlug}/library/vocabulary/new`}
@@ -63,7 +63,7 @@ export function VocabularyLibrary({
           aria-label="Cari set kosakata"
           className="pl-8"
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Cari set, istilah, atau definisi"
+          placeholder="Cari set, istilah, atau arti"
           value={search}
         />
       </div>
@@ -145,7 +145,7 @@ export function VocabularyLibrary({
           }
           description={
             debouncedSearch
-              ? "Coba judul set, istilah, atau definisi yang berbeda."
+              ? "Coba judul set, istilah, atau arti yang berbeda."
               : "Kelompokkan istilah terkait menjadi satu set yang dapat dipakai ulang lintas kurikulum."
           }
           action={

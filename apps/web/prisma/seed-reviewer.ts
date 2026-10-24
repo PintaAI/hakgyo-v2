@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { vocabularyMeaningFields } from "@hakgyo/shared";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { hashPassword } from "better-auth/crypto";
 
@@ -260,13 +261,17 @@ async function main() {
   for (const [id, term, definition, example] of entries) {
     await db.vocabularyEntry.upsert({
       where: { id },
-      update: { term, definition, examples: [example] },
+      update: {
+        term,
+        ...vocabularyMeaningFields([definition]),
+        examples: [example],
+      },
       create: {
         id,
         organizationId: organization.id,
         vocabularySetId: vocabularySet.id,
         term,
-        definition,
+        ...vocabularyMeaningFields([definition]),
         examples: [example],
       },
     });

@@ -6,7 +6,7 @@ Kumpulan kosakata berisi kata-kata Korea beserta arti, contoh kalimat, gambar, d
 
 1. Buka item **Kosakata** di kurikulummu.
 2. Kamu melihat judul kumpulan, jumlah kata, dan daftar katanya. Ganti tampilan menjadi daftar atau kotak-kotak dengan tombol di atas daftar.
-3. Klik sebuah kata untuk melihat detailnya: tombol suara untuk mendengar pelafalan, gambar, **Arti**, dan **Contoh**.
+3. Klik sebuah kata untuk melihat detailnya: tombol suara untuk mendengar pelafalan, gambar, **Arti**, dan **Contoh**. Satu kata bisa punya beberapa arti, misalnya `배` berarti perut, kapal, dan buah pir. Semua artinya ditampilkan berurutan.
 
 ## Latihan kartu
 
@@ -22,7 +22,7 @@ Kumpulan kosakata berisi kata-kata Korea beserta arti, contoh kalimat, gambar, d
    - **Lewati** untuk melompat ke kartu berikutnya.
 6. Setelah semua kata dilatih, kamu melihat ringkasan. Klik **Ulangi lagi** untuk berlatih lagi, atau lanjutkan ke item berikutnya.
 
-> **Jawaban harus persis sama** dengan yang ditulis pengajar, tetapi huruf besar-kecil dan spasi berlebih diabaikan. Sinonim atau arti dengan kata-kata lain dianggap salah. Jika kamu yakin jawabanmu benar, tanyakan ke pengajarmu.
+> **Jawaban harus persis sama** dengan yang ditulis pengajar, tetapi huruf besar-kecil dan spasi berlebih diabaikan. Jika kata itu punya beberapa arti, cukup ketik **salah satu** artinya. Sinonim atau arti dengan kata-kata lain dianggap salah. Jika kamu yakin jawabanmu benar, tanyakan ke pengajarmu.
 
 ## Kapan kosakata dianggap selesai
 

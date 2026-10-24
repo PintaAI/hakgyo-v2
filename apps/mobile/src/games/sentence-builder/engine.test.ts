@@ -14,16 +14,16 @@ const words = [
   {
     id: "school",
     term: "학교",
-    definition: "sekolah",
+    meanings: ["sekolah"],
     examples: ["저는 학교에 가요.", "학교가 커요!", "학교"],
   },
   {
     id: "friend",
     term: "친구",
-    definition: "teman",
+    meanings: ["teman", "sahabat"],
     examples: ["친구를 만나요.", 42, "  "],
   },
-  { id: "empty", term: "물", definition: "air", examples: [] },
+  { id: "empty", term: "물", meanings: ["air"], examples: [] },
 ];
 
 function start(challenge: SentenceChallenge) {
@@ -62,6 +62,13 @@ describe("sentence builder engine", () => {
       "가요",
     ]);
     expect(sentenceWords("뭐 해요?!")).toEqual(["뭐", "해요"]);
+  });
+
+  test("hints with every meaning of the entry", () => {
+    const challenges = createSentenceChallenges(words, () => 0);
+    expect(
+      challenges.find((challenge) => challenge.entryId === "friend")?.meaning,
+    ).toBe("teman; sahabat");
   });
 
   test("builds challenges from examples, one entry at a time", () => {

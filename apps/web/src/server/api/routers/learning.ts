@@ -376,6 +376,7 @@ export const learningRouter = createTRPCRouter({
             select: {
               id: true,
               term: true,
+              meanings: true,
               definition: true,
               examples: true,
               audioAssetId: true,

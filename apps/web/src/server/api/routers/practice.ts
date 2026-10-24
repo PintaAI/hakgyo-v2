@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { entryMeanings } from "@hakgyo/shared";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -164,6 +165,7 @@ export async function getVocabularyPool(
               select: {
                 id: true,
                 term: true,
+                meanings: true,
                 definition: true,
                 imageAssetId: true,
                 progress: {
@@ -196,6 +198,8 @@ export async function getVocabularyPool(
           id: entry.id,
           entryId: entry.id,
           term: entry.term,
+          meanings: entryMeanings(entry),
+          /** Joined meanings, for app builds that predate `meanings`. */
           definition: entry.definition,
           imageAssetId: entry.imageAssetId,
           vocabularySetId: set.id,

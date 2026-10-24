@@ -179,7 +179,7 @@ export function SentenceBuilderScreen({
             <Text
               style={[styles.definition, { color: colors.mutedForeground }]}
             >
-              {challenge.definition}
+              {challenge.meaning}
             </Text>
           </View>
 

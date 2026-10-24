@@ -22,6 +22,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { VocabularyMeanings } from "~/components/vocabulary-meanings";
 import {
   assessmentReferenceBlockType,
   vocabularyReferenceBlockType,
@@ -211,7 +212,7 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
         const normalizedQuery = query.trim().toLowerCase();
         if (!normalizedQuery) return resource?.entries ?? [];
         return (resource?.entries ?? []).filter((entry) =>
-          `${entry.term} ${entry.definition}`
+          `${entry.term} ${entry.meanings.join(" ")}`
             .toLowerCase()
             .includes(normalizedQuery),
         );
@@ -333,9 +334,10 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
                                 </AssetUrl>
                               ) : null}
                             </div>
-                            <p className="text-muted-foreground mt-1 text-sm">
-                              {entry.definition}
-                            </p>
+                            <VocabularyMeanings
+                              className="text-muted-foreground mt-1 text-sm"
+                              meanings={entry.meanings}
+                            />
                             {example ? (
                               <p className="mt-2 text-sm italic">“{example}”</p>
                             ) : null}
