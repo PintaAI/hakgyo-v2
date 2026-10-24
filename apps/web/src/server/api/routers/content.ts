@@ -27,30 +27,20 @@ import {
   readinessChanges,
 } from "~/server/course/readiness-service";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
-import { findBlockNoteDocumentIssues } from "~/lib/blocknote/document-validation";
 import {
   extractVocabularyFromImage,
   type ExtractedVocabularyEntry,
 } from "~/server/ai/vocabulary-extraction";
 import { generateVocabularyExamples } from "~/server/ai/vocabulary-examples";
 import { syncMaterialPdfPageAssets } from "~/server/pdf-book/service";
+import {
+  blockNoteDocument,
+  serializedJson,
+} from "~/server/content/document-input";
 
 const id = z.string().min(1);
 const vocabularyPreviewEntryCount = 3;
 const json = z.custom<Prisma.InputJsonValue>((value) => value !== undefined);
-const serializedJson = z
-  .unknown()
-  .transform((value) => value as Prisma.InputJsonValue);
-const blockNoteDocument = z
-  .array(z.record(z.string(), z.unknown()))
-  .min(1)
-  .max(5000)
-  .superRefine((document, ctx) => {
-    for (const issue of findBlockNoteDocumentIssues(document)) {
-      ctx.addIssue({ code: "custom", ...issue });
-    }
-  })
-  .transform((value) => value as Prisma.InputJsonValue);
 const itemRelation = z.discriminatedUnion("type", [
   z.object({ type: z.literal("MATERIAL"), materialId: id }),
   z.object({ type: z.literal("ASSESSMENT"), assessmentId: id }),
