@@ -8,12 +8,12 @@ import {
 } from "./engine";
 
 const words = [
-  { id: "one", term: "하나", definition: "one" },
-  { id: "two", term: "둘", definition: "two" },
-  { id: "three", term: "셋", definition: "three" },
-  { id: "four", term: "넷", definition: "four" },
-  { id: "five", term: "다섯", definition: "five" },
-  { id: "six", term: "여섯", definition: "six" },
+  { id: "one", term: "하나", meanings: ["one"] },
+  { id: "two", term: "둘", meanings: ["two"] },
+  { id: "three", term: "셋", meanings: ["three"] },
+  { id: "four", term: "넷", meanings: ["four"] },
+  { id: "five", term: "다섯", meanings: ["five"] },
+  { id: "six", term: "여섯", meanings: ["six"] },
 ];
 
 describe("vocabulary match engine", () => {
@@ -36,13 +36,35 @@ describe("vocabulary match engine", () => {
     const session = createVocabularyMatchSession(
       [
         words[0]!,
-        { ...words[0]!, definition: "duplicate" },
-        { id: "blank", term: " ", definition: "blank" },
+        { ...words[0]!, meanings: ["duplicate"] },
+        { id: "blank", term: " ", meanings: ["blank"] },
       ],
       () => 0,
     );
     expect(session.wordCount).toBe(1);
-    expect(session.rounds[0]!.terms[0]!.definition).toBe("one");
+    expect(session.rounds[0]!.terms[0]!.meaning).toBe("one");
+  });
+
+  test("joins every meaning and keeps words sharing one apart", () => {
+    const session = createVocabularyMatchSession(
+      [
+        { id: "bae", term: "배", meanings: ["perut", "kapal", "pir"] },
+        { id: "bae2", term: "복부", meanings: ["Perut"] },
+        { id: "book", term: "책", meanings: ["buku"] },
+      ],
+      () => 0,
+      3,
+      3,
+    );
+    expect(session.wordCount).toBe(3);
+    for (const round of session.rounds) {
+      const ids = round.terms.map((term) => term.id);
+      expect(ids.includes("bae") && ids.includes("bae2")).toBe(false);
+    }
+    const bae = session.rounds
+      .flatMap((round) => round.terms)
+      .find((term) => term.id === "bae");
+    expect(bae?.meaning).toBe("perut; kapal; pir");
   });
 
   test("matches by stable vocabulary identity", () => {

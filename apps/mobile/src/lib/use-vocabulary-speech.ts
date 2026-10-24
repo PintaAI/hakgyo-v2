@@ -50,7 +50,7 @@ function wait(delay: number) {
 
 type UseVocabularySpeechOptions = {
   mode: VocabularySpeechMode;
-  /** Bias the recognizer towards the current queue (terms or definitions). */
+  /** Bias the recognizer towards the current queue (terms or meanings). */
   contextualStrings?: readonly string[];
   disabled?: boolean;
   onInterim?: (text: string) => void;

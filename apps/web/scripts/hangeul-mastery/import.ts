@@ -207,6 +207,7 @@ async function loadSnapshot(
         id: true,
         vocabularySetId: true,
         term: true,
+        meanings: true,
         definition: true,
         examples: true,
         metadata: true,

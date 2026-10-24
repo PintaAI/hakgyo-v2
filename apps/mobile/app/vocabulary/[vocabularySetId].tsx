@@ -1,3 +1,4 @@
+import { entryMeanings } from "@hakgyo/shared";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 
@@ -44,7 +45,7 @@ export default function VocabularySetScreen() {
             entries: vocabulary.entries.map((entry) => ({
               id: entry.id,
               term: entry.term,
-              definition: entry.definition,
+              meanings: entryMeanings(entry),
               examples: entry.examples,
               audioAsset: entry.audioAssetId
                 ? { id: entry.audioAssetId }

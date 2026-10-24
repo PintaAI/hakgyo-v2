@@ -705,7 +705,7 @@ export function VocabularyMatchScreen({
             const ropeColor = termRopeColors[termIndex] ?? colors.primary;
             return (
               <Pressable
-                accessibilityLabel={`Arti: ${word.definition}`}
+                accessibilityLabel={`Arti: ${word.meaning}`}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: matched }}
                 disabled={matched || phase !== "running"}
@@ -743,7 +743,7 @@ export function VocabularyMatchScreen({
                   numberOfLines={3}
                   style={[styles.definition, { color: colors.foreground }]}
                 >
-                  {word.definition}
+                  {word.meaning}
                 </Text>
               </Pressable>
             );
@@ -777,7 +777,7 @@ export function VocabularyMatchScreen({
                     key={word.id}
                     style={[styles.reviewWord, { color: colors.foreground }]}
                   >
-                    {word.term} · {word.definition}
+                    {word.term} · {word.meaning}
                   </Text>
                 ))}
               </View>

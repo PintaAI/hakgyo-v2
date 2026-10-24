@@ -4,6 +4,7 @@
 import {
   assessmentContentAssetIds,
   collectContentAssetIds,
+  vocabularyMeaningFields,
 } from "@hakgyo/shared";
 
 import { findBlockNoteDocumentIssues } from "~/lib/blocknote/document-validation";
@@ -68,6 +69,7 @@ export type DesiredEntry = {
   id: string;
   vocabularySetId: string;
   term: string;
+  meanings: string[];
   definition: string;
   examples: string[];
   metadata: { romanization: string } | null;
@@ -430,7 +432,7 @@ function buildVocabularySet(
       id: entryId(item.key, term),
       vocabularySetId: id,
       term,
-      definition: entry.definition.trim(),
+      ...vocabularyMeaningFields([entry.definition]),
       examples: (entry.examples ?? [])
         .map((example) => example.trim())
         .filter(Boolean),

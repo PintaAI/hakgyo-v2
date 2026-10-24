@@ -82,6 +82,7 @@ function courseItemDetailSelect(userId: string) {
           select: {
             id: true,
             term: true,
+            meanings: true,
             definition: true,
             examples: true,
             metadata: true,

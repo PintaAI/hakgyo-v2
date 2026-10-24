@@ -1,3 +1,4 @@
+import { entryMeanings } from "@hakgyo/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
@@ -11,6 +12,7 @@ import {
 import { EntryImage } from "../../../../src/components/learn/vocabulary-set-detail";
 import { StudyAction } from "../../../../src/components/study-glass";
 import { VocabularyAudioButton } from "../../../../src/components/vocabulary-audio-button";
+import { VocabularyMeanings } from "../../../../src/components/vocabulary-meanings";
 import { authClient } from "../../../../src/lib/auth-client";
 import { useVocabularyPractice } from "../../../../src/sync/hooks";
 import { firstParam } from "../../../../src/lib/route-params";
@@ -109,9 +111,10 @@ export default function VocabularyItemSheet() {
 
       <View className="gap-1.5 border-t border-border pt-5">
         <Eyebrow tone="primary">Arti</Eyebrow>
-        <Text className="text-base font-bold leading-6 text-foreground">
-          {entry.definition}
-        </Text>
+        <VocabularyMeanings
+          className="text-base font-bold leading-6 text-foreground"
+          meanings={entryMeanings(entry)}
+        />
       </View>
 
       {examples.length > 0 ? (

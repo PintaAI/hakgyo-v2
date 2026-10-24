@@ -20,6 +20,12 @@ describe("vocabulary speech helpers", () => {
     ).toBe("학교");
   });
 
+  test("accepts any of several expected answers", () => {
+    expect(matchSpeechAlternative(["perut", "kapal"], ["Kapal"])).toBe("Kapal");
+    expect(isSpeechAnswerCorrect(["perut", "kapal"], ["buku"])).toBeFalse();
+    expect(isSpeechAnswerCorrect([], ["buku"])).toBeFalse();
+  });
+
   test("rejects non-matches and empty input", () => {
     expect(isSpeechAnswerCorrect("학교", ["책"])).toBeFalse();
     expect(isSpeechAnswerCorrect("학교", [])).toBeFalse();

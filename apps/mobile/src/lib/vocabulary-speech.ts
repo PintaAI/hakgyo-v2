@@ -15,22 +15,27 @@ function normalizeTranscript(value: string) {
 
 /**
  * Exact match against any STT alternative (already agreed: exact + alternatives).
- * Returns the matched transcript, or null when none match.
+ * `expected` may list several accepted answers, such as every meaning of a
+ * word. Returns the matched transcript, or null when none match.
  */
 export function matchSpeechAlternative(
-  expected: string,
+  expected: string | readonly string[],
   transcripts: readonly string[],
 ): string | null {
-  const target = normalizeTranscript(expected);
-  if (!target) return null;
+  const targets = new Set(
+    (typeof expected === "string" ? [expected] : expected)
+      .map(normalizeTranscript)
+      .filter(Boolean),
+  );
+  if (targets.size === 0) return null;
   for (const candidate of transcripts) {
-    if (normalizeTranscript(candidate) === target) return candidate;
+    if (targets.has(normalizeTranscript(candidate))) return candidate;
   }
   return null;
 }
 
 export function isSpeechAnswerCorrect(
-  expected: string,
+  expected: string | readonly string[],
   transcripts: readonly string[],
 ): boolean {
   return matchSpeechAlternative(expected, transcripts) !== null;

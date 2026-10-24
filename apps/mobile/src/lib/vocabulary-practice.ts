@@ -1,7 +1,9 @@
+import { joinMeanings } from "@hakgyo/shared";
+
 export type Word = {
   id: string;
   term: string;
-  definition: string;
+  meanings: string[];
   imageAssetId?: string | null;
 };
 export type Memory = {
@@ -24,7 +26,9 @@ export function isVocabularyAnswerCorrect(answer: string, expected: string) {
 }
 
 export function fingerprint(word: Word) {
-  return JSON.stringify([word.term, word.definition]);
+  // Joined like the legacy `definition`, so memory recorded before entries
+  // had several meanings still matches single-meaning words.
+  return JSON.stringify([word.term, joinMeanings(word.meanings)]);
 }
 
 export function memoryFor(word: Word, memory: PracticeMemory) {
@@ -68,7 +72,7 @@ export function buildSession(
   limit = 10,
 ) {
   return words
-    .filter((word) => word.term.trim() && word.definition.trim())
+    .filter((word) => word.term.trim() && joinMeanings(word.meanings))
     .filter(
       (word) =>
         !memoryFor(word, memory) || memoryFor(word, memory)!.dueAt <= now,
@@ -109,9 +113,25 @@ export function choiceOptions(
   reverse: boolean,
   random = Math.random,
 ) {
-  const answer = reverse ? word.term : word.definition;
+  const label = (item: Word) =>
+    reverse ? item.term : joinMeanings(item.meanings);
+  const answer = label(word);
+  const meanings = new Set(
+    word.meanings.map((meaning) => meaning.trim().toLocaleLowerCase()),
+  );
+  // A word sharing a meaning with the answer would be a second right option.
   const pool = [
-    ...new Set(words.map((item) => (reverse ? item.term : item.definition))),
+    ...new Set(
+      words
+        .filter(
+          (item) =>
+            item.term !== word.term &&
+            !item.meanings.some((meaning) =>
+              meanings.has(meaning.trim().toLocaleLowerCase()),
+            ),
+        )
+        .map(label),
+    ),
   ].filter((value) => value.trim() && value !== answer);
   function shuffle(values: string[]) {
     for (let index = values.length - 1; index > 0; index--) {

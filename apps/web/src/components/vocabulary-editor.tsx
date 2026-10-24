@@ -14,6 +14,12 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import {
+  entryMeanings,
+  joinMeanings,
+  normalizeMeanings,
+  splitMeanings,
+} from "@hakgyo/shared";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -62,6 +68,7 @@ import {
 } from "~/components/vocabulary-image-import";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { VocabularyMeaningsField } from "~/components/vocabulary-meanings-field";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
@@ -77,7 +84,7 @@ type VocabularyEntry = VocabularySet["entries"][number];
 
 type EntryFields = {
   term: string;
-  definition: string;
+  meanings: string[];
   examples: string[];
 };
 
@@ -677,7 +684,7 @@ function VocabularySetForm({
     () =>
       deferredSearch
         ? sortedEntries.filter((entry) =>
-            `${entry.term} ${entry.definition} ${examplesToText(entry.examples)}`
+            `${entry.term} ${joinMeanings(entryMeanings(entry))} ${examplesToText(entry.examples)}`
               .toLocaleLowerCase()
               .includes(deferredSearch),
           )
@@ -892,7 +899,7 @@ function VocabularySetForm({
                 className="pl-8"
                 disabled={!entries.length}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Cari istilah, definisi, atau contoh…"
+                placeholder="Cari istilah, arti, atau contoh…"
                 value={search}
               />
             </div>
@@ -1006,7 +1013,7 @@ function VocabularySetForm({
               <LanguagesIcon className="text-muted-foreground/60 mx-auto mb-3 size-7" />
               <p className="text-sm font-medium">Belum ada istilah</p>
               <p className="text-muted-foreground mt-1 text-sm">
-                Ketik istilah dan definisi di formulir atas, lalu tekan Enter,
+                Ketik istilah dan artinya di formulir atas, lalu tekan Enter,
                 atau tempel gambar daftar kosakata agar AI mengisinya.
               </p>
             </div>
@@ -1044,14 +1051,16 @@ function QuickAddForm({
   const termInputRef = useRef<HTMLInputElement>(null);
   const definitionInputRef = useRef<HTMLInputElement>(null);
   const [term, setTerm] = useState("");
+  // Several meanings go into this one field, separated by semicolons.
   const [definition, setDefinition] = useState("");
   const [dragActive, setDragActive] = useState(false);
   // Set when the user tries to add an incomplete pair, so the missing
   // fields light up instead of the button silently doing nothing.
   const [showMissing, setShowMissing] = useState(false);
   const termMissing = showMissing && !term.trim();
-  const definitionMissing = showMissing && !definition.trim();
-  const canSubmit = Boolean(term.trim() && definition.trim());
+  const definitionMissing =
+    showMissing && splitMeanings(definition).length === 0;
+  const canSubmit = Boolean(term.trim() && splitMeanings(definition).length);
 
   function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
     // Shift+Enter adds the entry and jumps into its examples field.
@@ -1095,7 +1104,7 @@ function QuickAddForm({
     setShowMissing(false);
     const draft = {
       term: term.trim(),
-      definition: definition.trim(),
+      meanings: splitMeanings(definition),
       examples: [] as string[],
     };
     // Clear immediately so rapid-fire entry never clobbers the next pair
@@ -1143,21 +1152,19 @@ function QuickAddForm({
       <Input
         aria-describedby={showMissing ? "new-entry-missing" : undefined}
         aria-invalid={definitionMissing || undefined}
-        aria-label="Definisi istilah baru"
+        aria-label="Arti istilah baru"
         className="bg-card h-9"
         maxLength={5000}
         onChange={(event) => setDefinition(event.target.value)}
-        placeholder="Definisi — Enter menambah, Shift+Enter + contoh"
+        placeholder="Arti (pisahkan dengan ;)"
         ref={definitionInputRef}
-        title="Enter: tambah istilah. Shift+Enter: tambah lalu isi contoh."
+        title="Pisahkan beberapa arti dengan titik koma (;). Enter: tambah istilah. Shift+Enter: tambah lalu isi contoh."
         value={definition}
       />
       <Button
         aria-label="Tambah entri"
         className={cn(!canSubmit && "opacity-60")}
-        title={
-          canSubmit ? undefined : "Isi istilah dan definisi terlebih dahulu"
-        }
+        title={canSubmit ? undefined : "Isi istilah dan arti terlebih dahulu"}
         type="submit"
       >
         {busy ? (
@@ -1180,10 +1187,10 @@ function QuickAddForm({
         >
           <CircleAlertIcon className="size-3.5" />
           {termMissing && definitionMissing
-            ? "Isi istilah dan definisi terlebih dahulu untuk menambah entri."
+            ? "Isi istilah dan arti terlebih dahulu untuk menambah entri."
             : termMissing
               ? "Isi istilah terlebih dahulu untuk menambah entri."
-              : "Isi definisi terlebih dahulu untuk menambah entri."}
+              : "Isi arti terlebih dahulu untuk menambah entri."}
         </p>
       ) : null}
     </form>
@@ -1282,7 +1289,10 @@ function EntryRow({
           />
           <span className="min-w-0 flex-1 truncate text-sm">
             <span className="font-medium">{entry.term}</span>
-            <span className="text-muted-foreground"> · {entry.definition}</span>
+            <span className="text-muted-foreground">
+              {" "}
+              · {joinMeanings(entryMeanings(entry))}
+            </span>
           </span>
           <span className="text-muted-foreground/70 flex shrink-0 items-center gap-1.5">
             {entry.audioAssetId ? (
@@ -1382,29 +1392,29 @@ function EntryForm({
   uploadingImage: boolean;
 }) {
   const [term, setTerm] = useState(entry.term);
-  const [definition, setDefinition] = useState(entry.definition);
+  const [meanings, setMeanings] = useState(() => entryMeanings(entry));
   const [examples, setExamples] = useState(examplesToText(entry.examples));
   const generateExamples = api.content.generateVocabularyExamples.useMutation();
   const draftVersionRef = useRef(0);
-  const invalid = !term.trim() || !definition.trim();
+  const invalid = !term.trim() || normalizeMeanings(meanings).length === 0;
   const {
     cancel: cancelEntrySave,
     flush: flushEntrySave,
     schedule: scheduleEntrySave,
     status: saveStatus,
   } = useDebouncedAutosave<EntryFields>(async (draft) => {
-    if (!draft.term.trim() || !draft.definition.trim()) return;
+    if (!draft.term.trim() || draft.meanings.length === 0) return;
     await onUpdate(draft);
   });
   useOnDraftChange(
     {
       term: term.trim(),
-      definition: definition.trim(),
+      meanings: normalizeMeanings(meanings),
       examples: parseExamples(examples),
     },
     (a, b) =>
       a.term === b.term &&
-      a.definition === b.definition &&
+      a.meanings.join("\n") === b.meanings.join("\n") &&
       a.examples.join("\n") === b.examples.join("\n"),
     (draft) => scheduleEntrySave(draft),
   );
@@ -1430,7 +1440,7 @@ function EntryForm({
         organizationId: entry.organizationId,
         entryId: entry.id,
         term: term.trim(),
-        definition: definition.trim(),
+        meanings: normalizeMeanings(meanings),
         existingExamples: parseExamples(examples).slice(0, 20),
       });
       // Keep edits made while the request was running.
@@ -1446,7 +1456,7 @@ function EntryForm({
 
   return (
     <div className="grid gap-4 border-t p-3 sm:p-4" onPaste={handlePaste}>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid items-start gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label
             className="text-muted-foreground text-[11px] tracking-wide uppercase"
@@ -1468,19 +1478,18 @@ function EntryForm({
         <div className="grid gap-1.5">
           <Label
             className="text-muted-foreground text-[11px] tracking-wide uppercase"
-            htmlFor={`definition-${entry.id}`}
+            htmlFor={`meanings-${entry.id}`}
           >
-            Definisi
+            Arti
           </Label>
-          <Input
-            className="h-9"
-            id={`definition-${entry.id}`}
-            maxLength={5000}
-            onChange={(event) => {
+          <VocabularyMeaningsField
+            id={`meanings-${entry.id}`}
+            invalid={invalid}
+            meanings={meanings}
+            onChange={(value) => {
               draftVersionRef.current++;
-              setDefinition(event.target.value);
+              setMeanings(value);
             }}
-            value={definition}
           />
         </div>
       </div>
@@ -1550,7 +1559,7 @@ function EntryForm({
               <>
                 <CircleAlertIcon className="text-destructive size-3.5" />
                 <span className="text-destructive">
-                  Istilah dan definisi wajib diisi
+                  Istilah dan minimal satu arti wajib diisi
                 </span>
               </>
             ) : saveStatus === "pending" || saveStatus === "saving" ? (

@@ -1,7 +1,9 @@
+import { joinMeanings } from "@hakgyo/shared";
+
 export type SentenceSourceWord = {
   id: string;
   term: string;
-  definition: string;
+  meanings: string[];
   examples?: unknown;
 };
 
@@ -9,7 +11,8 @@ export type SentenceChallenge = {
   id: string;
   entryId: string;
   term: string;
-  definition: string;
+  /** Every meaning of the term, joined for the hint line. */
+  meaning: string;
   sentence: string;
   words: readonly string[];
   tiles: readonly string[];
@@ -111,7 +114,7 @@ export function createSentenceChallenges(
     if (seenEntries.has(word.id)) return [];
     seenEntries.add(word.id);
     const term = clean(word.term);
-    const definition = clean(word.definition);
+    const meaning = clean(joinMeanings(word.meanings));
     const sentences = exampleSentences(word.examples).filter((sentence) => {
       const count = sentenceWords(sentence).length;
       if (count < MIN_WORDS || count > MAX_WORDS) return false;
@@ -120,7 +123,7 @@ export function createSentenceChallenges(
       return true;
     });
     return sentences.length > 0
-      ? [{ word, term, definition, sentences: shuffled(sentences, random) }]
+      ? [{ word, term, meaning, sentences: shuffled(sentences, random) }]
       : [];
   });
 
@@ -137,7 +140,7 @@ export function createSentenceChallenges(
         id: `${pool.word.id}:${depth}`,
         entryId: pool.word.id,
         term: pool.term,
-        definition: pool.definition,
+        meaning: pool.meaning,
         sentence,
         words: sentenceTiles,
         tiles: scrambled(sentenceTiles, random),

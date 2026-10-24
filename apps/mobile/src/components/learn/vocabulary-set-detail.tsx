@@ -1,3 +1,4 @@
+import { entryMeanings, joinMeanings } from "@hakgyo/shared";
 import { router } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { Image } from "expo-image";
@@ -16,7 +17,9 @@ const VIEW_MODE_KEY = "hakgyo:vocab-view-mode:v1";
 export type VocabularySetEntry = {
   id: string;
   term: string;
-  definition: string;
+  /** Read through `entryMeanings`; older cached bundles only have `definition`. */
+  meanings?: string[];
+  definition?: string;
   examples?: unknown;
   audioAsset?: { id: string } | null;
   imageAsset?: { id: string } | null;
@@ -103,7 +106,7 @@ function WordGridCard({
           {entry.term}
         </Text>
         <Text className="text-xs leading-4 text-muted-foreground">
-          {entry.definition}
+          {joinMeanings(entryMeanings(entry))}
         </Text>
       </Pressable>
       {entry.audioAsset ? (
@@ -199,7 +202,7 @@ export function VocabularySetDetail({
                 {entry.term}
               </Text>
               <Text className="text-xs leading-4 text-muted-foreground">
-                {entry.definition}
+                {joinMeanings(entryMeanings(entry))}
               </Text>
             </View>
             {entry.imageAsset ? (

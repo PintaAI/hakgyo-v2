@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { entryMeanings, joinMeanings } from "@hakgyo/shared";
 import { LayoutGridIcon, ListIcon } from "lucide-react";
 
 import Link from "~/components/link";
@@ -14,6 +15,7 @@ const VIEW_MODE_KEY = "hakgyo:vocab-view-mode:v1";
 export type VocabularySetEntry = {
   id: string;
   term: string;
+  meanings: string[];
   definition: string;
   audioAsset?: { id: string } | null;
   imageAsset?: { id: string } | null;
@@ -138,7 +140,7 @@ export function VocabularySetDetail({
                   {entry.term}
                 </span>
                 <span className="text-muted-foreground text-xs leading-4">
-                  {entry.definition}
+                  {joinMeanings(entryMeanings(entry))}
                 </span>
               </Link>
               {entry.audioAsset ? (
@@ -172,7 +174,7 @@ export function VocabularySetDetail({
                     {entry.term}
                   </span>
                   <span className="text-muted-foreground text-xs leading-4">
-                    {entry.definition}
+                    {joinMeanings(entryMeanings(entry))}
                   </span>
                 </span>
                 {entry.imageAsset ? (

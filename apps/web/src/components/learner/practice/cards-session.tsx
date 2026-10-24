@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { joinMeanings, matchesMeaning } from "@hakgyo/shared";
 import { ArrowLeftIcon } from "lucide-react";
 
 import Link from "~/components/link";
@@ -22,7 +23,8 @@ import {
 type Word = {
   id: string;
   term: string;
-  definition: string;
+  /** Every meaning; typing any one of them counts as correct. */
+  meanings: string[];
   imageAssetId?: string | null;
 };
 
@@ -94,7 +96,7 @@ export function CardsSession({
   const [roundActive, setRoundActive] = useState(false);
 
   const usableWords = useMemo(
-    () => words.filter((word) => word.term.trim() && word.definition.trim()),
+    () => words.filter((word) => word.term.trim() && word.meanings.length > 0),
     [words],
   );
   const evidence = progressQuery.data;
@@ -120,8 +122,9 @@ export function CardsSession({
   const cards = useMemo<FlipCardItem[]>(
     () =>
       queue.map((word) => {
-        const prompt = mode === "KR" ? word.definition : word.term;
-        const answer = mode === "KR" ? word.term : word.definition;
+        const meanings = joinMeanings(word.meanings);
+        const prompt = mode === "KR" ? meanings : word.term;
+        const answer = mode === "KR" ? word.term : meanings;
         return {
           id: word.id,
           caption: title,
@@ -218,12 +221,10 @@ export function CardsSession({
           cards={cards}
           isCorrect={(card, value) => {
             const word = wordById.get(card.id);
-            return word
-              ? isPracticeAnswerCorrect(
-                  value,
-                  mode === "KR" ? word.term : word.definition,
-                )
-              : false;
+            if (!word) return false;
+            return mode === "KR"
+              ? isPracticeAnswerCorrect(value, word.term)
+              : matchesMeaning(value, word.meanings);
           }}
           onResult={onResult}
           onFinish={() => void onFinish()}
@@ -235,7 +236,7 @@ export function CardsSession({
             idleHint:
               mode === "KR"
                 ? "Ketik kata Koreanya, lihat jawaban untuk belajar, atau lewati kartu."
-                : "Ketik artinya, lihat jawaban untuk belajar, atau lewati kartu.",
+                : "Ketik salah satu artinya, lihat jawaban untuk belajar, atau lewati kartu.",
           }}
         />
       </div>

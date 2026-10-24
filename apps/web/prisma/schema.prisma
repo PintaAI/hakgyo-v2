@@ -1136,6 +1136,10 @@ model VocabularyEntry {
   vocabularySetId  String
   organizationId   String
   term             String
+  /// One or more meanings, in the order the author wrote them.
+  meanings         String[]                    @default([])
+  /// Mirror of `meanings` joined with "; ", kept for search, progress hashes
+  /// and clients that predate `meanings`. Write both together.
   definition       String
   examples         Json                        @default("[]")
   audioAssetId     String?

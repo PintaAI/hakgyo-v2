@@ -1,12 +1,19 @@
+import { joinMeanings } from "@hakgyo/shared";
+
 export type VocabularyMatchWord = {
   id: string;
   term: string;
-  definition: string;
+  meanings: string[];
+};
+
+export type VocabularyMatchCard = VocabularyMatchWord & {
+  /** Every meaning joined, shown on the meaning card. */
+  meaning: string;
 };
 
 export type VocabularyMatchRound = {
-  terms: VocabularyMatchWord[];
-  definitions: VocabularyMatchWord[];
+  terms: VocabularyMatchCard[];
+  definitions: VocabularyMatchCard[];
 };
 
 export type VocabularyMatchSession = {
@@ -27,6 +34,10 @@ function clean(value: string) {
   return value.normalize("NFC").replace(/\s+/gu, " ").trim();
 }
 
+function meaningKeys(word: VocabularyMatchWord) {
+  return word.meanings.map((meaning) => meaning.toLocaleLowerCase());
+}
+
 export function createVocabularyMatchSession(
   words: readonly VocabularyMatchWord[],
   random: () => number = Math.random,
@@ -39,21 +50,35 @@ export function createVocabularyMatchSession(
     if (seen.has(word.id)) return [];
     seen.add(word.id);
     const term = clean(word.term);
-    const definition = clean(word.definition);
-    return term && definition ? [{ ...word, term, definition }] : [];
+    const meanings = [...new Set(word.meanings.map(clean).filter(Boolean))];
+    return term && meanings.length > 0
+      ? [{ ...word, term, meanings, meaning: joinMeanings(meanings) }]
+      : [];
   });
   const selected = shuffled(playable, random).slice(
     0,
     Math.max(0, Math.floor(maximumWords)),
   );
-  const rounds: VocabularyMatchRound[] = [];
 
-  for (let offset = 0; offset < selected.length; offset += safeRoundSize) {
-    const terms = shuffled(
-      selected.slice(offset, offset + safeRoundSize),
-      random,
+  // Words sharing a meaning would make two meaning cards fit one term, so
+  // each goes to the first round without such a word.
+  const groups: VocabularyMatchCard[][] = [];
+  for (const word of selected) {
+    const keys = meaningKeys(word);
+    const group = groups.find(
+      (candidate) =>
+        candidate.length < safeRoundSize &&
+        candidate.every((other) =>
+          meaningKeys(other).every((key) => !keys.includes(key)),
+        ),
     );
-    if (terms.length === 0) continue;
+    if (group) group.push(word);
+    else groups.push([word]);
+  }
+
+  const rounds: VocabularyMatchRound[] = [];
+  for (const group of groups) {
+    const terms = shuffled(group, random);
     if (terms.length === 1) {
       rounds.push({ terms, definitions: [...terms] });
       continue;

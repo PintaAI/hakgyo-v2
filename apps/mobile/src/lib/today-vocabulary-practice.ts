@@ -1,14 +1,13 @@
+import { matchesMeaning } from "@hakgyo/shared";
+
 export function normalizePracticeAnswer(answer: string) {
   return answer.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
 }
 
+/** Accepts any one meaning of the card, or all of them together. */
 export function isDefinitionCorrect(
-  card: { definition: string },
+  card: { meanings: readonly string[] },
   answer: string,
 ) {
-  const normalized = normalizePracticeAnswer(answer);
-  return (
-    normalized.length > 0 &&
-    normalized === normalizePracticeAnswer(card.definition)
-  );
+  return matchesMeaning(answer, card.meanings);
 }

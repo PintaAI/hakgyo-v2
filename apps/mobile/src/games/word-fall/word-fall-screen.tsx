@@ -1,3 +1,4 @@
+import { joinMeanings } from "@hakgyo/shared";
 import { Stack } from "expo-router";
 import {
   memo,
@@ -49,7 +50,9 @@ import { useGameExitGuard } from "../game-navigation";
 import {
   addWordFallReviewItem,
   analyzeTyping,
+  answerOptionsForWord,
   answerTextForWord,
+  bestTypingAnswer,
   cleanTypingText,
   comboMultiplier,
   destroyedForLevel,
@@ -75,6 +78,8 @@ import { SymbolIcon } from "../../components/ui/symbol-icon";
 type FallingWord = {
   id: string;
   word: WordFallWord;
+  /** The meaning being typed; switches to whichever one the input matches. */
+  answer: string;
   spawnX: number;
   duration: number;
   impactAt: number;
@@ -325,7 +330,7 @@ const FallingWordView = memo(function FallingWordView({
     };
   });
   const prompt = promptTextForWord(entity.word, mode);
-  const answer = answerTextForWord(entity.word, mode);
+  const answer = entity.answer;
   const answerCharacters = Array.from(answer);
   const revealedAnswer = answerCharacters.slice(0, entity.matched).join("");
   const mistypedLength = Array.from(mistyped).length;
@@ -592,7 +597,7 @@ function LearningRecap({ items }: { items: readonly WordFallReviewItem[] }) {
                   { color: colors.mutedForeground },
                 ]}
               >
-                {item.word.definition}
+                {joinMeanings(item.word.meanings)}
               </Text>
             </View>
             <Text style={[styles.recapReason, { color: colors.destructive }]}>
@@ -876,9 +881,11 @@ export function WordFallScreen({
         .map((word) => ({
           ...word,
           term: cleanTypingText(word.term),
-          definition: cleanTypingText(word.definition),
+          meanings: [
+            ...new Set(word.meanings.map(cleanTypingText).filter(Boolean)),
+          ],
         }))
-        .filter((word) => word.term && word.definition),
+        .filter((word) => word.term && word.meanings.length > 0),
     [words],
   );
 
@@ -994,11 +1001,7 @@ export function WordFallScreen({
     return { transform: [{ rotateZ: `${angle}rad` }] };
   });
   const lockedTyping = lockedTarget
-    ? analyzeTyping(
-        answerTextForWord(lockedTarget.word, answerMode),
-        input,
-        lockedTarget.matched,
-      )
+    ? analyzeTyping(lockedTarget.answer, input, lockedTarget.matched)
     : undefined;
   const mistyped =
     lockedTyping?.mistake && lockedTarget
@@ -1191,6 +1194,7 @@ export function WordFallScreen({
             level,
             entity.comboAtCompletion,
             answerMode,
+            entity.answer,
           ),
       );
       setDestroyed((current) => current + 1);
@@ -1239,6 +1243,7 @@ export function WordFallScreen({
     const entity: FallingWord = {
       id: `word-${++idRef.current}`,
       word,
+      answer,
       spawnX: half + Math.random() * availableWidth,
       duration,
       impactAt: Date.now() + duration,
@@ -1318,11 +1323,13 @@ export function WordFallScreen({
         selectWordTarget(
           entitiesRef.current
             .filter((entity) => !entity.completed)
-            .map((entity) => ({
-              id: entity.id,
-              answer: answerTextForWord(entity.word, answerMode),
-              impactAt: entity.impactAt,
-            })),
+            .flatMap((entity) =>
+              answerOptionsForWord(entity.word, answerMode).map((answer) => ({
+                id: entity.id,
+                answer,
+                impactAt: entity.impactAt,
+              })),
+            ),
           value,
         );
       const target = entitiesRef.current.find(
@@ -1337,30 +1344,33 @@ export function WordFallScreen({
         }
         return;
       }
-      const analysis = analyzeTyping(
-        answerTextForWord(target.word, answerMode),
+      const answer = bestTypingAnswer(
+        answerOptionsForWord(target.word, answerMode),
         value,
-        target.matched,
+        target.answer,
       );
+      const analysis = analyzeTyping(answer, value, target.matched);
       setInput(value);
       if (value.length > 0) setLockedTarget(target.id);
       else setLockedTarget(null);
       if (analysis.mistake) registerMistake(target.word);
       else mistakeActiveRef.current = false;
 
-      if (analysis.correctCharacters !== target.matched && !analysis.mistake) {
+      if (
+        (analysis.correctCharacters !== target.matched ||
+          answer !== target.answer) &&
+        !analysis.mistake
+      ) {
         const next = entitiesRef.current.map((entity) =>
           entity.id === target.id
-            ? { ...entity, matched: analysis.correctCharacters }
+            ? { ...entity, answer, matched: analysis.correctCharacters }
             : entity,
         );
         commitEntities(next);
       }
 
       if (analysis.gainedCharacters > 0) {
-        const answerCharacters = Array.from(
-          answerTextForWord(target.word, answerMode),
-        );
+        const answerCharacters = Array.from(answer);
         const gainedCharacters = answerCharacters.slice(
           target.matched,
           analysis.correctCharacters,
@@ -1417,8 +1427,8 @@ export function WordFallScreen({
           entity.id === target.id
             ? {
                 ...entity,
-                matched: Array.from(answerTextForWord(entity.word, answerMode))
-                  .length,
+                answer,
+                matched: Array.from(answer).length,
                 comboAtCompletion: nextCombo,
                 completed: true,
               }

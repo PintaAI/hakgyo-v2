@@ -355,6 +355,7 @@ export async function cloneStarterCourse(
               term: entry.term,
               // Entries are listed by creation time; one batch would share a timestamp.
               createdAt: entry.createdAt,
+              meanings: entry.meanings,
               definition: entry.definition,
               examples: remapped(entry.examples),
               audioAssetId: copiedAsset(entry.audioAssetId),

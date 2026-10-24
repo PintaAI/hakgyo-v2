@@ -10,6 +10,7 @@
  */
 import "dotenv/config";
 
+import { vocabularyMeaningFields } from "@hakgyo/shared";
 import { PrismaNeon } from "@prisma/adapter-neon";
 
 import { PrismaClient } from "../generated/prisma/client";
@@ -389,7 +390,7 @@ async function main() {
             ].map(([term, definition], index) => ({
               id: `${base}-entry-${index + 1}`,
               term: term!,
-              definition: definition!,
+              ...vocabularyMeaningFields([definition!]),
             })),
           },
         },

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { entryMeanings } from "@hakgyo/shared";
 import { notFound } from "next/navigation";
 
 import { EntryImage } from "~/components/learner/learn/entry-image";
+import { VocabularyMeanings } from "~/components/vocabulary-meanings";
 import { VocabularyAudioButton } from "~/components/learner/learn/vocabulary-audio-button";
 import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
@@ -88,7 +90,10 @@ export default async function VocabularyEntryPage({
         <h2 className="text-primary text-[11px] font-bold tracking-[1.5px] uppercase">
           Arti
         </h2>
-        <p className="text-base leading-6 font-bold">{entry.definition}</p>
+        <VocabularyMeanings
+          className="text-base leading-6 font-bold"
+          meanings={entryMeanings(entry)}
+        />
       </section>
 
       {examples.length > 0 ? (

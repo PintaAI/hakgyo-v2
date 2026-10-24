@@ -1,4 +1,5 @@
 import type { RouterOutputs } from "@hakgyo/api";
+import { joinMeanings } from "@hakgyo/shared";
 import { Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -55,8 +56,8 @@ function toDeckCards(
 ): VocabularyPracticeDeckCard[] {
   return words.map((word) => ({
     id: word.id,
-    prompt: mode === "KR" ? word.definition : word.term,
-    answer: mode === "KR" ? word.term : word.definition,
+    prompt: mode === "KR" ? joinMeanings(word.meanings) : word.term,
+    answer: mode === "KR" ? word.term : joinMeanings(word.meanings),
     imageAssetId: word.imageAssetId,
     imageAccessibilityLabel: `Ilustrasi ${word.term}`,
   }));
@@ -112,7 +113,8 @@ export function VocabularySession({
   const deckRef = useRef<VocabularyPracticeDeckHandle>(null);
   const answerInputRef = useRef<TextInput>(null);
   const usableWords = useMemo(
-    () => words.filter((word) => word.term.trim() && word.definition.trim()),
+    () =>
+      words.filter((word) => word.term.trim() && joinMeanings(word.meanings)),
     [words],
   );
   const evidence = latestEvidence ?? progressQuery.data;
@@ -147,11 +149,16 @@ export function VocabularySession({
     : 0;
   const currentWord = queue[index];
   const isStudyMode = mode === "ID";
-  const expectedAnswer = currentWord
-    ? isStudyMode
-      ? currentWord.definition
-      : currentWord.term
-    : "";
+  // Any one meaning counts when the learner answers with the meaning.
+  const expectedAnswer = useMemo(
+    () =>
+      currentWord
+        ? isStudyMode
+          ? currentWord.meanings
+          : currentWord.term
+        : "",
+    [currentWord, isStudyMode],
+  );
   // Both directions are graded recall; the switch only changes which side of
   // the card is used as the prompt.
   const deckCards = useMemo(() => toDeckCards(queue, mode), [mode, queue]);
@@ -235,12 +242,7 @@ export function VocabularySession({
     if (spokenDisplay) setAnswer(submittedAnswer);
     answerClaim.current = "answered";
     const correct = isStudyMode
-      ? isDefinitionCorrect(
-          {
-            definition: currentWord.definition,
-          },
-          submittedAnswer,
-        )
+      ? isDefinitionCorrect(currentWord, submittedAnswer)
       : isVocabularyAnswerCorrect(submittedAnswer, currentWord.term);
     setFeedback({
       correct,
@@ -350,7 +352,8 @@ export function VocabularySession({
   const speech = useHandsFreeSpeech({
     mode,
     contextualStrings: useMemo(
-      () => queue.map((word) => (mode === "KR" ? word.term : word.definition)),
+      () =>
+        queue.flatMap((word) => (mode === "KR" ? [word.term] : word.meanings)),
       [mode, queue],
     ),
     expectedAnswer,
@@ -518,7 +521,7 @@ export function VocabularySession({
             accessibilityLabel={
               isStudyMode
                 ? `Arti dari ${currentWord?.term ?? "kata ini"}`
-                : `Kata Korea untuk ${currentWord?.definition ?? "kata ini"}`
+                : `Kata Korea untuk ${currentWord ? joinMeanings(currentWord.meanings) : "kata ini"}`
             }
             autoCapitalize="none"
             autoCorrect={false}

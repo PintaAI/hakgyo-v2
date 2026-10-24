@@ -395,11 +395,15 @@ function itemFingerprint(item: BundleItem, content: BundleContent) {
   } else if (item.type === "VOCABULARY_SET" && item.vocabularySetId) {
     const vocabularySet = content.vocabularySets[item.vocabularySetId];
     if (vocabularySet) {
-      source = vocabularySet.entries.map((entry) => ({
-        ...entry,
-        audioAsset: asset(entry.audioAssetId),
-        imageAsset: asset(entry.imageAssetId),
-      }));
+      // `definition` mirrors `meanings`, so leaving `meanings` out keeps
+      // bundles from before it existed from reading as changed.
+      source = vocabularySet.entries.map(
+        ({ meanings: _meanings, ...entry }) => ({
+          ...entry,
+          audioAsset: asset(entry.audioAssetId),
+          imageAsset: asset(entry.imageAssetId),
+        }),
+      );
     }
   } else if (item.assessmentId) {
     const assessment = content.assessments[item.assessmentId];

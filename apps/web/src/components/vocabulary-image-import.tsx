@@ -1,5 +1,6 @@
 "use client";
 
+import { joinMeanings, splitMeanings } from "@hakgyo/shared";
 import {
   AiImageImportDialog,
   useAiImageImport,
@@ -15,7 +16,7 @@ import { cn } from "~/lib/utils";
 export type ExtractedVocabularyEntry = {
   term: string;
   romanization: string;
-  definition: string;
+  meanings: string[];
   examples: string[];
   duplicate: boolean;
 };
@@ -29,7 +30,8 @@ type ReviewRow = {
   key: number;
   term: string;
   romanization: string;
-  definition: string;
+  /** Meanings separated by semicolons, edited as one field. */
+  meanings: string;
   examples: string;
   selected: boolean;
   duplicate: boolean;
@@ -52,7 +54,7 @@ export function useVocabularyImageImport({
         key,
         term: entry.term,
         romanization: entry.romanization,
-        definition: entry.definition,
+        meanings: joinMeanings(entry.meanings),
         examples: entry.examples.join("\n"),
         selected: !entry.duplicate,
         duplicate: entry.duplicate,
@@ -69,7 +71,7 @@ export function useVocabularyImageImport({
   const selectedRows = rows.filter((row) => row.selected);
   const allSelected = rows.length > 0 && selectedRows.length === rows.length;
   const invalidSelected = selectedRows.some(
-    (row) => !row.term.trim() || !row.definition.trim(),
+    (row) => !row.term.trim() || splitMeanings(row.meanings).length === 0,
   );
 
   const dialog = (
@@ -81,7 +83,7 @@ export function useVocabularyImageImport({
             selectedRows.map((row) => ({
               term: row.term.trim(),
               romanization: row.romanization.trim(),
-              definition: row.definition.trim(),
+              meanings: splitMeanings(row.meanings),
               examples: row.examples
                 .split("\n")
                 .map((example) => example.trim())
@@ -94,7 +96,7 @@ export function useVocabularyImageImport({
       saveDisabled={!selectedRows.length || invalidSelected}
       saveLabel={`Simpan ${selectedRows.length} istilah`}
       scanningDescription="AI sedang memindai gambar dan menyusun daftar kosakata."
-      scanningLabel="Membaca istilah, romanisasi, dan definisi…"
+      scanningLabel="Membaca istilah, romanisasi, dan arti…"
       skeleton={Array.from({ length: 5 }, (_, index) => (
         <div
           className="grid grid-cols-[1rem_1fr_1fr_1.3fr] gap-2 rounded-lg border p-2"
@@ -122,7 +124,7 @@ export function useVocabularyImageImport({
           {rows.length} istilah terbaca
         </label>
         <span className="text-muted-foreground">
-          Definisi dalam Bahasa Indonesia
+          Arti dalam Bahasa Indonesia, pisahkan dengan ;
         </span>
       </div>
       <ol className="-mr-2 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto pr-2">
@@ -163,14 +165,16 @@ export function useVocabularyImageImport({
               value={row.romanization}
             />
             <Input
-              aria-invalid={row.selected && !row.definition.trim()}
-              aria-label="Definisi"
+              aria-invalid={
+                row.selected && splitMeanings(row.meanings).length === 0
+              }
+              aria-label="Arti"
               className="h-9"
               maxLength={5000}
               onChange={(event) =>
-                updateRow(row.key, { definition: event.target.value })
+                updateRow(row.key, { meanings: event.target.value })
               }
-              value={row.definition}
+              value={row.meanings}
             />
             <div className="col-span-3 col-start-2 flex items-start gap-2">
               {row.duplicate ? (

@@ -20,6 +20,7 @@ import {
   passesRequirementPolicy,
 } from "../learning";
 import { collectPdfPageRanges } from "../pdf-book";
+import { entryMeanings } from "../vocabulary-meanings";
 import type {
   BundleItem,
   BundleModule,
@@ -273,6 +274,7 @@ function vocabularyEntryDetail(
   return {
     id: entry.id,
     term: entry.term,
+    meanings: entryMeanings(entry),
     definition: entry.definition,
     examples: entry.examples,
     metadata: entry.metadata,
@@ -288,6 +290,7 @@ function vocabularyEntryReference(
   return {
     id: entry.id,
     term: entry.term,
+    meanings: entryMeanings(entry),
     definition: entry.definition,
     examples: entry.examples,
     audioAsset: assetReference(bundle, entry.audioAssetId),
@@ -602,6 +605,7 @@ export function composeVocabularyPractice(
     entries: vocabularySet.entries.map((entry) => ({
       id: entry.id,
       term: entry.term,
+      meanings: entryMeanings(entry),
       definition: entry.definition,
       examples: entry.examples,
       audioAssetId: entry.audioAssetId,

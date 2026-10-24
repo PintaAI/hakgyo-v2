@@ -83,7 +83,7 @@ export type AssessmentDraftPayload = {
 
 export type VocabularyEntryDraft = LocalEntityIdentity & {
   term: string;
-  definition: string;
+  meanings: string[];
   examples?: RouterInputs["content"]["createVocabularyEntry"]["examples"];
   audioAssetId?: string | null;
   pendingAudioAssetId?: string;

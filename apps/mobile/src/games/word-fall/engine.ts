@@ -1,7 +1,10 @@
+import { joinMeanings } from "@hakgyo/shared";
+
 export type WordFallWord = {
   id: string;
   term: string;
-  definition: string;
+  /** Every meaning; typing any one of them in "ID" mode clears the word. */
+  meanings: string[];
 };
 
 export type WordFallAnswerMode = "ID" | "KR";
@@ -47,18 +50,27 @@ export function isWordFallInputEditable(phase: WordFallPhase) {
   return phase === "running";
 }
 
+/** Every text the learner may type to clear the word. */
+export function answerOptionsForWord(
+  word: WordFallWord,
+  mode: WordFallAnswerMode = "ID",
+) {
+  return mode === "KR" ? [word.term] : word.meanings;
+}
+
+/** The answer shown before the learner starts typing: the first meaning. */
 export function answerTextForWord(
   word: WordFallWord,
   mode: WordFallAnswerMode = "ID",
 ) {
-  return mode === "KR" ? word.term : word.definition;
+  return answerOptionsForWord(word, mode)[0] ?? "";
 }
 
 export function promptTextForWord(
   word: WordFallWord,
   mode: WordFallAnswerMode,
 ) {
-  return mode === "KR" ? word.definition : word.term;
+  return mode === "KR" ? joinMeanings(word.meanings) : word.term;
 }
 
 const HANGUL_BASE = 0xac00;
@@ -191,6 +203,36 @@ export function analyzeTyping(
   };
 }
 
+/**
+ * The answer the input is heading towards: the option with the longest
+ * matching prefix, a completed one first. Ties keep `current`, so typing does
+ * not make the shown answer jump between meanings.
+ */
+export function bestTypingAnswer(
+  options: readonly string[],
+  input: string,
+  current?: string,
+) {
+  let best =
+    current !== undefined && options.includes(current)
+      ? current
+      : (options[0] ?? "");
+  let bestAnalysis = analyzeTyping(best, input, 0);
+  for (const option of options) {
+    const analysis = analyzeTyping(option, input, 0);
+    const better =
+      (analysis.completed && !bestAnalysis.completed) ||
+      (analysis.completed === bestAnalysis.completed &&
+        analysis.correctCharacters + (analysis.composing ? 0.5 : 0) >
+          bestAnalysis.correctCharacters + (bestAnalysis.composing ? 0.5 : 0));
+    if (better) {
+      best = option;
+      bestAnalysis = analysis;
+    }
+  }
+  return best;
+}
+
 export type TypingTargetCandidate = {
   id: string;
   answer: string;
@@ -265,11 +307,10 @@ export function pointsForWord(
   level: number,
   combo = 1,
   mode: WordFallAnswerMode = "ID",
+  answer = answerTextForWord(word, mode),
 ) {
   const basePoints =
-    Math.max(1, Array.from(answerTextForWord(word, mode)).length) *
-    10 *
-    Math.max(1, level);
+    Math.max(1, Array.from(answer).length) * 10 * Math.max(1, level);
   return Math.round(basePoints * comboMultiplier(combo));
 }
 

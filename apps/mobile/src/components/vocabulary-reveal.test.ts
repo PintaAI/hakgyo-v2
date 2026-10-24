@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
 import * as jsx from "react/jsx-runtime";
+import * as shared from "@hakgyo/shared";
 import * as todayPractice from "../lib/today-vocabulary-practice";
 import * as vocabularyPractice from "../lib/vocabulary-practice";
 import * as vocabularySpeech from "../lib/vocabulary-speech";
@@ -51,8 +52,8 @@ function screenHarness(kind: "today" | "course") {
     },
   };
   const words = [
-    { id: "one", term: "학교", definition: "School", imageAssetId: null },
-    { id: "two", term: "책", definition: "Book", imageAssetId: null },
+    { id: "one", term: "학교", meanings: ["School"], imageAssetId: null },
+    { id: "two", term: "책", meanings: ["Book"], imageAssetId: null },
   ];
   const pool = {
     hasAvailableContent: true,
@@ -88,6 +89,7 @@ function screenHarness(kind: "today" | "course") {
   const dependencies: Record<string, unknown> = {
     react: hooks,
     "react/jsx-runtime": jsx,
+    "@hakgyo/shared": shared,
     "expo-router": {
       Stack: {
         Toolbar: Object.assign("Toolbar", {

@@ -35,6 +35,8 @@ export type ResourceReferenceData = {
     entries: Array<{
       id: string;
       term: string;
+      /** Read through `entryMeanings`; older caches only have `definition`. */
+      meanings?: string[];
       definition: string;
       examples: unknown;
       audioAsset: { id: string; fileName: string } | null;

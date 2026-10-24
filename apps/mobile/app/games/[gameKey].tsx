@@ -1,3 +1,4 @@
+import { entryMeanings } from "@hakgyo/shared";
 import { getHangeulGameStage } from "@hakgyo/shared/hangeul";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useMemo, useState, type ReactNode } from "react";
@@ -189,7 +190,7 @@ function VocabularyCardsRoute({
     vocabulary?.entries.map((entry) => ({
       id: entry.id,
       term: entry.term,
-      definition: entry.definition,
+      meanings: entryMeanings(entry),
       examples: entry.examples,
       imageAssetId: entry.imageAsset?.id,
     })) ?? [];
@@ -281,9 +282,12 @@ function GameUnavailable({
   );
 }
 
-type VocabularyWords = NonNullable<
+type VocabularyEntries = NonNullable<
   NonNullable<ReturnType<typeof useCourseItem>["data"]>["vocabularySet"]
 >["entries"];
+type VocabularyWords = Array<
+  VocabularyEntries[number] & { meanings: string[] }
+>;
 
 /**
  * Loads the vocabulary set behind a game and reports progress for it. Renders
@@ -324,7 +328,15 @@ function VocabularyGameRoute({
     enabled: sessionReady,
   });
   const vocabulary = item.data?.vocabularySet;
-  const words = vocabulary?.entries ?? [];
+  const entries = vocabulary?.entries;
+  const words = useMemo<VocabularyWords>(
+    () =>
+      (entries ?? []).map((entry) => ({
+        ...entry,
+        meanings: entryMeanings(entry),
+      })),
+    [entries],
+  );
   const reporter = useVocabularyProgressReporter({
     gameKey,
     reactive: false,
