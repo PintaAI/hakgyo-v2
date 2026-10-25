@@ -48,8 +48,9 @@ Di halaman **Hari ini**, bagian **Kosakata hari ini** mengambil hingga 24 kata d
 ## Di aplikasi ponsel
 
 - Kartu bisa digeser. Tarik sudut kartu untuk mengintip jawaban, atau geser ke atas, kiri, atau kanan untuk lanjut.
-- Kamu bisa menjawab dengan suara, dan ada mode latihan tanpa menyentuh layar.
+- Kamu bisa menjawab dengan suara, dan ada mode latihan tanpa menyentuh layar. Untuk kata yang punya beberapa arti, cukup ucapkan salah satu artinya.
 - Tab **Latihan** punya permainan tambahan, seperti **Hujan Kata**, **Susun makna**, dan **Cocokkan**. Permainan **Cocokkan** menghitung kata sebagai sudah dilatih, tetapi tidak menambah status dikuasai.
+- Di permainan, kata yang punya beberapa arti menampilkan semua artinya sekaligus, dipisahkan titik koma. Di **Hujan Kata**, ketik salah satu artinya. Di **Cocokkan**, dua kata yang artinya sama tidak pernah muncul di ronde yang sama, jadi selalu hanya ada satu pasangan yang benar.
 - Jawaban disimpan di ponsel dan dikirim di akhir ronde. Lihat [Aplikasi Ponsel dan Belajar Offline](/docs/murid/aplikasi-ponsel).
 
 Setiap jawaban benar memberimu XP. Lihat [XP, Streak, dan Notifikasi](/docs/murid/xp-streak-notifikasi).

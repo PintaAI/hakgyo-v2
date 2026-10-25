@@ -10,7 +10,7 @@ Beberapa contoh permintaan:
 
 - **Menyusun kurikulum:** "Buat kurikulum Bahasa Korea Dasar dengan 8 bab, lalu isi tiap bab dengan satu materi dan satu tugas."
 - **Menulis materi:** "Tulis materi tentang partikel 은/는 dengan contoh percakapan."
-- **Membuat kosakata:** "Buat 20 kosakata tentang makanan beserta arti dan contoh kalimat."
+- **Membuat kosakata:** "Buat 20 kosakata tentang makanan beserta arti dan contoh kalimat." Jika sebuah kata punya beberapa arti, AI bisa menyimpan semuanya, misalnya "Tambahkan 배 dengan arti perut, kapal, dan buah pir."
 - **Membuat soal tugas:** "Buat 10 soal pilihan tunggal (satu jawaban benar) untuk menguji materi Bab 3."
 - **Mengatur kelas:** "Buat Kelas Malam November dengan kapasitas 15 murid." atau "Jadwalkan pertemuan Zoom setiap Sabtu pukul 10.00."
 - **Membantu review:** "Tunjukkan jawaban tertulis yang belum saya nilai." AI akan menunjukkan usulan nilai dan meminta persetujuan Anda sebelum menyimpan.
