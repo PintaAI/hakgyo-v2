@@ -26,6 +26,7 @@ import {
 import { HangeulMasteryBadge } from "../hangeul-mastery-medal";
 import { Action, Eyebrow, ProgressBar } from "../learning-ui";
 import { StudyAction } from "../study-glass";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 type Milestone = NonNullable<ReturnType<typeof getLearningMilestone>>;
 type FooterIssue =
@@ -78,7 +79,7 @@ export function CourseLearningFooter({
 }) {
   const queryClient = useQueryClient();
   const outline = useCourseOutline(courseId);
-  const { activeOrganizationId } = useAppTheme();
+  const { activeOrganizationId, colors } = useAppTheme();
   const index = useSyncIndex(activeOrganizationId);
   const { completeContent } = useMobileSyncActions();
   const baseline = useRef(initialOutline);
@@ -285,24 +286,18 @@ export function CourseLearningFooter({
                 {path.nextModule?.title}
               </Text>
             ) : null}
-            {assessmentIncomplete ? (
-              <Text
-                accessibilityRole="alert"
-                className="mt-1 text-sm leading-5 text-muted-foreground"
-              >
-                {assessmentGateMessage(assessmentState)}
-              </Text>
-            ) : null}
           </View>
+          {/* The tugas card above explains what unlocks it. */}
+          {assessmentIncomplete ? (
+            <SymbolIcon
+              accessibilityLabel="Terkunci"
+              name="lock.fill"
+              size={16}
+              tintColor={colors.mutedForeground}
+            />
+          ) : null}
         </View>
-      ) : assessmentIncomplete ? (
-        <Text
-          accessibilityRole="alert"
-          className="border-t border-border pt-5 text-sm leading-5 text-muted-foreground"
-        >
-          {assessmentGateMessage(assessmentState)}
-        </Text>
-      ) : path && !path.courseCompleted ? (
+      ) : assessmentIncomplete ? null : path && !path.courseCompleted ? (
         <Text className="border-t border-border pt-5 text-sm leading-5 text-muted-foreground">
           Selesaikan langkah ini untuk membuka aktivitas berikutnya.
         </Text>

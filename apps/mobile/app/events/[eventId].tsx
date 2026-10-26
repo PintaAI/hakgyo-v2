@@ -178,12 +178,8 @@ export default function AssessmentEventScreen() {
 
               {attempt ? (
                 <Text className="text-base font-bold text-foreground">
+                  {/* The detail already carries the score once graded. */}
                   {attemptState.detail}
-                  {attempt.status === "GRADED" &&
-                  attempt.score !== null &&
-                  attempt.maxScore !== null
-                    ? ` · ${attempt.score}/${attempt.maxScore}`
-                    : ""}
                 </Text>
               ) : null}
 

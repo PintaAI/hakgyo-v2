@@ -10,11 +10,14 @@ import {
 } from "../../../../src/components/content-renderer";
 import { VocabularySetDetail } from "../../../../src/components/learn/vocabulary-set-detail";
 import { CourseLearningFooter } from "../../../../src/components/learn/course-learning-footer";
-import { assessmentAttemptPresentation } from "../../../../src/lib/assessment-state";
+import { AssessmentOverview } from "../../../../src/components/learn/assessment-overview";
 import { authClient } from "../../../../src/lib/auth-client";
 import { userErrorMessage } from "../../../../src/lib/error-message";
 import { api } from "../../../../src/lib/trpc";
-import type { LearningPathCourse } from "../../../../src/lib/course-learning-path";
+import {
+  getLearningPath,
+  type LearningPathCourse,
+} from "../../../../src/lib/course-learning-path";
 import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
@@ -125,6 +128,9 @@ function CourseItemContent({
   const currentModuleId = outline.data?.modules.find((module) =>
     module.items.some((entry) => entry.id === courseItemId),
   )?.id;
+  const itemCompleted = outline.data
+    ? getLearningPath(outline.data, courseItemId)?.item.isCompleted
+    : undefined;
   const material = item?.material;
   const vocabulary = item?.vocabularySet;
   const assessment = assessmentQuery.data;
@@ -243,10 +249,9 @@ function CourseItemContent({
                   Tugas · {assessment.questions.length} soal
                 </Eyebrow>
                 <Text
-                  adjustsFontSizeToFit
-                  className="text-3xl font-black leading-10 tracking-tight text-foreground"
-                  minimumFontScale={0.7}
-                  numberOfLines={1}
+                  accessibilityRole="header"
+                  className="text-3xl font-black leading-9 tracking-tight text-foreground"
+                  numberOfLines={2}
                 >
                   {assessment.title}
                 </Text>
@@ -256,6 +261,28 @@ function CourseItemContent({
                   </Text>
                 ) : null}
               </View>
+              <AssessmentOverview
+                timeLimitMinutes={assessment.timeLimitMinutes}
+                passingScore={assessment.passingScore}
+                maxAttempts={assessment.maxAttempts}
+                attemptsUsed={assessment.standaloneAttemptCount}
+                latestAttempt={latestAttempt}
+                itemCompleted={itemCompleted}
+                canReattempt={assessmentEntry.canReattempt}
+                gatesProgress={!assessment.event}
+                onOpenAttempt={() => {
+                  if (!latestAttempt) return;
+                  router.push({
+                    pathname:
+                      "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                    params: {
+                      courseId,
+                      courseItemId,
+                      attemptId: latestAttempt.id,
+                    },
+                  });
+                }}
+              />
               {(assessmentEntry.canStart || assessmentEntry.canReattempt) &&
               assessment.eligibleCohorts.length > 1 ? (
                 <View className="gap-2 border-t border-border pt-4">
@@ -275,23 +302,16 @@ function CourseItemContent({
                   ))}
                 </View>
               ) : null}
-              <Text className="text-sm leading-6 text-muted-foreground">
-                {assessment.timeLimitMinutes != null
-                  ? `${assessment.timeLimitMinutes} menit`
-                  : "Tanpa batas waktu"}{" "}
-                ·{" "}
-                {assessment.maxAttempts == null
-                  ? "Percobaan tanpa batas"
-                  : `Maks. ${assessment.maxAttempts} percobaan`}
-                {latestAttempt
-                  ? `\n${assessmentAttemptPresentation(latestAttempt).detail}${latestAttempt.status === "GRADED" && latestAttempt.score !== null && latestAttempt.maxScore !== null ? ` · ${latestAttempt.score}/${latestAttempt.maxScore}` : ""}`
-                  : ""}
-                {"\n"}Bebas berpindah antarsoal. Kirim jika sudah siap.
-              </Text>
               {assessmentEntry.canStart ||
               assessmentEntry.canReattempt ||
               assessmentEntry.destination === "ATTEMPT" ? (
                 <StudyAction
+                  // Once the tugas is done, retrying is optional: the footer's
+                  // "Lanjutkan belajar" becomes the main action.
+                  secondary={
+                    assessmentEntry.canReattempt &&
+                    (itemCompleted === true || Boolean(assessment.event))
+                  }
                   disabled={
                     startAssessment.isPending ||
                     assessment.questions.length === 0 ||
@@ -309,26 +329,6 @@ function CourseItemContent({
                       : assessmentEntry.canReattempt
                         ? "Kerjakan ulang tugas"
                         : "Mulai tugas"}
-                </StudyAction>
-              ) : null}
-              {latestAttempt && latestAttempt.status !== "IN_PROGRESS" ? (
-                <StudyAction
-                  secondary={assessmentEntry.canReattempt}
-                  onPress={() =>
-                    router.push({
-                      pathname:
-                        "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                      params: {
-                        courseId,
-                        courseItemId,
-                        attemptId: latestAttempt.id,
-                      },
-                    })
-                  }
-                >
-                  {latestAttempt.status === "GRADED"
-                    ? "Lihat hasil"
-                    : "Lihat jawaban"}
                 </StudyAction>
               ) : null}
               {startAssessment.isError ? (
