@@ -76,8 +76,8 @@ export const userDocVideos: Partial<Record<string, UserDocVideo>> = {
     durationLabel: "1 menit",
   },
   "pengajar/kurikulum-bahan-ajar": {
-    src: `${guideVideos}/pengajar/kurikulum-bahan-ajar-15e88e07.mp4`,
-    poster: `${guideVideos}/pengajar/kurikulum-bahan-ajar-e8fd835c.jpg`,
+    src: `${guideVideos}/pengajar/kurikulum-bahan-ajar-fdb2ab80.mp4`,
+    poster: `${guideVideos}/pengajar/kurikulum-bahan-ajar-67a087cf.jpg`,
     durationLabel: "1,5 menit",
   },
   "pengajar/kelas-jadwal": {
