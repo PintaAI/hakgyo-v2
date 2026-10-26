@@ -4,6 +4,7 @@ import { Text, View } from "react-native";
 const tones = {
   primary: { box: "bg-primary/10", text: "text-primary" },
   destructive: { box: "bg-destructive", text: "text-destructive-foreground" },
+  destructiveTinted: { box: "bg-destructive/15", text: "text-destructive" },
 } as const;
 
 const sizes = {

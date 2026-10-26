@@ -50,6 +50,8 @@ Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**,
 
 ## Mengerjakan di aplikasi ponsel
 
+- Halaman awal tugas merangkum **Waktu**, **Nilai lulus**, dan **Percobaan** dalam satu baris.
+- Setelah kamu mengirim, bagian **Hasil terakhir** menampilkan nilaimu dalam persen, status **Lulus** atau **Belum lulus**, dan garis batas nilai lulus. Ketuk **Lihat hasil** untuk membuka review jawabanmu.
 - Memulai tugas membutuhkan internet. Setelah mulai, kamu bisa melanjutkan tanpa internet.
 - Jawabanmu disimpan di ponsel dan baru terkirim saat kamu menekan **Kirim**.
 
