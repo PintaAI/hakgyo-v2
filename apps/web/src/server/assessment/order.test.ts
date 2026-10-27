@@ -71,3 +71,43 @@ describe("shufflesQuestions", () => {
     );
   });
 });
+
+describe("sections", () => {
+  const sectioned = [
+    { id: "r1", sectionId: "reading", options: [] },
+    { id: "l1", sectionId: "listening", options: [] },
+    { id: "r2", sectionId: "reading", options: [] },
+    { id: "l2", sectionId: "listening", options: [] },
+    { id: "r3", sectionId: "reading", options: [] },
+  ];
+  const sections = [
+    { id: "listening", position: 1, shuffleQuestions: true },
+    { id: "reading", position: 0, shuffleQuestions: false },
+  ];
+
+  test("keeps sections in order and their questions in authored order", () => {
+    expect(
+      orderAssessmentQuestions(sectioned, undefined, true, false, {
+        sections,
+      }).map(({ id }) => id),
+    ).toEqual(["r1", "r2", "r3", "l1", "l2"]);
+  });
+
+  test("never shuffles across sections", () => {
+    for (const seed of ["a", "b", "c", "d"]) {
+      const ids = orderAssessmentQuestions(sectioned, seed, true, false, {
+        sections,
+      }).map(({ id }) => id);
+      expect(ids.slice(0, 3)).toEqual(["r1", "r2", "r3"]);
+      expect([...ids.slice(3)].sort()).toEqual(["l1", "l2"]);
+    }
+  });
+
+  test("an event override applies inside every section", () => {
+    const ids = orderAssessmentQuestions(sectioned, "seed", true, false, {
+      sections,
+      eventShuffleQuestions: false,
+    }).map(({ id }) => id);
+    expect(ids).toEqual(["r1", "r2", "r3", "l1", "l2"]);
+  });
+});

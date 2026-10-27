@@ -558,6 +558,16 @@ enum AssessmentAttemptStatus {
   GRADED
 }
 
+/// How learners move through a section's questions.
+enum AssessmentSectionNavigation {
+  /// Jump anywhere and change answers.
+  FREE
+  /// Next only; earlier questions of the section cannot be reopened.
+  FORWARD_ONLY
+  /// The system moves on after the audio and the answer window, or a per-question time.
+  PACED
+}
+
 /// How an attempt was submitted.
 enum AssessmentSubmissionSource {
   /// The learner submitted (web, or mobile while the attempt was open).
@@ -1092,6 +1102,7 @@ model Assessment {
   organization          Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy             OrganizationMember    @relation("AssessmentCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
   questions             AssessmentQuestion[]
+  sections              AssessmentSection[]
   courseItems           CourseItem[]
   attempts              AssessmentAttempt[]
   materialRequirements  MaterialRequirement[]
@@ -1117,13 +1128,51 @@ model AssessmentQuestion {
   tags         String[]               @default([])
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
+  /// Set for every question once the assessment has sections; questions are shown by section position, then question position.
+  sectionId    String?
   assessment   Assessment             @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  section      AssessmentSection?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   options      AssessmentOption[]
   answers      AssessmentAnswer[]
 
   @@unique([assessmentId, position])
+  @@index([sectionId])
   /// The question bank picks candidates by type tag (docs/eps-question-generator.md section 4.1).
   @@index([tags], type: Gin)
+}
+
+/// A timed part of an assessment (EPS-TOPIK: Membaca, Mendengar) with its own rules. See docs/eps-topik-simulation.md section 4.2.
+model AssessmentSection {
+  id                    String                      @id @default(cuid())
+  assessmentId          String
+  position              Int
+  title                 String
+  /// BlockNote document shown on the section intro screen.
+  instructions          Json?
+  /// Null: no timer of its own (only the attempt's).
+  timeLimitSeconds      Int?
+  navigation            AssessmentSectionNavigation @default(FREE)
+  /// The first choice of a question is final.
+  lockAnswers           Boolean                     @default(false)
+  /// Learners may finish the section before its timer ends.
+  allowEarlyFinish      Boolean                     @default(true)
+  /// Shuffle questions within the section (groups stay together).
+  shuffleQuestions      Boolean                     @default(false)
+  /// Null: unlimited. Counts whole playlists of a question.
+  audioMaxPlays         Int?
+  /// Play automatically until `audioMaxPlays` is used.
+  audioAutoplay         Boolean                     @default(false)
+  audioRepeatGapSeconds Int                         @default(2)
+  /// PACED: answer window after the last play (EPS-TOPIK demo: 7 seconds).
+  pacedAnswerSeconds    Int?
+  /// PACED: time for a question without audio.
+  pacedQuestionSeconds  Int?
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  assessment            Assessment                  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questions             AssessmentQuestion[]
+
+  @@unique([assessmentId, position])
 }
 
 model AssessmentOption {

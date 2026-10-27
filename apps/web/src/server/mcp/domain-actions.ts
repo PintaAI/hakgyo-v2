@@ -590,6 +590,30 @@ export const mcpDomainTools = {
       effect: "change",
     },
     {
+      action: "createSection",
+      name: "add_assessment_section",
+      title: "Add Tugas section",
+      description:
+        "Add a timed section (for example EPS-TOPIK 'Membaca' or 'Mendengar') at the end of a Tugas, with its title, instructions, time limit in seconds and rules. The first section takes every existing question; later questions join the last section unless add_assessment_question names one.",
+      effect: "add",
+    },
+    {
+      action: "updateSection",
+      name: "update_assessment_section",
+      title: "Update Tugas section",
+      description:
+        "Change a section's title, instructions, time limit (seconds), navigation (FREE, FORWARD_ONLY, PACED), answer lock, early finish, shuffle or audio rules. Only the fields you send are changed.",
+      effect: "change",
+    },
+    {
+      action: "arrangeQuestions",
+      name: "arrange_assessment_questions",
+      title: "Arrange Tugas questions",
+      description:
+        "Save the order of sections and of every question within them. List every section (or one entry with sectionId null when there are none) with every question id exactly once; use get_assessment for the current layout.",
+      effect: "change",
+    },
+    {
       action: "listAttemptsNeedingReview",
       name: "list_attempts_needing_review",
       title: "List attempts needing review",

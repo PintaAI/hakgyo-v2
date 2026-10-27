@@ -20,6 +20,15 @@ import {
   recordProgressInput,
 } from "~/server/assessment/attempt-progress";
 import {
+  arrangeQuestions,
+  arrangeQuestionsInput,
+  createSection,
+  createSectionInput,
+  deleteSection,
+  updateSection,
+  updateSectionInput,
+} from "~/server/assessment/sections";
+import {
   assessmentFields,
   attemptsNeedingReviewInput,
   id,
@@ -115,6 +124,7 @@ export const assessmentRouter = createTRPCRouter({
               orderBy: { position: "asc" },
               include: { options: { orderBy: { position: "asc" } } },
             },
+            sections: { orderBy: { position: "asc" } },
           },
         }),
         getAssessmentLiveStatus(ctx.db, input.assessmentId),
@@ -183,8 +193,30 @@ export const assessmentRouter = createTRPCRouter({
       );
       return { deleted: true, removed };
     }),
+  createSection: protectedProcedure
+    .input(createSectionInput)
+    .mutation(({ ctx, input }) =>
+      createSection(ctx.db, input, ctx.actorUserId),
+    ),
+  updateSection: protectedProcedure
+    .input(updateSectionInput)
+    .mutation(({ ctx, input }) =>
+      updateSection(ctx.db, input, ctx.actorUserId),
+    ),
+  deleteSection: protectedProcedure
+    .input(z.object({ sectionId: id }))
+    .mutation(({ ctx, input }) =>
+      deleteSection(ctx.db, input.sectionId, ctx.actorUserId),
+    ),
+  arrangeQuestions: protectedProcedure
+    .input(arrangeQuestionsInput)
+    .mutation(({ ctx, input }) =>
+      arrangeQuestions(ctx.db, input, ctx.actorUserId),
+    ),
   createQuestion: protectedProcedure
-    .input(questionFields.extend({ assessmentId: id }))
+    .input(
+      questionFields.extend({ assessmentId: id, sectionId: id.optional() }),
+    )
     .mutation(({ ctx, input }) =>
       createQuestion(ctx.db, input, ctx.actorUserId),
     ),

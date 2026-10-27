@@ -59,6 +59,7 @@ import {
 } from "~/components/assessment-image-import";
 import Link from "~/components/link";
 import { QuestionTagsField } from "~/components/question-tags-field";
+import { AssessmentStructureSheet } from "~/components/assessment-structure";
 import {
   parseScoreBandRows,
   ScoreBandsField,
@@ -1146,6 +1147,18 @@ function AssessmentEditorForm({
       };
     });
   }, [assessment, recoveredDraft]);
+  const sectionTitleById = useMemo(
+    () =>
+      new Map(
+        (assessment?.sections ?? []).map((section) => [
+          section.id,
+          section.timeLimitSeconds
+            ? `${section.title} · ${section.timeLimitSeconds / 60} menit`
+            : section.title,
+        ]),
+      ),
+    [assessment?.sections],
+  );
   const questionMapItems = useMemo(
     () =>
       displayQuestions.map((question, index) => ({
@@ -1832,7 +1845,7 @@ function AssessmentEditorForm({
             }}
             onDrop={handleImportDrop}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 disabled={questionBusy || readOnly}
                 onClick={addQuestion}
@@ -1854,6 +1867,12 @@ function AssessmentEditorForm({
                 onSelect={imageImport.start}
                 title="Impor soal dari gambar dengan AI"
               />
+              {assessment ? (
+                <AssessmentStructureSheet
+                  assessment={assessment}
+                  readOnly={readOnly}
+                />
+              ) : null}
               <div className="ml-auto flex items-center gap-2">
                 <p
                   className="text-muted-foreground hidden text-xs sm:block"
@@ -1943,6 +1962,13 @@ function AssessmentEditorForm({
                   <li
                     key={`${question.id}:${recoveredDraft?.updatedAt ?? "server"}`}
                   >
+                    {question.sectionId &&
+                    question.sectionId !==
+                      displayQuestions[index - 1]?.sectionId ? (
+                      <p className="text-muted-foreground mt-3 mb-2 text-xs font-semibold tracking-wide uppercase">
+                        {sectionTitleById.get(question.sectionId) ?? "Bagian"}
+                      </p>
+                    ) : null}
                     <QuestionRow
                       active={activeQuestionId === question.id}
                       autosaveRegistry={autosaveRegistry}

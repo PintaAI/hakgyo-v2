@@ -79,6 +79,8 @@ export const attemptsNeedingReviewInput = pageInput.extend({
 
 export type CreateQuestionInput = z.infer<typeof questionFields> & {
   assessmentId: string;
+  /** With sections: the section to add to (default the last one). */
+  sectionId?: string;
 };
 export type UpdateOptionInput = Partial<z.infer<typeof optionFields>> & {
   optionId: string;

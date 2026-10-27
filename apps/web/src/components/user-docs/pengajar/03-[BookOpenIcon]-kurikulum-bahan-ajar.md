@@ -177,6 +177,18 @@ Jika sebuah kata atau artinya diubah (termasuk menambah atau menghapus arti), pr
    - **Batas waktu (menit)**. Kosongkan untuk tanpa batas.
    - **Acak soal** dan **Acak opsi**. Latihan dan tryout mengikuti **Acak soal** kecuali pengajar memilih urutan lain saat membuatnya. Lihat [Latihan dan Tryout](/docs/pengajar/latihan-tryout#membuat-latihan-atau-tryout).
 
+### Bagian dan urutan soal
+
+Untuk simulasi ujian seperti EPS-TOPIK, tugas bisa dibagi menjadi beberapa **bagian**, misalnya **Membaca** (soal 1-20) dan **Mendengar** (soal 21-40). Setiap bagian punya nama, petunjuk, dan batas waktunya sendiri.
+
+1. Klik **Bagian & urutan** di atas daftar soal.
+2. Klik **Tambah bagian** dan isi namanya. Bagian pertama langsung berisi semua soal yang sudah ada. Bagian berikutnya ditambahkan di akhir.
+3. Klik ikon pensil pada bagian untuk mengisi **Petunjuk bagian**, **Batas waktu bagian (menit)**, dan **Acak soal di bagian ini**. Soal hanya diacak di dalam bagiannya, tidak pernah tercampur dengan bagian lain.
+4. Di **Urutan soal**, pindahkan soal dengan panah atas dan bawah, atau pilih bagiannya dari daftar di sebelah soal. Panah di samping nama bagian memindahkan seluruh bagian.
+5. Klik **Simpan urutan**. Nomor soal mengikuti urutan baru.
+
+Soal baru masuk ke bagian terakhir. Menghapus bagian tidak menghapus soalnya: soal dipindahkan ke bagian sebelumnya. Jika bagian terakhir dihapus, tugas kembali menjadi satu kesatuan tanpa bagian.
+
 > **Perhatian:** di Hakgyo, **Pilihan ganda** berarti soal dengan **lebih dari satu** jawaban benar. Untuk soal pilihan ganda biasa dengan satu jawaban benar, pilih **Pilihan tunggal**. Di layar murid, soal **Pilihan ganda** bertuliskan **Pilih semua jawaban yang benar**.
 
 Soal pilihan dinilai otomatis. Untuk **Pilihan ganda**, murid harus memilih semua jawaban benar dan tidak memilih yang salah agar mendapat poin. Tugas yang punya soal **Jawaban tertulis** masuk ke antrean review sampai Anda menilainya.
