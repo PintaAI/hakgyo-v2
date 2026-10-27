@@ -6,10 +6,14 @@ import { ArrowLeftIcon, CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   assessmentContentAssetIds,
+  canFinishSection,
   createLogEntry,
   formatScoreOutOf,
   MAX_LOG_ENTRIES_PER_WRITE,
+  sectionTimeline,
+  sectionView,
   type AttemptLogEntry,
+  type TimelineEntry,
 } from "@hakgyo/shared";
 
 import Link from "~/components/link";
@@ -28,9 +32,9 @@ import { Textarea } from "~/components/ui/textarea";
 import { assessmentTerminalResult } from "~/lib/learner/assessment-state";
 import {
   isQuestionAnswered,
-  nextUnansweredQuestion,
   type QuestionStatus,
 } from "~/lib/learner/question-progress";
+import { formatRemaining } from "~/lib/learner/question-progress";
 import { onPageHidden } from "~/lib/page-hidden";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -47,6 +51,7 @@ import {
 } from "./assessment-ui";
 import { ScoreBandResults } from "~/components/learner/assessment/score-band-results";
 import { TagResults } from "~/components/learner/assessment/tag-results";
+import { SectionIntro } from "~/components/learner/assessment/section-intro";
 import { AssessmentResultReview } from "./assessment-result-review";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
@@ -61,8 +66,9 @@ type Answer = {
 // hours, so waiting for one polls slowly.
 const AWAITING_REVIEW_POLL_MS = 60_000;
 
-function formatRemaining(seconds: number) {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+/** Device time shifted by the measured offset to the server's clock. */
+function correctedNow(offsetMs: number) {
+  return new Date(Date.now() + offsetMs);
 }
 
 export function AssessmentAttempt({
@@ -131,7 +137,7 @@ export function AssessmentAttempt({
     assessmentContentAssetIds(assessment),
     attempt.status === "IN_PROGRESS",
   );
-  const [current, setCurrent] = useState(0);
+  const [selected, setCurrent] = useState(0);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [answers, setAnswers] = useState<Record<string, Answer>>(() =>
@@ -162,6 +168,14 @@ export function AssessmentAttempt({
       )
     : null;
   const [secondsLeft, setSecondsLeft] = useState<number | null>(initialSeconds);
+  // Device clock corrected to the server's (render time), for log entries and section timers.
+  const [clockOffset] = useState(() => serverTime.getTime() - Date.now());
+  // Sections: their starts and ends from the server plus the ones made here, and a ticking clock.
+  const sectioned = assessment.sections.length > 0;
+  const [localSectionEntries, setLocalSectionEntries] = useState<
+    TimelineEntry[]
+  >([]);
+  const [now, setNow] = useState(serverTime);
   const [dirty, setDirty] = useState(false);
   const progress = api.assessment.recordProgress.useMutation();
   const submit = api.assessment.submitAttempt.useMutation();
@@ -179,15 +193,6 @@ export function AssessmentAttempt({
   const submitting = useRef(false);
   const top = useRef<HTMLDivElement>(null);
 
-  const question = assessment.questions[current];
-  const statuses: QuestionStatus[] = assessment.questions.map((entry) =>
-    isQuestionAnswered(answers[entry.id]) ? "answered" : "unanswered",
-  );
-  const answeredCount = statuses.filter(
-    (status) => status === "answered",
-  ).length;
-  const total = assessment.questions.length;
-  const nextUnanswered = nextUnansweredQuestion(statuses, current);
   const eventEndedIncomplete = Boolean(
     assessment.event &&
     assessment.event.status !== "OPEN" &&
@@ -196,6 +201,65 @@ export function AssessmentAttempt({
   const isFinished = attempt.status !== "IN_PROGRESS" || eventEndedIncomplete;
   const expired = secondsLeft === 0;
   const busy = submit.isPending || finalizing;
+
+  // Sections run one after another (shared timeline, docs/eps-topik-simulation.md section 4.2).
+  const timeline = sectioned
+    ? sectionTimeline({
+        sections: assessment.sections,
+        startedAt: attempt.startedAt,
+        attemptDeadline: assessment.attemptDeadline,
+        entries: [...assessment.sectionEntries, ...localSectionEntries],
+        now,
+      })
+    : null;
+  const view = timeline ? sectionView(timeline) : null;
+  const activeSection =
+    view && view.mode !== "done" ? assessment.sections[view.index] : undefined;
+  const sectionIndexes = assessment.questions.flatMap((entry, index) =>
+    !activeSection || entry.sectionId === activeSection.id ? [index] : [],
+  );
+  // The shown question stays inside the running section (derived, not corrected in an effect).
+  const current =
+    activeSection && !sectionIndexes.includes(selected)
+      ? (sectionIndexes[0] ?? selected)
+      : selected;
+  const question = assessment.questions[current];
+  const statuses: QuestionStatus[] = assessment.questions.map((entry) =>
+    isQuestionAnswered(answers[entry.id]) ? "answered" : "unanswered",
+  );
+  const answeredCount = statuses.filter(
+    (status) => status === "answered",
+  ).length;
+  const total = assessment.questions.length;
+  const positionInSection = sectionIndexes.indexOf(current);
+  const isLastSection =
+    !view ||
+    view.mode === "done" ||
+    view.index === assessment.sections.length - 1;
+  const sectionSecondsLeft =
+    view?.mode === "answering" && view.deadlineAt
+      ? Math.max(
+          0,
+          Math.floor((view.deadlineAt.getTime() - now.getTime()) / 1000),
+        )
+      : null;
+  const introSecondsLeft =
+    view?.mode === "intro"
+      ? Math.max(
+          0,
+          Math.ceil((view.autoStartAt.getTime() - now.getTime()) / 1000),
+        )
+      : 0;
+  const sectionStatuses = sectionIndexes.map((index) => statuses[index]!);
+  const sectionAnswered = sectionStatuses.filter(
+    (status) => status === "answered",
+  ).length;
+  const nextUnansweredInSection =
+    sectionIndexes.find(
+      (index, position) =>
+        position > positionInSection && statuses[index] === "unanswered",
+    ) ?? sectionIndexes.find((index) => statuses[index] === "unanswered");
+  const [finishSectionOpen, setFinishSectionOpen] = useState(false);
 
   const pushEntry = (
     kind: AttemptLogEntry["kind"],
@@ -214,10 +278,22 @@ export function AssessmentAttempt({
         last.seq,
         kind,
         fields,
-        new Date(),
+        correctedNow(clockOffset),
       );
     } else {
-      pending.push(createLogEntry(nextSeq.current++, kind, fields, new Date()));
+      const entry = createLogEntry(
+        nextSeq.current++,
+        kind,
+        fields,
+        correctedNow(clockOffset),
+      );
+      pending.push(entry);
+      if (kind === "SECTION_STARTED" || kind === "SECTION_ENDED") {
+        setLocalSectionEntries((entries) => [
+          ...entries,
+          { kind, sectionId: fields.sectionId, at: new Date(entry.clientAt) },
+        ]);
+      }
     }
   };
 
@@ -411,15 +487,64 @@ export function AssessmentAttempt({
   const lastShownQuestionId = useRef<string | null>(null);
   const logQuestionShown = useEffectEvent((questionId: string) => {
     // Effects can run twice for one view (React strict mode); log a question once per visit.
-    if (isFinished || expired || lastShownQuestionId.current === questionId) {
+    if (
+      isFinished ||
+      expired ||
+      (sectioned && view?.mode !== "answering") ||
+      lastShownQuestionId.current === questionId
+    ) {
       return;
     }
     lastShownQuestionId.current = questionId;
     pushEntry("QUESTION_SHOWN", { questionId });
   });
+  const viewMode = view?.mode;
   useEffect(() => {
     if (shownQuestionId) logQuestionShown(shownQuestionId);
-  }, [shownQuestionId]);
+  }, [shownQuestionId, viewMode]);
+
+  // Sections: tick the clock, keep the question inside the running section, and submit once the
+  // last section has ended.
+  const onSectionTick = useEffectEvent(() => {
+    const tickAt = correctedNow(clockOffset);
+    setNow(tickAt);
+    // The last section's time ran out: submit, like the single timer does.
+    const tickView = sectionView(
+      sectionTimeline({
+        sections: assessment.sections,
+        startedAt: attempt.startedAt,
+        attemptDeadline: assessment.attemptDeadline,
+        entries: [...assessment.sectionEntries, ...localSectionEntries],
+        now: tickAt,
+      }),
+    );
+    if (tickView.mode === "done" && !isFinished) void submitAssessment();
+  });
+  useEffect(() => {
+    if (!sectioned || isFinished) return;
+    const timer = window.setInterval(onSectionTick, 1000);
+    return () => window.clearInterval(timer);
+  }, [sectioned, isFinished]);
+
+  // Section starts and ends save at once (they move the clock); handlers request it through state
+  // because the autosave is an effect event.
+  const [flushRequest, setFlushRequest] = useState(0);
+  useEffect(() => {
+    if (flushRequest) flushAutosave();
+  }, [flushRequest]);
+
+  const startSection = () => {
+    if (view?.mode !== "intro" || busy) return;
+    pushEntry("SECTION_STARTED", { sectionId: view.sectionId });
+    setFlushRequest((value) => value + 1);
+  };
+  const finishSection = () => {
+    if (view?.mode !== "answering" || busy) return;
+    pushEntry("SECTION_ENDED", { sectionId: view.sectionId });
+    setFlushRequest((value) => value + 1);
+    // Finishing the last section finishes the attempt.
+    if (isLastSection) void submitAssessment();
+  };
 
   const firstQuestion = useRef(true);
   useEffect(() => {
@@ -489,6 +614,29 @@ export function AssessmentAttempt({
                 maxScore={result.maxScore}
                 score={result.score}
               />
+              {assessment.sectionResults.length ? (
+                <ul className="mx-auto grid w-full max-w-xs gap-1.5 text-sm">
+                  {assessment.sections.map((section) => {
+                    const sectionResult = assessment.sectionResults.find(
+                      (entry) => entry.sectionId === section.id,
+                    );
+                    return sectionResult ? (
+                      <li
+                        key={section.id}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <span>{section.title}</span>
+                        <span className="tabular-nums">
+                          {formatScoreOutOf(
+                            sectionResult.score,
+                            sectionResult.maxScore,
+                          )}
+                        </span>
+                      </li>
+                    ) : null;
+                  })}
+                </ul>
+              ) : null}
             </>
           ) : (
             <p className="text-muted-foreground text-center text-sm leading-5">
@@ -532,6 +680,7 @@ export function AssessmentAttempt({
   }
   const answer = answers[question.id];
   const isLast = current === total - 1;
+  const isLastInSection = positionInSection === sectionIndexes.length - 1;
 
   return (
     <div
@@ -564,150 +713,227 @@ export function AssessmentAttempt({
         />
       ) : null}
 
-      {secondsLeft !== null ? (
-        <p
-          aria-live={expired ? "polite" : "off"}
-          className={cn(
-            "text-sm font-bold tabular-nums",
-            expired || secondsLeft < 60 ? "text-destructive" : "text-primary",
-          )}
-        >
-          {expired
-            ? "Waktu habis · kirim jawaban yang tersimpan"
-            : `${formatRemaining(secondsLeft)} tersisa`}
-        </p>
-      ) : null}
-
-      <AssessmentQuestion
-        current={current}
-        total={total}
-        answered={answeredCount}
-        onOpen={() => setNavigatorOpen(true)}
-        disabled={busy}
-      >
-        <RichContent content={question.prompt} />
-      </AssessmentQuestion>
-
-      <p className="text-sm font-bold">
-        {question.type === "WRITTEN"
-          ? "Tulis jawaban kamu"
-          : question.type === "MULTIPLE_CHOICE"
-            ? "Pilih semua jawaban yang benar"
-            : "Pilih satu jawaban"}
-      </p>
-      {question.type === "WRITTEN" ? (
-        <StudyCard>
-          <Textarea
-            aria-label={`Jawaban soal ${current + 1}`}
-            value={answer?.content ?? ""}
-            disabled={busy || expired}
-            onChange={(event) => {
-              const content = event.target.value;
-              editAnswer(question.id, () => ({
-                questionId: question.id,
-                content,
-                optionIds: [],
-              }));
-            }}
-            placeholder="Tulis jawaban kamu…"
-            className="min-h-32 resize-y border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-          />
-        </StudyCard>
+      {view?.mode === "intro" && activeSection ? (
+        <SectionIntro
+          busy={busy}
+          instructions={activeSection.instructions}
+          onStart={startSection}
+          position={view.index + 1}
+          questionCount={sectionIndexes.length}
+          secondsToAutoStart={introSecondsLeft}
+          sectionCount={assessment.sections.length}
+          timeLimitSeconds={activeSection.timeLimitSeconds}
+          title={activeSection.title}
+        />
       ) : (
-        <div
-          role={question.type === "SINGLE_CHOICE" ? "radiogroup" : "group"}
-          className="flex flex-col gap-3"
-        >
-          {question.options.map((option, optionIndex) => (
-            <AssessmentOption
-              key={option.id}
-              index={optionIndex}
-              selected={answer?.optionIds.includes(option.id) ?? false}
-              multiple={question.type === "MULTIPLE_CHOICE"}
-              disabled={busy || expired}
-              onPress={() => chooseOption(option.id)}
+        <>
+          {activeSection && sectionSecondsLeft !== null ? (
+            <p
+              aria-live={sectionSecondsLeft === 0 ? "polite" : "off"}
+              className={cn(
+                "text-sm font-bold tabular-nums",
+                sectionSecondsLeft < 60 ? "text-destructive" : "text-primary",
+              )}
             >
-              <RichContent content={option.content} />
-            </AssessmentOption>
-          ))}
-        </div>
-      )}
-
-      <p className="text-muted-foreground text-xs leading-5">
-        Kamu bisa mengubah jawaban sampai mengirimnya. Jawaban tersimpan
-        otomatis selama kamu mengerjakan.
-        {secondsLeft !== null ? " Timer tetap berjalan meski kamu keluar." : ""}
-      </p>
-
-      <div className="border-border flex flex-col gap-3 border-t pt-4">
-        <div className="flex gap-3">
-          {current > 0 ? (
-            <Button
-              variant="secondary"
-              className="flex-1"
-              disabled={busy}
-              onClick={() => setCurrent(current - 1)}
+              {activeSection.title} · {formatRemaining(sectionSecondsLeft)}{" "}
+              tersisa
+            </p>
+          ) : activeSection ? (
+            <p className="text-primary text-sm font-bold">
+              {activeSection.title}
+            </p>
+          ) : secondsLeft !== null ? (
+            <p
+              aria-live={expired ? "polite" : "off"}
+              className={cn(
+                "text-sm font-bold tabular-nums",
+                expired || secondsLeft < 60
+                  ? "text-destructive"
+                  : "text-primary",
+              )}
             >
-              Sebelumnya
-            </Button>
+              {expired
+                ? "Waktu habis · kirim jawaban yang tersimpan"
+                : `${formatRemaining(secondsLeft)} tersisa`}
+            </p>
           ) : null}
-          {!isLast || (nextUnanswered >= 0 && nextUnanswered !== current) ? (
-            <Button
-              className="flex-1"
-              disabled={busy}
-              onClick={() => setCurrent(isLast ? nextUnanswered : current + 1)}
-            >
-              {isLast ? "Soal belum dijawab berikutnya →" : "Berikutnya →"}
-            </Button>
-          ) : null}
-        </div>
-        {!expired ? (
-          <p
-            aria-live="polite"
-            className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs"
-          >
-            {dirty || progress.isPending ? (
-              "Menyimpan jawaban…"
-            ) : (
-              <>
-                <CheckIcon className="size-3" /> Jawaban tersimpan
-              </>
-            )}
-          </p>
-        ) : null}
-        {expired || isLast || answeredCount === total ? (
-          <Button
-            size="lg"
+
+          <AssessmentQuestion
+            current={current}
+            total={total}
+            answered={answeredCount}
+            onOpen={() => setNavigatorOpen(true)}
             disabled={busy}
-            onClick={() => setConfirmOpen(true)}
           >
-            {busy ? (
-              <LoaderCircleIcon
-                data-icon="inline-start"
-                className="animate-spin"
-              />
-            ) : null}
-            {busy
-              ? "Menyimpan…"
-              : answeredCount === total
-                ? "Kirim tugas"
-                : `Kirim · ${answeredCount}/${total} dijawab`}
-          </Button>
-        ) : null}
-      </div>
+            <RichContent content={question.prompt} />
+          </AssessmentQuestion>
 
-      <QuestionNavigator
-        open={navigatorOpen}
-        onOpenChange={setNavigatorOpen}
-        title={assessment.title}
-        current={current}
-        statuses={statuses}
-        onSelect={(index) => {
-          if (busy) return false;
-          setCurrent(index);
-          return true;
-        }}
-      />
+          <p className="text-sm font-bold">
+            {question.type === "WRITTEN"
+              ? "Tulis jawaban kamu"
+              : question.type === "MULTIPLE_CHOICE"
+                ? "Pilih semua jawaban yang benar"
+                : "Pilih satu jawaban"}
+          </p>
+          {question.type === "WRITTEN" ? (
+            <StudyCard>
+              <Textarea
+                aria-label={`Jawaban soal ${current + 1}`}
+                value={answer?.content ?? ""}
+                disabled={busy || expired}
+                onChange={(event) => {
+                  const content = event.target.value;
+                  editAnswer(question.id, () => ({
+                    questionId: question.id,
+                    content,
+                    optionIds: [],
+                  }));
+                }}
+                placeholder="Tulis jawaban kamu…"
+                className="min-h-32 resize-y border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+              />
+            </StudyCard>
+          ) : (
+            <div
+              role={question.type === "SINGLE_CHOICE" ? "radiogroup" : "group"}
+              className="flex flex-col gap-3"
+            >
+              {question.options.map((option, optionIndex) => (
+                <AssessmentOption
+                  key={option.id}
+                  index={optionIndex}
+                  selected={answer?.optionIds.includes(option.id) ?? false}
+                  multiple={question.type === "MULTIPLE_CHOICE"}
+                  disabled={busy || expired}
+                  onPress={() => chooseOption(option.id)}
+                >
+                  <RichContent content={option.content} />
+                </AssessmentOption>
+              ))}
+            </div>
+          )}
+
+          <p className="text-muted-foreground text-xs leading-5">
+            Kamu bisa mengubah jawaban sampai mengirimnya. Jawaban tersimpan
+            otomatis selama kamu mengerjakan.
+            {secondsLeft !== null || sectionSecondsLeft !== null
+              ? " Timer tetap berjalan meski kamu keluar."
+              : ""}
+          </p>
+
+          <div className="border-border flex flex-col gap-3 border-t pt-4">
+            <div className="flex gap-3">
+              {positionInSection > 0 ? (
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  disabled={busy}
+                  onClick={() =>
+                    setCurrent(sectionIndexes[positionInSection - 1]!)
+                  }
+                >
+                  Sebelumnya
+                </Button>
+              ) : null}
+              {!isLastInSection ||
+              (nextUnansweredInSection !== undefined &&
+                nextUnansweredInSection !== current) ? (
+                <Button
+                  className="flex-1"
+                  disabled={busy}
+                  onClick={() =>
+                    setCurrent(
+                      isLastInSection
+                        ? nextUnansweredInSection!
+                        : sectionIndexes[positionInSection + 1]!,
+                    )
+                  }
+                >
+                  {isLastInSection
+                    ? "Soal belum dijawab berikutnya →"
+                    : "Berikutnya →"}
+                </Button>
+              ) : null}
+            </div>
+            {!expired ? (
+              <p
+                aria-live="polite"
+                className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs"
+              >
+                {dirty || progress.isPending ? (
+                  "Menyimpan jawaban…"
+                ) : (
+                  <>
+                    <CheckIcon className="size-3" /> Jawaban tersimpan
+                  </>
+                )}
+              </p>
+            ) : null}
+            {!isLastSection && activeSection ? (
+              canFinishSection(activeSection) &&
+              (isLastInSection || sectionAnswered === sectionIndexes.length) ? (
+                <Button
+                  size="lg"
+                  disabled={busy}
+                  onClick={() => setFinishSectionOpen(true)}
+                >
+                  Selesai bagian ini
+                </Button>
+              ) : null
+            ) : expired || isLast || answeredCount === total ? (
+              <Button
+                size="lg"
+                disabled={busy}
+                onClick={() => setConfirmOpen(true)}
+              >
+                {busy ? (
+                  <LoaderCircleIcon
+                    data-icon="inline-start"
+                    className="animate-spin"
+                  />
+                ) : null}
+                {busy
+                  ? "Menyimpan…"
+                  : answeredCount === total
+                    ? "Kirim tugas"
+                    : `Kirim · ${answeredCount}/${total} dijawab`}
+              </Button>
+            ) : null}
+          </div>
+
+          <QuestionNavigator
+            open={navigatorOpen}
+            onOpenChange={setNavigatorOpen}
+            title={activeSection?.title ?? assessment.title}
+            current={Math.max(0, positionInSection)}
+            statuses={sectionStatuses}
+            onSelect={(index) => {
+              if (busy) return false;
+              setCurrent(sectionIndexes[index] ?? current);
+              return true;
+            }}
+          />
+        </>
+      )}
+      <AlertDialog open={finishSectionOpen} onOpenChange={setFinishSectionOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Selesaikan {activeSection?.title}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {sectionAnswered} dari {sectionIndexes.length} soal di bagian ini
+              dijawab. Bagian yang sudah selesai tidak bisa dibuka lagi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Periksa lagi</AlertDialogCancel>
+            <AlertDialogAction onClick={finishSection}>
+              Selesai bagian
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

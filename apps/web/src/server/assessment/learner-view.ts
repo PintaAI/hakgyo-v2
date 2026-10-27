@@ -7,7 +7,7 @@ import {
   shufflesQuestions,
 } from "~/server/assessment/order";
 import { shouldRevealAssessmentAnswers } from "~/server/assessment/result-policy";
-import { getAssessmentDeadline } from "~/server/assessment/timing";
+import { attemptDeadline } from "~/server/assessment/timing";
 import { liveClassCohortWhere } from "~/server/enrollment/cohort-access";
 
 /** Section fields learners need to take a sectioned attempt (step 5 of the EPS-TOPIK plan). */
@@ -93,6 +93,17 @@ export function learnerAssessmentAttemptSelect(userId: string) {
     startedAt: true,
     status: true,
     lastLogSeq: true,
+    // Section starts and ends, so a resumed attempt (another tab or device) knows the timeline.
+    log: {
+      where: {
+        kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] },
+      },
+      orderBy: { seq: "asc" },
+      select: { kind: true, sectionId: true, at: true },
+    },
+    sections: {
+      select: { sectionId: true, score: true, maxScore: true },
+    },
     assessmentEvent: {
       select: {
         id: true,
@@ -101,6 +112,7 @@ export function learnerAssessmentAttemptSelect(userId: string) {
         status: true,
         durationMinutes: true,
         closesAt: true,
+        closedAt: true,
         shuffleQuestions: true,
         participants: {
           where: { userId },
@@ -197,15 +209,36 @@ export function shapeLearnerAssessment(input: {
       ...(answersRevealed ? { isCorrect } : {}),
     })),
   }));
+  // Sections without questions are left out, so learners never see an empty part.
+  const sections = item.assessment.sections.filter((section) =>
+    item.assessment.questions.some(
+      (question) => question.sectionId === section.id,
+    ),
+  );
+  const timedSeconds = sections.every((section) => section.timeLimitSeconds)
+    ? sections.reduce(
+        (total, section) => total + (section.timeLimitSeconds ?? 0),
+        0,
+      )
+    : 0;
+  const scoresVisible =
+    attempt?.status === "GRADED" &&
+    !attempt.assessmentEvent?.participants[0]?.invalidatedAt &&
+    attempt.assessmentEvent?.status !== "CANCELLED";
   return {
     ...item.assessment,
     scoreBands: readScoreBands(item.assessment.scoreBands),
-    // Sections without questions are left out, so learners never see an empty part.
-    sections: item.assessment.sections.filter((section) =>
-      item.assessment.questions.some(
-        (question) => question.sectionId === section.id,
-      ),
-    ),
+    sections,
+    /** Section starts, ends and the submission of this attempt, for the section timeline. */
+    sectionEntries: attempt?.log ?? [],
+    /** Each section's score once the attempt's score is visible. */
+    sectionResults: scoresVisible
+      ? (attempt?.sections ?? []).flatMap(({ sectionId, score, maxScore }) =>
+          score === null || maxScore === null
+            ? []
+            : [{ sectionId, score, maxScore }],
+        )
+      : [],
     context: {
       label:
         attempt?.assessmentEvent?.type === "TRYOUT"
@@ -217,15 +250,18 @@ export function shapeLearnerAssessment(input: {
       courseTitle: item.module.course.title,
       moduleTitle: item.module.title,
     },
-    timeLimitMinutes:
-      attempt?.assessmentEvent?.durationMinutes ??
-      item.assessment.timeLimitMinutes,
-    attemptDeadline: attempt?.assessmentEvent
-      ? getAssessmentDeadline(
-          attempt.startedAt,
-          attempt.assessmentEvent.durationMinutes,
-          attempt.assessmentEvent.closesAt,
-        )
+    // Timed sections set the time: their total (intros come on top).
+    timeLimitMinutes: timedSeconds
+      ? Math.ceil(timedSeconds / 60)
+      : (attempt?.assessmentEvent?.durationMinutes ??
+        item.assessment.timeLimitMinutes),
+    attemptDeadline: attempt
+      ? attemptDeadline({
+          startedAt: attempt.startedAt,
+          timeLimitMinutes: item.assessment.timeLimitMinutes,
+          event: attempt.assessmentEvent,
+          sections,
+        })
       : null,
     event: attempt?.assessmentEvent
       ? {

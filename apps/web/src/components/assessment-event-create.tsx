@@ -29,6 +29,7 @@ import {
   type ResourcePickerOption,
 } from "~/components/resource-picker";
 import { cn } from "~/lib/utils";
+import { sectionedDurationMinutes } from "~/lib/assessment-sections";
 import { api } from "~/trpc/react";
 
 type EventType = "QUICK_ASSESSMENT" | "TRYOUT";
@@ -252,7 +253,11 @@ export function CreateAssessmentEventSheet({
       : startMode === "schedule" && openDate <= new Date()
         ? "Waktu buka harus di masa depan."
         : null;
-  const duration = Number(durationMinutes);
+  // Timed sections set the duration on the server; show it instead of the field.
+  const sectionedMinutes = selectedItem?.assessment
+    ? sectionedDurationMinutes(selectedItem.assessment.sections)
+    : null;
+  const duration = sectionedMinutes ?? Number(durationMinutes);
   const ready =
     Boolean(courseItemId) &&
     (targetAll || pickedCohortIds.length > 0) &&
@@ -577,36 +582,45 @@ export function CreateAssessmentEventSheet({
                   </p>
                 </div>
               ) : null}
-              <div className="space-y-2">
-                <Label htmlFor="event-duration">
-                  Durasi pengerjaan (menit)
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  <Input
-                    id="event-duration"
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={480}
-                    required
-                    className="w-24"
-                    value={durationMinutes}
-                    onChange={(event) => setDurationMinutes(event.target.value)}
-                  />
-                  {durationPresets.map((minutes) => (
-                    <Button
-                      key={minutes}
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-9"
-                      onClick={() => setDurationMinutes(String(minutes))}
-                    >
-                      {minutes}
-                    </Button>
-                  ))}
+              {sectionedMinutes !== null ? (
+                <p className="text-muted-foreground rounded-lg border p-3 text-sm">
+                  Durasi mengikuti bagian tugas: {sectionedMinutes} menit,
+                  termasuk waktu membaca petunjuk tiap bagian.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="event-duration">
+                    Durasi pengerjaan (menit)
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Input
+                      id="event-duration"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={480}
+                      required
+                      className="w-24"
+                      value={durationMinutes}
+                      onChange={(event) =>
+                        setDurationMinutes(event.target.value)
+                      }
+                    />
+                    {durationPresets.map((minutes) => (
+                      <Button
+                        key={minutes}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-9"
+                        onClick={() => setDurationMinutes(String(minutes))}
+                      >
+                        {minutes}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="event-closes">Ditutup pada</Label>
                 <DateTimePicker

@@ -11,6 +11,13 @@ import type {
 import { getMissingWrittenQuestionIds, groupScoresByValue } from "./logic";
 import { withTransactionRetry } from "../db-retry";
 import {
+  loadSectionEntries,
+  loadSectionPlan,
+  recordSectionScores,
+  storeSectionWindows,
+} from "./attempt-sections";
+import { attemptDeadline, timedSectionsSelect } from "./timing";
+import {
   assessmentPassedActivityKey,
   assessmentSubmittedActivityKey,
 } from "../gamification/activity-keys";
@@ -149,6 +156,7 @@ export function recordAssessmentPassed(
 
 export const gradableAttemptSelect = {
   id: true,
+  assessmentId: true,
   userId: true,
   organizationId: true,
   courseItemId: true,
@@ -159,11 +167,13 @@ export const gradableAttemptSelect = {
     select: {
       timeLimitMinutes: true,
       passingScore: true,
+      sections: timedSectionsSelect,
       questions: {
         select: {
           id: true,
           type: true,
           points: true,
+          sectionId: true,
           options: { select: { id: true, isCorrect: true } },
         },
       },
@@ -276,6 +286,24 @@ export async function gradeInProgressAttempt(
     },
   });
   if (updated.count !== 1) throw new TRPCError({ code: "CONFLICT" });
+  if (attempt.assessment.sections.length) {
+    // A section still running ends with the submission; every section gets its score.
+    await storeSectionWindows(tx, {
+      attemptId: attempt.id,
+      startedAt: attempt.startedAt,
+      deadline: attemptDeadline({
+        startedAt: attempt.startedAt,
+        timeLimitMinutes: attempt.assessment.timeLimitMinutes,
+        event: attempt.assessmentEvent,
+        sections: attempt.assessment.sections,
+      }),
+      plan: await loadSectionPlan(tx, attempt.assessmentId),
+      entries: await loadSectionEntries(tx, attempt.id),
+      now,
+      submittedAt: options.submittedAt ?? now,
+    });
+    await recordSectionScores(tx, attempt.id);
+  }
   const passed =
     !needsReview &&
     isPassingScore(score, maxScore, attempt.assessment.passingScore);

@@ -17,6 +17,7 @@ import {
 } from "~/server/assessment/event-leaderboard";
 import { openAssessmentEvent } from "~/server/assessment/event-lifecycle";
 import { getEventItemAnalysis } from "~/server/assessment/item-analysis";
+import { timedSectionsSelect } from "~/server/assessment/timing";
 import {
   addCohortsToEvent,
   cancelEvent,
@@ -471,6 +472,7 @@ export const assessmentEventRouter = createTRPCRouter({
               description: true,
               timeLimitMinutes: true,
               shuffleQuestions: true,
+              sections: timedSectionsSelect,
               updatedAt: true,
               _count: { select: { questions: true } },
             },

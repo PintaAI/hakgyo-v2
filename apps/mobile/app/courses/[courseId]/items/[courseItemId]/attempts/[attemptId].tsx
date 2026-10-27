@@ -1,7 +1,11 @@
 import {
   assessmentContentAssetIds,
+  canFinishSection,
   formatScoreOutOf,
+  sectionTimeline,
+  sectionView,
   type AttemptLogEntry,
+  type TimelineEntry,
 } from "@hakgyo/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -14,6 +18,7 @@ import {
 } from "../../../../../../src/components/assessment-media";
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
 import { ScoreBandResults } from "../../../../../../src/components/score-band-results";
+import { SectionIntro } from "../../../../../../src/components/section-intro";
 import { TagResults } from "../../../../../../src/components/tag-results";
 import {
   AssessmentOption,
@@ -30,7 +35,6 @@ import {
 } from "../../../../../../src/components/study-glass";
 import {
   isQuestionAnswered,
-  nextUnansweredQuestion,
   type QuestionStatus,
 } from "../../../../../../src/lib/question-progress";
 import { useQuestionNavigator } from "../../../../../../src/providers/QuestionNavigatorProvider";
@@ -179,7 +183,7 @@ function AssessmentAttemptContent({
   );
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [hasUnsavedAnswers, setHasUnsavedAnswers] = useState(false);
   const initialized = useRef<string | null>(null);
@@ -195,6 +199,12 @@ function AssessmentAttemptContent({
   const loggedAnswers = useRef<Record<string, Answer>>({});
   const autoSubmitted = useRef(false);
   const [logReady, setLogReady] = useState(false);
+  // Sections: starts and ends made on this device (the server's come with the attempt) and a
+  // ticking clock for the section timeline.
+  const [localSectionEntries, setLocalSectionEntries] = useState<
+    TimelineEntry[]
+  >([]);
+  const [now, setNow] = useState(() => new Date());
   const storageKey = session
     ? `hakgyo:attempt:v1:${session.user.id}:${attemptId}`
     : null;
@@ -362,6 +372,51 @@ function AssessmentAttemptContent({
     [],
   );
 
+  // Sections run one after another (shared timeline, docs/eps-topik-simulation.md section 4.2).
+  const sections = assessment.data?.sections ?? [];
+  const sectioned = sections.length > 0;
+  const timeline =
+    sectioned && attempt.data && assessment.data
+      ? sectionTimeline({
+          sections,
+          startedAt: attempt.data.startedAt,
+          attemptDeadline: assessment.data.attemptDeadline,
+          entries: [...assessment.data.sectionEntries, ...localSectionEntries],
+          now,
+        })
+      : null;
+  const view = timeline ? sectionView(timeline) : null;
+  const activeSection =
+    view && view.mode !== "done" ? sections[view.index] : undefined;
+  const sectionIndexes = (assessment.data?.questions ?? []).flatMap(
+    (entry, index) =>
+      !activeSection || entry.sectionId === activeSection.id ? [index] : [],
+  );
+  // The shown question stays inside the running section.
+  const currentIndex =
+    activeSection && !sectionIndexes.includes(selectedIndex)
+      ? (sectionIndexes[0] ?? selectedIndex)
+      : selectedIndex;
+  const positionInSection = sectionIndexes.indexOf(currentIndex);
+  const isLastInSection = positionInSection === sectionIndexes.length - 1;
+  const isLastSection =
+    !view || view.mode === "done" || view.index === sections.length - 1;
+  const sectionSecondsLeft =
+    view?.mode === "answering" && view.deadlineAt
+      ? Math.max(
+          0,
+          Math.floor((view.deadlineAt.getTime() - now.getTime()) / 1000),
+        )
+      : null;
+  const introSecondsLeft =
+    view?.mode === "intro"
+      ? Math.max(
+          0,
+          Math.ceil((view.autoStartAt.getTime() - now.getTime()) / 1000),
+        )
+      : 0;
+  const sectionExpired = sectionSecondsLeft === 0;
+
   const question = assessment.data?.questions[currentIndex];
   const statuses: QuestionStatus[] = useMemo(
     () =>
@@ -374,20 +429,100 @@ function AssessmentAttemptContent({
     () => statuses.filter((status) => status === "answered").length,
     [statuses],
   );
-  const nextUnanswered = nextUnansweredQuestion(statuses, currentIndex);
+  const sectionStatuses = sectionIndexes.map((index) => statuses[index]!);
+  const sectionAnswered = sectionStatuses.filter(
+    (status) => status === "answered",
+  ).length;
+  const nextUnanswered =
+    sectionIndexes.find(
+      (index, position) =>
+        position > positionInSection && statuses[index] === "unanswered",
+    ) ??
+    sectionIndexes.find((index) => statuses[index] === "unanswered") ??
+    -1;
   const openQuestions = useQuestionNavigator({
-    title: assessment.data?.title ?? "Tugas",
-    current: currentIndex,
-    statuses,
-    onSelect: async (index) => {
-      if (result || operationPending.current) return false;
-      if (expired) {
+    title: activeSection?.title ?? assessment.data?.title ?? "Tugas",
+    current: Math.max(0, positionInSection),
+    statuses: sectionStatuses,
+    onSelect: async (position) => {
+      const index = sectionIndexes[position];
+      if (index === undefined || result || operationPending.current) {
+        return false;
+      }
+      if (expired || sectionExpired) {
         setCurrentIndex(index);
         return true;
       }
       return save(index);
     },
   });
+
+  // Section clock, and submitting once the last section has ended.
+  useEffect(() => {
+    if (!sectioned || result || attempt.data?.status !== "IN_PROGRESS") return;
+    const offset = attemptLog.current?.clockOffsetMs ?? 0;
+    const timer = setInterval(
+      () => setNow(new Date(Date.now() + offset)),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [sectioned, result, attempt.data?.status, logReady]);
+  useEffect(() => {
+    if (view?.mode !== "done" || autoSubmitted.current || result) return;
+    if (attempt.data?.status !== "IN_PROGRESS") return;
+    autoSubmitted.current = true;
+    void submit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once when the sections end
+  }, [view?.mode]);
+
+  /** Logs a section start or end, saves the log and queues it for sync. */
+  function logSectionEntry(
+    kind: "SECTION_STARTED" | "SECTION_ENDED",
+    sectionId: string,
+  ) {
+    const log = attemptLog.current;
+    if (!log || !session) return;
+    const next = appendAttemptLog(log, kind, { sectionId });
+    attemptLog.current = next;
+    try {
+      saveAttemptLog(session.user.id, attemptId, next);
+    } catch {
+      // The in-memory log is sent with the next operation.
+    }
+    setLocalSectionEntries((entries) => [
+      ...entries,
+      { kind, sectionId, at: new Date(next.entries.at(-1)!.clientAt) },
+    ]);
+    void queueAssessmentProgress({
+      attemptId,
+      entries: next.entries,
+      organizationId: activeOrganizationId ?? undefined,
+    }).catch(() => undefined);
+  }
+
+  function startSection() {
+    if (view?.mode !== "intro" || busy) return;
+    logSectionEntry("SECTION_STARTED", view.sectionId);
+  }
+
+  function confirmFinishSection() {
+    if (view?.mode !== "answering" || !activeSection) return;
+    const sectionId = view.sectionId;
+    Alert.alert(
+      `Selesaikan ${activeSection.title}?`,
+      `${sectionAnswered} dari ${sectionIndexes.length} soal di bagian ini dijawab. Bagian yang sudah selesai tidak bisa dibuka lagi.`,
+      [
+        { text: "Periksa lagi", style: "cancel" },
+        {
+          text: "Selesai bagian",
+          onPress: () => {
+            logAnswerChanges(answers);
+            logSectionEntry("SECTION_ENDED", sectionId);
+          },
+        },
+      ],
+    );
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -658,6 +793,32 @@ function AssessmentAttemptContent({
                   maxScore={result.maxScore}
                   score={result.score}
                 />
+                {assessment.data?.sectionResults.length ? (
+                  <View className="gap-1.5 self-stretch">
+                    {assessment.data.sections.map((section) => {
+                      const sectionResult =
+                        assessment.data?.sectionResults.find(
+                          (entry) => entry.sectionId === section.id,
+                        );
+                      return sectionResult ? (
+                        <View
+                          key={section.id}
+                          className="flex-row items-center justify-between gap-3"
+                        >
+                          <Text className="text-sm text-foreground">
+                            {section.title}
+                          </Text>
+                          <Text className="text-sm tabular-nums text-foreground">
+                            {formatScoreOutOf(
+                              sectionResult.score,
+                              sectionResult.maxScore,
+                            )}
+                          </Text>
+                        </View>
+                      ) : null;
+                    })}
+                  </View>
+                ) : null}
               </>
             ) : (
               <Text className="text-center text-sm leading-5 text-muted-foreground">
@@ -693,6 +854,25 @@ function AssessmentAttemptContent({
             </StudyAction>
           ) : null}
         </StudyScreen>
+      ) : view?.mode === "intro" && activeSection ? (
+        <StudyScreen
+          contentClassName="gap-4"
+          scrollViewRef={scrollRef}
+          title={screenTitle}
+        >
+          <SectionIntro
+            busy={busy}
+            instructions={activeSection.instructions}
+            onStart={startSection}
+            position={view.index + 1}
+            questionCount={sectionIndexes.length}
+            resolveAssetUrl={resolveAssetUrl}
+            secondsToAutoStart={introSecondsLeft}
+            sectionCount={sections.length}
+            timeLimitSeconds={activeSection.timeLimitSeconds}
+            title={activeSection.title}
+          />
+        </StudyScreen>
       ) : question ? (
         <StudyScreen
           automaticallyAdjustKeyboardInsets
@@ -700,7 +880,16 @@ function AssessmentAttemptContent({
           scrollViewRef={scrollRef}
           title={screenTitle}
         >
-          {deadline !== null ? (
+          {activeSection ? (
+            <Text
+              className={`text-sm font-bold ${sectionSecondsLeft !== null && sectionSecondsLeft < 60 ? "text-destructive" : "text-primary"}`}
+            >
+              {activeSection.title}
+              {sectionSecondsLeft !== null
+                ? ` · ${Math.floor(sectionSecondsLeft / 60)}:${String(sectionSecondsLeft % 60).padStart(2, "0")} tersisa`
+                : ""}
+            </Text>
+          ) : deadline !== null ? (
             <AssessmentDeadline deadline={deadline} onExpire={expireAttempt} />
           ) : null}
           {media.progress &&
@@ -736,7 +925,7 @@ function AssessmentAttemptContent({
                 accessibilityLabel={`Jawaban soal ${currentIndex + 1}`}
                 className="min-h-32 text-base text-foreground"
                 multiline
-                editable={!busy && !expired}
+                editable={!busy && !expired && !sectionExpired}
                 onChangeText={(content) => {
                   setAnswers((current) => ({
                     ...current,
@@ -759,7 +948,7 @@ function AssessmentAttemptContent({
                     answers[question.id]?.optionIds.includes(option.id) ?? false
                   }
                   multiple={question.type === "MULTIPLE_CHOICE"}
-                  disabled={busy || expired}
+                  disabled={busy || expired || sectionExpired}
                   onPress={() => chooseOption(option.id)}
                 >
                   <NativeContentRenderer
@@ -773,7 +962,7 @@ function AssessmentAttemptContent({
           <Text className="text-xs leading-5 text-muted-foreground">
             Kamu bisa mengubah jawaban sampai mengirimnya. Draf tersimpan di
             perangkat ini selama kamu mengerjakan.
-            {deadline !== null
+            {deadline !== null || sectionSecondsLeft !== null
               ? " Timer tetap berjalan meski kamu keluar."
               : ""}
           </Text>
@@ -795,38 +984,36 @@ function AssessmentAttemptContent({
           ) : null}
           <View className="gap-3 border-t border-border pt-4">
             <View className="flex-row gap-3">
-              {currentIndex > 0 ? (
+              {positionInSection > 0 ? (
                 <View className="flex-1">
                   <StudyAction
                     secondary
                     disabled={busy}
-                    onPress={() =>
-                      expired
-                        ? setCurrentIndex((index) => index - 1)
-                        : void save(currentIndex - 1)
-                    }
+                    onPress={() => {
+                      const previous = sectionIndexes[positionInSection - 1]!;
+                      if (expired) setCurrentIndex(previous);
+                      else void save(previous);
+                    }}
                   >
                     Sebelumnya
                   </StudyAction>
                 </View>
               ) : null}
-              {currentIndex < assessment.data.questions.length - 1 ||
+              {!isLastInSection ||
               (nextUnanswered >= 0 && nextUnanswered !== currentIndex) ? (
                 <View className="flex-1">
                   <StudyAction
                     disabled={busy}
                     onPress={() => {
-                      const next =
-                        currentIndex <
-                        (assessment.data?.questions.length ?? 0) - 1
-                          ? currentIndex + 1
-                          : nextUnanswered;
+                      const next = isLastInSection
+                        ? nextUnanswered
+                        : sectionIndexes[positionInSection + 1]!;
                       if (expired) setCurrentIndex(next);
                       else void save(next);
                     }}
                     trailingIcon="arrow.right"
                   >
-                    {currentIndex < assessment.data.questions.length - 1
+                    {!isLastInSection
                       ? "Berikutnya"
                       : "Soal belum dijawab berikutnya"}
                   </StudyAction>
@@ -840,9 +1027,16 @@ function AssessmentAttemptContent({
                   : "Draf tersimpan di perangkat ini"}
               </Text>
             ) : null}
-            {expired ||
-            currentIndex === assessment.data.questions.length - 1 ||
-            answeredCount === assessment.data.questions.length ? (
+            {!isLastSection && activeSection ? (
+              canFinishSection(activeSection) &&
+              (isLastInSection || sectionAnswered === sectionIndexes.length) ? (
+                <StudyAction disabled={busy} onPress={confirmFinishSection}>
+                  Selesai bagian ini
+                </StudyAction>
+              ) : null
+            ) : expired ||
+              currentIndex === assessment.data.questions.length - 1 ||
+              answeredCount === assessment.data.questions.length ? (
               <StudyAction
                 loading={submitting}
                 disabled={busy}

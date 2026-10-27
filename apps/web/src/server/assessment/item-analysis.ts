@@ -58,13 +58,24 @@ export async function getEventItemAnalysis(
   ]);
   const assessmentId = details.courseItem.assessmentId;
   if (!assessmentId || !participants.length) {
-    return { attemptCount: 0, questions: [], tags: [], learners: [] };
+    return {
+      attemptCount: 0,
+      questions: [],
+      tags: [],
+      sections: [],
+      learners: [],
+    };
   }
   const participantByUser = new Map(
     participants.map((participant) => [participant.userId, participant]),
   );
-  const [questions, attempts] = await Promise.all([
+  const [questions, sectionList, attempts] = await Promise.all([
     loadAssessmentKeyForStaff(db, assessmentId),
+    db.assessmentSection.findMany({
+      where: { assessmentId, questions: { some: {} } },
+      orderBy: { position: "asc" },
+      select: { id: true, title: true },
+    }),
     db.assessmentAttempt.findMany({
       where: {
         assessmentEventId: event.id,
@@ -79,6 +90,7 @@ export async function getEventItemAnalysis(
         status: true,
         startedAt: true,
         submittedAt: true,
+        sections: { select: { sectionId: true, score: true, maxScore: true } },
         answers: {
           select: {
             questionId: true,
@@ -152,6 +164,13 @@ export async function getEventItemAnalysis(
       score: attempt.score ?? 0,
       maxScore: attempt.maxScore ?? 0,
       percent: roundScore(percent),
+      sections: Object.fromEntries(
+        attempt.sections.flatMap(({ sectionId, score, maxScore }) =>
+          score === null || maxScore === null
+            ? []
+            : [[sectionId, { score, maxScore }]],
+        ),
+      ),
       tags: Object.fromEntries(
         tagResults(questions, attempt.answers)
           .flatMap((group) => group.rows)
@@ -186,6 +205,24 @@ export async function getEventItemAnalysis(
 
   return {
     attemptCount: graded.length,
+    // Average score per section over the learners' best attempts.
+    sections: sectionList.map((section) => {
+      const results = learners.flatMap((learner) => {
+        const result = learner.sections[section.id];
+        return result ? [result] : [];
+      });
+      return {
+        id: section.id,
+        title: section.title,
+        averageScore: results.length
+          ? roundScore(
+              results.reduce((total, result) => total + result.score, 0) /
+                results.length,
+            )
+          : null,
+        maxScore: results[0]?.maxScore ?? null,
+      };
+    }),
     questions: questions.map((question, index) => {
       const item = stats.get(question.id);
       return {

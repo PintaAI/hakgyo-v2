@@ -582,6 +582,17 @@ enum AssessmentLogKind {
   QUESTION_SHOWN
   ANSWERED
   SUBMITTED
+  SECTION_STARTED
+  SECTION_ENDED
+}
+
+enum AssessmentSectionEndReason {
+  /// The learner finished the section early.
+  FINISHED
+  /// Its time ran out.
+  TIME_UP
+  /// The attempt was submitted (or graded at closing) while it ran.
+  SUBMITTED
 }
 
 enum AssessmentLogSource {
@@ -1171,8 +1182,28 @@ model AssessmentSection {
   updatedAt             DateTime                    @updatedAt
   assessment            Assessment                  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   questions             AssessmentQuestion[]
+  attemptSections       AssessmentAttemptSection[]
 
   @@unique([assessmentId, position])
+}
+
+/// How a section of an attempt ran (from the progress log) and what it scored.
+model AssessmentAttemptSection {
+  attemptId  String
+  sectionId  String
+  startedAt  DateTime?
+  /// Exclusive end of answering: its own limit, capped by the attempt deadline.
+  deadlineAt DateTime?
+  endedAt    DateTime?
+  endReason  AssessmentSectionEndReason?
+  /// Filled at grading.
+  score      Float?
+  maxScore   Float?
+  attempt    AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  section    AssessmentSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@id([attemptId, sectionId])
+  @@index([sectionId])
 }
 
 model AssessmentOption {
@@ -1380,6 +1411,7 @@ model AssessmentAttempt {
   user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers           AssessmentAnswer[]
   log               AssessmentAttemptLog[]
+  sections          AssessmentAttemptSection[]
   assessmentEvent   AssessmentEvent?        @relation(fields: [assessmentEventId], references: [id], onDelete: Restrict)
   eventAudits       AssessmentEventAudit[]
 
@@ -1527,6 +1559,7 @@ model AssessmentAttemptLog {
   seq        Int
   kind       AssessmentLogKind
   questionId String?
+  sectionId  String?
   optionIds  String[]            @default([])
   content    String?
   /// Device time as sent (already corrected with the offset measured at start).

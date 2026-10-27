@@ -28,6 +28,7 @@ import {
 } from "~/server/authorization";
 import { withTransactionRetry } from "~/server/db-retry";
 import { sumScores } from "@hakgyo/shared";
+import { recordSectionScores } from "~/server/assessment/attempt-sections";
 
 type DatabaseClient = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
@@ -275,6 +276,7 @@ export async function reviewAttempt(
           message: "Another teacher has already completed this review",
         });
       }
+      await recordSectionScores(tx, attempt.id);
       const passed = isPassingScore(
         score,
         attempt.maxScore,

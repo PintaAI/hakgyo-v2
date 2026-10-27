@@ -35,6 +35,8 @@ Waktumu berakhir pada yang lebih dulu tercapai: durasi habis, atau jadwal tutup 
 
 > Jika kamu belum mengirim, kamu mendapat pengingat sekitar 30 menit sebelum latihan ditutup. Di situs web, saat latihan ditutup, jawaban yang sudah tersimpan dinilai otomatis. Di aplikasi ponsel, jawaban yang kamu isi sebelum waktu habis tetap dinilai walaupun baru terkirim belakangan: untuk **tryout** asalkan ponselmu tersambung ke internet paling lambat 24 jam setelah ditutup, untuk **latihan** sebelum latihan ditutup.
 
+> Tryout seperti simulasi EPS-TOPIK bisa dibagi menjadi bagian **Membaca** dan **Mendengar**, masing-masing dengan waktunya sendiri. Cara mengerjakannya ada di [Tugas dengan bagian](/docs/murid/mengerjakan-tugas#tugas-dengan-bagian).
+
 ## Melihat nilai dan peringkat
 
 Setelah mengirim, buka lagi halaman latihan untuk melihat nilai dan papan peringkat.

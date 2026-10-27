@@ -29,6 +29,7 @@ const assessmentItems: AssessmentItems = [
       description: "Membaca huruf vokal dan konsonan dasar.",
       timeLimitMinutes: 20,
       shuffleQuestions: false,
+      sections: [],
       updatedAt: at(-10 * day),
       _count: { questions: 15 },
     },
@@ -42,6 +43,7 @@ const assessmentItems: AssessmentItems = [
       description: "Memperkenalkan diri dan bertanya nama.",
       timeLimitMinutes: 30,
       shuffleQuestions: false,
+      sections: [],
       updatedAt: at(-6 * day),
       _count: { questions: 20 },
     },
@@ -55,6 +57,7 @@ const assessmentItems: AssessmentItems = [
       description: "Mencakup Bab 1 dan Bab 2.",
       timeLimitMinutes: 60,
       shuffleQuestions: true,
+      sections: [],
       updatedAt: at(-3 * day),
       _count: { questions: 40 },
     },
@@ -405,6 +408,7 @@ const itemAnalysis: ItemAnalysis = {
       ],
     },
   ],
+  sections: [],
   learners: [],
 };
 

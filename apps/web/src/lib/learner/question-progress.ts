@@ -21,3 +21,8 @@ export function nextUnansweredQuestion(
   }
   return -1;
 }
+
+/** Seconds as `m:ss`. */
+export function formatRemaining(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}

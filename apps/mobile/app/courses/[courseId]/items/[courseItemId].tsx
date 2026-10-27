@@ -1,5 +1,5 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { resolveAssessmentEntry } from "@hakgyo/shared";
+import { resolveAssessmentEntry, RUNTIME_VERSION } from "@hakgyo/shared";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
@@ -181,6 +181,7 @@ function CourseItemContent({
     try {
       const result = await startAssessment.mutateAsync({
         protocol: SYNC_PROTOCOL,
+        runtimeVersion: RUNTIME_VERSION,
         courseItemId,
         cohortId,
       });
