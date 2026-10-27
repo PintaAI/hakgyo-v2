@@ -185,6 +185,14 @@ export function EventItemAnalysis({
                     {percent(question.unansweredRate)}
                   </dd>
                 </div>
+                {question.averageTimeMs !== null ? (
+                  <div className="flex gap-1">
+                    <dt>Rata-rata waktu</dt>
+                    <dd className="text-foreground font-medium">
+                      {Math.round(question.averageTimeMs / 1000)} detik
+                    </dd>
+                  </div>
+                ) : null}
                 <div className="flex gap-1">
                   <dt>Poin</dt>
                   <dd className="text-foreground font-medium">

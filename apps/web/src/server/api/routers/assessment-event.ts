@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import {
   assessmentContentAssetIds,
   resolveAssessmentEntry,
+  RUNTIME_VERSION,
   scoreValueSchema,
 } from "@hakgyo/shared";
 import { z } from "zod";
@@ -842,6 +843,7 @@ export const assessmentEventRouter = createTRPCRouter({
                 userId: ctx.actorUserId,
                 attemptNumber,
                 shuffleSeed: crypto.randomUUID(),
+                runtimeVersion: RUNTIME_VERSION,
                 assessmentEventId: event.id,
               },
             });
@@ -1072,6 +1074,8 @@ export const assessmentEventRouter = createTRPCRouter({
                         maxScore: true,
                         startedAt: true,
                         submittedAt: true,
+                        submittedVia: true,
+                        offlineSyncedAt: true,
                       },
                     },
                   },

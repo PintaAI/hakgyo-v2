@@ -4,7 +4,13 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
-import { assessmentContentAssetIds, formatScoreOutOf } from "@hakgyo/shared";
+import {
+  assessmentContentAssetIds,
+  createLogEntry,
+  formatScoreOutOf,
+  MAX_LOG_ENTRIES_PER_WRITE,
+  type AttemptLogEntry,
+} from "@hakgyo/shared";
 
 import Link from "~/components/link";
 import {
@@ -157,11 +163,12 @@ export function AssessmentAttempt({
     : null;
   const [secondsLeft, setSecondsLeft] = useState<number | null>(initialSeconds);
   const [dirty, setDirty] = useState(false);
-  const save = api.assessment.saveAnswers.useMutation();
-  const autosave = api.assessment.saveAnswers.useMutation();
+  const progress = api.assessment.recordProgress.useMutation();
   const submit = api.assessment.submitAttempt.useMutation();
-  // Question ids edited since their last successful save; autosave sends only these.
-  const dirtyQuestionIds = useRef(new Set<string>());
+  // Progress-log entries not yet stored by the server, oldest first (see `assessment-runtime.ts`
+  // in @hakgyo/shared). Autosave sends them in order; the server skips ones it already has.
+  const pendingEntries = useRef<AttemptLogEntry[]>([]);
+  const nextSeq = useRef(assessment.progressSeq + 1);
   const answersRef = useRef(answers);
   const autosaveRun = useRef<Promise<void> | null>(null);
   // Set for the whole submit flow so repeated clicks and pending autosave timers can't race it.
@@ -184,59 +191,91 @@ export function AssessmentAttempt({
   );
   const isFinished = attempt.status !== "IN_PROGRESS" || eventEndedIncomplete;
   const expired = secondsLeft === 0;
-  const busy = submit.isPending || save.isPending;
+  const busy = submit.isPending;
+
+  const pushEntry = (
+    kind: AttemptLogEntry["kind"],
+    fields: Omit<AttemptLogEntry, "seq" | "kind" | "clientAt">,
+  ) => {
+    const pending = pendingEntries.current;
+    const last = pending.at(-1);
+    // Typing a written answer edits the same unsent entry instead of adding one per keystroke.
+    if (
+      kind === "ANSWERED" &&
+      last?.kind === "ANSWERED" &&
+      last.questionId === fields.questionId
+    ) {
+      pending[pending.length - 1] = createLogEntry(
+        last.seq,
+        kind,
+        fields,
+        new Date(),
+      );
+    } else {
+      pending.push(createLogEntry(nextSeq.current++, kind, fields, new Date()));
+    }
+  };
 
   const editAnswer = (
     questionId: string,
     update: (current: Record<string, Answer>) => Answer,
   ) => {
-    dirtyQuestionIds.current.add(questionId);
+    const next = update(answersRef.current);
+    answersRef.current = { ...answersRef.current, [questionId]: next };
+    pushEntry("ANSWERED", {
+      questionId,
+      optionIds: next.optionIds,
+      ...(next.content === undefined ? {} : { content: next.content }),
+    });
     setDirty(true);
-    setAnswers((currentAnswers) => ({
-      ...currentAnswers,
-      [questionId]: update(currentAnswers),
-    }));
+    setAnswers(answersRef.current);
   };
 
-  // Answers still unsaved, plus a callback that clears those that were not edited again meanwhile.
-  const takeDirtyAnswers = () => {
-    const pending = [...dirtyQuestionIds.current].flatMap((questionId) => {
-      const answer = answersRef.current[questionId];
-      return answer ? [answer] : [];
-    });
-    return {
-      pending,
-      markSaved: () => {
-        for (const answer of pending) {
-          if (answersRef.current[answer.questionId] === answer) {
-            dirtyQuestionIds.current.delete(answer.questionId);
-          }
-        }
-        setDirty(dirtyQuestionIds.current.size > 0);
-      },
-    };
+  /** Sends every pending entry in order; throws when a write fails (entries stay pending). */
+  const sendPendingEntries = async () => {
+    while (pendingEntries.current.length) {
+      const batch = pendingEntries.current.slice(0, MAX_LOG_ENTRIES_PER_WRITE);
+      const maxSent = batch.at(-1)!.seq;
+      const result = await progress.mutateAsync({
+        attemptId: attempt.id,
+        entries: batch,
+      });
+      // Entries edited while the write ran keep their seq but changed; keep those pending.
+      pendingEntries.current = pendingEntries.current.filter(
+        (entry) => entry.seq > maxSent || !batch.includes(entry),
+      );
+      if (result.lastSeq > maxSent) {
+        // Another tab or device wrote meanwhile, so this tab's entries were skipped: resend the
+        // answers after the server's sequence.
+        nextSeq.current = Math.max(nextSeq.current, result.lastSeq + 1);
+        const resend = batch.filter((entry) => entry.kind === "ANSWERED");
+        pendingEntries.current = [
+          ...resend.map((entry) => ({ ...entry, seq: nextSeq.current++ })),
+          ...pendingEntries.current.map((entry) => ({
+            ...entry,
+            seq: nextSeq.current++,
+          })),
+        ];
+      }
+      if (result.settled) {
+        pendingEntries.current = [];
+        break;
+      }
+    }
+    setDirty(pendingEntries.current.some((entry) => entry.kind === "ANSWERED"));
   };
 
   const submitAssessment = async () => {
-    if (submitting.current || submit.isPending || save.isPending || isFinished)
-      return;
+    if (submitting.current || submit.isPending || isFinished) return;
     submitting.current = true;
     try {
       // Let a running autosave finish so it cannot overwrite the final save with older content.
       await autosaveRun.current;
-      // Everything else is already persisted by autosave (saveAnswers only touches the answers
-      // it receives).
-      const { pending: payload, markSaved } = takeDirtyAnswers();
+      // Everything else is already stored by autosave; send what is left.
       let savedLate = false;
-      if (payload.length) {
+      if (pendingEntries.current.length) {
         try {
-          for (let index = 0; index < payload.length; index += 200) {
-            await save.mutateAsync({
-              attemptId: attempt.id,
-              answers: payload.slice(index, index + 200),
-            });
-          }
-          markSaved();
+          await sendPendingEntries();
         } catch (error) {
           const code =
             typeof error === "object" &&
@@ -312,17 +351,7 @@ export function AssessmentAttempt({
     if (autosaveRun.current || submitting.current) return;
     autosaveRun.current = (async () => {
       try {
-        for (;;) {
-          const { pending, markSaved } = takeDirtyAnswers();
-          if (!pending.length) break;
-          for (let index = 0; index < pending.length; index += 200) {
-            await autosave.mutateAsync({
-              attemptId: attempt.id,
-              answers: pending.slice(index, index + 200),
-            });
-          }
-          markSaved();
-        }
+        await sendPendingEntries();
       } catch {
         // Submission still performs a final save and reports any error.
       } finally {
@@ -336,7 +365,7 @@ export function AssessmentAttempt({
   // everything; hiding or closing the tab and leaving the page save at once.
   const firstUnsavedAt = useRef<number | null>(null);
   useEffect(() => {
-    if (isFinished || expired || !dirtyQuestionIds.current.size) {
+    if (isFinished || expired || !pendingEntries.current.length) {
       firstUnsavedAt.current = null;
       return;
     }
@@ -361,6 +390,17 @@ export function AssessmentAttempt({
   }, []);
 
   // A new question starts at its top, like the app's scroll reset.
+  // Log which question is on screen, for time per question in the staff analysis. It rides along
+  // with the next autosave instead of costing a request of its own.
+  const shownQuestionId = question?.id;
+  const logQuestionShown = useEffectEvent((questionId: string) => {
+    if (isFinished || expired) return;
+    pushEntry("QUESTION_SHOWN", { questionId });
+  });
+  useEffect(() => {
+    if (shownQuestionId) logQuestionShown(shownQuestionId);
+  }, [shownQuestionId]);
+
   const firstQuestion = useRef(true);
   useEffect(() => {
     if (firstQuestion.current) {
@@ -606,7 +646,7 @@ export function AssessmentAttempt({
             aria-live="polite"
             className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs"
           >
-            {dirty || autosave.isPending ? (
+            {dirty || progress.isPending ? (
               "Menyimpan jawaban…"
             ) : (
               <>

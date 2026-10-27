@@ -10,7 +10,7 @@ During server maintenance the manifest carries a `maintenance` notice, and reque
 
 ## Operation versions
 
-Outbox operations (`CONTENT_COMPLETED`, `VOCABULARY_SESSION_COMPLETED`, `ASSESSMENT_COMPLETED`) can sit on a device for a long time and are replayed by whatever JavaScript the app runs later, against the newest server. Each operation therefore carries a version `v`; an operation without `v` is version 1, which is what every client built before versioning sends. The current version is `OPERATION_VERSION` in `@hakgyo/shared/mobile-sync` (`packages/shared/src/mobile-sync/operations.ts`).
+Outbox operations (`CONTENT_COMPLETED`, `VOCABULARY_SESSION_COMPLETED`, `ASSESSMENT_COMPLETED`, `ASSESSMENT_PROGRESS`) can sit on a device for a long time and are replayed by whatever JavaScript the app runs later, against the newest server. Each operation therefore carries a version `v`; an operation without `v` is version 1, which is what every client built before versioning sends. The current version is `OPERATION_VERSION` in `@hakgyo/shared/mobile-sync` (`packages/shared/src/mobile-sync/operations.ts`).
 
 - The client stamps `v: OPERATION_VERSION` into the stored payload JSON when it queues an operation (`engine.putOperation` and `recordVocabularyAttempt` in `apps/mobile/src/sync/engine.ts`). Older rows simply lack `v`; there is no SQLite column for it.
 - When the engine reads the outbox (to send, to append vocabulary attempts, to split oversized sessions, or to check whether an operation changed while in flight) it runs `upcastOperation`, which applies the registered upcasters one version at a time and sets `v`. An operation newer than the running JavaScript (an OTA update was rolled back) is sent unchanged and never edited locally, because the server is always at least as new as the newest client.
@@ -28,3 +28,12 @@ Outbox operations (`CONTENT_COMPLETED`, `VOCABULARY_SESSION_COMPLETED`, `ASSESSM
 4. Deploy the server before shipping the client that sends the new version (see the order in `docs/mobile-releases.md`). A client ahead of the server only delays syncing; it does not lose progress.
 
 `sync-operation-schema.test.ts` checks that there is one fixture file per version up to `OPERATION_VERSION`, that every fixture of every version upcasts and validates against the current schema, and that the newest file covers every kind in the `syncOperation` union, so adding a kind without a fixture fails the test.
+
+## Assessment progress log
+
+Attempts started by runtime clients keep a progress log (`packages/shared/src/assessment-runtime.ts`, design in `docs/eps-topik-simulation.md` section 5): `QUESTION_SHOWN`, `ANSWERED` and `SUBMITTED` entries with a per-attempt `seq` and the device time corrected by the offset measured from `serverNow` in the start response (`apps/mobile/src/lib/attempt-log.ts`).
+
+- While the learner answers, the app queues one `ASSESSMENT_PROGRESS` operation per attempt (id `assessment-progress:<attemptId>`, replaced on every change) with the whole log and syncs it at most every 30 seconds. Submitting (or the timer running out) queues `ASSESSMENT_COMPLETED` with `answers` and the log in `entries`.
+- The server (`src/server/assessment/attempt-progress.ts`) skips entries at or below `AssessmentAttempt.lastLogSeq`, checks the rest with `acceptLogEntries` (inside the deadline, device clock at most 60 s ahead, no large backwards steps) and applies the last answer per question with its `answeredAt`. Answers given offline before the deadline therefore count even when the device syncs after it.
+- An event that closed grades attempts with what the server has (`submittedVia = AUTO_CLOSE`). A completion that arrives within 24 hours of closing regrades such an attempt with the device's answers (`DEVICE_LATE`), unless a teacher reviewed or corrected it. Attempts whose entries arrived more than 5 minutes late get `offlineSyncedAt`, shown to staff as "Dari perangkat offline".
+- Clients without the log keep sending `ASSESSMENT_COMPLETED` with `answers` only, handled as before.

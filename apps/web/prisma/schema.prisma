@@ -558,6 +558,27 @@ enum AssessmentAttemptStatus {
   GRADED
 }
 
+/// How an attempt was submitted.
+enum AssessmentSubmissionSource {
+  /// The learner submitted (web, or mobile while the attempt was open).
+  LEARNER
+  /// Graded when its event closed, with the answers the server had.
+  AUTO_CLOSE
+  /// Regraded with answers an offline device synced after the event closed.
+  DEVICE_LATE
+}
+
+enum AssessmentLogKind {
+  QUESTION_SHOWN
+  ANSWERED
+  SUBMITTED
+}
+
+enum AssessmentLogSource {
+  WEB
+  MOBILE
+}
+
 enum AssessmentEventType {
   QUICK_ASSESSMENT
   TRYOUT
@@ -1296,12 +1317,20 @@ model AssessmentAttempt {
   startedAt         DateTime                @default(now())
   submittedAt       DateTime?
   gradedAt          DateTime?
+  /// Rules-engine version (`RUNTIME_VERSION` in @hakgyo/shared) the attempt started with; null before the progress log.
+  runtimeVersion    Int?
+  submittedVia      AssessmentSubmissionSource?
+  /// Highest progress-log sequence processed; clients continue after it.
+  lastLogSeq        Int                     @default(0)
+  /// Set when an entry reached the server long after it happened (an offline device).
+  offlineSyncedAt   DateTime?
   assessmentEventId String?
   assessment        Assessment              @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
   courseItem        CourseItem              @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
   cohort            Cohort?                 @relation(fields: [cohortId], references: [id], onDelete: SetNull)
   user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers           AssessmentAnswer[]
+  log               AssessmentAttemptLog[]
   assessmentEvent   AssessmentEvent?        @relation(fields: [assessmentEventId], references: [id], onDelete: Restrict)
   eventAudits       AssessmentEventAudit[]
 
@@ -1426,6 +1455,8 @@ model AssessmentAnswer {
   autoScore              Float?
   manualScore            Float?
   feedback               Json?
+  /// When the stored answer was given (device time for offline answers).
+  answeredAt             DateTime?
   reviewedByMembershipId String?
   reviewedAt             DateTime?
   createdAt              DateTime                    @default(now())
@@ -1439,6 +1470,25 @@ model AssessmentAnswer {
   @@unique([id, organizationId])
   @@index([questionId])
   @@index([reviewedByMembershipId])
+}
+
+/// Append-only progress of an attempt, replayed by the shared rules (`assessment-runtime.ts`).
+model AssessmentAttemptLog {
+  attemptId  String
+  seq        Int
+  kind       AssessmentLogKind
+  questionId String?
+  optionIds  String[]            @default([])
+  content    String?
+  /// Device time as sent (already corrected with the offset measured at start).
+  clientAt   DateTime
+  /// When the action counts as having happened, after the time rules.
+  at         DateTime
+  receivedAt DateTime            @default(now())
+  source     AssessmentLogSource
+  attempt    AssessmentAttempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@id([attemptId, seq])
 }
 
 model AssessmentAnswerSelection {

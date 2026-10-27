@@ -67,4 +67,4 @@ Untuk membaca lagi semua catatan pembaruan, buka **Profil**, lalu **Pengaturan**
 
 ## Tugas berwaktu di aplikasi
 
-Di aplikasi, jawaban tugas baru terkirim saat kamu menekan **Kirim**. Tugas berwaktu **tidak terkirim otomatis** ketika waktu habis, jadi tekan **Kirim** sebelum waktunya habis. Lihat [Mengerjakan Tugas](/docs/murid/mengerjakan-tugas).
+Di aplikasi, jawabanmu disimpan di ponsel bersama waktu kamu menjawab, dan ikut terkirim saat ada internet. Tugas berwaktu terkirim otomatis ketika waktu habis. Tanpa internet, tugas menunggu di ponsel dan jawaban yang kamu isi sebelum waktu habis tetap dinilai saat terkirim, untuk latihan dan tryout sampai 24 jam setelah ditutup. Lihat [Mengerjakan Tugas](/docs/murid/mengerjakan-tugas).

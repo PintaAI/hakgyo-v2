@@ -6,6 +6,7 @@ import {
   sortTags,
   tagLabel,
   tagResults,
+  timePerQuestion,
   type ItemResponse,
 } from "@hakgyo/shared";
 
@@ -100,6 +101,22 @@ export async function getEventItemAnalysis(
     ).map((entry) => entry.attemptId),
   );
   const graded = attempts.filter((attempt) => best.has(attempt.id));
+  // Time per question from the progress log; attempts from before the log have none.
+  const logRows = graded.length
+    ? await db.assessmentAttemptLog.findMany({
+        where: {
+          attemptId: { in: graded.map((attempt) => attempt.id) },
+          kind: { in: ["QUESTION_SHOWN", "SUBMITTED"] },
+        },
+        select: { attemptId: true, kind: true, questionId: true, at: true },
+      })
+    : [];
+  const logByAttempt = new Map<string, typeof logRows>();
+  for (const row of logRows) {
+    const list = logByAttempt.get(row.attemptId);
+    if (list) list.push(row);
+    else logByAttempt.set(row.attemptId, [row]);
+  }
 
   const responses: ItemResponse[] = [];
   const learners = graded.map((attempt) => {
@@ -107,6 +124,8 @@ export async function getEventItemAnalysis(
     const answers = new Map(
       attempt.answers.map((answer) => [answer.questionId, answer]),
     );
+    const log = logByAttempt.get(attempt.id);
+    const times = log ? timePerQuestion(log, attempt.submittedAt) : null;
     for (const question of questions) {
       const answer = answers.get(question.id);
       const earned = answer?.manualScore ?? answer?.autoScore ?? 0;
@@ -122,6 +141,7 @@ export async function getEventItemAnalysis(
           (question.type === "WRITTEN" &&
             getBlockNotePlainText(answer?.content).trim().length > 0),
         optionKeys,
+        ...(times ? { timeMs: times.get(question.id) ?? 0 } : {}),
       });
     }
     const participant = participantByUser.get(attempt.userId);
@@ -177,6 +197,7 @@ export async function getEventItemAnalysis(
         correctRate: item?.correctRate ?? null,
         discrimination: item?.discrimination ?? null,
         unansweredRate: item?.unansweredRate ?? null,
+        averageTimeMs: item?.averageTimeMs ?? null,
         flags: item?.flags ?? [],
         options:
           question.type === "WRITTEN"

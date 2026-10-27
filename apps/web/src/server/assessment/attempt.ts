@@ -2,7 +2,12 @@ import { TRPCError } from "@trpc/server";
 
 import { reachesPercent, roundScore } from "@hakgyo/shared";
 
-import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
+import type {
+  AssessmentAttemptStatus,
+  AssessmentSubmissionSource,
+  Prisma,
+  PrismaClient,
+} from "../../../generated/prisma/client";
 import { getMissingWrittenQuestionIds, groupScoresByValue } from "./logic";
 import { withTransactionRetry } from "../db-retry";
 import {
@@ -169,6 +174,7 @@ export const gradableAttemptSelect = {
       status: true,
       durationMinutes: true,
       closesAt: true,
+      closedAt: true,
     },
   },
   answers: {
@@ -186,12 +192,19 @@ export type GradableAttempt = Prisma.AssessmentAttemptGetPayload<{
 
 /**
  * Scores an IN_PROGRESS attempt and moves it to GRADED (all auto-scored) or IN_REVIEW (has
- * written questions). Throws CONFLICT if the attempt is no longer in progress.
+ * written questions). Throws CONFLICT if the attempt is no longer in progress (or, with
+ * `fromStatus`, in one of those statuses: a late offline submission regrades a GRADED attempt).
+ * `submittedAt` defaults to `now`; an offline device passes the time the learner submitted.
  */
 export async function gradeInProgressAttempt(
   tx: Prisma.TransactionClient,
   attempt: GradableAttempt,
   now: Date,
+  options: {
+    via: AssessmentSubmissionSource;
+    submittedAt?: Date;
+    fromStatus?: AssessmentAttemptStatus[];
+  },
 ) {
   const answers = new Map(
     attempt.answers.map((answer) => [answer.questionId, answer]),
@@ -250,13 +263,14 @@ export async function gradeInProgressAttempt(
     where: {
       id: attempt.id,
       userId: attempt.userId,
-      status: "IN_PROGRESS",
+      status: { in: options.fromStatus ?? ["IN_PROGRESS"] },
     },
     data: {
       status: needsReview ? "IN_REVIEW" : "GRADED",
       score,
       maxScore,
-      submittedAt: now,
+      submittedAt: options.submittedAt ?? now,
+      submittedVia: options.via,
       gradedAt: needsReview ? null : now,
     },
   });
@@ -312,7 +326,9 @@ export async function autoSubmitEventAttempts(
               select: gradableAttemptSelect,
             });
             if (!attempt) return false;
-            await gradeInProgressAttempt(tx, attempt, now);
+            await gradeInProgressAttempt(tx, attempt, now, {
+              via: "AUTO_CLOSE",
+            });
             return true;
           }),
         ),

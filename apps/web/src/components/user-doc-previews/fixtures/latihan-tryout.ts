@@ -252,6 +252,10 @@ function manageable(
                 maxScore,
                 startedAt: at(-90 * 60_000),
                 submittedAt: status === "IN_PROGRESS" ? null : at(-60 * 60_000),
+                submittedVia:
+                  status === "IN_PROGRESS" ? null : ("LEARNER" as const),
+                // The fourth learner worked offline, to show the badge.
+                offlineSyncedAt: index === 3 ? at(-50 * 60_000) : null,
               },
       };
     },
@@ -312,6 +316,7 @@ const itemAnalysis: ItemAnalysis = {
       correctRate: 0.958,
       discrimination: 0.125,
       unansweredRate: 0,
+      averageTimeMs: 9000,
       flags: ["too-easy", "low-discrimination"],
       options: [
         { id: "s1-a", text: "가위", isCorrect: true, rate: 0.958, weak: false },
@@ -330,6 +335,7 @@ const itemAnalysis: ItemAnalysis = {
       correctRate: 0.583,
       discrimination: 0.571,
       unansweredRate: 0.042,
+      averageTimeMs: 41000,
       flags: [],
       options: [
         { id: "s2-a", text: "끄고", isCorrect: true, rate: 0.583, weak: false },

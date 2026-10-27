@@ -69,6 +69,7 @@ export function learnerAssessmentAttemptSelect(userId: string) {
     shuffleSeed: true,
     startedAt: true,
     status: true,
+    lastLogSeq: true,
     assessmentEvent: {
       select: {
         id: true,
@@ -204,6 +205,8 @@ export function shapeLearnerAssessment(input: {
     latestStandaloneAttempt: input.latestStandaloneAttempt,
     standaloneAttemptCount: input.standaloneAttemptCount,
     answersRevealed,
+    /** Last progress-log sequence the server processed; clients continue after it. */
+    progressSeq: attempt?.lastLogSeq ?? 0,
     eligibleCohorts: input.eligibleCohorts,
     questions,
   };

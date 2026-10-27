@@ -119,6 +119,7 @@ Semua perubahan nilai dan pembatalan dicatat di riwayat perubahan beserta alasan
 - Latihan yang **Terjadwal** dan **Dibuka** muncul di halaman **Belajar** dan menu **Latihan** murid, di situs web maupun aplikasi ponsel, lengkap dengan jadwalnya.
 - Saat mulai, waktu berjalan sesuai durasi. Gambar dan audio soal diunduh lebih dulu supaya tidak tersendat.
 - Murid melihat nilai dan papan peringkat setelah mengirim. Pada **Latihan**, jawaban benar dan pembahasan baru muncul setelah ditutup. Pada **Tryout**, keduanya tidak pernah ditampilkan.
-- Di aplikasi ponsel, jawaban baru terkirim saat murid menekan **Kirim**. Ingatkan murid untuk mengirim sebelum waktu habis.
+- Di aplikasi ponsel, murid bisa mengerjakan tanpa internet. Jawaban terkirim sedikit demi sedikit saat ada internet, dan tugas terkirim otomatis saat waktu habis. Jawaban yang diisi sebelum waktu habis tetap dinilai walaupun baru terkirim belakangan, sampai 24 jam setelah latihan ditutup. Karena itu nilai dan peringkat masih bisa berubah dalam 24 jam setelah ditutup.
+- Peserta yang jawabannya terkirim belakangan dari ponsel tanpa internet diberi tanda **Dari perangkat offline** di daftar peserta. Waktu jawabannya dicatat dari ponsel murid; periksa jika hasilnya meragukan, lalu gunakan **Batalkan hasil** bila perlu.
 
 Panduan dari sisi murid ada di [Latihan dan Tryout untuk murid](/docs/murid/latihan-tryout).

@@ -19,7 +19,10 @@ import {
   type ReactNode,
 } from "react";
 
+import type { AttemptLogEntry } from "@hakgyo/shared";
+
 import { apiUrl } from "../config";
+import { saveAttemptClock } from "../lib/attempt-log";
 import { authClient, getAuthCookie } from "../lib/auth-client";
 import {
   applyVocabularyReward,
@@ -120,8 +123,19 @@ type MobileSyncActionsValue = {
   completeAssessment: (input: {
     attemptId: string;
     answers: AssessmentSyncAnswer[];
+    /** The attempt's progress log, ending with its SUBMITTED entry. */
+    entries?: AttemptLogEntry[];
     organizationId?: string;
   }) => Promise<SyncCheckpointResult>;
+  /**
+   * Queues the progress log of an attempt being taken (one pending operation per attempt) and
+   * syncs it at most every 30 seconds, so the server has the answers before an event closes.
+   */
+  queueAssessmentProgress: (input: {
+    attemptId: string;
+    entries: AttemptLogEntry[];
+    organizationId?: string;
+  }) => Promise<void>;
   /** Flushes the outbox and refreshes the index/bundles (pull-to-refresh). */
   syncNow: (organizationId?: string) => Promise<SyncUpdateResult>;
   /** Automatic poll: cheap manifest check, full refresh only when changed. */
@@ -135,6 +149,8 @@ type MobileSyncActionsValue = {
   saveStartedAttempt: (input: {
     attempt: LearnerAttempt;
     assessmentDetail: CourseItemAssessment;
+    /** Server time of the start response, to correct the device clock in the progress log. */
+    serverNow?: Date;
   }) => Promise<void>;
   /** Warms the lesson's (and the next lesson's) media into the asset cache. */
   prefetchLesson: (courseId: string, courseItemId: string) => void;
@@ -153,6 +169,9 @@ type MobileSyncActionsValue = {
 };
 
 type MobileSyncContextValue = MobileSyncStatusValue & MobileSyncActionsValue;
+
+/** Progress operations are synced at most this often while a learner answers. */
+const PROGRESS_SYNC_INTERVAL_MS = 30_000;
 
 const MobileSyncStatusContext = createContext<MobileSyncStatusValue | null>(
   null,
@@ -424,6 +443,7 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     [localData, queryClient, utils.assessment],
   );
 
+  const lastProgressSync = useRef(0);
   const checkpoint = useCallback(
     async (organizationId?: string) => {
       const current = engineRef.current;
@@ -630,7 +650,12 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
           .catch(() => undefined);
         return checkpoint(organizationId);
       },
-      completeAssessment: async ({ attemptId, answers, organizationId }) => {
+      completeAssessment: async ({
+        attemptId,
+        answers,
+        entries,
+        organizationId,
+      }) => {
         const current = engineRef.current;
         if (!current) return { state: "queued", reason: "unavailable" };
         await current.putOperation({
@@ -638,8 +663,28 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
           kind: "ASSESSMENT_COMPLETED",
           attemptId,
           answers,
+          ...(entries?.length ? { entries } : {}),
         });
         return checkpoint(organizationId);
+      },
+      queueAssessmentProgress: async ({
+        attemptId,
+        entries,
+        organizationId,
+      }) => {
+        const current = engineRef.current;
+        if (!current || !entries.length) return;
+        await current.putOperation({
+          id: `assessment-progress:${attemptId}`,
+          kind: "ASSESSMENT_PROGRESS",
+          attemptId,
+          entries,
+        });
+        const now = Date.now();
+        if (now - lastProgressSync.current < PROGRESS_SYNC_INTERVAL_MS) return;
+        lastProgressSync.current = now;
+        // Offline the operation simply waits in the outbox.
+        void checkpoint(organizationId).catch(() => undefined);
       },
       syncNow,
       checkForUpdates: async (organizationId) => {
@@ -666,6 +711,9 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       getMaintenanceRetryAt: () =>
         engineRef.current?.getState().maintenanceRetryAt ?? undefined,
       saveStartedAttempt: async (input) => {
+        if (userId && input.serverNow) {
+          saveAttemptClock(userId, input.attempt.id, input.serverNow);
+        }
         utils.assessment.getMyAttempt.setData(
           { attemptId: input.attempt.id },
           input.attempt,

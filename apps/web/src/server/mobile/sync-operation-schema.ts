@@ -1,3 +1,4 @@
+import { attemptLogEntrySchema } from "@hakgyo/shared";
 import {
   OPERATION_VERSION,
   upcastOperation,
@@ -55,6 +56,18 @@ export const syncOperation = z.discriminatedUnion("kind", [
     kind: z.literal("ASSESSMENT_COMPLETED"),
     attemptId: z.string().min(1),
     answers: z.array(answer).max(200),
+    /**
+     * The attempt's progress log (answers, shown questions, the submission), added in runtime
+     * version 1. Older clients send only `answers`.
+     */
+    entries: z.array(attemptLogEntrySchema).max(1000).optional(),
+  }),
+  operationBase.extend({
+    // Progress of an attempt still being taken, queued as the learner answers so the server has
+    // the answers before the event closes. One per attempt (`assessment-progress:<attemptId>`).
+    kind: z.literal("ASSESSMENT_PROGRESS"),
+    attemptId: z.string().min(1),
+    entries: z.array(attemptLogEntrySchema).min(1).max(1000),
   }),
 ]);
 
@@ -69,6 +82,7 @@ const syncOperationEnvelope = z.looseObject({
     "CONTENT_COMPLETED",
     "VOCABULARY_SESSION_COMPLETED",
     "ASSESSMENT_COMPLETED",
+    "ASSESSMENT_PROGRESS",
   ] satisfies SyncOperationKind[]),
 });
 

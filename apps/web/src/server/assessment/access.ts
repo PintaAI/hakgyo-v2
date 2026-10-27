@@ -1,3 +1,4 @@
+import { OFFLINE_SUBMISSION_GRACE_MS } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
@@ -89,12 +90,48 @@ export function eventParticipationSelect(userId: string) {
   return {
     select: {
       status: true,
+      closedAt: true,
       participants: {
         where: { userId },
         select: { invalidatedAt: true },
       },
     },
   } satisfies Prisma.AssessmentEventDefaultArgs;
+}
+
+/**
+ * Whether an event still takes the learner's own writes: while OPEN, and for answers given offline
+ * before closing, up to `OFFLINE_SUBMISSION_GRACE_MS` after it closed. The answer times are
+ * checked against the deadline separately, so nothing given after closing counts.
+ */
+export function eventAcceptsLearnerWrites(
+  event: { status: string; closedAt: Date | null },
+  now: Date,
+) {
+  if (event.status === "OPEN") return true;
+  return (
+    event.status === "CLOSED" &&
+    event.closedAt !== null &&
+    now.getTime() - event.closedAt.getTime() < OFFLINE_SUBMISSION_GRACE_MS
+  );
+}
+
+/** Like `requireOpenEventParticipation`, but also inside the offline grace after closing. */
+export function requireEventParticipationForSync(
+  event: {
+    status: string;
+    closedAt: Date | null;
+    participants: Array<{ invalidatedAt: Date | null }>;
+  },
+  now: Date,
+) {
+  if (
+    !eventAcceptsLearnerWrites(event, now) ||
+    !event.participants[0] ||
+    event.participants[0].invalidatedAt
+  ) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED" });
+  }
 }
 
 /** Event attempts can only change while the event is OPEN and the learner's participation is valid. */
