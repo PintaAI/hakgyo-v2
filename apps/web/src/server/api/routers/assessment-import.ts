@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { questionPointsSchema } from "@hakgyo/shared";
+import { plainTextToBlockNote } from "~/lib/blocknote/document";
 import { z } from "zod";
 
 import type { Prisma } from "../../../../generated/prisma/client";
@@ -35,14 +36,7 @@ async function requireAssessmentAuthor(
 
 /** Plain text → BlockNote paragraphs, one per non-empty line. */
 function textToDocument(text: string): Prisma.InputJsonValue {
-  const lines = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return (lines.length ? lines : [""]).map((line) => ({
-    type: "paragraph",
-    content: line,
-  }));
+  return plainTextToBlockNote(text);
 }
 
 const importedQuestion = z
@@ -136,10 +130,17 @@ export const assessmentImportRouter = createTRPCRouter({
           _max: { position: true },
         });
         let nextPosition = (position._max.position ?? -1) + 1;
+        // With sections, imported questions join the last one, like "Tambah soal".
+        const lastSection = await tx.assessmentSection.findFirst({
+          where: { assessmentId: input.assessmentId },
+          orderBy: { position: "desc" },
+          select: { id: true },
+        });
         for (const question of input.questions) {
           await tx.assessmentQuestion.create({
             data: {
               assessmentId: input.assessmentId,
+              sectionId: lastSection?.id ?? null,
               type: question.type,
               prompt: textToDocument(question.prompt),
               explanation: question.explanation

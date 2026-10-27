@@ -43,6 +43,9 @@ export const createSectionInput = sectionFields.extend({
 export const updateSectionInput = sectionFields
   .partial()
   .extend({ sectionId: z.string().min(1) });
+/** The most sections an assessment can have (EPS-TOPIK uses two). */
+export const MAX_SECTIONS = 20;
+
 export const arrangeQuestionsInput = z.object({
   assessmentId: z.string().min(1),
   /** Every section in its new order with every question in its new order; `sectionId: null` only without sections. */
@@ -54,7 +57,7 @@ export const arrangeQuestionsInput = z.object({
       }),
     )
     .min(1)
-    .max(20),
+    .max(MAX_SECTIONS),
 });
 
 type Tx = Prisma.TransactionClient;
@@ -78,7 +81,8 @@ const TEMPORARY_POSITION_OFFSET = 1_000_000;
 
 /**
  * Writes positions in two passes (temporary, then final) so the unique (assessment, position)
- * constraints never collide mid-update.
+ * constraints never collide mid-update. Unlike `reorder` in `routers/content.ts`, it sets the
+ * section of every question in the same statements.
  */
 async function writeQuestionLayout(
   tx: Tx,
@@ -152,11 +156,13 @@ export async function normalizeQuestionPositions(tx: Tx, assessmentId: string) {
           (order.get(right.sectionId ?? "") ?? fallback) ||
         left.position - right.position,
     );
+  const storedSectionIds = new Map(
+    questions.map((question) => [question.id, question.sectionId]),
+  );
   const changed = arranged.some(
     (question, index) =>
       question.position !== index ||
-      question.sectionId !==
-        questions.find(({ id }) => id === question.id)?.sectionId,
+      question.sectionId !== storedSectionIds.get(question.id),
   );
   if (changed) await writeQuestionLayout(tx, arranged);
 }
@@ -171,13 +177,28 @@ export async function createSection(
   return withTransactionRetry(() =>
     db.$transaction(async (tx) => {
       await lockAssessment(tx, assessmentId);
-      const last = await tx.assessmentSection.findFirst({
-        where: { assessmentId },
-        orderBy: { position: "desc" },
-        select: { position: true },
-      });
+      const [last, count, assessment] = await Promise.all([
+        tx.assessmentSection.findFirst({
+          where: { assessmentId },
+          orderBy: { position: "desc" },
+          select: { position: true },
+        }),
+        tx.assessmentSection.count({ where: { assessmentId } }),
+        tx.assessment.findUniqueOrThrow({
+          where: { id: assessmentId },
+          select: { shuffleQuestions: true },
+        }),
+      ]);
+      if (count >= MAX_SECTIONS) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Satu tugas paling banyak punya ${MAX_SECTIONS} bagian.`,
+        });
+      }
       const section = await tx.assessmentSection.create({
         data: {
+          // The first section keeps the assessment's "Acak soal", which sections replace.
+          shuffleQuestions: last ? undefined : assessment.shuffleQuestions,
           ...fields,
           ...instructionsData(instructions),
           assessmentId,

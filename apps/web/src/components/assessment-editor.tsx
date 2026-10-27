@@ -1153,7 +1153,7 @@ function AssessmentEditorForm({
         (assessment?.sections ?? []).map((section) => [
           section.id,
           section.timeLimitSeconds
-            ? `${section.title} · ${section.timeLimitSeconds / 60} menit`
+            ? `${section.title} · ${formatScore(section.timeLimitSeconds / 60)} menit`
             : section.title,
         ]),
       ),
@@ -2102,16 +2102,26 @@ function AssessmentEditorForm({
           </div>
 
           <div className="grid gap-4 border-t pt-5">
-            <ToggleField
-              disabled={readOnly}
-              checked={shuffleQuestions}
-              description="Acak urutan soal untuk setiap attempt."
-              label="Acak soal"
-              onCheckedChange={(checked) => {
-                settingsTouchedRef.current = true;
-                setShuffleQuestions(checked);
-              }}
-            />
+            {assessment?.sections.length ? (
+              <p className="text-muted-foreground text-xs">
+                Pengacakan soal diatur per bagian di{" "}
+                <span className="text-foreground font-medium">
+                  Bagian &amp; urutan
+                </span>
+                .
+              </p>
+            ) : (
+              <ToggleField
+                disabled={readOnly}
+                checked={shuffleQuestions}
+                description="Acak urutan soal untuk setiap attempt."
+                label="Acak soal"
+                onCheckedChange={(checked) => {
+                  settingsTouchedRef.current = true;
+                  setShuffleQuestions(checked);
+                }}
+              />
+            )}
             <ToggleField
               disabled={readOnly}
               checked={shuffleOptions}

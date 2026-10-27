@@ -34,7 +34,12 @@ import {
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { useDialogs } from "~/components/ui/use-dialogs";
-import { getBlockNotePlainText } from "~/lib/blocknote/document";
+import {
+  getBlockNotePlainLines,
+  getBlockNotePlainText,
+  plainTextToBlockNote,
+} from "~/lib/blocknote/document";
+import { formatScore, parseScoreInput } from "@hakgyo/shared";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Assessment = RouterOutputs["assessment"]["get"];
@@ -65,19 +70,13 @@ export function sectionLayout(assessment: Assessment) {
   );
 }
 
-/** Plain text in a section's instructions, stored as BlockNote paragraphs. */
+/** A section's instructions as plain lines (they are stored as BlockNote paragraphs). */
 function instructionsText(section: Section) {
-  return getBlockNotePlainText(section.instructions);
+  return getBlockNotePlainLines(section.instructions);
 }
 
 function instructionsDocument(text: string) {
-  const lines = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return lines.length
-    ? lines.map((line) => ({ type: "paragraph", content: line }))
-    : null;
+  return text.trim() ? plainTextToBlockNote(text) : null;
 }
 
 function errorMessage(error: unknown) {
@@ -94,17 +93,22 @@ function SectionForm({
   const utils = api.useUtils();
   const update = api.assessment.updateSection.useMutation();
   const [title, setTitle] = useState(section.title);
-  const [instructions, setInstructions] = useState(instructionsText(section));
-  const [minutes, setMinutes] = useState(
-    section.timeLimitSeconds ? String(section.timeLimitSeconds / 60) : "",
-  );
+  const initialInstructions = instructionsText(section);
+  const initialMinutes = section.timeLimitSeconds
+    ? formatScore(section.timeLimitSeconds / 60)
+    : "";
+  const [instructions, setInstructions] = useState(initialInstructions);
+  const [minutes, setMinutes] = useState(initialMinutes);
   const [shuffle, setShuffle] = useState(section.shuffleQuestions);
-  const parsedMinutes = minutes.trim() ? Number(minutes) : null;
+  // Minutes may have decimals (90 seconds is 1,5); stored as whole seconds.
+  const parsedSeconds = minutes.trim()
+    ? Math.round(parseScoreInput(minutes) * 60)
+    : null;
   const minutesValid =
-    parsedMinutes === null ||
-    (Number.isInteger(parsedMinutes) &&
-      parsedMinutes >= 1 &&
-      parsedMinutes <= 240);
+    parsedSeconds === null ||
+    (Number.isFinite(parsedSeconds) &&
+      parsedSeconds >= 60 &&
+      parsedSeconds <= 14_400);
 
   async function save() {
     if (!title.trim() || !minutesValid) return;
@@ -112,8 +116,14 @@ function SectionForm({
       await update.mutateAsync({
         sectionId: section.id,
         title: title.trim(),
-        instructions: instructionsDocument(instructions),
-        timeLimitSeconds: parsedMinutes === null ? null : parsedMinutes * 60,
+        // Untouched fields are not sent, so rich instructions written elsewhere (MCP) and exact
+        // second limits survive a rename.
+        ...(instructions === initialInstructions
+          ? {}
+          : { instructions: instructionsDocument(instructions) }),
+        ...(minutes === initialMinutes
+          ? {}
+          : { timeLimitSeconds: parsedSeconds }),
         shuffleQuestions: shuffle,
       });
       await utils.assessment.get.invalidate({
@@ -163,7 +173,7 @@ function SectionForm({
         />
         {!minutesValid ? (
           <p className="text-destructive text-xs">
-            Isi bilangan bulat 1 sampai 240, atau kosongkan.
+            Isi 1 sampai 240 menit, atau kosongkan.
           </p>
         ) : null}
       </div>
@@ -240,7 +250,20 @@ export function AssessmentStructureSheet({
     setDirty(false);
   }
 
+  /** Adding or deleting a section reloads the order; ask before unsaved moves are lost. */
+  async function keepUnsavedOrder() {
+    if (!dirty) return false;
+    return !(await confirm({
+      title: "Buang urutan yang belum disimpan?",
+      description:
+        "Perubahan urutan soal belum disimpan dan akan hilang. Klik Simpan urutan dulu jika ingin menyimpannya.",
+      confirmLabel: "Buang dan lanjutkan",
+      destructive: true,
+    }));
+  }
+
   async function addSection() {
+    if (await keepUnsavedOrder()) return;
     const values = await prompt({
       title: "Tambah bagian",
       description: assessment.sections.length
@@ -267,6 +290,7 @@ export function AssessmentStructureSheet({
   }
 
   async function removeSection(section: Section) {
+    if (await keepUnsavedOrder()) return;
     const others = assessment.sections.filter(({ id }) => id !== section.id);
     const ok = await confirm({
       title: `Hapus bagian ${section.title}?`,
@@ -434,7 +458,7 @@ export function AssessmentStructureSheet({
                           }{" "}
                           soal ·{" "}
                           {section.timeLimitSeconds
-                            ? `${section.timeLimitSeconds / 60} menit`
+                            ? `${formatScore(section.timeLimitSeconds / 60)} menit`
                             : "tanpa batas waktu"}
                           {section.shuffleQuestions ? " · diacak" : ""}
                         </p>
@@ -471,7 +495,7 @@ export function AssessmentStructureSheet({
             )}
             {sectioned && totalSeconds ? (
               <p className="text-muted-foreground text-xs">
-                Total waktu bagian: {totalSeconds / 60} menit.
+                Total waktu bagian: {formatScore(totalSeconds / 60)} menit.
               </p>
             ) : null}
           </section>
