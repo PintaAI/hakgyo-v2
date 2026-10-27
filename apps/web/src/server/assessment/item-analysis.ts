@@ -5,6 +5,7 @@ import {
   scorePercent,
   sortTags,
   tagLabel,
+  tagResults,
   type ItemResponse,
 } from "@hakgyo/shared";
 
@@ -14,13 +15,14 @@ import { loadAssessmentKeyForStaff } from "~/server/assessment/authoring";
 import { rankAssessmentEventAttempts } from "~/server/assessment/event-ranking";
 import { requireEventAccess } from "~/server/assessment/event-targets";
 
-const PROMPT_PREVIEW_LENGTH = 140;
+const PREVIEW_LENGTH = 140;
 
 /**
  * Item analysis of an event for staff: per question difficulty, discrimination, option spread and
  * flags; per tag class accuracy; per learner tag results for the CSV export. It uses each
  * learner's best valid graded attempt (the one on the leaderboard). Class staff only see the
- * participants of the classes they review.
+ * participants of the classes they review. Correctness comes from the answer scores, like the
+ * learner's own per-tag summary; the key only marks options.
  */
 export async function getEventItemAnalysis(
   db: PrismaClient,
@@ -33,18 +35,11 @@ export async function getEventItemAnalysis(
     userId,
     "review",
   );
-  const details = await db.assessmentEvent.findUniqueOrThrow({
-    where: { id: eventId },
-    select: {
-      courseItem: { select: { assessmentId: true } },
-    },
-  });
-  const assessmentId = details.courseItem.assessmentId;
-  if (!assessmentId) {
-    return { attemptCount: 0, questions: [], tags: [], learners: [] };
-  }
-  const [questions, participants, attempts] = await Promise.all([
-    loadAssessmentKeyForStaff(db, assessmentId),
+  const [details, participants] = await Promise.all([
+    db.assessmentEvent.findUniqueOrThrow({
+      where: { id: event.id },
+      select: { courseItem: { select: { assessmentId: true } } },
+    }),
     db.assessmentEventParticipant.findMany({
       where: {
         eventId: event.id,
@@ -59,8 +54,22 @@ export async function getEventItemAnalysis(
         cohort: { select: { name: true } },
       },
     }),
+  ]);
+  const assessmentId = details.courseItem.assessmentId;
+  if (!assessmentId || !participants.length) {
+    return { attemptCount: 0, questions: [], tags: [], learners: [] };
+  }
+  const participantByUser = new Map(
+    participants.map((participant) => [participant.userId, participant]),
+  );
+  const [questions, attempts] = await Promise.all([
+    loadAssessmentKeyForStaff(db, assessmentId),
     db.assessmentAttempt.findMany({
-      where: { assessmentEventId: event.id, status: "GRADED" },
+      where: {
+        assessmentEventId: event.id,
+        status: "GRADED",
+        userId: { in: [...participantByUser.keys()] },
+      },
       select: {
         id: true,
         userId: true,
@@ -72,6 +81,7 @@ export async function getEventItemAnalysis(
         answers: {
           select: {
             questionId: true,
+            content: true,
             autoScore: true,
             manualScore: true,
             selectedOptions: { select: { optionId: true } },
@@ -80,63 +90,39 @@ export async function getEventItemAnalysis(
       },
     }),
   ]);
-
-  const participantByUser = new Map(
-    participants.map((participant) => [participant.userId, participant]),
-  );
-  const visible = attempts.filter((attempt) =>
-    participantByUser.has(attempt.userId),
-  );
   const best = new Set(
     rankAssessmentEventAttempts(
-      visible.map((attempt) => ({
+      attempts.map((attempt) => ({
         ...attempt,
         name: participantByUser.get(attempt.userId)?.user.name ?? "",
         invalidatedAt: null,
       })),
     ).map((entry) => entry.attemptId),
   );
-  const graded = visible.filter((attempt) => best.has(attempt.id));
+  const graded = attempts.filter((attempt) => best.has(attempt.id));
 
   const responses: ItemResponse[] = [];
-  const selectionCounts = new Map<string, Map<string, number>>();
   const learners = graded.map((attempt) => {
     const percent = scorePercent(attempt.score ?? 0, attempt.maxScore ?? 0);
     const answers = new Map(
       attempt.answers.map((answer) => [answer.questionId, answer]),
     );
-    const tagTotals = new Map<string, { correct: number; total: number }>();
     for (const question of questions) {
       const answer = answers.get(question.id);
       const earned = answer?.manualScore ?? answer?.autoScore ?? 0;
-      // Correctness comes from the score, never from the key, like the learner's own summary.
-      const correct = question.points > 0 && earned + 1e-9 >= question.points;
-      const selected = answer?.selectedOptions.map(({ optionId }) => optionId) ?? [];
-      for (const optionId of selected) {
-        const counts = selectionCounts.get(question.id) ?? new Map<string, number>();
-        counts.set(optionId, (counts.get(optionId) ?? 0) + 1);
-        selectionCounts.set(question.id, counts);
-      }
+      const optionKeys =
+        answer?.selectedOptions.map(({ optionId }) => optionId) ?? [];
       responses.push({
         itemKey: question.id,
         attemptKey: attempt.id,
         attemptPercent: percent,
-        correct,
-        // One key per answer; a multiple-choice answer counts as "answered", and its options
-        // are spread through `selectionCounts` instead.
-        optionKey:
-          question.type === "MULTIPLE_CHOICE"
-            ? selected.length
-              ? "answered"
-              : null
-            : (selected[0] ?? null),
+        correct: question.points > 0 && earned + 1e-9 >= question.points,
+        answered:
+          optionKeys.length > 0 ||
+          (question.type === "WRITTEN" &&
+            getBlockNotePlainText(answer?.content).trim().length > 0),
+        optionKeys,
       });
-      for (const tag of question.tags) {
-        const totals = tagTotals.get(tag) ?? { correct: 0, total: 0 };
-        totals.total += 1;
-        if (correct) totals.correct += 1;
-        tagTotals.set(tag, totals);
-      }
     }
     const participant = participantByUser.get(attempt.userId);
     return {
@@ -145,14 +131,18 @@ export async function getEventItemAnalysis(
       score: attempt.score ?? 0,
       maxScore: attempt.maxScore ?? 0,
       percent: roundScore(percent),
-      tags: Object.fromEntries(tagTotals),
+      tags: Object.fromEntries(
+        tagResults(questions, attempt.answers)
+          .flatMap((group) => group.rows)
+          .map((row) => [row.tag, { correct: row.correct, total: row.total }]),
+      ),
     };
   });
 
   const stats = analyzeItems(responses, {
+    // Distractors only mean something with one correct answer.
     distractors: new Map(
       questions
-        // Distractors only mean something with one correct answer.
         .filter((question) => question.type === "SINGLE_CHOICE")
         .map((question) => [
           question.id,
@@ -181,16 +171,12 @@ export async function getEventItemAnalysis(
         id: question.id,
         number: index + 1,
         type: question.type,
-        prompt: getBlockNotePlainText(question.prompt).slice(
-          0,
-          PROMPT_PREVIEW_LENGTH,
-        ),
+        prompt: getBlockNotePlainText(question.prompt).slice(0, PREVIEW_LENGTH),
         points: question.points,
         tags: sortTags(question.tags),
         correctRate: item?.correctRate ?? null,
         discrimination: item?.discrimination ?? null,
         unansweredRate: item?.unansweredRate ?? null,
-        averageTimeMs: item?.averageTimeMs ?? null,
         flags: item?.flags ?? [],
         options:
           question.type === "WRITTEN"
@@ -199,16 +185,10 @@ export async function getEventItemAnalysis(
                 id: option.id,
                 text: getBlockNotePlainText(option.content).slice(
                   0,
-                  PROMPT_PREVIEW_LENGTH,
+                  PREVIEW_LENGTH,
                 ),
                 isCorrect: option.isCorrect,
-                rate:
-                  question.type === "MULTIPLE_CHOICE"
-                    ? roundScore(
-                        (selectionCounts.get(question.id)?.get(option.id) ??
-                          0) / Math.max(1, graded.length),
-                      )
-                    : (item?.optionRates.get(option.id) ?? 0),
+                rate: item?.optionRates.get(option.id) ?? 0,
                 weak: item?.weakDistractors.includes(option.id) ?? false,
               })),
       };
@@ -228,5 +208,3 @@ export async function getEventItemAnalysis(
     ),
   };
 }
-
-export type EventItemAnalysis = Awaited<ReturnType<typeof getEventItemAnalysis>>;

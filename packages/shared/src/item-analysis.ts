@@ -11,8 +11,10 @@ export type ItemResponse = {
   /** The attempt's score in percent, comparable across packages. */
   attemptPercent: number;
   correct: boolean;
-  /** The chosen option (not its position, which differs between copies); null when unanswered. */
-  optionKey: string | null;
+  /** Whether the learner answered at all (chose an option or wrote text). */
+  answered: boolean;
+  /** The chosen options (not their positions, which differ between copies); empty for written answers. */
+  optionKeys: readonly string[];
   timeMs?: number;
 };
 
@@ -26,8 +28,8 @@ export type ItemStats = {
   correctRate: number;
   /** Upper 27 % minus lower 27 % correct rate (D), or null with fewer than `MIN_DISCRIMINATION_ATTEMPTS`. */
   discrimination: number | null;
-  /** Share of responses per chosen option key; unanswered responses count under `null`. */
-  optionRates: Map<string | null, number>;
+  /** Share of responses that chose each option key (multiple-choice answers count every option). */
+  optionRates: Map<string, number>;
   unansweredRate: number;
   averageTimeMs: number | null;
   /** Distractors chosen by fewer than `WEAK_DISTRACTOR_RATE` of responses. */
@@ -54,7 +56,7 @@ function round(value: number, digits = 3) {
 
 /**
  * Stats per item. Pass every attempt's row for every item, including unanswered ones (`correct:
- * false`, `optionKey: null`), so rates share one denominator. `distractors` lists the wrong
+ * false`, `answered: false`), so rates share one denominator. `distractors` lists the wrong
  * option keys of each item, so distractors nobody chose are reported too.
  */
 export function analyzeItems(
@@ -89,13 +91,13 @@ export function analyzeItems(
   for (const [itemKey, rows] of byItem) {
     const correct = rows.filter((row) => row.correct).length;
     const correctRate = correct / rows.length;
-    const optionCounts = new Map<string | null, number>();
+    const optionCounts = new Map<string, number>();
     for (const row of rows) {
-      optionCounts.set(
-        row.optionKey,
-        (optionCounts.get(row.optionKey) ?? 0) + 1,
-      );
+      for (const key of new Set(row.optionKeys)) {
+        optionCounts.set(key, (optionCounts.get(key) ?? 0) + 1);
+      }
     }
+    const unanswered = rows.filter((row) => !row.answered).length;
     const optionRates = new Map(
       [...optionCounts].map(
         ([key, count]) => [key, round(count / rows.length)] as const,
@@ -138,7 +140,7 @@ export function analyzeItems(
       correctRate: round(correctRate),
       discrimination,
       optionRates,
-      unansweredRate: optionRates.get(null) ?? 0,
+      unansweredRate: round(unanswered / rows.length),
       averageTimeMs: times.length
         ? Math.round(
             times.reduce((total, time) => total + time, 0) / times.length,

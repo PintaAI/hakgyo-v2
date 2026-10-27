@@ -16,7 +16,8 @@ import { Input } from "~/components/ui/input";
 
 /**
  * Tags of one question as removable chips plus an input with the EPS-TOPIK vocabulary as
- * suggestions. Enter or a comma adds the typed tag; any free label is allowed too.
+ * suggestions. Enter, a comma or leaving the field adds the typed tag (not every keystroke, since
+ * `eps:R1` is a prefix of `eps:R10`); any free label is allowed too.
  */
 export function QuestionTagsField({
   id,
@@ -81,12 +82,7 @@ export function QuestionTagsField({
         onBlur={() => {
           if (draft.trim()) add(draft);
         }}
-        onChange={(event) => {
-          const value = event.target.value;
-          // Picking a suggestion fills the whole tag at once.
-          if (epsTagVocabulary.some((entry) => entry.tag === value)) add(value);
-          else setDraft(value);
-        }}
+        onChange={(event) => setDraft(event.target.value)}
         onKeyDown={onKeyDown}
         placeholder={
           full

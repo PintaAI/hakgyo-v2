@@ -521,7 +521,11 @@ function AssessmentAttemptContent({
             )}
           </StudyGlass>
 
-          {result.status === "GRADED" && assessment.data && attempt.data ? (
+          {/* Scores are withheld (null) for invalidated or cancelled participations. */}
+          {result.status === "GRADED" &&
+          assessment.data &&
+          attempt.data &&
+          attempt.data.score !== null ? (
             <TagResults
               answers={attempt.data.answers}
               questions={assessment.data.questions}

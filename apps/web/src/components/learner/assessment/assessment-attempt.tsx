@@ -438,8 +438,15 @@ export function AssessmentAttempt({
           )}
         </StudyCard>
 
-        {result && !inReview && !eventEndedIncomplete ? (
-          <TagResults answers={attempt.answers} questions={assessment.questions} />
+        {/* Scores are withheld (null) for invalidated or cancelled participations. */}
+        {result &&
+        !inReview &&
+        !eventEndedIncomplete &&
+        attempt.score !== null ? (
+          <TagResults
+            answers={attempt.answers}
+            questions={assessment.questions}
+          />
         ) : null}
 
         <AssessmentResultReview assessment={assessment} attempt={attempt} />

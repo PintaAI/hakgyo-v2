@@ -1101,6 +1101,7 @@ model AssessmentQuestion {
   answers      AssessmentAnswer[]
 
   @@unique([assessmentId, position])
+  /// The question bank picks candidates by type tag (docs/eps-question-generator.md section 4.1).
   @@index([tags], type: Gin)
 }
 

@@ -15,7 +15,8 @@ function responsesFor(
       attemptKey: `attempt-${index}`,
       attemptPercent: index * 10,
       correct,
-      optionKey: correct ? option : index % 2 ? "b" : null,
+      answered: correct || index % 2 === 1,
+      optionKeys: correct ? [option] : index % 2 ? ["b"] : [],
       timeMs: 1000 * (index + 1),
     };
   });
@@ -46,6 +47,21 @@ describe("analyzeItems", () => {
     expect(flat.flags).toEqual(["too-easy", "low-discrimination"]);
   });
 
+  test("counts every option of a multiple-choice answer", () => {
+    const row = (attemptKey: string, optionKeys: string[]) => ({
+      itemKey: "multi",
+      attemptKey,
+      attemptPercent: 50,
+      correct: optionKeys.length === 2,
+      answered: true,
+      optionKeys,
+    });
+    const stats = analyzeItems([row("a1", ["x", "y"]), row("a2", ["x"])]);
+    expect(stats.get("multi")!.optionRates.get("x")).toBe(1);
+    expect(stats.get("multi")!.optionRates.get("y")).toBe(0.5);
+    expect(stats.get("multi")!.unansweredRate).toBe(0);
+  });
+
   test("raises no flags and no discrimination on tiny samples", () => {
     const stats = analyzeItems(responsesFor("x", () => false).slice(0, 3));
     expect(stats.get("x")!.discrimination).toBeNull();
@@ -59,14 +75,16 @@ describe("analyzeItems", () => {
         attemptKey: "p1-a",
         attemptPercent: 80,
         correct: true,
-        optionKey: "o1",
+        answered: true,
+        optionKeys: ["o1"],
       },
       {
         itemKey: "bank-1",
         attemptKey: "p2-a",
         attemptPercent: 40,
         correct: false,
-        optionKey: null,
+        answered: false,
+        optionKeys: [],
       },
     ]);
     expect(pooled.get("bank-1")!.correctRate).toBe(0.5);
