@@ -4,7 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
-import { assessmentContentAssetIds } from "@hakgyo/shared";
+import { assessmentContentAssetIds, formatScoreOutOf } from "@hakgyo/shared";
 
 import Link from "~/components/link";
 import {
@@ -39,6 +39,7 @@ import {
   QuestionNavigator,
   StudyCard,
 } from "./assessment-ui";
+import { ScoreBandResults } from "~/components/learner/assessment/score-band-results";
 import { AssessmentResultReview } from "./assessment-result-review";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
@@ -417,9 +418,17 @@ export function AssessmentAttempt({
               Event telah ditutup sebelum jawaban kamu dikirim.
             </p>
           ) : result && !inReview ? (
-            <p className="text-muted-foreground text-center text-lg">
-              Score: {result.score}/{result.maxScore}
-            </p>
+            <>
+              <p className="text-muted-foreground text-center text-lg">
+                Skor: {formatScoreOutOf(result.score, result.maxScore)}
+              </p>
+              <ScoreBandResults
+                bands={assessment.scoreBands}
+                className="mx-auto w-full max-w-xs"
+                maxScore={result.maxScore}
+                score={result.score}
+              />
+            </>
           ) : (
             <p className="text-muted-foreground text-center text-sm leading-5">
               Hasil lengkap kamu akan muncul di sini setelah pengajar selesai

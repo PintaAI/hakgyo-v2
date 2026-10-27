@@ -1,3 +1,4 @@
+import { formatScoreOutOf } from "@hakgyo/shared";
 export type LearnerAttemptStatus =
   "IN_PROGRESS" | "SUBMITTED" | "IN_REVIEW" | "GRADED";
 
@@ -59,7 +60,7 @@ export function assessmentAttemptPresentation(attempt?: AttemptResult) {
 
   const result =
     attempt.score !== null && attempt.maxScore !== null
-      ? ` · ${attempt.score} / ${attempt.maxScore}`
+      ? ` · ${formatScoreOutOf(attempt.score, attempt.maxScore, " / ")}`
       : "";
   return { detail: `Sudah direview${result}`, action: "Lihat hasil" } as const;
 }

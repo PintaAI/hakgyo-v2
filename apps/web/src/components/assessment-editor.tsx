@@ -33,6 +33,13 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
+import {
+  formatScore,
+  parseQuestionPoints,
+  readScoreBands,
+  sumScores,
+  type ScoreBand,
+} from "@hakgyo/shared";
 
 import {
   DynamicBlockNoteEditor,
@@ -51,6 +58,12 @@ import {
   type ImportedAssessmentQuestion,
 } from "~/components/assessment-image-import";
 import Link from "~/components/link";
+import {
+  parseScoreBandRows,
+  ScoreBandsField,
+  scoreBandRowsOf,
+  type ScoreBandRow,
+} from "~/components/assessment-score-bands-field";
 import { SaveNowButton } from "~/components/save-now-button";
 import {
   AlertDialog,
@@ -150,6 +163,7 @@ function toAssessmentDraftPayload(
     editorSchemaVersion: assessment.editorSchemaVersion,
     instructions: assessment.instructions ?? undefined,
     passingScore: assessment.passingScore,
+    scoreBands: readScoreBands(assessment.scoreBands),
     maxAttempts: assessment.maxAttempts,
     timeLimitMinutes: assessment.timeLimitMinutes,
     shuffleQuestions: assessment.shuffleQuestions,
@@ -343,6 +357,7 @@ function assessmentFieldsOf(assessment: Assessment): AssessmentFields {
     description: assessment.description,
     instructions: hasBlockNoteContent(instructions) ? instructions : null,
     passingScore: assessment.passingScore,
+    scoreBands: readScoreBands(assessment.scoreBands),
     maxAttempts: assessment.maxAttempts,
     timeLimitMinutes: assessment.timeLimitMinutes,
     shuffleQuestions: assessment.shuffleQuestions,
@@ -350,7 +365,7 @@ function assessmentFieldsOf(assessment: Assessment): AssessmentFields {
   };
 }
 
-/** Fields of `next` that differ from `saved` (instructions compared as JSON). */
+/** Fields of `next` that differ from `saved` (instructions and bands compared as JSON). */
 function changedAssessmentFields(
   saved: AssessmentFields,
   next: AssessmentFields,
@@ -358,9 +373,8 @@ function changedAssessmentFields(
   const changes: Partial<AssessmentFields> = {};
   for (const key of Object.keys(next) as (keyof AssessmentFields)[]) {
     const same =
-      key === "instructions"
-        ? JSON.stringify(saved.instructions) ===
-          JSON.stringify(next.instructions)
+      key === "instructions" || key === "scoreBands"
+        ? JSON.stringify(saved[key]) === JSON.stringify(next[key])
         : saved[key] === next[key];
     if (!same) Object.assign(changes, { [key]: next[key] });
   }
@@ -791,6 +805,7 @@ export function AssessmentEditor({
                   editorSchemaVersion: 1,
                   instructions: value.instructions ?? undefined,
                   passingScore: value.passingScore,
+                  scoreBands: value.scoreBands,
                   maxAttempts: value.maxAttempts,
                   timeLimitMinutes: value.timeLimitMinutes,
                   shuffleQuestions: value.shuffleQuestions,
@@ -885,6 +900,8 @@ type AssessmentFields = {
   description: string | null;
   instructions: BlockNoteDocument | null;
   passingScore: number | null;
+  /** Highest threshold first; empty when the assessment has none. */
+  scoreBands: ScoreBand[];
   maxAttempts: number | null;
   timeLimitMinutes: number | null;
   shuffleQuestions: boolean;
@@ -897,12 +914,14 @@ type AssessmentDraft = Omit<
   | "instructions"
   | "maxAttempts"
   | "passingScore"
+  | "scoreBands"
   | "timeLimitMinutes"
 > & {
   description: string;
   instructions: BlockNoteDocument;
   maxAttempts: string;
   passingScore: string;
+  scoreBands: ScoreBandRow[];
   timeLimitMinutes: string;
 };
 
@@ -982,6 +1001,9 @@ function AssessmentEditorForm({
   );
   const [passingScore, setPassingScore] = useState(
     assessment?.passingScore?.toString() ?? "",
+  );
+  const [scoreBandRows, setScoreBandRows] = useState<ScoreBandRow[]>(() =>
+    scoreBandRowsOf(assessment?.scoreBands),
   );
   const [maxAttempts, setMaxAttempts] = useState(
     assessment?.maxAttempts?.toString() ?? "",
@@ -1131,7 +1153,7 @@ function AssessmentEditorForm({
     [displayQuestions],
   );
   const totalPoints = useMemo(
-    () => displayQuestions.reduce((sum, question) => sum + question.points, 0),
+    () => sumScores(displayQuestions.map((question) => question.points)),
     [displayQuestions],
   );
   const questionIdKey = useMemo(
@@ -1404,6 +1426,7 @@ function AssessmentEditorForm({
     const parsedPassingScore = optionalInteger(draft.passingScore, 0, 100);
     const parsedMaxAttempts = optionalInteger(draft.maxAttempts, 1);
     const parsedTimeLimit = optionalInteger(draft.timeLimitMinutes, 1);
+    const parsedScoreBands = parseScoreBandRows(draft.scoreBands);
     if (
       parsedPassingScore === undefined ||
       parsedMaxAttempts === undefined ||
@@ -1412,6 +1435,12 @@ function AssessmentEditorForm({
       toast.error("Nilai pengaturan angka belum valid.");
       throw new Error("Assessment numeric settings are invalid");
     }
+    if (parsedScoreBands === undefined) {
+      toast.error(
+        "Nilai minimal batas harus 0 sampai 100%, paling banyak dua angka desimal.",
+      );
+      throw new Error("Assessment score bands are invalid");
+    }
     const value: AssessmentFields = {
       title: normalizedTitle,
       description: draft.description.trim() || null,
@@ -1419,6 +1448,7 @@ function AssessmentEditorForm({
         ? draft.instructions
         : null,
       passingScore: parsedPassingScore,
+      scoreBands: parsedScoreBands,
       maxAttempts: parsedMaxAttempts,
       timeLimitMinutes: parsedTimeLimit,
       shuffleQuestions: draft.shuffleQuestions,
@@ -1528,6 +1558,9 @@ function AssessmentEditorForm({
           toBlockNoteDocument(draft.payload.instructions) as BlockNoteDocument,
         );
         setPassingScore(draft.payload.passingScore?.toString() ?? "");
+        if (draft.payload.scoreBands) {
+          setScoreBandRows(scoreBandRowsOf(draft.payload.scoreBands));
+        }
         setMaxAttempts(draft.payload.maxAttempts?.toString() ?? "");
         setTimeLimitMinutes(draft.payload.timeLimitMinutes?.toString() ?? "");
         setShuffleQuestions(draft.payload.shuffleQuestions);
@@ -1565,6 +1598,7 @@ function AssessmentEditorForm({
         : undefined,
       passingScore:
         optionalInteger(passingScore, 0, 100) ?? current.passingScore,
+      scoreBands: parseScoreBandRows(scoreBandRows) ?? current.scoreBands,
       maxAttempts: optionalInteger(maxAttempts, 1) ?? current.maxAttempts,
       timeLimitMinutes:
         optionalInteger(timeLimitMinutes, 1) ?? current.timeLimitMinutes,
@@ -1576,6 +1610,7 @@ function AssessmentEditorForm({
       instructions,
       maxAttempts,
       passingScore,
+      scoreBands: scoreBandRows,
       shuffleOptions,
       shuffleQuestions,
       timeLimitMinutes,
@@ -1588,6 +1623,7 @@ function AssessmentEditorForm({
     passingScore,
     queueDraftUpdate,
     readOnly,
+    scoreBandRows,
     shuffleOptions,
     shuffleQuestions,
     scheduleSettingsSave,
@@ -1818,7 +1854,8 @@ function AssessmentEditorForm({
                   className="text-muted-foreground hidden text-xs sm:block"
                   role="status"
                 >
-                  {displayQuestions.length} soal · {totalPoints} poin
+                  {displayQuestions.length} soal · {formatScore(totalPoints)}{" "}
+                  poin
                 </p>
                 {displayQuestions.length ? (
                   <Button
@@ -2022,6 +2059,17 @@ function AssessmentEditorForm({
             />
           </div>
 
+          <div className="border-t pt-5">
+            <ScoreBandsField
+              disabled={readOnly}
+              onChange={(rows) => {
+                settingsTouchedRef.current = true;
+                setScoreBandRows(rows);
+              }}
+              rows={scoreBandRows}
+            />
+          </div>
+
           <div className="grid gap-4 border-t pt-5">
             <ToggleField
               disabled={readOnly}
@@ -2102,7 +2150,7 @@ function QuestionNavigator({
           </span>
           <span className="min-w-0 truncate">{item.label}</span>
           <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-            {item.points} poin
+            {formatScore(item.points)} poin
           </span>
         </Button>
       ))}
@@ -2282,7 +2330,7 @@ const QuestionRow = memo(function QuestionRow({
                 {questionTypeLabels[question.type]}
               </Badge>
               <span className="text-muted-foreground text-xs">
-                {question.points} poin
+                {formatScore(question.points)} poin
               </span>
             </span>
             <ChevronDownIcon
@@ -2478,7 +2526,7 @@ function QuestionEditor({
   const [explanation, setExplanation] = useState<BlockNoteDocument>(
     toBlockNoteDocument(question.explanation) as BlockNoteDocument,
   );
-  const [points, setPoints] = useState(String(question.points));
+  const [points, setPoints] = useState(formatScore(question.points));
   const [correctAnswerBusy, setCorrectAnswerBusy] = useState(false);
   // Only autosave after the user actually edits — or when a recovered draft
   // is being synced back to the server. StrictMode double-invokes mount
@@ -2492,13 +2540,15 @@ function QuestionEditor({
     schedule: scheduleQuestionSave,
     status: questionSaveStatus,
   } = useDebouncedAutosave<QuestionDraft>(async (draft) => {
-    const parsedPoints = Number(draft.points);
+    const parsedPoints = parseQuestionPoints(draft.points);
     if (!hasBlockNoteContent(draft.prompt)) {
       toast.error("Pertanyaan wajib diisi.");
       throw new Error("Question prompt is required");
     }
-    if (!Number.isInteger(parsedPoints) || parsedPoints < 1) {
-      toast.error("Poin soal harus berupa bilangan bulat positif.");
+    if (parsedPoints === null) {
+      toast.error(
+        "Poin soal harus lebih dari 0, dengan paling banyak dua angka desimal (misalnya 2,5).",
+      );
       throw new Error("Question points are invalid");
     }
 
@@ -2531,13 +2581,9 @@ function QuestionEditor({
     }
     if (!questionTouchedRef.current || readOnly) return;
 
-    const parsedPoints = Number(points);
     onDraftChange(question.id, {
       explanation: hasBlockNoteContent(explanation) ? explanation : null,
-      points:
-        Number.isInteger(parsedPoints) && parsedPoints > 0
-          ? parsedPoints
-          : question.points,
+      points: parseQuestionPoints(points) ?? question.points,
       prompt,
       type,
     });
@@ -2621,12 +2667,11 @@ function QuestionEditor({
           <Input
             disabled={readOnly}
             id={`question-points-${question.id}`}
-            min={1}
+            inputMode="decimal"
             onChange={(event) => {
               questionTouchedRef.current = true;
               setPoints(event.target.value);
             }}
-            type="number"
             value={points}
           />
         </div>

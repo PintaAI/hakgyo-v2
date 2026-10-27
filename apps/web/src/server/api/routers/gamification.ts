@@ -110,7 +110,8 @@ export const gamificationRouter = createTRPCRouter({
                   AND attempt."maxScore" > 0
                   AND (
                     assessment."passingScore" IS NULL
-                    OR (attempt.score::double precision / attempt."maxScore") * 100
+                    -- + 1e-9 mirrors PERCENT_EPSILON in @hakgyo/shared.
+                    OR (attempt.score::double precision / attempt."maxScore") * 100 + 1e-9
                       >= assessment."passingScore"
                   )
               )

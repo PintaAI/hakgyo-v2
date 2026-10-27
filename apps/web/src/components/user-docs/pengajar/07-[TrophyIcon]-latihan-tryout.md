@@ -4,10 +4,10 @@ Latihan dan Tryout dipakai untuk mengerjakan satu tugas bersama-sama dalam jangk
 
 Bedanya:
 
-| | Latihan | Tryout |
-|---|---|---|
-| Setelah ditutup, murid melihat | Nilai, peringkat, jawaban benar, dan pembahasan | Hanya nilai dan peringkat |
-| Cocok untuk | Kuis rutin, mengulang materi | Simulasi ujian, lomba antarkelas |
+|                                | Latihan                                         | Tryout                           |
+| ------------------------------ | ----------------------------------------------- | -------------------------------- |
+| Setelah ditutup, murid melihat | Nilai, peringkat, jawaban benar, dan pembahasan | Hanya nilai dan peringkat        |
+| Cocok untuk                    | Kuis rutin, mengulang materi                    | Simulasi ujian, lomba antarkelas |
 
 ## Sebelum mulai
 
@@ -36,6 +36,7 @@ Setiap latihan tampil sebagai kartu berisi jenis, status, kelas yang ikut, duras
    - **Acak**: setiap murid mendapat urutan soal yang berbeda, walaupun tugasnya tidak diacak.
 
    Pilihan jawaban di setiap soal tetap mengikuti pengaturan **Acak opsi** di tugasnya.
+
 4. **Peserta:** jika membuat dari halaman kurikulum, pilih **Semua kelas** atau **Pilih kelas**, lalu centang kelas yang ikut. Setiap kelas menampilkan jumlah murid dan rata-rata progres belajarnya.
 5. **Waktu:** pilih salah satu:
    - **Buka sekarang**: murid bisa langsung mengerjakan.
@@ -52,13 +53,13 @@ Setiap latihan tampil sebagai kartu berisi jenis, status, kelas yang ikut, duras
 
 ## Status
 
-| Status | Artinya |
-|---|---|
-| **Draft** | Baru disimpan, murid belum melihatnya |
-| **Terjadwal** | Murid melihat jadwalnya; terbuka otomatis pada waktunya |
-| **Dibuka** | Murid bisa mengerjakan |
-| **Selesai** | Sudah ditutup; nilai dan peringkat sudah final |
-| **Dibatalkan** | Dihentikan sebelum selesai |
+| Status         | Artinya                                                 |
+| -------------- | ------------------------------------------------------- |
+| **Draft**      | Baru disimpan, murid belum melihatnya                   |
+| **Terjadwal**  | Murid melihat jadwalnya; terbuka otomatis pada waktunya |
+| **Dibuka**     | Murid bisa mengerjakan                                  |
+| **Selesai**    | Sudah ditutup; nilai dan peringkat sudah final          |
+| **Dibatalkan** | Dihentikan sebelum selesai                              |
 
 Hakgyo memeriksa jadwal setiap beberapa menit, jadi pembukaan dan penutupan otomatis bisa terlambat sedikit. Saat latihan ditutup, jawaban yang masih dikerjakan langsung dinilai dengan jawaban yang sudah terisi. Murid yang belum mengumpulkan juga mendapat pengingat sekitar 30 menit sebelum waktu tutup.
 
@@ -87,19 +88,19 @@ Draf tidak bisa dijadwalkan ulang. Jika jadwal atau durasi perlu diubah, hapus d
 
 Di daftar peserta, pada murid yang sudah dinilai:
 
-- **Koreksi**: mengganti nilai. Isi **Nilai baru** dan **Alasan perubahan**.
+- **Koreksi**: mengganti nilai. Isi **Nilai baru** (boleh desimal, misalnya `72,5`) dan **Alasan perubahan**.
 - **Batalkan hasil**: tidak menghitung hasil murid itu di peringkat, misalnya karena curang. Isi **Alasan pembatalan hasil**. Murid mendapat notifikasi beserta alasannya.
 
 Semua perubahan nilai dan pembatalan dicatat di riwayat perubahan beserta alasannya.
 
 ## Siapa yang bisa
 
-| Kegiatan | Pengelola kurikulum | Pengajar kelas |
-|---|---|---|
-| Membuat untuk **Semua kelas** | Ya | Tidak |
-| Membuat untuk kelas yang dipegang | Ya | Ya |
-| Membuka, menutup, membatalkan latihan | Ya | Ya, jika semua kelas yang ikut adalah kelas yang ia pegang |
-| Memantau dan menilai peserta kelasnya | Ya | Ya |
+| Kegiatan                              | Pengelola kurikulum | Pengajar kelas                                             |
+| ------------------------------------- | ------------------- | ---------------------------------------------------------- |
+| Membuat untuk **Semua kelas**         | Ya                  | Tidak                                                      |
+| Membuat untuk kelas yang dipegang     | Ya                  | Ya                                                         |
+| Membuka, menutup, membatalkan latihan | Ya                  | Ya, jika semua kelas yang ikut adalah kelas yang ia pegang |
+| Memantau dan menilai peserta kelasnya | Ya                  | Ya                                                         |
 
 **Pengelola kurikulum** dijelaskan di [Peran dan Akses](/docs/pengajar/peran-akses#pengelola-kurikulum). **Pengajar kelas** adalah anggota staf kelas; pada mode akses lanjutan, hanya staf berperan **Instructor** yang bisa.
 

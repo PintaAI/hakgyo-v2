@@ -1,3 +1,4 @@
+import { formatScoreOutOf } from "@hakgyo/shared";
 import { ImageResponse } from "next/og";
 
 import { hasImageSignature } from "~/lib/image-signature";
@@ -604,7 +605,7 @@ export async function renderPublicQuizResult(
     ? Math.round((card.score / card.maxScore) * 100)
     : 0;
   const rank = rankText(card.rank, card.participants);
-  const stats = `${card.score}/${card.maxScore} poin  ·  ${formatSeconds(card.durationSeconds)}`;
+  const stats = `${formatScoreOutOf(card.score, card.maxScore)} poin  ·  ${formatSeconds(card.durationSeconds)}`;
   const challenge = "Berani kalahkan skorku?";
   const [fonts, logo] = await Promise.all([
     loadFonts(

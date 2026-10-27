@@ -1,5 +1,7 @@
 import { TRPCError } from "@trpc/server";
 
+import { reachesPercent, roundScore } from "@hakgyo/shared";
+
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { getMissingWrittenQuestionIds, groupScoresByValue } from "./logic";
 import { withTransactionRetry } from "../db-retry";
@@ -52,7 +54,7 @@ export function isPassingScore(
   return (
     maxScore !== null &&
     maxScore > 0 &&
-    (passingScore === null || (score / maxScore) * 100 >= passingScore)
+    (passingScore === null || reachesPercent(score, maxScore, passingScore))
   );
 }
 
@@ -217,7 +219,7 @@ export async function gradeInProgressAttempt(
   let needsReview = false;
   const autoScores: Array<{ answerId: string; score: number }> = [];
   for (const question of attempt.assessment.questions) {
-    maxScore += question.points;
+    maxScore = roundScore(maxScore + question.points);
     const answer = answers.get(question.id);
     if (question.type === "WRITTEN") {
       needsReview = true;
@@ -235,7 +237,7 @@ export async function gradeInProgressAttempt(
       expected.every((value, index) => value === selected[index])
         ? question.points
         : 0;
-    score += autoScore;
+    score = roundScore(score + autoScore);
     if (answer) autoScores.push({ answerId: answer.id, score: autoScore });
   }
   for (const [autoScore, answerIds] of groupScoresByValue(autoScores)) {

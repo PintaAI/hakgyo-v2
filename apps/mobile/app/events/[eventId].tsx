@@ -1,3 +1,4 @@
+import { formatScoreOutOf } from "@hakgyo/shared";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -240,7 +241,7 @@ export default function AssessmentEventScreen() {
                     <Row
                       key={entry.userId}
                       title={`${entry.rank}. ${entry.name}`}
-                      detail={`${entry.score} / ${entry.maxScore} · ${entry.percentage}%`}
+                      detail={`${formatScoreOutOf(entry.score, entry.maxScore, " / ")} · ${entry.percentage}%`}
                     />
                   ))
                 ) : (

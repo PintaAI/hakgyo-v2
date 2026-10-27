@@ -1,3 +1,4 @@
+import { formatScoreOutOf } from "@hakgyo/shared";
 import type { RouterOutputs } from "@hakgyo/api";
 import { useState } from "react";
 import { Text, View } from "react-native";
@@ -107,6 +108,9 @@ export function AssessmentResultReview({
       ? (answer.manualScore ??
         ("autoScore" in answer ? answer.autoScore : null))
       : null;
+  // Scores arrive as plain numbers; the payload type widens them through the "in" checks.
+  const writtenScoreValue =
+    typeof writtenScore === "number" ? writtenScore : null;
   const feedback = answer && "feedback" in answer ? answer.feedback : null;
   return (
     <View className="gap-4">
@@ -116,8 +120,8 @@ export function AssessmentResultReview({
       <AssessmentQuestion
         detail={
           question.type === "WRITTEN"
-            ? writtenScore !== null
-              ? writtenScore + " / " + question.points + " pt"
+            ? writtenScoreValue !== null
+              ? `${formatScoreOutOf(writtenScoreValue, question.points, " / ")} pt`
               : "Sudah direview"
             : statuses[index] === "correct"
               ? "Benar"

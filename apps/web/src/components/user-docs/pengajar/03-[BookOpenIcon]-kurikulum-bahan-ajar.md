@@ -2,11 +2,11 @@
 
 Kurikulum adalah isi pelajaran yang disusun per bab. Setiap bab berisi **item**, yaitu bahan ajar yang dibaca atau dikerjakan murid. Ada tiga jenis bahan ajar:
 
-| Jenis | Isinya | Kapan dianggap selesai oleh murid |
-|---|---|---|
-| **Materi** | Bacaan pelajaran: teks, gambar, audio, percakapan, atau halaman buku PDF | Murid menekan tombol selesai di akhir materi |
-| **Kosakata** | Kumpulan kata beserta arti, contoh, gambar, dan suara | Murid sudah menjawab setiap kata minimal sekali saat latihan kartu |
-| **Tugas** | Soal pilihan atau jawaban tertulis | Tugas sudah dinilai dan mencapai nilai lulus |
+| Jenis        | Isinya                                                                   | Kapan dianggap selesai oleh murid                                  |
+| ------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| **Materi**   | Bacaan pelajaran: teks, gambar, audio, percakapan, atau halaman buku PDF | Murid menekan tombol selesai di akhir materi                       |
+| **Kosakata** | Kumpulan kata beserta arti, contoh, gambar, dan suara                    | Murid sudah menjawab setiap kata minimal sekali saat latihan kartu |
+| **Tugas**    | Soal pilihan atau jawaban tertulis                                       | Tugas sudah dinilai dan mencapai nilai lulus                       |
 
 Semua bahan ajar disimpan di menu **Bahan ajar**, jadi satu materi bisa dipakai di beberapa kurikulum.
 
@@ -62,12 +62,12 @@ Seret ikon pegangan untuk mengubah urutan item. Item hanya bisa dipindah di dala
 
 Setiap item punya label status:
 
-| Label | Artinya |
-|---|---|
-| **Tayang** | Terlihat oleh murid |
-| **Disembunyikan** | Sengaja disembunyikan |
-| **Tersembunyi · kurikulum belum dipublikasikan** | Akan tayang setelah kurikulum dipublikasikan |
-| **Belum siap** | Ada yang perlu dilengkapi. Klik labelnya untuk melihat alasannya |
+| Label                                            | Artinya                                                          |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| **Tayang**                                       | Terlihat oleh murid                                              |
+| **Disembunyikan**                                | Sengaja disembunyikan                                            |
+| **Tersembunyi · kurikulum belum dipublikasikan** | Akan tayang setelah kurikulum dipublikasikan                     |
+| **Belum siap**                                   | Ada yang perlu dilengkapi. Klik labelnya untuk melihat alasannya |
 
 Gunakan tombol tampilkan di setiap baris untuk menampilkan atau menyembunyikan item. Di ponsel, tombol ini berupa ikon lingkaran: tercentang berarti tampil, dicoret berarti tersembunyi.
 
@@ -160,11 +160,12 @@ Jika sebuah kata atau artinya diubah (termasuk menambah atau menghapus arti), pr
 3. Klik **Tambah soal**, lalu isi:
    - **Pertanyaan**.
    - **Tipe soal**: **Pilihan tunggal** (satu jawaban benar), **Pilihan ganda** (lebih dari satu jawaban benar), atau **Jawaban tertulis** (dinilai pengajar).
-   - **Poin**.
+   - **Poin**. Boleh desimal dengan paling banyak dua angka di belakang koma, misalnya `2,5` untuk simulasi EPS-TOPIK (40 soal × 2,5 = 100).
    - Untuk soal pilihan: isi 2 sampai 4 pilihan jawaban, lalu tandai yang benar.
    - **Penjelasan jawaban (opsional)**, yang ditampilkan ke murid setelah dinilai.
 4. Buka panel **Pengaturan tugas** dengan ikon panel (kotak bergaris) di pojok kanan atas layar, lalu atur:
    - **Nilai lulus (%)**. Kosongkan jika tidak ada batas lulus.
+   - **Batas nilai bernama** (opsional): klik **Tambah batas**, lalu isi nama dan nilai minimal dalam persen, misalnya **Manufaktur** 60% dan **Sektor lain** 45%. Maksimal 5 batas. Setelah dinilai, murid melihat batas mana yang sudah tercapai. Batas ini hanya informasi; yang menentukan tugas selesai tetap **Nilai lulus**.
    - **Maksimal percobaan**. Kosongkan untuk tanpa batas.
    - **Batas waktu (menit)**. Kosongkan untuk tanpa batas.
    - **Acak soal** dan **Acak opsi**. Latihan dan tryout mengikuti **Acak soal** kecuali pengajar memilih urutan lain saat membuatnya. Lihat [Latihan dan Tryout](/docs/pengajar/latihan-tryout#membuat-latihan-atau-tryout).
@@ -202,11 +203,11 @@ Gambar sampul kurikulum bisa diganti dengan mengklik gambar di bagian atas halam
 
 ## Siapa yang bisa
 
-| Kegiatan | Mode sederhana | Mode lanjutan |
-|---|---|---|
-| Membuat kurikulum | Pemilik dan pengajar | Pemilik, admin, dan pengajar yang diizinkan |
-| Menyusun bab dan item | Pemilik dan pengajar | Pemilik, admin, manager, dan editor kurikulum |
-| Publikasi dan pengaturan kurikulum | Pemilik dan pengajar | Pemilik, admin, dan manager kurikulum |
-| Membuat bahan ajar | Semua anggota | Semua anggota; pengajar hanya melihat buatannya sendiri |
+| Kegiatan                           | Mode sederhana       | Mode lanjutan                                           |
+| ---------------------------------- | -------------------- | ------------------------------------------------------- |
+| Membuat kurikulum                  | Pemilik dan pengajar | Pemilik, admin, dan pengajar yang diizinkan             |
+| Menyusun bab dan item              | Pemilik dan pengajar | Pemilik, admin, manager, dan editor kurikulum           |
+| Publikasi dan pengaturan kurikulum | Pemilik dan pengajar | Pemilik, admin, dan manager kurikulum                   |
+| Membuat bahan ajar                 | Semua anggota        | Semua anggota; pengajar hanya melihat buatannya sendiri |
 
 Lihat [Peran dan Akses](/docs/pengajar/peran-akses) untuk penjelasan mode.

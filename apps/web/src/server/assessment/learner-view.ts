@@ -1,3 +1,5 @@
+import { readScoreBands } from "@hakgyo/shared";
+
 import type { Prisma } from "../../../generated/prisma/client";
 import { activeEnrollmentStatuses } from "~/server/authorization";
 import {
@@ -31,6 +33,7 @@ export const learnerAssessmentItemSelect = {
       description: true,
       instructions: true,
       passingScore: true,
+      scoreBands: true,
       maxAttempts: true,
       timeLimitMinutes: true,
       shuffleQuestions: true,
@@ -167,6 +170,7 @@ export function shapeLearnerAssessment(input: {
   }));
   return {
     ...item.assessment,
+    scoreBands: readScoreBands(item.assessment.scoreBands),
     context: {
       label:
         attempt?.assessmentEvent?.type === "TRYOUT"

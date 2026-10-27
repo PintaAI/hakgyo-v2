@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import {
   assessmentContentAssetIds,
   resolveAssessmentEntry,
+  scoreValueSchema,
 } from "@hakgyo/shared";
 import { z } from "zod";
 
@@ -1216,7 +1217,7 @@ export const assessmentEventRouter = createTRPCRouter({
       z.object({
         eventId: id,
         attemptId: id,
-        score: z.number().int().min(0),
+        score: scoreValueSchema,
         reason,
       }),
     )

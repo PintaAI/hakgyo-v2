@@ -1,5 +1,6 @@
 "use client";
 
+import { formatScore, formatScoreOutOf, parseScoreValue } from "@hakgyo/shared";
 import { useEffect, useMemo, useState } from "react";
 import {
   BanIcon,
@@ -312,19 +313,20 @@ export function AssessmentEventManager({
       fields: [
         {
           name: "score",
-          label: `Nilai baru (0–${maxScore})`,
-          type: "number",
-          min: 0,
-          max: maxScore,
-          defaultValue: currentScore.toString(),
+          label: `Nilai baru (0–${formatScore(maxScore)})`,
+          type: "text",
+          inputMode: "decimal",
+          defaultValue: formatScore(currentScore),
         },
         { name: "reason", label: "Alasan perubahan", type: "textarea" },
       ],
     });
     if (!values?.reason) return;
-    const score = Number(values.score);
-    if (!Number.isInteger(score) || score < 0 || score > maxScore) {
-      toast.error("Nilai baru tidak valid.");
+    const score = parseScoreValue(values.score ?? "", maxScore);
+    if (score === null) {
+      toast.error(
+        `Nilai baru harus 0 sampai ${formatScore(maxScore)}, paling banyak dua angka desimal.`,
+      );
       return;
     }
     try {
@@ -877,7 +879,7 @@ function EventResults({
               </p>
               <p className="mt-1 truncate font-semibold">{entry.name}</p>
               <p className="mt-2 text-2xl font-semibold tabular-nums">
-                {entry.score}/{entry.maxScore}
+                {formatScoreOutOf(entry.score, entry.maxScore)}
               </p>
               <p className="text-muted-foreground text-xs">
                 {entry.percentage}% · {formatDuration(entry.completionTimeMs)}
@@ -945,7 +947,7 @@ function EventResults({
                     !invalidated &&
                     attempt.score !== null &&
                     attempt.maxScore
-                      ? `${attempt.score}/${attempt.maxScore}`
+                      ? formatScoreOutOf(attempt.score, attempt.maxScore)
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right">

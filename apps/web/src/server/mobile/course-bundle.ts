@@ -1,4 +1,8 @@
-import { assessmentContentAssetIds, entryMeanings } from "@hakgyo/shared";
+import {
+  assessmentContentAssetIds,
+  entryMeanings,
+  readScoreBands,
+} from "@hakgyo/shared";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import {
   BUNDLE_SCHEMA,
@@ -354,6 +358,7 @@ export function shapeCourseBundle(course: CourseBundleSource) {
           description: assessment.description,
           instructions: assessment.instructions,
           passingScore: assessment.passingScore,
+          scoreBands: readScoreBands(assessment.scoreBands),
           maxAttempts: assessment.maxAttempts,
           timeLimitMinutes: assessment.timeLimitMinutes,
           shuffleQuestions: assessment.shuffleQuestions,

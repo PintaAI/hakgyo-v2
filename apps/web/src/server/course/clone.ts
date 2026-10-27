@@ -4,6 +4,7 @@ import { collectPdfPageRanges } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 
 import { Prisma } from "../../../generated/prisma/client";
+import { toPrismaJsonValue } from "~/server/prisma-json";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import {
   createCourseThumbnailKey,
@@ -375,6 +376,11 @@ export async function cloneStarterCourse(
             editorSchemaVersion: assessment.editorSchemaVersion,
             instructions: remappedOptional(assessment.instructions),
             passingScore: assessment.passingScore,
+            // Bands hold no references, so they copy as they are.
+            scoreBands:
+              assessment.scoreBands === null
+                ? Prisma.DbNull
+                : toPrismaJsonValue(assessment.scoreBands),
             maxAttempts: assessment.maxAttempts,
             timeLimitMinutes: assessment.timeLimitMinutes,
             shuffleQuestions: assessment.shuffleQuestions,

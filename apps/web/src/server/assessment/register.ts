@@ -1,3 +1,4 @@
+import { reachesPercent } from "@hakgyo/shared";
 import { z } from "zod";
 import type { Prisma } from "../../../generated/prisma/client";
 
@@ -197,7 +198,7 @@ export function summarizeAttempt(attempt: Summary, invalidated = false) {
     passed:
       score !== null && maxScore !== null && maxScore > 0
         ? attempt.assessment.passingScore === null ||
-          (score * 100) / maxScore >= attempt.assessment.passingScore
+          reachesPercent(score, maxScore, attempt.assessment.passingScore)
         : null,
   };
 }

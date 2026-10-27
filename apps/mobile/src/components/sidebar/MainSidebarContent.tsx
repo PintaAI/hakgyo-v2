@@ -1,3 +1,4 @@
+import { formatScoreOutOf } from "@hakgyo/shared";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -272,7 +273,7 @@ export function MainSidebarContent({
               const presentation = assessmentAttemptPresentation(attempt);
               const score =
                 attempt.score !== null && attempt.maxScore !== null
-                  ? `${attempt.score}/${attempt.maxScore}`
+                  ? formatScoreOutOf(attempt.score, attempt.maxScore)
                   : presentation.detail;
               return (
                 <SidebarActionRow

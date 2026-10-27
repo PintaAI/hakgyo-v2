@@ -67,7 +67,7 @@ export function buildAssessmentAnswerReviewUpdate(input: {
       .map(
         (review) => Prisma.sql`(
         ${review.answerId}::text,
-        ${review.score}::int,
+        ${review.score}::float8,
         ${review.feedback !== undefined}::boolean,
         ${review.feedback === undefined ? null : JSON.stringify(review.feedback)}::text
       )`,

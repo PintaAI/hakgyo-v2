@@ -1,5 +1,6 @@
 "use client";
 
+import { formatScore, formatScoreOutOf, parseScoreValue } from "@hakgyo/shared";
 import { useState, type FormEvent } from "react";
 import {
   CheckCircle2Icon,
@@ -77,6 +78,16 @@ function contentText(value: unknown): string {
     .join("\n");
 }
 
+/** A reviewed answer's score; ungraded written answers show a dash. */
+function answerScoreLabel(
+  answer: { manualScore: number | null; autoScore: number | null } | undefined,
+  status: string,
+) {
+  const score = answer?.manualScore ?? answer?.autoScore;
+  if (score != null) return formatScore(score);
+  return status === "GRADED" ? "0" : "—";
+}
+
 export function AssessmentReviewDetail({
   attemptId,
   onDone,
@@ -128,7 +139,10 @@ function AttemptDetail({
     attempt.assessmentEvent?.status !== "CANCELLED";
   const [scores, setScores] = useState<Record<string, string>>(() =>
     Object.fromEntries(
-      written.map((a) => [a.id, a.manualScore?.toString() ?? ""]),
+      written.map((a) => [
+        a.id,
+        a.manualScore === null ? "" : formatScore(a.manualScore),
+      ]),
     ),
   );
   const [feedback, setFeedback] = useState<Record<string, string>>(() =>
@@ -138,20 +152,15 @@ function AttemptDetail({
   const [showChoices, setShowChoices] = useState(!canReview);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const answers = written.map((a) => ({
+    const parsed = written.map((a) => ({
       answerId: a.id,
-      score: Number(scores[a.id]),
+      score: parseScoreValue(scores[a.id] ?? "", a.question.points),
       feedback: feedback[a.id]?.trim() ?? "",
     }));
-    if (
-      written.some(
-        (a) =>
-          !scores[a.id]?.trim() ||
-          !Number.isInteger(Number(scores[a.id])) ||
-          Number(scores[a.id]) < 0 ||
-          Number(scores[a.id]) > a.question.points,
-      )
-    ) {
+    const answers = parsed.flatMap(({ score, ...answer }) =>
+      score === null ? [] : [{ ...answer, score }],
+    );
+    if (answers.length !== parsed.length) {
       setError("Isi skor setiap jawaban dalam batas poin.");
       return;
     }
@@ -219,7 +228,7 @@ function AttemptDetail({
         </p>
         {attempt.status === "GRADED" && attempt.score !== null ? (
           <p className="text-lg font-semibold">
-            {attempt.score} / {attempt.maxScore} ·{" "}
+            {formatScoreOutOf(attempt.score, attempt.maxScore ?? 0, " / ")} ·{" "}
             {attempt.passed ? "Lulus" : "Belum lulus"} ·{" "}
             {attempt.grading === "AUTOMATIC"
               ? "Dinilai otomatis"
@@ -260,7 +269,7 @@ function AttemptDetail({
               className="space-y-3 rounded-lg border p-4"
             >
               <p className="text-muted-foreground text-xs">
-                Soal {index + 1} · {question.points} poin ·{" "}
+                Soal {index + 1} · {formatScore(question.points)} poin ·{" "}
                 {question.type === "WRITTEN" ? "Tertulis" : "Otomatis"}
               </p>
               <p className="font-medium whitespace-pre-wrap">
@@ -297,14 +306,11 @@ function AttemptDetail({
                 <div className="grid gap-4 sm:grid-cols-[7rem_1fr]">
                   <div className="space-y-2">
                     <Label htmlFor={`score-${answer.id}`}>
-                      Skor / {question.points}
+                      Skor / {formatScore(question.points)}
                     </Label>
                     <Input
                       id={`score-${answer.id}`}
-                      type="number"
-                      min={0}
-                      max={question.points}
-                      step={1}
+                      inputMode="decimal"
                       required
                       value={scores[answer.id] ?? ""}
                       onChange={(e) =>
@@ -334,11 +340,8 @@ function AttemptDetail({
               ) : (
                 <>
                   <p className="text-sm font-medium">
-                    Skor:{" "}
-                    {answer?.manualScore ??
-                      answer?.autoScore ??
-                      (attempt.status === "GRADED" ? 0 : "—")}{" "}
-                    / {question.points}
+                    Skor: {answerScoreLabel(answer, attempt.status)} /{" "}
+                    {formatScore(question.points)}
                   </p>
                   {answer?.feedback ? (
                     <p className="bg-muted/40 rounded-md p-3 text-sm whitespace-pre-wrap">
@@ -643,8 +646,11 @@ export function ReviewQueue({
                       </Badge>
                       {attempt.score !== null ? (
                         <span className="text-muted-foreground text-xs tabular-nums">
-                          {attempt.score}/{attempt.maxScore} ·{" "}
-                          {attempt.passed ? "Lulus" : "Belum lulus"}
+                          {formatScoreOutOf(
+                            attempt.score,
+                            attempt.maxScore ?? 0,
+                          )}{" "}
+                          · {attempt.passed ? "Lulus" : "Belum lulus"}
                         </span>
                       ) : null}
                     </span>
@@ -706,7 +712,10 @@ export function ReviewQueue({
                     <TableCell className="p-3 tabular-nums">
                       {attempt.score !== null ? (
                         <>
-                          {attempt.score}/{attempt.maxScore}
+                          {formatScoreOutOf(
+                            attempt.score,
+                            attempt.maxScore ?? 0,
+                          )}
                           <p className="text-muted-foreground text-xs">
                             {attempt.passed ? "Lulus" : "Belum lulus"}
                           </p>

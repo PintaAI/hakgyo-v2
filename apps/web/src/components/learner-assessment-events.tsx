@@ -1,5 +1,7 @@
 "use client";
 
+import { formatScoreOutOf } from "@hakgyo/shared";
+
 import {
   ArrowRightIcon,
   Clock3Icon,
@@ -94,7 +96,7 @@ export function LearnerAssessmentEvents({
               : `/learn/assessments/${event.id}`;
           const score =
             attempt?.score !== null && attempt?.maxScore
-              ? `${attempt.score}/${attempt.maxScore}`
+              ? formatScoreOutOf(attempt.score, attempt.maxScore)
               : null;
           return (
             <Card key={event.id}>

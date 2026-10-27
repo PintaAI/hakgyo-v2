@@ -1,5 +1,7 @@
 "use client";
 
+import { formatScoreOutOf } from "@hakgyo/shared";
+
 import { useState } from "react";
 import {
   AlertTriangleIcon,
@@ -765,7 +767,7 @@ function ResultList({
             </div>
             <div className="flex shrink-0 flex-col items-end">
               <span className="text-sm font-semibold tabular-nums">
-                {row.score}/{row.maxScore}
+                {formatScoreOutOf(row.score ?? 0, row.maxScore ?? 0)}
               </span>
               <span className="text-muted-foreground text-xs tabular-nums">
                 {formatDuration(row.durationSeconds ?? 0)}
@@ -814,7 +816,7 @@ function ResultList({
                   {row.contact ?? "—"}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {row.score}/{row.maxScore}
+                  {formatScoreOutOf(row.score ?? 0, row.maxScore ?? 0)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatDuration(row.durationSeconds ?? 0)}

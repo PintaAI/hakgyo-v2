@@ -1,3 +1,4 @@
+import type { ScoreBand } from "@hakgyo/shared";
 import type { inferRouterInputs } from "@trpc/server";
 
 import type { AppRouter } from "~/server/api/root";
@@ -74,6 +75,8 @@ export type AssessmentDraftPayload = {
   editorSchemaVersion: number;
   instructions?: RouterInputs["assessment"]["create"]["instructions"];
   passingScore?: number | null;
+  /** Missing in drafts saved before score bands existed. */
+  scoreBands?: ScoreBand[];
   maxAttempts?: number | null;
   timeLimitMinutes?: number | null;
   shuffleQuestions: boolean;

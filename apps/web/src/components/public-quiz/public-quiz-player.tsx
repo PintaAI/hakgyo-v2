@@ -1,5 +1,7 @@
 "use client";
 
+import { formatScoreOutOf } from "@hakgyo/shared";
+
 import {
   Fragment,
   useCallback,
@@ -796,7 +798,7 @@ function QuizResult({
     },
     {
       label: "Benar",
-      value: `${result.score}/${result.maxScore}`,
+      value: formatScoreOutOf(result.score, result.maxScore),
       detail: "poin",
     },
     {
@@ -1124,7 +1126,8 @@ function LeaderboardRow({
         {mine ? " (kamu)" : ""}
       </span>
       <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-        {entry.score}/{entry.maxScore} · {formatDuration(entry.durationSeconds)}
+        {formatScoreOutOf(entry.score, entry.maxScore)} ·{" "}
+        {formatDuration(entry.durationSeconds)}
       </span>
     </li>
   );

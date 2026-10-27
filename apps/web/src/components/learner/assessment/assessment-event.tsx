@@ -1,5 +1,7 @@
 "use client";
 
+import { formatScoreOutOf } from "@hakgyo/shared";
+
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, LoaderCircleIcon } from "lucide-react";
@@ -204,7 +206,8 @@ export function AssessmentEvent({
                       {entry.rank}. {entry.name}
                     </span>
                     <span className="text-muted-foreground text-xs tabular-nums">
-                      {entry.score} / {entry.maxScore} · {entry.percentage}% ·{" "}
+                      {formatScoreOutOf(entry.score, entry.maxScore, " / ")} ·{" "}
+                      {entry.percentage}% ·{" "}
                       {formatDuration(entry.completionTimeMs)}
                     </span>
                   </span>
