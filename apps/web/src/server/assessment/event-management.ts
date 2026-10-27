@@ -178,6 +178,8 @@ export type CreateAssessmentEventInput = {
   target: { allCohorts: boolean; cohortIds: string[] };
   title: string;
   durationMinutes: number;
+  /** Overrides the assessment's question shuffle; null or omitted follows the assessment. */
+  shuffleQuestions?: boolean | null;
   closesAt: Date;
   start:
     | { mode: "draft" }
@@ -249,6 +251,7 @@ export async function createAssessmentEvent(
       allCohorts: input.target.allCohorts,
       title: input.title,
       durationMinutes: input.durationMinutes,
+      shuffleQuestions: input.shuffleQuestions ?? null,
       closesAt: input.closesAt,
       cohorts: { create: cohortIds.map((cohortId) => ({ cohortId })) },
     },

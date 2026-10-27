@@ -167,7 +167,7 @@ Jika sebuah kata atau artinya diubah (termasuk menambah atau menghapus arti), pr
    - **Nilai lulus (%)**. Kosongkan jika tidak ada batas lulus.
    - **Maksimal percobaan**. Kosongkan untuk tanpa batas.
    - **Batas waktu (menit)**. Kosongkan untuk tanpa batas.
-   - **Acak soal** dan **Acak opsi**.
+   - **Acak soal** dan **Acak opsi**. Latihan dan tryout mengikuti **Acak soal** kecuali pengajar memilih urutan lain saat membuatnya. Lihat [Latihan dan Tryout](/docs/pengajar/latihan-tryout#membuat-latihan-atau-tryout).
 
 > **Perhatian:** di Hakgyo, **Pilihan ganda** berarti soal dengan **lebih dari satu** jawaban benar. Untuk soal pilihan ganda biasa dengan satu jawaban benar, pilih **Pilihan tunggal**. Di layar murid, soal **Pilihan ganda** bertuliskan **Pilih semua jawaban yang benar**.
 

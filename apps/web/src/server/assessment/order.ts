@@ -37,6 +37,18 @@ export function shuffleForAttempt<T extends Identifiable>(
   return result;
 }
 
+/**
+ * Whether an attempt shuffles its questions: an event's own setting wins, and an event without
+ * one (null) follows the assessment, so a Tryout keeps the authored order unless staff chose
+ * otherwise.
+ */
+export function shufflesQuestions(
+  assessmentShuffleQuestions: boolean,
+  eventShuffleQuestions?: boolean | null,
+) {
+  return eventShuffleQuestions ?? assessmentShuffleQuestions;
+}
+
 export function orderAssessmentQuestions<
   T extends Identifiable & { options: readonly Identifiable[] },
 >(

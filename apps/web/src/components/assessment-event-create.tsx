@@ -33,6 +33,7 @@ import { api } from "~/trpc/react";
 
 type EventType = "QUICK_ASSESSMENT" | "TRYOUT";
 type StartMode = "now" | "schedule" | "draft";
+type QuestionOrder = "assessment" | "fixed" | "shuffled";
 
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
@@ -58,6 +59,31 @@ const typeOptions: Array<{
     description: "Skor dan peringkat saja, tanpa pembahasan jawaban.",
   },
 ];
+
+const questionOrderOptions: Array<[QuestionOrder, string]> = [
+  ["assessment", "Ikuti tugas"],
+  ["fixed", "Urutan tetap"],
+  ["shuffled", "Acak"],
+];
+
+/** The event's `shuffleQuestions` override; null follows the assessment. */
+const shuffleQuestionsFor: Record<QuestionOrder, boolean | null> = {
+  assessment: null,
+  fixed: false,
+  shuffled: true,
+};
+
+function questionOrderHint(order: QuestionOrder, assessmentShuffles: boolean) {
+  if (order === "fixed") {
+    return "Semua murid mendapat soal dengan urutan yang sama seperti di tugas.";
+  }
+  if (order === "shuffled") {
+    return "Setiap murid mendapat urutan soal yang berbeda.";
+  }
+  return assessmentShuffles
+    ? "Sesuai pengaturan tugas: soal diacak untuk setiap murid."
+    : "Sesuai pengaturan tugas: soal tampil sesuai urutan di tugas.";
+}
 
 const durationPresets = [30, 60, 90, 120];
 const closePresets = [
@@ -160,6 +186,8 @@ export function CreateAssessmentEventSheet({
   );
   const [courseItemId, setCourseItemId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
+  const [questionOrder, setQuestionOrder] =
+    useState<QuestionOrder>("assessment");
   const [allCohorts, setAllCohorts] = useState(!cohortId);
   const [pickedCohortIds, setPickedCohortIds] = useState<string[]>(
     cohortId ? [cohortId] : [],
@@ -236,6 +264,7 @@ export function CreateAssessmentEventSheet({
   function reset() {
     setCourseItemId(null);
     setTitle("");
+    setQuestionOrder("assessment");
     setStartMode("now");
     setPickedCohortIds(cohortId ? [cohortId] : []);
     setAllCohorts(!cohortId);
@@ -266,6 +295,7 @@ export function CreateAssessmentEventSheet({
         },
         title: eventTitle,
         durationMinutes: duration,
+        shuffleQuestions: shuffleQuestionsFor[questionOrder],
         closesAt: closeDate,
         start:
           startMode === "now"
@@ -378,6 +408,37 @@ export function CreateAssessmentEventSheet({
                   onChange={(event) => setTitle(event.target.value)}
                 />
               </div>
+              {selectedItem?.assessment ? (
+                <div className="space-y-2">
+                  <Label id="event-question-order">Urutan soal</Label>
+                  <div
+                    role="radiogroup"
+                    aria-labelledby="event-question-order"
+                    className="grid grid-cols-3 gap-2"
+                  >
+                    {questionOrderOptions.map(([value, label]) => (
+                      <Button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={questionOrder === value}
+                        variant={
+                          questionOrder === value ? "default" : "outline"
+                        }
+                        onClick={() => setQuestionOrder(value)}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    {questionOrderHint(
+                      questionOrder,
+                      selectedItem.assessment.shuffleQuestions,
+                    )}
+                  </p>
+                </div>
+              ) : null}
             </Section>
 
             <Section step={3} title="Peserta">

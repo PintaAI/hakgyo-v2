@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   orderAssessmentQuestions,
   shuffleForAttempt,
+  shufflesQuestions,
 } from "./order";
 
 const questions = [
@@ -42,6 +43,31 @@ describe("per-attempt assessment order", () => {
     );
     expect(shuffleForAttempt(questions, "seed-a", false, "questions")).toEqual(
       questions,
+    );
+  });
+});
+
+describe("shufflesQuestions", () => {
+  test("an event without its own setting follows the assessment", () => {
+    expect(shufflesQuestions(false, null)).toBe(false);
+    expect(shufflesQuestions(false, undefined)).toBe(false);
+    expect(shufflesQuestions(true, null)).toBe(true);
+  });
+
+  test("an event setting overrides the assessment", () => {
+    expect(shufflesQuestions(false, true)).toBe(true);
+    expect(shufflesQuestions(true, false)).toBe(false);
+  });
+
+  test("a fixed-order event keeps the authored order", () => {
+    const ordered = orderAssessmentQuestions(
+      questions,
+      "seed",
+      shufflesQuestions(false, null),
+      false,
+    );
+    expect(ordered.map((question) => question.id)).toEqual(
+      questions.map((question) => question.id),
     );
   });
 });
