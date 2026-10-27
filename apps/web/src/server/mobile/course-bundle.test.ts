@@ -38,6 +38,7 @@ function assessment(id: string): Assessment {
     instructions: null,
     passingScore: 70,
     scoreBands: null,
+    sections: [],
     maxAttempts: null,
     timeLimitMinutes: null,
     shuffleQuestions: false,

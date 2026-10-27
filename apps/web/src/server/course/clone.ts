@@ -155,6 +155,7 @@ export async function cloneStarterCourse(
           orderBy: { position: "asc" },
           include: { options: { orderBy: { position: "asc" } } },
         },
+        sections: { orderBy: { position: "asc" } },
         assets: { select: { assetId: true } },
       },
     }),
@@ -387,6 +388,24 @@ export async function cloneStarterCourse(
             shuffleOptions: assessment.shuffleOptions,
           })),
         });
+        const sectionIds = new Map<string, string>();
+        const sectionRows = assessments.flatMap((assessment) =>
+          assessment.sections.map((section) => {
+            const id = createId();
+            sectionIds.set(section.id, id);
+            return {
+              ...section,
+              id,
+              assessmentId: idMap.get(assessment.id)!,
+              instructions: remappedOptional(section.instructions),
+              createdAt: undefined,
+              updatedAt: undefined,
+            };
+          }),
+        );
+        await insertInBatches(sectionRows, (data) =>
+          tx.assessmentSection.createMany({ data }),
+        );
         const questionRows = assessments.flatMap((assessment) =>
           assessment.questions.map((question) => ({
             question,
@@ -405,6 +424,9 @@ export async function cloneStarterCourse(
               points: question.points,
               position: question.position,
               tags: question.tags,
+              sectionId: question.sectionId
+                ? (sectionIds.get(question.sectionId) ?? null)
+                : null,
             })),
           }),
         );

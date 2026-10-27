@@ -608,6 +608,7 @@ async function loadAttemptQuestions(
       type: true,
       prompt: true,
       points: true,
+      sectionId: true,
       options: {
         orderBy: { position: "asc" },
         select: { id: true, content: true },
@@ -619,7 +620,16 @@ async function loadAttemptQuestions(
     seed,
     quiz.assessment.shuffleQuestions,
     quiz.assessment.shuffleOptions,
+    { sections: await quizSections(db, quiz.assessmentId) },
   );
+}
+
+/** Sections of a quiz's assessment: shuffling stays inside them, like in attempts. */
+function quizSections(db: DatabaseClient, assessmentId: string) {
+  return db.assessmentSection.findMany({
+    where: { assessmentId },
+    select: { id: true, position: true, shuffleQuestions: true },
+  });
 }
 
 const visitorAttemptSelect = {
@@ -931,6 +941,7 @@ export async function getPublicQuizReview(
       prompt: true,
       explanation: true,
       points: true,
+      sectionId: true,
       options: {
         orderBy: { position: "asc" },
         select: { id: true, content: true, isCorrect: true },
@@ -942,6 +953,7 @@ export async function getPublicQuizReview(
     attempt.id,
     quiz.assessment.shuffleQuestions,
     quiz.assessment.shuffleOptions,
+    { sections: await quizSections(db, quiz.assessmentId) },
   ).map((question) => {
     const selected = answers.get(question.id) ?? [];
     const expected = question.options

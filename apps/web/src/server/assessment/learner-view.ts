@@ -10,6 +10,24 @@ import { shouldRevealAssessmentAnswers } from "~/server/assessment/result-policy
 import { getAssessmentDeadline } from "~/server/assessment/timing";
 import { liveClassCohortWhere } from "~/server/enrollment/cohort-access";
 
+/** Section fields learners need to take a sectioned attempt (step 5 of the EPS-TOPIK plan). */
+export const learnerSectionSelect = {
+  id: true,
+  position: true,
+  title: true,
+  instructions: true,
+  timeLimitSeconds: true,
+  navigation: true,
+  lockAnswers: true,
+  allowEarlyFinish: true,
+  shuffleQuestions: true,
+  audioMaxPlays: true,
+  audioAutoplay: true,
+  audioRepeatGapSeconds: true,
+  pacedAnswerSeconds: true,
+  pacedQuestionSeconds: true,
+} satisfies Prisma.AssessmentSectionSelect;
+
 /**
  * Learner view of a course item's assessment, as returned by `assessment.getForCourseItem`.
  * The select and shaping live here so batched loaders (the mobile dashboard) return exactly the
@@ -38,6 +56,10 @@ export const learnerAssessmentItemSelect = {
       timeLimitMinutes: true,
       shuffleQuestions: true,
       shuffleOptions: true,
+      sections: {
+        orderBy: { position: "asc" },
+        select: learnerSectionSelect,
+      },
       questions: {
         orderBy: { position: "asc" },
         select: {
@@ -48,6 +70,7 @@ export const learnerAssessmentItemSelect = {
           points: true,
           position: true,
           tags: true,
+          sectionId: true,
           options: {
             orderBy: { position: "asc" },
             select: {
@@ -162,6 +185,10 @@ export function shapeLearnerAssessment(input: {
       attempt?.assessmentEvent?.shuffleQuestions,
     ),
     item.assessment.shuffleOptions,
+    {
+      sections: item.assessment.sections,
+      eventShuffleQuestions: attempt?.assessmentEvent?.shuffleQuestions,
+    },
   ).map(({ explanation, options, ...question }) => ({
     ...question,
     explanation: answersRevealed ? explanation : null,
@@ -173,6 +200,12 @@ export function shapeLearnerAssessment(input: {
   return {
     ...item.assessment,
     scoreBands: readScoreBands(item.assessment.scoreBands),
+    // Sections without questions are left out, so learners never see an empty part.
+    sections: item.assessment.sections.filter((section) =>
+      item.assessment.questions.some(
+        (question) => question.sectionId === section.id,
+      ),
+    ),
     context: {
       label:
         attempt?.assessmentEvent?.type === "TRYOUT"

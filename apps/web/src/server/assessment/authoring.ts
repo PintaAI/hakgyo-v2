@@ -14,6 +14,8 @@ import type {
   CreateQuestionInput,
   UpdateOptionInput,
 } from "~/server/assessment/inputs";
+import { normalizeQuestionPositions } from "~/server/assessment/sections";
+import { createId } from "~/server/batch";
 import { requireContentAuthor } from "~/server/authorization";
 import { withTransactionRetry } from "~/server/db-retry";
 import { toPrismaJsonValue } from "~/server/prisma-json";
@@ -144,11 +146,16 @@ export async function duplicateAssessment(
           points: true,
           position: true,
           tags: true,
+          sectionId: true,
           options: {
             orderBy: { position: "asc" },
             select: { content: true, isCorrect: true, position: true },
           },
         },
+      },
+      sections: {
+        orderBy: { position: "asc" },
+        omit: { assessmentId: true, createdAt: true, updatedAt: true },
       },
       assets: { select: { assetId: true } },
     },
@@ -160,7 +167,7 @@ export async function duplicateAssessment(
     organizationId: source.organizationId,
     userId,
   });
-  const { questions, assets, ...fields } = source;
+  const { questions, assets, sections, ...fields } = source;
   const suffix = " (salinan)";
   return db.$transaction(async (tx) => {
     const copy = await tx.assessment.create({
@@ -173,12 +180,28 @@ export async function duplicateAssessment(
       },
       select: { id: true },
     });
+    const sectionIds = new Map(
+      sections.map((section) => [section.id, createId()]),
+    );
+    if (sections.length) {
+      await tx.assessmentSection.createMany({
+        data: sections.map(({ id, ...section }) => ({
+          ...section,
+          id: sectionIds.get(id)!,
+          instructions: nullableJson(section.instructions),
+          assessmentId: copy.id,
+        })),
+      });
+    }
     // Three statements regardless of size: questions (returning ids by
     // position), then every option.
     const createdQuestions = questions.length
       ? await tx.assessmentQuestion.createManyAndReturn({
           data: questions.map(({ options: _options, ...question }) => ({
             ...question,
+            sectionId: question.sectionId
+              ? (sectionIds.get(question.sectionId) ?? null)
+              : null,
             prompt: toPrismaJsonValue(question.prompt),
             explanation: nullableJson(question.explanation),
             assessmentId: copy.id,
@@ -225,13 +248,44 @@ export async function createQuestion(
       await tx.$queryRaw`
         SELECT "id" FROM "Assessment" WHERE "id" = ${input.assessmentId} FOR UPDATE
       `;
-      const position = await tx.assessmentQuestion.aggregate({
-        where: { assessmentId: input.assessmentId },
-        _max: { position: true },
+      const [position, sections] = await Promise.all([
+        tx.assessmentQuestion.aggregate({
+          where: { assessmentId: input.assessmentId },
+          _max: { position: true },
+        }),
+        tx.assessmentSection.findMany({
+          where: { assessmentId: input.assessmentId },
+          orderBy: { position: "asc" },
+          select: { id: true },
+        }),
+      ]);
+      if (
+        input.sectionId &&
+        !sections.some((section) => section.id === input.sectionId)
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Bagian tidak valid.",
+        });
+      }
+      // With sections every question belongs to one: the chosen one, else the last.
+      const sectionId = sections.length
+        ? (input.sectionId ?? sections.at(-1)!.id)
+        : null;
+      const created = await tx.assessmentQuestion.create({
+        data: {
+          ...input,
+          sectionId,
+          position: (position._max.position ?? -1) + 1,
+        },
       });
-      return tx.assessmentQuestion.create({
-        data: { ...input, position: (position._max.position ?? -1) + 1 },
-      });
+      if (sectionId && sectionId !== sections.at(-1)?.id) {
+        await normalizeQuestionPositions(tx, input.assessmentId);
+        return tx.assessmentQuestion.findUniqueOrThrow({
+          where: { id: created.id },
+        });
+      }
+      return created;
     }),
   );
 }

@@ -515,6 +515,7 @@ export function composeLearnerAssessment(
     instructions: assessment.instructions,
     passingScore: assessment.passingScore,
     scoreBands: assessment.scoreBands ?? [],
+    sections: assessment.sections ?? [],
     // The pre-attempt view has no attempt, so no progress log yet.
     progressSeq: 0,
     maxAttempts: assessment.maxAttempts,
@@ -550,6 +551,7 @@ export function composeLearnerAssessment(
         points: question.points,
         position: question.position,
         tags: question.tags ?? [],
+        sectionId: question.sectionId ?? null,
         options: [...question.options]
           .sort((left, right) => left.position - right.position)
           .map((option) => ({

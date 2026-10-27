@@ -49,22 +49,51 @@ export function shufflesQuestions(
   return eventShuffleQuestions ?? assessmentShuffleQuestions;
 }
 
+export type OrderableSection = {
+  id: string;
+  position: number;
+  shuffleQuestions: boolean;
+};
+
+/**
+ * Questions in the order an attempt shows them. Without sections: by position, shuffled when
+ * `shuffleQuestions`. With sections: section by section (in section position order), each
+ * shuffled by the event's override when set, else by its own setting; shuffling never crosses a
+ * section. Options are shuffled per question when `shuffleOptions`. Without a seed (no attempt
+ * yet) the authored order is kept.
+ */
 export function orderAssessmentQuestions<
-  T extends Identifiable & { options: readonly Identifiable[] },
+  T extends Identifiable & {
+    options: readonly Identifiable[];
+    sectionId?: string | null;
+  },
 >(
   questions: readonly T[],
   seed: string | undefined,
   shuffleQuestions: boolean,
   shuffleOptions: boolean,
+  layout: {
+    sections?: readonly OrderableSection[];
+    eventShuffleQuestions?: boolean | null;
+  } = {},
 ): T[] {
-  if (!seed) return questions.map((question) => ({ ...question }));
+  if (!seed) return arrangeBySection(questions, layout.sections);
 
-  const orderedQuestions = shuffleForAttempt(
-    questions,
-    seed,
-    shuffleQuestions,
-    "questions",
+  const sections = [...(layout.sections ?? [])].sort(
+    (left, right) => left.position - right.position,
   );
+  const orderedQuestions = sections.length
+    ? sectionGroups(questions, sections).flatMap(({ section, questions }) =>
+        shuffleForAttempt(
+          questions,
+          seed,
+          section
+            ? (layout.eventShuffleQuestions ?? section.shuffleQuestions)
+            : shuffleQuestions,
+          section ? `questions:${section.id}` : "questions",
+        ),
+      )
+    : shuffleForAttempt(questions, seed, shuffleQuestions, "questions");
   return orderedQuestions.map((question) => ({
     ...question,
     options: shuffleForAttempt(
@@ -74,4 +103,38 @@ export function orderAssessmentQuestions<
       `options:${question.id}`,
     ),
   }));
+}
+
+/** Questions grouped by section in section order; unassigned ones form a last group. */
+function sectionGroups<T extends { sectionId?: string | null }>(
+  questions: readonly T[],
+  sections: readonly OrderableSection[],
+) {
+  const groups = sections.map(
+    (section): { section: OrderableSection | null; questions: T[] } => ({
+      section,
+      questions: questions.filter(
+        (question) => question.sectionId === section.id,
+      ),
+    }),
+  );
+  const known = new Set(sections.map(({ id }) => id));
+  const rest = questions.filter(
+    (question) => !question.sectionId || !known.has(question.sectionId),
+  );
+  if (rest.length) groups.push({ section: null, questions: rest });
+  return groups;
+}
+
+/** The authored order: by section, then by the questions' own order. */
+export function arrangeBySection<
+  T extends { sectionId?: string | null; options: readonly Identifiable[] },
+>(questions: readonly T[], sections: readonly OrderableSection[] = []): T[] {
+  const sorted = [...sections].sort(
+    (left, right) => left.position - right.position,
+  );
+  const arranged = sorted.length
+    ? sectionGroups(questions, sorted).flatMap(({ questions }) => questions)
+    : [...questions];
+  return arranged.map((question) => ({ ...question }));
 }

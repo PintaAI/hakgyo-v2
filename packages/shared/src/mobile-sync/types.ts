@@ -278,6 +278,24 @@ export type BundleAssessmentOption = {
   position: number;
 };
 
+/** A timed part of an assessment with its rules (see `learnerSectionSelect` on the server). */
+export type BundleAssessmentSection = {
+  id: string;
+  position: number;
+  title: string;
+  instructions: JsonValue;
+  timeLimitSeconds: number | null;
+  navigation: "FREE" | "FORWARD_ONLY" | "PACED";
+  lockAnswers: boolean;
+  allowEarlyFinish: boolean;
+  shuffleQuestions: boolean;
+  audioMaxPlays: number | null;
+  audioAutoplay: boolean;
+  audioRepeatGapSeconds: number;
+  pacedAnswerSeconds: number | null;
+  pacedQuestionSeconds: number | null;
+};
+
 export type BundleAssessmentQuestion = {
   id: string;
   type: AssessmentQuestionType;
@@ -286,6 +304,8 @@ export type BundleAssessmentQuestion = {
   position: number;
   /** Missing in bundles cached before tags existed. */
   tags?: string[];
+  /** Missing in bundles cached before sections existed. */
+  sectionId?: string | null;
   options: BundleAssessmentOption[];
 };
 
@@ -298,6 +318,8 @@ export type BundleAssessment = {
   passingScore: number | null;
   /** Missing in bundles cached before score bands existed. */
   scoreBands?: ScoreBand[];
+  /** Sections that have questions; missing in bundles cached before sections existed. */
+  sections?: BundleAssessmentSection[];
   maxAttempts: number | null;
   timeLimitMinutes: number | null;
   shuffleQuestions: boolean;

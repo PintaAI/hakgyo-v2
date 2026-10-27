@@ -359,6 +359,11 @@ export function shapeCourseBundle(course: CourseBundleSource) {
           instructions: assessment.instructions,
           passingScore: assessment.passingScore,
           scoreBands: readScoreBands(assessment.scoreBands),
+          sections: assessment.sections.filter((section) =>
+            assessment.questions.some(
+              (question) => question.sectionId === section.id,
+            ),
+          ),
           maxAttempts: assessment.maxAttempts,
           timeLimitMinutes: assessment.timeLimitMinutes,
           shuffleQuestions: assessment.shuffleQuestions,
@@ -371,6 +376,7 @@ export function shapeCourseBundle(course: CourseBundleSource) {
             points: question.points,
             position: question.position,
             tags: question.tags,
+            sectionId: question.sectionId,
             options: question.options.map((option) => ({
               id: option.id,
               content: option.content,

@@ -64,3 +64,24 @@ export function hasBlockNoteContent(value: unknown): boolean {
     );
   });
 }
+
+/** Plain text → BlockNote paragraphs, one per non-empty line; an empty text is one empty paragraph. */
+export function plainTextToBlockNote(text: string) {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return (lines.length ? lines : [""]).map((line) => ({
+    type: "paragraph" as const,
+    content: line,
+  }));
+}
+
+/** The text of each top-level block on its own line, the reverse of `plainTextToBlockNote`. */
+export function getBlockNotePlainLines(value: unknown) {
+  if (!Array.isArray(value)) return getBlockNotePlainText(value);
+  return value
+    .map((block) => getBlockNotePlainText([block]))
+    .filter(Boolean)
+    .join("\n");
+}
