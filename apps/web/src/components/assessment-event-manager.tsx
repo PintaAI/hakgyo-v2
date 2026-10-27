@@ -775,9 +775,7 @@ function EventResults({
   ) => Promise<void>;
 }) {
   const [reviewId, setReviewId] = useState<string>();
-  const [view, setView] = useState<"participants" | "analysis">(
-    "participants",
-  );
+  const [view, setView] = useState<"participants" | "analysis">("participants");
   // Reviewers who do not manage the event only see their own classes.
   const filterableCohorts = event.targets.filter(
     (target) =>
@@ -969,6 +967,16 @@ function EventResults({
                     >
                       {resultStatus}
                     </Badge>
+                    {attempt?.offlineSyncedAt ||
+                    attempt?.submittedVia === "DEVICE_LATE" ? (
+                      <Badge
+                        variant="secondary"
+                        className="mt-1 ml-1 sm:ml-0"
+                        title="Jawaban dikerjakan tanpa internet dan baru terkirim belakangan. Waktu jawaban dicatat dari perangkat murid."
+                      >
+                        Dari perangkat offline
+                      </Badge>
+                    ) : null}
                   </TableCell>
                   <TableCell className="max-sm:hidden">
                     <Badge variant={invalidated ? "destructive" : "outline"}>

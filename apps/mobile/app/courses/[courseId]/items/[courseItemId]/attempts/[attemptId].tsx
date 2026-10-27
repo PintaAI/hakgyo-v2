@@ -1,4 +1,8 @@
-import { assessmentContentAssetIds, formatScoreOutOf } from "@hakgyo/shared";
+import {
+  assessmentContentAssetIds,
+  formatScoreOutOf,
+  type AttemptLogEntry,
+} from "@hakgyo/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
@@ -37,6 +41,15 @@ import {
 import { api } from "../../../../../../src/lib/trpc";
 import { authClient } from "../../../../../../src/lib/auth-client";
 import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-draft";
+import {
+  appendAttemptLog,
+  compactAttemptLog,
+  correctedNow,
+  readAttemptLog,
+  removeAttemptLog,
+  saveAttemptLog,
+  type AttemptLog,
+} from "../../../../../../src/lib/attempt-log";
 import { assessmentTerminalResult } from "../../../../../../src/lib/assessment-state";
 import { useAppTheme } from "../../../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../../../src/providers/MobileSyncProvider";
@@ -148,7 +161,8 @@ function AssessmentAttemptContent({
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
   const { activeOrganizationId, colors } = useAppTheme();
-  const { completeAssessment } = useMobileSyncActions();
+  const { completeAssessment, queueAssessmentProgress } =
+    useMobileSyncActions();
   const resolveAssetUrl = useApiAssetResolver();
   // Resumable attempts come from the local index / persisted start result;
   // graded ones from the persisted checkpoint result. Online otherwise.
@@ -175,6 +189,12 @@ function AssessmentAttemptContent({
   const draftCompleted = useRef(false);
   const [expiredDeadline, setExpiredDeadline] = useState<number | null>(null);
   const [draftError, setDraftError] = useState<string>();
+  // Progress log (answers and shown questions with corrected device times) and the last answer
+  // logged per question, so only changes become entries.
+  const attemptLog = useRef<AttemptLog | null>(null);
+  const loggedAnswers = useRef<Record<string, Answer>>({});
+  const autoSubmitted = useRef(false);
+  const [logReady, setLogReady] = useState(false);
   const storageKey = session
     ? `hakgyo:attempt:v1:${session.user.id}:${attemptId}`
     : null;
@@ -228,9 +248,28 @@ function AssessmentAttemptContent({
         );
       }
     }
+    if (session && attempt.data.status === "IN_PROGRESS") {
+      const log = readAttemptLog(
+        session.user.id,
+        attemptId,
+        assessment.data.progressSeq,
+      );
+      attemptLog.current = log;
+      const logged = { ...serverSaved };
+      for (const entry of log.entries) {
+        if (entry.kind === "ANSWERED" && entry.questionId) {
+          logged[entry.questionId] = {
+            optionIds: entry.optionIds ?? [],
+            content: entry.content,
+          };
+        }
+      }
+      loggedAnswers.current = logged;
+      setLogReady(true);
+    }
     setAnswers(saved);
     setHasUnsavedAnswers(false);
-  }, [assessment.data, attempt.data, attemptId, storageKey]);
+  }, [assessment.data, attempt.data, attemptId, storageKey, session]);
 
   useEffect(() => {
     if (
@@ -245,6 +284,13 @@ function AssessmentAttemptContent({
     const timer = setTimeout(() => {
       try {
         persistAssessmentDraft(storageKey, answers);
+        if (logAnswerChanges(answers)) {
+          void queueAssessmentProgress({
+            attemptId,
+            entries: attemptLog.current?.entries ?? [],
+            organizationId: activeOrganizationId ?? undefined,
+          }).catch(() => undefined);
+        }
         setDraftError(undefined);
         setHasUnsavedAnswers(false);
       } catch {
@@ -254,7 +300,42 @@ function AssessmentAttemptContent({
       }
     }, 250);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- logging reads refs only
   }, [answers, attemptId, storageKey, hasResult, attempt.data?.status]);
+
+  /** Appends an ANSWERED entry per question changed since it was last logged; true if any. */
+  function logAnswerChanges(current: Record<string, Answer>) {
+    const log = attemptLog.current;
+    if (!log || !session) return false;
+    let next = log;
+    for (const [questionId, answer] of Object.entries(current)) {
+      const logged = loggedAnswers.current[questionId];
+      if (
+        logged &&
+        logged.content === answer.content &&
+        logged.optionIds.length === answer.optionIds.length &&
+        logged.optionIds.every((id, index) => id === answer.optionIds[index])
+      )
+        continue;
+      next = appendAttemptLog(next, "ANSWERED", {
+        questionId,
+        optionIds: answer.optionIds,
+        ...(answer.content === undefined ? {} : { content: answer.content }),
+      });
+      loggedAnswers.current = {
+        ...loggedAnswers.current,
+        [questionId]: answer,
+      };
+    }
+    if (next === log) return false;
+    attemptLog.current = next;
+    try {
+      saveAttemptLog(session.user.id, attemptId, next);
+    } catch {
+      // The draft still holds the answers; the in-memory log is sent with the next operation.
+    }
+    return true;
+  }
 
   latestDraft.current = answers;
   latestDraftKey.current = storageKey;
@@ -312,6 +393,23 @@ function AssessmentAttemptContent({
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [currentIndex]);
 
+  // Which question is on screen, for time per question in the staff analysis. It is sent with the
+  // next progress or completion operation.
+  const shownQuestionId = question?.id;
+  useEffect(() => {
+    const log = attemptLog.current;
+    if (!shownQuestionId || !log || !session || expired || result) return;
+    attemptLog.current = appendAttemptLog(log, "QUESTION_SHOWN", {
+      questionId: shownQuestionId,
+    });
+    try {
+      saveAttemptLog(session.user.id, attemptId, attemptLog.current);
+    } catch {
+      // Losing a view entry only affects the time statistics.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per shown question
+  }, [shownQuestionId, logReady]);
+
   function chooseOption(optionId: string) {
     if (!question || busy || expired || result) return;
     setAnswers((current) => {
@@ -352,9 +450,39 @@ function AssessmentAttemptContent({
     setSubmitError(undefined);
     const payload = buildAnswerPayload(assessment.data.questions, answers);
     try {
+      let entries: AttemptLogEntry[] | undefined;
+      if (attemptLog.current && session) {
+        logAnswerChanges(answers);
+        const log = attemptLog.current;
+        // Submitting at the deadline (the timer ran out) counts as just before it.
+        const now = correctedNow(log).getTime();
+        const submittedAt =
+          deadline === null ? now : Math.min(now, deadline - 1);
+        const submittedLog = {
+          ...log,
+          // Compacted like every append, so the log stays within one write.
+          entries: compactAttemptLog([
+            ...log.entries,
+            {
+              seq: log.nextSeq,
+              kind: "SUBMITTED" as const,
+              clientAt: new Date(submittedAt).toISOString(),
+            },
+          ]),
+          nextSeq: log.nextSeq + 1,
+        };
+        attemptLog.current = submittedLog;
+        entries = submittedLog.entries;
+        try {
+          saveAttemptLog(session.user.id, attemptId, submittedLog);
+        } catch {
+          // The completion operation below carries the log anyway.
+        }
+      }
       const sync = await completeAssessment({
         attemptId,
         answers: payload,
+        entries,
         organizationId: activeOrganizationId ?? undefined,
       });
       if (sync.state === "synced") {
@@ -399,6 +527,8 @@ function AssessmentAttemptContent({
           /* Terminal server status prevents draft reuse. */
         }
       }
+      // The completion operation in the outbox carries the whole log now.
+      if (session) removeAttemptLog(session.user.id, attemptId);
       if (sync.state === "synced") {
         await Promise.all([
           utils.learning.invalidate(undefined, { refetchType: "none" }),
@@ -437,7 +567,7 @@ function AssessmentAttemptContent({
     Alert.alert(
       "Kirim tugas?",
       expired
-        ? "Waktu habis. Hanya jawaban yang sudah tersimpan di server yang dapat dinilai."
+        ? "Waktu habis. Jawaban yang kamu isi sebelum waktu habis akan dinilai."
         : `${answeredCount} dari ${assessment.data?.questions.length ?? 0} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`,
       [
         { text: "Periksa lagi", style: "cancel" },
@@ -463,6 +593,22 @@ function AssessmentAttemptContent({
   const expireAttempt = useCallback(() => {
     if (deadline !== null) setExpiredDeadline(deadline);
   }, [deadline]);
+
+  // Like the web, the attempt is submitted when the time runs out; offline it waits in the outbox
+  // and its answers still count, since they were given before the deadline.
+  useEffect(() => {
+    if (
+      !expired ||
+      autoSubmitted.current ||
+      result ||
+      initialized.current !== attemptId ||
+      attempt.data?.status !== "IN_PROGRESS"
+    )
+      return;
+    autoSubmitted.current = true;
+    void submit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once when the time runs out
+  }, [expired, attempt.data?.status]);
 
   return (
     <>

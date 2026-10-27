@@ -2,6 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { assessmentRouter } from "~/server/api/routers/assessment";
+import {
+  acceptLateDeviceSubmission,
+  inTimeEntryAnswers,
+  recordAttemptProgress,
+} from "~/server/assessment/attempt-progress";
+import { submitAttempt } from "~/server/assessment/learner-attempts";
 import { assessmentEventRouter } from "~/server/api/routers/assessment-event";
 import {
   learningRouter,
@@ -243,6 +249,25 @@ export async function applySyncOperations(
         continue;
       }
 
+      if (operation.kind === "ASSESSMENT_PROGRESS") {
+        try {
+          await recordAttemptProgress(
+            ctx.db,
+            { attemptId: operation.attemptId, entries: operation.entries },
+            ctx.actorUserId,
+            "MOBILE",
+          );
+        } catch (cause) {
+          // A closed event or a finished attempt needs nothing more from
+          // progress: the completion operation carries every entry again.
+          if (!hasTRPCCode(cause, "PRECONDITION_FAILED", "CONFLICT")) {
+            throw cause;
+          }
+        }
+        results.push({ id: operation.id, kind: operation.kind });
+        continue;
+      }
+
       // The attempt status is the durable receipt. If the client lost the
       // previous response, replay acknowledges the already-applied submit.
       const receipt = await ctx.db.assessmentAttempt.findFirst({
@@ -253,6 +278,79 @@ export async function applySyncOperations(
       // Writes below may land even when the operation ultimately fails, so
       // the item counts as affected from here on.
       affectedCourseItemIds.add(receipt.courseItemId);
+      const entries = operation.entries;
+      if (entries?.length) {
+        // Runtime clients: answers count by when they were given (checked
+        // against the deadline), so a submission synced late keeps them.
+        let submitted = false;
+        if (receipt.status === "IN_PROGRESS") {
+          let submittedAt: Date | undefined;
+          try {
+            const progress = await recordAttemptProgress(
+              ctx.db,
+              { attemptId: operation.attemptId, entries },
+              ctx.actorUserId,
+              "MOBILE",
+            );
+            if (!progress.settled) {
+              submittedAt = progress.submittedAt ?? undefined;
+            }
+            await submitAttempt(ctx.db, operation.attemptId, ctx.actorUserId, {
+              submittedAt,
+            });
+            submitted = true;
+          } catch (cause) {
+            if (!hasTRPCCode(cause, "CONFLICT", "PRECONDITION_FAILED")) {
+              throw cause;
+            }
+          }
+        }
+        // Graded at closing without this device's answers: regrade with them
+        // within the grace. Otherwise the attempt is settled (an earlier copy
+        // of this operation, or a teacher's review) and the receipt stands.
+        if (!submitted) {
+          await acceptLateDeviceSubmission(
+            ctx.db,
+            { attemptId: operation.attemptId, entries },
+            ctx.actorUserId,
+          );
+        }
+        const reader = assessmentRouter.createCaller({
+          ...ctx,
+          requestCache: createRequestCache(),
+        });
+        const [current, assessmentDetail] = await Promise.all([
+          reader.getMyAttempt({ attemptId: operation.attemptId }),
+          reader.getForCourseItem({
+            courseItemId: receipt.courseItemId,
+            attemptId: operation.attemptId,
+          }),
+        ]);
+        // Like the legacy path, acknowledge only once every answer the
+        // learner gave in time is stored, so the device keeps answers the
+        // server refused (an implausible clock, a review in the meantime).
+        if (
+          current.status === "IN_PROGRESS" ||
+          !(await storedAnswersMatch(
+            ctx,
+            operation.attemptId,
+            await inTimeEntryAnswers(ctx.db, operation.attemptId, entries),
+          ))
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "The assessment is no longer accepting these offline answers",
+          });
+        }
+        results.push({
+          id: operation.id,
+          kind: operation.kind,
+          assessment: current,
+          assessmentDetail,
+        });
+        continue;
+      }
       // The mobile client sends all answers only with this operation, so
       // it may only be acknowledged once they are stored. Otherwise (e.g.
       // the deadline passed or the event closed and auto-submitted
@@ -403,7 +501,8 @@ export async function startAssessmentForLearner(
       attemptId: started.id,
     }),
   ]);
-  return { attempt, assessmentDetail };
+  // The device measures its clock offset from this right after starting.
+  return { attempt, assessmentDetail, serverNow: new Date() };
 }
 
 export const startEventAssessmentInput = z.object({
@@ -423,7 +522,7 @@ export async function startEventAssessmentForLearner(
     courseItemId: attempt.courseItemId,
     attemptId: attempt.id,
   });
-  return { attempt, assessmentDetail };
+  return { attempt, assessmentDetail, serverNow: new Date() };
 }
 
 export const markSidebarSeenInput = z.object({

@@ -11,3 +11,4 @@ export * from "./vocabulary-meanings";
 export * from "./assessment-score";
 export * from "./assessment-tags";
 export * from "./item-analysis";
+export * from "./assessment-runtime";

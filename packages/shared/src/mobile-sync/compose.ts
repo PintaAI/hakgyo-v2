@@ -515,6 +515,8 @@ export function composeLearnerAssessment(
     instructions: assessment.instructions,
     passingScore: assessment.passingScore,
     scoreBands: assessment.scoreBands ?? [],
+    // The pre-attempt view has no attempt, so no progress log yet.
+    progressSeq: 0,
     maxAttempts: assessment.maxAttempts,
     shuffleQuestions: assessment.shuffleQuestions,
     shuffleOptions: assessment.shuffleOptions,

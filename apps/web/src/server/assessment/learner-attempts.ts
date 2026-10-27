@@ -1,8 +1,11 @@
+import { RUNTIME_VERSION } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 
-import type { PrismaClient } from "../../../generated/prisma/client";
+import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import {
+  eventAcceptsLearnerWrites,
   eventParticipationSelect,
+  requireEventParticipationForSync,
   requireInProgressAttemptAccess,
   requireOpenEventParticipation,
 } from "~/server/assessment/access";
@@ -25,7 +28,11 @@ import {
   recordAssessmentSubmitted,
 } from "~/server/assessment/attempt";
 import { assessmentContext } from "~/server/assessment/register";
-import { isAssessmentExpired } from "~/server/assessment/timing";
+import {
+  eventCloseTime,
+  getAssessmentDeadline,
+  isAssessmentExpired,
+} from "~/server/assessment/timing";
 import { requireCourseItemAccess } from "~/server/authorization";
 import {
   isUniqueConstraintError,
@@ -255,6 +262,7 @@ export async function startAttempt(
             userId,
             attemptNumber: lastAttemptNumber + 1,
             shuffleSeed: crypto.randomUUID(),
+            runtimeVersion: RUNTIME_VERSION,
           },
         });
       }),
@@ -305,6 +313,84 @@ function assertAnswersMatchQuestions(
         message: "Pilih paling banyak satu jawaban.",
       });
     }
+  }
+}
+
+/**
+ * Replaces the stored answers of the given questions (options, written content, `answeredAt`) after
+ * checking them against the assessment. Call it inside the transaction holding the attempt lock.
+ * `answeredAt` is one time for all answers, or a time per question (offline answers).
+ */
+export async function writeAnswers(
+  tx: Prisma.TransactionClient,
+  input: {
+    attemptId: string;
+    organizationId: string;
+    assessmentId: string;
+    answers: SaveAnswersInput["answers"];
+    answeredAt: Date | ReadonlyMap<string, Date>;
+  },
+) {
+  if (!input.answers.length) return;
+  const questionIds = input.answers.map((answer) => answer.questionId);
+  const questions = await tx.assessmentQuestion.findMany({
+    where: { assessmentId: input.assessmentId, id: { in: questionIds } },
+    select: { id: true, type: true, options: { select: { id: true } } },
+  });
+  assertAnswersMatchQuestions(input.answers, questions);
+
+  await tx.assessmentAnswer.createMany({
+    data: input.answers.map((answer) => ({
+      attemptId: input.attemptId,
+      organizationId: input.organizationId,
+      questionId: answer.questionId,
+      ...(answer.content === undefined ? {} : { content: answer.content }),
+    })),
+    skipDuplicates: true,
+  });
+
+  await tx.$executeRaw(
+    buildAssessmentAnswerContentUpdate(input.attemptId, input.answers),
+  );
+
+  const savedAnswers = await tx.assessmentAnswer.findMany({
+    where: { attemptId: input.attemptId, questionId: { in: questionIds } },
+    select: { id: true, questionId: true },
+  });
+  const answerIdsByQuestionId = new Map(
+    savedAnswers.map((answer) => [answer.questionId, answer.id]),
+  );
+  const answeredAt = input.answeredAt;
+  if (answeredAt instanceof Date) {
+    await tx.assessmentAnswer.updateMany({
+      where: { id: { in: savedAnswers.map((answer) => answer.id) } },
+      data: { answeredAt },
+    });
+  } else {
+    for (const answer of savedAnswers) {
+      const at = answeredAt.get(answer.questionId);
+      if (at) {
+        await tx.assessmentAnswer.update({
+          where: { id: answer.id },
+          data: { answeredAt: at },
+        });
+      }
+    }
+  }
+  await tx.assessmentAnswerSelection.deleteMany({
+    where: { answerId: { in: savedAnswers.map((answer) => answer.id) } },
+  });
+  const selections = input.answers.flatMap((answer) => {
+    const answerId = answerIdsByQuestionId.get(answer.questionId);
+    return answerId
+      ? answer.optionIds.map((optionId) => ({ answerId, optionId }))
+      : [];
+  });
+  if (selections.length) {
+    await tx.assessmentAnswerSelection.createMany({
+      data: selections,
+      skipDuplicates: true,
+    });
   }
 }
 
@@ -393,52 +479,13 @@ export async function saveAnswers(
         });
       }
 
-      const questionIds = input.answers.map((answer) => answer.questionId);
-      const questions = await tx.assessmentQuestion.findMany({
-        where: {
-          assessmentId: currentAttempt.assessmentId,
-          id: { in: questionIds },
-        },
-        select: { id: true, type: true, options: { select: { id: true } } },
+      await writeAnswers(tx, {
+        attemptId: input.attemptId,
+        organizationId: attempt.organizationId,
+        assessmentId: currentAttempt.assessmentId,
+        answers: input.answers,
+        answeredAt: new Date(),
       });
-      assertAnswersMatchQuestions(input.answers, questions);
-
-      await tx.assessmentAnswer.createMany({
-        data: input.answers.map((answer) => ({
-          attemptId: input.attemptId,
-          organizationId: attempt.organizationId,
-          questionId: answer.questionId,
-          ...(answer.content === undefined ? {} : { content: answer.content }),
-        })),
-        skipDuplicates: true,
-      });
-
-      await tx.$executeRaw(
-        buildAssessmentAnswerContentUpdate(input.attemptId, input.answers),
-      );
-
-      const savedAnswers = await tx.assessmentAnswer.findMany({
-        where: { attemptId: input.attemptId, questionId: { in: questionIds } },
-        select: { id: true, questionId: true },
-      });
-      const answerIdsByQuestionId = new Map(
-        savedAnswers.map((answer) => [answer.questionId, answer.id]),
-      );
-      await tx.assessmentAnswerSelection.deleteMany({
-        where: { answerId: { in: savedAnswers.map((answer) => answer.id) } },
-      });
-      const selections = input.answers.flatMap((answer) => {
-        const answerId = answerIdsByQuestionId.get(answer.questionId);
-        return answerId
-          ? answer.optionIds.map((optionId) => ({ answerId, optionId }))
-          : [];
-      });
-      if (selections.length) {
-        await tx.assessmentAnswerSelection.createMany({
-          data: selections,
-          skipDuplicates: true,
-        });
-      }
       return { saved: input.answers.length };
     }),
   );
@@ -446,12 +493,16 @@ export async function saveAnswers(
 
 /**
  * Grades the attempt and awards the submission; a passing standalone attempt completes its course
- * item and awards the pass.
+ * item and awards the pass. An offline device passes `submittedAt`, the time the learner submitted;
+ * it is kept between the start and the deadline (and never later than now), so completion times on
+ * the leaderboard are not stretched by a late sync. Event attempts can be submitted while the event
+ * is open and, for offline devices, within the grace after it closed.
  */
 export async function submitAttempt(
   db: PrismaClient,
   attemptId: string,
   userId: string,
+  options: { submittedAt?: Date } = {},
 ) {
   const attempt = await db.assessmentAttempt.findUnique({
     where: { id: attemptId },
@@ -465,7 +516,7 @@ export async function submitAttempt(
   if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
   if (attempt.userId !== userId) throw new TRPCError({ code: "FORBIDDEN" });
   if (attempt.assessmentEvent) {
-    requireOpenEventParticipation(attempt.assessmentEvent);
+    requireEventParticipationForSync(attempt.assessmentEvent, new Date());
   } else {
     await requireCourseItemAccess({
       courseItemId: attempt.courseItemId,
@@ -488,22 +539,35 @@ export async function submitAttempt(
           courseItem: { select: { module: { select: { courseId: true } } } },
         },
       });
+      const now = new Date();
       if (
         full?.userId !== userId ||
         full.status !== "IN_PROGRESS" ||
-        (full.assessmentEvent && full.assessmentEvent.status !== "OPEN")
+        (full.assessmentEvent &&
+          !eventAcceptsLearnerWrites(full.assessmentEvent, now))
       ) {
         throw new TRPCError({ code: "CONFLICT" });
       }
-      const now = new Date();
-      const expired = isAssessmentExpired(
+      const deadline = getAssessmentDeadline(
         full.startedAt,
         full.assessmentEvent?.durationMinutes ??
           full.assessment.timeLimitMinutes,
-        now,
-        full.assessmentEvent?.closesAt,
+        full.assessmentEvent ? eventCloseTime(full.assessmentEvent) : null,
       );
-      const graded = await gradeInProgressAttempt(tx, full, now);
+      const expired = deadline !== null && now >= deadline;
+      const latest = Math.min(now.getTime(), deadline?.getTime() ?? Infinity);
+      const submittedAt = options.submittedAt
+        ? new Date(
+            Math.max(
+              full.startedAt.getTime(),
+              Math.min(options.submittedAt.getTime(), latest),
+            ),
+          )
+        : undefined;
+      const graded = await gradeInProgressAttempt(tx, full, now, {
+        via: "LEARNER",
+        submittedAt,
+      });
       await recordAssessmentSubmitted(tx, full, now);
       if (graded.passed && !full.assessmentEvent) {
         await markCourseItemCompleted(

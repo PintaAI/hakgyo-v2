@@ -463,8 +463,9 @@ AUTO_CLOSE`).
 - An `ASSESSMENT_PROGRESS`/`ASSESSMENT_COMPLETED` that arrives later for such an attempt is
   accepted if its entries are valid under section 5.3 **and** it arrives within
   `OFFLINE_SUBMISSION_GRACE` (24 h, approved) of the close. The server replays the entries, regrades,
-  sets `submittedVia = DEVICE_LATE` and writes an `AssessmentEventAudit` entry (new action
-  `LATE_DEVICE_SUBMISSION`). Attempts already adjusted or invalidated by staff are not regraded.
+  sets `submittedVia = DEVICE_LATE`. (Implemented without an `AssessmentEventAudit` entry: audit rows
+  need a staff actor, and the learner's own sync has none. `submittedVia` and `offlineSyncedAt` on the
+  attempt record it instead, and staff see "Dari perangkat offline".) Attempts already adjusted or invalidated by staff are not regraded.
 - Chapter attempts accept valid late entries without a grace limit (no leaderboard depends on them).
 - After the grace the operation fails with `PRECONDITION_FAILED` as today, and the app keeps the
   answers in its dead-letter list.

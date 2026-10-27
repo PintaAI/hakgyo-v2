@@ -12,6 +12,16 @@ export function getAssessmentDeadline(
   return attemptDeadline < eventClosesAt ? attemptDeadline : eventClosesAt;
 }
 
+/** When an event stops taking answers: its planned close, or an earlier manual close. */
+export function eventCloseTime(event: {
+  closesAt: Date | null;
+  closedAt?: Date | null;
+}) {
+  if (!event.closedAt) return event.closesAt;
+  if (!event.closesAt) return event.closedAt;
+  return event.closedAt < event.closesAt ? event.closedAt : event.closesAt;
+}
+
 /** The deadline is exclusive: a save at the exact deadline is late. */
 export function isAssessmentExpired(
   startedAt: Date,

@@ -16,6 +16,10 @@ import {
   updateOption,
 } from "~/server/assessment/authoring";
 import {
+  recordAttemptProgress,
+  recordProgressInput,
+} from "~/server/assessment/attempt-progress";
+import {
   assessmentFields,
   attemptsNeedingReviewInput,
   id,
@@ -261,6 +265,15 @@ export const assessmentRouter = createTRPCRouter({
   saveAnswers: protectedProcedure
     .input(saveAnswersInput)
     .mutation(({ ctx, input }) => saveAnswers(ctx.db, input, ctx.actorUserId)),
+  /**
+   * Progress of an in-progress attempt from the web attempt screen (answers, shown questions),
+   * checked by the shared time rules. Replaces `saveAnswers` for current clients.
+   */
+  recordProgress: protectedProcedure
+    .input(recordProgressInput)
+    .mutation(({ ctx, input }) =>
+      recordAttemptProgress(ctx.db, input, ctx.actorUserId, "WEB"),
+    ),
   submitAttempt: protectedProcedure
     .input(z.object({ attemptId: id }))
     .mutation(({ ctx, input }) =>

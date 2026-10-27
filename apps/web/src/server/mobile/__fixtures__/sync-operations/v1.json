@@ -147,6 +147,73 @@
         "answers": [],
         "v": 1
       }
+    },
+    {
+      "name": "assessment completed with its progress log (runtime version 1)",
+      "operation": {
+        "id": "assessment:cmf3kd9a5000hlb08r2h5f7xj",
+        "kind": "ASSESSMENT_COMPLETED",
+        "attemptId": "cmf3kd9a5000hlb08r2h5f7xj",
+        "answers": [
+          {
+            "questionId": "cmf3k8a2l0004lb08x1p7d3fh",
+            "optionIds": ["cmf3k8b4m0005lb08c2q8e4gi"]
+          }
+        ],
+        "entries": [
+          {
+            "seq": 1,
+            "kind": "QUESTION_SHOWN",
+            "questionId": "cmf3k8a2l0004lb08x1p7d3fh",
+            "clientAt": "2026-10-27T10:00:05.000Z"
+          },
+          {
+            "seq": 2,
+            "kind": "ANSWERED",
+            "questionId": "cmf3k8a2l0004lb08x1p7d3fh",
+            "optionIds": ["cmf3k8b4m0005lb08c2q8e4gi"],
+            "clientAt": "2026-10-27T10:00:40.000Z"
+          },
+          {
+            "seq": 3,
+            "kind": "ANSWERED",
+            "questionId": "cmf3k8f2r0009lb08g6u2i8km",
+            "optionIds": [],
+            "content": "저는 학생이에요.",
+            "clientAt": "2026-10-27T10:02:10.000Z"
+          },
+          {
+            "seq": 4,
+            "kind": "SUBMITTED",
+            "clientAt": "2026-10-27T10:03:00.000Z"
+          }
+        ],
+        "v": 1
+      }
+    },
+    {
+      "name": "assessment progress while the attempt is taken",
+      "operation": {
+        "id": "assessment-progress:cmf3kd9a5000hlb08r2h5f7xj",
+        "kind": "ASSESSMENT_PROGRESS",
+        "attemptId": "cmf3kd9a5000hlb08r2h5f7xj",
+        "entries": [
+          {
+            "seq": 1,
+            "kind": "QUESTION_SHOWN",
+            "questionId": "cmf3k8a2l0004lb08x1p7d3fh",
+            "clientAt": "2026-10-27T10:00:05.000Z"
+          },
+          {
+            "seq": 2,
+            "kind": "ANSWERED",
+            "questionId": "cmf3k8a2l0004lb08x1p7d3fh",
+            "optionIds": ["cmf3k8b4m0005lb08c2q8e4gi"],
+            "clientAt": "2026-10-27T10:00:40.000+07:00"
+          }
+        ],
+        "v": 1
+      }
     }
   ]
 }
