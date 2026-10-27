@@ -408,8 +408,13 @@ export function AssessmentAttempt({
   // Log which question is on screen, for time per question in the staff analysis. It rides along
   // with the next autosave instead of costing a request of its own.
   const shownQuestionId = question?.id;
+  const lastShownQuestionId = useRef<string | null>(null);
   const logQuestionShown = useEffectEvent((questionId: string) => {
-    if (isFinished || expired) return;
+    // Effects can run twice for one view (React strict mode); log a question once per visit.
+    if (isFinished || expired || lastShownQuestionId.current === questionId) {
+      return;
+    }
+    lastShownQuestionId.current = questionId;
     pushEntry("QUESTION_SHOWN", { questionId });
   });
   useEffect(() => {
