@@ -10,6 +10,7 @@ import {
 } from "../../../../../../src/components/assessment-media";
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
 import { ScoreBandResults } from "../../../../../../src/components/score-band-results";
+import { TagResults } from "../../../../../../src/components/tag-results";
 import {
   AssessmentOption,
   AssessmentQuestion,
@@ -519,6 +520,13 @@ function AssessmentAttemptContent({
               </Text>
             )}
           </StudyGlass>
+
+          {result.status === "GRADED" && assessment.data && attempt.data ? (
+            <TagResults
+              answers={attempt.data.answers}
+              questions={assessment.data.questions}
+            />
+          ) : null}
 
           <AssessmentResultReview
             assessment={assessment.data}

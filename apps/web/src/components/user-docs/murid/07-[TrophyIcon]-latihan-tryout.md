@@ -46,6 +46,8 @@ Setelah mengirim, buka lagi halaman latihan untuk melihat nilai dan papan pering
 
 Pada **Latihan**, jawaban benar dan pembahasan baru muncul setelah latihan ditutup. Pada **Tryout**, kunci jawaban dan pembahasan tidak ditampilkan.
 
+Jika pengajar memberi label pada soal, hasilmu juga menampilkan **Hasil per tipe soal**, misalnya "R2 · Rambu K3: 1 dari 2 benar" atau "K3 (keselamatan kerja): 3 dari 5 benar". Bagian ini juga muncul pada **Tryout**, karena hanya menunjukkan jumlah benar, bukan kunci jawabannya. Gunakan untuk melihat tipe soal mana yang perlu kamu latih lagi.
+
 ## Hal yang perlu diketahui
 
 - Nilai latihan dan tryout tidak menyelesaikan tugas di kurikulummu. Tugas bab tetap harus dikerjakan sendiri.

@@ -47,6 +47,7 @@ export const learnerAssessmentItemSelect = {
           explanation: true,
           points: true,
           position: true,
+          tags: true,
           options: {
             orderBy: { position: "asc" },
             select: {

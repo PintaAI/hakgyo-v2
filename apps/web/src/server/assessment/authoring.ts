@@ -143,6 +143,7 @@ export async function duplicateAssessment(
           explanation: true,
           points: true,
           position: true,
+          tags: true,
           options: {
             orderBy: { position: "asc" },
             select: { content: true, isCorrect: true, position: true },
@@ -381,5 +382,32 @@ export async function attachAsset(
     where: { assessmentId_assetId: link },
     create: { ...link, organizationId: assessment.organizationId },
     update: {},
+  });
+}
+
+/**
+ * Questions of an assessment with their answer key, for staff reports (item analysis, exports).
+ * Every staff-facing read of keys outside the editor goes through here, so content that hides
+ * its keys (generated packages, `docs/eps-question-generator.md` section 3) can strip them in one
+ * place. The caller must already have authorized the staff member.
+ */
+export async function loadAssessmentKeyForStaff(
+  db: DatabaseClient,
+  assessmentId: string,
+) {
+  return db.assessmentQuestion.findMany({
+    where: { assessmentId },
+    orderBy: { position: "asc" },
+    select: {
+      id: true,
+      type: true,
+      prompt: true,
+      points: true,
+      tags: true,
+      options: {
+        orderBy: { position: "asc" },
+        select: { id: true, content: true, isCorrect: true },
+      },
+    },
   });
 }

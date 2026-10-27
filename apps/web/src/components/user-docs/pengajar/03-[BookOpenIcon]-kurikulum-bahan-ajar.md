@@ -162,6 +162,13 @@ Jika sebuah kata atau artinya diubah (termasuk menambah atau menghapus arti), pr
    - **Tipe soal**: **Pilihan tunggal** (satu jawaban benar), **Pilihan ganda** (lebih dari satu jawaban benar), atau **Jawaban tertulis** (dinilai pengajar).
    - **Poin**. Boleh desimal dengan paling banyak dua angka di belakang koma, misalnya `2,5` untuk simulasi EPS-TOPIK (40 soal × 2,5 = 100).
    - Untuk soal pilihan: isi 2 sampai 4 pilihan jawaban, lalu tandai yang benar.
+   - **Label soal (opsional)**: ketik label lalu tekan Enter, atau pilih dari saran. Label dipakai untuk laporan per tipe soal di hasil murid dan di **Analisis soal** latihan atau tryout. Untuk simulasi EPS-TOPIK tersedia label siap pakai:
+     - **Tipe soal**: `eps:R1` sampai `eps:R13` untuk membaca dan `eps:L1` sampai `eps:L12` untuk mendengar, misalnya `eps:R2` untuk rambu K3.
+     - **Topik**: `topik:k3`, `topik:alat-kerja`, `topik:lembaga`, `topik:kehidupan`, `topik:budaya`, `topik:angka`, `topik:benda`, `topik:tindakan-kerja`.
+     - **Tingkat kesulitan**: `level:mudah`, `level:sedang`, `level:sulit`.
+     - **Bab buku**: `bab:` diikuti nomor bab, misalnya `bab:12`.
+
+     Label lain bebas, misalnya `partikel` atau `angka tanggal`. Maksimal 12 label per soal.
    - **Penjelasan jawaban (opsional)**, yang ditampilkan ke murid setelah dinilai.
 4. Buka panel **Pengaturan tugas** dengan ikon panel (kotak bergaris) di pojok kanan atas layar, lalu atur:
    - **Nilai lulus (%)**. Kosongkan jika tidak ada batas lulus.

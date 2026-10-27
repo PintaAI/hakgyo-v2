@@ -6,6 +6,7 @@ type EventSummary = EventOutputs["listManageable"]["items"][number];
 type TargetCohorts = EventOutputs["listTargetCohorts"];
 type AssessmentItems = EventOutputs["listAssessmentItems"];
 type Manageable = EventOutputs["getManageable"];
+type ItemAnalysis = EventOutputs["itemAnalysis"];
 
 export const previewCourseId = "contoh-kurikulum";
 
@@ -297,6 +298,70 @@ function findEvent(state: State, eventId: string) {
   return event;
 }
 
+/** Original sample questions (not HRDK items) with EPS-TOPIK tags. */
+const itemAnalysis: ItemAnalysis = {
+  attemptCount: 24,
+  questions: [
+    {
+      id: "soal-1",
+      number: 1,
+      type: "SINGLE_CHOICE",
+      prompt: "다음 그림을 보고 맞는 단어를 고르십시오.",
+      points: 2.5,
+      tags: ["eps:R1", "topik:benda", "level:mudah"],
+      correctRate: 0.958,
+      discrimination: 0.125,
+      unansweredRate: 0,
+      averageTimeMs: null,
+      flags: ["too-easy", "low-discrimination"],
+      options: [
+        { id: "s1-a", text: "가위", isCorrect: true, rate: 0.958, weak: false },
+        { id: "s1-b", text: "안경", isCorrect: false, rate: 0.042, weak: true },
+        { id: "s1-c", text: "가방", isCorrect: false, rate: 0, weak: true },
+        { id: "s1-d", text: "의자", isCorrect: false, rate: 0, weak: true },
+      ],
+    },
+    {
+      id: "soal-2",
+      number: 2,
+      type: "SINGLE_CHOICE",
+      prompt: "기계를 청소할 때는 먼저 전원을 ______ 장갑을 끼십시오.",
+      points: 2.5,
+      tags: ["eps:R8", "topik:k3", "level:sedang"],
+      correctRate: 0.583,
+      discrimination: 0.571,
+      unansweredRate: 0.042,
+      averageTimeMs: null,
+      flags: [],
+      options: [
+        { id: "s2-a", text: "끄고", isCorrect: true, rate: 0.583, weak: false },
+        { id: "s2-b", text: "끄면", isCorrect: false, rate: 0.208, weak: false },
+        { id: "s2-c", text: "끄려고", isCorrect: false, rate: 0.125, weak: false },
+        { id: "s2-d", text: "끄느라고", isCorrect: false, rate: 0.042, weak: true },
+      ],
+    },
+  ],
+  tags: [
+    {
+      group: "eps",
+      label: "Tipe soal",
+      rows: [
+        { tag: "eps:R1", label: "R1 · Gambar ke kata atau kalimat", correct: 23, total: 24, rate: 0.96 },
+        { tag: "eps:R8", label: "R8 · Kalimat rumpang", correct: 14, total: 24, rate: 0.58 },
+      ],
+    },
+    {
+      group: "topik",
+      label: "Topik",
+      rows: [
+        { tag: "topik:benda", label: "Benda sehari-hari", correct: 23, total: 24, rate: 0.96 },
+        { tag: "topik:k3", label: "K3 (keselamatan kerja)", correct: 14, total: 24, rate: 0.58 },
+      ],
+    },
+  ],
+  learners: [],
+};
+
 export const latihanTryoutBackend: MockBackend<State> = {
   createState,
   queries: {
@@ -308,6 +373,7 @@ export const latihanTryoutBackend: MockBackend<State> = {
     "assessmentEvent.listTargetCohorts": () => targetCohorts,
     "assessmentEvent.listAssessmentItems": () => assessmentItems,
     "assessmentEvent.getManageable": manageable,
+    "assessmentEvent.itemAnalysis": () => itemAnalysis,
   },
   mutations: {
     "assessmentEvent.create": (

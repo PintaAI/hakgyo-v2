@@ -58,7 +58,9 @@ test("RELEASE_NOTES is newest first with unique ids", () => {
     const newer = RELEASE_NOTES[index - 1]!;
     const older = RELEASE_NOTES[index]!;
     expect(newer.id > older.id).toBe(true);
-    expect(compareVersions(newer.version, older.version)).toBeGreaterThanOrEqual(0);
+    expect(
+      compareVersions(newer.version, older.version),
+    ).toBeGreaterThanOrEqual(0);
   }
   for (const entry of RELEASE_NOTES) {
     expect(entry.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);

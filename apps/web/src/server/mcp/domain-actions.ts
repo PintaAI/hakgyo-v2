@@ -563,7 +563,7 @@ export const mcpDomainTools = {
       name: "add_assessment_question",
       title: "Add Tugas question",
       description:
-        "Add a SINGLE_CHOICE, MULTIPLE_CHOICE or WRITTEN question to a Tugas. Points may have two decimals (EPS-TOPIK uses 2.5). Add choices with add_question_option.",
+        "Add a SINGLE_CHOICE, MULTIPLE_CHOICE or WRITTEN question to a Tugas. Points may have two decimals (EPS-TOPIK uses 2.5). Tags label the question for per-type reports: eps:R1–R13 (reading) and eps:L1–L12 (listening) types, topik:<slug> (k3, alat-kerja, lembaga, kehidupan, budaya, angka, benda, tindakan-kerja), level:mudah|sedang|sulit and bab:<n>. Add choices with add_question_option.",
       effect: "add",
     },
     {
@@ -571,7 +571,7 @@ export const mcpDomainTools = {
       name: "update_assessment_question",
       title: "Update Tugas question",
       description:
-        "Change a Tugas question's type, prompt, explanation or points. Only the fields you send are changed.",
+        "Change a Tugas question's type, prompt, explanation, points or tags. Only the fields you send are changed.",
       effect: "change",
     },
     {

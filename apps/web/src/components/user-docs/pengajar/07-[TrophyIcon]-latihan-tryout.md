@@ -72,6 +72,16 @@ Hakgyo memeriksa jadwal setiap beberapa menit, jadi pembukaan dan penutupan otom
 
 Peringkat memakai hasil terbaik tiap murid. Jika nilainya sama, murid yang lebih cepat selesai berada di atas.
 
+### Analisis soal
+
+Di atas daftar peserta, pilih **Analisis soal** untuk melihat hasil seluruh peserta per soal. Hakgyo memakai hasil terbaik setiap murid, dan pengajar kelas hanya melihat murid di kelas yang ia pegang.
+
+- **Ketepatan per label**: persentase jawaban benar untuk setiap label soal, misalnya "R2 · Rambu K3: 45%". Angka di bawah 50% ditandai merah. Bagian ini muncul jika soal diberi label; lihat [Kurikulum dan Bahan Ajar](/docs/pengajar/kurikulum-bahan-ajar).
+- **Analisis per soal**: untuk setiap soal tampil persentase **Benar**, **Daya beda**, **Tidak dijawab**, dan berapa persen murid memilih setiap opsi. Opsi yang benar ditandai **kunci**.
+- **Daya beda** membandingkan 27% murid dengan nilai tertinggi dan 27% terendah. Semakin tinggi, semakin baik soal membedakan murid yang paham dari yang belum. Di bawah 0,2 berarti soal kurang membedakan.
+- Mulai 10 peserta, soal yang perlu diperiksa diberi tanda: **Terlalu sulit** (kurang dari 30% benar), **Terlalu mudah** (lebih dari 90% benar), **Daya beda rendah**, dan **Pengecoh lemah** (ada opsi salah yang dipilih kurang dari 5% murid).
+- Klik **Unduh CSV** untuk menyimpan nilai setiap murid beserta jumlah benar per label, misalnya untuk laporan kesiapan.
+
 Jawaban tertulis harus dinilai pengajar sebelum masuk peringkat. Anda bisa menilainya langsung dari daftar peserta ini atau dari menu **Review**. Lihat [Review dan Penilaian](/docs/pengajar/review-penilaian).
 
 ## Tindakan pada kartu latihan

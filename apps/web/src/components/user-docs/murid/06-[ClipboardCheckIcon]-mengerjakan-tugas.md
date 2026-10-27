@@ -41,6 +41,8 @@ Jika waktu habis saat halaman masih terbuka di situs web, jawabanmu dikirim otom
 
 Jika pengajar menentukan batas nilai bernama, misalnya **Manufaktur** 60% dan **Sektor lain** 45% pada simulasi EPS-TOPIK, di bawah nilaimu tertulis batas mana yang sudah kamu lewati (**Lolos batas**) dan mana yang belum (**Belum lolos batas**).
 
+Jika soalnya diberi label oleh pengajar, bagian **Hasil per tipe soal** menunjukkan berapa soal yang benar untuk setiap tipe, topik, atau tingkat kesulitan.
+
 Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**, **Salah**, atau **Tidak dijawab**, jawaban yang benar, pembahasan, dan masukan dari pengajar.
 
 ## Lulus dan mengulang
