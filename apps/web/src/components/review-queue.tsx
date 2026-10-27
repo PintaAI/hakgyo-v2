@@ -152,16 +152,15 @@ function AttemptDetail({
   const [showChoices, setShowChoices] = useState(!canReview);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const answers = written.map((a) => ({
+    const parsed = written.map((a) => ({
       answerId: a.id,
-      score: parseScoreValue(scores[a.id] ?? "", a.question.points) ?? 0,
+      score: parseScoreValue(scores[a.id] ?? "", a.question.points),
       feedback: feedback[a.id]?.trim() ?? "",
     }));
-    if (
-      written.some(
-        (a) => parseScoreValue(scores[a.id] ?? "", a.question.points) === null,
-      )
-    ) {
+    const answers = parsed.flatMap(({ score, ...answer }) =>
+      score === null ? [] : [{ ...answer, score }],
+    );
+    if (answers.length !== parsed.length) {
       setError("Isi skor setiap jawaban dalam batas poin.");
       return;
     }

@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
-import { roundScore, scorePercent } from "@hakgyo/shared";
+import { reachesPercent, roundScore } from "@hakgyo/shared";
 
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { getMissingWrittenQuestionIds, groupScoresByValue } from "./logic";
@@ -54,9 +54,7 @@ export function isPassingScore(
   return (
     maxScore !== null &&
     maxScore > 0 &&
-    // The epsilon absorbs float noise in fractional scores (2.5 × 24 reaches 60 %).
-    (passingScore === null ||
-      scorePercent(score, maxScore) + 1e-9 >= passingScore)
+    (passingScore === null || reachesPercent(score, maxScore, passingScore))
   );
 }
 

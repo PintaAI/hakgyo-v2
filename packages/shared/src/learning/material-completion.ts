@@ -1,3 +1,5 @@
+import { reachesPercent } from "../assessment-score";
+
 export type AssessmentRequirementEvidence = {
   status: string;
   score: number | null;
@@ -14,12 +16,7 @@ export function passesAssessmentRequirement(
   return attempts.some((attempt) => {
     if (attempt.status !== "GRADED") return false;
     if (requiredScore === null) return true;
-    return (
-      attempt.score !== null &&
-      attempt.maxScore !== null &&
-      attempt.maxScore > 0 &&
-      (attempt.score / attempt.maxScore) * 100 >= requiredScore
-    );
+    return reachesPercent(attempt.score, attempt.maxScore, requiredScore);
   });
 }
 

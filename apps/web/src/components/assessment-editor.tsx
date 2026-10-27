@@ -1437,7 +1437,7 @@ function AssessmentEditorForm({
     }
     if (parsedScoreBands === undefined) {
       toast.error(
-        "Setiap batas nilai perlu nama dan nilai minimal 0 sampai 100%.",
+        "Nilai minimal batas harus 0 sampai 100%, paling banyak dua angka desimal.",
       );
       throw new Error("Assessment score bands are invalid");
     }

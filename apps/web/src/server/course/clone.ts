@@ -4,6 +4,7 @@ import { collectPdfPageRanges } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 
 import { Prisma } from "../../../generated/prisma/client";
+import { toPrismaJsonValue } from "~/server/prisma-json";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import {
   createCourseThumbnailKey,
@@ -379,7 +380,7 @@ export async function cloneStarterCourse(
             scoreBands:
               assessment.scoreBands === null
                 ? Prisma.DbNull
-                : (assessment.scoreBands as Prisma.InputJsonValue),
+                : toPrismaJsonValue(assessment.scoreBands),
             maxAttempts: assessment.maxAttempts,
             timeLimitMinutes: assessment.timeLimitMinutes,
             shuffleQuestions: assessment.shuffleQuestions,

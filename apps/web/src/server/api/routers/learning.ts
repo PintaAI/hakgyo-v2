@@ -1,3 +1,4 @@
+import { reachesPercent } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -647,8 +648,11 @@ export const learningRouter = createTRPCRouter({
                     attempt.maxScore !== null &&
                     attempt.maxScore > 0 &&
                     (item.assessment?.passingScore == null ||
-                      (attempt.score / attempt.maxScore) * 100 >=
-                        (item.assessment?.passingScore ?? 0)),
+                      reachesPercent(
+                        attempt.score,
+                        attempt.maxScore,
+                        item.assessment.passingScore,
+                      )),
                 ) ?? attempts[0];
               milestones.push({
                 courseItemId: item.id,

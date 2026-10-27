@@ -142,7 +142,7 @@ export async function getPerformanceAnalytics(
       SELECT
         (SELECT COUNT(*) FROM current_best)::int AS "assessed",
         (SELECT AVG(b."score") FROM current_best b)::float8 AS "averageScore",
-        (SELECT AVG(CASE WHEN b."score" * 100 >= s."passingScore" THEN 1 ELSE 0 END)
+        (SELECT AVG(CASE WHEN b."score" * 100 + 1e-9 >= s."passingScore" THEN 1 ELSE 0 END)
           FROM current_best b JOIN "Assessment" s ON s."id" = b."assessmentId"
           WHERE s."passingScore" IS NOT NULL)::float8 AS "passRate",
         (SELECT COUNT(*) FROM "AssessmentAttempt" a
@@ -152,7 +152,7 @@ export async function getPerformanceAnalytics(
             ${cohortFilter(scope, Prisma.sql`a."cohortId"`)})::int AS "graded",
         (SELECT COUNT(*) FROM previous_best)::int AS "previousAssessed",
         (SELECT AVG(b."score") FROM previous_best b)::float8 AS "previousAverageScore",
-        (SELECT AVG(CASE WHEN b."score" * 100 >= s."passingScore" THEN 1 ELSE 0 END)
+        (SELECT AVG(CASE WHEN b."score" * 100 + 1e-9 >= s."passingScore" THEN 1 ELSE 0 END)
           FROM previous_best b JOIN "Assessment" s ON s."id" = b."assessmentId"
           WHERE s."passingScore" IS NOT NULL)::float8 AS "previousPassRate"
     `,
@@ -206,7 +206,7 @@ export async function getPerformanceAnalytics(
         COUNT(*)::int AS "learners",
         AVG(b."score")::float8 AS "averageScore",
         CASE WHEN s."passingScore" IS NULL THEN NULL
-          ELSE AVG(CASE WHEN b."score" * 100 >= s."passingScore" THEN 1 ELSE 0 END)::float8
+          ELSE AVG(CASE WHEN b."score" * 100 + 1e-9 >= s."passingScore" THEN 1 ELSE 0 END)::float8
         END AS "passRate"
       FROM best b
       JOIN "Assessment" s ON s."id" = b."assessmentId"

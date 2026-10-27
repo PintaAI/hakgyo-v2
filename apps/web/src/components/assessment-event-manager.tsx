@@ -315,6 +315,7 @@ export function AssessmentEventManager({
           name: "score",
           label: `Nilai baru (0–${formatScore(maxScore)})`,
           type: "text",
+          inputMode: "decimal",
           defaultValue: formatScore(currentScore),
         },
         { name: "reason", label: "Alasan perubahan", type: "textarea" },

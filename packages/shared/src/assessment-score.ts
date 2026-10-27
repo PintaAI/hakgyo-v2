@@ -46,12 +46,37 @@ export function formatScoreOutOf(
 /** Reads a score typed by a teacher, accepting a decimal comma. Returns NaN when invalid. */
 export function parseScoreInput(value: string) {
   const normalized = value.trim().replace(",", ".");
-  if (!/^\d+(\.\d+)?$/.test(normalized)) return Number.NaN;
+  // "2," and ",5" are accepted so a value being typed never reads as invalid.
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(normalized)) return Number.NaN;
   return Number(normalized);
 }
 
 export function scorePercent(score: number, maxScore: number) {
   return maxScore > 0 ? (score / maxScore) * 100 : 0;
+}
+
+/**
+ * Float noise allowed when comparing a percentage to a threshold. Scores have two decimals, so two
+ * real percentages differ by far more than this, while 72.5/125 (57.99999999999999 %) still
+ * reaches 58 %. SQL queries mirror it as `+ 1e-9`.
+ */
+export const PERCENT_EPSILON = 1e-9;
+
+/**
+ * Whether `score` out of `maxScore` reaches `thresholdPercent`. Every pass, requirement and band
+ * check goes through this so they never disagree. A missing or non-positive maximum never reaches.
+ */
+export function reachesPercent(
+  score: number | null,
+  maxScore: number | null,
+  thresholdPercent: number,
+) {
+  return (
+    score !== null &&
+    maxScore !== null &&
+    maxScore > 0 &&
+    (score / maxScore) * 100 + PERCENT_EPSILON >= thresholdPercent
+  );
 }
 
 /** Zod schema for points of a question: positive, at most two decimals. */
@@ -108,18 +133,14 @@ export function readScoreBands(value: unknown): ScoreBand[] {
 
 export type ScoreBandResult = ScoreBand & { reached: boolean };
 
-/** Every band with whether the score reaches it, highest threshold first. */
+/** Every band with whether the score reaches it, in the given order (`readScoreBands` sorts). */
 export function scoreBandResults(
   score: number,
   maxScore: number,
   bands: readonly ScoreBand[],
 ): ScoreBandResult[] {
-  const percent = scorePercent(score, maxScore);
-  return [...bands]
-    .sort((left, right) => right.minPercent - left.minPercent)
-    .map((band) => ({
-      ...band,
-      // The epsilon absorbs float noise (60 must reach 60), never a real hundredth.
-      reached: maxScore > 0 && percent + 1e-9 >= band.minPercent,
-    }));
+  return bands.map((band) => ({
+    ...band,
+    reached: reachesPercent(score, maxScore, band.minPercent),
+  }));
 }

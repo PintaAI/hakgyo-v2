@@ -1,3 +1,5 @@
+import { reachesPercent } from "../assessment-score";
+
 export type ModuleAccess = "LOCKED" | "AVAILABLE" | "COMPLETED";
 
 type AssessmentAttempt = {
@@ -20,8 +22,10 @@ export function hasPassedAssessment(
       return false;
     }
 
-    const percentage = (attempt.score / attempt.maxScore) * 100;
-    return passingScore === null || percentage >= passingScore;
+    return (
+      passingScore === null ||
+      reachesPercent(attempt.score, attempt.maxScore, passingScore)
+    );
   });
 }
 

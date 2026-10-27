@@ -1,4 +1,4 @@
-import { formatScore, formatScoreOutOf } from "@hakgyo/shared";
+import { formatScore, formatScoreOutOf, reachesPercent } from "@hakgyo/shared";
 import { Text, View } from "react-native";
 
 import type { LearnerAttemptStatus } from "../../lib/assessment-state";
@@ -146,12 +146,7 @@ function scorePercent(attempt: LatestAttempt) {
 function hasPassed(attempt: LatestAttempt, passingScore: number | null) {
   if (passingScore === null) return true;
   // Compare the exact ratio, like the server, not the rounded percentage.
-  return (
-    attempt.score !== null &&
-    attempt.maxScore !== null &&
-    attempt.maxScore > 0 &&
-    (attempt.score / attempt.maxScore) * 100 >= passingScore
-  );
+  return reachesPercent(attempt.score, attempt.maxScore, passingScore);
 }
 
 function gradedNote({

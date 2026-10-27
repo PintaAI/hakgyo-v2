@@ -136,7 +136,8 @@ describe("isPassingScore", () => {
     let score = 0;
     for (let index = 0; index < 24; index += 1) score += 2.5;
     expect(isPassingScore(score, 100, 60)).toBe(true);
-    expect(isPassingScore(0.1 + 0.2, 0.5, 60)).toBe(true);
+    // (72.5 / 125) * 100 is 57.99999999999999 in floating point.
+    expect(isPassingScore(72.5, 125, 58)).toBe(true);
     expect(isPassingScore(57.5, 100, 60)).toBe(false);
   });
 });

@@ -7,6 +7,7 @@ import {
   parseQuestionPoints,
   parseScoreInput,
   parseScoreValue,
+  reachesPercent,
   questionPointsSchema,
   readScoreBands,
   roundScore,
@@ -42,12 +43,26 @@ describe("assessment scores", () => {
     expect(parseScoreInput(" 3.25 ")).toBe(3.25);
     expect(parseScoreInput("abc")).toBeNaN();
     expect(parseScoreInput("-1")).toBeNaN();
+    expect(parseScoreInput("2,")).toBe(2);
+    expect(parseScoreInput(",5")).toBe(0.5);
+    expect(parseScoreInput(",")).toBeNaN();
     expect(parseQuestionPoints("2,5")).toBe(2.5);
     expect(parseQuestionPoints("0")).toBeNull();
     expect(parseQuestionPoints("1,234")).toBeNull();
     expect(parseScoreValue("0", 2.5)).toBe(0);
     expect(parseScoreValue("2,5", 2.5)).toBe(2.5);
     expect(parseScoreValue("3", 2.5)).toBeNull();
+  });
+
+  test("thresholds absorb float noise but not real differences", () => {
+    // (72.5 / 125) * 100 is 57.99999999999999 in floating point.
+    expect((72.5 / 125) * 100 < 58).toBe(true);
+    expect(reachesPercent(72.5, 125, 58)).toBe(true);
+    expect(reachesPercent(72.49, 125, 58)).toBe(false);
+    expect(reachesPercent(60, 100, 60)).toBe(true);
+    expect(reachesPercent(57.5, 100, 60)).toBe(false);
+    expect(reachesPercent(null, 100, 0)).toBe(false);
+    expect(reachesPercent(5, 0, 0)).toBe(false);
   });
 
   test("score bands", () => {

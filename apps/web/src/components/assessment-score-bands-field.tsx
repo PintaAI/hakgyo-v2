@@ -27,16 +27,21 @@ export function scoreBandRowsOf(value: unknown): ScoreBandRow[] {
   }));
 }
 
+/** A row with only a name or only a percentage is still being typed and is not saved yet. */
+export function isIncompleteScoreBandRow(row: ScoreBandRow) {
+  return !row.label.trim() || !row.minPercent.trim();
+}
+
 /**
- * The bands typed in the rows, highest threshold first, or undefined when a row is incomplete or
- * invalid. Fully empty rows are ignored.
+ * The complete bands typed in the rows, highest threshold first, or undefined when a complete row
+ * is invalid (for example 120 %). Incomplete rows are skipped until both fields are filled.
  */
 export function parseScoreBandRows(
   rows: ScoreBandRow[],
 ): ScoreBand[] | undefined {
   const bands: ScoreBand[] = [];
   for (const row of rows) {
-    if (!row.label.trim() && !row.minPercent.trim()) continue;
+    if (isIncompleteScoreBandRow(row)) continue;
     const parsed = scoreBandSchema.safeParse({
       label: row.label,
       minPercent: parseScoreInput(row.minPercent),
@@ -108,6 +113,15 @@ export function ScoreBandsField({
           </Button>
         </div>
       ))}
+      {rows.some(
+        (row) =>
+          isIncompleteScoreBandRow(row) &&
+          (row.label.trim() || row.minPercent.trim()),
+      ) ? (
+        <p className="text-muted-foreground text-xs">
+          Lengkapi nama dan nilai minimal agar batas tersimpan.
+        </p>
+      ) : null}
       {rows.length < MAX_SCORE_BANDS ? (
         <Button
           className="justify-self-start"

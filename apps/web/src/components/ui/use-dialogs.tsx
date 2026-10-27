@@ -41,6 +41,8 @@ type PromptField = {
   defaultValue?: string;
   min?: number;
   max?: number;
+  /** Keyboard hint for text fields, e.g. "decimal" for scores typed with a comma. */
+  inputMode?: "decimal" | "numeric" | "text";
 };
 
 type PromptOptions<Name extends string> = {
@@ -193,6 +195,7 @@ export function useDialogs() {
                       min={field.min}
                       max={field.max}
                       step={field.type === "number" ? 1 : undefined}
+                      inputMode={field.inputMode}
                       defaultValue={field.defaultValue}
                     />
                   )}
