@@ -547,6 +547,7 @@ export function composeLearnerAssessment(
         explanation: null as JsonValue,
         points: question.points,
         position: question.position,
+        tags: question.tags ?? [],
         options: [...question.options]
           .sort((left, right) => left.position - right.position)
           .map((option) => ({

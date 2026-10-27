@@ -58,6 +58,7 @@ import {
   type ImportedAssessmentQuestion,
 } from "~/components/assessment-image-import";
 import Link from "~/components/link";
+import { QuestionTagsField } from "~/components/question-tags-field";
 import {
   parseScoreBandRows,
   ScoreBandsField,
@@ -138,6 +139,7 @@ type QuestionFields = {
   prompt: BlockNoteDocument;
   explanation: BlockNoteDocument | null;
   points: number;
+  tags: string[];
 };
 
 const questionTypeLabels: Record<QuestionType, string> = {
@@ -175,6 +177,7 @@ function toAssessmentDraftPayload(
       prompt: question.prompt,
       explanation: question.explanation ?? undefined,
       points: question.points,
+      tags: question.tags,
       options: question.options.map((option) => ({
         clientId: option.id,
         serverId: option.id,
@@ -1126,6 +1129,7 @@ function AssessmentEditorForm({
         prompt: recoveredQuestion.prompt as Question["prompt"],
         explanation: recoveredQuestion.explanation ?? null,
         points: recoveredQuestion.points,
+        tags: recoveredQuestion.tags ?? question.tags,
         options: question.options.map((option) => {
           const recoveredOption = recoveredQuestion.options.find(
             (candidate) => candidate.serverId === option.id,
@@ -1209,6 +1213,7 @@ function AssessmentEditorForm({
                 prompt: value.prompt,
                 explanation: value.explanation ?? undefined,
                 points: value.points,
+                tags: value.tags,
               }
             : question,
         ),
@@ -2227,6 +2232,7 @@ type QuestionDraft = {
   explanation: BlockNoteDocument;
   points: string;
   prompt: BlockNoteDocument;
+  tags: string[];
   type: QuestionType;
 };
 
@@ -2527,6 +2533,7 @@ function QuestionEditor({
     toBlockNoteDocument(question.explanation) as BlockNoteDocument,
   );
   const [points, setPoints] = useState(formatScore(question.points));
+  const [tags, setTags] = useState<string[]>(question.tags);
   const [correctAnswerBusy, setCorrectAnswerBusy] = useState(false);
   // Only autosave after the user actually edits — or when a recovered draft
   // is being synced back to the server. StrictMode double-invokes mount
@@ -2559,6 +2566,7 @@ function QuestionEditor({
         ? draft.explanation
         : null,
       points: parsedPoints,
+      tags: draft.tags,
     });
     if (!saved) throw new Error("Question autosave failed");
   });
@@ -2585,14 +2593,16 @@ function QuestionEditor({
       explanation: hasBlockNoteContent(explanation) ? explanation : null,
       points: parseQuestionPoints(points) ?? question.points,
       prompt,
+      tags,
       type,
     });
-    scheduleQuestionSave({ explanation, points, prompt, type });
+    scheduleQuestionSave({ explanation, points, prompt, tags, type });
   }, [
     explanation,
     onDraftChange,
     points,
     prompt,
+    tags,
     question.id,
     question.points,
     readOnly,
@@ -2675,6 +2685,27 @@ function QuestionEditor({
             value={points}
           />
         </div>
+      </div>
+      <div className="grid gap-1.5">
+        <Label
+          className="text-muted-foreground text-[11px] tracking-wide uppercase"
+          htmlFor={`question-tags-${question.id}`}
+        >
+          Label soal (opsional)
+        </Label>
+        <QuestionTagsField
+          disabled={readOnly}
+          id={`question-tags-${question.id}`}
+          onChange={(next) => {
+            questionTouchedRef.current = true;
+            setTags(next);
+          }}
+          tags={tags}
+        />
+        <p className="text-muted-foreground text-xs">
+          Dipakai untuk laporan per tipe soal, misalnya &ldquo;lemah di rambu
+          K3&rdquo;.
+        </p>
       </div>
       <div className="grid gap-1.5">
         <Label className="text-muted-foreground text-[11px] tracking-wide uppercase">

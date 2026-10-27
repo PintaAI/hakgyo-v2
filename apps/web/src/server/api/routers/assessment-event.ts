@@ -15,6 +15,7 @@ import {
   getAssessmentEventLeaderboard,
 } from "~/server/assessment/event-leaderboard";
 import { openAssessmentEvent } from "~/server/assessment/event-lifecycle";
+import { getEventItemAnalysis } from "~/server/assessment/item-analysis";
 import {
   addCohortsToEvent,
   cancelEvent,
@@ -1211,6 +1212,16 @@ export const assessmentEventRouter = createTRPCRouter({
       );
       return { invalidated: result.invalidated };
     }),
+
+  /**
+   * Per question and per tag statistics of the event's graded attempts for its staff, with each
+   * learner's tag results for the CSV export.
+   */
+  itemAnalysis: protectedProcedure
+    .input(z.object({ eventId: id }))
+    .query(({ ctx, input }) =>
+      getEventItemAnalysis(ctx.db, input.eventId, ctx.actorUserId),
+    ),
 
   adjustResult: protectedProcedure
     .input(

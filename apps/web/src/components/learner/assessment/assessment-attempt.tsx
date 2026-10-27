@@ -40,6 +40,7 @@ import {
   StudyCard,
 } from "./assessment-ui";
 import { ScoreBandResults } from "~/components/learner/assessment/score-band-results";
+import { TagResults } from "~/components/learner/assessment/tag-results";
 import { AssessmentResultReview } from "./assessment-result-review";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
@@ -436,6 +437,17 @@ export function AssessmentAttempt({
             </p>
           )}
         </StudyCard>
+
+        {/* Scores are withheld (null) for invalidated or cancelled participations. */}
+        {result &&
+        !inReview &&
+        !eventEndedIncomplete &&
+        attempt.score !== null ? (
+          <TagResults
+            answers={attempt.answers}
+            questions={assessment.questions}
+          />
+        ) : null}
 
         <AssessmentResultReview assessment={assessment} attempt={attempt} />
 

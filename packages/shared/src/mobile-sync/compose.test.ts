@@ -525,6 +525,8 @@ describe("composeLearnerAssessment", () => {
         explanation: null,
         points: 1,
         position: 1,
+        // Bundles cached before tags existed compose as untagged.
+        tags: [],
         options: [
           { id: "option-a", content: "A", position: 1 },
           { id: "option-b", content: "B", position: 2 },

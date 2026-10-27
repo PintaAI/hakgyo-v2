@@ -284,6 +284,8 @@ export type BundleAssessmentQuestion = {
   prompt: JsonValue;
   points: number;
   position: number;
+  /** Missing in bundles cached before tags existed. */
+  tags?: string[];
   options: BundleAssessmentOption[];
 };
 

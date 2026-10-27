@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { EventItemAnalysis } from "~/components/assessment-event-analysis";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -774,6 +775,9 @@ function EventResults({
   ) => Promise<void>;
 }) {
   const [reviewId, setReviewId] = useState<string>();
+  const [view, setView] = useState<"participants" | "analysis">(
+    "participants",
+  );
   // Reviewers who do not manage the event only see their own classes.
   const filterableCohorts = event.targets.filter(
     (target) =>
@@ -796,8 +800,37 @@ function EventResults({
         />
       </div>
     );
+  const viewSwitch = (
+    <div role="radiogroup" className="grid grid-cols-2 gap-2 sm:w-80">
+      {(
+        [
+          ["participants", "Peserta"],
+          ["analysis", "Analisis soal"],
+        ] as const
+      ).map(([value, label]) => (
+        <Button
+          key={value}
+          type="button"
+          role="radio"
+          aria-checked={view === value}
+          variant={view === value ? "default" : "outline"}
+          onClick={() => setView(value)}
+        >
+          {label}
+        </Button>
+      ))}
+    </div>
+  );
+  if (view === "analysis")
+    return (
+      <div className="space-y-6">
+        {viewSwitch}
+        <EventItemAnalysis eventId={event.id} eventTitle={event.title} />
+      </div>
+    );
   return (
     <div className="space-y-6">
+      {viewSwitch}
       <div className="flex flex-wrap gap-2">
         <Badge variant="outline">Belum mulai: {event.counts.notStarted}</Badge>
         <Badge variant="outline">Mengerjakan: {event.counts.inProgress}</Badge>

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   questionPointsSchema,
+  questionTagsSchema,
   scoreBandsSchema,
   scoreValueSchema,
 } from "@hakgyo/shared";
@@ -33,6 +34,8 @@ export const questionFields = z.object({
   explanation: json.optional(),
   /** Up to two decimals, e.g. 2.5. */
   points: questionPointsSchema.optional(),
+  /** Labels such as `eps:R2`, `topik:k3`, `level:sedang` or `bab:3` for per-type reports. */
+  tags: questionTagsSchema.optional(),
 });
 
 export const optionFields = z.object({

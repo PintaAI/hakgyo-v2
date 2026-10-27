@@ -66,6 +66,8 @@ export type AssessmentQuestionDraft = LocalEntityIdentity & {
   prompt: RouterInputs["assessment"]["createQuestion"]["prompt"];
   explanation?: RouterInputs["assessment"]["createQuestion"]["explanation"];
   points: number;
+  /** Missing in drafts saved before tags existed. */
+  tags?: string[];
   options: AssessmentOptionDraft[];
 };
 

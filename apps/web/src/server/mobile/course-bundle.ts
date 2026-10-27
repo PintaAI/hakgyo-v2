@@ -370,6 +370,7 @@ export function shapeCourseBundle(course: CourseBundleSource) {
             prompt: question.prompt,
             points: question.points,
             position: question.position,
+            tags: question.tags,
             options: question.options.map((option) => ({
               id: option.id,
               content: option.content,

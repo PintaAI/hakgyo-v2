@@ -1092,6 +1092,8 @@ model AssessmentQuestion {
   /// Up to two decimals (EPS-TOPIK uses 2.5).
   points       Float                  @default(1)
   position     Int
+  /// Free labels, optionally `prefix:value` (`eps:R2`, `topik:k3`, `level:sedang`, `bab:3`). See `assessment-tags.ts` in @hakgyo/shared.
+  tags         String[]               @default([])
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   assessment   Assessment             @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
@@ -1099,6 +1101,8 @@ model AssessmentQuestion {
   answers      AssessmentAnswer[]
 
   @@unique([assessmentId, position])
+  /// The question bank picks candidates by type tag (docs/eps-question-generator.md section 4.1).
+  @@index([tags], type: Gin)
 }
 
 model AssessmentOption {

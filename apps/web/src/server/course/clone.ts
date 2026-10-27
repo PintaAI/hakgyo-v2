@@ -404,6 +404,7 @@ export async function cloneStarterCourse(
               explanation: remappedOptional(question.explanation),
               points: question.points,
               position: question.position,
+              tags: question.tags,
             })),
           }),
         );
