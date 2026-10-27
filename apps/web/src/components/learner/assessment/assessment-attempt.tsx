@@ -169,6 +169,10 @@ export function AssessmentAttempt({
   // in @hakgyo/shared). Autosave sends them in order; the server skips ones it already has.
   const pendingEntries = useRef<AttemptLogEntry[]>([]);
   const nextSeq = useRef(assessment.progressSeq + 1);
+  // Entries up to this seq are in a running write and must not be edited in place.
+  const sendingThroughSeq = useRef(0);
+  // True while submit sends the last entries, so no answer can change in between.
+  const [finalizing, setFinalizing] = useState(false);
   const answersRef = useRef(answers);
   const autosaveRun = useRef<Promise<void> | null>(null);
   // Set for the whole submit flow so repeated clicks and pending autosave timers can't race it.
@@ -191,7 +195,7 @@ export function AssessmentAttempt({
   );
   const isFinished = attempt.status !== "IN_PROGRESS" || eventEndedIncomplete;
   const expired = secondsLeft === 0;
-  const busy = submit.isPending;
+  const busy = submit.isPending || finalizing;
 
   const pushEntry = (
     kind: AttemptLogEntry["kind"],
@@ -203,7 +207,8 @@ export function AssessmentAttempt({
     if (
       kind === "ANSWERED" &&
       last?.kind === "ANSWERED" &&
-      last.questionId === fields.questionId
+      last.questionId === fields.questionId &&
+      last.seq > sendingThroughSeq.current
     ) {
       pending[pending.length - 1] = createLogEntry(
         last.seq,
@@ -236,30 +241,38 @@ export function AssessmentAttempt({
     while (pendingEntries.current.length) {
       const batch = pendingEntries.current.slice(0, MAX_LOG_ENTRIES_PER_WRITE);
       const maxSent = batch.at(-1)!.seq;
-      const result = await progress.mutateAsync({
-        attemptId: attempt.id,
-        entries: batch,
-      });
-      // Entries edited while the write ran keep their seq but changed; keep those pending.
+      sendingThroughSeq.current = maxSent;
+      let result;
+      try {
+        result = await progress.mutateAsync({
+          attemptId: attempt.id,
+          entries: batch,
+        });
+      } finally {
+        sendingThroughSeq.current = 0;
+      }
+      if (result.settled) {
+        pendingEntries.current = [];
+        break;
+      }
+      // Entries pushed during the write have higher seqs and stay pending.
       pendingEntries.current = pendingEntries.current.filter(
-        (entry) => entry.seq > maxSent || !batch.includes(entry),
+        (entry) => entry.seq > maxSent,
       );
-      if (result.lastSeq > maxSent) {
-        // Another tab or device wrote meanwhile, so this tab's entries were skipped: resend the
-        // answers after the server's sequence.
+      const skipped = batch.filter(
+        (entry) => entry.seq <= result.previousSeq && entry.kind === "ANSWERED",
+      );
+      if (skipped.length) {
+        // Another tab or device had already written these sequence numbers (or a retry after a
+        // lost response): resend the answers after the server's sequence.
         nextSeq.current = Math.max(nextSeq.current, result.lastSeq + 1);
-        const resend = batch.filter((entry) => entry.kind === "ANSWERED");
         pendingEntries.current = [
-          ...resend.map((entry) => ({ ...entry, seq: nextSeq.current++ })),
+          ...skipped.map((entry) => ({ ...entry, seq: nextSeq.current++ })),
           ...pendingEntries.current.map((entry) => ({
             ...entry,
             seq: nextSeq.current++,
           })),
         ];
-      }
-      if (result.settled) {
-        pendingEntries.current = [];
-        break;
       }
     }
     setDirty(pendingEntries.current.some((entry) => entry.kind === "ANSWERED"));
@@ -268,6 +281,7 @@ export function AssessmentAttempt({
   const submitAssessment = async () => {
     if (submitting.current || submit.isPending || isFinished) return;
     submitting.current = true;
+    setFinalizing(true);
     try {
       // Let a running autosave finish so it cannot overwrite the final save with older content.
       await autosaveRun.current;
@@ -322,6 +336,7 @@ export function AssessmentAttempt({
       );
     } finally {
       submitting.current = false;
+      setFinalizing(false);
     }
   };
   const onTimeExpired = useEffectEvent(() => {

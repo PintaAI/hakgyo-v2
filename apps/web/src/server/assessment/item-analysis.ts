@@ -141,7 +141,8 @@ export async function getEventItemAnalysis(
           (question.type === "WRITTEN" &&
             getBlockNotePlainText(answer?.content).trim().length > 0),
         optionKeys,
-        ...(times ? { timeMs: times.get(question.id) ?? 0 } : {}),
+        // Questions never shown (not reached) have no time rather than zero.
+        ...(times?.has(question.id) ? { timeMs: times.get(question.id) } : {}),
       });
     }
     const participant = participantByUser.get(attempt.userId);

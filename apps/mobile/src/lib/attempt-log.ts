@@ -95,7 +95,39 @@ export function correctedNow(log: AttemptLog) {
   return new Date(Date.now() + log.clockOffsetMs);
 }
 
-/** Appends an entry stamped now; keeps the newest entries if the log grows past one write. */
+/**
+ * Keeps a log within one write without losing an answer: superseded answers (an older ANSWERED
+ * entry of a question answered again) go first, then the oldest shown-question entries. The last
+ * answer of every question always stays.
+ */
+export function compactAttemptLog(entries: readonly AttemptLogEntry[]) {
+  if (entries.length <= MAX_LOG_ENTRIES_PER_WRITE) return [...entries];
+  const lastAnswerSeq = new Map<string, number>();
+  for (const entry of entries) {
+    if (entry.kind === "ANSWERED" && entry.questionId) {
+      lastAnswerSeq.set(entry.questionId, entry.seq);
+    }
+  }
+  let kept = entries.filter(
+    (entry) =>
+      entry.kind !== "ANSWERED" ||
+      !entry.questionId ||
+      lastAnswerSeq.get(entry.questionId) === entry.seq,
+  );
+  let excess = kept.length - MAX_LOG_ENTRIES_PER_WRITE;
+  if (excess > 0) {
+    kept = kept.filter((entry) => {
+      if (excess > 0 && entry.kind === "QUESTION_SHOWN") {
+        excess -= 1;
+        return false;
+      }
+      return true;
+    });
+  }
+  return kept;
+}
+
+/** Appends an entry stamped now, compacting the log if it grows past one write. */
 export function appendAttemptLog(
   log: AttemptLog,
   kind: AttemptLogEntry["kind"],
@@ -104,7 +136,7 @@ export function appendAttemptLog(
   const entry = createLogEntry(log.nextSeq, kind, fields, correctedNow(log));
   return {
     ...log,
-    entries: [...log.entries, entry].slice(-MAX_LOG_ENTRIES_PER_WRITE),
+    entries: compactAttemptLog([...log.entries, entry]),
     nextSeq: log.nextSeq + 1,
   };
 }

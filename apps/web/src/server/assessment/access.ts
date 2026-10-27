@@ -90,6 +90,7 @@ export function eventParticipationSelect(userId: string) {
   return {
     select: {
       status: true,
+      type: true,
       closedAt: true,
       participants: {
         where: { userId },
@@ -100,17 +101,19 @@ export function eventParticipationSelect(userId: string) {
 }
 
 /**
- * Whether an event still takes the learner's own writes: while OPEN, and for answers given offline
- * before closing, up to `OFFLINE_SUBMISSION_GRACE_MS` after it closed. The answer times are
- * checked against the deadline separately, so nothing given after closing counts.
+ * Whether an event still takes the learner's own writes: while OPEN, and for a Tryout's answers
+ * given offline before closing, up to `OFFLINE_SUBMISSION_GRACE_MS` after it closed. The answer
+ * times are checked against the deadline separately, so nothing given after closing counts. A
+ * Latihan gets no grace: it reveals its answers as soon as it closes.
  */
 export function eventAcceptsLearnerWrites(
-  event: { status: string; closedAt: Date | null },
+  event: { status: string; type: string; closedAt: Date | null },
   now: Date,
 ) {
   if (event.status === "OPEN") return true;
   return (
     event.status === "CLOSED" &&
+    event.type === "TRYOUT" &&
     event.closedAt !== null &&
     now.getTime() - event.closedAt.getTime() < OFFLINE_SUBMISSION_GRACE_MS
   );
@@ -120,6 +123,7 @@ export function eventAcceptsLearnerWrites(
 export function requireEventParticipationForSync(
   event: {
     status: string;
+    type: string;
     closedAt: Date | null;
     participants: Array<{ invalidatedAt: Date | null }>;
   },

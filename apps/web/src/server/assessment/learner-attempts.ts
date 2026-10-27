@@ -29,6 +29,7 @@ import {
 } from "~/server/assessment/attempt";
 import { assessmentContext } from "~/server/assessment/register";
 import {
+  eventCloseTime,
   getAssessmentDeadline,
   isAssessmentExpired,
 } from "~/server/assessment/timing";
@@ -551,7 +552,7 @@ export async function submitAttempt(
         full.startedAt,
         full.assessmentEvent?.durationMinutes ??
           full.assessment.timeLimitMinutes,
-        full.assessmentEvent?.closesAt,
+        full.assessmentEvent ? eventCloseTime(full.assessmentEvent) : null,
       );
       const expired = deadline !== null && now >= deadline;
       const latest = Math.min(now.getTime(), deadline?.getTime() ?? Infinity);

@@ -109,6 +109,16 @@ describe("acceptLogEntries", () => {
       source: "WEB",
     });
     expect(late.rejected).toEqual([{ seq: 1, reason: "LATE" }]);
+    // A shown question keeps its time even when it waited for a later autosave.
+    const shown = acceptLogEntries({
+      ...base,
+      entries: [
+        { seq: 1, kind: "QUESTION_SHOWN", questionId: "q2", clientAt: at(1) },
+      ],
+      receivedAt: new Date(at(5)),
+      source: "WEB",
+    });
+    expect(shown.accepted[0]!.at.toISOString()).toBe(at(1));
   });
 
   test("validates the wire shape", () => {

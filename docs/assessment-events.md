@@ -54,8 +54,9 @@ a learner's own submit records an `ASSESSMENT_SUBMITTED` activity, and event att
 `ASSESSMENT_PASSED`. A learner starting a due scheduled event
 opens it immediately, so a late cron run only delays the push. A manual close grades a few batches
 right away and leaves the rest to the cron. Attempts graded this way are `submittedVia = AUTO_CLOSE`.
-Learners can still submit, and offline devices can still sync answers given before the deadline,
-for 24 hours after closing (`OFFLINE_SUBMISSION_GRACE_MS`); a late device submission regrades an
+For a Tryout, learners can still submit, and offline devices can still sync answers given before
+the deadline, for 24 hours after closing (`OFFLINE_SUBMISSION_GRACE_MS`). A Latihan gets no grace,
+because it reveals its answers as soon as it closes. A late device submission regrades an
 `AUTO_CLOSE` attempt as `DEVICE_LATE` (see "Assessment progress log" in `docs/mobile-sync.md`), so
 the leaderboard can still change during that window.
 

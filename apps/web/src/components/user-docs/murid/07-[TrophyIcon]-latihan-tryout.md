@@ -33,7 +33,7 @@ Setiap kartu menampilkan status:
 
 Waktumu berakhir pada yang lebih dulu tercapai: durasi habis, atau jadwal tutup tiba. Jika mulai 10 menit sebelum tutup, kamu hanya punya 10 menit.
 
-> Jika kamu belum mengirim, kamu mendapat pengingat sekitar 30 menit sebelum latihan ditutup. Di situs web, saat latihan ditutup, jawaban yang sudah tersimpan dinilai otomatis. Di aplikasi ponsel, jawaban yang kamu isi sebelum waktu habis tetap dinilai walaupun baru terkirim belakangan, asalkan ponselmu tersambung ke internet paling lambat 24 jam setelah latihan ditutup.
+> Jika kamu belum mengirim, kamu mendapat pengingat sekitar 30 menit sebelum latihan ditutup. Di situs web, saat latihan ditutup, jawaban yang sudah tersimpan dinilai otomatis. Di aplikasi ponsel, jawaban yang kamu isi sebelum waktu habis tetap dinilai walaupun baru terkirim belakangan: untuk **tryout** asalkan ponselmu tersambung ke internet paling lambat 24 jam setelah ditutup, untuk **latihan** sebelum latihan ditutup.
 
 ## Melihat nilai dan peringkat
 

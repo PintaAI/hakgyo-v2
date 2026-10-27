@@ -4,6 +4,7 @@ import { z } from "zod";
 import { assessmentRouter } from "~/server/api/routers/assessment";
 import {
   acceptLateDeviceSubmission,
+  inTimeEntryAnswers,
   recordAttemptProgress,
 } from "~/server/assessment/attempt-progress";
 import { submitAttempt } from "~/server/assessment/learner-attempts";
@@ -325,7 +326,17 @@ export async function applySyncOperations(
             attemptId: operation.attemptId,
           }),
         ]);
-        if (current.status === "IN_PROGRESS") {
+        // Like the legacy path, acknowledge only once every answer the
+        // learner gave in time is stored, so the device keeps answers the
+        // server refused (an implausible clock, a review in the meantime).
+        if (
+          current.status === "IN_PROGRESS" ||
+          !(await storedAnswersMatch(
+            ctx,
+            operation.attemptId,
+            await inTimeEntryAnswers(ctx.db, operation.attemptId, entries),
+          ))
+        ) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
             message:

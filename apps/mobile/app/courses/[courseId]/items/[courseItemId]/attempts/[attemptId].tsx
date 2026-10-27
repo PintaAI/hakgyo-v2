@@ -43,6 +43,7 @@ import { authClient } from "../../../../../../src/lib/auth-client";
 import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-draft";
 import {
   appendAttemptLog,
+  compactAttemptLog,
   correctedNow,
   readAttemptLog,
   removeAttemptLog,
@@ -328,7 +329,11 @@ function AssessmentAttemptContent({
     }
     if (next === log) return false;
     attemptLog.current = next;
-    saveAttemptLog(session.user.id, attemptId, next);
+    try {
+      saveAttemptLog(session.user.id, attemptId, next);
+    } catch {
+      // The draft still holds the answers; the in-memory log is sent with the next operation.
+    }
     return true;
   }
 
@@ -444,30 +449,36 @@ function AssessmentAttemptContent({
     setSubmitting(true);
     setSubmitError(undefined);
     const payload = buildAnswerPayload(assessment.data.questions, answers);
-    let entries: AttemptLogEntry[] | undefined;
-    if (attemptLog.current && session) {
-      logAnswerChanges(answers);
-      const log = attemptLog.current;
-      // Submitting at the deadline (the timer ran out) counts as just before it.
-      const now = correctedNow(log).getTime();
-      const submittedAt = deadline === null ? now : Math.min(now, deadline - 1);
-      const submittedLog = {
-        ...log,
-        entries: [
-          ...log.entries,
-          {
-            seq: log.nextSeq,
-            kind: "SUBMITTED" as const,
-            clientAt: new Date(submittedAt).toISOString(),
-          },
-        ],
-        nextSeq: log.nextSeq + 1,
-      };
-      attemptLog.current = submittedLog;
-      saveAttemptLog(session.user.id, attemptId, submittedLog);
-      entries = submittedLog.entries;
-    }
     try {
+      let entries: AttemptLogEntry[] | undefined;
+      if (attemptLog.current && session) {
+        logAnswerChanges(answers);
+        const log = attemptLog.current;
+        // Submitting at the deadline (the timer ran out) counts as just before it.
+        const now = correctedNow(log).getTime();
+        const submittedAt =
+          deadline === null ? now : Math.min(now, deadline - 1);
+        const submittedLog = {
+          ...log,
+          // Compacted like every append, so the log stays within one write.
+          entries: compactAttemptLog([
+            ...log.entries,
+            {
+              seq: log.nextSeq,
+              kind: "SUBMITTED" as const,
+              clientAt: new Date(submittedAt).toISOString(),
+            },
+          ]),
+          nextSeq: log.nextSeq + 1,
+        };
+        attemptLog.current = submittedLog;
+        entries = submittedLog.entries;
+        try {
+          saveAttemptLog(session.user.id, attemptId, submittedLog);
+        } catch {
+          // The completion operation below carries the log anyway.
+        }
+      }
       const sync = await completeAssessment({
         attemptId,
         answers: payload,

@@ -61,7 +61,7 @@ Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**,
 - Saat waktu habis, tugas **terkirim otomatis**, sama seperti di situs web. Jika saat itu ponsel tidak ada internet, tugasmu menunggu di ponsel dan terkirim sendiri begitu internet tersambung.
 - Yang dinilai adalah jawaban yang kamu isi **sebelum waktu habis**, walaupun baru terkirim belakangan. Jawaban yang diubah setelah waktu habis tidak dihitung.
 
-> **Penting:** untuk latihan dan tryout, jawaban yang dikerjakan tanpa internet masih diterima sampai **24 jam** setelah latihan ditutup. Sambungkan ponsel ke internet secepatnya supaya nilaimu masuk ke peringkat. Jangan mengubah jam ponsel: jawaban dengan waktu yang tidak masuk akal ditolak.
+> **Penting:** untuk **tryout**, jawaban yang dikerjakan tanpa internet masih diterima sampai **24 jam** setelah tryout ditutup. Untuk **latihan**, jawaban harus terkirim sebelum latihan ditutup, karena pembahasannya langsung terbuka. Sambungkan ponsel ke internet secepatnya supaya nilaimu masuk ke peringkat. Jangan mengubah jam ponsel: jawaban dengan waktu yang tidak masuk akal ditolak.
 
 ## Soal harian di Tugas hari ini
 

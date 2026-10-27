@@ -24,7 +24,10 @@ import {
   recordAssessmentSubmitted,
 } from "~/server/assessment/attempt";
 import { writeAnswers } from "~/server/assessment/learner-attempts";
-import { getAssessmentDeadline } from "~/server/assessment/timing";
+import {
+  eventCloseTime,
+  getAssessmentDeadline,
+} from "~/server/assessment/timing";
 import { withTransactionRetry } from "~/server/db-retry";
 
 /**
@@ -43,7 +46,11 @@ export type RecordProgressResult =
   | ({ settled: false; serverNow: Date } & Pick<
       AcceptLogResult,
       "lastSeq" | "rejected"
-    > & { submittedAt: Date | null })
+    > & {
+        submittedAt: Date | null;
+        /** The server's sequence before this write: entries at or below it were skipped. */
+        previousSeq: number;
+      })
   | { settled: true; serverNow: Date; lastSeq: number };
 
 const progressAttemptSelect = {
@@ -62,7 +69,7 @@ const progressAttemptSelect = {
     },
   },
   assessmentEvent: {
-    select: { durationMinutes: true, closesAt: true },
+    select: { durationMinutes: true, closesAt: true, closedAt: true },
   },
 } satisfies Prisma.AssessmentAttemptSelect;
 
@@ -95,7 +102,7 @@ async function applyEntries(
       attempt.startedAt,
       attempt.assessmentEvent?.durationMinutes ??
         attempt.assessment.timeLimitMinutes,
-      attempt.assessmentEvent?.closesAt,
+      attempt.assessmentEvent ? eventCloseTime(attempt.assessmentEvent) : null,
     ),
     receivedAt: now,
     source,
@@ -219,7 +226,7 @@ export async function recordAttemptProgress(
             select: {
               ...progressAttemptSelect.assessmentEvent.select,
               status: true,
-              closedAt: true,
+              type: true,
             },
           },
         },
@@ -246,6 +253,7 @@ export async function recordAttemptProgress(
         lastSeq: result.lastSeq,
         rejected: result.rejected,
         submittedAt,
+        previousSeq: locked.lastLogSeq,
       };
     }),
   );
@@ -318,4 +326,51 @@ export async function acceptLateDeviceSubmission(
       return true;
     }),
   );
+}
+
+/**
+ * The last answer per question among the entries that the learner gave before the attempt's
+ * deadline, i.e. the answers a completion must have stored before it is acknowledged. Answers
+ * given after the deadline legitimately never count, so they are left out.
+ */
+export async function inTimeEntryAnswers(
+  db: PrismaClient,
+  attemptId: string,
+  entries: readonly AttemptLogEntry[],
+) {
+  const attempt = await db.assessmentAttempt.findUnique({
+    where: { id: attemptId },
+    select: {
+      startedAt: true,
+      assessment: { select: { timeLimitMinutes: true } },
+      assessmentEvent: {
+        select: { durationMinutes: true, closesAt: true, closedAt: true },
+      },
+    },
+  });
+  if (!attempt) return [];
+  const deadline = getAssessmentDeadline(
+    attempt.startedAt,
+    attempt.assessmentEvent?.durationMinutes ??
+      attempt.assessment.timeLimitMinutes,
+    attempt.assessmentEvent ? eventCloseTime(attempt.assessmentEvent) : null,
+  );
+  const latest = new Map<string, AttemptLogEntry>();
+  for (const entry of [...entries].sort(
+    (left, right) => left.seq - right.seq,
+  )) {
+    if (entry.kind === "ANSWERED" && entry.questionId) {
+      latest.set(entry.questionId, entry);
+    }
+  }
+  return [...latest.values()]
+    .filter(
+      (entry) =>
+        deadline === null || Date.parse(entry.clientAt) < deadline.getTime(),
+    )
+    .map((entry) => ({
+      questionId: entry.questionId!,
+      optionIds: entry.optionIds ?? [],
+      ...(entry.content === undefined ? {} : { content: entry.content }),
+    }));
 }

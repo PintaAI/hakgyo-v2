@@ -172,6 +172,7 @@ export const gradableAttemptSelect = {
   assessmentEvent: {
     select: {
       status: true,
+      type: true,
       durationMinutes: true,
       closesAt: true,
       closedAt: true,

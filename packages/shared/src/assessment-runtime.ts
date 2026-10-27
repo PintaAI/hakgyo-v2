@@ -105,7 +105,11 @@ export function acceptLogEntries(input: {
       continue;
     }
     if (input.source === "WEB") {
-      if (received - at > WEB_MAX_LAG_MS || at - received > WEB_MAX_AHEAD_MS)
+      // A shown question changes no answer, so it may wait for the next autosave without losing
+      // its time; answers and submissions must arrive within the autosave window.
+      const lagLimit =
+        entry.kind === "QUESTION_SHOWN" ? Infinity : WEB_MAX_LAG_MS;
+      if (received - at > lagLimit || at - received > WEB_MAX_AHEAD_MS)
         at = received;
     } else if (at - received > DEVICE_MAX_AHEAD_MS) {
       reject("CLOCK");
