@@ -1,6 +1,12 @@
 # EPS-TOPIK simulation: findings and design
 
-Status: **design, awaiting approval**. Nothing in the schema or feature code has changed yet.
+Status: **approved by the founder (2026-10-27)**, implementation in the order of section 6. The
+decisions taken at approval are recorded inline and in section 7.
+
+The question bank and package generator (`docs/eps-question-generator.md`) is designed separately
+and builds on steps 8 (tags) and 9 (groups) of this plan. This plan does not build it, but its
+groups, tags and item analysis are shaped so the generator can reuse them (sections 4.5, 4.6, 4.7
+and 5.8).
 
 Goal: a Hakgyo Tryout that feels like the real EPS-TOPIK (UBT on a tablet) on web and mobile, works
 offline on mobile, and reports results by section and by question type. The exam format, the
@@ -304,9 +310,9 @@ selection is by rank above the floor.
 
 ### 4.4 Fractional points (gap 5)
 
-Recommendation: widen `points`, `score`, `maxScore`, `autoScore`, `manualScore` (and the new section
-scores) from `Int` to `Float` (`DOUBLE PRECISION`), allow at most two decimals in every zod input,
-and round every sum through one `roundScore()` helper in `@hakgyo/shared`.
+Decision (approved): widen `points`, `score`, `maxScore`, `autoScore`, `manualScore` (and the new
+section scores) from `Int` to `Float` (`DOUBLE PRECISION`), allow at most two decimals in every zod
+input, and round every sum through one `roundScore()` helper in `@hakgyo/shared`.
 
 - Why `Float` and not `Decimal`: Prisma `Decimal` arrives as a `Decimal.js` object, which superjson
   does not serialize without registration and which would change the mobile contract from `number`
@@ -334,24 +340,55 @@ model AssessmentQuestionGroup {
 }
 ```
 
-Questions of a group stay together when a section is shuffled. A group's stimulus audio counts
+Questions point at their group with `AssessmentQuestion.groupId` (section 4.2). Questions of a group stay together when a section is shuffled. A group's stimulus audio counts
 against the play limit once per group, not per question.
+
+**A group is a self-contained unit that can be copied between assessments.** The question-bank
+generator fills consecutive blueprint slots with one group and copies it into a package, and will add
+`sourceGroupId String?` to the group for that (generator design, section 3). To keep that a plain
+copy:
+
+- A group owns everything it needs: its instructions, its stimulus and its questions (with their
+  options, tags and points). Nothing in a group refers to another group or to a specific position
+  outside the group.
+- Its questions have consecutive `position` values inside one section, so inserting a group is
+  "shift the following positions, insert the block".
+- Its media are referenced like question media (`hakgyo-asset:<id>` in the JSON plus
+  `AssessmentAsset` links), so `assessmentContentAssetIds`, the mobile bundle and media preloading
+  find stimulus media without a special case.
+- Copying is one service, `copyQuestionGroup(tx, { groupId, targetAssessmentId, targetSectionId,
+position })`, used by `duplicateAssessment`, `course/clone.ts` and later the generator. Ungrouped
+  questions are copied by the same code as one-question units.
 
 ### 4.6 Question tags (gap 6)
 
 `AssessmentQuestion.tags String[]` (GIN index), free strings, so any organization can tag by skill,
 chapter or difficulty. Presets ship a vocabulary in `@hakgyo/shared` with Indonesian labels, e.g.
-`eps:R2` → "Rambu K3", `eps:L1` → "Bunyi ke tulisan", plus `level:mudah|sedang|sulit` and an
-optional `bab:<n>` for the NEW 표준교재 chapter. Tags copy with clones and duplicates like any other
-column, and they're consistent across packages, so a learner's "lemah di rambu K3" can be reported
-over several tryouts. A tag table would only be needed for renaming tags across an organization,
-which is not needed now.
+The EPS preset vocabulary has four prefixes, all with Indonesian labels:
 
-### 4.7 Package licensing (gap 7c), out of scope
+| Prefix          | Meaning                     | Values                                                                                                                                   |
+| --------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `eps:<type>`    | question type (research §2) | `eps:R1` … `eps:R13`, `eps:L1` … `eps:L12`, e.g. `eps:R2` → "Rambu K3", `eps:L1` → "Bunyi ke tulisan"                                    |
+| `topik:<slug>`  | content topic               | `topik:k3`, `topik:alat-kerja`, `topik:lembaga`, `topik:kehidupan`, `topik:budaya`, `topik:angka`, `topik:benda`, `topik:tindakan-kerja` |
+| `level:<level>` | authored difficulty         | `level:mudah`, `level:sedang`, `level:sulit`                                                                                             |
+| `bab:<n>`       | NEW 표준교재 chapter        | optional, free number                                                                                                                    |
 
-Selling original packages without exposing keys needs a separate design (a shared read-only
-"licensed" assessment that LPK courses place instead of cloning, with keys never leaving Hakgyo's
-organization). It doesn't block the simulation, so it is listed as a follow-up only.
+Reports group by prefix (type, topic, level), so "lemah di rambu K3" (`eps:R2`) and "lemah di topik
+K3" (`topik:k3`) are separate rows. The same vocabulary is what the generator uses to label bank
+questions and to check topic quotas. Tags copy with clones, duplicates and groups like any other
+column, and they're consistent across packages, so a learner's weaknesses can be reported over
+several tryouts. A tag table would only be needed for renaming tags across an organization, which
+is not needed now.
+
+### 4.7 Package licensing (gap 7c): handled by the generator design
+
+This plan doesn't build licensing. The chosen approach is in `docs/eps-question-generator.md`
+(section 3): generated packages are **copies** in the LPK organization whose questions keep
+`sourceQuestionId`, the assessment has `kind = GENERATED` and `contentLocked`, and locked content
+hides answer keys and explanations server-side in every authoring read and export. Nothing in this
+plan may assume that staff of the organization owning an assessment can always read its keys:
+new staff-facing reads added here (item analysis, CSV export, section and group editors) go through
+the same assessment-authoring read path, so the generator can strip keys there in one place.
 
 ---
 
@@ -425,7 +462,7 @@ For a mock exam that is the right trade-off.
 AUTO_CLOSE`).
 - An `ASSESSMENT_PROGRESS`/`ASSESSMENT_COMPLETED` that arrives later for such an attempt is
   accepted if its entries are valid under section 5.3 **and** it arrives within
-  `OFFLINE_SUBMISSION_GRACE` (24 h) of the close. The server replays the entries, regrades,
+  `OFFLINE_SUBMISSION_GRACE` (24 h, approved) of the close. The server replays the entries, regrades,
   sets `submittedVia = DEVICE_LATE` and writes an `AssessmentEventAudit` entry (new action
   `LATE_DEVICE_SUBMISSION`). Attempts already adjusted or invalidated by staff are not regraded.
 - Chapter attempts accept valid late entries without a grace limit (no leaderboard depends on them).
@@ -475,23 +512,47 @@ clients render a 2×2 grid (with ①–④ badges) instead of the vertical list.
   time on the question (from the log), and flags for p < 0.3, p > 0.9, D < 0.2 and distractors
   chosen by fewer than 5 %. Plus a CSV export of results with section scores. Computed on request
   from `AssessmentAnswer` and the log (an event has at most a few hundred attempts).
+- **Item analysis is a pure function over response rows**, in `@hakgyo/shared` (no Prisma), so
+  the generator can reuse it for `BankItemStats` (generator design, section 5):
+
+  ```ts
+  type ItemResponse = {
+    itemKey: string; // questionId today; sourceQuestionId for bank statistics
+    attemptKey: string;
+    attemptPercent: number; // the attempt's score in percent, comparable across packages
+    correct: boolean;
+    optionKey: string | null; // the chosen option; option *position* is not comparable across copies
+    timeMs?: number;
+  };
+  function analyzeItems(responses: ItemResponse[]): Map<string, ItemStats>;
+  ```
+
+  The server only loads the rows (one query per event) and maps them; grouping by another key is a
+  different mapping, not a different computation. Discrimination uses `attemptPercent`, not raw
+  scores, so attempts from different packages can be pooled. Option keys are option ids today; the
+  generator maps copied options back to their bank option.
+
+- Timing columns depend on the progress log (step 3); step 8 ships the table without them and
+  step 3 adds them. Section scores follow in step 5.
 - **Organization analytics** (`analitik/performa`): per-tag accuracy over time, later.
 
 ### 5.9 EPS-TOPIK preset
 
 "Terapkan format EPS-TOPIK" in the assessment settings (and an MCP action) sets:
 
-| Setting      | Membaca | Mendengar                                           |
-| ------------ | ------- | --------------------------------------------------- |
-| Time limit   | 25 min  | 25 min                                              |
-| Navigation   | `FREE`  | `PACED` (setting; the UBT behaviour is unconfirmed) |
-| Lock answers | off     | off (setting; the CBT demo locked)                  |
-| Audio        | none    | autoplay, 2 plays, 2 s gap, 7 s answer window       |
-| Shuffle      | off     | off                                                 |
+| Setting      | Membaca | Mendengar                                     |
+| ------------ | ------- | --------------------------------------------- |
+| Time limit   | 25 min  | 25 min                                        |
+| Navigation   | `FREE`  | `PACED` (approved default; setting)           |
+| Lock answers | off     | off (approved default; setting)               |
+| Audio        | none    | autoplay, 2 plays, 2 s gap, 7 s answer window |
+| Shuffle      | off     | off                                           |
 
-Plus 2.5 points per question, score bands 60 (Manufaktur) and 45 (Sektor lain), the `eps:` tag
-vocabulary, and a blueprint check in the editor that counts tags against the 40-question blueprint in
-the research report. Every value stays editable afterwards.
+Plus 2.5 points per question, score bands 60 (Manufaktur) and 45 (Sektor lain), the tag vocabulary
+of section 4.6, and a blueprint check in the editor that counts tags against the 40-question
+blueprint. The blueprint is versioned data in `@hakgyo/shared` shared with the generator (generator
+design, section 2). Every value stays editable afterwards. The UBT's real listening behaviour is
+being confirmed in LPK interviews; only the preset defaults would change.
 
 ### 5.10 Unchanged and out of scope
 
@@ -508,28 +569,40 @@ Each step is one PR against `main`, with its migration applied (`db:migrate`) be
 typecheck and lint, the mobile typecheck when the tRPC contract changes, a 390 px check for UI, and
 the in-app guide updated for anything users see.
 
-| Step | PR                                                                                                                                                                                                                              | Schema                                                            | Clients     |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------- |
-| 1    | **Event order follows the assessment.** Nullable `shuffleQuestions`, optional override in the event sheet. Includes the research report and this document.                                                                      | 4.1                                                               | web         |
-| 2    | **Fractional points and score bands.** Widen the score columns, relax validations (editor, review, adjust, AI import, MCP), `roundScore`/`formatScore`, bands in settings and results.                                          | 4.3, 4.4                                                          | web, mobile |
-| 3    | **Progress log and offline-safe mobile attempts.** Shared rules engine (no rules yet, only time), `recordProgress`, `ASSESSMENT_PROGRESS`, `serverNow` at start, late device submissions, mobile auto-submit at 0. Fixes gap 8. | log, `answeredAt`, `runtimeVersion`, `submittedVia`, audit action | web, mobile |
-| 4    | **Sections: authoring.** Section CRUD, assign and reorder questions (`moveQuestion`), section instructions and time limits; draft payload, duplicate, clone, MCP.                                                               | 4.2 tables and `sectionId`                                        | web         |
-| 5    | **Sections: taking them.** Section intro screens, per-section timers, early finish, section scores on both clients; `AssessmentAttemptSection`; start gate for old builds.                                                      | —                                                                 | web, mobile |
-| 6    | **Navigation and locks.** `FORWARD_ONLY`, `lockAnswers` in the engine and both UIs.                                                                                                                                             | —                                                                 | web, mobile |
-| 7    | **Audio policy and paced sections.** Controlled player on both clients, play counting, autoplay, `PACED`.                                                                                                                       | —                                                                 | web, mobile |
-| 8    | **Tags and reports.** Tag input with preset suggestions, learner per-tag summary, staff item analysis and CSV.                                                                                                                  | 4.6                                                               | web, mobile |
-| 9    | **Picture grid and question groups.** 2×2 image options; groups with instructions and shared stimulus.                                                                                                                          | 4.5                                                               | web, mobile |
-| 10   | **EPS-TOPIK preset.** Preset action, tag vocabulary, blueprint check, original seed sample, guides.                                                                                                                             | —                                                                 | web, mobile |
+| Step | PR                                                                                                                                                                                                                               | Schema                                                            | Clients     |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------- |
+| 1    | **Event order follows the assessment.** Nullable `shuffleQuestions`, optional override in the event sheet. Includes the research report and this document.                                                                       | 4.1                                                               | web         |
+| 2    | **Fractional points and score bands.** Widen the score columns, relax validations (editor, review, adjust, AI import, MCP), `roundScore`/`formatScore`, bands in settings and results.                                           | 4.3, 4.4                                                          | web, mobile |
+| 3    | **Progress log and offline-safe mobile attempts.** Shared rules engine (no rules yet, only time), `recordProgress`, `ASSESSMENT_PROGRESS`, `serverNow` at start, late device submissions, mobile auto-submit at 0. Fixes gap 8.  | log, `answeredAt`, `runtimeVersion`, `submittedVia`, audit action | web, mobile |
+| 4    | **Sections: authoring.** Section CRUD, assign and reorder questions (`moveQuestion`), section instructions and time limits; draft payload, duplicate, clone, MCP.                                                                | 4.2 tables and `sectionId`                                        | web         |
+| 5    | **Sections: taking them.** Section intro screens, per-section timers, early finish, section scores on both clients; `AssessmentAttemptSection`; start gate for old builds.                                                       | —                                                                 | web, mobile |
+| 6+7  | **Navigation, locks, audio policy and paced sections** (step 6 merged into 7). `FORWARD_ONLY` and `lockAnswers` in the engine and both UIs; controlled player on both clients, play counting, autoplay, `PACED`.                 | —                                                                 | web, mobile |
+| 8    | **Tags and reports.** `tags` column, tag input with the preset vocabulary (section 4.6), learner per-tag summary, staff item analysis (`analyzeItems`, section 5.8) and CSV. Timing and section columns come with steps 3 and 5. | 4.6                                                               | web, mobile |
+| 9    | **Picture grid and question groups.** 2×2 image options; groups with instructions and shared stimulus, copyable as a unit (`copyQuestionGroup`).                                                                                 | 4.5                                                               | web, mobile |
+| 10   | **EPS-TOPIK preset.** Preset action, blueprint data, blueprint check, original seed sample, guides.                                                                                                                              | —                                                                 | web, mobile |
 
-Steps 1 and 2 are independent and small. Step 3 must come before 5–7 because it carries the
-enforcement path. Step 8 can move earlier if per-type reports matter sooner than the exam feel. The
-mobile changes in steps 3, 5, 6 and 7 can ship as one OTA update after step 7 if we would rather not
-publish four times.
+**Approved order: 1 → 2 → 8 → 3 → 4 → 5 → 6+7 → 9 → 10.** Step numbers are kept as names, because
+the generator design refers to them. Tags and reports move up because they are small, they are the
+main selling point (per-type readiness reports), and the question bank needs tags early. Step 3 must
+come before 5 and 6+7 because it carries the enforcement path. Step 6 is merged into 7: the
+navigation and lock rules are a few engine rules and one UI state each, and they share the "system
+controls the cursor" UI with `PACED`. The mobile changes in steps 3, 5 and 6+7 can ship as one OTA
+update after 6+7 rather than three. The generator (its own steps 1–7) starts after step 9.
 
-## 7. Open questions
+## 7. Decisions and open questions
 
-1. Does today's UBT still lock answers and auto-advance listening? (Research report, section 7.)
-   The preset defaults to a paced listening section without locks; confirm with an LPK.
-2. Should a section timer pause while the app is closed, for example after a crash? The design
-   says no: the clock keeps running, like the real exam.
-3. Is the 24 h offline grace after close right for LPK tryouts, or should results be final sooner?
+Decided at approval (2026-10-27):
+
+- Fractional points: widen to `Float` (section 4.4).
+- Preset listening default: `PACED`, no answer lock; both remain settings (section 5.9).
+- Offline grace after close: 24 h (section 5.4).
+- A section timer keeps running while the app is closed (after a crash too), like the real exam.
+- Order 1 → 2 → 8 → 3 → 4 → 5 → 6+7 → 9 → 10, with step 6 merged into 7 (section 6).
+- Licensing follows the generator design, not a licensed shared assessment (section 4.7).
+
+Still open:
+
+1. Does today's UBT still lock answers and auto-advance listening? LPK interviews are in progress;
+   the answer only changes preset defaults.
+2. Does today's UBT still use a shared passage for two questions? Also part of the interviews; it
+   affects how often the blueprint uses groups, not the group design.

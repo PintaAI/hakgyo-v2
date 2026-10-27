@@ -1,6 +1,9 @@
 import type { Prisma } from "../../../generated/prisma/client";
 import { activeEnrollmentStatuses } from "~/server/authorization";
-import { orderAssessmentQuestions } from "~/server/assessment/order";
+import {
+  orderAssessmentQuestions,
+  shufflesQuestions,
+} from "~/server/assessment/order";
 import { shouldRevealAssessmentAnswers } from "~/server/assessment/result-policy";
 import { getAssessmentDeadline } from "~/server/assessment/timing";
 import { liveClassCohortWhere } from "~/server/enrollment/cohort-access";
@@ -149,8 +152,10 @@ export function shapeLearnerAssessment(input: {
   const questions = orderAssessmentQuestions(
     item.assessment.questions,
     attempt?.shuffleSeed ?? attempt?.id ?? input.attemptId,
-    attempt?.assessmentEvent?.shuffleQuestions ??
+    shufflesQuestions(
       item.assessment.shuffleQuestions,
+      attempt?.assessmentEvent?.shuffleQuestions,
+    ),
     item.assessment.shuffleOptions,
   ).map(({ explanation, options, ...question }) => ({
     ...question,

@@ -13,7 +13,7 @@ Bedanya:
 
 - Tugasnya harus sudah **tampil di kurikulum**, bukan hanya tersimpan di menu **Bahan ajar**, dan minimal punya satu soal. Jika belum, daftar tugas menampilkan **Belum ada tugas yang siap di kurikulum ini**. Lihat [Kurikulum dan Bahan Ajar](/docs/pengajar/kurikulum-bahan-ajar).
 - Kelas yang ikut harus punya murid aktif. Latihan tidak bisa dibuka untuk kelas tanpa murid aktif.
-- Periksa soal dan jadwal sekali lagi. Setelah dibuat, judul, jadwal, dan durasi **tidak bisa diubah**, termasuk untuk draf, dan soal tugasnya terkunci selama latihan berjalan.
+- Periksa soal dan jadwal sekali lagi. Setelah dibuat, judul, urutan soal, jadwal, dan durasi **tidak bisa diubah**, termasuk untuk draf, dan soal tugasnya terkunci selama latihan berjalan.
 
 ## Di mana menemukannya
 
@@ -30,7 +30,12 @@ Setiap latihan tampil sebagai kartu berisi jenis, status, kelas yang ikut, duras
 
 1. Klik **Buat latihan / tryout**. Panel berisi empat bagian terbuka dari samping.
 2. **Jenis:** pilih **Latihan** atau **Tryout**.
-3. **Tugas:** pilih tugas dari daftar yang dikelompokkan per bab. Kolom **Judul (opsional)** boleh dikosongkan; Hakgyo memakai judul seperti "Latihan Kuis Hangeul".
+3. **Tugas:** pilih tugas dari daftar yang dikelompokkan per bab. Kolom **Judul (opsional)** boleh dikosongkan; Hakgyo memakai judul seperti "Latihan Kuis Hangeul". Setelah tugas dipilih, atur **Urutan soal**:
+   - **Ikuti tugas** (bawaan): mengikuti pengaturan **Acak soal** di tugasnya. Keterangan di bawah pilihan menunjukkan apakah soal akan diacak atau tidak.
+   - **Urutan tetap**: semua murid mendapat soal dengan urutan yang sama seperti di tugas. Pilih ini untuk simulasi ujian yang nomornya harus sama, misalnya EPS-TOPIK dengan membaca di nomor 1-20 dan mendengar di nomor 21-40.
+   - **Acak**: setiap murid mendapat urutan soal yang berbeda, walaupun tugasnya tidak diacak.
+
+   Pilihan jawaban di setiap soal tetap mengikuti pengaturan **Acak opsi** di tugasnya.
 4. **Peserta:** jika membuat dari halaman kurikulum, pilih **Semua kelas** atau **Pilih kelas**, lalu centang kelas yang ikut. Setiap kelas menampilkan jumlah murid dan rata-rata progres belajarnya.
 5. **Waktu:** pilih salah satu:
    - **Buka sekarang**: murid bisa langsung mengerjakan.

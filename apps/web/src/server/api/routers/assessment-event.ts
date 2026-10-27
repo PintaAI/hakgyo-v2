@@ -467,6 +467,7 @@ export const assessmentEventRouter = createTRPCRouter({
               title: true,
               description: true,
               timeLimitMinutes: true,
+              shuffleQuestions: true,
               updatedAt: true,
               _count: { select: { questions: true } },
             },
@@ -576,6 +577,8 @@ export const assessmentEventRouter = createTRPCRouter({
         target: eventTarget,
         title: z.string().trim().min(1).max(200),
         durationMinutes: z.number().int().min(1).max(480),
+        /** null or omitted: follow the assessment's "Acak soal" setting. */
+        shuffleQuestions: z.boolean().nullable().optional(),
         closesAt: z.coerce.date(),
         start: z.discriminatedUnion("mode", [
           z.object({ mode: z.literal("draft") }),

@@ -1324,7 +1324,8 @@ model AssessmentEvent {
   status                 AssessmentEventStatus        @default(DRAFT)
   /// Targets every class of the course; the classes active at opening are stored as targets.
   allCohorts             Boolean                      @default(false)
-  shuffleQuestions       Boolean                      @default(true)
+  /// Overrides the assessment's question shuffle; null follows the assessment.
+  shuffleQuestions       Boolean?
   /// Planned opening of a SCHEDULED event (the lifecycle cron opens it).
   opensAt                DateTime?
   /// Push learners when the event opens (scheduled or manual).
