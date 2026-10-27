@@ -1,3 +1,4 @@
+import { formatScore, formatScoreOutOf } from "@hakgyo/shared";
 import { Text, View } from "react-native";
 
 import type { LearnerAttemptStatus } from "../../lib/assessment-state";
@@ -195,11 +196,15 @@ function GradedResult({
       <View className="flex-row items-end justify-between gap-3">
         <View className="flex-row items-baseline gap-2">
           <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
-            {percent !== null ? `${percent}%` : (attempt.score ?? "–")}
+            {percent !== null
+              ? `${percent}%`
+              : attempt.score !== null
+                ? formatScore(attempt.score)
+                : "–"}
           </Text>
           {attempt.score !== null && attempt.maxScore !== null ? (
             <Text className="text-sm font-semibold tabular-nums text-muted-foreground">
-              {attempt.score} / {attempt.maxScore} poin
+              {formatScoreOutOf(attempt.score, attempt.maxScore, " / ")} poin
             </Text>
           ) : null}
         </View>

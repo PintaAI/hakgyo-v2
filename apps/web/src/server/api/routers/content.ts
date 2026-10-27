@@ -1,4 +1,8 @@
-import { collectPdfPageRanges, PDF_PAGES_BLOCK_TYPE } from "@hakgyo/shared";
+import {
+  collectPdfPageRanges,
+  PDF_PAGES_BLOCK_TYPE,
+  scoreBandsSchema,
+} from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -815,6 +819,7 @@ export const contentRouter = createTRPCRouter({
         editorSchemaVersion: z.number().int().positive().optional(),
         instructions: serializedJson.optional(),
         passingScore: z.number().int().min(0).max(100).nullable().optional(),
+        scoreBands: scoreBandsSchema.optional(),
         maxAttempts: z.number().int().positive().nullable().optional(),
         timeLimitMinutes: z.number().int().positive().nullable().optional(),
         shuffleQuestions: z.boolean().optional(),
@@ -852,6 +857,7 @@ export const contentRouter = createTRPCRouter({
             editorSchemaVersion: input.editorSchemaVersion,
             instructions: input.instructions,
             passingScore: input.passingScore,
+            scoreBands: input.scoreBands,
             maxAttempts: input.maxAttempts,
             timeLimitMinutes: input.timeLimitMinutes,
             shuffleQuestions: input.shuffleQuestions,

@@ -36,8 +36,10 @@ Jika waktu habis saat halaman masih terbuka di situs web, jawabanmu dikirim otom
 
 ## Melihat hasil
 
-- **Hanya soal pilihan:** nilai langsung muncul.
+- **Hanya soal pilihan:** nilai langsung muncul. Nilai bisa berupa desimal, misalnya `37,5/100`.
 - **Ada soal tertulis:** statusnya **Menunggu review**. Kamu akan mendapat notifikasi **Tugas sudah dinilai** setelah pengajar menilai.
+
+Jika pengajar menentukan batas nilai bernama, misalnya **Manufaktur** 60% dan **Sektor lain** 45% pada simulasi EPS-TOPIK, di bawah nilaimu tertulis batas mana yang sudah kamu lewati (**Lolos batas**) dan mana yang belum (**Belum lolos batas**).
 
 Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**, **Salah**, atau **Tidak dijawab**, jawaban yang benar, pembahasan, dan masukan dari pengajar.
 

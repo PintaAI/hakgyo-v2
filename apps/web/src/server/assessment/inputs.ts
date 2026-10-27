@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import {
+  questionPointsSchema,
+  scoreBandsSchema,
+  scoreValueSchema,
+} from "@hakgyo/shared";
+
 import { pageInput } from "~/server/api/pagination";
 import { toPrismaJsonValue } from "~/server/prisma-json";
 
@@ -12,6 +18,9 @@ export const assessmentFields = z.object({
   editorSchemaVersion: z.number().int().positive().optional(),
   instructions: json.optional(),
   passingScore: z.number().int().min(0).max(100).nullable().optional(),
+  /** Named thresholds in percent, e.g. EPS-TOPIK "Manufaktur" 60 and "Sektor lain" 45. */
+  /** An empty list removes every band. */
+  scoreBands: scoreBandsSchema.optional(),
   maxAttempts: z.number().int().positive().nullable().optional(),
   timeLimitMinutes: z.number().int().positive().nullable().optional(),
   shuffleQuestions: z.boolean().optional(),
@@ -22,7 +31,8 @@ export const questionFields = z.object({
   type: z.enum(["SINGLE_CHOICE", "MULTIPLE_CHOICE", "WRITTEN"]),
   prompt: json,
   explanation: json.optional(),
-  points: z.number().int().positive().max(10000).optional(),
+  /** Up to two decimals, e.g. 2.5. */
+  points: questionPointsSchema.optional(),
 });
 
 export const optionFields = z.object({
@@ -50,7 +60,7 @@ export const reviewAttemptInput = z.object({
     .array(
       z.object({
         answerId: id,
-        score: z.number().int().min(0),
+        score: scoreValueSchema,
         feedback: json.optional(),
       }),
     )

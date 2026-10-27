@@ -29,7 +29,7 @@ Setiap baris menampilkan nama murid, tugas beserta kurikulum, kelas, dan bab, pe
 
 1. Klik **Review** pada baris yang berstatus **Perlu review**.
 2. Baca jawaban murid. Soal pilihan sudah dinilai otomatis dan disembunyikan; klik **Lihat juga soal pilihan & skor otomatis** untuk melihatnya.
-3. Untuk **setiap** jawaban tertulis, isi **Skor** (bilangan bulat dari 0 sampai poin soal) dan, bila perlu, masukan di kolom **Feedback untuk murid**.
+3. Untuk **setiap** jawaban tertulis, isi **Skor** dari 0 sampai poin soal. Skor boleh desimal dengan paling banyak dua angka di belakang koma, misalnya `2,5` dan, bila perlu, masukan di kolom **Feedback untuk murid**.
 4. Klik **Selesaikan review & terbitkan nilai**.
 
 Nilai akhir adalah jumlah skor Anda dan skor otomatis. Murid langsung melihat nilai dan masukan Anda, dan untuk tugas bab murid juga mendapat notifikasi **Tugas sudah dinilai**.
@@ -48,10 +48,10 @@ Di layar murid, jawaban yang belum dinilai berstatus **Menunggu review**, sama d
 
 ## Siapa melihat jawaban siapa
 
-| Peran | Mode sederhana | Mode lanjutan |
-|---|---|---|
-| Pemilik | Semua | Semua |
-| Admin | Murid di kelas tempat ia menjadi staf | Semua |
+| Peran    | Mode sederhana                                                  | Mode lanjutan                                                            |
+| -------- | --------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Pemilik  | Semua                                                           | Semua                                                                    |
+| Admin    | Murid di kelas tempat ia menjadi staf                           | Semua                                                                    |
 | Pengajar | Murid belajar mandiri dan murid di kelas tempat ia menjadi staf | Murid di kurikulum yang ia kelola dan kelas tempat ia menjadi Instructor |
 
 ## Tips

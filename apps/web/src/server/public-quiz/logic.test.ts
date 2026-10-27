@@ -35,6 +35,21 @@ const questions: GradableQuestion[] = [
 ];
 
 describe("gradePublicQuiz", () => {
+  test("sums fractional points without float noise", () => {
+    const tenths: GradableQuestion[] = [0.1, 0.2].map((points, index) => ({
+      id: `f${index}`,
+      type: "SINGLE_CHOICE",
+      points,
+      options: [{ id: `f${index}-a`, isCorrect: true }],
+    }));
+    const result = gradePublicQuiz(tenths, [
+      { questionId: "f0", optionIds: ["f0-a"] },
+      { questionId: "f1", optionIds: ["f1-a"] },
+    ]);
+    expect(result.score).toBe(0.3);
+    expect(result.maxScore).toBe(0.3);
+  });
+
   test("scores exact matches only", () => {
     const result = gradePublicQuiz(questions, [
       { questionId: "q1", optionIds: ["a"] },

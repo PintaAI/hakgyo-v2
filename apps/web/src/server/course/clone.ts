@@ -375,6 +375,11 @@ export async function cloneStarterCourse(
             editorSchemaVersion: assessment.editorSchemaVersion,
             instructions: remappedOptional(assessment.instructions),
             passingScore: assessment.passingScore,
+            // Bands hold no references, so they copy as they are.
+            scoreBands:
+              assessment.scoreBands === null
+                ? Prisma.DbNull
+                : (assessment.scoreBands as Prisma.InputJsonValue),
             maxAttempts: assessment.maxAttempts,
             timeLimitMinutes: assessment.timeLimitMinutes,
             shuffleQuestions: assessment.shuffleQuestions,

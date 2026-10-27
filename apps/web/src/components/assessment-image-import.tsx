@@ -1,6 +1,7 @@
 "use client";
 
 import { PlusIcon, XIcon } from "lucide-react";
+import { parseQuestionPoints } from "@hakgyo/shared";
 
 import {
   AiImageImportDialog,
@@ -74,8 +75,9 @@ let optionKey = 0;
 
 function rowIssue(row: ReviewRow) {
   if (!row.prompt.trim()) return "Pertanyaan belum diisi";
-  const points = Number(row.points);
-  if (!Number.isInteger(points) || points < 1) return "Poin minimal 1";
+  if (parseQuestionPoints(row.points) === null) {
+    return "Poin harus lebih dari 0, maksimal dua desimal";
+  }
   if (row.type === "WRITTEN") return null;
   if (row.options.length < MIN_ASSESSMENT_OPTIONS) return "Minimal dua opsi";
   if (row.options.some((option) => !option.text.trim())) {
@@ -163,7 +165,7 @@ export function useAssessmentImageImport({
               type: row.type,
               prompt: row.prompt.trim(),
               explanation: row.explanation.trim(),
-              points: Number(row.points),
+              points: parseQuestionPoints(row.points) ?? 1,
               options:
                 row.type === "WRITTEN"
                   ? []
@@ -276,7 +278,7 @@ export function useAssessmentImageImport({
                   <Input
                     aria-invalid={Boolean(issue?.startsWith("Poin"))}
                     className="h-7 w-14"
-                    inputMode="numeric"
+                    inputMode="decimal"
                     onChange={(event) =>
                       updateRow(row.key, (current) => ({
                         ...current,

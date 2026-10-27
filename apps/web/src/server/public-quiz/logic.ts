@@ -1,3 +1,5 @@
+import { roundScore } from "@hakgyo/shared";
+
 /** Pure rules of public quizzes, kept free of database access for testing. */
 
 export const PUBLIC_QUIZ_ANONYMOUS_NAME = "Anonim";
@@ -41,7 +43,7 @@ export function gradePublicQuiz(
   const stored: Array<PublicQuizAnswer & { correct: boolean }> = [];
   for (const question of questions) {
     if (question.type === "WRITTEN") continue;
-    maxScore += question.points;
+    maxScore = roundScore(maxScore + question.points);
     const optionIds = new Set(question.options.map((option) => option.id));
     const selected = [
       ...new Set(
@@ -55,7 +57,7 @@ export function gradePublicQuiz(
     const correct =
       selected.length === expected.length &&
       expected.every((value, index) => value === selected[index]);
-    if (correct) score += question.points;
+    if (correct) score = roundScore(score + question.points);
     stored.push({ questionId: question.id, optionIds: selected, correct });
   }
   return { score, maxScore, answers: stored };

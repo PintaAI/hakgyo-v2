@@ -11,6 +11,7 @@
  * client (`import type`) can never drift apart.
  */
 
+import type { ScoreBand } from "../assessment-score";
 import type { MaintenanceState } from "./maintenance";
 
 /** Bumped when the request/response contract changes incompatibly. */
@@ -293,6 +294,8 @@ export type BundleAssessment = {
   description: string | null;
   instructions: JsonValue;
   passingScore: number | null;
+  /** Missing in bundles cached before score bands existed. */
+  scoreBands?: ScoreBand[];
   maxAttempts: number | null;
   timeLimitMinutes: number | null;
   shuffleQuestions: boolean;

@@ -1,3 +1,4 @@
+import { formatScore, formatScoreOutOf } from "@hakgyo/shared";
 import type { SymbolName } from "../components/ui/symbol-names";
 
 import type { CourseContentNotice, SyncNotice } from "../sync/notices";
@@ -155,7 +156,7 @@ function count(value: number, label: string) {
 
 function scoreLabel(score: number | null, maxScore: number | null) {
   if (score === null) return null;
-  return maxScore ? `${score}/${maxScore}` : String(score);
+  return maxScore ? formatScoreOutOf(score, maxScore) : formatScore(score);
 }
 
 /** Indonesian copy and SF Symbol of a notice. */

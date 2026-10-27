@@ -1060,6 +1060,8 @@ model Assessment {
   editorSchemaVersion   Int                   @default(1)
   instructions          Json?
   passingScore          Int?
+  /// Named score thresholds in percent, e.g. [{ "label": "Manufaktur", "minPercent": 60 }]. See `readScoreBands` in @hakgyo/shared.
+  scoreBands            Json?
   maxAttempts           Int?
   timeLimitMinutes      Int?
   shuffleQuestions      Boolean               @default(false)
@@ -1087,7 +1089,8 @@ model AssessmentQuestion {
   type         AssessmentQuestionType
   prompt       Json
   explanation  Json?
-  points       Int                    @default(1)
+  /// Up to two decimals (EPS-TOPIK uses 2.5).
+  points       Float                  @default(1)
   position     Int
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
@@ -1284,8 +1287,8 @@ model AssessmentAttempt {
   attemptNumber     Int
   shuffleSeed       String?
   status            AssessmentAttemptStatus @default(IN_PROGRESS)
-  score             Int?
-  maxScore          Int?
+  score             Float?
+  maxScore          Float?
   startedAt         DateTime                @default(now())
   submittedAt       DateTime?
   gradedAt          DateTime?
@@ -1416,8 +1419,8 @@ model AssessmentAnswer {
   organizationId         String
   questionId             String
   content                Json?
-  autoScore              Int?
-  manualScore            Int?
+  autoScore              Float?
+  manualScore            Float?
   feedback               Json?
   reviewedByMembershipId String?
   reviewedAt             DateTime?
@@ -1767,8 +1770,9 @@ model PublicQuizAttempt {
   contactConsent  Boolean    @default(false)
   ipHash          String?
   answers         Json?
-  score           Int?
-  maxScore        Int?
+  /// Sums of assessment points, so fractional like them.
+  score           Float?
+  maxScore        Float?
   durationSeconds Int?
   startedAt       DateTime   @default(now())
   submittedAt     DateTime?

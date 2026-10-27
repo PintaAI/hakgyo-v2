@@ -8,3 +8,4 @@ export * from "./support";
 export * from "./content-assets";
 export * from "./format-bytes";
 export * from "./vocabulary-meanings";
+export * from "./assessment-score";

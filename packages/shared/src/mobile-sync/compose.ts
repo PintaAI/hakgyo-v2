@@ -514,6 +514,7 @@ export function composeLearnerAssessment(
     description: assessment.description,
     instructions: assessment.instructions,
     passingScore: assessment.passingScore,
+    scoreBands: assessment.scoreBands ?? [],
     maxAttempts: assessment.maxAttempts,
     shuffleQuestions: assessment.shuffleQuestions,
     shuffleOptions: assessment.shuffleOptions,

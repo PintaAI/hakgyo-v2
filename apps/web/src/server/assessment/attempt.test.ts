@@ -130,4 +130,13 @@ describe("isPassingScore", () => {
     expect(isPassingScore(0, 0, null)).toBe(false);
     expect(isPassingScore(5, null, null)).toBe(false);
   });
+
+  test("counts fractional scores exactly at the threshold", () => {
+    // 24 EPS-TOPIK questions at 2.5 points reach the manufacturing floor of 60.
+    let score = 0;
+    for (let index = 0; index < 24; index += 1) score += 2.5;
+    expect(isPassingScore(score, 100, 60)).toBe(true);
+    expect(isPassingScore(0.1 + 0.2, 0.5, 60)).toBe(true);
+    expect(isPassingScore(57.5, 100, 60)).toBe(false);
+  });
 });

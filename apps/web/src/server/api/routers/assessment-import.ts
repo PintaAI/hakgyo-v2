@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { questionPointsSchema } from "@hakgyo/shared";
 import { z } from "zod";
 
 import type { Prisma } from "../../../../generated/prisma/client";
@@ -49,7 +50,7 @@ const importedQuestion = z
     type: z.enum(["SINGLE_CHOICE", "MULTIPLE_CHOICE", "WRITTEN"]),
     prompt: z.string().trim().min(1).max(20000),
     explanation: z.string().trim().max(20000),
-    points: z.number().int().positive().max(10000),
+    points: questionPointsSchema,
     options: z
       .array(
         z.object({

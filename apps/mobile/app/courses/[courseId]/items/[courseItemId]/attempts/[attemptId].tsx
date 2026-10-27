@@ -1,4 +1,4 @@
-import { assessmentContentAssetIds } from "@hakgyo/shared";
+import { assessmentContentAssetIds, formatScoreOutOf } from "@hakgyo/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
@@ -9,6 +9,7 @@ import {
   useAssessmentMediaPrefetch,
 } from "../../../../../../src/components/assessment-media";
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
+import { ScoreBandResults } from "../../../../../../src/components/score-band-results";
 import {
   AssessmentOption,
   AssessmentQuestion,
@@ -501,9 +502,16 @@ function AssessmentAttemptContent({
                 : "Tugas sudah direview"}
             </Text>
             {result.status === "GRADED" ? (
-              <Text className="text-lg text-muted-foreground">
-                Score: {result.score}/{result.maxScore}
-              </Text>
+              <>
+                <Text className="text-lg text-muted-foreground">
+                  Skor: {formatScoreOutOf(result.score, result.maxScore)}
+                </Text>
+                <ScoreBandResults
+                  bands={assessment.data?.scoreBands ?? []}
+                  maxScore={result.maxScore}
+                  score={result.score}
+                />
+              </>
             ) : (
               <Text className="text-center text-sm leading-5 text-muted-foreground">
                 Hasil lengkap kamu akan muncul di sini setelah pengajar selesai

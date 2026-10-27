@@ -27,6 +27,7 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { withTransactionRetry } from "~/server/db-retry";
+import { sumScores } from "@hakgyo/shared";
 
 type DatabaseClient = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
@@ -258,10 +259,10 @@ export async function reviewAttempt(
           reviews: [...reviews.values()],
         }),
       );
-      const score = attempt.answers.reduce(
-        (total, answer) =>
-          total + (answer.manualScore ?? answer.autoScore ?? 0),
-        0,
+      const score = sumScores(
+        attempt.answers.map(
+          (answer) => answer.manualScore ?? answer.autoScore ?? 0,
+        ),
       );
       const now = new Date();
       const finalized = await tx.assessmentAttempt.updateMany({

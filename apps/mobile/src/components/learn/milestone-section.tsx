@@ -1,3 +1,4 @@
+import { formatScoreOutOf } from "@hakgyo/shared";
 import { View } from "react-native";
 
 import { openCourseItem } from "../../lib/navigation";
@@ -33,7 +34,7 @@ function milestoneStatus(milestone: CohortMilestone) {
     milestone.score !== null &&
     milestone.maxScore !== null
   ) {
-    parts.push(`Skor ${milestone.score}/${milestone.maxScore}`);
+    parts.push(`Skor ${formatScoreOutOf(milestone.score, milestone.maxScore)}`);
   }
   if (milestone.completedAt) {
     parts.push(dayLabel(new Date(milestone.completedAt)));

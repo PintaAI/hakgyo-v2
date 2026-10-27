@@ -539,7 +539,7 @@ export const mcpDomainTools = {
       name: "create_assessment",
       title: "Create Tugas",
       description:
-        "Create a Tugas (assessment) with its passing score, attempt limit, time limit and shuffle settings. Add questions with add_assessment_question.",
+        "Create a Tugas (assessment) with its passing score, optional named score bands (e.g. EPS-TOPIK 'Manufaktur' 60 % and 'Sektor lain' 45 %), attempt limit, time limit and shuffle settings. Add questions with add_assessment_question.",
       effect: "add",
     },
     {
@@ -563,7 +563,7 @@ export const mcpDomainTools = {
       name: "add_assessment_question",
       title: "Add Tugas question",
       description:
-        "Add a SINGLE_CHOICE, MULTIPLE_CHOICE or WRITTEN question to a Tugas. Add choices with add_question_option.",
+        "Add a SINGLE_CHOICE, MULTIPLE_CHOICE or WRITTEN question to a Tugas. Points may have two decimals (EPS-TOPIK uses 2.5). Add choices with add_question_option.",
       effect: "add",
     },
     {

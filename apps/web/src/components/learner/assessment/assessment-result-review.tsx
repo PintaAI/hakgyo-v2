@@ -1,5 +1,7 @@
 "use client";
 
+import { formatScoreOutOf } from "@hakgyo/shared";
+
 import { useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -107,7 +109,7 @@ export function AssessmentResultReview({
         detail={
           question.type === "WRITTEN"
             ? writtenScore !== null
-              ? `${writtenScore} / ${question.points} pt`
+              ? `${formatScoreOutOf(writtenScore, question.points, " / ")} pt`
               : "Sudah direview"
             : statuses[index] === "correct"
               ? "Benar"

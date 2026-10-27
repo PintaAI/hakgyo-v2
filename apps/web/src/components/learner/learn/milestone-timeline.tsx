@@ -1,3 +1,4 @@
+import { formatScoreOutOf } from "@hakgyo/shared";
 import { LearningItemRow } from "./learning-item-row";
 import { dayLabel } from "~/lib/learner/study";
 import { learningItemHref } from "~/lib/learner/hrefs";
@@ -26,7 +27,7 @@ function milestoneStatus(milestone: CohortMilestone) {
     milestone.score !== null &&
     milestone.maxScore !== null
   ) {
-    parts.push(`Skor ${milestone.score}/${milestone.maxScore}`);
+    parts.push(`Skor ${formatScoreOutOf(milestone.score, milestone.maxScore)}`);
   }
   if (milestone.completedAt) {
     parts.push(dayLabel(new Date(milestone.completedAt)));

@@ -24,6 +24,7 @@ export const materialSymbols = {
   checkmark: "check",
   "checkmark.circle.fill": "check_circle",
   "checkmark.seal.fill": "verified",
+  circle: "radio_button_unchecked",
   "chevron.down": "expand_more",
   "chevron.left": "chevron_left",
   "chevron.right": "chevron_right",
