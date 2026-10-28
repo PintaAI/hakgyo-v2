@@ -372,6 +372,12 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
                             onDone={refresh}
                           />
                         ) : null}
+                        {question.hasScript && status !== "RETIRED" ? (
+                          <BankAudioActions
+                            question={question}
+                            onDone={refresh}
+                          />
+                        ) : null}
                       </li>
                     );
                   })}
@@ -673,5 +679,97 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="font-medium">{label}</span>
       {children}
     </label>
+  );
+}
+
+const audioJobLabels: Record<string, string> = {
+  PENDING: "Audio menunggu PC",
+  RUNNING: "Audio sedang dibuat",
+  DONE: "Audio sudah dibuat",
+  FAILED: "Audio gagal",
+};
+
+/**
+ * Audio for a listening question: queue it for the PC (VoxCPM2), or make it with OpenAI now. Jobs
+ * that wait more than two hours go to OpenAI by themselves.
+ */
+function BankAudioActions({
+  question,
+  onDone,
+}: {
+  question: Question;
+  onDone: () => Promise<void>;
+}) {
+  const request = api.superadmin.bank.requestAudio.useMutation();
+  const now = api.superadmin.bank.generateAudioNow.useMutation();
+  const job = question.audioJob;
+  const waiting = job?.status === "PENDING" || job?.status === "RUNNING";
+  const done = question.media.hasAudio;
+  const busy = request.isPending || now.isPending;
+
+  async function run(action: "queue" | "now") {
+    try {
+      if (action === "queue") {
+        await request.mutateAsync({ questionId: question.id });
+        toast.success("Audio masuk antrean PC.");
+      } else {
+        await now.mutateAsync({ questionId: question.id });
+        toast.success(
+          "Audio dibuat dengan suara AI cloud. Dengarkan sebelum menyetujui soal.",
+        );
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Audio gagal dibuat.",
+      );
+    } finally {
+      await onDone();
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 px-1 pb-3 pl-8 text-xs sm:px-3 sm:pl-10">
+      {job ? (
+        <span
+          className={
+            job.status === "FAILED"
+              ? "text-destructive"
+              : "text-muted-foreground"
+          }
+        >
+          {audioJobLabels[job.status]}
+          {job.provider
+            ? ` (${job.provider === "VOXCPM" ? "PC" : "cloud"})`
+            : ""}
+          {job.status === "FAILED" && job.error ? `: ${job.error}` : ""}
+        </span>
+      ) : null}
+      {!done && !waiting ? (
+        <Button
+          disabled={busy}
+          onClick={() => void run("queue")}
+          size="xs"
+          variant="outline"
+        >
+          Buat audio (PC)
+        </Button>
+      ) : null}
+      {!done ? (
+        <Button
+          disabled={busy}
+          onClick={() => void run("now")}
+          size="xs"
+          variant="ghost"
+        >
+          {now.isPending ? (
+            <LoaderCircleIcon
+              className="animate-spin"
+              data-icon="inline-start"
+            />
+          ) : null}
+          Buat dengan cloud sekarang
+        </Button>
+      ) : null}
+    </div>
   );
 }

@@ -17,6 +17,7 @@ import {
   MAX_BANK_BATCH,
 } from "~/lib/bank-status";
 import { getBlockNotePlainText } from "~/lib/blocknote/document";
+import { latestTtsJobs } from "~/server/bank/tts";
 import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 
 /**
@@ -200,6 +201,10 @@ export async function listBankQuestions(
       },
     },
   });
+  const jobs = await latestTtsJobs(
+    db,
+    questions.map(({ id }) => id),
+  );
   return questions.map(({ prompt, options, bankMeta, ...question }) => {
     const meta = (bankMeta ?? {}) as {
       flags?: Array<{ code: string; message: string }>;
@@ -221,6 +226,7 @@ export async function listBankQuestions(
       media: bankMediaState({ type, prompt, options }),
       optionsAreImages: type?.optionsAreImages ?? false,
       optionImages: options.map((option) => contentHasImage(option.content)),
+      audioJob: jobs.get(question.id) ?? null,
     };
   });
 }

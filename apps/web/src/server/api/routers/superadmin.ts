@@ -22,6 +22,7 @@ import {
   generateBankImage,
   generateBankImageInput,
 } from "~/server/bank/images";
+import { requestTts, runTtsWithOpenAi } from "~/server/bank/tts";
 import {
   createBank,
   getBankOverview,
@@ -337,6 +338,46 @@ export const superadminRouter = createTRPCRouter({
           return result;
         } catch (error) {
           throw aiError(error, "Gambar AI gagal dibuat. Silakan coba lagi.");
+        }
+      }),
+    /** Queues audio for the VPS poller (VoxCPM2 on the GPU worker). */
+    requestAudio: superadminProcedure
+      .input(z.object({ questionId: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const job = await requestTts(ctx.db, input.questionId, ctx.actorUserId);
+        await audit(ctx.db, {
+          actorUserId: ctx.actorUserId,
+          targetId: input.questionId,
+          targetType: "assessment-question",
+          action: "bank.tts-request",
+        }).catch((error: unknown) => console.error("Audit failed", error));
+        return job;
+      }),
+    /** "Buat dengan cloud sekarang": speaks the question with OpenAI right away. */
+    generateAudioNow: superadminProcedure
+      .input(z.object({ questionId: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const job = await requestTts(
+            ctx.db,
+            input.questionId,
+            ctx.actorUserId,
+          );
+          const { openAiSpeakLine } = await import("~/server/ai/bank-tts");
+          const result = await runTtsWithOpenAi(
+            ctx.db,
+            job.id,
+            openAiSpeakLine,
+          );
+          await audit(ctx.db, {
+            actorUserId: ctx.actorUserId,
+            targetId: input.questionId,
+            targetType: "assessment-question",
+            action: "bank.tts-openai",
+          }).catch((error: unknown) => console.error("Audit failed", error));
+          return result;
+        } catch (error) {
+          throw aiError(error, "Audio cloud gagal dibuat. Silakan coba lagi.");
         }
       }),
     setStatus: superadminProcedure

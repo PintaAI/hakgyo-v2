@@ -1155,6 +1155,7 @@ model AssessmentQuestion {
   group        AssessmentQuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   options      AssessmentOption[]
   answers      AssessmentAnswer[]
+  ttsJobs      TtsJob[]
 
   @@unique([assessmentId, position])
   @@index([sectionId])
@@ -1195,6 +1196,41 @@ enum BankItemStatus {
   REVIEW
   LIVE
   RETIRED
+}
+
+enum TtsJobStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum TtsProvider {
+  VOXCPM
+  OPENAI
+}
+
+/// Speech for one bank question (docs/eps-question-generator.md section 6): the VPS poller runs it with VoxCPM2 on the GPU worker; jobs waiting too long, or on request, go to OpenAI. One provider per question.
+model TtsJob {
+  id                String             @id @default(cuid())
+  questionId        String
+  requestedByUserId String
+  status            TtsJobStatus       @default(PENDING)
+  provider          TtsProvider?
+  /// The clips to speak: `[{ key: "prompt" | "option-<n>", lines: [{ voice: "M" | "F", text }] }]`.
+  clips             Json
+  /// Per clip key, the stored asset id.
+  result            Json?
+  error             String?
+  attempts          Int                @default(0)
+  claimedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  question          AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([questionId])
 }
 
 /// A timed part of an assessment (EPS-TOPIK: Membaca, Mendengar) with its own rules. See docs/eps-topik-simulation.md section 4.2.
