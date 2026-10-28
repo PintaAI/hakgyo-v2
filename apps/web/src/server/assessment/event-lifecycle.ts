@@ -6,6 +6,7 @@ import {
   addAllCohortTargets,
   enrollEventParticipants,
 } from "~/server/assessment/event-targets";
+import { refreshBankStatsAfterEvent } from "~/server/bank/stats";
 import { assertAssessmentComplete } from "~/server/course/readiness-service";
 import { withTransactionRetry } from "~/server/db-retry";
 import { notifyEventOpenedOnce } from "~/server/notifications/triggers";
@@ -345,10 +346,12 @@ export async function finalizeClosedEvent(
     where: { assessmentEventId: eventId, status: "IN_PROGRESS" },
   });
   if (remaining > 0) return { done: false, graded: result.graded };
-  await db.assessmentEvent.updateMany({
+  const finalized = await db.assessmentEvent.updateMany({
     where: { id: eventId, status: "CLOSED", attemptsFinalizedAt: null },
     data: { attemptsFinalizedAt: new Date() },
   });
+  // Every attempt is graded now, so a package's answers can flow back to the bank (once).
+  if (finalized.count === 1) await refreshBankStatsAfterEvent(db, eventId);
   return { done: true, graded: result.graded };
 }
 

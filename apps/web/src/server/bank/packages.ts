@@ -5,18 +5,23 @@ import { epsTypeByTag } from "@hakgyo/shared/eps-taxonomy";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import type { PrismaClient } from "../../../generated/prisma/client";
+import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { getBlockNotePlainText } from "~/lib/blocknote/document";
 import { collectMaterialAssetIds } from "~/lib/blocknote/material-assets";
+import { requireAssessmentManagement } from "~/server/assessment/access";
 import { questionCopyRows } from "~/server/assessment/copy";
 import { sectionData } from "~/server/assessment/eps-preset";
+import { getAssessmentLiveStatus } from "~/server/assessment/live-status";
+import { lockAssessment } from "~/server/assessment/lock";
 import {
   balancedKeyPositions,
   moveKeyTo,
+  pickReplacement,
   refersToOptionNumbers,
   selectPackage,
   type BankUnit,
 } from "~/server/bank/selection";
+import { readPicks, type PackagePicks } from "~/server/bank/picks";
 import { withTransactionRetry } from "~/server/db-retry";
 import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import { toPrismaJsonValue } from "~/server/prisma-json";
@@ -239,6 +244,179 @@ export async function previewPackage(
   };
 }
 
+type BankQuestion =
+  Awaited<ReturnType<typeof loadBank>>["byId"] extends Map<string, infer Q>
+    ? Q
+    : never;
+
+/**
+ * Questions that name an option by number keep their order: circled numbers anywhere, and in the
+ * (Indonesian) explanation also "jawaban 2" or "2번". Prompts often say "3번 버스", so only circled
+ * numbers count there.
+ */
+function keepsOrder(question: BankQuestion) {
+  return (
+    /[①②③④]/.test(
+      [
+        getBlockNotePlainText(question.prompt),
+        question.group ? getBlockNotePlainText(question.group.stimulus) : "",
+        question.group
+          ? getBlockNotePlainText(question.group.instructions)
+          : "",
+      ].join(" "),
+    ) || refersToOptionNumbers(getBlockNotePlainText(question.explanation))
+  );
+}
+
+/** Asset ids referenced in any of these BlockNote documents. */
+function assetIdsIn(documents: readonly unknown[]) {
+  const ids = new Set<string>();
+  for (const document of documents) {
+    for (const id of collectMaterialAssetIds(document)) ids.add(id);
+  }
+  return ids;
+}
+
+/** Every content field of a question that can hold media. */
+const questionDocuments = (question: {
+  prompt: unknown;
+  explanation: unknown;
+  options: ReadonlyArray<{ content: unknown }>;
+}) => [
+  question.prompt,
+  question.explanation,
+  ...question.options.map((option) => option.content),
+];
+
+function bankAssetIds(questions: readonly BankQuestion[]) {
+  return assetIdsIn(
+    questions.flatMap((question) => [
+      ...questionDocuments(question),
+      question.group?.instructions,
+      question.group?.stimulus,
+    ]),
+  );
+}
+
+/** Every picture and sound must be a usable Hakgyo asset, or learners would get a broken item. */
+async function requireBankAssets(db: PrismaClient, ids: ReadonlySet<string>) {
+  if (!ids.size) return [];
+  const assets = await db.asset.findMany({
+    where: {
+      id: { in: [...ids] },
+      organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
+      confirmedAt: { not: null },
+      deletedAt: null,
+    },
+    select: { id: true },
+  });
+  if (assets.length !== ids.size) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `${ids.size - assets.length} gambar atau audio di soal terpilih tidak tersedia. Periksa soalnya di bank, lalu coba lagi.`,
+    });
+  }
+  return assets.map(({ id }) => id);
+}
+
+/** Bank media stay Hakgyo's and are linked, not copied (section 3.1). */
+async function linkBankAssets(
+  tx: Prisma.TransactionClient,
+  input: { assessmentId: string; organizationId: string; assetIds: string[] },
+) {
+  if (!input.assetIds.length) return;
+  await tx.asset.updateMany({
+    where: { id: { in: input.assetIds }, sharedAt: null },
+    data: { sharedAt: new Date() },
+  });
+  await tx.assessmentAsset.createMany({
+    data: input.assetIds.map((assetId) => ({
+      assessmentId: input.assessmentId,
+      assetId,
+      organizationId: input.organizationId,
+      assetOrganizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
+    })),
+    skipDuplicates: true,
+  });
+}
+
+/**
+ * Copy rows for bank questions placed at `position` in `sectionId`, each key moved to its target
+ * (none: authored order), plus the option order each copy got.
+ */
+function packageRows(input: {
+  assessmentId: string;
+  sources: ReadonlyArray<{
+    question: BankQuestion;
+    sectionId: string;
+    position: number;
+    keyTarget: number | null;
+  }>;
+}) {
+  const ordered = input.sources.map(({ question, keyTarget }) =>
+    keyTarget === null || keepsOrder(question)
+      ? question.options
+      : moveKeyTo(question.options, keyTarget),
+  );
+  const groups = [
+    ...new Map(
+      input.sources.flatMap(({ question }) =>
+        question.group
+          ? [
+              [
+                question.group.id,
+                { ...question.group, sourceGroupId: question.group.id },
+              ] as const,
+            ]
+          : [],
+      ),
+    ).values(),
+  ];
+  const rows = questionCopyRows({
+    assessmentId: input.assessmentId,
+    groups,
+    // Sources already carry the package's section ids.
+    sectionIds: new Map(
+      input.sources.map(({ sectionId }) => [sectionId, sectionId]),
+    ),
+    questions: input.sources.map(
+      ({ question, sectionId, position }, index) => ({
+        type: question.type,
+        prompt: question.prompt,
+        explanation: question.explanation,
+        points: epsTopikBlueprint.pointsPerQuestion,
+        position,
+        tags: question.tags,
+        sectionId,
+        groupId: question.groupId,
+        sourceQuestionId: question.id,
+        options: ordered[index]!.map((option, optionIndex) => ({
+          ...option,
+          position: optionIndex,
+        })),
+      }),
+    ),
+  });
+  const options = Object.fromEntries(
+    rows.questions.map((row, index) => [
+      row.id,
+      ordered[index]!.map((option) => option.position),
+    ]),
+  );
+  return { rows, options };
+}
+
+async function insertRows(
+  tx: Prisma.TransactionClient,
+  rows: ReturnType<typeof packageRows>["rows"],
+) {
+  if (rows.groups.length) {
+    await tx.assessmentQuestionGroup.createMany({ data: rows.groups });
+  }
+  await tx.assessmentQuestion.createMany({ data: rows.questions });
+  await tx.assessmentOption.createMany({ data: rows.options });
+}
+
 /**
  * Saves the previewed package: the assessment with the blueprint's two sections, copies of the
  * picked questions (2.5 points, keys moved so each position is used about equally per section),
@@ -298,25 +476,14 @@ export async function createPackage(
       section.slots.map((slot) => [slot.number, section.key] as const),
     ),
   );
-  // Question rows in slot order, each with its key moved to a balanced position per section.
+  // Question rows in slot order.
   const sources = selection.picks.flatMap((pick) =>
     pick.unit.questionIds.map((id) => ({
       question: byId.get(id)!,
       section: sectionOf.get(pick.number)!,
     })),
   );
-  // Questions that name an option by number keep their order: circled numbers anywhere, and in
-  // the (Indonesian) explanation also "jawaban 2" or "2번". Prompts often say "3번 버스".
-  const keepsOrder = (question: (typeof sources)[number]["question"]) =>
-    /[①②③④]/.test(
-      [
-        getBlockNotePlainText(question.prompt),
-        question.group ? getBlockNotePlainText(question.group.stimulus) : "",
-        question.group
-          ? getBlockNotePlainText(question.group.instructions)
-          : "",
-      ].join(" "),
-    ) || refersToOptionNumbers(getBlockNotePlainText(question.explanation));
+  // Keys move to a balanced position per section, among the questions whose order may change.
   const keyTargets = new Map<string, number>();
   for (const section of blueprint.sections) {
     const inSection = sources.filter(
@@ -330,39 +497,10 @@ export async function createPackage(
       keyTargets.set(entry.question.id, targets[index]!);
     });
   }
-  const assetIds = new Set<string>();
-  const collect = (value: unknown) => {
-    for (const id of collectMaterialAssetIds(value)) assetIds.add(id);
-  };
-  for (const { question } of sources) {
-    collect(question.prompt);
-    collect(question.explanation);
-    for (const option of question.options) collect(option.content);
-    if (question.group) {
-      collect(question.group.instructions);
-      collect(question.group.stimulus);
-    }
-  }
-
-  // Every picture and sound must be a usable Hakgyo asset, or learners would get a broken item.
-  const assets = assetIds.size
-    ? await db.asset.findMany({
-        where: {
-          id: { in: [...assetIds] },
-          organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
-          confirmedAt: { not: null },
-          deletedAt: null,
-        },
-        select: { id: true },
-      })
-    : [];
-  if (assets.length !== assetIds.size) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: `${assetIds.size - assets.length} gambar atau audio di soal terpilih tidak tersedia. Periksa soalnya di bank, lalu buat pratinjau lagi.`,
-    });
-  }
-  const linkedAssetIds = assets.map(({ id }) => id);
+  const linkedAssetIds = await requireBankAssets(
+    db,
+    bankAssetIds(sources.map(({ question }) => question)),
+  );
 
   const count = await db.assessment.count({
     where: { organizationId: input.organizationId, kind: "GENERATED" },
@@ -397,62 +535,32 @@ export async function createPackage(
         });
         sectionIds.set(section.key, created.id);
       }
-      const groups = [
-        ...new Map(
-          sources.flatMap(({ question }) =>
-            question.group
-              ? [
-                  [
-                    question.group.id,
-                    { ...question.group, sourceGroupId: question.group.id },
-                  ] as const,
-                ]
-              : [],
-          ),
-        ).values(),
-      ];
-      const rows = questionCopyRows({
+      const { rows, options } = packageRows({
         assessmentId: assessment.id,
-        groups,
-        sectionIds,
-        questions: sources.map(({ question, section }, position) => ({
-          type: question.type,
-          prompt: question.prompt,
-          explanation: question.explanation,
-          points: blueprint.pointsPerQuestion,
+        sources: sources.map(({ question, section }, position) => ({
+          question,
+          sectionId: sectionIds.get(section)!,
           position,
-          tags: question.tags,
-          sectionId: section,
-          groupId: question.groupId,
-          sourceQuestionId: question.id,
-          options: (keyTargets.has(question.id)
-            ? moveKeyTo(question.options, keyTargets.get(question.id)!)
-            : question.options
-          ).map((option, index) => ({ ...option, position: index })),
+          keyTarget: keyTargets.get(question.id) ?? null,
         })),
       });
-      if (rows.groups.length) {
-        await tx.assessmentQuestionGroup.createMany({ data: rows.groups });
-      }
-      await tx.assessmentQuestion.createMany({ data: rows.questions });
-      await tx.assessmentOption.createMany({ data: rows.options });
+      await insertRows(tx, rows);
+      await linkBankAssets(tx, {
+        assessmentId: assessment.id,
+        organizationId: input.organizationId,
+        assetIds: linkedAssetIds,
+      });
 
-      // Bank media stay Hakgyo's and are linked, not copied (section 3.1).
-      if (linkedAssetIds.length) {
-        await tx.asset.updateMany({
-          where: { id: { in: linkedAssetIds }, sharedAt: null },
-          data: { sharedAt: new Date() },
-        });
-        await tx.assessmentAsset.createMany({
-          data: linkedAssetIds.map((assetId) => ({
-            assessmentId: assessment.id,
-            assetId,
-            organizationId: input.organizationId,
-            assetOrganizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
-          })),
-        });
-      }
-
+      const picks: PackagePicks = {
+        slots: selection.picks.map((pick) => ({
+          number: pick.number,
+          questionIds: pick.unit.questionIds,
+          groupId: pick.unit.groupId,
+        })),
+        warnings: selection.warnings,
+        swaps: [],
+        options,
+      };
       await tx.assessmentGeneration.create({
         data: {
           assessmentId: assessment.id,
@@ -460,21 +568,250 @@ export async function createPackage(
           blueprintKey: "eps-topik",
           blueprintVersion: blueprint.version,
           seed: input.seed,
-          picks: toPrismaJsonValue({
-            slots: selection.picks.map((pick) => ({
-              number: pick.number,
-              questionIds: pick.unit.questionIds,
-              groupId: pick.unit.groupId,
-            })),
-            warnings: selection.warnings,
-            swaps: [],
-          }),
+          picks: toPrismaJsonValue(picks),
           createdByUserId: userId,
         },
       });
       return { assessmentId: assessment.id, title };
     }),
   );
+}
+
+export const swapPackageQuestionInput = z.object({
+  assessmentId: z.string().min(1),
+  /** The question number (1–40); a number inside a group swaps the whole group. */
+  number: z.number().int().min(1).max(200),
+});
+
+const FROZEN_MESSAGE =
+  "Paket ini sudah dikerjakan murid, jadi soalnya tidak bisa diganti lagi. Minta paket baru ke Hakgyo.";
+
+/**
+ * Swaps need a package nobody can take yet: no attempt, and not live (hidden in the curriculum, no
+ * open event). Learners can't start a package that isn't live, so a swap never races a start or
+ * leaves an offline bundle pointing at deleted questions.
+ */
+async function assertSwappable(
+  db: Prisma.TransactionClient | PrismaClient,
+  assessmentId: string,
+) {
+  const [attempts, live] = await Promise.all([
+    db.assessmentAttempt.count({ where: { assessmentId } }),
+    getAssessmentLiveStatus(db, assessmentId),
+  ]);
+  if (attempts) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: FROZEN_MESSAGE,
+    });
+  }
+  if (live.isLive) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "Paket ini sedang tayang. Sembunyikan dulu itemnya di kurikulum (dan jangan ada latihan yang sedang dibuka), lalu ganti soalnya.",
+    });
+  }
+}
+
+/**
+ * "Ganti soal no. N" (section 4.3): replaces the bank unit at that slot with another one of the
+ * same type and closest difficulty, while the package is not live and has no attempt. The new copy takes the old
+ * key position, so the section stays balanced. The swap is recorded in the generation picks.
+ */
+export async function swapPackageQuestion(
+  db: PrismaClient,
+  input: z.infer<typeof swapPackageQuestionInput>,
+  userId: string,
+) {
+  const managed = await requireAssessmentManagement(
+    db,
+    input.assessmentId,
+    userId,
+  );
+  const generation = await db.assessmentGeneration.findUnique({
+    where: { assessmentId: input.assessmentId },
+    select: { seed: true, picks: true },
+  });
+  if (managed.kind !== "GENERATED" || !generation) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Hanya soal paket pemantapan yang bisa diganti.",
+    });
+  }
+  const picks = readPicks(generation.picks);
+  const slot = picks.slots.find(
+    (entry) =>
+      input.number >= entry.number &&
+      input.number < entry.number + entry.questionIds.length,
+  );
+  if (!slot) throw new TRPCError({ code: "NOT_FOUND" });
+  await assertSwappable(db, input.assessmentId);
+
+  const { units, byId } = await loadBank(db, managed.organizationId);
+  const replacement = pickReplacement({
+    blueprint: epsTopikBlueprint,
+    number: slot.number,
+    size: slot.questionIds.length,
+    units,
+    // Never the questions in the package, nor ones swapped out before.
+    exclude: new Set([
+      ...picks.slots.flatMap((entry) => entry.questionIds),
+      ...picks.swaps.flatMap((swap) => swap.from),
+    ]),
+    seed: `${generation.seed}:swap:${slot.number}:${picks.swaps.length}`,
+    now: Date.now(),
+  });
+  if (!replacement) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `Bank belum punya soal lain untuk nomor ${slot.number}.`,
+    });
+  }
+  const incoming = replacement.questionIds.map((id) => byId.get(id)!);
+  const linkedAssetIds = await requireBankAssets(db, bankAssetIds(incoming));
+
+  return withTransactionRetry(() =>
+    db.$transaction(async (tx) => {
+      await lockAssessment(tx, input.assessmentId);
+      // It may have gone live, or been started, while the bank was read.
+      await assertSwappable(tx, input.assessmentId);
+      const current = await tx.assessmentGeneration.findUniqueOrThrow({
+        where: { assessmentId: input.assessmentId },
+        select: { picks: true },
+      });
+      const latest = readPicks(current.picks);
+      const index = latest.slots.findIndex(
+        (entry) => entry.number === slot.number,
+      );
+      if (
+        index < 0 ||
+        latest.slots[index]!.questionIds.join() !== slot.questionIds.join()
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Soal ini baru saja diganti. Muat ulang halaman.",
+        });
+      }
+      const outgoing = await tx.assessmentQuestion.findMany({
+        where: {
+          assessmentId: input.assessmentId,
+          position: {
+            gte: slot.number - 1,
+            lt: slot.number - 1 + slot.questionIds.length,
+          },
+        },
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          position: true,
+          sectionId: true,
+          groupId: true,
+          options: {
+            orderBy: { position: "asc" },
+            select: { isCorrect: true },
+          },
+        },
+      });
+      if (outgoing.length !== slot.questionIds.length) {
+        throw new TRPCError({ code: "CONFLICT" });
+      }
+      await tx.assessmentQuestion.deleteMany({
+        where: { id: { in: outgoing.map(({ id }) => id) } },
+      });
+      const groupIds = outgoing.flatMap(({ groupId }) =>
+        groupId ? [groupId] : [],
+      );
+      if (groupIds.length) {
+        await tx.assessmentQuestionGroup.deleteMany({
+          where: { id: { in: groupIds }, questions: { none: {} } },
+        });
+      }
+      const { rows, options } = packageRows({
+        assessmentId: input.assessmentId,
+        sources: incoming.map((question, offset) => {
+          const old = outgoing[offset]!;
+          const key = old.options.findIndex((option) => option.isCorrect);
+          return {
+            question,
+            sectionId: old.sectionId!,
+            position: old.position,
+            keyTarget: key < 0 ? null : key,
+          };
+        }),
+      });
+      await insertRows(tx, rows);
+      await linkBankAssets(tx, {
+        assessmentId: input.assessmentId,
+        organizationId: managed.organizationId,
+        assetIds: linkedAssetIds,
+      });
+      await pruneAssetLinks(tx, input.assessmentId);
+
+      const removed = new Set(outgoing.map(({ id }) => id));
+      latest.slots[index] = {
+        number: slot.number,
+        questionIds: replacement.questionIds,
+        groupId: replacement.groupId,
+      };
+      latest.swaps.push({
+        number: slot.number,
+        from: slot.questionIds,
+        to: replacement.questionIds,
+        at: new Date().toISOString(),
+        byUserId: userId,
+      });
+      latest.options = {
+        ...Object.fromEntries(
+          Object.entries(latest.options).filter(([id]) => !removed.has(id)),
+        ),
+        ...options,
+      };
+      await tx.assessmentGeneration.update({
+        where: { assessmentId: input.assessmentId },
+        data: { picks: toPrismaJsonValue(latest) },
+      });
+      return { number: slot.number, count: replacement.questionIds.length };
+    }),
+  );
+}
+
+/** Drops links to media nothing in the package uses any more (after a swap). */
+async function pruneAssetLinks(
+  tx: Prisma.TransactionClient,
+  assessmentId: string,
+) {
+  const [assessment, questions, groups, sections] = await Promise.all([
+    tx.assessment.findUniqueOrThrow({
+      where: { id: assessmentId },
+      select: { instructions: true },
+    }),
+    tx.assessmentQuestion.findMany({
+      where: { assessmentId },
+      select: {
+        prompt: true,
+        explanation: true,
+        options: { select: { content: true } },
+      },
+    }),
+    tx.assessmentQuestionGroup.findMany({
+      where: { assessmentId },
+      select: { instructions: true, stimulus: true },
+    }),
+    tx.assessmentSection.findMany({
+      where: { assessmentId },
+      select: { instructions: true },
+    }),
+  ]);
+  const used = assetIdsIn([
+    assessment.instructions,
+    ...questions.flatMap(questionDocuments),
+    ...groups.flatMap((group) => [group.instructions, group.stimulus]),
+    ...sections.map((section) => section.instructions),
+  ]);
+  await tx.assessmentAsset.deleteMany({
+    where: { assessmentId, assetId: { notIn: [...used] } },
+  });
 }
 
 /** Generated packages across organizations, newest first (the pilot's list in superadmin). */

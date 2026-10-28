@@ -32,6 +32,10 @@ import {
 } from "~/server/assessment/sections";
 import { applyEpsTopikPreset } from "~/server/assessment/eps-preset";
 import {
+  swapPackageQuestion,
+  swapPackageQuestionInput,
+} from "~/server/bank/packages";
+import {
   createQuestionGroup,
   createQuestionGroupInput,
   deleteQuestionGroup,
@@ -132,7 +136,7 @@ export const assessmentRouter = createTRPCRouter({
         input.assessmentId,
         ctx.actorUserId,
       );
-      const [assessment, live] = await Promise.all([
+      const [assessment, live, attempts] = await Promise.all([
         ctx.db.assessment.findUniqueOrThrow({
           where: { id: input.assessmentId },
           include: {
@@ -145,8 +149,21 @@ export const assessmentRouter = createTRPCRouter({
           },
         }),
         getAssessmentLiveStatus(ctx.db, input.assessmentId),
+        // Only packages can be swapped, so only they need the count.
+        ctx.db.assessmentAttempt.count({
+          where: {
+            assessmentId: input.assessmentId,
+            assessment: { kind: "GENERATED" },
+          },
+        }),
       ]);
-      return { ...withoutLockedKeys(assessment), live };
+      return {
+        ...withoutLockedKeys(assessment),
+        live,
+        /** A package's questions can be swapped while it is not live and has no attempt. */
+        swappable:
+          assessment.kind === "GENERATED" && attempts === 0 && !live.isLive,
+      };
     }),
   /** Where the assessment is live (read-only while live). */
   getLiveStatus: protectedProcedure
@@ -240,6 +257,12 @@ export const assessmentRouter = createTRPCRouter({
     .input(z.object({ sectionId: id }))
     .mutation(({ ctx, input }) =>
       deleteSection(ctx.db, input.sectionId, ctx.actorUserId),
+    ),
+  /** "Ganti soal no. N" in a pemantapan package, while it is not live and has no attempt. */
+  swapPackageQuestion: protectedProcedure
+    .input(swapPackageQuestionInput)
+    .mutation(({ ctx, input }) =>
+      swapPackageQuestion(ctx.db, input, ctx.actorUserId),
     ),
   /** "Terapkan format EPS-TOPIK": sections, points, bands and order from the blueprint. */
   applyEpsTopikPreset: protectedProcedure

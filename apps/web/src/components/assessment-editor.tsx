@@ -393,21 +393,74 @@ function changedAssessmentFields(
   return changes;
 }
 
-function LockedPackageBanner() {
+function LockedPackageBanner({
+  questionCount,
+  swappable,
+  swapping,
+  onSwap,
+}: {
+  questionCount: number;
+  /** Until the first attempt, one question at a time can be replaced from the bank. */
+  swappable: boolean;
+  swapping: boolean;
+  onSwap: (number: number) => Promise<void>;
+}) {
+  const [number, setNumber] = useState(1);
   return (
     <section
       aria-label="Paket pemantapan Hakgyo"
-      className="flex items-start gap-2 rounded-xl border border-sky-300 bg-sky-50 p-4 text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100"
+      className="grid gap-3 rounded-xl border border-sky-300 bg-sky-50 p-4 text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100"
     >
-      <LockIcon className="mt-0.5 size-4 shrink-0" />
-      <div className="grid gap-1">
-        <p className="text-sm font-semibold">Paket pemantapan dari Hakgyo</p>
-        <p className="text-xs leading-relaxed">
-          Soal, format dan kunci jawaban paket ini dikunci supaya tetap seperti
-          ujian asli dan kuncinya tidak tersebar. Kamu bisa memakainya di event
-          Latihan atau Tryout dan melihat hasil murid.
-        </p>
+      <div className="flex items-start gap-2">
+        <LockIcon className="mt-0.5 size-4 shrink-0" />
+        <div className="grid gap-1">
+          <p className="text-sm font-semibold">Paket pemantapan dari Hakgyo</p>
+          <p className="text-xs leading-relaxed">
+            Soal, format dan kunci jawaban paket ini dikunci supaya tetap
+            seperti ujian asli dan kuncinya tidak tersebar. Kamu bisa memakainya
+            di event Latihan atau Tryout dan melihat hasil murid.
+          </p>
+        </div>
       </div>
+      {swappable && questionCount > 0 ? (
+        <div className="grid gap-2 border-t border-sky-200 pt-3 dark:border-sky-900">
+          <p className="text-xs leading-relaxed">
+            Selama paket belum tayang dan belum dikerjakan murid, kamu bisa
+            mengganti satu soal dengan soal lain dari bank yang tipenya sama.
+          </p>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              Nomor
+              <select
+                className="border-input bg-background h-9 rounded-md border px-2 text-sm"
+                disabled={swapping}
+                onChange={(event) => setNumber(Number(event.target.value))}
+                value={number}
+              >
+                {Array.from({ length: questionCount }, (_, index) => (
+                  <option key={index} value={index + 1}>
+                    {index + 1}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              disabled={swapping}
+              onClick={() => void onSwap(number)}
+              size="sm"
+              variant="outline"
+            >
+              {swapping ? (
+                <LoaderCircleIcon
+                  className="animate-spin"
+                  data-icon="inline-start"
+                />
+              ) : null}
+              Ganti soal
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -584,6 +637,7 @@ export function AssessmentEditor({
   const createImportedQuestions =
     api.assessmentImport.createQuestions.useMutation();
   const duplicateAssessment = api.assessment.duplicate.useMutation();
+  const swapQuestion = api.assessment.swapPackageQuestion.useMutation();
   const createdAssessmentIdRef = useRef<string | null>(null);
   // A live assessment (visible in a published course, or running as an open
   // event) is read-only; authors hide the item or edit a duplicate instead.
@@ -654,7 +708,29 @@ export function AssessmentEditor({
       liveBanner={
         // A package can't be duplicated or shared publicly, so its banner wins over the live one.
         locked ? (
-          <LockedPackageBanner />
+          <LockedPackageBanner
+            questionCount={assessment.data?.questions.length ?? 0}
+            swappable={Boolean(assessment.data?.swappable)}
+            swapping={swapQuestion.isPending}
+            onSwap={async (number) => {
+              if (!assessmentId) return;
+              try {
+                const result = await swapQuestion.mutateAsync({
+                  assessmentId,
+                  number,
+                });
+                await utils.assessment.get.invalidate({ assessmentId });
+                setFormVersion((value) => value + 1);
+                toast.success(
+                  result.count > 1
+                    ? `Soal nomor ${result.number}–${result.number + result.count - 1} diganti.`
+                    : `Soal nomor ${result.number} diganti.`,
+                );
+              } catch (error) {
+                toast.error(errorMessage(error));
+              }
+            }}
+          />
         ) : live?.isLive ? (
           <LiveAssessmentBanner
             live={live}

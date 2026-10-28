@@ -1,12 +1,14 @@
 # EPS-TOPIK question bank and package generator
 
-Status: **design agreed with the founder (2026-10-27), in progress**. Steps 1–6 are done: taxonomy
+Status: **design agreed with the founder (2026-10-27); steps 1–7 are built**: taxonomy
 (`packages/shared/src/eps-taxonomy.ts`) and blueprint (`packages/shared/src/eps-blueprint.ts`), shared
 system assets for assessments, the bank and its review queue (`/superadmin/bank`), AI drafts with
 automated checks and pictures (`apps/web/src/server/bank/`), TTS jobs with the VPS poller
 (`apps/web/scripts/tts-poller/README.md`), and packages: the seeded selection engine
 (`apps/web/src/server/bank/selection.ts`) and package creation with preview
-(`apps/web/src/server/bank/packages.ts`, "Buat paket pemantapan" on `/superadmin/bank`). It builds on the EPS-TOPIK
+(`apps/web/src/server/bank/packages.ts`, "Buat paket pemantapan" on `/superadmin/bank`), swapping a
+package question ("Ganti soal" in the package's editor banner) and `BankItemStats`
+(`apps/web/src/server/bank/stats.ts`), recomputed when an event on a package is finalized. It builds on the EPS-TOPIK
 simulation (`docs/eps-topik-simulation.md`) and needs its tags (step 8) and question groups (step 9)
 first. The exam format, the question-type taxonomy (R1–R13, L1–L12) and the 40-question blueprint
 are in `docs/research/eps-topik-question-patterns.md`.
@@ -193,6 +195,14 @@ change means a new package.
 - LPKs cannot pick a difficulty level yet (standard only) until calibration data exists.
 
 ## 5. Statistics and calibration
+
+As built (step 7): the refresh runs once, when the closed event's attempts are finalized (all graded),
+and pools graded attempts of closed events on every package, leaving out invalidated participants.
+Options are keyed by bank position through the option order recorded in `AssessmentGeneration.picks`.
+Stats show on the bank page ("Hitung ulang statistik" redoes them after later invalidations or
+regrades); the generator does not yet use them for weighting. A swap keeps the old key position,
+never brings back a question swapped out before, and is refused once the package has an attempt or
+while it is live (a visible curriculum item or an open event), so no learner can start it mid-swap.
 
 When an event closes, recompute `BankItemStats` for the bank questions it used: join answers →
 package question → `sourceQuestionId`. No cron. The computation can share code with the staff item

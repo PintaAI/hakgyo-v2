@@ -195,6 +195,15 @@ export async function listBankQuestions(
       groupId: true,
       updatedAt: true,
       bankMeta: true,
+      bankStats: {
+        select: {
+          attempts: true,
+          correctRate: true,
+          discrimination: true,
+          flags: true,
+          computedAt: true,
+        },
+      },
       options: {
         orderBy: { position: "asc" },
         select: { isCorrect: true, content: true },

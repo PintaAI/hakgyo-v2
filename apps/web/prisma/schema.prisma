@@ -1161,6 +1161,7 @@ model AssessmentQuestion {
   options          AssessmentOption[]
   answers          AssessmentAnswer[]
   ttsJobs          TtsJob[]
+  bankStats        BankItemStats?
 
   @@unique([assessmentId, position])
   @@index([sectionId])
@@ -1196,6 +1197,23 @@ enum AssessmentKind {
   STANDARD
   BANK
   GENERATED
+}
+
+/// How a bank question performed in the packages learners took, recomputed when an event on a package is finalized (docs/eps-question-generator.md section 5). Derived: it can be rebuilt from answers at any time.
+model BankItemStats {
+  /// The bank question.
+  questionId     String             @id
+  /// Responses pooled across every package copy (graded event attempts, one row per attempt).
+  attempts       Int
+  correctRate    Float
+  discrimination Float?
+  unansweredRate Float
+  /// Share choosing each option, keyed by the bank option's position ("0" … "3").
+  optionRates    Json
+  /// `too-hard`, `too-easy`, `low-discrimination`, `weak-distractor`, `weak-group` (another question of its group is flagged).
+  flags          String[]           @default([])
+  computedAt     DateTime
+  question       AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
 /// Where a bank question is in production; the generator only picks LIVE ones, and bank questions are retired, never deleted.
