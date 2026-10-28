@@ -39,11 +39,16 @@ export function EpsFormatPanel({
   const utils = api.useUtils();
   const { confirm, dialogs } = useDialogs();
   const blueprintSections = epsTopikBlueprint.sections;
+  // There is no stored marker: two sections named like the blueprint's, or EPS type tags on the
+  // questions, mean the assessment follows the format.
   const applied =
     assessment.sections.length === blueprintSections.length &&
-    assessment.sections.every(
+    (assessment.sections.every(
       (section, index) => section.title === blueprintSections[index]?.title,
-    );
+    ) ||
+      assessment.questions.some((question) =>
+        question.tags.some((tag) => tag.startsWith("eps:")),
+      ));
   const reports = applied
     ? checkBlueprint(
         epsTopikBlueprint,
@@ -59,7 +64,7 @@ export function EpsFormatPanel({
     const confirmed = await confirm({
       title: "Terapkan format EPS-TOPIK?",
       description:
-        "Tugas dibagi menjadi Membaca (25 menit, bebas berpindah soal) dan Mendengar (25 menit, soal berganti sendiri, audio diputar otomatis dua kali dengan waktu menjawab 7 detik). Setiap soal bernilai 2,5 poin, urutan soal tidak diacak, dan batas nilai Manufaktur 60% serta Sektor lain 45% ditambahkan. Tanpa bagian, 20 soal pertama masuk Membaca dan sisanya Mendengar. Semua pengaturan tetap bisa diubah sesudahnya.",
+        "Tugas dibagi menjadi Membaca (25 menit, bebas berpindah soal) dan Mendengar (25 menit, soal berganti sendiri, audio diputar otomatis dua kali dengan waktu menjawab 7 detik). Setiap soal bernilai 2,5 poin, soal dan pilihan jawaban tidak diacak, dan batas nilai Manufaktur 60% serta Sektor lain 45% dipasang. Pengaturan dan petunjuk kedua bagian serta poin semua soal ditimpa. Tanpa bagian, 20 soal pertama masuk Membaca dan sisanya Mendengar. Semua pengaturan tetap bisa diubah sesudahnya.",
       confirmLabel: "Terapkan",
     });
     if (!confirmed) return;

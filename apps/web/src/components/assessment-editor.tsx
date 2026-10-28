@@ -1550,6 +1550,19 @@ function AssessmentEditorForm({
       });
   }, [assessment, autosaveStatus, draftScope]);
 
+  // A change made outside the form (the EPS-TOPIK preset): drop the local draft once its writes are
+  // done, so the remounted form does not restore pre-change values, then remount from the server.
+  const reloadFromServer = async () => {
+    const store = contentLocalStoreOrNull();
+    if (assessment && draftScope && store) {
+      await draftWriteRef.current.catch(() => undefined);
+      await store
+        .deleteDraft(createDraftKey(draftScope, "assessment", assessment.id))
+        .catch(() => undefined);
+    }
+    onReload?.();
+  };
+
   const skipInitialSettingsSave = useRef(true);
   // Settings only autosave after the user (or draft recovery) actually
   // changes them. A boolean "skip first run" ref is not enough under
@@ -2169,7 +2182,7 @@ function AssessmentEditorForm({
               <EpsFormatPanel
                 assessment={assessment}
                 beforeApply={autosaveRegistry.flushAll}
-                onApplied={onReload ?? (() => undefined)}
+                onApplied={reloadFromServer}
                 readOnly={readOnly}
               />
             </div>

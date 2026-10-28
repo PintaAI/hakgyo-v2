@@ -7,12 +7,14 @@ import { repairQuestionGroups } from "~/server/assessment/groups";
 import { lockAssessment } from "~/server/assessment/lock";
 import { normalizeQuestionPositions } from "~/server/assessment/sections";
 import { withTransactionRetry } from "~/server/db-retry";
+import { plainTextToBlockNote } from "~/lib/blocknote/document";
 import { toPrismaJsonValue } from "~/server/prisma-json";
 
 /**
  * "Terapkan format EPS-TOPIK" (docs/eps-topik-simulation.md section 5.9): two timed sections
  * (Membaca free, Mendengar paced with audio played twice), 2.5 points per question, the score
- * bands of the blueprint and authored order. Every value stays editable afterwards.
+ * bands of the blueprint and authored order for questions and options. It overwrites the sections'
+ * settings and instructions and every question's points. Every value stays editable afterwards.
  *
  * Sections: none yet creates both, the first 20 questions in Membaca and the rest in Mendengar;
  * one becomes Membaca and gets Mendengar after it (with the questions past the 20th); two are set
@@ -20,12 +22,10 @@ import { toPrismaJsonValue } from "~/server/prisma-json";
  * tell which ones to keep.
  */
 
-const paragraphs = (text: string) => [{ type: "paragraph", content: text }];
-
 function sectionData(section: BlueprintSection) {
   return {
     title: section.title,
-    instructions: toPrismaJsonValue(paragraphs(section.instructions)),
+    instructions: toPrismaJsonValue(plainTextToBlockNote(section.instructions)),
     timeLimitSeconds: section.timeLimitSeconds,
     navigation: section.navigation,
     lockAnswers: section.lockAnswers,
@@ -46,9 +46,10 @@ export async function applyEpsTopikPreset(
 ) {
   await requireEditableAssessment(db, assessmentId, userId);
   const blueprint = epsTopikBlueprint;
-  const [reading, listening] = blueprint.sections;
-  if (!reading || !listening)
+  const reading = blueprint.sections[0];
+  if (!reading || blueprint.sections.length !== 2) {
     throw new Error("EPS blueprint needs two sections");
+  }
   return withTransactionRetry(() =>
     db.$transaction(async (tx) => {
       await lockAssessment(tx, assessmentId);
@@ -72,34 +73,25 @@ export async function applyEpsTopikPreset(
         });
       }
       const readingCount = reading.slots.length;
-      let readingId = sections[0]?.id;
-      let listeningId = sections[1]?.id;
-      if (readingId) {
-        await tx.assessmentSection.update({
-          where: { id: readingId },
-          data: sectionData(reading),
-        });
-      } else {
-        readingId = (
-          await tx.assessmentSection.create({
-            data: { assessmentId, position: 0, ...sectionData(reading) },
+      // Existing sections are set up in their order; missing ones are added after them.
+      const [readingId, listeningId] = await Promise.all(
+        blueprint.sections.map(async (section, index) => {
+          const existing = sections[index];
+          const data = sectionData(section);
+          if (existing) {
+            await tx.assessmentSection.update({
+              where: { id: existing.id },
+              data,
+            });
+            return existing.id;
+          }
+          const created = await tx.assessmentSection.create({
+            data: { assessmentId, position: index, ...data },
             select: { id: true },
-          })
-        ).id;
-      }
-      if (listeningId) {
-        await tx.assessmentSection.update({
-          where: { id: listeningId },
-          data: sectionData(listening),
-        });
-      } else {
-        listeningId = (
-          await tx.assessmentSection.create({
-            data: { assessmentId, position: 1, ...sectionData(listening) },
-            select: { id: true },
-          })
-        ).id;
-      }
+          });
+          return created.id;
+        }),
+      );
       // New sections take the questions in order: the blueprint's reading count first.
       if (sections.length < 2) {
         const inReading = sections.length
@@ -130,8 +122,10 @@ export async function applyEpsTopikPreset(
       });
       await tx.assessment.update({
         where: { id: assessmentId },
+        // Fixed order, options included: listening audio and picture grids name options ①–④.
         data: {
           shuffleQuestions: false,
+          shuffleOptions: false,
           scoreBands: toPrismaJsonValue(blueprint.scoreBands),
         },
       });

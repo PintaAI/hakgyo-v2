@@ -715,14 +715,16 @@ async function seedEpsSample(organizationId: string, membershipId: string) {
     {
       sectionId: "seed-eps-section-listening",
       tags: ["eps:L1", "level:mudah", "topik:benda"],
-      prompt: "들은 것을 고르십시오. (Audio: 가방)",
+      prompt: "들은 것을 고르십시오.",
+      script: "가방",
       options: ["가방", "가반", "가봉", "거방"],
       correct: 0,
     },
     {
       sectionId: "seed-eps-section-listening",
       tags: ["eps:L4", "level:sedang", "topik:kehidupan"],
-      prompt: "질문에 알맞은 대답을 고르십시오. (Audio: 어디에서 일해요?)",
+      prompt: "질문에 알맞은 대답을 고르십시오.",
+      script: "어디에서 일해요?",
       options: [
         "공장에서 일해요.",
         "내일 일해요.",
@@ -743,6 +745,11 @@ async function seedEpsSample(organizationId: string, membershipId: string) {
         sectionId: question.sectionId,
         type: "SINGLE_CHOICE",
         prompt: paragraph(question.prompt),
+        // The audio script stays out of the prompt (it would give the answer away) until the
+        // audio is added; staff see it in the explanation.
+        ...("script" in question
+          ? { explanation: paragraph(`Naskah audio: ${question.script}`) }
+          : {}),
         points: 2.5,
         position: index,
         tags: question.tags,

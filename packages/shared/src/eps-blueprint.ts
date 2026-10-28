@@ -203,6 +203,7 @@ export type BlueprintQuestion = {
 
 export type BlueprintIssue =
   | { kind: "MISSING"; number: number; slot: BlueprintSlot }
+  /** `number` counts within the section (the 21st question of Membaca is 21). */
   | { kind: "EXTRA"; number: number; questionId: string }
   | {
       kind: "TYPE";
@@ -230,10 +231,27 @@ export type BlueprintSectionReport = {
   workShareOk: boolean;
 };
 
-const typeOf = (tags: readonly string[]) =>
-  tags.find((tag) => tag.startsWith("eps:")) ?? null;
-const levelOf = (tags: readonly string[]) =>
-  tags.find((tag) => tag.startsWith("level:"))?.slice("level:".length) ?? null;
+/** The question's type tag the slot allows, else its first type tag (or null). */
+function typeFor(tags: readonly string[], slot: BlueprintSlot) {
+  const types = tags.filter((tag) => tag.startsWith("eps:"));
+  const allowed = [slot.type, ...(slot.alternatives ?? [])];
+  return {
+    found: types.find((tag) => allowed.includes(tag)) ?? types[0] ?? null,
+    ok: types.some((tag) => allowed.includes(tag)),
+  };
+}
+
+/** The question's level the slot asks for, else its first level (or null). */
+function levelFor(tags: readonly string[], slot: BlueprintSlot) {
+  const levels = tags
+    .filter((tag) => tag.startsWith("level:"))
+    .map((tag) => tag.slice("level:".length));
+  return {
+    found:
+      levels.find((level) => level === slot.difficulty) ?? levels[0] ?? null,
+    ok: levels.includes(slot.difficulty),
+  };
+}
 
 /**
  * Compares an assessment with a blueprint, section by section (`sections[i]` holds the questions of
@@ -248,7 +266,6 @@ export function checkBlueprint(
   return blueprint.sections.map((section, sectionIndex) => {
     const questions = sections[sectionIndex] ?? [];
     const issues: BlueprintIssue[] = [];
-    const firstNumber = section.slots[0]?.number ?? 1;
     section.slots.forEach((expected, index) => {
       const question = questions[index];
       if (!question) {
@@ -259,34 +276,31 @@ export function checkBlueprint(
         });
         return;
       }
-      const type = typeOf(question.tags);
-      if (
-        type !== expected.type &&
-        !(type && expected.alternatives?.includes(type))
-      ) {
+      const type = typeFor(question.tags, expected);
+      if (!type.ok) {
         issues.push({
           kind: "TYPE",
           number: expected.number,
           questionId: question.id,
           slot: expected,
-          found: type,
+          found: type.found,
         });
       }
-      const level = levelOf(question.tags);
-      if (level !== expected.difficulty) {
+      const level = levelFor(question.tags, expected);
+      if (!level.ok) {
         issues.push({
           kind: "LEVEL",
           number: expected.number,
           questionId: question.id,
           slot: expected,
-          found: level,
+          found: level.found,
         });
       }
     });
     questions.slice(section.slots.length).forEach((question, index) => {
       issues.push({
         kind: "EXTRA",
-        number: firstNumber + section.slots.length + index,
+        number: section.slots.length + index + 1,
         questionId: question.id,
       });
     });
@@ -314,7 +328,7 @@ export function blueprintIssueText(issue: BlueprintIssue) {
     case "MISSING":
       return `Soal ${issue.number} belum ada: ${tagLabel(issue.slot.type)} (${issue.slot.note}).`;
     case "EXTRA":
-      return `Soal ${issue.number} di luar format (bagian ini berisi lebih banyak soal).`;
+      return `Soal ke-${issue.number} di bagian ini di luar format (bagian ini berisi lebih banyak soal).`;
     case "TYPE": {
       const allowed = [issue.slot.type, ...(issue.slot.alternatives ?? [])]
         .map((tag) => tagLabel(tag))

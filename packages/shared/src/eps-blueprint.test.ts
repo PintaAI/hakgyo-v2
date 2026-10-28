@@ -64,6 +64,16 @@ describe("checkBlueprint", () => {
     );
   });
 
+  test("any allowed tag counts when a question has several", () => {
+    const questions = matching(reading!, 9);
+    questions[0] = {
+      id: "q1",
+      tags: ["eps:R2", "eps:R1", "level:sulit", "level:mudah", "topik:k3"],
+    };
+    const [report] = checkBlueprint(epsTopikBlueprint, [questions, []]);
+    expect(report!.issues).toEqual([]);
+  });
+
   test("missing and extra questions, and the work-topic share", () => {
     const report = checkBlueprint(epsTopikBlueprint, [
       matching(reading!).slice(0, 19),
@@ -71,7 +81,7 @@ describe("checkBlueprint", () => {
     ]);
     expect(report[0]!.issues).toMatchObject([{ kind: "MISSING", number: 20 }]);
     expect(report[0]!.workShareOk).toBe(false);
-    expect(report[1]!.issues).toMatchObject([{ kind: "EXTRA", number: 41 }]);
+    expect(report[1]!.issues).toMatchObject([{ kind: "EXTRA", number: 21 }]);
     expect(blueprintIssueText(report[0]!.issues[0]!)).toContain(
       "Soal 20 belum ada",
     );
