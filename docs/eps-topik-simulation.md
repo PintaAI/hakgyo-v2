@@ -382,13 +382,12 @@ is not needed now.
 
 ### 4.7 Package licensing (gap 7c): handled by the generator design
 
-This plan doesn't build licensing. The chosen approach is in `docs/eps-question-generator.md`
-(section 3): generated packages are **copies** in the LPK organization whose questions keep
-`sourceQuestionId`, the assessment has `kind = GENERATED` and `contentLocked`, and locked content
-hides answer keys and explanations server-side in every authoring read and export. Nothing in this
-plan may assume that staff of the organization owning an assessment can always read its keys:
-new staff-facing reads added here (item analysis, CSV export, section and group editors) go through
-the same assessment-authoring read path, so the generator can strip keys there in one place.
+This plan doesn't build licensing. The chosen approach is in `docs/eps-question-generator.md`:
+organization owners and admins generate a set from the Hakgyo question bank, and the set is an
+ordinary assessment of the organization (copies whose questions keep `sourceQuestionId` as a
+record). Its staff can read and edit it like any assessment; there is no locked content. (A first
+build locked packages and hid their keys; the founder replaced it on 2026-10-28, see section 10 of
+the generator design.)
 
 ---
 
@@ -514,7 +513,7 @@ clients render a 2×2 grid (with ①–④ badges) instead of the vertical list.
   chosen by fewer than 5 %. Plus a CSV export of results with section scores. Computed on request
   from `AssessmentAnswer` and the log (an event has at most a few hundred attempts).
 - **Item analysis is a pure function over response rows**, in `@hakgyo/shared` (no Prisma), so
-  the generator can reuse it for `BankItemStats` (generator design, section 5):
+  the generator can reuse it for bank statistics later (generator design, section 5):
 
   ```ts
   type ItemResponse = {

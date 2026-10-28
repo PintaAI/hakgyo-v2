@@ -255,5 +255,7 @@ quizzes, bank columns sat on every question, and locked packages hid keys in eve
 founder replaced it with the model above: a standalone bank, ordinary editable sets, generation by
 the organization's owners and admins, and statistics later. The old columns (`Assessment.kind`,
 `Assessment.contentLocked`, `AssessmentQuestion.bankStatus`, `AssessmentQuestion.bankMeta`,
-`TtsJob.questionId`, `BankItemStats`) and the bank triggers are dropped in a follow-up migration
-once code that no longer uses them is deployed.
+`TtsJob.questionId`, `BankItemStats`) and the bank triggers are dropped by
+`20261028100000_drop_legacy_bank`. Order matters: the code whose Prisma client no longer maps those
+columns deploys first, and only then does the migration run (a client that still maps them selects
+them in every default query). None of them held data when they were dropped.
