@@ -1,6 +1,6 @@
 "use client";
 
-import { formatScoreOutOf } from "@hakgyo/shared";
+import { formatScoreOutOf, groupRanges, usesPictureGrid } from "@hakgyo/shared";
 
 import { useState } from "react";
 
@@ -12,8 +12,10 @@ import {
 } from "~/lib/learner/question-progress";
 import type { RouterOutputs } from "~/trpc/react";
 import { RichContent } from "../practice/rich-content";
+import { QuestionGroupHeader } from "./question-group-header";
 import {
   AssessmentOption,
+  AssessmentOptions,
   AssessmentQuestion,
   QuestionNavigator,
   StudyCard,
@@ -101,6 +103,12 @@ export function AssessmentResultReview({
         ? autoScore
         : null;
   const feedback = answer && "feedback" in answer ? answer.feedback : null;
+  const group = question.groupId
+    ? assessment.groups.find(({ id }) => id === question.groupId)
+    : undefined;
+  const groupRange = question.groupId
+    ? groupRanges(assessment.questions).get(question.groupId)
+    : undefined;
 
   return (
     <section className="flex flex-col gap-4">
@@ -122,6 +130,14 @@ export function AssessmentResultReview({
         answered={statuses.filter((status) => status !== "unanswered").length}
         onOpen={() => setNavigatorOpen(true)}
       >
+        {group && groupRange ? (
+          <QuestionGroupHeader
+            first={groupRange.first}
+            instructions={group.instructions}
+            last={groupRange.last}
+            stimulus={group.stimulus}
+          />
+        ) : null}
         <RichContent content={question.prompt} />
       </AssessmentQuestion>
       {question.type === "WRITTEN" ? (
@@ -136,17 +152,23 @@ export function AssessmentResultReview({
           </p>
         </StudyCard>
       ) : (
-        question.options.map((option, optionIndex) => (
-          <AssessmentOption
-            key={option.id}
-            index={optionIndex}
-            selected={selected.has(option.id)}
-            correct={option.isCorrect === true}
-            multiple={question.type === "MULTIPLE_CHOICE"}
-          >
-            <RichContent content={option.content} />
-          </AssessmentOption>
-        ))
+        <AssessmentOptions
+          grid={usesPictureGrid(question.options)}
+          multiple={question.type === "MULTIPLE_CHOICE"}
+        >
+          {question.options.map((option, optionIndex) => (
+            <AssessmentOption
+              key={option.id}
+              index={optionIndex}
+              selected={selected.has(option.id)}
+              correct={option.isCorrect === true}
+              multiple={question.type === "MULTIPLE_CHOICE"}
+              tile={usesPictureGrid(question.options)}
+            >
+              <RichContent content={option.content} />
+            </AssessmentOption>
+          ))}
+        </AssessmentOptions>
       )}
       {feedback ? (
         <StudyCard>

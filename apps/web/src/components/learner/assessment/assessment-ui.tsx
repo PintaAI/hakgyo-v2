@@ -114,6 +114,29 @@ export function AssessmentQuestion({
   );
 }
 
+// EPS-TOPIK numbers picture options ①–④.
+const circledNumbers = ["①", "②", "③", "④"];
+
+/** Holds a question's options: a list, or the 2×2 grid for picture options. */
+export function AssessmentOptions({
+  children,
+  grid,
+  multiple,
+}: {
+  children: ReactNode;
+  grid: boolean;
+  multiple: boolean;
+}) {
+  return (
+    <div
+      role={multiple ? "group" : "radiogroup"}
+      className={grid ? "grid grid-cols-2 gap-3" : "flex flex-col gap-3"}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function AssessmentOption({
   children,
   index,
@@ -121,6 +144,7 @@ export function AssessmentOption({
   multiple = false,
   disabled = false,
   correct,
+  tile = false,
   onPress,
 }: {
   children: ReactNode;
@@ -128,6 +152,8 @@ export function AssessmentOption({
   selected: boolean;
   multiple?: boolean;
   disabled?: boolean;
+  /** A picture option in the 2×2 grid (`usesPictureGrid`): badge on top, numbered ①–④. */
+  tile?: boolean;
   /** Set once answers are revealed: marks the right options and the learner's wrong pick. */
   correct?: boolean;
   onPress?: () => void;
@@ -145,7 +171,12 @@ export function AssessmentOption({
     <StudyCard
       tone={wrong ? "destructive" : "primary"}
       emphasized={selected || correct === true}
-      className="flex-row items-center gap-4 p-4"
+      className={cn(
+        "gap-4 p-4",
+        tile
+          ? "h-full flex-col items-start gap-2 p-3"
+          : "flex-row items-center",
+      )}
     >
       <span
         className={cn(
@@ -157,7 +188,13 @@ export function AssessmentOption({
               : "border-border bg-muted text-muted-foreground",
         )}
       >
-        {correct === true ? "✓" : wrong ? "×" : String.fromCharCode(65 + index)}
+        {correct === true
+          ? "✓"
+          : wrong
+            ? "×"
+            : tile
+              ? (circledNumbers[index] ?? index + 1)
+              : String.fromCharCode(65 + index)}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-2">
         {label ? (
@@ -170,7 +207,9 @@ export function AssessmentOption({
             {label}
           </span>
         ) : null}
-        <span className="min-w-0 text-sm">{children}</span>
+        <span className={cn("min-w-0 text-sm", tile && "w-full")}>
+          {children}
+        </span>
       </span>
     </StudyCard>
   );
@@ -184,6 +223,7 @@ export function AssessmentOption({
       onClick={onPress}
       className={cn(
         "w-full rounded-[20px] text-left transition-opacity enabled:hover:opacity-90 disabled:cursor-default",
+        tile && "h-full",
         correct === false && !selected && "opacity-60",
       )}
     >

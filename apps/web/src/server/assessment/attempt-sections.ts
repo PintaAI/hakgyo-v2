@@ -1,4 +1,5 @@
 import {
+  audioKeysFor,
   roundScore,
   sectionHasQuestionRules,
   sectionTimeline,
@@ -45,7 +46,13 @@ export async function loadSectionPlan(
         audioMaxPlays: true,
         questions: {
           orderBy: { position: "asc" },
-          select: { id: true, type: true, sectionId: true },
+          select: {
+            id: true,
+            type: true,
+            sectionId: true,
+            groupId: true,
+            group: { select: { id: true, stimulus: true } },
+          },
         },
       },
     }),
@@ -78,6 +85,12 @@ export async function loadSectionPlan(
         },
       )
     : sections.flatMap((section) => section.questions);
+  // A group whose stimulus has audio counts its plays once for all its questions.
+  const allQuestions = sections.flatMap((section) => section.questions);
+  const audioKeyOf = audioKeysFor(
+    allQuestions,
+    allQuestions.flatMap(({ group }) => (group ? [group] : [])),
+  );
   return sections.map(({ questions, ...section }) => ({
     id: section.id,
     timeLimitSeconds: section.timeLimitSeconds,
@@ -88,6 +101,7 @@ export async function loadSectionPlan(
     questionIds: shown
       .filter((question) => question.sectionId === section.id)
       .map(({ id }) => id),
+    audioKeyOf,
     // A multiple-choice answer takes several taps, so only single choices lock.
     lockableQuestionIds: questions
       .filter((question) => question.type === "SINGLE_CHOICE")

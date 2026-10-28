@@ -16,6 +16,7 @@ import type {
 } from "~/server/assessment/inputs";
 import { normalizeQuestionPositions } from "~/server/assessment/sections";
 import { createId } from "~/server/batch";
+import { questionCopyRows } from "~/server/assessment/copy";
 import { requireContentAuthor } from "~/server/authorization";
 import { withTransactionRetry } from "~/server/db-retry";
 import { toPrismaJsonValue } from "~/server/prisma-json";
@@ -147,6 +148,7 @@ export async function duplicateAssessment(
           position: true,
           tags: true,
           sectionId: true,
+          groupId: true,
           options: {
             orderBy: { position: "asc" },
             select: { content: true, isCorrect: true, position: true },
@@ -156,6 +158,9 @@ export async function duplicateAssessment(
       sections: {
         orderBy: { position: "asc" },
         omit: { assessmentId: true, createdAt: true, updatedAt: true },
+      },
+      questionGroups: {
+        select: { id: true, instructions: true, stimulus: true },
       },
       assets: { select: { assetId: true } },
     },
@@ -167,7 +172,7 @@ export async function duplicateAssessment(
     organizationId: source.organizationId,
     userId,
   });
-  const { questions, assets, sections, ...fields } = source;
+  const { questions, assets, sections, questionGroups, ...fields } = source;
   const suffix = " (salinan)";
   return db.$transaction(async (tx) => {
     const copy = await tx.assessment.create({
@@ -193,34 +198,21 @@ export async function duplicateAssessment(
         })),
       });
     }
-    // Three statements regardless of size: questions (returning ids by
-    // position), then every option.
-    const createdQuestions = questions.length
-      ? await tx.assessmentQuestion.createManyAndReturn({
-          data: questions.map(({ options: _options, ...question }) => ({
-            ...question,
-            sectionId: question.sectionId
-              ? (sectionIds.get(question.sectionId) ?? null)
-              : null,
-            prompt: toPrismaJsonValue(question.prompt),
-            explanation: nullableJson(question.explanation),
-            assessmentId: copy.id,
-          })),
-          select: { id: true, position: true },
-        })
-      : [];
-    const questionIdByPosition = new Map(
-      createdQuestions.map((question) => [question.position, question.id]),
-    );
-    const options = questions.flatMap((question) =>
-      question.options.map((option) => ({
-        ...option,
-        content: toPrismaJsonValue(option.content),
-        questionId: questionIdByPosition.get(question.position)!,
-      })),
-    );
-    if (options.length) {
-      await tx.assessmentOption.createMany({ data: options });
+    // Three statements regardless of size: groups, questions, then every option.
+    const rows = questionCopyRows({
+      assessmentId: copy.id,
+      questions,
+      groups: questionGroups,
+      sectionIds,
+    });
+    if (rows.groups.length) {
+      await tx.assessmentQuestionGroup.createMany({ data: rows.groups });
+    }
+    if (rows.questions.length) {
+      await tx.assessmentQuestion.createMany({ data: rows.questions });
+    }
+    if (rows.options.length) {
+      await tx.assessmentOption.createMany({ data: rows.options });
     }
     if (assets.length) {
       await tx.assessmentAsset.createMany({

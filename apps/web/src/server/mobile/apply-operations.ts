@@ -1,4 +1,5 @@
 import {
+  GROUPS_RUNTIME_VERSION,
   QUESTION_RULES_RUNTIME_VERSION,
   sectionHasQuestionRules,
   SECTIONS_RUNTIME_VERSION,
@@ -500,6 +501,21 @@ async function requireRuntimeFor(
   runtimeVersion: number | undefined,
 ) {
   const version = runtimeVersion ?? 1;
+  if (version >= GROUPS_RUNTIME_VERSION) return;
+  // Builds before groups would show grouped questions without their shared passage or picture.
+  const grouped = await ctx.db.assessmentQuestion.count({
+    where: {
+      groupId: { not: null },
+      assessment: { courseItems: { some: { id: courseItemId } } },
+    },
+  });
+  if (grouped) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "Perbarui aplikasi Hakgyo untuk mengerjakan tugas ini. Tugas ini memakai kelompok soal.",
+    });
+  }
   if (version >= QUESTION_RULES_RUNTIME_VERSION) return;
   const sections = await ctx.db.assessmentSection.findMany({
     where: {

@@ -1,4 +1,5 @@
 import {
+  audioKeysFor,
   readScoreBands,
   ruleSectionsFor,
   ruleStateFrom,
@@ -65,6 +66,9 @@ export const learnerAssessmentItemSelect = {
         orderBy: { position: "asc" },
         select: learnerSectionSelect,
       },
+      questionGroups: {
+        select: { id: true, instructions: true, stimulus: true },
+      },
       questions: {
         orderBy: { position: "asc" },
         select: {
@@ -76,6 +80,7 @@ export const learnerAssessmentItemSelect = {
           position: true,
           tags: true,
           sectionId: true,
+          groupId: true,
           options: {
             orderBy: { position: "asc" },
             select: {
@@ -241,15 +246,24 @@ export function shapeLearnerAssessment(input: {
   );
   const timedSeconds = timedSectionsSeconds(sections) ?? 0;
   const log = attempt?.log ?? [];
-  const rules = ruleStateFrom(ruleSectionsFor(sections, questions), log);
+  // Groups without questions are left out like empty sections.
+  const { questionGroups, ...assessment } = item.assessment;
+  const groups = questionGroups.filter((group) =>
+    questions.some((question) => question.groupId === group.id),
+  );
+  const rules = ruleStateFrom(
+    ruleSectionsFor(sections, questions, audioKeysFor(questions, groups)),
+    log,
+  );
   const scoresVisible =
     attempt?.status === "GRADED" &&
     !attempt.assessmentEvent?.participants[0]?.invalidatedAt &&
     attempt.assessmentEvent?.status !== "CANCELLED";
   return {
-    ...item.assessment,
+    ...assessment,
     scoreBands: readScoreBands(item.assessment.scoreBands),
     sections,
+    groups,
     /** Section starts, ends and the submission of this attempt, for the section timeline. */
     sectionEntries: log.flatMap(({ kind, sectionId, at }) =>
       kind === "SECTION_STARTED" ||
@@ -259,8 +273,9 @@ export function shapeLearnerAssessment(input: {
         : [],
     ),
     /**
-     * What the section rules have counted so far: audio plays per question and, per section, the
-     * furthest question index shown (forward-only sections cannot go back before it).
+     * What the section rules have counted so far: audio plays per audio key (`audioKeysFor`: a
+     * question, or a group with stimulus audio) and, per section, the furthest question index
+     * shown (forward-only sections cannot go back before it).
      */
     questionProgress: {
       plays: Object.fromEntries(rules.plays),

@@ -37,6 +37,7 @@ import {
   formatScore,
   parseQuestionPoints,
   readScoreBands,
+  groupRanges,
   sumScores,
   type ScoreBand,
 } from "@hakgyo/shared";
@@ -60,6 +61,10 @@ import {
 import Link from "~/components/link";
 import { QuestionTagsField } from "~/components/question-tags-field";
 import { AssessmentStructureSheet } from "~/components/assessment-structure";
+import {
+  QuestionGroupButton,
+  QuestionGroupCard,
+} from "~/components/assessment-question-groups";
 import {
   parseScoreBandRows,
   ScoreBandsField,
@@ -1873,6 +1878,12 @@ function AssessmentEditorForm({
                   readOnly={readOnly}
                 />
               ) : null}
+              {assessment ? (
+                <QuestionGroupButton
+                  assessment={assessment}
+                  readOnly={readOnly}
+                />
+              ) : null}
               <div className="ml-auto flex items-center gap-2">
                 <p
                   className="text-muted-foreground hidden text-xs sm:block"
@@ -1968,6 +1979,18 @@ function AssessmentEditorForm({
                       <p className="text-muted-foreground mt-3 mb-2 text-xs font-semibold tracking-wide uppercase">
                         {sectionTitleById.get(question.sectionId) ?? "Bagian"}
                       </p>
+                    ) : null}
+                    {assessment &&
+                    question.groupId &&
+                    question.groupId !==
+                      displayQuestions[index - 1]?.groupId ? (
+                      <GroupCardFor
+                        assessment={assessment}
+                        assetStorage={assetStorage}
+                        groupId={question.groupId}
+                        readOnly={readOnly}
+                        theme={editorTheme}
+                      />
                     ) : null}
                     <QuestionRow
                       active={activeQuestionId === question.id}
@@ -2165,6 +2188,37 @@ type QuestionNavigatorItem = {
   label: string;
   points: number;
 };
+
+/** The group card above a group's first question, with the group's place in the list. */
+function GroupCardFor({
+  assessment,
+  groupId,
+  readOnly,
+  theme,
+  assetStorage,
+}: {
+  assessment: Assessment;
+  groupId: string;
+  readOnly: boolean;
+  theme: "light" | "dark";
+  assetStorage?: EditorAssetStorageOptions;
+}) {
+  const group = assessment.questionGroups.find(({ id }) => id === groupId);
+  const range = groupRanges(assessment.questions).get(groupId);
+  if (!group || !range) return null;
+  return (
+    <QuestionGroupCard
+      assessment={assessment}
+      assetStorage={assetStorage}
+      first={range.first}
+      group={group}
+      key={group.id}
+      last={range.last}
+      readOnly={readOnly}
+      theme={theme}
+    />
+  );
+}
 
 function QuestionNavigator({
   activeQuestionId,

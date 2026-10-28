@@ -525,9 +525,10 @@ describe("composeLearnerAssessment", () => {
         explanation: null,
         points: 1,
         position: 1,
-        // Bundles cached before tags and sections existed compose without them.
+        // Bundles cached before tags, sections and groups existed compose without them.
         tags: [],
         sectionId: null,
+        groupId: null,
         options: [
           { id: "option-a", content: "A", position: 1 },
           { id: "option-b", content: "B", position: 2 },

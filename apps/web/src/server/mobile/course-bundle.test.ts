@@ -39,6 +39,7 @@ function assessment(id: string): Assessment {
     passingScore: 70,
     scoreBands: null,
     sections: [],
+    questionGroups: [],
     maxAttempts: null,
     timeLimitMinutes: null,
     shuffleQuestions: false,

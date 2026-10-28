@@ -161,7 +161,7 @@ Jika sebuah kata atau artinya diubah (termasuk menambah atau menghapus arti), pr
    - **Pertanyaan**.
    - **Tipe soal**: **Pilihan tunggal** (satu jawaban benar), **Pilihan ganda** (lebih dari satu jawaban benar), atau **Jawaban tertulis** (dinilai pengajar).
    - **Poin**. Boleh desimal dengan paling banyak dua angka di belakang koma, misalnya `2,5` untuk simulasi EPS-TOPIK (40 soal × 2,5 = 100).
-   - Untuk soal pilihan: isi 2 sampai 4 pilihan jawaban, lalu tandai yang benar.
+   - Untuk soal pilihan: isi 2 sampai 4 pilihan jawaban, lalu tandai yang benar. Jika setiap pilihan hanya berisi gambar, murid melihatnya sebagai kotak 2×2 bernomor ①–④, seperti soal gambar EPS-TOPIK.
    - **Label soal (opsional)**: ketik label lalu tekan Enter, atau pilih dari saran. Label dipakai untuk laporan per tipe soal di hasil murid dan di **Analisis soal** latihan atau tryout. Untuk simulasi EPS-TOPIK tersedia label siap pakai:
      - **Tipe soal**: `eps:R1` sampai `eps:R13` untuk membaca dan `eps:L1` sampai `eps:L12` untuk mendengar, misalnya `eps:R2` untuk rambu K3.
      - **Topik**: `topik:k3`, `topik:alat-kerja`, `topik:lembaga`, `topik:kehidupan`, `topik:budaya`, `topik:angka`, `topik:benda`, `topik:tindakan-kerja`.
@@ -204,7 +204,19 @@ Di pengaturan bagian (ikon pensil) ada aturan tambahan:
 
 Putaran audio dicatat di server, jadi memuat ulang halaman tidak menambah jatah putar.
 
-Aplikasi ponsel versi lama tidak bisa membuka tugas berbagian atau tugas dengan aturan ini; murid diminta memperbarui aplikasinya.
+#### Kelompok soal
+
+Beberapa soal yang berurutan bisa memakai petunjuk dan bahan yang sama, misalnya satu gambar, bacaan atau percakapan untuk soal 1–4.
+
+1. Klik **Kelompok soal** di atas daftar soal.
+2. Pilih **Dari soal** dan **Sampai soal**, lalu klik **Buat kelompok**. Soalnya harus berurutan dan ada di bagian yang sama.
+3. Kotak kelompok muncul di atas soal pertamanya. Isi **Petunjuk kelompok**, misalnya `[1~4] 다음 그림을 보고 맞는 단어를 고르십시오.`, dan **Bahan bersama**. Ketik `/` di bahan bersama untuk menambah gambar atau audio. Isinya tersimpan otomatis.
+
+Murid melihat petunjuk dan bahan bersama di atas setiap soal kelompok itu. Audio di bahan bersama dihitung satu kali untuk seluruh kelompok pada **Batas putar audio per soal**. Jika soal diacak, soal satu kelompok tetap berurutan.
+
+Ubah soal yang termasuk lewat **Dari soal** dan **Sampai soal** di kotak kelompok. Ikon tempat sampah menghapus kelompok tanpa menghapus soalnya. Jika di **Bagian & urutan** sebuah soal dipindah sampai tidak lagi berurutan dengan kelompoknya, soal itu keluar dari kelompok.
+
+Aplikasi ponsel versi lama tidak bisa membuka tugas berbagian, tugas dengan aturan ini, atau tugas dengan kelompok soal; murid diminta memperbarui aplikasinya.
 
 Soal baru masuk ke bagian terakhir. Menghapus bagian tidak menghapus soalnya: soal dipindahkan ke bagian sebelumnya. Jika bagian terakhir dihapus, tugas kembali menjadi satu kesatuan tanpa bagian.
 

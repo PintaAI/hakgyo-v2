@@ -6,6 +6,9 @@ import {
   isForwardOnly,
   pacedQuestionEndsAt,
   questionAudioSources,
+  audioKeysFor,
+  groupRanges,
+  usesPictureGrid,
   ruleSectionsFor,
   ruleStateFrom,
   sectionAudioPolicy,
@@ -26,10 +29,12 @@ import {
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
 import { ScoreBandResults } from "../../../../../../src/components/score-band-results";
 import { SectionIntro } from "../../../../../../src/components/section-intro";
+import { QuestionGroupHeader } from "../../../../../../src/components/question-group-header";
 import { AssessmentAudioPlayer } from "../../../../../../src/components/assessment-audio-player";
 import { TagResults } from "../../../../../../src/components/tag-results";
 import {
   AssessmentOption,
+  AssessmentOptions,
   AssessmentQuestion,
 } from "../../../../../../src/components/assessment-ui";
 import {
@@ -315,7 +320,11 @@ function AssessmentAttemptContent({
       // Plays and positions logged on this device before a restart still count. Questions are
       // in the order shown.
       const rules = ruleStateFrom(
-        ruleSectionsFor(assessment.data.sections, assessment.data.questions),
+        ruleSectionsFor(
+          assessment.data.sections,
+          assessment.data.questions,
+          audioKeysFor(assessment.data.questions, assessment.data.groups ?? []),
+        ),
         log.entries,
       );
       setReached(Object.fromEntries(rules.furthest));
@@ -476,14 +485,27 @@ function AssessmentAttemptContent({
   const sectionExpired = sectionSecondsLeft === 0;
 
   const question = assessment.data?.questions[currentIndex];
-  const playsOf = (questionId: string) =>
-    Math.max(
-      assessment.data?.questionProgress.plays[questionId] ?? 0,
-      localPlays[questionId] ?? 0,
+  // Groups: a question's shared part, and plays counted per audio key (a group with stimulus
+  // audio shares one count). Bundles cached before groups have none.
+  const groups = assessment.data?.groups ?? [];
+  const group = question?.groupId
+    ? groups.find(({ id }) => id === question.groupId)
+    : undefined;
+  const groupRange = question?.groupId
+    ? groupRanges(assessment.data?.questions ?? []).get(question.groupId)
+    : undefined;
+  const audioKeyOf = audioKeysFor(assessment.data?.questions ?? [], groups);
+  const playsOf = (questionId: string) => {
+    const key = audioKeyOf[questionId] ?? questionId;
+    return Math.max(
+      assessment.data?.questionProgress.plays[key] ?? 0,
+      localPlays[key] ?? 0,
     );
+  };
   const audioPolicy = sectionAudioPolicy(activeSection);
   const audioSources =
-    question && audioPolicy ? questionAudioSources(question) : [];
+    question && audioPolicy ? questionAudioSources(question, group) : [];
+  const pictureGrid = question ? usesPictureGrid(question.options) : false;
   const pacedEndsAt =
     paced && activeSection && question && pacedClock?.questionId === question.id
       ? pacedQuestionEndsAt({
@@ -627,7 +649,11 @@ function AssessmentAttemptContent({
   function recordPlay(questionId: string) {
     setLocalPlays((value) => ({
       ...value,
-      [questionId]: Math.max(value[questionId] ?? 0, playsOf(questionId)) + 1,
+      [audioKeyOf[questionId] ?? questionId]:
+        Math.max(
+          value[audioKeyOf[questionId] ?? questionId] ?? 0,
+          playsOf(questionId),
+        ) + 1,
     }));
     const log = attemptLog.current;
     if (!log || !session) return;
@@ -1107,6 +1133,16 @@ function AssessmentAttemptContent({
             onOpen={openQuestions}
             disabled={busy}
           >
+            {group && groupRange ? (
+              <QuestionGroupHeader
+                first={groupRange.first}
+                instructions={group.instructions}
+                last={groupRange.last}
+                renderers={audioPolicy ? hiddenAudioRenderers : undefined}
+                resolveAssetUrl={resolveAssetUrl}
+                stimulus={group.stimulus}
+              />
+            ) : null}
             <NativeContentRenderer
               content={question.prompt}
               renderers={audioPolicy ? hiddenAudioRenderers : undefined}
@@ -1163,7 +1199,7 @@ function AssessmentAttemptContent({
               />
             </StudyGlass>
           ) : (
-            <View className="gap-3">
+            <AssessmentOptions grid={pictureGrid}>
               {question.options.map((option, optionIndex) => (
                 <AssessmentOption
                   key={option.id}
@@ -1173,6 +1209,7 @@ function AssessmentAttemptContent({
                   }
                   multiple={question.type === "MULTIPLE_CHOICE"}
                   disabled={busy || expired || sectionExpired || answerLocked}
+                  tile={pictureGrid}
                   onPress={() => chooseOption(option.id)}
                 >
                   <NativeContentRenderer
@@ -1182,7 +1219,7 @@ function AssessmentAttemptContent({
                   />
                 </AssessmentOption>
               ))}
-            </View>
+            </AssessmentOptions>
           )}
           <Text className="text-xs leading-5 text-muted-foreground">
             {paced

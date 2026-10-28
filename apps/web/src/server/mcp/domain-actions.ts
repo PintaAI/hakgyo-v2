@@ -606,6 +606,22 @@ export const mcpDomainTools = {
       effect: "change",
     },
     {
+      action: "createQuestionGroup",
+      name: "add_question_group",
+      title: "Add Tugas question group",
+      description:
+        "Group consecutive questions of one section (ids in display order, up to 10) so they share instructions (for example '[1~4] 다음 그림을 보고 맞는 단어를 고르십시오.') and a stimulus (a passage, picture or audio shown above each of them). Audio in the stimulus counts once for the whole group against the section's play limit.",
+      effect: "add",
+    },
+    {
+      action: "updateQuestionGroup",
+      name: "update_question_group",
+      title: "Update Tugas question group",
+      description:
+        "Change a question group's instructions, stimulus or questions (consecutive ids of one section). Only the fields you send are changed.",
+      effect: "change",
+    },
+    {
       action: "arrangeQuestions",
       name: "arrange_assessment_questions",
       title: "Arrange Tugas questions",

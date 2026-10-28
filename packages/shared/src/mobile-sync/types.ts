@@ -306,7 +306,16 @@ export type BundleAssessmentQuestion = {
   tags?: string[];
   /** Missing in bundles cached before sections existed. */
   sectionId?: string | null;
+  /** Missing in bundles cached before question groups existed. */
+  groupId?: string | null;
   options: BundleAssessmentOption[];
+};
+
+/** Shared instructions and stimulus of consecutive questions. */
+export type BundleAssessmentQuestionGroup = {
+  id: string;
+  instructions: JsonValue;
+  stimulus: JsonValue;
 };
 
 /** Never carries `isCorrect` or `explanation`. */
@@ -320,6 +329,8 @@ export type BundleAssessment = {
   scoreBands?: ScoreBand[];
   /** Sections that have questions; missing in bundles cached before sections existed. */
   sections?: BundleAssessmentSection[];
+  /** Groups that have questions; missing in bundles cached before groups existed. */
+  groups?: BundleAssessmentQuestionGroup[];
   maxAttempts: number | null;
   timeLimitMinutes: number | null;
   shuffleQuestions: boolean;

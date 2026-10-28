@@ -1,3 +1,5 @@
+import { questionUnits } from "@hakgyo/shared";
+
 type Identifiable = { id: string };
 
 function seedNumber(seed: string) {
@@ -38,6 +40,23 @@ export function shuffleForAttempt<T extends Identifiable>(
 }
 
 /**
+ * Shuffles questions with a group's questions kept together in their order (a group moves as one
+ * unit). Without groups this is exactly `shuffleForAttempt`, so existing attempts keep their order.
+ */
+function shuffleQuestionUnits<
+  T extends Identifiable & { groupId?: string | null },
+>(questions: readonly T[], seed: string, enabled: boolean, scope: string): T[] {
+  if (!enabled) return [...questions];
+  const units = questionUnits(questions).map((unit) => ({
+    id: unit[0]!.id,
+    unit,
+  }));
+  return shuffleForAttempt(units, seed, true, scope).flatMap(
+    ({ unit }) => unit,
+  );
+}
+
+/**
  * Whether an attempt shuffles its questions: an event's own setting wins, and an event without
  * one (null) follows the assessment, so a Tryout keeps the authored order unless staff chose
  * otherwise.
@@ -59,13 +78,15 @@ export type OrderableSection = {
  * Questions in the order an attempt shows them. Without sections: by position, shuffled when
  * `shuffleQuestions`. With sections: section by section (in section position order), each
  * shuffled by the event's override when set, else by its own setting; shuffling never crosses a
- * section. Options are shuffled per question when `shuffleOptions`. Without a seed (no attempt
+ * section, and a group's questions stay together. Options are shuffled per question when
+ * `shuffleOptions`. Without a seed (no attempt
  * yet) the authored order is kept.
  */
 export function orderAssessmentQuestions<
   T extends Identifiable & {
     options: readonly Identifiable[];
     sectionId?: string | null;
+    groupId?: string | null;
   },
 >(
   questions: readonly T[],
@@ -84,7 +105,7 @@ export function orderAssessmentQuestions<
   );
   const orderedQuestions = sections.length
     ? sectionGroups(questions, sections).flatMap(({ section, questions }) =>
-        shuffleForAttempt(
+        shuffleQuestionUnits(
           questions,
           seed,
           section
@@ -93,7 +114,7 @@ export function orderAssessmentQuestions<
           section ? `questions:${section.id}` : "questions",
         ),
       )
-    : shuffleForAttempt(questions, seed, shuffleQuestions, "questions");
+    : shuffleQuestionUnits(questions, seed, shuffleQuestions, "questions");
   return orderedQuestions.map((question) => ({
     ...question,
     options: shuffleForAttempt(
