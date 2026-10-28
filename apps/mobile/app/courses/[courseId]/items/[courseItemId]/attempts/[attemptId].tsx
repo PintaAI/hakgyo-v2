@@ -1192,7 +1192,9 @@ function AssessmentAttemptContent({
                 : ""}
             {activeSection?.lockAnswers
               ? "Pilihan pertama kamu langsung dikunci."
-              : "Kamu bisa mengubah jawaban sampai mengirimnya."}{" "}
+              : forwardOnly
+                ? "Jawaban bisa diubah selama soal masih tampil."
+                : "Kamu bisa mengubah jawaban sampai mengirimnya."}{" "}
             Draf tersimpan di perangkat ini selama kamu mengerjakan.
             {deadline !== null || sectionSecondsLeft !== null
               ? " Timer tetap berjalan meski kamu keluar."

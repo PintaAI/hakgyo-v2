@@ -184,3 +184,33 @@ export function answerHasContent(answer: {
 }) {
   return Boolean(answer.optionIds?.length || answer.content?.trim());
 }
+
+/**
+ * How an assessment is worked through, in one line for its intro screen (web and mobile): free
+ * navigation, or sections in order with the strictest rule they use.
+ */
+export function attemptFlowSummary(
+  sections: ReadonlyArray<{
+    navigation: SectionNavigation;
+    lockAnswers: boolean;
+  }>,
+) {
+  if (!sections.length)
+    return "Bebas berpindah antarsoal. Kirim jika sudah siap.";
+  const parts = [
+    `Terdiri dari ${sections.length} bagian yang dikerjakan berurutan.`,
+  ];
+  if (sections.some((section) => section.navigation === "PACED")) {
+    parts.push("Di sebagian bagian, soal berganti sendiri.");
+  } else if (
+    sections.some((section) => section.navigation === "FORWARD_ONLY")
+  ) {
+    parts.push(
+      "Di sebagian bagian, soal yang sudah dilewati tidak bisa dibuka lagi.",
+    );
+  }
+  if (sections.some((section) => section.lockAnswers)) {
+    parts.push("Ada bagian yang langsung mengunci pilihan pertama.");
+  }
+  return parts.join(" ");
+}

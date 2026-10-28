@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  attemptFlowSummary,
   checkRuleEntry,
   emptyRuleState,
   ruleStateFrom,
@@ -234,5 +235,21 @@ describe("acceptLogEntries with question rules", () => {
       },
     ]);
     expect(done.rejected).toEqual([]);
+  });
+});
+
+describe("attemptFlowSummary", () => {
+  test("names the strictest rule", () => {
+    expect(attemptFlowSummary([])).toBe(
+      "Bebas berpindah antarsoal. Kirim jika sudah siap.",
+    );
+    expect(
+      attemptFlowSummary([
+        { navigation: "FREE", lockAnswers: false },
+        { navigation: "PACED", lockAnswers: true },
+      ]),
+    ).toBe(
+      "Terdiri dari 2 bagian yang dikerjakan berurutan. Di sebagian bagian, soal berganti sendiri. Ada bagian yang langsung mengunci pilihan pertama.",
+    );
   });
 });

@@ -77,7 +77,8 @@ const AWAITING_REVIEW_POLL_MS = 60_000;
 
 // Audio of the content itself, hidden while a section plays it through the controlled player.
 const hiddenContentAudio =
-  "[&_[data-content-type=assetAudio]]:hidden [&_[data-content-type=audio]]:hidden";
+  // Important: BlockNote's styles are not in a cascade layer, so they beat Tailwind's utilities.
+  "[&_[data-content-type=assetAudio]]:hidden! [&_[data-content-type=audio]]:hidden!";
 
 /** Device time shifted by the measured offset to the server's clock. */
 function correctedNow(offsetMs: number) {
@@ -371,6 +372,11 @@ export function AssessmentAttempt({
         ...value,
         [sectionId]: Math.max(value[sectionId] ?? -1, position),
       }));
+    }
+    // A forward-only position must reach the server before a reload could reopen an earlier
+    // question. Saving a moment later also carries the new question's first play.
+    if (forwardOnly && position > positionInSection) {
+      window.setTimeout(() => setFlushRequest((value) => value + 1), 2000);
     }
   };
 
@@ -1023,7 +1029,9 @@ export function AssessmentAttempt({
                 : ""}
             {activeSection?.lockAnswers
               ? "Pilihan pertama kamu langsung dikunci."
-              : "Kamu bisa mengubah jawaban sampai mengirimnya."}{" "}
+              : forwardOnly
+                ? "Jawaban bisa diubah selama soal masih tampil."
+                : "Kamu bisa mengubah jawaban sampai mengirimnya."}{" "}
             Jawaban tersimpan otomatis selama kamu mengerjakan.
             {secondsLeft !== null || sectionSecondsLeft !== null
               ? " Timer tetap berjalan meski kamu keluar."

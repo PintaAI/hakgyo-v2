@@ -670,6 +670,13 @@ export function AssessmentStructureSheet({
                             ? `${formatScore(section.timeLimitSeconds / 60)} menit`
                             : "tanpa batas waktu"}
                           {section.shuffleQuestions ? " · diacak" : ""}
+                          {section.navigation === "FREE"
+                            ? ""
+                            : ` · ${navigationLabels[section.navigation].toLowerCase()}`}
+                          {section.lockAnswers ? " · jawaban dikunci" : ""}
+                          {section.audioMaxPlays
+                            ? ` · audio ${section.audioMaxPlays}×`
+                            : ""}
                         </p>
                       </div>
                       <Button
