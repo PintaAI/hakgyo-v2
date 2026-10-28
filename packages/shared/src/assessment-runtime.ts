@@ -1,20 +1,32 @@
 import { z } from "zod";
 
+import {
+  sectionAt,
+  sectionTimeline,
+  type TimelineEntry,
+  type TimelineSection,
+} from "./assessment-section-timeline";
+
 /**
  * Attempt progress log shared by web, mobile and the server (docs/eps-topik-simulation.md sections
  * 4.2 and 5). Clients append entries as the learner works and send them; the server re-checks
  * every entry with the same rules before storing it, so an offline attempt is judged by when the
  * learner acted, within bounds, not by when the device synced.
  *
- * This first version only enforces time. Section, navigation, lock and audio rules extend the
- * same entries later; `RUNTIME_VERSION` says which rules a client knows.
+ * Version 1 enforced time; version 2 adds sections (`assessment-section-timeline.ts`). Navigation,
+ * lock and audio rules extend the same entries later; `RUNTIME_VERSION` says which rules a client
+ * knows, and old clients are refused attempts that need newer rules.
  */
-export const RUNTIME_VERSION = 1;
+export const RUNTIME_VERSION = 2;
+/** The first runtime version that understands sections. */
+export const SECTIONS_RUNTIME_VERSION = 2;
 
 export const attemptLogKinds = [
   "QUESTION_SHOWN",
   "ANSWERED",
   "SUBMITTED",
+  "SECTION_STARTED",
+  "SECTION_ENDED",
 ] as const;
 export type AttemptLogKind = (typeof attemptLogKinds)[number];
 export type AttemptLogSource = "WEB" | "MOBILE";
@@ -26,6 +38,8 @@ export const attemptLogEntrySchema = z.object({
   seq: z.number().int().positive().max(1_000_000),
   kind: z.enum(attemptLogKinds),
   questionId: z.string().min(1).max(200).optional(),
+  /** `SECTION_STARTED` / `SECTION_ENDED`: the section. */
+  sectionId: z.string().min(1).max(200).optional(),
   optionIds: z.array(z.string().min(1).max(200)).max(100).optional(),
   /** Written answers: the text, like `answers[].content` of the sync operation. */
   content: z.string().max(20_000).optional(),
@@ -47,7 +61,18 @@ export const OFFLINE_SYNC_THRESHOLD_MS = 5 * 60_000;
 /** Offline answers of an event are accepted this long after it closes. */
 export const OFFLINE_SUBMISSION_GRACE_MS = 24 * 60 * 60_000;
 
-export type LogRejection = "UNKNOWN_QUESTION" | "LATE" | "CLOCK" | "INVALID";
+export type LogRejection =
+  | "UNKNOWN_QUESTION"
+  | "LATE"
+  | "CLOCK"
+  | "INVALID"
+  /** Outside the running section: in an intro, an ended section, or a section out of order. */
+  | "SECTION";
+
+/** Sections of an attempt as the rules see them, in order. */
+export type LogPlanSection = TimelineSection & {
+  questionIds: readonly string[];
+};
 
 export type AcceptedLogEntry = AttemptLogEntry & {
   /** When the action counts as having happened. */
@@ -78,7 +103,30 @@ export function acceptLogEntries(input: {
   receivedAt: Date;
   source: AttemptLogSource;
   questionIds: ReadonlySet<string>;
+  /**
+   * Sectioned attempts: the sections and the section entries accepted before (`SECTION_STARTED`,
+   * `SECTION_ENDED`, `SUBMITTED` with their times). Answers must fall in the running section.
+   */
+  sections?: {
+    list: readonly LogPlanSection[];
+    priorEntries: readonly TimelineEntry[];
+  };
 }): AcceptLogResult {
+  const sections = input.sections?.list.length ? input.sections : null;
+  const sectionOf = new Map<string, string>();
+  for (const section of sections?.list ?? []) {
+    for (const questionId of section.questionIds)
+      sectionOf.set(questionId, section.id);
+  }
+  const sectionEntries: TimelineEntry[] = [...(sections?.priorEntries ?? [])];
+  const timelineAt = (at: number) =>
+    sectionTimeline({
+      sections: sections?.list ?? [],
+      startedAt: input.startedAt,
+      attemptDeadline: input.deadlineAt,
+      entries: sectionEntries,
+      now: new Date(at),
+    });
   const accepted: AcceptedLogEntry[] = [];
   const rejected: AcceptLogResult["rejected"] = [];
   let lastSeq = input.lastSeq;
@@ -92,7 +140,18 @@ export function acceptLogEntries(input: {
     lastSeq = entry.seq;
     const reject = (reason: LogRejection) =>
       rejected.push({ seq: entry.seq, reason });
-    if (
+    const sectionKind =
+      entry.kind === "SECTION_STARTED" || entry.kind === "SECTION_ENDED";
+    if (sectionKind) {
+      if (
+        !sections ||
+        !entry.sectionId ||
+        !sections.list.some((section) => section.id === entry.sectionId)
+      ) {
+        reject("SECTION");
+        continue;
+      }
+    } else if (
       entry.kind !== "SUBMITTED" &&
       (!entry.questionId || !input.questionIds.has(entry.questionId))
     ) {
@@ -125,6 +184,53 @@ export function acceptLogEntries(input: {
     if (input.deadlineAt && at >= input.deadlineAt.getTime()) {
       reject("LATE");
       continue;
+    }
+    if (sections && entry.kind !== "SUBMITTED") {
+      const timeline = timelineAt(at);
+      const current = timeline.windows[timeline.currentIndex];
+      const currentSection = sections.list[timeline.currentIndex];
+      if (sectionKind) {
+        // Only the section on screen can start (from its intro) or finish early; a section
+        // without a timer can always be finished, or it would never end.
+        const valid =
+          current !== undefined &&
+          current.sectionId === entry.sectionId &&
+          (entry.kind === "SECTION_STARTED"
+            ? !current.startedAt
+            : Boolean(current.startedAt) &&
+              Boolean(
+                currentSection?.allowEarlyFinish ||
+                !currentSection?.timeLimitSeconds,
+              ));
+        if (!valid) {
+          reject("SECTION");
+          continue;
+        }
+      } else {
+        const running = sectionAt(timeline, new Date(at));
+        if (
+          !running ||
+          running.sectionId !== sectionOf.get(entry.questionId!)
+        ) {
+          // Answered after the section's time ran out counts as late, anything else is misplaced.
+          const own = timeline.windows.find(
+            (window) => window.sectionId === sectionOf.get(entry.questionId!),
+          );
+          reject(
+            own?.deadlineAt && at >= own.deadlineAt.getTime()
+              ? "LATE"
+              : "SECTION",
+          );
+          continue;
+        }
+      }
+    }
+    if (sectionKind || entry.kind === "SUBMITTED") {
+      sectionEntries.push({
+        kind: entry.kind,
+        sectionId: entry.sectionId,
+        at: new Date(at),
+      });
     }
     lastAt = at;
     accepted.push({

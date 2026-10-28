@@ -1,4 +1,4 @@
-import { formatScoreOutOf } from "@hakgyo/shared";
+import { formatScoreOutOf, RUNTIME_VERSION } from "@hakgyo/shared";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -84,6 +84,7 @@ export default function AssessmentEventScreen() {
       const result = await start.mutateAsync({
         eventId,
         protocol: SYNC_PROTOCOL,
+        runtimeVersion: RUNTIME_VERSION,
       });
       // Persisted locally so the attempt resumes offline.
       await saveStartedAttempt(result);

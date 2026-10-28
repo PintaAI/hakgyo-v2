@@ -42,7 +42,7 @@ Setiap latihan tampil sebagai kartu berisi jenis, status, kelas yang ikut, duras
    - **Buka sekarang**: murid bisa langsung mengerjakan.
    - **Jadwalkan**: isi **Dibuka pada**. Murid sudah melihat jadwalnya, dan latihan terbuka otomatis pada waktunya.
    - **Draft**: disimpan dulu dan belum terlihat murid.
-6. Isi **Durasi pengerjaan (menit)**, yaitu waktu untuk setiap murid sejak ia mulai mengerjakan. Ada pilihan cepat 30, 60, 90, dan 120 menit.
+6. Isi **Durasi pengerjaan (menit)**, yaitu waktu untuk setiap murid sejak ia mulai mengerjakan. Ada pilihan cepat 30, 60, 90, dan 120 menit. Jika semua bagian tugas punya batas waktu, durasi mengikuti bagian (jumlah waktunya ditambah 1 menit per bagian untuk membaca petunjuk) dan kolom ini tidak ditampilkan.
 7. Isi **Ditutup pada**, yaitu batas terakhir murid bisa mengerjakan. Ada pilihan cepat **+1 hari**, **+3 hari**, dan **+1 minggu**.
 8. Centang **Beri tahu murid** agar murid mendapat notifikasi saat latihan dibuka. Untuk latihan terjadwal, kelas yang punya grup WhatsApp buatan Hakgyo juga langsung menerima pesan jadwalnya. Lihat [Grup WhatsApp Kelas](/docs/pengajar/grup-whatsapp).
 9. Baca ringkasan di bagian bawah panel, misalnya "Latihan untuk 30 murid di 2 kelas", lalu klik **Buka sekarang**, **Jadwalkan**, atau **Simpan draft**.
@@ -76,6 +76,7 @@ Peringkat memakai hasil terbaik tiap murid. Jika nilainya sama, murid yang lebih
 
 Di atas daftar peserta, pilih **Analisis soal** untuk melihat hasil seluruh peserta per soal. Hakgyo memakai hasil terbaik setiap murid, dan pengajar kelas hanya melihat murid di kelas yang ia pegang.
 
+- **Rata-rata per bagian**: nilai rata-rata setiap bagian, misalnya Membaca dan Mendengar, jika tugasnya punya bagian. CSV juga memuat nilai setiap bagian.
 - **Ketepatan per label**: persentase jawaban benar untuk setiap label soal, misalnya "R2 · Rambu K3: 45%". Angka di bawah 50% ditandai merah. Bagian ini muncul jika soal diberi label; lihat [Kurikulum dan Bahan Ajar](/docs/pengajar/kurikulum-bahan-ajar).
 - **Analisis per soal**: untuk setiap soal tampil persentase **Benar**, **Daya beda**, **Tidak dijawab**, dan berapa persen murid memilih setiap opsi. Opsi yang benar ditandai **kunci**.
 - **Daya beda** membandingkan 27% murid dengan nilai tertinggi dan 27% terendah. Semakin tinggi, semakin baik soal membedakan murid yang paham dari yang belum. Di bawah 0,2 berarti soal kurang membedakan.

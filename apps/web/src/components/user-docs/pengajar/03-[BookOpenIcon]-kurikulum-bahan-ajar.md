@@ -187,6 +187,10 @@ Untuk simulasi ujian seperti EPS-TOPIK, tugas bisa dibagi menjadi beberapa **bag
 4. Di **Urutan soal**, pindahkan soal dengan panah atas dan bawah, atau pilih bagiannya dari daftar di sebelah soal. Panah di samping nama bagian memindahkan seluruh bagian.
 5. Klik **Simpan urutan**. Nomor soal mengikuti urutan baru.
 
+Murid mengerjakan bagian satu per satu. Sebelum setiap bagian ada layar petunjuk; bagian dimulai saat murid menekan **Mulai bagian**, atau otomatis setelah 1 menit. Bagian yang sudah selesai tidak bisa dibuka lagi. Jika semua bagian punya batas waktu, waktu tugas adalah jumlah waktu bagian, dan **Batas waktu (menit)** tugas tidak dipakai. Lihat [Tugas dengan bagian](/docs/murid/mengerjakan-tugas#tugas-dengan-bagian).
+
+Aplikasi ponsel versi lama tidak bisa membuka tugas berbagian; murid diminta memperbarui aplikasinya.
+
 Soal baru masuk ke bagian terakhir. Menghapus bagian tidak menghapus soalnya: soal dipindahkan ke bagian sebelumnya. Jika bagian terakhir dihapus, tugas kembali menjadi satu kesatuan tanpa bagian.
 
 > **Perhatian:** di Hakgyo, **Pilihan ganda** berarti soal dengan **lebih dari satu** jawaban benar. Untuk soal pilihan ganda biasa dengan satu jawaban benar, pilih **Pilihan tunggal**. Di layar murid, soal **Pilihan ganda** bertuliskan **Pilih semua jawaban yang benar**.

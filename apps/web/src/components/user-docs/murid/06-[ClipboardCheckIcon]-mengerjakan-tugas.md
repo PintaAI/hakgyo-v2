@@ -26,6 +26,18 @@ Klik **Mulai tugas**. Tombolnya menjadi **Lanjutkan tugas** jika kamu sudah mula
 3. Pindah soal dengan **Sebelumnya** dan **Berikutnya**, atau ketuk nomor soal untuk melihat daftar semua soal.
 4. Di situs web, jawabanmu tersimpan otomatis. Lihat tulisan **Jawaban tersimpan**.
 
+## Tugas dengan bagian
+
+Beberapa tugas, misalnya simulasi EPS-TOPIK, dibagi menjadi **bagian** seperti **Membaca** dan **Mendengar**. Setiap bagian punya waktunya sendiri.
+
+1. Sebelum bagian dimulai, kamu melihat nama bagian, petunjuknya, jumlah soal, dan waktunya. Tekan **Mulai bagian**. Jika tidak ditekan, bagian dimulai otomatis setelah 1 menit.
+2. Selama bagian berjalan, kamu hanya bisa membuka soal di bagian itu. Waktu yang tersisa tertulis di atas soal.
+3. Jika diizinkan pengajar, kamu bisa menekan **Selesai bagian ini** untuk lanjut lebih cepat. Saat waktu bagian habis, kamu otomatis pindah ke bagian berikutnya.
+4. Bagian yang sudah selesai **tidak bisa dibuka lagi**, jadi periksa jawabanmu sebelum menyelesaikannya.
+5. Di bagian terakhir, tekan **Kirim tugas**. Tugas juga terkirim otomatis saat waktu bagian terakhir habis.
+
+Setelah dinilai, hasilmu juga menunjukkan nilai setiap bagian.
+
 ## Mengirim
 
 1. Klik **Kirim tugas**.

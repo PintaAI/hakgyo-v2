@@ -29,9 +29,8 @@ import {
 } from "~/server/assessment/attempt";
 import { assessmentContext } from "~/server/assessment/register";
 import {
-  eventCloseTime,
-  getAssessmentDeadline,
-  isAssessmentExpired,
+  attemptDeadline,
+  timedSectionsSelect,
 } from "~/server/assessment/timing";
 import { requireCourseItemAccess } from "~/server/authorization";
 import {
@@ -446,9 +445,16 @@ export async function saveAnswers(
           status: true,
           assessmentId: true,
           startedAt: true,
-          assessment: { select: { timeLimitMinutes: true } },
+          assessment: {
+            select: { timeLimitMinutes: true, sections: timedSectionsSelect },
+          },
           assessmentEvent: {
-            select: { status: true, durationMinutes: true, closesAt: true },
+            select: {
+              status: true,
+              durationMinutes: true,
+              closesAt: true,
+              closedAt: true,
+            },
           },
         },
       });
@@ -464,15 +470,13 @@ export async function saveAnswers(
           message: "Tugas atau tryout ini sudah ditutup.",
         });
       }
-      if (
-        isAssessmentExpired(
-          currentAttempt.startedAt,
-          currentAttempt.assessmentEvent?.durationMinutes ??
-            currentAttempt.assessment.timeLimitMinutes,
-          new Date(),
-          currentAttempt.assessmentEvent?.closesAt,
-        )
-      ) {
+      const deadline = attemptDeadline({
+        startedAt: currentAttempt.startedAt,
+        timeLimitMinutes: currentAttempt.assessment.timeLimitMinutes,
+        event: currentAttempt.assessmentEvent,
+        sections: currentAttempt.assessment.sections,
+      });
+      if (deadline && new Date() >= deadline) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "Waktu pengerjaan sudah habis.",
@@ -548,12 +552,12 @@ export async function submitAttempt(
       ) {
         throw new TRPCError({ code: "CONFLICT" });
       }
-      const deadline = getAssessmentDeadline(
-        full.startedAt,
-        full.assessmentEvent?.durationMinutes ??
-          full.assessment.timeLimitMinutes,
-        full.assessmentEvent ? eventCloseTime(full.assessmentEvent) : null,
-      );
+      const deadline = attemptDeadline({
+        startedAt: full.startedAt,
+        timeLimitMinutes: full.assessment.timeLimitMinutes,
+        event: full.assessmentEvent,
+        sections: full.assessment.sections,
+      });
       const expired = deadline !== null && now >= deadline;
       const latest = Math.min(now.getTime(), deadline?.getTime() ?? Infinity);
       const submittedAt = options.submittedAt

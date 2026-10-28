@@ -11,6 +11,7 @@
  *
  * No React Native or server imports: this runs on the device and in tests.
  */
+import { timedSectionsSeconds } from "../assessment-section-timeline";
 import { assessmentContentAssetIds } from "../content-assets";
 import {
   evaluateOpenModules,
@@ -22,6 +23,7 @@ import {
 import { collectPdfPageRanges } from "../pdf-book";
 import { entryMeanings } from "../vocabulary-meanings";
 import type {
+  BundleAssessment,
   BundleItem,
   BundleModule,
   BundlePlacement,
@@ -342,6 +344,12 @@ function isRequirementSatisfied(
   );
 }
 
+/** Total minutes of sections that all have a timer, or null. */
+function sectionsMinutes(sections: BundleAssessment["sections"]) {
+  const seconds = timedSectionsSeconds(sections ?? []);
+  return seconds === null ? null : Math.ceil(seconds / 60);
+}
+
 /** Whether the material's completion requirements are met under its `requirementPolicy`. */
 export function materialRequirementsSatisfied(
   bundle: CourseBundle,
@@ -516,6 +524,22 @@ export function composeLearnerAssessment(
     passingScore: assessment.passingScore,
     scoreBands: assessment.scoreBands ?? [],
     sections: assessment.sections ?? [],
+    // No attempt yet: no section progress or results.
+    sectionEntries: [] as Array<{
+      kind:
+        | "QUESTION_SHOWN"
+        | "ANSWERED"
+        | "SUBMITTED"
+        | "SECTION_STARTED"
+        | "SECTION_ENDED";
+      sectionId: string | null;
+      at: Date;
+    }>,
+    sectionResults: [] as Array<{
+      sectionId: string;
+      score: number;
+      maxScore: number;
+    }>,
     // The pre-attempt view has no attempt, so no progress log yet.
     progressSeq: 0,
     maxAttempts: assessment.maxAttempts,
@@ -527,7 +551,9 @@ export function composeLearnerAssessment(
       courseTitle: bundle.structure.title,
       moduleTitle: module.title,
     },
-    timeLimitMinutes: assessment.timeLimitMinutes,
+    // Timed sections set the time, like the server's learner view.
+    timeLimitMinutes:
+      sectionsMinutes(assessment.sections) ?? assessment.timeLimitMinutes,
     attemptDeadline: null as Date | null,
     event: null as {
       id: string;

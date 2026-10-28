@@ -37,6 +37,7 @@ function resultsCsv(analysis: Analysis) {
       "Nilai",
       "Nilai maksimal",
       "Persen",
+      ...analysis.sections.map((section) => section.title),
       ...tags.map(tagLabel),
     ],
     ...analysis.learners.map((learner) => [
@@ -45,6 +46,12 @@ function resultsCsv(analysis: Analysis) {
       formatScore(learner.score),
       formatScore(learner.maxScore),
       formatScore(learner.percent),
+      ...analysis.sections.map((section) => {
+        const result = learner.sections[section.id];
+        return result
+          ? `${formatScore(result.score)}/${formatScore(result.maxScore)}`
+          : "";
+      }),
       ...tags.map((tag) => {
         const result = learner.tags[tag];
         return result ? `${result.correct}/${result.total}` : "";
@@ -100,6 +107,29 @@ export function EventItemAnalysis({
           Unduh CSV
         </Button>
       </div>
+
+      {data.sections.length ? (
+        <section className="space-y-3">
+          <h3 className="font-heading text-sm font-semibold">
+            Rata-rata per bagian
+          </h3>
+          <ul className="divide-y border-y sm:rounded-md sm:border">
+            {data.sections.map((section) => (
+              <li
+                key={section.id}
+                className="flex items-center justify-between gap-3 py-2 text-sm sm:px-4"
+              >
+                <span className="font-medium">{section.title}</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {section.averageScore !== null && section.maxScore !== null
+                    ? `${formatScore(section.averageScore)} / ${formatScore(section.maxScore)}`
+                    : "—"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {data.tags.length ? (
         <section className="space-y-4">

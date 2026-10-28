@@ -12,3 +12,4 @@ export * from "./assessment-score";
 export * from "./assessment-tags";
 export * from "./item-analysis";
 export * from "./assessment-runtime";
+export * from "./assessment-section-timeline";

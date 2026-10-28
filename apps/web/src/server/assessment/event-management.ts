@@ -19,6 +19,10 @@ import {
   resolveEventAccess,
   targetableCohortWhere,
 } from "~/server/assessment/event-targets";
+import {
+  sectionedDurationMinutes,
+  timedSectionsSelect,
+} from "~/server/assessment/timing";
 import { requireCoursePermission } from "~/server/authorization";
 import { deleteAssessmentEventWithProgress } from "~/server/content/resource-deletion";
 import { assertAssessmentComplete } from "~/server/course/readiness-service";
@@ -224,7 +228,11 @@ export async function createAssessmentEvent(
       isPublished: true,
       module: { courseId: input.courseId },
     },
-    select: { organizationId: true, assessmentId: true },
+    select: {
+      organizationId: true,
+      assessmentId: true,
+      assessment: { select: { sections: timedSectionsSelect } },
+    },
   });
   if (item?.organizationId !== course.organizationId || !item.assessmentId) {
     throw new TRPCError({
@@ -250,7 +258,10 @@ export async function createAssessmentEvent(
       type: input.type,
       allCohorts: input.target.allCohorts,
       title: input.title,
-      durationMinutes: input.durationMinutes,
+      // Timed sections set the duration: their total with the intro allowances.
+      durationMinutes:
+        sectionedDurationMinutes(item.assessment?.sections ?? []) ??
+        input.durationMinutes,
       shuffleQuestions: input.shuffleQuestions ?? null,
       closesAt: input.closesAt,
       cohorts: { create: cohortIds.map((cohortId) => ({ cohortId })) },

@@ -25,8 +25,13 @@ import {
 } from "~/server/assessment/attempt";
 import { writeAnswers } from "~/server/assessment/learner-attempts";
 import {
-  eventCloseTime,
-  getAssessmentDeadline,
+  loadSectionEntries,
+  loadSectionPlan,
+  storeSectionWindows,
+} from "~/server/assessment/attempt-sections";
+import {
+  attemptDeadline,
+  timedSectionsSelect,
 } from "~/server/assessment/timing";
 import { withTransactionRetry } from "~/server/db-retry";
 
@@ -65,6 +70,7 @@ const progressAttemptSelect = {
   assessment: {
     select: {
       timeLimitMinutes: true,
+      sections: timedSectionsSelect,
       questions: { select: { id: true } },
     },
   },
@@ -88,25 +94,33 @@ async function applyEntries(
   source: AttemptLogSource,
   now: Date,
 ) {
-  const lastLog = await tx.assessmentAttemptLog.findFirst({
-    where: { attemptId: attempt.id },
-    orderBy: { seq: "desc" },
-    select: { at: true },
+  const sectioned = attempt.assessment.sections.length > 0;
+  const [lastLog, plan, priorEntries] = await Promise.all([
+    tx.assessmentAttemptLog.findFirst({
+      where: { attemptId: attempt.id },
+      orderBy: { seq: "desc" },
+      select: { at: true },
+    }),
+    // Unsectioned attempts (most autosaves) skip the section lookups.
+    sectioned ? loadSectionPlan(tx, attempt.assessmentId) : [],
+    sectioned ? loadSectionEntries(tx, attempt.id) : [],
+  ]);
+  const deadline = attemptDeadline({
+    startedAt: attempt.startedAt,
+    timeLimitMinutes: attempt.assessment.timeLimitMinutes,
+    event: attempt.assessmentEvent,
+    sections: attempt.assessment.sections,
   });
   const result = acceptLogEntries({
     entries,
     lastSeq: attempt.lastLogSeq,
     lastAt: lastLog?.at ?? null,
     startedAt: attempt.startedAt,
-    deadlineAt: getAssessmentDeadline(
-      attempt.startedAt,
-      attempt.assessmentEvent?.durationMinutes ??
-        attempt.assessment.timeLimitMinutes,
-      attempt.assessmentEvent ? eventCloseTime(attempt.assessmentEvent) : null,
-    ),
+    deadlineAt: deadline,
     receivedAt: now,
     source,
     questionIds: new Set(attempt.assessment.questions.map(({ id }) => id)),
+    sections: { list: plan, priorEntries },
   });
   if (result.lastSeq === attempt.lastLogSeq) {
     return { result, submittedAt: null };
@@ -118,6 +132,7 @@ async function applyEntries(
         seq: entry.seq,
         kind: entry.kind,
         questionId: entry.questionId ?? null,
+        sectionId: entry.sectionId ?? null,
         optionIds: entry.optionIds ?? [],
         content: entry.content ?? null,
         clientAt: new Date(entry.clientAt),
@@ -140,6 +155,31 @@ async function applyEntries(
     })),
     answeredAt: new Map(answers.map(({ questionId, at }) => [questionId, at])),
   });
+  const sectionChanges = result.accepted.some(
+    (entry) => entry.kind.startsWith("SECTION") || entry.kind === "SUBMITTED",
+  );
+  // Windows only move with section entries (or time, which grading stores at the end).
+  if (sectionChanges)
+    await storeSectionWindows(tx, {
+      attemptId: attempt.id,
+      startedAt: attempt.startedAt,
+      deadline,
+      plan,
+      entries: [
+        ...priorEntries,
+        ...result.accepted
+          .filter(
+            (entry) =>
+              entry.kind.startsWith("SECTION") || entry.kind === "SUBMITTED",
+          )
+          .map((entry) => ({
+            kind: entry.kind,
+            sectionId: entry.sectionId ?? null,
+            at: entry.at,
+          })),
+      ],
+      now,
+    });
   const offline = result.accepted.some((entry) => entry.offline);
   await tx.assessmentAttempt.update({
     where: { id: attempt.id },
@@ -329,9 +369,10 @@ export async function acceptLateDeviceSubmission(
 }
 
 /**
- * The last answer per question among the entries that the learner gave before the attempt's
- * deadline, i.e. the answers a completion must have stored before it is acknowledged. Answers
- * given after the deadline legitimately never count, so they are left out.
+ * The answers a completion must have stored before it is acknowledged: the last answer per
+ * question among the entries the rules accept when replayed from the start (in time, in their
+ * section, with a plausible clock). Answers the rules refuse legitimately never count, so they are
+ * left out; anything else missing means the server refused answers the device should keep.
  */
 export async function inTimeEntryAnswers(
   db: PrismaClient,
@@ -342,35 +383,56 @@ export async function inTimeEntryAnswers(
     where: { id: attemptId },
     select: {
       startedAt: true,
-      assessment: { select: { timeLimitMinutes: true } },
+      assessmentId: true,
+      assessment: {
+        select: {
+          timeLimitMinutes: true,
+          sections: timedSectionsSelect,
+          questions: { select: { id: true } },
+        },
+      },
       assessmentEvent: {
         select: { durationMinutes: true, closesAt: true, closedAt: true },
       },
     },
   });
   if (!attempt) return [];
-  const deadline = getAssessmentDeadline(
-    attempt.startedAt,
-    attempt.assessmentEvent?.durationMinutes ??
-      attempt.assessment.timeLimitMinutes,
-    attempt.assessmentEvent ? eventCloseTime(attempt.assessmentEvent) : null,
+  const [plan, storedSectionEntries] = await Promise.all([
+    loadSectionPlan(db, attempt.assessmentId),
+    db.assessmentAttemptLog.findMany({
+      where: {
+        attemptId,
+        kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] },
+      },
+      select: { seq: true, kind: true, sectionId: true, at: true },
+    }),
+  ]);
+  // Section starts and ends this device did not write (another tab or device) still count.
+  const ownSeqs = new Set(entries.map((entry) => entry.seq));
+  const otherSectionEntries = storedSectionEntries.filter(
+    (entry) => !ownSeqs.has(entry.seq),
   );
-  const latest = new Map<string, AttemptLogEntry>();
-  for (const entry of [...entries].sort(
-    (left, right) => left.seq - right.seq,
-  )) {
-    if (entry.kind === "ANSWERED" && entry.questionId) {
-      latest.set(entry.questionId, entry);
-    }
-  }
-  return [...latest.values()]
-    .filter(
-      (entry) =>
-        deadline === null || Date.parse(entry.clientAt) < deadline.getTime(),
-    )
-    .map((entry) => ({
-      questionId: entry.questionId!,
-      optionIds: entry.optionIds ?? [],
-      ...(entry.content === undefined ? {} : { content: entry.content }),
-    }));
+  const replay = acceptLogEntries({
+    entries,
+    lastSeq: 0,
+    lastAt: null,
+    startedAt: attempt.startedAt,
+    deadlineAt: attemptDeadline({
+      startedAt: attempt.startedAt,
+      timeLimitMinutes: attempt.assessment.timeLimitMinutes,
+      event: attempt.assessmentEvent,
+      sections: attempt.assessment.sections,
+    }),
+    receivedAt: new Date(),
+    source: "MOBILE",
+    questionIds: new Set(attempt.assessment.questions.map(({ id }) => id)),
+    sections: { list: plan, priorEntries: otherSectionEntries },
+  });
+  return latestAnswers(replay.accepted).map(
+    ({ questionId, optionIds, content }) => ({
+      questionId,
+      optionIds,
+      ...(content === undefined ? {} : { content }),
+    }),
+  );
 }

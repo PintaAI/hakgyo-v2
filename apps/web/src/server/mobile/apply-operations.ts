@@ -1,3 +1,4 @@
+import { SECTIONS_RUNTIME_VERSION } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -481,7 +482,34 @@ export async function applySyncOperations(
 export const startAssessmentInput = z.object({
   courseItemId: z.string().min(1),
   cohortId: z.string().min(1).optional(),
+  /** `RUNTIME_VERSION` of the app's attempt rules; absent before sections existed. */
+  runtimeVersion: z.number().int().positive().optional(),
 });
+
+/**
+ * Refuses an attempt whose rules the app cannot follow: a build from before sections would show a
+ * sectioned assessment as one list with one timer. Web clients always run the current rules.
+ */
+async function requireRuntimeFor(
+  ctx: LearnerContext,
+  courseItemId: string,
+  runtimeVersion: number | undefined,
+) {
+  if ((runtimeVersion ?? 1) >= SECTIONS_RUNTIME_VERSION) return;
+  const sectioned = await ctx.db.assessmentSection.count({
+    where: {
+      assessment: { courseItems: { some: { id: courseItemId } } },
+      questions: { some: {} },
+    },
+  });
+  if (sectioned) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "Perbarui aplikasi Hakgyo untuk mengerjakan tugas ini. Tugas ini memakai bagian dengan waktu sendiri.",
+    });
+  }
+}
 
 export async function startAssessmentForLearner(
   ctx: LearnerContext,
@@ -493,7 +521,11 @@ export async function startAssessmentForLearner(
     ...ctx,
     requestCache: createRequestCache(),
   });
-  const started = await assessment.startAttempt(input);
+  await requireRuntimeFor(ctx, input.courseItemId, input.runtimeVersion);
+  const started = await assessment.startAttempt({
+    courseItemId: input.courseItemId,
+    cohortId: input.cohortId,
+  });
   const [attempt, assessmentDetail] = await Promise.all([
     assessment.getMyAttempt({ attemptId: started.id }),
     assessment.getForCourseItem({
@@ -507,6 +539,7 @@ export async function startAssessmentForLearner(
 
 export const startEventAssessmentInput = z.object({
   eventId: z.string().min(1),
+  runtimeVersion: z.number().int().positive().optional(),
 });
 
 export async function startEventAssessmentForLearner(
@@ -516,7 +549,16 @@ export async function startEventAssessmentForLearner(
   const scopedCtx = { ...ctx, requestCache: createRequestCache() };
   const assessmentEvent = assessmentEventRouter.createCaller(scopedCtx);
   const assessment = assessmentRouter.createCaller(scopedCtx);
-  const started = await assessmentEvent.startAttempt(input);
+  const event = await ctx.db.assessmentEvent.findUnique({
+    where: { id: input.eventId },
+    select: { courseItemId: true },
+  });
+  if (event) {
+    await requireRuntimeFor(ctx, event.courseItemId, input.runtimeVersion);
+  }
+  const started = await assessmentEvent.startAttempt({
+    eventId: input.eventId,
+  });
   const attempt = await assessment.getMyAttempt({ attemptId: started.id });
   const assessmentDetail = await assessment.getForCourseItem({
     courseItemId: attempt.courseItemId,
