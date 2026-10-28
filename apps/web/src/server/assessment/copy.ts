@@ -6,7 +6,7 @@ import { toPrismaJsonValue } from "~/server/prisma-json";
  * Rows that copy questions into another assessment, groups included, so a group (instructions,
  * stimulus, questions, options, tags, points) always travels as a unit
  * (docs/eps-topik-simulation.md section 4.5). Duplicating an assessment and cloning a course build
- * their rows here and insert them their own way; the question bank's package builder will too.
+ * their rows here and insert them their own way, and so does the question bank's package builder.
  */
 
 export type QuestionCopySource = {
@@ -18,6 +18,8 @@ export type QuestionCopySource = {
   tags: string[];
   sectionId: string | null;
   groupId: string | null;
+  /** The bank question a package question copies (docs/eps-question-generator.md section 3). */
+  sourceQuestionId?: string | null;
   options: ReadonlyArray<{
     content: unknown;
     isCorrect: boolean;
@@ -29,6 +31,7 @@ export type GroupCopySource = {
   id: string;
   instructions: unknown;
   stimulus: unknown;
+  sourceGroupId?: string | null;
 };
 
 function optionalJson(
@@ -66,6 +69,7 @@ export function questionCopyRows(input: {
       assessmentId: input.assessmentId,
       instructions: optionalJson(group.instructions, transform),
       stimulus: optionalJson(group.stimulus, transform),
+      sourceGroupId: group.sourceGroupId ?? null,
     }));
   const questions = input.questions.map(
     (question): Prisma.AssessmentQuestionCreateManyInput & { id: string } => ({
@@ -83,6 +87,7 @@ export function questionCopyRows(input: {
       groupId: question.groupId
         ? (groupIds.get(question.groupId) ?? null)
         : null,
+      sourceQuestionId: question.sourceQuestionId ?? null,
     }),
   );
   const options = input.questions.flatMap((question, index) =>

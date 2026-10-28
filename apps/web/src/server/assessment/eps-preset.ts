@@ -22,7 +22,8 @@ import { toPrismaJsonValue } from "~/server/prisma-json";
  * tell which ones to keep.
  */
 
-function sectionData(section: BlueprintSection) {
+/** A blueprint section as section settings (the preset and the package builder). */
+export function sectionData(section: BlueprintSection) {
   return {
     title: section.title,
     instructions: toPrismaJsonValue(plainTextToBlockNote(section.instructions)),

@@ -4,11 +4,11 @@ Latihan dan Tryout adalah kuis bersama dari pengajarmu. Semua murid dari kelas-k
 
 Di halaman ini, "latihan" berarti latihan kelas ini, bukan latihan kartu kosakata. Di beberapa layar, latihan dan tryout disebut **event**.
 
-| | Latihan | Tryout |
-|---|---|---|
-| Setelah mengirim, kamu melihat | Nilai dan peringkat | Nilai dan peringkat |
+|                                    | Latihan                      | Tryout               |
+| ---------------------------------- | ---------------------------- | -------------------- |
+| Setelah mengirim, kamu melihat     | Nilai dan peringkat          | Nilai dan peringkat  |
 | Setelah ditutup, kamu juga melihat | Jawaban benar dan pembahasan | Tidak ada pembahasan |
-| Biasanya untuk | Kuis rutin | Simulasi ujian |
+| Biasanya untuk                     | Kuis rutin                   | Simulasi ujian       |
 
 ## Di mana menemukannya
 
@@ -18,11 +18,11 @@ Di halaman ini, "latihan" berarti latihan kelas ini, bukan latihan kartu kosakat
 
 Setiap kartu menampilkan status:
 
-| Status | Artinya |
-|---|---|
+| Status        | Artinya                                  |
+| ------------- | ---------------------------------------- |
 | **Terjadwal** | Belum dibuka. Jadwal bukanya ditampilkan |
-| **Dibuka** | Bisa dikerjakan sekarang |
-| **Selesai** | Sudah ditutup. Lihat nilai dan peringkat |
+| **Dibuka**    | Bisa dikerjakan sekarang                 |
+| **Selesai**   | Sudah ditutup. Lihat nilai dan peringkat |
 
 ## Mengerjakan
 
@@ -55,4 +55,5 @@ Jika pengajar memberi label pada soal, hasilmu juga menampilkan **Hasil per tipe
 - Nilai latihan dan tryout tidak menyelesaikan tugas di kurikulummu. Tugas bab tetap harus dikerjakan sendiri.
 - Pengajar bisa membatalkan hasil seorang peserta, misalnya karena kecurangan. Kamu akan mendapat notifikasi beserta alasannya.
 - Latihan yang sudah selesai tetap bisa dilihat di **Semua event & hasil**.
+- Tryout pemantapan EPS-TOPIK dari Hakgyo memakai suara AI untuk audio bagian Mendengar.
 - Di aplikasi ponsel, latihan yang sedang dibuka diunduh otomatis di latar belakang saat tersambung Wi-Fi.

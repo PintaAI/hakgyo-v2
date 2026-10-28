@@ -13,6 +13,41 @@ import { courseAccessWhere } from "~/server/enrollment/cohort-access";
 
 type DatabaseClient = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
+/** Generated packages (docs/eps-question-generator.md section 3): keys and questions stay Hakgyo's. */
+export const LOCKED_MESSAGE =
+  "Soal paket pemantapan Hakgyo terkunci, jadi tidak bisa diubah, disalin atau dilihat kuncinya.";
+
+type KeyedQuestion = {
+  explanation: unknown;
+  options: ReadonlyArray<{ isCorrect: boolean }>;
+};
+
+/**
+ * Questions with their keys and explanations removed (every option reads as not correct), for
+ * staff reads of a locked package.
+ */
+export function stripQuestionKeys<Q extends KeyedQuestion>(
+  questions: Q[],
+): Q[] {
+  return questions.map((question) => ({
+    ...question,
+    explanation: null,
+    options: question.options.map((option) => ({
+      ...option,
+      isCorrect: false,
+    })),
+  }));
+}
+
+/** The assessment as staff may see it: a locked package without keys and explanations. */
+export function withoutLockedKeys<
+  A extends { contentLocked: boolean; questions: KeyedQuestion[] },
+>(assessment: A): A {
+  return assessment.contentLocked
+    ? { ...assessment, questions: stripQuestionKeys(assessment.questions) }
+    : assessment;
+}
+
 export async function requireAssessmentManagement(
   db: DatabaseClient,
   assessmentId: string,
@@ -26,6 +61,7 @@ export async function requireAssessmentManagement(
       organizationId: true,
       createdByMembershipId: true,
       kind: true,
+      contentLocked: true,
     },
   });
   if (!assessment) throw new TRPCError({ code: "NOT_FOUND" });
@@ -47,6 +83,8 @@ export async function requireEditableAssessment(
   assessmentId: string,
   userId: string,
   action: "edit" | "delete" = "edit",
+  /** Settings and deletion of a locked package are allowed; its content is not. */
+  options: { allowLocked?: boolean } = {},
 ) {
   const assessment = await requireAssessmentManagement(
     db,
@@ -54,6 +92,9 @@ export async function requireEditableAssessment(
     userId,
     action,
   );
+  if (assessment.contentLocked && !options.allowLocked) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: LOCKED_MESSAGE });
+  }
   await assertAssessmentNotLive(db, assessmentId);
   return assessment;
 }

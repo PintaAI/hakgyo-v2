@@ -22,6 +22,13 @@ import {
   generateBankImage,
   generateBankImageInput,
 } from "~/server/bank/images";
+import {
+  createPackage,
+  createPackageInput,
+  listPackages,
+  previewPackage,
+  previewPackageInput,
+} from "~/server/bank/packages";
 import { requestTts, runTtsWithOpenAi } from "~/server/bank/tts";
 import {
   createBank,
@@ -379,6 +386,24 @@ export const superadminRouter = createTRPCRouter({
         } catch (error) {
           throw aiError(error, "Audio cloud gagal dibuat. Silakan coba lagi.");
         }
+      }),
+    /** Packages built so far, newest first. */
+    packages: superadminProcedure.query(({ ctx }) => listPackages(ctx.db)),
+    /** What a package would hold; nothing is saved. A mutation, since each call draws a new seed. */
+    previewPackage: superadminProcedure
+      .input(previewPackageInput)
+      .mutation(({ ctx, input }) => previewPackage(ctx.db, input)),
+    createPackage: superadminProcedure
+      .input(createPackageInput)
+      .mutation(async ({ ctx, input }) => {
+        const result = await createPackage(ctx.db, input, ctx.actorUserId);
+        await audit(ctx.db, {
+          actorUserId: ctx.actorUserId,
+          targetId: result.assessmentId,
+          targetType: "assessment",
+          action: "bank.package-create",
+        }).catch((error: unknown) => console.error("Audit failed", error));
+        return result;
       }),
     setStatus: superadminProcedure
       .input(setBankStatusInput)

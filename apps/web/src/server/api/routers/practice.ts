@@ -328,6 +328,7 @@ export async function getAssessmentSample(
           select: {
             id: true,
             title: true,
+            contentLocked: true,
             questions: {
               // Grouped questions need their group's passage or picture, so practice skips them.
               where: {
@@ -352,7 +353,8 @@ export async function getAssessmentSample(
     return placements.flatMap((placement) => {
       const assessment = placement.assessment;
       const selected = selectedByPlacementId.get(placement.id);
-      if (!assessment || !selected) return [];
+      // Practice reveals the answer, so Hakgyo packages stay out.
+      if (!assessment || !selected || assessment.contentLocked) return [];
 
       return assessment.questions.flatMap((question) => {
         const correctCount = question.options.filter(
@@ -446,6 +448,8 @@ export const practiceRouter = createTRPCRouter({
             id: input.questionId,
             type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
             assessment: {
+              // Practice reveals the answer, so Hakgyo packages stay out.
+              contentLocked: false,
               courseItems: {
                 some: {
                   id: input.sourceCourseItemId,

@@ -1,10 +1,12 @@
 # EPS-TOPIK question bank and package generator
 
-Status: **design agreed with the founder (2026-10-27), in progress**. Steps 1–5 are done: taxonomy
+Status: **design agreed with the founder (2026-10-27), in progress**. Steps 1–6 are done: taxonomy
 (`packages/shared/src/eps-taxonomy.ts`) and blueprint (`packages/shared/src/eps-blueprint.ts`), shared
 system assets for assessments, the bank and its review queue (`/superadmin/bank`), AI drafts with
-automated checks and pictures (`apps/web/src/server/bank/`), and TTS jobs with the VPS poller
-(`apps/web/scripts/tts-poller/README.md`). It builds on the EPS-TOPIK
+automated checks and pictures (`apps/web/src/server/bank/`), TTS jobs with the VPS poller
+(`apps/web/scripts/tts-poller/README.md`), and packages: the seeded selection engine
+(`apps/web/src/server/bank/selection.ts`) and package creation with preview
+(`apps/web/src/server/bank/packages.ts`, "Buat paket pemantapan" on `/superadmin/bank`). It builds on the EPS-TOPIK
 simulation (`docs/eps-topik-simulation.md`) and needs its tags (step 8) and question groups (step 9)
 first. The exam format, the question-type taxonomy (R1–R13, L1–L12) and the 40-question blueprint
 are in `docs/research/eps-topik-question-patterns.md`.
@@ -117,6 +119,14 @@ model BankItemStats {                // derived, recomputable from answers
   section 4.7 of the simulation design.
 - Usage per LPK needs no table: it is a query over copies with `sourceQuestionId` in that
   organization's `GENERATED` assessments.
+- As built (step 6): staff of a locked package can rename it, change its attempts and delete it
+  while unused; everything else (questions, sections, format, description) is refused, and so are
+  duplicate, public quiz, course clone and practice. The editor read, attempt review and item
+  analysis strip keys and explanations (item analysis also hides weak-distractor marks, which
+  would point at the key). Learners still see answers after a Latihan closes, so the staff guide
+  recommends Tryout for packages. The package is created in the organization's name by its first
+  owner (or admin), and its description carries the "Audio dibuat dengan suara AI" note that the
+  learner intro screens already show.
 - New columns must be mirrored where the simulation design says (draft payload, duplicate, clone,
   content-db).
 

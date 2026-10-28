@@ -313,7 +313,8 @@ function removeOption(assessment: Assessment | undefined, optionId: string) {
   };
 }
 
-function getQuestionIssue(question: Question) {
+/** `keysHidden`: a locked package, whose keys never reach the editor. */
+function getQuestionIssue(question: Question, keysHidden = false) {
   if (!hasBlockNoteContent(question.prompt)) {
     return "Pertanyaan belum diisi";
   }
@@ -324,6 +325,7 @@ function getQuestionIssue(question: Question) {
   if (question.options.some((option) => !hasBlockNoteContent(option.content))) {
     return "Ada opsi yang kosong";
   }
+  if (keysHidden) return null;
   const correctOptions = question.options.filter(
     (option) => option.isCorrect,
   ).length;
@@ -389,6 +391,25 @@ function changedAssessmentFields(
     if (!same) Object.assign(changes, { [key]: next[key] });
   }
   return changes;
+}
+
+function LockedPackageBanner() {
+  return (
+    <section
+      aria-label="Paket pemantapan Hakgyo"
+      className="flex items-start gap-2 rounded-xl border border-sky-300 bg-sky-50 p-4 text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100"
+    >
+      <LockIcon className="mt-0.5 size-4 shrink-0" />
+      <div className="grid gap-1">
+        <p className="text-sm font-semibold">Paket pemantapan dari Hakgyo</p>
+        <p className="text-xs leading-relaxed">
+          Soal, format dan kunci jawaban paket ini dikunci supaya tetap seperti
+          ujian asli dan kuncinya tidak tersebar. Kamu bisa memakainya di event
+          Latihan atau Tryout dan melihat hasil murid.
+        </p>
+      </div>
+    </section>
+  );
 }
 
 function LiveAssessmentBanner({
@@ -567,7 +588,9 @@ export function AssessmentEditor({
   // A live assessment (visible in a published course, or running as an open
   // event) is read-only; authors hide the item or edit a duplicate instead.
   const live = assessment.data?.live;
-  const readOnly = Boolean(live?.isLive);
+  // A Hakgyo package (pemantapan) is read-only for good, and its keys never reach the client.
+  const locked = Boolean(assessment.data?.contentLocked);
+  const readOnly = Boolean(live?.isLive) || locked;
   // Every page rendering the editor already verified organization membership on the server
   // (the delete procedure re-checks authorship), so no client-side organization fetch is needed.
   const canDelete = !attachTo;
@@ -629,7 +652,10 @@ export function AssessmentEditor({
       assessment={assessment.data}
       readOnly={readOnly}
       liveBanner={
-        live?.isLive ? (
+        // A package can't be duplicated or shared publicly, so its banner wins over the live one.
+        locked ? (
+          <LockedPackageBanner />
+        ) : live?.isLive ? (
           <LiveAssessmentBanner
             live={live}
             organizationSlug={organizationSlug}
@@ -659,9 +685,9 @@ export function AssessmentEditor({
       contextLabel={
         attachTo ? `Tugas untuk ${attachTo.moduleTitle}` : undefined
       }
-      canDelete={canDelete && !readOnly}
+      canDelete={canDelete && !live?.isLive}
       publicQuizHref={
-        assessmentId
+        assessmentId && !locked
           ? `/workspace/${organizationSlug}/library/assessments/${assessmentId}/quiz-publik`
           : undefined
       }
@@ -2031,6 +2057,7 @@ function AssessmentEditorForm({
                       onToggle={() => toggleQuestion(question.id)}
                       onToggleCorrect={onToggleCorrect}
                       question={question}
+                      keysHidden={Boolean(assessment?.contentLocked)}
                       readOnly={readOnly}
                       recoverOnMount={Boolean(recoveredDraft)}
                       renderForm={
@@ -2089,7 +2116,9 @@ function AssessmentEditorForm({
           {readOnly ? (
             <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
               <LockIcon className="mt-0.5 size-3.5 shrink-0" />
-              Pengaturan terkunci selama tugas sedang tayang.
+              {assessment?.contentLocked
+                ? "Pengaturan paket pemantapan dikunci."
+                : "Pengaturan terkunci selama tugas sedang tayang."}
             </p>
           ) : null}
 
@@ -2387,6 +2416,7 @@ type QuestionRowProps = {
     checked: boolean,
   ) => Promise<void>;
   question: Question;
+  keysHidden: boolean;
   readOnly: boolean;
   recoverOnMount: boolean;
   renderForm: boolean;
@@ -2413,13 +2443,14 @@ const QuestionRow = memo(function QuestionRow({
   onToggle,
   onToggleCorrect,
   question,
+  keysHidden,
   readOnly,
   recoverOnMount,
   renderForm,
   theme,
   assetStorage,
 }: QuestionRowProps) {
-  const issue = getQuestionIssue(question);
+  const issue = getQuestionIssue(question, keysHidden);
   const preview = getBlockNotePlainText(question.prompt);
 
   return (
@@ -2553,6 +2584,7 @@ function areQuestionRowPropsEqual(
     previous.onDraftChange === next.onDraftChange &&
     previous.onDraftOptionChange === next.onDraftOptionChange &&
     previous.question === next.question &&
+    previous.keysHidden === next.keysHidden &&
     previous.readOnly === next.readOnly &&
     previous.recoverOnMount === next.recoverOnMount &&
     previous.renderForm === next.renderForm &&
