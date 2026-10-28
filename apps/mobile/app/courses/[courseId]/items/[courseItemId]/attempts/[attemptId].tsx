@@ -45,6 +45,7 @@ import {
 import { api } from "../../../../../../src/lib/trpc";
 import { authClient } from "../../../../../../src/lib/auth-client";
 import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-draft";
+import { formatRemaining } from "../../../../../../src/lib/format-remaining";
 import {
   appendAttemptLog,
   compactAttemptLog,
@@ -275,6 +276,20 @@ function AssessmentAttemptContent({
         }
       }
       loggedAnswers.current = logged;
+      // Section starts and ends saved on this device before a restart still count.
+      setLocalSectionEntries(
+        log.entries.flatMap((entry) =>
+          entry.kind === "SECTION_STARTED" || entry.kind === "SECTION_ENDED"
+            ? [
+                {
+                  kind: entry.kind,
+                  sectionId: entry.sectionId,
+                  at: new Date(entry.clientAt),
+                },
+              ]
+            : [],
+        ),
+      );
       setLogReady(true);
     }
     setAnswers(saved);
@@ -854,6 +869,38 @@ function AssessmentAttemptContent({
             </StudyAction>
           ) : null}
         </StudyScreen>
+      ) : view?.mode === "done" ? (
+        <StudyScreen
+          contentClassName="gap-4"
+          scrollViewRef={scrollRef}
+          title={screenTitle}
+        >
+          <StudyGlass>
+            <Text className="text-xl font-black text-foreground">
+              Semua bagian selesai
+            </Text>
+            <Text className="text-sm text-muted-foreground">
+              {busy
+                ? "Jawaban kamu sedang disimpan…"
+                : "Jawaban kamu belum terkirim. Kirim lagi; tanpa internet tugas menunggu di ponsel."}
+            </Text>
+            {submitError ? (
+              <Text
+                accessibilityRole="alert"
+                className="text-sm text-destructive"
+              >
+                {submitError}
+              </Text>
+            ) : null}
+            <StudyAction
+              loading={submitting}
+              disabled={busy}
+              onPress={() => void submit()}
+            >
+              Kirim tugas
+            </StudyAction>
+          </StudyGlass>
+        </StudyScreen>
       ) : view?.mode === "intro" && activeSection ? (
         <StudyScreen
           contentClassName="gap-4"
@@ -886,7 +933,7 @@ function AssessmentAttemptContent({
             >
               {activeSection.title}
               {sectionSecondsLeft !== null
-                ? ` · ${Math.floor(sectionSecondsLeft / 60)}:${String(sectionSecondsLeft % 60).padStart(2, "0")} tersisa`
+                ? ` · ${formatRemaining(sectionSecondsLeft)} tersisa`
                 : ""}
             </Text>
           ) : deadline !== null ? (
@@ -1034,7 +1081,8 @@ function AssessmentAttemptContent({
                   Selesai bagian ini
                 </StudyAction>
               ) : null
-            ) : expired ||
+            ) : activeSection &&
+              !canFinishSection(activeSection) ? null : expired ||
               currentIndex === assessment.data.questions.length - 1 ||
               answeredCount === assessment.data.questions.length ? (
               <StudyAction

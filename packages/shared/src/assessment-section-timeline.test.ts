@@ -70,6 +70,34 @@ describe("sectionTimeline", () => {
   });
 });
 
+test("sections the learner never reached stay unstarted after a submission or close", () => {
+  const timeline = sectionTimeline({
+    sections,
+    startedAt,
+    attemptDeadline: minute(10),
+    entries: [{ kind: "SECTION_STARTED", sectionId: "reading", at: minute(0) }],
+    now: minute(30),
+  });
+  // Reading ended by the overall deadline; listening never started.
+  expect(timeline.windows).toHaveLength(1);
+  expect(timeline.windows[0]!.endReason).toBe("TIME_UP");
+  expect(timeline.currentIndex).toBe(2);
+  const submitted = sectionTimeline({
+    sections,
+    startedAt,
+    attemptDeadline: null,
+    entries: [
+      { kind: "SECTION_STARTED", sectionId: "reading", at: minute(0) },
+      { kind: "SUBMITTED", at: minute(5) },
+    ],
+    now: minute(30),
+  });
+  expect(submitted.windows.map((window) => window.endReason)).toEqual([
+    "FINISHED",
+  ]);
+  expect(submitted.currentIndex).toBe(2);
+});
+
 describe("acceptLogEntries with sections", () => {
   const plan = [
     { ...sections[0]!, questionIds: ["r1", "r2"] },

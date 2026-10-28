@@ -94,14 +94,16 @@ async function applyEntries(
   source: AttemptLogSource,
   now: Date,
 ) {
+  const sectioned = attempt.assessment.sections.length > 0;
   const [lastLog, plan, priorEntries] = await Promise.all([
     tx.assessmentAttemptLog.findFirst({
       where: { attemptId: attempt.id },
       orderBy: { seq: "desc" },
       select: { at: true },
     }),
-    loadSectionPlan(tx, attempt.assessmentId),
-    loadSectionEntries(tx, attempt.id),
+    // Unsectioned attempts (most autosaves) skip the section lookups.
+    sectioned ? loadSectionPlan(tx, attempt.assessmentId) : [],
+    sectioned ? loadSectionEntries(tx, attempt.id) : [],
   ]);
   const deadline = attemptDeadline({
     startedAt: attempt.startedAt,
@@ -153,26 +155,31 @@ async function applyEntries(
     })),
     answeredAt: new Map(answers.map(({ questionId, at }) => [questionId, at])),
   });
-  await storeSectionWindows(tx, {
-    attemptId: attempt.id,
-    startedAt: attempt.startedAt,
-    deadline,
-    plan,
-    entries: [
-      ...priorEntries,
-      ...result.accepted
-        .filter(
-          (entry) =>
-            entry.kind.startsWith("SECTION") || entry.kind === "SUBMITTED",
-        )
-        .map((entry) => ({
-          kind: entry.kind,
-          sectionId: entry.sectionId ?? null,
-          at: entry.at,
-        })),
-    ],
-    now,
-  });
+  const sectionChanges = result.accepted.some(
+    (entry) => entry.kind.startsWith("SECTION") || entry.kind === "SUBMITTED",
+  );
+  // Windows only move with section entries (or time, which grading stores at the end).
+  if (sectionChanges)
+    await storeSectionWindows(tx, {
+      attemptId: attempt.id,
+      startedAt: attempt.startedAt,
+      deadline,
+      plan,
+      entries: [
+        ...priorEntries,
+        ...result.accepted
+          .filter(
+            (entry) =>
+              entry.kind.startsWith("SECTION") || entry.kind === "SUBMITTED",
+          )
+          .map((entry) => ({
+            kind: entry.kind,
+            sectionId: entry.sectionId ?? null,
+            at: entry.at,
+          })),
+      ],
+      now,
+    });
   const offline = result.accepted.some((entry) => entry.offline);
   await tx.assessmentAttempt.update({
     where: { id: attempt.id },
@@ -390,7 +397,21 @@ export async function inTimeEntryAnswers(
     },
   });
   if (!attempt) return [];
-  const plan = await loadSectionPlan(db, attempt.assessmentId);
+  const [plan, storedSectionEntries] = await Promise.all([
+    loadSectionPlan(db, attempt.assessmentId),
+    db.assessmentAttemptLog.findMany({
+      where: {
+        attemptId,
+        kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] },
+      },
+      select: { seq: true, kind: true, sectionId: true, at: true },
+    }),
+  ]);
+  // Section starts and ends this device did not write (another tab or device) still count.
+  const ownSeqs = new Set(entries.map((entry) => entry.seq));
+  const otherSectionEntries = storedSectionEntries.filter(
+    (entry) => !ownSeqs.has(entry.seq),
+  );
   const replay = acceptLogEntries({
     entries,
     lastSeq: 0,
@@ -405,7 +426,7 @@ export async function inTimeEntryAnswers(
     receivedAt: new Date(),
     source: "MOBILE",
     questionIds: new Set(attempt.assessment.questions.map(({ id }) => id)),
-    sections: { list: plan, priorEntries: [] },
+    sections: { list: plan, priorEntries: otherSectionEntries },
   });
   return latestAnswers(replay.accepted).map(
     ({ questionId, optionIds, content }) => ({

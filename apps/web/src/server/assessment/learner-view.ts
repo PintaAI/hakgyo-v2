@@ -1,4 +1,4 @@
-import { readScoreBands } from "@hakgyo/shared";
+import { readScoreBands, timedSectionsSeconds } from "@hakgyo/shared";
 
 import type { Prisma } from "../../../generated/prisma/client";
 import { activeEnrollmentStatuses } from "~/server/authorization";
@@ -215,12 +215,7 @@ export function shapeLearnerAssessment(input: {
       (question) => question.sectionId === section.id,
     ),
   );
-  const timedSeconds = sections.every((section) => section.timeLimitSeconds)
-    ? sections.reduce(
-        (total, section) => total + (section.timeLimitSeconds ?? 0),
-        0,
-      )
-    : 0;
+  const timedSeconds = timedSectionsSeconds(sections) ?? 0;
   const scoresVisible =
     attempt?.status === "GRADED" &&
     !attempt.assessmentEvent?.participants[0]?.invalidatedAt &&

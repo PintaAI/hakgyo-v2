@@ -73,6 +73,8 @@ export async function storeSectionWindows(
     now: input.now,
   });
   for (const window of timeline.windows) {
+    // An intro still showing (or never reached) has nothing to store yet.
+    if (!window.startedAt) continue;
     const endedBySubmission =
       input.submittedAt && window.startedAt && !window.endedAt;
     const data = {

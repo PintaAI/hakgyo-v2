@@ -7,10 +7,7 @@ import {
 } from "./content-renderer";
 import { Eyebrow } from "./learning-ui";
 import { StudyAction, StudyGlass } from "./study-glass";
-
-function formatRemaining(seconds: number) {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
+import { formatRemaining } from "../lib/format-remaining";
 
 /**
  * The screen before a section starts: name, instructions, question count and time, with a start

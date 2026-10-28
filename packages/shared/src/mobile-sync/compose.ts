@@ -11,6 +11,7 @@
  *
  * No React Native or server imports: this runs on the device and in tests.
  */
+import { timedSectionsSeconds } from "../assessment-section-timeline";
 import { assessmentContentAssetIds } from "../content-assets";
 import {
   evaluateOpenModules,
@@ -345,18 +346,8 @@ function isRequirementSatisfied(
 
 /** Total minutes of sections that all have a timer, or null. */
 function sectionsMinutes(sections: BundleAssessment["sections"]) {
-  if (
-    !sections?.length ||
-    sections.some((section) => !section.timeLimitSeconds)
-  ) {
-    return null;
-  }
-  return Math.ceil(
-    sections.reduce(
-      (total, section) => total + (section.timeLimitSeconds ?? 0),
-      0,
-    ) / 60,
-  );
+  const seconds = timedSectionsSeconds(sections ?? []);
+  return seconds === null ? null : Math.ceil(seconds / 60);
 }
 
 /** Whether the material's completion requirements are met under its `requirementPolicy`. */

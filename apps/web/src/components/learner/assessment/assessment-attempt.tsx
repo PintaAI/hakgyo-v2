@@ -187,6 +187,8 @@ export function AssessmentAttempt({
   const sendingThroughSeq = useRef(0);
   // True while submit sends the last entries, so no answer can change in between.
   const [finalizing, setFinalizing] = useState(false);
+  // Requests an immediate save from handlers (the autosave is an effect event).
+  const [flushRequest, setFlushRequest] = useState(0);
   const answersRef = useRef(answers);
   const autosaveRun = useRef<Promise<void> | null>(null);
   // Set for the whole submit flow so repeated clicks and pending autosave timers can't race it.
@@ -260,6 +262,7 @@ export function AssessmentAttempt({
         position > positionInSection && statuses[index] === "unanswered",
     ) ?? sectionIndexes.find((index) => statuses[index] === "unanswered");
   const [finishSectionOpen, setFinishSectionOpen] = useState(false);
+  const autoSubmitTried = useRef(false);
 
   const pushEntry = (
     kind: AttemptLogEntry["kind"],
@@ -336,7 +339,9 @@ export function AssessmentAttempt({
         (entry) => entry.seq > maxSent,
       );
       const skipped = batch.filter(
-        (entry) => entry.seq <= result.previousSeq && entry.kind === "ANSWERED",
+        // Every kind but shown questions, which only feed time statistics.
+        (entry) =>
+          entry.seq <= result.previousSeq && entry.kind !== "QUESTION_SHOWN",
       );
       if (skipped.length) {
         // Another tab or device had already written these sequence numbers (or a retry after a
@@ -444,7 +449,17 @@ export function AssessmentAttempt({
       try {
         await sendPendingEntries();
       } catch {
-        // Submission still performs a final save and reports any error.
+        // Submission still performs a final save and reports any error. Section starts and ends
+        // move the clock, so they are retried soon instead of waiting for the next answer.
+        if (
+          pendingEntries.current.some(
+            (entry) =>
+              entry.kind === "SECTION_STARTED" ||
+              entry.kind === "SECTION_ENDED",
+          )
+        ) {
+          window.setTimeout(() => setFlushRequest((value) => value + 1), 5000);
+        }
       } finally {
         autosaveRun.current = null;
       }
@@ -518,7 +533,11 @@ export function AssessmentAttempt({
         now: tickAt,
       }),
     );
-    if (tickView.mode === "done" && !isFinished) void submitAssessment();
+    // Once: a failed submit shows a retry button instead of retrying every second.
+    if (tickView.mode === "done" && !isFinished && !autoSubmitTried.current) {
+      autoSubmitTried.current = true;
+      void submitAssessment();
+    }
   });
   useEffect(() => {
     if (!sectioned || isFinished) return;
@@ -528,7 +547,6 @@ export function AssessmentAttempt({
 
   // Section starts and ends save at once (they move the clock); handlers request it through state
   // because the autosave is an effect event.
-  const [flushRequest, setFlushRequest] = useState(0);
   useEffect(() => {
     if (flushRequest) flushAutosave();
   }, [flushRequest]);
@@ -542,8 +560,6 @@ export function AssessmentAttempt({
     if (view?.mode !== "answering" || busy) return;
     pushEntry("SECTION_ENDED", { sectionId: view.sectionId });
     setFlushRequest((value) => value + 1);
-    // Finishing the last section finishes the attempt.
-    if (isLastSection) void submitAssessment();
   };
 
   const firstQuestion = useRef(true);
@@ -713,7 +729,29 @@ export function AssessmentAttempt({
         />
       ) : null}
 
-      {view?.mode === "intro" && activeSection ? (
+      {view?.mode === "done" ? (
+        <StudyCard>
+          <h2 className="text-xl font-black">Semua bagian selesai</h2>
+          <p className="text-muted-foreground text-sm">
+            {busy
+              ? "Jawaban kamu sedang dikirim…"
+              : "Jawaban kamu belum terkirim. Periksa koneksi, lalu kirim lagi."}
+          </p>
+          <Button
+            size="lg"
+            disabled={busy}
+            onClick={() => void submitAssessment()}
+          >
+            {busy ? (
+              <LoaderCircleIcon
+                data-icon="inline-start"
+                className="animate-spin"
+              />
+            ) : null}
+            Kirim tugas
+          </Button>
+        </StudyCard>
+      ) : view?.mode === "intro" && activeSection ? (
         <SectionIntro
           busy={busy}
           instructions={activeSection.instructions}
@@ -880,7 +918,11 @@ export function AssessmentAttempt({
                   Selesai bagian ini
                 </Button>
               ) : null
-            ) : expired || isLast || answeredCount === total ? (
+            ) : // A last section that may not end early ends with its time.
+            activeSection &&
+              !canFinishSection(activeSection) ? null : expired ||
+              isLast ||
+              answeredCount === total ? (
               <Button
                 size="lg"
                 disabled={busy}

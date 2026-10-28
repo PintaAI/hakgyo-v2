@@ -90,7 +90,14 @@ export function sectionTimeline(input: {
   let available = input.startedAt;
   const submittedAt =
     entries.find((entry) => entry.kind === "SUBMITTED")?.at ?? null;
+  // Nothing starts once the attempt is over: submitted, or past its overall deadline.
+  const overAt = minDate(submittedAt, input.attemptDeadline);
+  let over = false;
   for (const section of input.sections) {
+    if (overAt && available.getTime() >= overAt.getTime()) {
+      over = true;
+      break;
+    }
     const autoStartAt = new Date(
       available.getTime() + SECTION_INTRO_SECONDS * 1000,
     );
@@ -104,6 +111,11 @@ export function sectionTimeline(input: {
     const reachedAutoStart = input.now.getTime() >= autoStartAt.getTime();
     const startedAt =
       minDate(explicitStart, reachedAutoStart ? autoStartAt : null) ?? null;
+    if (startedAt && overAt && startedAt.getTime() >= overAt.getTime()) {
+      // The intro would only have ended after the attempt was over: never started.
+      over = true;
+      break;
+    }
     if (!startedAt) {
       windows.push({
         sectionId: section.id,
@@ -154,9 +166,9 @@ export function sectionTimeline(input: {
   return {
     windows,
     currentIndex:
-      currentIndex >= 0
+      !over && currentIndex >= 0
         ? currentIndex
-        : windows.length < input.sections.length && !submittedAt
+        : !over && windows.length < input.sections.length && !submittedAt
           ? windows.length
           : input.sections.length,
   };
@@ -207,4 +219,20 @@ export function sectionView(timeline: SectionTimeline): SectionView {
 /** Whether the learner may end the running section before its time (an untimed one always). */
 export function canFinishSection(section: TimelineSection) {
   return section.allowEarlyFinish || !section.timeLimitSeconds;
+}
+
+/** Total seconds of sections that all have a timer (intros not included), or null. */
+export function timedSectionsSeconds(
+  sections: ReadonlyArray<{ timeLimitSeconds: number | null }>,
+) {
+  if (
+    !sections.length ||
+    sections.some((section) => !section.timeLimitSeconds)
+  ) {
+    return null;
+  }
+  return sections.reduce(
+    (total, section) => total + (section.timeLimitSeconds ?? 0),
+    0,
+  );
 }
