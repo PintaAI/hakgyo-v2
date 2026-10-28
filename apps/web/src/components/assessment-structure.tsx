@@ -151,10 +151,11 @@ function SectionForm({
   const parsedGap = parseWhole(gapSeconds, 0, 30);
   const parsedAnswerSeconds = parseWhole(answerSeconds, 1, 300);
   const parsedQuestionSeconds = parseWhole(questionSeconds, 5, 1_800);
+  // The gap only counts while its field shows.
+  const gapShown = paced || autoplay;
   const rulesValid =
     !Number.isNaN(parsedMaxPlays) &&
-    parsedGap !== null &&
-    !Number.isNaN(parsedGap) &&
+    (!gapShown || (parsedGap !== null && !Number.isNaN(parsedGap))) &&
     !Number.isNaN(parsedAnswerSeconds) &&
     !Number.isNaN(parsedQuestionSeconds);
   // Minutes may have decimals (90 seconds is 1,5); stored as whole seconds.
@@ -189,7 +190,9 @@ function SectionForm({
         allowEarlyFinish,
         audioMaxPlays: parsedMaxPlays,
         audioAutoplay: autoplay,
-        audioRepeatGapSeconds: parsedGap ?? section.audioRepeatGapSeconds,
+        ...(gapShown && parsedGap !== null && !Number.isNaN(parsedGap)
+          ? { audioRepeatGapSeconds: parsedGap }
+          : {}),
         pacedAnswerSeconds: parsedAnswerSeconds,
         pacedQuestionSeconds: parsedQuestionSeconds,
       });
@@ -339,7 +342,7 @@ function SectionForm({
           <Switch checked={autoplay} onCheckedChange={setAutoplay} />
         </label>
       )}
-      {paced || autoplay ? (
+      {gapShown ? (
         <div className="grid gap-1.5">
           <Label htmlFor={`section-gap-${section.id}`}>
             Jeda sebelum diputar lagi (detik)

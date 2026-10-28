@@ -6,6 +6,7 @@ import {
   isForwardOnly,
   pacedQuestionEndsAt,
   questionAudioSources,
+  ruleSectionsFor,
   ruleStateFrom,
   sectionAudioPolicy,
   sectionTimeline,
@@ -313,14 +314,8 @@ function AssessmentAttemptContent({
       );
       // Plays and positions logged on this device before a restart still count. Questions are
       // in the order shown.
-      const questions = assessment.data.questions;
       const rules = ruleStateFrom(
-        assessment.data.sections.map((section) => ({
-          ...section,
-          questionIds: questions
-            .filter((entry) => entry.sectionId === section.id)
-            .map((entry) => entry.id),
-        })),
+        ruleSectionsFor(assessment.data.sections, assessment.data.questions),
         log.entries,
       );
       setReached(Object.fromEntries(rules.furthest));

@@ -32,7 +32,10 @@ describe("checkRuleEntry", () => {
       { kind: "QUESTION_SHOWN", questionId: "l2" },
     ]);
     expect(
-      checkRuleEntry(rules, state, { kind: "QUESTION_SHOWN", questionId: "l1" }),
+      checkRuleEntry(rules, state, {
+        kind: "QUESTION_SHOWN",
+        questionId: "l1",
+      }),
     ).toBe("NAVIGATION");
     expect(
       checkRuleEntry(rules, state, {
@@ -42,7 +45,10 @@ describe("checkRuleEntry", () => {
       }),
     ).toBe("NAVIGATION");
     expect(
-      checkRuleEntry(rules, state, { kind: "QUESTION_SHOWN", questionId: "l3" }),
+      checkRuleEntry(rules, state, {
+        kind: "QUESTION_SHOWN",
+        questionId: "l3",
+      }),
     ).toBeNull();
   });
 
@@ -51,7 +57,10 @@ describe("checkRuleEntry", () => {
       { kind: "QUESTION_SHOWN", questionId: "r2" },
     ]);
     expect(
-      checkRuleEntry(rules, state, { kind: "QUESTION_SHOWN", questionId: "r1" }),
+      checkRuleEntry(rules, state, {
+        kind: "QUESTION_SHOWN",
+        questionId: "r1",
+      }),
     ).toBeNull();
   });
 
@@ -87,6 +96,22 @@ describe("checkRuleEntry", () => {
         hasAnswer: true,
       }),
     ).toBeNull();
+  });
+
+  test("a paced section without a limit plays once", () => {
+    const paced: RuleSection[] = [
+      {
+        id: "p",
+        navigation: "PACED",
+        audioMaxPlays: null,
+        questionIds: ["p1"],
+      },
+    ];
+    const played = { kind: "AUDIO_PLAYED", questionId: "p1" };
+    expect(checkRuleEntry(paced, emptyRuleState(), played)).toBeNull();
+    expect(checkRuleEntry(paced, ruleStateFrom(paced, [played]), played)).toBe(
+      "AUDIO",
+    );
   });
 
   test("audio plays up to the limit", () => {

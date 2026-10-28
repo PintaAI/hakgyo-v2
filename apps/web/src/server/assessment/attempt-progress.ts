@@ -95,7 +95,7 @@ async function applyEntries(
   now: Date,
 ) {
   const sectioned = attempt.assessment.sections.length > 0;
-  const [lastLog, plan, priorEntries] = await Promise.all([
+  const [lastLog, plan] = await Promise.all([
     tx.assessmentAttemptLog.findFirst({
       where: { attemptId: attempt.id },
       orderBy: { seq: "desc" },
@@ -103,8 +103,10 @@ async function applyEntries(
     }),
     // Unsectioned attempts (most autosaves) skip the section lookups.
     sectioned ? loadSectionPlan(tx, attempt.assessmentId, attempt.id) : [],
-    sectioned ? loadSectionEntries(tx, attempt.id) : [],
   ]);
+  const priorEntries = sectioned
+    ? await loadSectionEntries(tx, attempt.id, plan)
+    : [];
   const deadline = attemptDeadline({
     startedAt: attempt.startedAt,
     timeLimitMinutes: attempt.assessment.timeLimitMinutes,
@@ -397,10 +399,8 @@ export async function inTimeEntryAnswers(
     },
   });
   if (!attempt) return [];
-  const [plan, storedEntries] = await Promise.all([
-    loadSectionPlan(db, attempt.assessmentId, attemptId),
-    loadSectionEntries(db, attemptId),
-  ]);
+  const plan = await loadSectionPlan(db, attempt.assessmentId, attemptId);
+  const storedEntries = await loadSectionEntries(db, attemptId, plan);
   // Entries this device did not write (another tab or device) still count.
   const ownSeqs = new Set(entries.map((entry) => entry.seq));
   const otherEntries = storedEntries.filter((entry) => !ownSeqs.has(entry.seq));

@@ -62,7 +62,10 @@ export function AssessmentAudioPlayer({
   playsUsed: number;
   disabled: boolean;
   onPlayStarted: () => void;
-  /** Every allowed play has ended (only with a limit). */
+  /**
+   * Every allowed play has ended (only with a limit), or the audio failed: a paced section then
+   * starts the answer window instead of waiting.
+   */
   onFinished: () => void;
 }) {
   const loadAssetUrl = useAssetUrlLoader();
@@ -71,33 +74,43 @@ export function AssessmentAudioPlayer({
   // The play now running (or about to) is counted once it starts.
   const counted = useRef(false);
   const gapTimer = useRef<number | null>(null);
+  // Bumped by every new track and on unmount, so a load still running for an older track (or a
+  // question already left) never takes over the shared element.
+  const generation = useRef(0);
   const playsLeft =
     policy.maxPlays === null ? Infinity : policy.maxPlays - playsUsed;
+  // Without a limit autoplay plays once; more plays are taps.
+  const autoRepeats = policy.autoplay && policy.maxPlays !== null;
 
   const playTrack = async (index: number) => {
     const source = sources[index];
     if (!source) return;
+    const run = ++generation.current;
     track.current = index;
     setPhase("loading");
     try {
       const url =
         "assetId" in source ? await loadAssetUrl(source.assetId) : source.url;
+      if (run !== generation.current) return;
       if (!url) throw new Error("Audio tidak tersedia");
       const element = audio.get();
       element.src = url;
       await element.play();
+      if (run !== generation.current) return;
       if (!counted.current) {
         counted.current = true;
         onPlayStarted();
       }
       setPhase("playing");
     } catch (error) {
+      if (run !== generation.current) return;
       // Blocked autoplay waits for a tap; the play counts only once it starts.
-      setPhase(
-        error instanceof DOMException && error.name === "NotAllowedError"
-          ? "blocked"
-          : "failed",
-      );
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
+        setPhase("blocked");
+      } else {
+        setPhase("failed");
+        onFinished();
+      }
     }
   };
 
@@ -119,7 +132,7 @@ export function AssessmentAudioPlayer({
       onFinished();
       return;
     }
-    if (policy.autoplay) {
+    if (autoRepeats) {
       setPhase("gap");
       gapTimer.current = window.setTimeout(() => {
         gapTimer.current = null;
@@ -135,6 +148,7 @@ export function AssessmentAudioPlayer({
     const ended = () => onEnded();
     element.addEventListener("ended", ended);
     return () => {
+      generation.current += 1;
       element.removeEventListener("ended", ended);
       element.pause();
       if (gapTimer.current !== null) window.clearTimeout(gapTimer.current);
@@ -157,8 +171,7 @@ export function AssessmentAudioPlayer({
   const canTap =
     !disabled &&
     playsLeft > 0 &&
-    (phase === "blocked" ||
-      (!busy && (!policy.autoplay || phase === "failed")));
+    (phase === "blocked" || (!busy && (!autoRepeats || phase === "failed")));
 
   return (
     <StudyCard className="flex-row items-center gap-3 py-3">

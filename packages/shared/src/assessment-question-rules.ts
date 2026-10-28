@@ -55,6 +55,59 @@ function locate(sections: readonly RuleSection[], questionId: string) {
 
 const questionKinds = new Set(["QUESTION_SHOWN", "ANSWERED", "AUDIO_PLAYED"]);
 
+/** Entry kinds that move the section timeline (the rest belong to questions). */
+export function isTimelineKind(kind: string) {
+  return (
+    kind === "SECTION_STARTED" ||
+    kind === "SECTION_ENDED" ||
+    kind === "SUBMITTED"
+  );
+}
+
+/** Whether a section's navigation is run by the system or forward only (no going back). */
+export function isForwardOnly(navigation: SectionNavigation | undefined) {
+  return navigation === "FORWARD_ONLY" || navigation === "PACED";
+}
+
+/**
+ * Plays allowed per question, or null for unlimited. A paced section plays at least once, so it
+ * can move on (the same limit the players show).
+ */
+export function sectionMaxPlays(section: {
+  navigation?: SectionNavigation;
+  audioMaxPlays?: number | null;
+}) {
+  return section.navigation === "PACED"
+    ? (section.audioMaxPlays ?? 1)
+    : (section.audioMaxPlays ?? null);
+}
+
+/** Whether a section has a rule the shared engine enforces per question. */
+export function sectionHasQuestionRules(section: {
+  navigation?: SectionNavigation;
+  lockAnswers?: boolean;
+  audioMaxPlays?: number | null;
+}) {
+  return (
+    isForwardOnly(section.navigation) ||
+    Boolean(section.lockAnswers) ||
+    sectionMaxPlays(section) !== null
+  );
+}
+
+/** Rule sections with their questions in the order shown (`questions` is in that order). */
+export function ruleSectionsFor<S extends { id: string }>(
+  sections: readonly S[],
+  questions: ReadonlyArray<{ id: string; sectionId?: string | null }>,
+) {
+  return sections.map((section) => ({
+    ...section,
+    questionIds: questions
+      .filter((question) => question.sectionId === section.id)
+      .map(({ id }) => id),
+  }));
+}
+
 /** Why the entry breaks a rule, or null when it may be accepted. */
 export function checkRuleEntry(
   sections: readonly RuleSection[],
@@ -65,9 +118,10 @@ export function checkRuleEntry(
   const located = locate(sections, entry.questionId);
   if (!located) return null;
   const { section, index } = located;
-  const forwardOnly =
-    section.navigation === "FORWARD_ONLY" || section.navigation === "PACED";
-  if (forwardOnly && index < (state.furthest.get(section.id) ?? -1)) {
+  if (
+    isForwardOnly(section.navigation) &&
+    index < (state.furthest.get(section.id) ?? -1)
+  ) {
     return "NAVIGATION";
   }
   if (
@@ -78,10 +132,11 @@ export function checkRuleEntry(
   ) {
     return "LOCKED";
   }
+  const maxPlays = sectionMaxPlays(section);
   if (
     entry.kind === "AUDIO_PLAYED" &&
-    section.audioMaxPlays &&
-    (state.plays.get(entry.questionId) ?? 0) >= section.audioMaxPlays
+    maxPlays !== null &&
+    (state.plays.get(entry.questionId) ?? 0) >= maxPlays
   ) {
     return "AUDIO";
   }
@@ -120,11 +175,6 @@ export function ruleStateFrom(
   const state = emptyRuleState();
   for (const entry of entries) applyRuleEntry(sections, state, entry);
   return state;
-}
-
-/** Whether a section's navigation is run by the system or forward only (no going back). */
-export function isForwardOnly(navigation: SectionNavigation | undefined) {
-  return navigation === "FORWARD_ONLY" || navigation === "PACED";
 }
 
 /** Whether an answer holds anything (a choice or text), so it can lock. */

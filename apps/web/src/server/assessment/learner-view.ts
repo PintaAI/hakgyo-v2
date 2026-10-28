@@ -1,5 +1,6 @@
 import {
   readScoreBands,
+  ruleSectionsFor,
   ruleStateFrom,
   timedSectionsSeconds,
 } from "@hakgyo/shared";
@@ -98,18 +99,28 @@ export function learnerAssessmentAttemptSelect(userId: string) {
     status: true,
     lastLogSeq: true,
     // Section starts and ends, so a resumed attempt (another tab or device) knows the timeline,
-    // and shown questions and audio plays for the section rules.
+    // and, while an attempt with forward-only or audio rules runs, shown questions and plays.
     log: {
       where: {
-        kind: {
-          in: [
-            "SECTION_STARTED",
-            "SECTION_ENDED",
-            "SUBMITTED",
-            "QUESTION_SHOWN",
-            "AUDIO_PLAYED",
-          ],
-        },
+        OR: [
+          { kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] } },
+          {
+            kind: { in: ["QUESTION_SHOWN", "AUDIO_PLAYED"] },
+            attempt: {
+              status: "IN_PROGRESS",
+              assessment: {
+                sections: {
+                  some: {
+                    OR: [
+                      { navigation: { not: "FREE" } },
+                      { audioMaxPlays: { not: null } },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        ],
       },
       orderBy: { seq: "asc" },
       select: { kind: true, sectionId: true, questionId: true, at: true },
@@ -230,15 +241,7 @@ export function shapeLearnerAssessment(input: {
   );
   const timedSeconds = timedSectionsSeconds(sections) ?? 0;
   const log = attempt?.log ?? [];
-  const rules = ruleStateFrom(
-    sections.map((section) => ({
-      ...section,
-      questionIds: questions
-        .filter((question) => question.sectionId === section.id)
-        .map(({ id }) => id),
-    })),
-    log,
-  );
+  const rules = ruleStateFrom(ruleSectionsFor(sections, questions), log);
   const scoresVisible =
     attempt?.status === "GRADED" &&
     !attempt.assessmentEvent?.participants[0]?.invalidatedAt &&

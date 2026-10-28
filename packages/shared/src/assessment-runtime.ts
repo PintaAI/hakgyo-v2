@@ -4,6 +4,7 @@ import {
   answerHasContent,
   applyRuleEntry,
   checkRuleEntry,
+  isTimelineKind,
   ruleStateFrom,
   type RuleEntry,
   type RuleRejection,
@@ -138,10 +139,7 @@ export function acceptLogEntries(input: {
       sectionOf.set(questionId, section.id);
   }
   const sectionEntries: TimelineEntry[] = (sections?.priorEntries ?? []).filter(
-    (entry) =>
-      entry.kind === "SECTION_STARTED" ||
-      entry.kind === "SECTION_ENDED" ||
-      entry.kind === "SUBMITTED",
+    (entry) => isTimelineKind(entry.kind),
   );
   const rules = ruleStateFrom(
     sections?.list ?? [],

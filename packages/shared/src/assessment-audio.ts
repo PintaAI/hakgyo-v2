@@ -1,4 +1,7 @@
-import type { SectionNavigation } from "./assessment-question-rules";
+import {
+  sectionMaxPlays,
+  type SectionNavigation,
+} from "./assessment-question-rules";
 
 /**
  * Audio and pacing of a section during an attempt (docs/eps-topik-simulation.md section 5.6),
@@ -71,6 +74,7 @@ export type AudioPolicySection = {
 export type AudioPolicy = {
   /** Plays per question (one play is the whole playlist); null is unlimited. */
   maxPlays: number | null;
+  /** Plays by itself when shown, then again after the gap up to `maxPlays` (once if unlimited). */
   autoplay: boolean;
   repeatGapSeconds: number;
 };
@@ -88,7 +92,7 @@ export function sectionAudioPolicy(
     return null;
   }
   return {
-    maxPlays: paced ? (section.audioMaxPlays ?? 1) : section.audioMaxPlays,
+    maxPlays: sectionMaxPlays(section),
     autoplay: paced || section.audioAutoplay,
     repeatGapSeconds: Math.max(0, section.audioRepeatGapSeconds),
   };

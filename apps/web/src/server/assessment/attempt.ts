@@ -288,6 +288,7 @@ export async function gradeInProgressAttempt(
   if (updated.count !== 1) throw new TRPCError({ code: "CONFLICT" });
   if (attempt.assessment.sections.length) {
     // A section still running ends with the submission; every section gets its score.
+    const plan = await loadSectionPlan(tx, attempt.assessmentId, attempt.id);
     await storeSectionWindows(tx, {
       attemptId: attempt.id,
       startedAt: attempt.startedAt,
@@ -297,8 +298,8 @@ export async function gradeInProgressAttempt(
         event: attempt.assessmentEvent,
         sections: attempt.assessment.sections,
       }),
-      plan: await loadSectionPlan(tx, attempt.assessmentId, attempt.id),
-      entries: await loadSectionEntries(tx, attempt.id),
+      plan,
+      entries: await loadSectionEntries(tx, attempt.id, plan),
       now,
       submittedAt: options.submittedAt ?? now,
     });

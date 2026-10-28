@@ -1,6 +1,6 @@
 import {
-  answerHasContent,
   roundScore,
+  sectionHasQuestionRules,
   sectionTimeline,
   type LogPlanSection,
   type PriorLogEntry,
@@ -96,29 +96,37 @@ export async function loadSectionPlan(
 }
 
 /**
- * The entries of an attempt's log the rules build on: section starts and ends, the submission,
- * and question entries (shown, answered, audio played) for navigation, locks and play counts.
+ * The entries of an attempt's log the rules build on: section starts and ends and the submission,
+ * plus, when a section has question rules, question entries (shown, answered, audio played) for
+ * navigation, locks and play counts.
  */
 export async function loadSectionEntries(
   tx: Tx,
   attemptId: string,
+  plan: readonly LogPlanSection[],
 ): Promise<(PriorLogEntry & { seq: number })[]> {
+  const rules = plan.some(sectionHasQuestionRules);
   const rows = await tx.assessmentAttemptLog.findMany({
-    where: { attemptId },
+    where: {
+      attemptId,
+      ...(rules
+        ? {}
+        : { kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] } }),
+    },
     orderBy: { seq: "asc" },
+    // No written content: only single choices lock, so the chosen options say enough.
     select: {
       seq: true,
       kind: true,
       sectionId: true,
       questionId: true,
       optionIds: true,
-      content: true,
       at: true,
     },
   });
-  return rows.map(({ optionIds, content, ...row }) => ({
+  return rows.map(({ optionIds, ...row }) => ({
     ...row,
-    hasAnswer: answerHasContent({ optionIds, content }),
+    hasAnswer: optionIds.length > 0,
   }));
 }
 

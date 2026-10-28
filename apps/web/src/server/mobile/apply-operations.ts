@@ -1,5 +1,6 @@
 import {
   QUESTION_RULES_RUNTIME_VERSION,
+  sectionHasQuestionRules,
   SECTIONS_RUNTIME_VERSION,
 } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
@@ -505,14 +506,17 @@ async function requireRuntimeFor(
       assessment: { courseItems: { some: { id: courseItemId } } },
       questions: { some: {} },
     },
-    select: { navigation: true, lockAnswers: true, audioMaxPlays: true },
+    select: {
+      navigation: true,
+      lockAnswers: true,
+      audioMaxPlays: true,
+      audioAutoplay: true,
+    },
   });
   if (!sections.length) return;
+  // Autoplay is no rule the server checks, but an old build would show the plain audio player.
   const needsRules = sections.some(
-    (section) =>
-      section.navigation !== "FREE" ||
-      section.lockAnswers ||
-      section.audioMaxPlays !== null,
+    (section) => sectionHasQuestionRules(section) || section.audioAutoplay,
   );
   if (version < SECTIONS_RUNTIME_VERSION || needsRules) {
     throw new TRPCError({
