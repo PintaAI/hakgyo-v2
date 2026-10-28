@@ -45,6 +45,8 @@ export const env = createEnv({
     OPENAI_APPS_CHALLENGE_TOKEN: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     ELEVENLABS_API_KEY: z.string().min(1).optional(),
+    // Bearer token of the question bank's TTS poller on the VPS (/api/internal/tts/*).
+    TTS_WORKER_SECRET: z.string().min(16).optional(),
     // Resend API key and the verified sender used for account emails (verification, password reset).
     // Required in production: Better Auth only logs a failed send, so a missing key would otherwise
     // tell users an email is on its way that never arrives. Development logs the email instead.
@@ -126,6 +128,7 @@ export const env = createEnv({
     OPENAI_APPS_CHALLENGE_TOKEN: process.env.OPENAI_APPS_CHALLENGE_TOKEN,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+    TTS_WORKER_SECRET: process.env.TTS_WORKER_SECRET,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,
     DATABASE_URL: process.env.DATABASE_URL,

@@ -1,0 +1,25 @@
+name: Question bank TTS fallback
+
+# Hourly: bank audio jobs that waited more than two hours for the GPU worker are spoken with
+# OpenAI (see apps/web/src/app/api/cron/tts-fallback/route.ts). CRON_SECRET must match the value
+# set in Vercel.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  fallback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call fallback route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 300 \
+            -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            https://hakgyo-v2.vercel.app/api/cron/tts-fallback
