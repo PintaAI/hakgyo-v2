@@ -175,8 +175,10 @@ type DownloadableAsset = {
 /**
  * Returns the confirmed, non-deleted assets from `assetIds` that the user may
  * download: their own uploads, anything in an organization they own or
- * administer, PDF book pages for any staff member, and otherwise files linked
- * to a course item the user can open.
+ * administer, PDF book pages for any staff member, assets Hakgyo shares (any
+ * signed-in user: question bank media carry no answer keys, see
+ * docs/eps-question-generator.md section 3.1), and otherwise files linked to a
+ * course item the user can open.
  */
 async function findDownloadableAssets(
   assetIds: readonly string[],
