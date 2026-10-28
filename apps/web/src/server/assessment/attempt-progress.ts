@@ -95,16 +95,18 @@ async function applyEntries(
   now: Date,
 ) {
   const sectioned = attempt.assessment.sections.length > 0;
-  const [lastLog, plan, priorEntries] = await Promise.all([
+  const [lastLog, plan] = await Promise.all([
     tx.assessmentAttemptLog.findFirst({
       where: { attemptId: attempt.id },
       orderBy: { seq: "desc" },
       select: { at: true },
     }),
     // Unsectioned attempts (most autosaves) skip the section lookups.
-    sectioned ? loadSectionPlan(tx, attempt.assessmentId) : [],
-    sectioned ? loadSectionEntries(tx, attempt.id) : [],
+    sectioned ? loadSectionPlan(tx, attempt.assessmentId, attempt.id) : [],
   ]);
+  const priorEntries = sectioned
+    ? await loadSectionEntries(tx, attempt.id, plan)
+    : [];
   const deadline = attemptDeadline({
     startedAt: attempt.startedAt,
     timeLimitMinutes: attempt.assessment.timeLimitMinutes,
@@ -397,21 +399,11 @@ export async function inTimeEntryAnswers(
     },
   });
   if (!attempt) return [];
-  const [plan, storedSectionEntries] = await Promise.all([
-    loadSectionPlan(db, attempt.assessmentId),
-    db.assessmentAttemptLog.findMany({
-      where: {
-        attemptId,
-        kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] },
-      },
-      select: { seq: true, kind: true, sectionId: true, at: true },
-    }),
-  ]);
-  // Section starts and ends this device did not write (another tab or device) still count.
+  const plan = await loadSectionPlan(db, attempt.assessmentId, attemptId);
+  const storedEntries = await loadSectionEntries(db, attemptId, plan);
+  // Entries this device did not write (another tab or device) still count.
   const ownSeqs = new Set(entries.map((entry) => entry.seq));
-  const otherSectionEntries = storedSectionEntries.filter(
-    (entry) => !ownSeqs.has(entry.seq),
-  );
+  const otherEntries = storedEntries.filter((entry) => !ownSeqs.has(entry.seq));
   const replay = acceptLogEntries({
     entries,
     lastSeq: 0,
@@ -426,7 +418,7 @@ export async function inTimeEntryAnswers(
     receivedAt: new Date(),
     source: "MOBILE",
     questionIds: new Set(attempt.assessment.questions.map(({ id }) => id)),
-    sections: { list: plan, priorEntries: otherSectionEntries },
+    sections: { list: plan, priorEntries: otherEntries },
   });
   return latestAnswers(replay.accepted).map(
     ({ questionId, optionIds, content }) => ({

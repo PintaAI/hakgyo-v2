@@ -36,6 +36,13 @@ Beberapa tugas, misalnya simulasi EPS-TOPIK, dibagi menjadi **bagian** seperti *
 4. Bagian yang sudah selesai **tidak bisa dibuka lagi**, jadi periksa jawabanmu sebelum menyelesaikannya.
 5. Di bagian terakhir, tekan **Kirim tugas**. Tugas juga terkirim otomatis saat waktu bagian terakhir habis.
 
+Pengajar bisa menambahkan aturan pada sebuah bagian. Aturannya tertulis di bawah soal:
+
+- **Soal yang sudah dilewati tidak bisa dibuka lagi**: tombol **Sebelumnya** tidak ada, jadi jawab dulu sebelum lanjut.
+- **Soal berganti sendiri**: audio diputar otomatis, lalu ada hitungan mundur "Soal berikutnya dalam ...". Jawab sebelum hitungan habis.
+- **Pilihan pertama kamu langsung dikunci**: pilih dengan teliti, karena pilihan tidak bisa diganti.
+- **Batas putar audio**: kotak audio menunjukkan "Diputar 1 dari 2". Audio tidak bisa digeser atau dijeda. Jika audio tidak mulai sendiri, tekan **Putar**.
+
 Setelah dinilai, hasilmu juga menunjukkan nilai setiap bagian.
 
 ## Mengirim

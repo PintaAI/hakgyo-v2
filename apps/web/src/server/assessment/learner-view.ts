@@ -1,4 +1,9 @@
-import { readScoreBands, timedSectionsSeconds } from "@hakgyo/shared";
+import {
+  readScoreBands,
+  ruleSectionsFor,
+  ruleStateFrom,
+  timedSectionsSeconds,
+} from "@hakgyo/shared";
 
 import type { Prisma } from "../../../generated/prisma/client";
 import { activeEnrollmentStatuses } from "~/server/authorization";
@@ -93,13 +98,32 @@ export function learnerAssessmentAttemptSelect(userId: string) {
     startedAt: true,
     status: true,
     lastLogSeq: true,
-    // Section starts and ends, so a resumed attempt (another tab or device) knows the timeline.
+    // Section starts and ends, so a resumed attempt (another tab or device) knows the timeline,
+    // and, while an attempt with forward-only or audio rules runs, shown questions and plays.
     log: {
       where: {
-        kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] },
+        OR: [
+          { kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] } },
+          {
+            kind: { in: ["QUESTION_SHOWN", "AUDIO_PLAYED"] },
+            attempt: {
+              status: "IN_PROGRESS",
+              assessment: {
+                sections: {
+                  some: {
+                    OR: [
+                      { navigation: { not: "FREE" } },
+                      { audioMaxPlays: { not: null } },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        ],
       },
       orderBy: { seq: "asc" },
-      select: { kind: true, sectionId: true, at: true },
+      select: { kind: true, sectionId: true, questionId: true, at: true },
     },
     sections: {
       select: { sectionId: true, score: true, maxScore: true },
@@ -216,6 +240,8 @@ export function shapeLearnerAssessment(input: {
     ),
   );
   const timedSeconds = timedSectionsSeconds(sections) ?? 0;
+  const log = attempt?.log ?? [];
+  const rules = ruleStateFrom(ruleSectionsFor(sections, questions), log);
   const scoresVisible =
     attempt?.status === "GRADED" &&
     !attempt.assessmentEvent?.participants[0]?.invalidatedAt &&
@@ -225,7 +251,21 @@ export function shapeLearnerAssessment(input: {
     scoreBands: readScoreBands(item.assessment.scoreBands),
     sections,
     /** Section starts, ends and the submission of this attempt, for the section timeline. */
-    sectionEntries: attempt?.log ?? [],
+    sectionEntries: log.flatMap(({ kind, sectionId, at }) =>
+      kind === "SECTION_STARTED" ||
+      kind === "SECTION_ENDED" ||
+      kind === "SUBMITTED"
+        ? [{ kind, sectionId, at }]
+        : [],
+    ),
+    /**
+     * What the section rules have counted so far: audio plays per question and, per section, the
+     * furthest question index shown (forward-only sections cannot go back before it).
+     */
+    questionProgress: {
+      plays: Object.fromEntries(rules.plays),
+      furthest: Object.fromEntries(rules.furthest),
+    },
     /** Each section's score once the attempt's score is visible. */
     sectionResults: scoresVisible
       ? (attempt?.sections ?? []).flatMap(({ sectionId, score, maxScore }) =>

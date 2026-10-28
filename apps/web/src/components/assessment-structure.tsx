@@ -39,7 +39,12 @@ import {
   getBlockNotePlainText,
   plainTextToBlockNote,
 } from "~/lib/blocknote/document";
-import { formatScore, parseScoreInput } from "@hakgyo/shared";
+import {
+  formatScore,
+  PACED_DEFAULT_ANSWER_SECONDS,
+  PACED_DEFAULT_QUESTION_SECONDS,
+  parseScoreInput,
+} from "@hakgyo/shared";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Assessment = RouterOutputs["assessment"]["get"];
@@ -79,6 +84,31 @@ function instructionsDocument(text: string) {
   return text.trim() ? plainTextToBlockNote(text) : null;
 }
 
+type Navigation = Section["navigation"];
+
+const navigationLabels: Record<Navigation, string> = {
+  FREE: "Bebas",
+  FORWARD_ONLY: "Maju saja",
+  PACED: "Diatur sistem",
+};
+
+const navigationHints: Record<Navigation, string> = {
+  FREE: "Murid bisa pindah ke soal mana saja dan mengubah jawaban.",
+  FORWARD_ONLY: "Soal yang sudah dilewati tidak bisa dibuka lagi.",
+  PACED:
+    "Soal berganti sendiri: audio diputar otomatis, lalu waktu menjawab berjalan. Seperti bagian mendengar EPS-TOPIK.",
+};
+
+/** A whole number field: null when empty, NaN when not a whole number in range. */
+function parseWhole(text: string, min: number, max: number) {
+  if (!text.trim()) return null;
+  const value = Number(text.trim());
+  return Number.isInteger(value) && value >= min && value <= max ? value : NaN;
+}
+
+const wholeText = (value: number | null) =>
+  value === null ? "" : String(value);
+
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Perubahan belum tersimpan.";
 }
@@ -100,6 +130,34 @@ function SectionForm({
   const [instructions, setInstructions] = useState(initialInstructions);
   const [minutes, setMinutes] = useState(initialMinutes);
   const [shuffle, setShuffle] = useState(section.shuffleQuestions);
+  const [navigation, setNavigation] = useState(section.navigation);
+  const [lockAnswers, setLockAnswers] = useState(section.lockAnswers);
+  const [allowEarlyFinish, setAllowEarlyFinish] = useState(
+    section.allowEarlyFinish,
+  );
+  const [maxPlays, setMaxPlays] = useState(wholeText(section.audioMaxPlays));
+  const [autoplay, setAutoplay] = useState(section.audioAutoplay);
+  const [gapSeconds, setGapSeconds] = useState(
+    String(section.audioRepeatGapSeconds),
+  );
+  const [answerSeconds, setAnswerSeconds] = useState(
+    wholeText(section.pacedAnswerSeconds),
+  );
+  const [questionSeconds, setQuestionSeconds] = useState(
+    wholeText(section.pacedQuestionSeconds),
+  );
+  const paced = navigation === "PACED";
+  const parsedMaxPlays = parseWhole(maxPlays, 1, 10);
+  const parsedGap = parseWhole(gapSeconds, 0, 30);
+  const parsedAnswerSeconds = parseWhole(answerSeconds, 1, 300);
+  const parsedQuestionSeconds = parseWhole(questionSeconds, 5, 1_800);
+  // The gap only counts while its field shows.
+  const gapShown = paced || autoplay;
+  const rulesValid =
+    !Number.isNaN(parsedMaxPlays) &&
+    (!gapShown || (parsedGap !== null && !Number.isNaN(parsedGap))) &&
+    !Number.isNaN(parsedAnswerSeconds) &&
+    !Number.isNaN(parsedQuestionSeconds);
   // Minutes may have decimals (90 seconds is 1,5); stored as whole seconds.
   const parsedSeconds = minutes.trim()
     ? Math.round(parseScoreInput(minutes) * 60)
@@ -110,8 +168,10 @@ function SectionForm({
       parsedSeconds >= 60 &&
       parsedSeconds <= 14_400);
 
+  const valid = Boolean(title.trim()) && minutesValid && rulesValid;
+
   async function save() {
-    if (!title.trim() || !minutesValid) return;
+    if (!valid) return;
     try {
       await update.mutateAsync({
         sectionId: section.id,
@@ -125,6 +185,16 @@ function SectionForm({
           ? {}
           : { timeLimitSeconds: parsedSeconds }),
         shuffleQuestions: shuffle,
+        navigation,
+        lockAnswers,
+        allowEarlyFinish,
+        audioMaxPlays: parsedMaxPlays,
+        audioAutoplay: autoplay,
+        ...(gapShown && parsedGap !== null && !Number.isNaN(parsedGap)
+          ? { audioRepeatGapSeconds: parsedGap }
+          : {}),
+        pacedAnswerSeconds: parsedAnswerSeconds,
+        pacedQuestionSeconds: parsedQuestionSeconds,
       });
       await utils.assessment.get.invalidate({
         assessmentId: section.assessmentId,
@@ -186,12 +256,151 @@ function SectionForm({
         </span>
         <Switch checked={shuffle} onCheckedChange={setShuffle} />
       </label>
+      <div className="grid gap-1.5">
+        <Label htmlFor={`section-navigation-${section.id}`}>
+          Perpindahan soal
+        </Label>
+        <Select
+          value={navigation}
+          onValueChange={(value) => {
+            if (value) setNavigation(value);
+          }}
+        >
+          <SelectTrigger
+            className="w-44"
+            id={`section-navigation-${section.id}`}
+          >
+            <SelectValue>{navigationLabels[navigation]}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(navigationLabels) as Navigation[]).map((value) => (
+              <SelectItem key={value} value={value}>
+                {navigationLabels[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-muted-foreground text-xs">
+          {navigationHints[navigation]}
+        </p>
+      </div>
+      <label className="flex items-center justify-between gap-3 text-sm">
+        <span>
+          <span className="block font-medium">Kunci jawaban pertama</span>
+          <span className="text-muted-foreground block text-xs">
+            Pilihan pertama di soal pilihan tunggal tidak bisa diganti.
+          </span>
+        </span>
+        <Switch checked={lockAnswers} onCheckedChange={setLockAnswers} />
+      </label>
+      <label className="flex items-center justify-between gap-3 text-sm">
+        <span>
+          <span className="block font-medium">Boleh selesai lebih awal</span>
+          <span className="text-muted-foreground block text-xs">
+            Murid bisa menekan &quot;Selesai bagian ini&quot; sebelum waktunya
+            habis.
+          </span>
+        </span>
+        <Switch
+          checked={allowEarlyFinish}
+          onCheckedChange={setAllowEarlyFinish}
+        />
+      </label>
+      <div className="grid gap-1.5">
+        <Label htmlFor={`section-plays-${section.id}`}>
+          Batas putar audio per soal
+        </Label>
+        <Input
+          aria-invalid={Number.isNaN(parsedMaxPlays)}
+          className="w-28"
+          id={`section-plays-${section.id}`}
+          inputMode="numeric"
+          onChange={(event) => setMaxPlays(event.target.value)}
+          placeholder={paced ? "1" : "Tanpa batas"}
+          value={maxPlays}
+        />
+        <p
+          className={
+            Number.isNaN(parsedMaxPlays)
+              ? "text-destructive text-xs"
+              : "text-muted-foreground text-xs"
+          }
+        >
+          {Number.isNaN(parsedMaxPlays)
+            ? "Isi 1 sampai 10, atau kosongkan."
+            : "Dengan batas, audio tidak bisa digeser atau dijeda."}
+        </p>
+      </div>
+      {paced ? null : (
+        <label className="flex items-center justify-between gap-3 text-sm">
+          <span>
+            <span className="block font-medium">Putar audio otomatis</span>
+            <span className="text-muted-foreground block text-xs">
+              Audio mulai sendiri saat soal tampil, sampai batas putar.
+            </span>
+          </span>
+          <Switch checked={autoplay} onCheckedChange={setAutoplay} />
+        </label>
+      )}
+      {gapShown ? (
+        <div className="grid gap-1.5">
+          <Label htmlFor={`section-gap-${section.id}`}>
+            Jeda sebelum diputar lagi (detik)
+          </Label>
+          <Input
+            aria-invalid={parsedGap === null || Number.isNaN(parsedGap)}
+            className="w-28"
+            id={`section-gap-${section.id}`}
+            inputMode="numeric"
+            onChange={(event) => setGapSeconds(event.target.value)}
+            value={gapSeconds}
+          />
+        </div>
+      ) : null}
+      {paced ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor={`section-answer-${section.id}`}>
+              Waktu menjawab setelah audio (detik)
+            </Label>
+            <Input
+              aria-invalid={Number.isNaN(parsedAnswerSeconds)}
+              className="w-28"
+              id={`section-answer-${section.id}`}
+              inputMode="numeric"
+              onChange={(event) => setAnswerSeconds(event.target.value)}
+              placeholder={String(PACED_DEFAULT_ANSWER_SECONDS)}
+              value={answerSeconds}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`section-question-${section.id}`}>
+              Waktu soal tanpa audio (detik)
+            </Label>
+            <Input
+              aria-invalid={Number.isNaN(parsedQuestionSeconds)}
+              className="w-28"
+              id={`section-question-${section.id}`}
+              inputMode="numeric"
+              onChange={(event) => setQuestionSeconds(event.target.value)}
+              placeholder={String(PACED_DEFAULT_QUESTION_SECONDS)}
+              value={questionSeconds}
+            />
+          </div>
+        </div>
+      ) : null}
+      {!rulesValid ? (
+        <p className="text-destructive text-xs">
+          Periksa angka audio dan waktu: jeda 0 sampai 30 detik, waktu menjawab
+          1 sampai 300 detik, waktu soal 5 sampai 1.800 detik.
+        </p>
+      ) : null}
       <div className="flex justify-end gap-2">
         <Button onClick={onDone} size="sm" type="button" variant="ghost">
           Batal
         </Button>
         <Button
-          disabled={!title.trim() || !minutesValid || update.isPending}
+          disabled={!valid || update.isPending}
           onClick={() => void save()}
           size="sm"
           type="button"
@@ -461,6 +670,13 @@ export function AssessmentStructureSheet({
                             ? `${formatScore(section.timeLimitSeconds / 60)} menit`
                             : "tanpa batas waktu"}
                           {section.shuffleQuestions ? " · diacak" : ""}
+                          {section.navigation === "FREE"
+                            ? ""
+                            : ` · ${navigationLabels[section.navigation].toLowerCase()}`}
+                          {section.lockAnswers ? " · jawaban dikunci" : ""}
+                          {section.audioMaxPlays
+                            ? ` · audio ${section.audioMaxPlays}×`
+                            : ""}
                         </p>
                       </div>
                       <Button

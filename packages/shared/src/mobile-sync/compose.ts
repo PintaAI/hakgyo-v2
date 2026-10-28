@@ -526,12 +526,7 @@ export function composeLearnerAssessment(
     sections: assessment.sections ?? [],
     // No attempt yet: no section progress or results.
     sectionEntries: [] as Array<{
-      kind:
-        | "QUESTION_SHOWN"
-        | "ANSWERED"
-        | "SUBMITTED"
-        | "SECTION_STARTED"
-        | "SECTION_ENDED";
+      kind: "SUBMITTED" | "SECTION_STARTED" | "SECTION_ENDED";
       sectionId: string | null;
       at: Date;
     }>,
@@ -542,6 +537,10 @@ export function composeLearnerAssessment(
     }>,
     // The pre-attempt view has no attempt, so no progress log yet.
     progressSeq: 0,
+    questionProgress: {
+      plays: {} as Record<string, number>,
+      furthest: {} as Record<string, number>,
+    },
     maxAttempts: assessment.maxAttempts,
     shuffleQuestions: assessment.shuffleQuestions,
     shuffleOptions: assessment.shuffleOptions,

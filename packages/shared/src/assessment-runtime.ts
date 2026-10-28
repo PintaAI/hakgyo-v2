@@ -1,6 +1,16 @@
 import { z } from "zod";
 
 import {
+  answerHasContent,
+  applyRuleEntry,
+  checkRuleEntry,
+  isTimelineKind,
+  ruleStateFrom,
+  type RuleEntry,
+  type RuleRejection,
+  type RuleSection,
+} from "./assessment-question-rules";
+import {
   sectionAt,
   sectionTimeline,
   type TimelineEntry,
@@ -13,13 +23,16 @@ import {
  * every entry with the same rules before storing it, so an offline attempt is judged by when the
  * learner acted, within bounds, not by when the device synced.
  *
- * Version 1 enforced time; version 2 adds sections (`assessment-section-timeline.ts`). Navigation,
- * lock and audio rules extend the same entries later; `RUNTIME_VERSION` says which rules a client
- * knows, and old clients are refused attempts that need newer rules.
+ * Version 1 enforced time; version 2 adds sections (`assessment-section-timeline.ts`); version 3
+ * adds forward-only and paced navigation, answer locks and audio play limits
+ * (`assessment-question-rules.ts`). `RUNTIME_VERSION` says which rules a client knows, and old
+ * clients are refused attempts that need newer rules.
  */
-export const RUNTIME_VERSION = 2;
+export const RUNTIME_VERSION = 3;
 /** The first runtime version that understands sections. */
 export const SECTIONS_RUNTIME_VERSION = 2;
+/** The first runtime version that understands navigation, lock and audio rules. */
+export const QUESTION_RULES_RUNTIME_VERSION = 3;
 
 export const attemptLogKinds = [
   "QUESTION_SHOWN",
@@ -27,6 +40,8 @@ export const attemptLogKinds = [
   "SUBMITTED",
   "SECTION_STARTED",
   "SECTION_ENDED",
+  /** A play of a question's audio started (counts against `audioMaxPlays`). */
+  "AUDIO_PLAYED",
 ] as const;
 export type AttemptLogKind = (typeof attemptLogKinds)[number];
 export type AttemptLogSource = "WEB" | "MOBILE";
@@ -67,12 +82,17 @@ export type LogRejection =
   | "CLOCK"
   | "INVALID"
   /** Outside the running section: in an intro, an ended section, or a section out of order. */
-  | "SECTION";
+  | "SECTION"
+  | RuleRejection;
 
-/** Sections of an attempt as the rules see them, in order. */
-export type LogPlanSection = TimelineSection & {
-  questionIds: readonly string[];
-};
+/** Sections of an attempt as the rules see them, in order, questions in the attempt's order. */
+export type LogPlanSection = TimelineSection &
+  RuleSection & {
+    questionIds: readonly string[];
+  };
+
+/** An entry accepted before: section and submission entries, plus question entries for the rules. */
+export type PriorLogEntry = TimelineEntry & RuleEntry;
 
 export type AcceptedLogEntry = AttemptLogEntry & {
   /** When the action counts as having happened. */
@@ -109,7 +129,7 @@ export function acceptLogEntries(input: {
    */
   sections?: {
     list: readonly LogPlanSection[];
-    priorEntries: readonly TimelineEntry[];
+    priorEntries: readonly PriorLogEntry[];
   };
 }): AcceptLogResult {
   const sections = input.sections?.list.length ? input.sections : null;
@@ -118,7 +138,13 @@ export function acceptLogEntries(input: {
     for (const questionId of section.questionIds)
       sectionOf.set(questionId, section.id);
   }
-  const sectionEntries: TimelineEntry[] = [...(sections?.priorEntries ?? [])];
+  const sectionEntries: TimelineEntry[] = (sections?.priorEntries ?? []).filter(
+    (entry) => isTimelineKind(entry.kind),
+  );
+  const rules = ruleStateFrom(
+    sections?.list ?? [],
+    sections?.priorEntries ?? [],
+  );
   const timelineAt = (at: number) =>
     sectionTimeline({
       sections: sections?.list ?? [],
@@ -192,6 +218,11 @@ export function acceptLogEntries(input: {
       if (sectionKind) {
         // Only the section on screen can start (from its intro) or finish early; a section
         // without a timer can always be finished, or it would never end.
+        // A paced section ends by itself after its last question.
+        const pacedDone =
+          currentSection?.navigation === "PACED" &&
+          rules.furthest.get(currentSection.id) ===
+            currentSection.questionIds.length - 1;
         const valid =
           current !== undefined &&
           current.sectionId === entry.sectionId &&
@@ -200,7 +231,8 @@ export function acceptLogEntries(input: {
             : Boolean(current.startedAt) &&
               Boolean(
                 currentSection?.allowEarlyFinish ||
-                !currentSection?.timeLimitSeconds,
+                !currentSection?.timeLimitSeconds ||
+                pacedDone,
               ));
         if (!valid) {
           reject("SECTION");
@@ -223,6 +255,17 @@ export function acceptLogEntries(input: {
           );
           continue;
         }
+        const ruleEntry = {
+          kind: entry.kind,
+          questionId: entry.questionId,
+          hasAnswer: answerHasContent(entry),
+        };
+        const broken = checkRuleEntry(sections.list, rules, ruleEntry);
+        if (broken) {
+          reject(broken);
+          continue;
+        }
+        applyRuleEntry(sections.list, rules, ruleEntry);
       }
     }
     if (sectionKind || entry.kind === "SUBMITTED") {

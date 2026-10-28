@@ -1,4 +1,8 @@
-import { SECTIONS_RUNTIME_VERSION } from "@hakgyo/shared";
+import {
+  QUESTION_RULES_RUNTIME_VERSION,
+  sectionHasQuestionRules,
+  SECTIONS_RUNTIME_VERSION,
+} from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -495,18 +499,31 @@ async function requireRuntimeFor(
   courseItemId: string,
   runtimeVersion: number | undefined,
 ) {
-  if ((runtimeVersion ?? 1) >= SECTIONS_RUNTIME_VERSION) return;
-  const sectioned = await ctx.db.assessmentSection.count({
+  const version = runtimeVersion ?? 1;
+  if (version >= QUESTION_RULES_RUNTIME_VERSION) return;
+  const sections = await ctx.db.assessmentSection.findMany({
     where: {
       assessment: { courseItems: { some: { id: courseItemId } } },
       questions: { some: {} },
     },
+    select: {
+      navigation: true,
+      lockAnswers: true,
+      audioMaxPlays: true,
+      audioAutoplay: true,
+    },
   });
-  if (sectioned) {
+  if (!sections.length) return;
+  // Autoplay is no rule the server checks, but an old build would show the plain audio player.
+  const needsRules = sections.some(
+    (section) => sectionHasQuestionRules(section) || section.audioAutoplay,
+  );
+  if (version < SECTIONS_RUNTIME_VERSION || needsRules) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message:
-        "Perbarui aplikasi Hakgyo untuk mengerjakan tugas ini. Tugas ini memakai bagian dengan waktu sendiri.",
+      message: needsRules
+        ? "Perbarui aplikasi Hakgyo untuk mengerjakan tugas ini. Tugas ini memakai aturan soal dan audio yang baru."
+        : "Perbarui aplikasi Hakgyo untuk mengerjakan tugas ini. Tugas ini memakai bagian dengan waktu sendiri.",
     });
   }
 }

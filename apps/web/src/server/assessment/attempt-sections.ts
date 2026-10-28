@@ -1,11 +1,17 @@
 import {
   roundScore,
+  sectionHasQuestionRules,
   sectionTimeline,
   type LogPlanSection,
+  type PriorLogEntry,
   type TimelineEntry,
 } from "@hakgyo/shared";
 
 import type { Prisma } from "../../../generated/prisma/client";
+import {
+  orderAssessmentQuestions,
+  shufflesQuestions,
+} from "~/server/assessment/order";
 
 /**
  * Server side of sectioned attempts (docs/eps-topik-simulation.md section 4.2): the section plan
@@ -14,40 +20,114 @@ import type { Prisma } from "../../../generated/prisma/client";
 
 type Tx = Prisma.TransactionClient;
 
-/** Sections that have questions, in order, with their question ids. */
+/**
+ * Sections that have questions, in order, with their rules and question ids. With `attemptId`,
+ * questions are in the order that attempt shows them (sections may shuffle), which forward-only
+ * navigation depends on.
+ */
 export async function loadSectionPlan(
   tx: Tx,
   assessmentId: string,
+  attemptId?: string,
 ): Promise<LogPlanSection[]> {
-  const sections = await tx.assessmentSection.findMany({
-    where: { assessmentId, questions: { some: {} } },
-    orderBy: { position: "asc" },
-    select: {
-      id: true,
-      timeLimitSeconds: true,
-      allowEarlyFinish: true,
-      questions: { select: { id: true } },
-    },
-  });
+  const [sections, attempt] = await Promise.all([
+    tx.assessmentSection.findMany({
+      where: { assessmentId, questions: { some: {} } },
+      orderBy: { position: "asc" },
+      select: {
+        id: true,
+        position: true,
+        timeLimitSeconds: true,
+        allowEarlyFinish: true,
+        shuffleQuestions: true,
+        navigation: true,
+        lockAnswers: true,
+        audioMaxPlays: true,
+        questions: {
+          orderBy: { position: "asc" },
+          select: { id: true, type: true, sectionId: true },
+        },
+      },
+    }),
+    attemptId
+      ? tx.assessmentAttempt.findUnique({
+          where: { id: attemptId },
+          select: {
+            id: true,
+            shuffleSeed: true,
+            assessment: { select: { shuffleQuestions: true } },
+            assessmentEvent: { select: { shuffleQuestions: true } },
+          },
+        })
+      : null,
+  ]);
+  const shown = attempt
+    ? orderAssessmentQuestions(
+        sections.flatMap((section) =>
+          section.questions.map((question) => ({ ...question, options: [] })),
+        ),
+        attempt.shuffleSeed ?? attempt.id,
+        shufflesQuestions(
+          attempt.assessment.shuffleQuestions,
+          attempt.assessmentEvent?.shuffleQuestions,
+        ),
+        false,
+        {
+          sections,
+          eventShuffleQuestions: attempt.assessmentEvent?.shuffleQuestions,
+        },
+      )
+    : sections.flatMap((section) => section.questions);
   return sections.map(({ questions, ...section }) => ({
-    ...section,
-    questionIds: questions.map(({ id }) => id),
+    id: section.id,
+    timeLimitSeconds: section.timeLimitSeconds,
+    allowEarlyFinish: section.allowEarlyFinish,
+    navigation: section.navigation,
+    lockAnswers: section.lockAnswers,
+    audioMaxPlays: section.audioMaxPlays,
+    questionIds: shown
+      .filter((question) => question.sectionId === section.id)
+      .map(({ id }) => id),
+    // A multiple-choice answer takes several taps, so only single choices lock.
+    lockableQuestionIds: questions
+      .filter((question) => question.type === "SINGLE_CHOICE")
+      .map(({ id }) => id),
   }));
 }
 
-/** The section entries of an attempt's log (starts, ends, the submission). */
+/**
+ * The entries of an attempt's log the rules build on: section starts and ends and the submission,
+ * plus, when a section has question rules, question entries (shown, answered, audio played) for
+ * navigation, locks and play counts.
+ */
 export async function loadSectionEntries(
   tx: Tx,
   attemptId: string,
-): Promise<TimelineEntry[]> {
-  return tx.assessmentAttemptLog.findMany({
+  plan: readonly LogPlanSection[],
+): Promise<(PriorLogEntry & { seq: number })[]> {
+  const rules = plan.some(sectionHasQuestionRules);
+  const rows = await tx.assessmentAttemptLog.findMany({
     where: {
       attemptId,
-      kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] },
+      ...(rules
+        ? {}
+        : { kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] } }),
     },
     orderBy: { seq: "asc" },
-    select: { kind: true, sectionId: true, at: true },
+    // No written content: only single choices lock, so the chosen options say enough.
+    select: {
+      seq: true,
+      kind: true,
+      sectionId: true,
+      questionId: true,
+      optionIds: true,
+      at: true,
+    },
   });
+  return rows.map(({ optionIds, ...row }) => ({
+    ...row,
+    hasAnswer: optionIds.length > 0,
+  }));
 }
 
 /** Stores the section windows of an attempt as the shared timeline sees them at `now`. */

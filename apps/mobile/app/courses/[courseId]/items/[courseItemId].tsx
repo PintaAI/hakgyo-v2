@@ -271,6 +271,7 @@ function CourseItemContent({
                 itemCompleted={itemCompleted}
                 canReattempt={assessmentEntry.canReattempt}
                 gatesProgress={!assessment.event}
+                sections={assessment.sections}
                 onOpenAttempt={() => {
                   if (!latestAttempt) return;
                   router.push({

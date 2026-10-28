@@ -1,4 +1,10 @@
-import { formatScore, formatScoreOutOf, reachesPercent } from "@hakgyo/shared";
+import {
+  attemptFlowSummary,
+  formatScore,
+  formatScoreOutOf,
+  reachesPercent,
+  type SectionNavigation,
+} from "@hakgyo/shared";
 import { Text, View } from "react-native";
 
 import type { LearnerAttemptStatus } from "../../lib/assessment-state";
@@ -23,6 +29,7 @@ export function AssessmentOverview({
   itemCompleted,
   canReattempt,
   gatesProgress,
+  sections,
   onOpenAttempt,
 }: {
   timeLimitMinutes: number | null;
@@ -35,6 +42,11 @@ export function AssessmentOverview({
   canReattempt: boolean;
   /** Whether passing the tugas unlocks the next activity in the course. */
   gatesProgress: boolean;
+  /** The assessment's sections, for how it is worked through. */
+  sections: ReadonlyArray<{
+    navigation: SectionNavigation;
+    lockAnswers: boolean;
+  }>;
   onOpenAttempt: () => void;
 }) {
   const facts = [
@@ -75,7 +87,7 @@ export function AssessmentOverview({
 
       {!latestAttempt ? (
         <Text className="text-sm leading-5 text-muted-foreground">
-          Bebas berpindah antarsoal, lalu kirim jika sudah siap.
+          {attemptFlowSummary(sections)}
           {showGate && passingScore != null
             ? ` Raih minimal ${passingScore}% untuk membuka aktivitas berikutnya.`
             : ""}
