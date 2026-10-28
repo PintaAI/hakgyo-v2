@@ -203,14 +203,31 @@ export async function cloneStarterCourse(
       if (entry.imageAssetId) assetIds.add(entry.imageAssetId);
     }
   }
-  const assets = await db.asset.findMany({
-    where: {
-      id: { in: [...assetIds] },
-      organizationId: sourceOrganizationId,
-      confirmedAt: { not: null },
-      deletedAt: null,
-    },
-  });
+  const [assets, sharedAssets] = await Promise.all([
+    db.asset.findMany({
+      where: {
+        id: { in: [...assetIds] },
+        organizationId: sourceOrganizationId,
+        confirmedAt: { not: null },
+        deletedAt: null,
+        // Shared Hakgyo media are referenced, never copied (question bank, section 3.1 of
+        // docs/eps-question-generator.md). Only assessments can link them so far.
+        sharedAt: null,
+      },
+    }),
+    db.asset.findMany({
+      where: {
+        id: { in: [...assetIds] },
+        sharedAt: { not: null },
+        confirmedAt: { not: null },
+        deletedAt: null,
+      },
+      select: { id: true, organizationId: true },
+    }),
+  ]);
+  const sharedOwner = new Map(
+    sharedAssets.map((asset) => [asset.id, asset.organizationId]),
+  );
 
   const confirmedAt = new Date();
   const copies: { from: string; to: string }[] = [];
@@ -434,6 +451,7 @@ export async function cloneStarterCourse(
           assessments.flatMap((assessment) =>
             assessment.assets.flatMap(({ assetId }) => {
               const copied = copiedAsset(assetId);
+              const owner = sharedOwner.get(assetId);
               return copied
                 ? [
                     {
@@ -444,7 +462,16 @@ export async function cloneStarterCourse(
                       assetOrganizationId: organizationId,
                     },
                   ]
-                : [];
+                : owner
+                  ? [
+                      {
+                        assessmentId: idMap.get(assessment.id)!,
+                        assetId,
+                        organizationId,
+                        assetOrganizationId: owner,
+                      },
+                    ]
+                  : [];
             }),
           ),
           (data) => tx.assessmentAsset.createMany({ data }),

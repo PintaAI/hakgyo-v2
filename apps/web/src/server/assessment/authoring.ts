@@ -16,6 +16,7 @@ import type {
 } from "~/server/assessment/inputs";
 import { normalizeQuestionPositions } from "~/server/assessment/sections";
 import { createId } from "~/server/batch";
+import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import { questionCopyRows } from "~/server/assessment/copy";
 import { requireContentAuthor } from "~/server/authorization";
 import { withTransactionRetry } from "~/server/db-retry";
@@ -398,7 +399,10 @@ export async function deleteOption(
   return { deleted: true };
 }
 
-/** Links a confirmed asset of the same organization; linking twice is a no-op. */
+/**
+ * Links a confirmed asset of the assessment's organization, or a shared Hakgyo asset (question bank
+ * media, docs/eps-question-generator.md section 3.1); linking twice is a no-op.
+ */
 export async function attachAsset(
   db: DatabaseClient,
   input: { assessmentId: string; assetId: string },
@@ -412,17 +416,23 @@ export async function attachAsset(
   const asset = await db.asset.findFirst({
     where: {
       id: input.assetId,
-      organizationId: assessment.organizationId,
       confirmedAt: { not: null },
       deletedAt: null,
+      OR: [
+        { organizationId: assessment.organizationId },
+        {
+          organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
+          sharedAt: { not: null },
+        },
+      ],
     },
-    select: { id: true },
+    select: { id: true, organizationId: true },
   });
   if (!asset) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        "Asset must be confirmed and belong to the assessment organization",
+        "Asset must be confirmed and belong to the assessment organization or be shared by Hakgyo",
     });
   }
   const link = { assessmentId: input.assessmentId, assetId: input.assetId };
@@ -431,7 +441,7 @@ export async function attachAsset(
     create: {
       ...link,
       organizationId: assessment.organizationId,
-      assetOrganizationId: assessment.organizationId,
+      assetOrganizationId: asset.organizationId,
     },
     update: {},
   });

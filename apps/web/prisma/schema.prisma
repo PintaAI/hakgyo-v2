@@ -1683,10 +1683,10 @@ model AssessmentAsset {
   assessmentId        String
   assetId             String
   organizationId      String
-  /// The asset's owner: the assessment's organization, or Hakgyo for a shared asset. A trigger fills it from organizationId and a check keeps them equal until the asset relation moves to it (docs/eps-question-generator.md section 3.1).
-  assetOrganizationId String?
+  /// The asset's owner: the assessment's organization, or Hakgyo for a shared asset (a trigger refuses other organizations' unshared assets). See docs/eps-question-generator.md section 3.1.
+  assetOrganizationId String
   assessment          Assessment @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  asset               Asset      @relation(fields: [assetId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  asset               Asset      @relation(fields: [assetId, assetOrganizationId], references: [id, organizationId], onDelete: Restrict)
 
   @@id([assessmentId, assetId])
   @@index([assetId])

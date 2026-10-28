@@ -943,6 +943,7 @@ async function writePlan(
             assessmentId: row.parentId,
             assetId: row.assetId,
             organizationId,
+            assetOrganizationId: organizationId,
           })),
           skipDuplicates: true,
         });

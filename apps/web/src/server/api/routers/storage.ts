@@ -195,6 +195,7 @@ async function findDownloadableAssets(
       contentType: true,
       size: true,
       uploadedByUserId: true,
+      sharedAt: true,
       organization: {
         select: {
           members: {
@@ -216,12 +217,15 @@ async function findDownloadableAssets(
     pdfBookPage,
     pdfBookThumbnail,
     uploadedByUserId,
+    sharedAt,
     ...asset
   } of assets) {
     const memberRole = organization.members[0]?.role;
     // Any staff member may browse PDF book pages while authoring lessons.
     const isPdfBookImage = Boolean(pdfBookPage ?? pdfBookThumbnail);
+    // Shared Hakgyo media (question bank) carry no answer keys: any signed-in user may load them.
     const hasDirectAccess =
+      sharedAt !== null ||
       uploadedByUserId === userId ||
       memberRole === "OWNER" ||
       memberRole === "ADMIN" ||
