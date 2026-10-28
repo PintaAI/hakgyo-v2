@@ -1,6 +1,7 @@
 # EPS-TOPIK question bank and package generator
 
-Status: **design agreed with the founder (2026-10-27), not started**. It builds on the EPS-TOPIK
+Status: **design agreed with the founder (2026-10-27), in progress**. Step 1 (taxonomy in
+`packages/shared/src/eps-taxonomy.ts`, blueprint in `packages/shared/src/eps-blueprint.ts`) is done. It builds on the EPS-TOPIK
 simulation (`docs/eps-topik-simulation.md`) and needs its tags (step 8) and question groups (step 9)
 first. The exam format, the question-type taxonomy (R1–R13, L1–L12) and the 40-question blueprint
 are in `docs/research/eps-topik-question-patterns.md`.

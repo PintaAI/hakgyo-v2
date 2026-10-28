@@ -33,7 +33,8 @@ export type TagDefinition = {
   section?: EpsSection;
 };
 
-const epsTypes: Array<[string, string]> = [
+/** The EPS-TOPIK question types (research section 2), code and Indonesian name. */
+export const epsTypes = [
   ["R1", "Gambar ke kata atau kalimat"],
   ["R2", "Rambu K3"],
   ["R3", "Lengkapi suku kata"],
@@ -59,7 +60,7 @@ const epsTypes: Array<[string, string]> = [
   ["L10", "Topik percakapan"],
   ["L11", "Tindakan selanjutnya"],
   ["L12", "Monolog"],
-];
+] as const satisfies ReadonlyArray<readonly [string, string]>;
 
 const topics: Array<[string, string]> = [
   ["k3", "K3 (keselamatan kerja)"],
