@@ -69,40 +69,43 @@ export async function getEventItemAnalysis(
   const participantByUser = new Map(
     participants.map((participant) => [participant.userId, participant]),
   );
-  const [questions, sectionList, attempts] = await Promise.all([
-    loadAssessmentKeyForStaff(db, assessmentId),
-    db.assessmentSection.findMany({
-      where: { assessmentId, questions: { some: {} } },
-      orderBy: { position: "asc" },
-      select: { id: true, title: true },
-    }),
-    db.assessmentAttempt.findMany({
-      where: {
-        assessmentEventId: event.id,
-        status: "GRADED",
-        userId: { in: [...participantByUser.keys()] },
-      },
-      select: {
-        id: true,
-        userId: true,
-        score: true,
-        maxScore: true,
-        status: true,
-        startedAt: true,
-        submittedAt: true,
-        sections: { select: { sectionId: true, score: true, maxScore: true } },
-        answers: {
-          select: {
-            questionId: true,
-            content: true,
-            autoScore: true,
-            manualScore: true,
-            selectedOptions: { select: { optionId: true } },
+  const [{ contentLocked, questions }, sectionList, attempts] =
+    await Promise.all([
+      loadAssessmentKeyForStaff(db, assessmentId),
+      db.assessmentSection.findMany({
+        where: { assessmentId, questions: { some: {} } },
+        orderBy: { position: "asc" },
+        select: { id: true, title: true },
+      }),
+      db.assessmentAttempt.findMany({
+        where: {
+          assessmentEventId: event.id,
+          status: "GRADED",
+          userId: { in: [...participantByUser.keys()] },
+        },
+        select: {
+          id: true,
+          userId: true,
+          score: true,
+          maxScore: true,
+          status: true,
+          startedAt: true,
+          submittedAt: true,
+          sections: {
+            select: { sectionId: true, score: true, maxScore: true },
+          },
+          answers: {
+            select: {
+              questionId: true,
+              content: true,
+              autoScore: true,
+              manualScore: true,
+              selectedOptions: { select: { optionId: true } },
+            },
           },
         },
-      },
-    }),
-  ]);
+      }),
+    ]);
   const best = new Set(
     rankAssessmentEventAttempts(
       attempts.map((attempt) => ({
@@ -237,8 +240,9 @@ export async function getEventItemAnalysis(
         unansweredRate: item?.unansweredRate ?? null,
         averageTimeMs: item?.averageTimeMs ?? null,
         flags: item?.flags ?? [],
+        // A package's option rates would point at its key next to the correct rate.
         options:
-          question.type === "WRITTEN"
+          question.type === "WRITTEN" || contentLocked
             ? []
             : question.options.map((option) => ({
                 id: option.id,

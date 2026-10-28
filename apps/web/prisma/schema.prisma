@@ -1100,6 +1100,9 @@ model Assessment {
   createdByMembershipId String
   title                 String
   kind                  AssessmentKind            @default(STANDARD)
+  /// Generated packages: staff use and schedule it but never see its answer keys or explanations, and its questions cannot be edited (docs/eps-question-generator.md section 3).
+  contentLocked         Boolean                   @default(false)
+  generation            AssessmentGeneration?
   description           String?
   editorSchemaVersion   Int                       @default(1)
   instructions          Json?
@@ -1130,37 +1133,40 @@ model Assessment {
 }
 
 model AssessmentQuestion {
-  id           String                   @id @default(cuid())
-  assessmentId String
-  type         AssessmentQuestionType
-  prompt       Json
-  explanation  Json?
+  id               String                   @id @default(cuid())
+  assessmentId     String
+  type             AssessmentQuestionType
+  prompt           Json
+  explanation      Json?
   /// Up to two decimals (EPS-TOPIK uses 2.5).
-  points       Float                    @default(1)
-  position     Int
+  points           Float                    @default(1)
+  position         Int
   /// Free labels, optionally `prefix:value` (`eps:R2`, `topik:k3`, `level:sedang`, `bab:3`). See `assessment-tags.ts` in @hakgyo/shared.
-  tags         String[]                 @default([])
-  createdAt    DateTime                 @default(now())
-  updatedAt    DateTime                 @updatedAt
+  tags             String[]                 @default([])
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
   /// Set for every question once the assessment has sections; questions are shown by section position, then question position.
-  sectionId    String?
+  sectionId        String?
   /// Questions of a group are consecutive within one section and share its instructions and stimulus.
-  groupId      String?
+  groupId          String?
+  /// Package questions: the bank question this copy came from (statistics flow back through it).
+  sourceQuestionId String?
   /// Bank questions only (assessment kind BANK).
-  bankStatus   BankItemStatus?
+  bankStatus       BankItemStatus?
   /// Bank questions only: how it was made and what production still needs (origin, model, media brief, audio script, automated check flags). See server/bank/ai-drafts.ts.
-  bankMeta     Json?
-  assessment   Assessment               @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  section      AssessmentSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
-  group        AssessmentQuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  options      AssessmentOption[]
-  answers      AssessmentAnswer[]
-  ttsJobs      TtsJob[]
+  bankMeta         Json?
+  assessment       Assessment               @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  section          AssessmentSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  group            AssessmentQuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  options          AssessmentOption[]
+  answers          AssessmentAnswer[]
+  ttsJobs          TtsJob[]
 
   @@unique([assessmentId, position])
   @@index([sectionId])
   @@index([groupId])
   @@index([assessmentId, bankStatus])
+  @@index([sourceQuestionId])
   /// The question bank picks candidates by type tag (docs/eps-question-generator.md section 4.1).
   @@index([tags], type: Gin)
 }
@@ -1169,16 +1175,18 @@ model AssessmentQuestion {
 /// picture or audio shown above each of them). Its place is its questions' place; it is copied as a
 /// unit. See docs/eps-topik-simulation.md section 4.5.
 model AssessmentQuestionGroup {
-  id           String               @id @default(cuid())
-  assessmentId String
+  id            String               @id @default(cuid())
+  assessmentId  String
   /// BlockNote document.
-  instructions Json?
+  instructions  Json?
   /// BlockNote document; under a section audio policy its audio plays with the first question only.
-  stimulus     Json?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  assessment   Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  questions    AssessmentQuestion[]
+  stimulus      Json?
+  /// Package groups: the bank group this copy came from.
+  sourceGroupId String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  assessment    Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questions     AssessmentQuestion[]
 
   @@index([assessmentId])
 }
@@ -1196,6 +1204,22 @@ enum BankItemStatus {
   REVIEW
   LIVE
   RETIRED
+}
+
+/// How a package was generated (docs/eps-question-generator.md section 3): the blueprint, the seed and which bank question or group filled each slot, plus later swaps. An audit record; the package itself is a copy.
+model AssessmentGeneration {
+  assessmentId     String     @id
+  organizationId   String
+  blueprintKey     String
+  blueprintVersion String
+  seed             String
+  /// `{ slots: [{ number, questionIds, groupId }], swaps: [...] }`
+  picks            Json
+  createdByUserId  String
+  createdAt        DateTime   @default(now())
+  assessment       Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }
 
 enum TtsJobStatus {

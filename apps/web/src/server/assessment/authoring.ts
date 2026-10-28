@@ -7,6 +7,7 @@ import {
 } from "~/lib/assessment-options";
 import {
   requireAssessmentManagement,
+  LOCKED_MESSAGE,
   requireEditableAssessment,
 } from "~/server/assessment/access";
 import type {
@@ -181,6 +182,10 @@ export async function duplicateAssessment(
       code: "BAD_REQUEST",
       message: "Bank soal tidak bisa diduplikat.",
     });
+  }
+  // A copy would hand out the package's keys; a new package comes from the generator.
+  if (managed.contentLocked) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: LOCKED_MESSAGE });
   }
   const member = await requireContentAuthor({
     organizationId: source.organizationId,
@@ -498,19 +503,26 @@ export async function loadAssessmentKeyForStaff(
   db: DatabaseClient,
   assessmentId: string,
 ) {
-  return db.assessmentQuestion.findMany({
-    where: { assessmentId },
-    orderBy: { position: "asc" },
-    select: {
-      id: true,
-      type: true,
-      prompt: true,
-      points: true,
-      tags: true,
-      options: {
-        orderBy: { position: "asc" },
-        select: { id: true, content: true, isCorrect: true },
+  const [assessment, questions] = await Promise.all([
+    db.assessment.findUnique({
+      where: { id: assessmentId },
+      select: { contentLocked: true },
+    }),
+    db.assessmentQuestion.findMany({
+      where: { assessmentId },
+      orderBy: { position: "asc" },
+      select: {
+        id: true,
+        type: true,
+        prompt: true,
+        points: true,
+        tags: true,
+        options: {
+          orderBy: { position: "asc" },
+          select: { id: true, content: true, isCorrect: true },
+        },
       },
-    },
-  });
+    }),
+  ]);
+  return { contentLocked: assessment?.contentLocked ?? false, questions };
 }

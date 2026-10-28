@@ -13,7 +13,12 @@ export default async function SuperadminBankPage() {
     throw error;
   }
 
-  const overview = await api.superadmin.bank.overview();
+  const [overview] = await Promise.all([
+    api.superadmin.bank.overview(),
+    // The package builder lists organizations and recent packages.
+    api.superadmin.listOrganizations.prefetch(),
+    api.superadmin.bank.packages.prefetch(),
+  ]);
   // The review queue of the first bank shows first; load it with the page.
   const firstBank = overview.banks[0];
   if (firstBank) {

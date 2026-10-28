@@ -3,8 +3,10 @@ import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+  LOCKED_MESSAGE,
   requireAssessmentManagement,
   requireEditableAssessment,
+  withoutLockedKeys,
 } from "~/server/assessment/access";
 import {
   attachAsset,
@@ -77,6 +79,12 @@ import { deleteAssessmentWithProgress } from "~/server/content/resource-deletion
 import { assertPlacementsRemovable } from "~/server/course/readiness-service";
 
 /**
+ * Settings a locked package may still change through the API (the description carries the AI
+ * audio note). The editor shows packages read-only.
+ */
+const lockedSettings = new Set(["title", "maxAttempts"]);
+
+/**
  * Assessment library, authoring, learner attempts and teacher review. Procedures validate
  * input and delegate to the services in `~/server/assessment`.
  */
@@ -138,7 +146,7 @@ export const assessmentRouter = createTRPCRouter({
         }),
         getAssessmentLiveStatus(ctx.db, input.assessmentId),
       ]);
-      return { ...assessment, live };
+      return { ...withoutLockedKeys(assessment), live };
     }),
   /** Where the assessment is live (read-only while live). */
   getLiveStatus: protectedProcedure
@@ -170,12 +178,21 @@ export const assessmentRouter = createTRPCRouter({
   update: protectedProcedure
     .input(assessmentFields.partial().extend({ assessmentId: id }))
     .mutation(async ({ ctx, input }) => {
-      await requireEditableAssessment(
+      const assessment = await requireEditableAssessment(
         ctx.db,
         input.assessmentId,
         ctx.actorUserId,
+        "edit",
+        { allowLocked: true },
       );
       const { assessmentId, ...data } = input;
+      // A package keeps the blueprint's format; only its name and attempts change.
+      if (
+        assessment.contentLocked &&
+        Object.keys(data).some((key) => !lockedSettings.has(key))
+      ) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: LOCKED_MESSAGE });
+      }
       return ctx.db.assessment.update({ where: { id: assessmentId }, data });
     }),
   delete: protectedProcedure
@@ -186,6 +203,7 @@ export const assessmentRouter = createTRPCRouter({
         input.assessmentId,
         ctx.actorUserId,
         "delete",
+        { allowLocked: true },
       );
       if (assessment.kind === "BANK") {
         throw new TRPCError({

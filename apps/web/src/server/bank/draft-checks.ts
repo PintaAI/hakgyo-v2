@@ -136,7 +136,7 @@ export function checkDraft(input: {
   ].filter((flag): flag is DraftFlag => flag !== null);
 }
 
-function trigrams(text: string) {
+export function trigrams(text: string) {
   const result = new Set<string>();
   for (const word of text.toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
     if (!word) continue;
@@ -153,8 +153,14 @@ function trigrams(text: string) {
  * since prompts are stored as BlockNote JSON.
  */
 export function trigramSimilarity(left: string, right: string) {
-  const a = trigrams(left);
-  const b = trigrams(right);
+  return trigramSetSimilarity(trigrams(left), trigrams(right));
+}
+
+/** {@link trigramSimilarity} on trigram sets built once with {@link trigrams}. */
+export function trigramSetSimilarity(
+  a: ReadonlySet<string>,
+  b: ReadonlySet<string>,
+) {
   if (!a.size || !b.size) return 0;
   let shared = 0;
   for (const gram of a) if (b.has(gram)) shared += 1;

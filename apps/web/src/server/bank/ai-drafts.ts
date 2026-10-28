@@ -111,7 +111,7 @@ export function draftInstructions(type: EpsTypeDefinition) {
       ? "This type has picture options: each option is a short Indonesian description of the picture to draw (the four pictures share one style and differ in one detail)."
       : "Options are Korean text.",
     "mediaBrief describes, in Indonesian, the picture, sign, document or chart the prompt needs (with fictional names and data); empty when the type needs none.",
-    "explanation is one or two Indonesian sentences on why the key is right.",
+    "explanation is one or two Indonesian sentences on why the key is right. Quote the option text; never name options by number or position, since packages reorder them.",
     "topic is the closest topic slug.",
     "Reference card:",
     epsReferenceCard(type),

@@ -13,12 +13,14 @@ import {
 import { toast } from "sonner";
 
 import Link from "~/components/link";
+import { LocalDateTime } from "~/components/local-date-time";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { EmptyState } from "~/components/ui/empty-state";
 import { cn } from "~/lib/utils";
+import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import {
   bankReadinessProblem,
   bankStatusLabels,
@@ -263,6 +265,8 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
               ))}
             </ul>
           </section>
+
+          <PackageBuilder />
 
           <AiDraftForm
             bankId={bank.id}
@@ -667,6 +671,235 @@ function AiDraftForm({
             menjawabnya tanpa kunci. Semua draf tetap harus diperiksa sebelum
             dipakai.
           </p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+const packageDate = new Intl.DateTimeFormat("id-ID", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+type PackagePreview = RouterOutputs["superadmin"]["bank"]["previewPackage"];
+
+/**
+ * Builds a package (pemantapan) for an LPK from the LIVE bank questions: preview first, then
+ * save. The same seed gives the same package, so the saved one matches what was previewed.
+ */
+function PackageBuilder() {
+  const utils = api.useUtils();
+  const organizations = api.superadmin.listOrganizations.useQuery();
+  const packages = api.superadmin.bank.packages.useQuery();
+  const preview = api.superadmin.bank.previewPackage.useMutation();
+  const create = api.superadmin.bank.createPackage.useMutation();
+  const [open, setOpen] = useState(false);
+  const [organizationId, setOrganizationId] = useState("");
+  const [title, setTitle] = useState("");
+  const [result, setResult] = useState<PackagePreview | null>(null);
+  const targets = (organizations.data ?? []).filter(
+    (organization) => organization.id !== HAKGYO_SYSTEM_ORGANIZATION_ID,
+  );
+
+  async function draw(seed?: string) {
+    if (!organizationId) return;
+    try {
+      setResult(await preview.mutateAsync({ organizationId, seed }));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Pratinjau gagal dibuat.",
+      );
+    }
+  }
+
+  async function save() {
+    if (!result) return;
+    try {
+      const saved = await create.mutateAsync({
+        organizationId: result.organization.id,
+        seed: result.seed,
+        drawnAt: result.drawnAt,
+        title: title.trim() || undefined,
+        questionIds: result.slots.flatMap((slot) => slot.questionIds),
+      });
+      toast.success(`${saved.title} tersimpan di ${result.organization.name}.`);
+      setResult(null);
+      setTitle("");
+      await utils.superadmin.bank.packages.invalidate();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Paket gagal disimpan.",
+      );
+    }
+  }
+
+  return (
+    <section className="space-y-3 border-y py-4 sm:rounded-lg sm:border sm:px-4">
+      <button
+        className="flex w-full items-center justify-between text-left text-sm font-semibold"
+        onClick={() => setOpen((value) => !value)}
+        type="button"
+      >
+        Buat paket pemantapan
+        <span className="text-muted-foreground text-xs font-normal">
+          {open ? "Tutup" : "Buka"}
+        </span>
+      </button>
+      {open ? (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <Field label="Untuk LPK">
+              <select
+                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                onChange={(event) => {
+                  setOrganizationId(event.target.value);
+                  setResult(null);
+                }}
+                value={organizationId}
+              >
+                <option value="">Pilih organisasi</option>
+                {targets.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Button
+              disabled={!organizationId || preview.isPending}
+              onClick={() => void draw()}
+              variant={result ? "outline" : "default"}
+            >
+              {preview.isPending ? (
+                <LoaderCircleIcon
+                  className="animate-spin"
+                  data-icon="inline-start"
+                />
+              ) : null}
+              {result ? "Acak lagi" : "Lihat pratinjau"}
+            </Button>
+          </div>
+          <p className="text-muted-foreground text-xs">
+            Soal diambil dari soal yang sudah disetujui, sesuai urutan dan
+            komposisi ujian asli. Soal yang jarang dipakai LPK ini didahulukan.
+            Murid dan staf LPK tidak bisa mengubah soal atau melihat kuncinya.
+          </p>
+
+          {result ? (
+            <div className="space-y-3">
+              <p className="text-sm">
+                {result.slots.reduce((sum, slot) => sum + slot.count, 0)} dari
+                40 nomor terisi, dari {result.bankSize} soal bank.
+                <span className="text-muted-foreground">
+                  {" "}
+                  Kode {result.seed}
+                </span>
+              </p>
+              {result.missing.length ? (
+                <ul className="text-destructive space-y-1 text-sm">
+                  {result.missing.map((slot) => (
+                    <li key={slot.number}>
+                      No. {slot.number}: bank {slot.typeName} hanya punya{" "}
+                      {slot.available} soal.
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {result.warnings.length ? (
+                <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-400">
+                  {result.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <ol className="divide-y border-y text-sm sm:rounded-lg sm:border">
+                {result.slots.map((slot) => (
+                  <li
+                    key={slot.number}
+                    className="space-y-0.5 px-1 py-2 sm:px-3"
+                  >
+                    <span className="text-muted-foreground flex flex-wrap gap-x-1.5 text-xs">
+                      <span className="text-foreground font-medium">
+                        No. {slot.number}
+                        {slot.count > 1
+                          ? `–${slot.number + slot.count - 1}`
+                          : ""}
+                      </span>
+                      <span>· {slot.typeName}</span>
+                      {slot.level ? (
+                        <span
+                          className={cn(
+                            slot.level !== slot.target &&
+                              "text-amber-700 dark:text-amber-400",
+                          )}
+                        >
+                          · {tagLabel(`level:${slot.level}`)}
+                        </span>
+                      ) : null}
+                      {slot.topic ? (
+                        <span>· {tagLabel(slot.topic)}</span>
+                      ) : null}
+                      {slot.organizationUses ? (
+                        <span>· sudah dipakai {slot.organizationUses}×</span>
+                      ) : null}
+                    </span>
+                    <span className="line-clamp-1 block">
+                      {slot.preview || "(soal tanpa teks)"}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <Field label="Nama paket (opsional)">
+                  <Input
+                    maxLength={200}
+                    onChange={(event) => setTitle(event.target.value)}
+                    placeholder="Pemantapan EPS-TOPIK 1"
+                    value={title}
+                  />
+                </Field>
+                <Button
+                  disabled={create.isPending || result.missing.length > 0}
+                  onClick={() => void save()}
+                >
+                  {create.isPending ? (
+                    <LoaderCircleIcon
+                      className="animate-spin"
+                      data-icon="inline-start"
+                    />
+                  ) : null}
+                  Simpan paket
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {packages.data?.length ? (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">Paket terakhir</h3>
+              <ul className="divide-y border-y text-sm sm:rounded-lg sm:border">
+                {packages.data.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex flex-wrap items-baseline gap-x-2 px-1 py-2 sm:px-3"
+                  >
+                    <span className="font-medium">{entry.title}</span>
+                    <span className="text-muted-foreground">
+                      {entry.organization.name}
+                    </span>
+                    <span className="text-muted-foreground ml-auto text-xs">
+                      {entry.questions} soal · {entry.attempts} percobaan ·{" "}
+                      <LocalDateTime
+                        format={packageDate}
+                        value={entry.createdAt}
+                      />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

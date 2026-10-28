@@ -8,6 +8,7 @@ import { extractAssessmentQuestionsFromImage } from "~/server/ai/assessment-extr
 import { aiExtractionError, aiImageInputFields } from "~/server/ai/image-input";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { requireContentAuthor } from "~/server/authorization";
+import { LOCKED_MESSAGE } from "~/server/assessment/access";
 import { assertAssessmentNotLive } from "~/server/assessment/live-status";
 import {
   MAX_ASSESSMENT_OPTIONS,
@@ -23,9 +24,17 @@ async function requireAssessmentAuthor(
 ) {
   const assessment = await db.assessment.findUnique({
     where: { id: assessmentId },
-    select: { title: true, organizationId: true, createdByMembershipId: true },
+    select: {
+      title: true,
+      organizationId: true,
+      createdByMembershipId: true,
+      contentLocked: true,
+    },
   });
   if (!assessment) throw new TRPCError({ code: "NOT_FOUND" });
+  if (assessment.contentLocked) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: LOCKED_MESSAGE });
+  }
   await requireContentAuthor({
     organizationId: assessment.organizationId,
     userId,
