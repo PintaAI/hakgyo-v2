@@ -1,13 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  audioKeysFor,
   groupRanges,
   isImageOnlyContent,
   questionUnits,
+  stimulusPlaysWith,
   usesPictureGrid,
 } from "./assessment-groups";
-import { checkRuleEntry, ruleStateFrom } from "./assessment-question-rules";
 
 const image = { type: "assetImage", props: { assetId: "a" }, children: [] };
 const empty = { type: "paragraph", content: [], children: [] };
@@ -62,38 +61,11 @@ describe("groups", () => {
     );
   });
 
-  test("a group with stimulus audio shares one play count", () => {
-    const keys = audioKeysFor(questions, [
-      {
-        id: "g1",
-        stimulus: [{ type: "assetAudio", props: { assetId: "dialog" } }],
-      },
-      { id: "g2", stimulus: [image] },
-    ]);
-    expect(keys).toEqual({ q1: "g1", q2: "g1", q3: "q3", q4: "q4" });
-    const sections = [
-      {
-        id: "listening",
-        audioMaxPlays: 2,
-        questionIds: ["q1", "q2", "q3", "q4"],
-        audioKeyOf: keys,
-      },
-    ];
-    const state = ruleStateFrom(sections, [
-      { kind: "AUDIO_PLAYED", questionId: "q1" },
-      { kind: "AUDIO_PLAYED", questionId: "q1" },
-    ]);
-    expect(
-      checkRuleEntry(sections, state, {
-        kind: "AUDIO_PLAYED",
-        questionId: "q2",
-      }),
-    ).toBe("AUDIO");
-    expect(
-      checkRuleEntry(sections, state, {
-        kind: "AUDIO_PLAYED",
-        questionId: "q3",
-      }),
-    ).toBeNull();
+  test("only a group's first question plays its stimulus", () => {
+    const groups = [{ id: "g1" }, { id: "g2" }];
+    expect(stimulusPlaysWith(questions, 0, groups)).toEqual({ id: "g1" });
+    expect(stimulusPlaysWith(questions, 1, groups)).toBeUndefined();
+    expect(stimulusPlaysWith(questions, 2, groups)).toBeUndefined();
+    expect(stimulusPlaysWith(questions, 3, groups)).toEqual({ id: "g2" });
   });
 });

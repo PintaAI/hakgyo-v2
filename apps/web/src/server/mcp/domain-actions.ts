@@ -610,7 +610,7 @@ export const mcpDomainTools = {
       name: "add_question_group",
       title: "Add Tugas question group",
       description:
-        "Group consecutive questions of one section (ids in display order, up to 10) so they share instructions (for example '[1~4] 다음 그림을 보고 맞는 단어를 고르십시오.') and a stimulus (a passage, picture or audio shown above each of them). Audio in the stimulus counts once for the whole group against the section's play limit.",
+        "Group consecutive questions of one section (ids in display order, up to 10) so they share instructions (for example '[1~4] 다음 그림을 보고 맞는 단어를 고르십시오.') and a stimulus (a passage, picture or audio shown above each of them). Under a section audio policy the stimulus audio plays with the group's first question only.",
       effect: "add",
     },
     {

@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import {
   answerHasContent,
   assessmentContentAssetIds,
-  audioKeysFor,
   groupRanges,
   canFinishSection,
   createLogEntry,
@@ -19,6 +18,7 @@ import {
   sectionAudioPolicy,
   sectionTimeline,
   sectionView,
+  stimulusPlaysWith,
   usesPictureGrid,
   type AttemptLogEntry,
   type TimelineEntry,
@@ -270,25 +270,26 @@ export function AssessmentAttempt({
       ] ?? selected)
     : selected;
   const question = assessment.questions[current];
-  // Groups: a question's shared part, and plays counted per audio key (a group with stimulus
-  // audio shares one count).
+  // Groups: a question's shared part. Its stimulus audio plays with the group's first question.
   const group = question?.groupId
     ? assessment.groups.find(({ id }) => id === question.groupId)
     : undefined;
   const groupRange = question?.groupId
     ? groupRanges(assessment.questions).get(question.groupId)
     : undefined;
-  const audioKeyOf = audioKeysFor(assessment.questions, assessment.groups);
-  const playsOf = (questionId: string) => {
-    const key = audioKeyOf[questionId] ?? questionId;
-    return Math.max(
-      assessment.questionProgress.plays[key] ?? 0,
-      localPlays[key] ?? 0,
+  const playsOf = (questionId: string) =>
+    Math.max(
+      assessment.questionProgress.plays[questionId] ?? 0,
+      localPlays[questionId] ?? 0,
     );
-  };
   const audioPolicy = sectionAudioPolicy(activeSection);
   const audioSources =
-    question && audioPolicy ? questionAudioSources(question, group) : [];
+    question && audioPolicy
+      ? questionAudioSources(
+          question,
+          stimulusPlaysWith(assessment.questions, current, assessment.groups),
+        )
+      : [];
   const pictureGrid = question ? usesPictureGrid(question.options) : false;
   const statuses: QuestionStatus[] = assessment.questions.map((entry) =>
     isQuestionAnswered(answers[entry.id]) ? "answered" : "unanswered",
@@ -398,10 +399,9 @@ export function AssessmentAttempt({
   };
 
   const recordPlay = (questionId: string) => {
-    const key = audioKeyOf[questionId] ?? questionId;
     setLocalPlays((value) => ({
       ...value,
-      [key]: Math.max(value[key] ?? 0, playsOf(questionId)) + 1,
+      [questionId]: Math.max(value[questionId] ?? 0, playsOf(questionId)) + 1,
     }));
     pushEntry("AUDIO_PLAYED", { questionId });
   };

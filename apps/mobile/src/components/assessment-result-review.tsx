@@ -123,6 +123,7 @@ export function AssessmentResultReview({
   const groupRange = question.groupId
     ? groupRanges(assessment.questions).get(question.groupId)
     : undefined;
+  const pictureGrid = usesPictureGrid(question.options);
   return (
     <View className="gap-4">
       <Text className="text-xl font-black text-foreground">
@@ -169,7 +170,7 @@ export function AssessmentResultReview({
           </Text>
         </StudyGlass>
       ) : (
-        <AssessmentOptions grid={usesPictureGrid(question.options)}>
+        <AssessmentOptions grid={pictureGrid}>
           {question.options.map((option, optionIndex) => (
             <AssessmentOption
               key={option.id}
@@ -177,7 +178,7 @@ export function AssessmentResultReview({
               selected={selected.has(option.id)}
               correct={option.isCorrect === true}
               multiple={question.type === "MULTIPLE_CHOICE"}
-              tile={usesPictureGrid(question.options)}
+              tile={pictureGrid}
             >
               <NativeContentRenderer
                 content={option.content}

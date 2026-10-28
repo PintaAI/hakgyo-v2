@@ -21,11 +21,6 @@ export type RuleSection = {
   questionIds: readonly string[];
   /** Single-choice questions, the ones `lockAnswers` applies to. */
   lockableQuestionIds?: readonly string[];
-  /**
-   * The key each question's plays count under (`audioKeysFor`): a group whose stimulus has audio
-   * shares one count. Missing: the question id.
-   */
-  audioKeyOf?: Readonly<Record<string, string>>;
 };
 
 export type RuleEntry = {
@@ -40,7 +35,7 @@ export type RuleState = {
   furthest: Map<string, number>;
   /** Questions with a locked answer. */
   answered: Set<string>;
-  /** Plays started per audio key (a question, or a group with stimulus audio). */
+  /** Plays started per question. */
   plays: Map<string, number>;
 };
 
@@ -104,19 +99,13 @@ export function sectionHasQuestionRules(section: {
 export function ruleSectionsFor<S extends { id: string }>(
   sections: readonly S[],
   questions: ReadonlyArray<{ id: string; sectionId?: string | null }>,
-  audioKeyOf?: Readonly<Record<string, string>>,
 ) {
   return sections.map((section) => ({
     ...section,
     questionIds: questions
       .filter((question) => question.sectionId === section.id)
       .map(({ id }) => id),
-    audioKeyOf,
   }));
-}
-
-function audioKey(section: RuleSection, questionId: string) {
-  return section.audioKeyOf?.[questionId] ?? questionId;
 }
 
 /** Why the entry breaks a rule, or null when it may be accepted. */
@@ -147,7 +136,7 @@ export function checkRuleEntry(
   if (
     entry.kind === "AUDIO_PLAYED" &&
     maxPlays !== null &&
-    (state.plays.get(audioKey(section, entry.questionId)) ?? 0) >= maxPlays
+    (state.plays.get(entry.questionId) ?? 0) >= maxPlays
   ) {
     return "AUDIO";
   }
@@ -172,8 +161,10 @@ export function applyRuleEntry(
     state.answered.add(entry.questionId);
   }
   if (entry.kind === "AUDIO_PLAYED") {
-    const key = audioKey(section, entry.questionId);
-    state.plays.set(key, (state.plays.get(key) ?? 0) + 1);
+    state.plays.set(
+      entry.questionId,
+      (state.plays.get(entry.questionId) ?? 0) + 1,
+    );
   }
 }
 

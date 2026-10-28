@@ -212,7 +212,7 @@ Beberapa soal yang berurutan bisa memakai petunjuk dan bahan yang sama, misalnya
 2. Pilih **Dari soal** dan **Sampai soal**, lalu klik **Buat kelompok**. Soalnya harus berurutan dan ada di bagian yang sama.
 3. Kotak kelompok muncul di atas soal pertamanya. Isi **Petunjuk kelompok**, misalnya `[1~4] 다음 그림을 보고 맞는 단어를 고르십시오.`, dan **Bahan bersama**. Ketik `/` di bahan bersama untuk menambah gambar atau audio. Isinya tersimpan otomatis.
 
-Murid melihat petunjuk dan bahan bersama di atas setiap soal kelompok itu. Audio di bahan bersama dihitung satu kali untuk seluruh kelompok pada **Batas putar audio per soal**. Jika soal diacak, soal satu kelompok tetap berurutan.
+Murid melihat petunjuk dan bahan bersama di atas setiap soal kelompok itu. Pada bagian dengan batas putar atau audio otomatis, audio di bahan bersama diputar bersama soal pertama kelompok, jadi hanya dihitung sekali; soal berikutnya hanya memutar audionya sendiri. Jika soal diacak, soal satu kelompok tetap berurutan.
 
 Ubah soal yang termasuk lewat **Dari soal** dan **Sampai soal** di kotak kelompok. Ikon tempat sampah menghapus kelompok tanpa menghapus soalnya. Jika di **Bagian & urutan** sebuah soal dipindah sampai tidak lagi berurutan dengan kelompoknya, soal itu keluar dari kelompok.
 

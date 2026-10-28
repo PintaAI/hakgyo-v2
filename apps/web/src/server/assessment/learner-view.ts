@@ -1,5 +1,4 @@
 import {
-  audioKeysFor,
   readScoreBands,
   ruleSectionsFor,
   ruleStateFrom,
@@ -251,10 +250,7 @@ export function shapeLearnerAssessment(input: {
   const groups = questionGroups.filter((group) =>
     questions.some((question) => question.groupId === group.id),
   );
-  const rules = ruleStateFrom(
-    ruleSectionsFor(sections, questions, audioKeysFor(questions, groups)),
-    log,
-  );
+  const rules = ruleStateFrom(ruleSectionsFor(sections, questions), log);
   const scoresVisible =
     attempt?.status === "GRADED" &&
     !attempt.assessmentEvent?.participants[0]?.invalidatedAt &&
@@ -273,9 +269,8 @@ export function shapeLearnerAssessment(input: {
         : [],
     ),
     /**
-     * What the section rules have counted so far: audio plays per audio key (`audioKeysFor`: a
-     * question, or a group with stimulus audio) and, per section, the furthest question index
-     * shown (forward-only sections cannot go back before it).
+     * What the section rules have counted so far: audio plays per question and, per section, the
+     * furthest question index shown (forward-only sections cannot go back before it).
      */
     questionProgress: {
       plays: Object.fromEntries(rules.plays),

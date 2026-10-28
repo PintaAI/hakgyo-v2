@@ -109,6 +109,7 @@ export function AssessmentResultReview({
   const groupRange = question.groupId
     ? groupRanges(assessment.questions).get(question.groupId)
     : undefined;
+  const pictureGrid = usesPictureGrid(question.options);
 
   return (
     <section className="flex flex-col gap-4">
@@ -153,7 +154,7 @@ export function AssessmentResultReview({
         </StudyCard>
       ) : (
         <AssessmentOptions
-          grid={usesPictureGrid(question.options)}
+          grid={pictureGrid}
           multiple={question.type === "MULTIPLE_CHOICE"}
         >
           {question.options.map((option, optionIndex) => (
@@ -163,7 +164,7 @@ export function AssessmentResultReview({
               selected={selected.has(option.id)}
               correct={option.isCorrect === true}
               multiple={question.type === "MULTIPLE_CHOICE"}
-              tile={usesPictureGrid(question.options)}
+              tile={pictureGrid}
             >
               <RichContent content={option.content} />
             </AssessmentOption>

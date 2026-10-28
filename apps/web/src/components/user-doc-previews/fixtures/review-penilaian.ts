@@ -31,6 +31,7 @@ const questions: ReviewAttempt["questions"] = [
     explanation: { text: "처음 뵙겠습니다 dipakai saat pertama kali bertemu." },
     type: "SINGLE_CHOICE",
     points: 20,
+    group: null,
     options: [
       { id: "soal-1-a", content: { text: "처음 뵙겠습니다" }, isCorrect: true },
       { id: "soal-1-b", content: { text: "잘 자요" }, isCorrect: false },
@@ -45,6 +46,7 @@ const questions: ReviewAttempt["questions"] = [
     explanation: null,
     type: "WRITTEN",
     points: 40,
+    group: null,
     options: [],
   },
   {
@@ -55,6 +57,7 @@ const questions: ReviewAttempt["questions"] = [
     explanation: null,
     type: "WRITTEN",
     points: 40,
+    group: null,
     options: [],
   },
 ];

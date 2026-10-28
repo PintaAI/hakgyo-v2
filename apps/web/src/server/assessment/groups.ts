@@ -3,14 +3,14 @@ import { z } from "zod";
 
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client";
 import { requireEditableAssessment } from "~/server/assessment/access";
-import { arrangeBySection } from "~/server/assessment/order";
+import { lockAssessment } from "~/server/assessment/lock";
 import { withTransactionRetry } from "~/server/db-retry";
 import { toPrismaJsonValue } from "~/server/prisma-json";
 
 /**
  * Question groups (docs/eps-topik-simulation.md section 4.5): consecutive questions of one section
  * that share instructions and a stimulus. A group has no position of its own; it sits where its
- * questions are. It is copied as a unit (`copyQuestionUnits` in `copy.ts`).
+ * questions are. It is copied as a unit (`questionCopyRows` in `copy.ts`).
  */
 
 type Tx = Prisma.TransactionClient;
@@ -55,29 +55,13 @@ function contentData(input: {
   };
 }
 
-async function lockAssessment(tx: Tx, assessmentId: string) {
-  await tx.$queryRaw`
-    SELECT "id" FROM "Assessment" WHERE "id" = ${assessmentId} FOR UPDATE
-  `;
-}
-
-/** The assessment's questions in display order (by section, then position). */
-async function displayedQuestions(tx: Tx, assessmentId: string) {
-  const [sections, questions] = await Promise.all([
-    tx.assessmentSection.findMany({
-      where: { assessmentId },
-      select: { id: true, position: true, shuffleQuestions: true },
-    }),
-    tx.assessmentQuestion.findMany({
-      where: { assessmentId },
-      orderBy: { position: "asc" },
-      select: { id: true, sectionId: true, groupId: true },
-    }),
-  ]);
-  return arrangeBySection(
-    questions.map((question) => ({ ...question, options: [] })),
-    sections,
-  );
+/** The assessment's questions in display order: positions always follow section order. */
+function displayedQuestions(tx: Tx, assessmentId: string) {
+  return tx.assessmentQuestion.findMany({
+    where: { assessmentId },
+    orderBy: { position: "asc" },
+    select: { id: true, sectionId: true, groupId: true },
+  });
 }
 
 /**

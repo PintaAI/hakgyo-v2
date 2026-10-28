@@ -6,8 +6,8 @@ import {
   isForwardOnly,
   pacedQuestionEndsAt,
   questionAudioSources,
-  audioKeysFor,
   groupRanges,
+  stimulusPlaysWith,
   usesPictureGrid,
   ruleSectionsFor,
   ruleStateFrom,
@@ -320,11 +320,7 @@ function AssessmentAttemptContent({
       // Plays and positions logged on this device before a restart still count. Questions are
       // in the order shown.
       const rules = ruleStateFrom(
-        ruleSectionsFor(
-          assessment.data.sections,
-          assessment.data.questions,
-          audioKeysFor(assessment.data.questions, assessment.data.groups ?? []),
-        ),
+        ruleSectionsFor(assessment.data.sections, assessment.data.questions),
         log.entries,
       );
       setReached(Object.fromEntries(rules.furthest));
@@ -485,8 +481,8 @@ function AssessmentAttemptContent({
   const sectionExpired = sectionSecondsLeft === 0;
 
   const question = assessment.data?.questions[currentIndex];
-  // Groups: a question's shared part, and plays counted per audio key (a group with stimulus
-  // audio shares one count). Bundles cached before groups have none.
+  // Groups: a question's shared part. Its stimulus audio plays with the group's first question;
+  // bundles cached before groups have none.
   const groups = assessment.data?.groups ?? [];
   const group = question?.groupId
     ? groups.find(({ id }) => id === question.groupId)
@@ -494,17 +490,23 @@ function AssessmentAttemptContent({
   const groupRange = question?.groupId
     ? groupRanges(assessment.data?.questions ?? []).get(question.groupId)
     : undefined;
-  const audioKeyOf = audioKeysFor(assessment.data?.questions ?? [], groups);
-  const playsOf = (questionId: string) => {
-    const key = audioKeyOf[questionId] ?? questionId;
-    return Math.max(
-      assessment.data?.questionProgress.plays[key] ?? 0,
-      localPlays[key] ?? 0,
+  const playsOf = (questionId: string) =>
+    Math.max(
+      assessment.data?.questionProgress.plays[questionId] ?? 0,
+      localPlays[questionId] ?? 0,
     );
-  };
   const audioPolicy = sectionAudioPolicy(activeSection);
   const audioSources =
-    question && audioPolicy ? questionAudioSources(question, group) : [];
+    question && audioPolicy
+      ? questionAudioSources(
+          question,
+          stimulusPlaysWith(
+            assessment.data?.questions ?? [],
+            currentIndex,
+            groups,
+          ),
+        )
+      : [];
   const pictureGrid = question ? usesPictureGrid(question.options) : false;
   const pacedEndsAt =
     paced && activeSection && question && pacedClock?.questionId === question.id
@@ -649,11 +651,7 @@ function AssessmentAttemptContent({
   function recordPlay(questionId: string) {
     setLocalPlays((value) => ({
       ...value,
-      [audioKeyOf[questionId] ?? questionId]:
-        Math.max(
-          value[audioKeyOf[questionId] ?? questionId] ?? 0,
-          playsOf(questionId),
-        ) + 1,
+      [questionId]: Math.max(value[questionId] ?? 0, playsOf(questionId)) + 1,
     }));
     const log = attemptLog.current;
     if (!log || !session) return;

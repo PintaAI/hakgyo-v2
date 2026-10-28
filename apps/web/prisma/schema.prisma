@@ -1166,7 +1166,7 @@ model AssessmentQuestionGroup {
   assessmentId String
   /// BlockNote document.
   instructions Json?
-  /// BlockNote document; its audio counts once per group against the section's play limit.
+  /// BlockNote document; under a section audio policy its audio plays with the first question only.
   stimulus     Json?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt

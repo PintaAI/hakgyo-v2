@@ -399,7 +399,7 @@ const eventTarget = z
   });
 
 /**
- * Downloadable assets referenced by the assessment's instructions, questions and options, in
+ * Downloadable assets referenced by the assessment's instructions, group stimuli, questions and options, in
  * content order, with their sizes for progress display.
  */
 async function loadAssessmentMedia(
@@ -410,13 +410,19 @@ async function loadAssessmentMedia(
     where: { id: assessmentId },
     select: {
       instructions: true,
+      questionGroups: { select: { instructions: true, stimulus: true } },
       questions: {
         orderBy: { position: "asc" },
         select: { prompt: true, options: { select: { content: true } } },
       },
     },
   });
-  const assetIds = assessment ? assessmentContentAssetIds(assessment) : [];
+  const assetIds = assessment
+    ? assessmentContentAssetIds({
+        ...assessment,
+        groups: assessment.questionGroups,
+      })
+    : [];
   if (assetIds.length === 0) return [];
   const assets = await db.asset.findMany({
     where: {

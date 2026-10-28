@@ -1,5 +1,3 @@
-import { contentAudioSources } from "./assessment-audio";
-
 /**
  * Question groups and picture options (docs/eps-topik-simulation.md sections 4.5 and 5.7), shared
  * by web, mobile and the server.
@@ -62,26 +60,18 @@ export function usesPictureGrid(options: ReadonlyArray<{ content: unknown }>) {
 }
 
 /**
- * The key a question's audio plays are counted under: its group when the group's stimulus has
- * audio (one count for the whole group), otherwise the question itself.
+ * The group whose stimulus plays with the question at `index` (as shown): only the group's first
+ * question plays it, so a group's shared audio is heard and counted once, and each question keeps
+ * its own audio and play count (docs/eps-topik-simulation.md section 4.5).
  */
-export function audioKeysFor(
-  questions: ReadonlyArray<{ id: string; groupId?: string | null }>,
-  groups: ReadonlyArray<{ id: string; stimulus: unknown }>,
-) {
-  const withAudio = new Set(
-    groups
-      .filter((group) => contentAudioSources(group.stimulus).length > 0)
-      .map(({ id }) => id),
-  );
-  return Object.fromEntries(
-    questions.map((question) => [
-      question.id,
-      question.groupId && withAudio.has(question.groupId)
-        ? question.groupId
-        : question.id,
-    ]),
-  );
+export function stimulusPlaysWith<G extends { id: string }>(
+  questions: ReadonlyArray<{ groupId?: string | null }>,
+  index: number,
+  groups: readonly G[],
+): G | undefined {
+  const groupId = questions[index]?.groupId;
+  if (!groupId || questions[index - 1]?.groupId === groupId) return undefined;
+  return groups.find(({ id }) => id === groupId);
 }
 
 /**

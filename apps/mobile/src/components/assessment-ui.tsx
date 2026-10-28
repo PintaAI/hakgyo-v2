@@ -84,7 +84,7 @@ export function AssessmentOptions({
     <View className="flex-row flex-wrap justify-between gap-y-3">
       {Children.map(children, (child) => (
         // Two per row, with the space between them as the gap.
-        <View style={{ width: "48%" }}>{child}</View>
+        <View className="w-[48%]">{child}</View>
       ))}
     </View>
   );

@@ -39,6 +39,9 @@ import {
 } from "~/lib/blocknote/document";
 import { api, type RouterOutputs } from "~/trpc/react";
 
+// Same cap as the server (`MAX_GROUP_QUESTIONS` in `server/assessment/groups.ts`).
+const MAX_GROUP_QUESTIONS = 10;
+
 /**
  * Question groups in the assessment editor (docs/eps-topik-simulation.md section 4.5): consecutive
  * questions of one section that share instructions ("[1~4] 다음 그림을 보고…") and a stimulus (a
@@ -61,6 +64,11 @@ function groupRun(
 ) {
   if (last < first)
     return { error: "Soal terakhir harus setelah soal pertama." };
+  if (last - first + 1 > MAX_GROUP_QUESTIONS) {
+    return {
+      error: `Satu kelompok paling banyak ${MAX_GROUP_QUESTIONS} soal.`,
+    };
+  }
   const run = assessment.questions.slice(first, last + 1);
   if (new Set(run.map(({ sectionId }) => sectionId)).size > 1) {
     return { error: "Soal dalam satu kelompok harus di bagian yang sama." };
@@ -297,6 +305,9 @@ export function QuestionGroupCard({
       toast.error(run.error);
       return;
     }
+    // The card moves with the group's first question and remounts from the refetched group, so
+    // typed changes are saved first.
+    await flush();
     try {
       await update.mutateAsync({
         groupId: group.id,
@@ -317,6 +328,10 @@ export function QuestionGroupCard({
       destructive: true,
     });
     if (!confirmed) return;
+    // Edits still waiting would be saved to a group that no longer exists.
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+    pending.current = {};
     try {
       await remove.mutateAsync({ groupId: group.id });
       await refresh();
@@ -418,8 +433,8 @@ export function QuestionGroupCard({
           />
         </div>
         <p className="text-muted-foreground text-xs">
-          Tampil di atas setiap soal kelompok ini. Audio di sini dihitung satu
-          kali untuk seluruh kelompok pada batas putar audio.
+          Tampil di atas setiap soal kelompok ini. Audio di sini diputar bersama
+          soal pertama kelompok, jadi hanya dihitung sekali.
         </p>
       </div>
       {dialogs}
