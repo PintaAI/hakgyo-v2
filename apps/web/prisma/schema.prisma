@@ -1223,6 +1223,8 @@ model TtsJob {
   result            Json?
   error             String?
   attempts          Int                @default(0)
+  /// Set fresh at every claim; uploads, completion and failure must present it, so only the current run can finish the job.
+  claimToken        String?
   claimedAt         DateTime?
   finishedAt        DateTime?
   createdAt         DateTime           @default(now())

@@ -5,6 +5,8 @@ import type { TtsClip } from "../../src/lib/tts-clips";
 
 export type ClaimedJob = {
   id: string;
+  /** This claim's token; uploads, completion and failure must send it. */
+  token: string;
   clips: TtsClip[];
   voices: Record<string, string>;
 };

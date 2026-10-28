@@ -100,71 +100,75 @@ try {
   ) {
     for (const job of jobs) {
       await api(`/${job.id}/fail`, {
+        token: job.token,
         error: `Worker run failed (exit ${exit})`,
       }).catch(console.error);
     }
-    process.exit(1);
-  }
-
-  // 4. Upload and complete each job.
-  for (const job of jobs) {
-    const statusPath = join(dir, "out", job.id, "status.json");
-    const result = jobResult(job, {
-      status: existsSync(statusPath)
-        ? (JSON.parse(readFileSync(statusPath, "utf8")) as {
-            ok: boolean;
-            error?: string;
-          })
-        : null,
-      has: (path) => existsSync(join(dir, path)),
-    });
-    try {
-      if (!result.ok) throw new Error(result.error);
-      const clips = result.files.map((file) => ({
-        key: file.key,
-        contentType: "audio/mpeg" as const,
-        size: statSync(join(dir, file.path)).size,
-        path: file.path,
-      }));
-      const { uploads } = await api<{
-        uploads: Array<{
-          key: string;
-          objectKey: string;
-          uploadUrl: string;
-          headers: Record<string, string>;
-        }>;
-      }>(`/${job.id}/uploads`, {
-        clips: clips.map(({ path: _path, ...clip }) => clip),
+    // Not process.exit: the temp folder below must still be removed.
+    process.exitCode = 1;
+  } else {
+    // 4. Upload and complete each job.
+    for (const job of jobs) {
+      const statusPath = join(dir, "out", job.id, "status.json");
+      const result = jobResult(job, {
+        status: existsSync(statusPath)
+          ? (JSON.parse(readFileSync(statusPath, "utf8")) as {
+              ok: boolean;
+              error?: string;
+            })
+          : null,
+        has: (path) => existsSync(join(dir, path)),
       });
-      for (const upload of uploads) {
-        const clip = clips.find((entry) => entry.key === upload.key)!;
-        const response = await fetch(upload.uploadUrl, {
-          method: "PUT",
-          headers: upload.headers,
-          body: Bun.file(join(dir, clip.path)),
+      try {
+        if (!result.ok) throw new Error(result.error);
+        const clips = result.files.map((file) => ({
+          key: file.key,
+          contentType: "audio/mpeg" as const,
+          size: statSync(join(dir, file.path)).size,
+          path: file.path,
+        }));
+        const { uploads } = await api<{
+          uploads: Array<{
+            key: string;
+            objectKey: string;
+            uploadUrl: string;
+            headers: Record<string, string>;
+          }>;
+        }>(`/${job.id}/uploads`, {
+          clips: clips.map(({ path: _path, ...clip }) => clip),
         });
-        if (!response.ok)
-          throw new Error(`upload ${clip.key}: ${response.status}`);
-      }
-      await api(`/${job.id}/complete`, {
-        provider: "VOXCPM",
-        voices: voxcpmVoices,
-        clips: uploads.map((upload) => {
+        for (const upload of uploads) {
           const clip = clips.find((entry) => entry.key === upload.key)!;
-          return {
-            key: clip.key,
-            objectKey: upload.objectKey,
-            contentType: clip.contentType,
-            size: clip.size,
-          };
-        }),
-      });
-      console.log(`[tts-poller] ${job.id} done`);
-    } catch (error) {
-      console.error(`[tts-poller] ${job.id} failed`, error);
-      await api(`/${job.id}/fail`, {
-        error: error instanceof Error ? error.message : String(error),
-      }).catch(console.error);
+          const response = await fetch(upload.uploadUrl, {
+            method: "PUT",
+            headers: upload.headers,
+            body: Bun.file(join(dir, clip.path)),
+          });
+          if (!response.ok)
+            throw new Error(`upload ${clip.key}: ${response.status}`);
+        }
+        await api(`/${job.id}/complete`, {
+          token: job.token,
+          provider: "VOXCPM",
+          voices: voxcpmVoices,
+          clips: uploads.map((upload) => {
+            const clip = clips.find((entry) => entry.key === upload.key)!;
+            return {
+              key: clip.key,
+              objectKey: upload.objectKey,
+              contentType: clip.contentType,
+              size: clip.size,
+            };
+          }),
+        });
+        console.log(`[tts-poller] ${job.id} done`);
+      } catch (error) {
+        console.error(`[tts-poller] ${job.id} failed`, error);
+        await api(`/${job.id}/fail`, {
+          token: job.token,
+          error: error instanceof Error ? error.message : String(error),
+        }).catch(console.error);
+      }
     }
   }
 } finally {

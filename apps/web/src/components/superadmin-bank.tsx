@@ -754,7 +754,7 @@ function BankAudioActions({
           Buat audio (PC)
         </Button>
       ) : null}
-      {!done ? (
+      {!done && job?.status !== "RUNNING" ? (
         <Button
           disabled={busy}
           onClick={() => void run("now")}

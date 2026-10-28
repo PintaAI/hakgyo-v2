@@ -4,6 +4,7 @@ import { jobResult, workerInput, type ClaimedJob } from "./poll-lib";
 
 const job: ClaimedJob = {
   id: "job1",
+  token: "claim-1",
   clips: [
     { key: "prompt", lines: [{ voice: "F", text: "내일 몇 시에 와요?" }] },
     { key: "option-0", lines: [{ voice: "F", text: "아홉 시에 와요." }] },
