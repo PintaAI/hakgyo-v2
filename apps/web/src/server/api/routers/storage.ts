@@ -175,8 +175,10 @@ type DownloadableAsset = {
 /**
  * Returns the confirmed, non-deleted assets from `assetIds` that the user may
  * download: their own uploads, anything in an organization they own or
- * administer, PDF book pages for any staff member, and otherwise files linked
- * to a course item the user can open.
+ * administer, PDF book pages for any staff member, assets Hakgyo shares (any
+ * signed-in user: question bank media carry no answer keys, see
+ * docs/eps-question-generator.md section 3.1), and otherwise files linked to a
+ * course item the user can open.
  */
 async function findDownloadableAssets(
   assetIds: readonly string[],
@@ -195,6 +197,7 @@ async function findDownloadableAssets(
       contentType: true,
       size: true,
       uploadedByUserId: true,
+      sharedAt: true,
       organization: {
         select: {
           members: {
@@ -216,12 +219,15 @@ async function findDownloadableAssets(
     pdfBookPage,
     pdfBookThumbnail,
     uploadedByUserId,
+    sharedAt,
     ...asset
   } of assets) {
     const memberRole = organization.members[0]?.role;
     // Any staff member may browse PDF book pages while authoring lessons.
     const isPdfBookImage = Boolean(pdfBookPage ?? pdfBookThumbnail);
+    // Shared Hakgyo media (question bank) carry no answer keys: any signed-in user may load them.
     const hasDirectAccess =
+      sharedAt !== null ||
       uploadedByUserId === userId ||
       memberRole === "OWNER" ||
       memberRole === "ADMIN" ||

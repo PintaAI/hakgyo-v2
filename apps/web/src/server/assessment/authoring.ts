@@ -16,6 +16,7 @@ import type {
 } from "~/server/assessment/inputs";
 import { normalizeQuestionPositions } from "~/server/assessment/sections";
 import { createId } from "~/server/batch";
+import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import { questionCopyRows } from "~/server/assessment/copy";
 import { requireContentAuthor } from "~/server/authorization";
 import { withTransactionRetry } from "~/server/db-retry";
@@ -162,7 +163,13 @@ export async function duplicateAssessment(
       questionGroups: {
         select: { id: true, instructions: true, stimulus: true },
       },
-      assets: { select: { assetId: true, assetOrganizationId: true } },
+      assets: {
+        select: {
+          assetId: true,
+          assetOrganizationId: true,
+          asset: { select: { sharedAt: true } },
+        },
+      },
     },
   });
   if (!source) throw new TRPCError({ code: "NOT_FOUND" });
@@ -214,14 +221,19 @@ export async function duplicateAssessment(
     if (rows.options.length) {
       await tx.assessmentOption.createMany({ data: rows.options });
     }
-    if (assets.length) {
+    // A copy points at the same files and keeps their owner; another organization's file only
+    // while Hakgyo still shares it.
+    const links = assets.filter(
+      ({ assetOrganizationId, asset }) =>
+        assetOrganizationId === source.organizationId || asset.sharedAt,
+    );
+    if (links.length) {
       await tx.assessmentAsset.createMany({
-        data: assets.map(({ assetId, assetOrganizationId }) => ({
+        data: links.map(({ assetId, assetOrganizationId }) => ({
           assessmentId: copy.id,
           assetId,
           organizationId: source.organizationId,
-          // A copy points at the same files and keeps their owner.
-          assetOrganizationId: assetOrganizationId ?? source.organizationId,
+          assetOrganizationId,
         })),
         skipDuplicates: true,
       });
@@ -398,7 +410,10 @@ export async function deleteOption(
   return { deleted: true };
 }
 
-/** Links a confirmed asset of the same organization; linking twice is a no-op. */
+/**
+ * Links a confirmed asset of the assessment's organization, or a shared Hakgyo asset (question bank
+ * media, docs/eps-question-generator.md section 3.1); linking twice is a no-op.
+ */
 export async function attachAsset(
   db: DatabaseClient,
   input: { assessmentId: string; assetId: string },
@@ -412,29 +427,46 @@ export async function attachAsset(
   const asset = await db.asset.findFirst({
     where: {
       id: input.assetId,
-      organizationId: assessment.organizationId,
       confirmedAt: { not: null },
       deletedAt: null,
+      OR: [
+        { organizationId: assessment.organizationId },
+        {
+          organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
+          sharedAt: { not: null },
+        },
+      ],
     },
-    select: { id: true },
+    select: { id: true, organizationId: true },
   });
   if (!asset) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        "Asset must be confirmed and belong to the assessment organization",
+        "Asset must be confirmed and belong to the assessment organization or be shared by Hakgyo",
     });
   }
   const link = { assessmentId: input.assessmentId, assetId: input.assetId };
-  return db.assessmentAsset.upsert({
-    where: { assessmentId_assetId: link },
-    create: {
-      ...link,
-      organizationId: assessment.organizationId,
-      assetOrganizationId: assessment.organizationId,
-    },
-    update: {},
-  });
+  try {
+    return await db.assessmentAsset.upsert({
+      where: { assessmentId_assetId: link },
+      create: {
+        ...link,
+        organizationId: assessment.organizationId,
+        assetOrganizationId: asset.organizationId,
+      },
+      update: {},
+    });
+  } catch (error) {
+    // Hakgyo stopped sharing the asset after the check above (the database refuses the link).
+    if (error instanceof Error && error.message.includes("is not shared")) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Asset is no longer shared by Hakgyo",
+      });
+    }
+    throw error;
+  }
 }
 
 /**

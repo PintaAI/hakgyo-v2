@@ -203,7 +203,20 @@ export async function cloneStarterCourse(
       if (entry.imageAssetId) assetIds.add(entry.imageAssetId);
     }
   }
-  const assets = await db.asset.findMany({
+  // Assets that something other than an assessment uses (lessons, vocabulary, PDF pages).
+  const nonAssessmentAssetIds = new Set<string>(pageAssets.keys());
+  for (const material of materials) {
+    material.assets.forEach(({ assetId }) =>
+      nonAssessmentAssetIds.add(assetId),
+    );
+  }
+  for (const set of vocabularySets) {
+    for (const entry of set.entries) {
+      if (entry.audioAssetId) nonAssessmentAssetIds.add(entry.audioAssetId);
+      if (entry.imageAssetId) nonAssessmentAssetIds.add(entry.imageAssetId);
+    }
+  }
+  const sourceAssets = await db.asset.findMany({
     where: {
       id: { in: [...assetIds] },
       organizationId: sourceOrganizationId,
@@ -211,6 +224,17 @@ export async function cloneStarterCourse(
       deletedAt: null,
     },
   });
+  // Shared Hakgyo media (question bank, docs/eps-question-generator.md section 3.1): assessments
+  // keep pointing at the original; other content gets a copy, since only assessment links can
+  // reference another organization's asset so far.
+  const sharedOwner = new Map(
+    sourceAssets.flatMap((asset) =>
+      asset.sharedAt ? [[asset.id, asset.organizationId] as const] : [],
+    ),
+  );
+  const assets = sourceAssets.filter(
+    (asset) => !asset.sharedAt || nonAssessmentAssetIds.has(asset.id),
+  );
 
   const confirmedAt = new Date();
   const copies: { from: string; to: string }[] = [];
@@ -242,6 +266,14 @@ export async function cloneStarterCourse(
     value === null ? Prisma.JsonNull : remapped(value);
   const copiedAsset = (assetId: string | null) =>
     assetId ? (idMap.get(assetId) ?? null) : null;
+  // Assessment content keeps shared asset ids (they are linked, not copied).
+  let assessmentIdMap: Map<string, string> | null = null;
+  const remappedForAssessment = (value: Prisma.JsonValue) => {
+    assessmentIdMap ??= new Map(
+      [...idMap].filter(([id]) => !sharedOwner.has(id)),
+    );
+    return remapIds(value, assessmentIdMap) as Prisma.InputJsonValue;
+  };
 
   for (const material of materials) idMap.set(material.id, createId());
   for (const assessment of assessments) idMap.set(assessment.id, createId());
@@ -377,7 +409,10 @@ export async function cloneStarterCourse(
             title: assessment.title,
             description: assessment.description,
             editorSchemaVersion: assessment.editorSchemaVersion,
-            instructions: remappedOptional(assessment.instructions),
+            instructions:
+              assessment.instructions === null
+                ? Prisma.JsonNull
+                : remappedForAssessment(assessment.instructions),
             passingScore: assessment.passingScore,
             // Bands hold no references, so they copy as they are.
             scoreBands:
@@ -399,7 +434,10 @@ export async function cloneStarterCourse(
               ...section,
               id,
               assessmentId: idMap.get(assessment.id)!,
-              instructions: remappedOptional(section.instructions),
+              instructions:
+                section.instructions === null
+                  ? Prisma.JsonNull
+                  : remappedForAssessment(section.instructions),
               createdAt: undefined,
               updatedAt: undefined,
             };
@@ -415,7 +453,8 @@ export async function cloneStarterCourse(
             questions: assessment.questions,
             groups: assessment.questionGroups,
             sectionIds,
-            transform: (value) => remapped(value as Prisma.JsonValue),
+            transform: (value) =>
+              remappedForAssessment(value as Prisma.JsonValue),
           }),
         );
         await insertInBatches(
@@ -433,15 +472,16 @@ export async function cloneStarterCourse(
         await insertInBatches(
           assessments.flatMap((assessment) =>
             assessment.assets.flatMap(({ assetId }) => {
-              const copied = copiedAsset(assetId);
-              return copied
+              // Shared media stay with their owner; the rest point at the new copy.
+              const owner = sharedOwner.get(assetId);
+              const linkedId = owner ? assetId : copiedAsset(assetId);
+              return linkedId
                 ? [
                     {
                       assessmentId: idMap.get(assessment.id)!,
-                      assetId: copied,
+                      assetId: linkedId,
                       organizationId,
-                      // Cloned files belong to the new organization.
-                      assetOrganizationId: organizationId,
+                      assetOrganizationId: owner ?? organizationId,
                     },
                   ]
                 : [];
