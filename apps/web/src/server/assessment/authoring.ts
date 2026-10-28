@@ -220,7 +220,7 @@ export async function duplicateAssessment(
           assessmentId: copy.id,
           assetId,
           organizationId: source.organizationId,
-          // A copy keeps pointing at the same files, shared Hakgyo ones included.
+          // A copy points at the same files and keeps their owner.
           assetOrganizationId: assetOrganizationId ?? source.organizationId,
         })),
         skipDuplicates: true,
