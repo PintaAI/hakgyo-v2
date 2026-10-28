@@ -17,6 +17,11 @@ import {
   mediaDownloadUrl,
 } from "~/server/superadmin/media";
 import { revokeUserAccess } from "~/server/superadmin/user-access";
+import { createAiDrafts, createAiDraftsInput } from "~/server/bank/ai-drafts";
+import {
+  generateBankImage,
+  generateBankImageInput,
+} from "~/server/bank/images";
 import {
   createBank,
   getBankOverview,
@@ -33,6 +38,22 @@ const pageInput = z.object({
 });
 
 const pageSize = 20;
+
+/** AI failures as tRPC errors: a missing key is a setup problem, anything else a retry. */
+function aiError(error: unknown, message: string) {
+  if (error instanceof TRPCError) return error;
+  if (error instanceof Error && error.message === "OPENAI_API_KEY_MISSING") {
+    return new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "OPENAI_API_KEY belum dikonfigurasi di server.",
+    });
+  }
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message,
+    cause: error,
+  });
+}
 
 async function audit(
   database: Database,
@@ -276,6 +297,46 @@ export const superadminRouter = createTRPCRouter({
     questions: superadminProcedure
       .input(listBankQuestionsInput)
       .query(({ ctx, input }) => listBankQuestions(ctx.db, input)),
+    createDrafts: superadminProcedure
+      .input(createAiDraftsInput)
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const { openAiDraftModels } = await import("~/server/ai/bank-drafts");
+          const result = await createAiDrafts(ctx.db, input, openAiDraftModels);
+          await audit(ctx.db, {
+            actorUserId: ctx.actorUserId,
+            targetId: input.assessmentId,
+            targetType: "assessment",
+            action: "bank.ai-drafts",
+          });
+          return result;
+        } catch (error) {
+          throw aiError(error, "Draf AI gagal dibuat. Silakan coba lagi.");
+        }
+      }),
+    generateImage: superadminProcedure
+      .input(generateBankImageInput)
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const { generateBankIllustration } =
+            await import("~/server/ai/bank-image");
+          const result = await generateBankImage(
+            ctx.db,
+            input,
+            ctx.actorUserId,
+            generateBankIllustration,
+          );
+          await audit(ctx.db, {
+            actorUserId: ctx.actorUserId,
+            targetId: input.questionId,
+            targetType: "assessment-question",
+            action: "bank.ai-image",
+          });
+          return result;
+        } catch (error) {
+          throw aiError(error, "Gambar AI gagal dibuat. Silakan coba lagi.");
+        }
+      }),
     setStatus: superadminProcedure
       .input(setBankStatusInput)
       .mutation(async ({ ctx, input }) => {

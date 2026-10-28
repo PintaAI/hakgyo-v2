@@ -1,4 +1,5 @@
 import { epsTopikBlueprint } from "@hakgyo/shared";
+import { epsTypeByTag } from "@hakgyo/shared/eps-taxonomy";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -50,6 +51,19 @@ for (const section of epsTopikBlueprint.sections) {
   for (const slot of section.slots) {
     slotsPerType.set(slot.type, (slotsPerType.get(slot.type) ?? 0) + 1);
   }
+}
+
+function hasImageBlock(content: unknown) {
+  return (
+    Array.isArray(content) &&
+    content.some((block: unknown) => {
+      const type =
+        typeof block === "object" && block !== null && "type" in block
+          ? block.type
+          : null;
+      return type === "assetImage" || type === "image";
+    })
+  );
 }
 
 async function requireBank(db: PrismaClient, assessmentId: string) {
@@ -190,15 +204,36 @@ export async function listBankQuestions(
       bankStatus: true,
       groupId: true,
       updatedAt: true,
-      options: { select: { isCorrect: true } },
+      bankMeta: true,
+      options: {
+        orderBy: { position: "asc" },
+        select: { isCorrect: true, content: true },
+      },
     },
   });
-  return questions.map(({ prompt, options, ...question }) => ({
-    ...question,
-    preview: getBlockNotePlainText(prompt).slice(0, 160),
-    optionCount: options.length,
-    correctCount: options.filter((option) => option.isCorrect).length,
-  }));
+  return questions.map(({ prompt, options, bankMeta, ...question }) => {
+    const meta = (bankMeta ?? {}) as {
+      flags?: Array<{ code: string; message: string }>;
+      mediaBrief?: string | null;
+      optionBriefs?: string[] | null;
+      script?: Array<{ speaker: string; text: string }>;
+    };
+    const type = question.tags.map(epsTypeByTag).find(Boolean);
+    return {
+      ...question,
+      preview: getBlockNotePlainText(prompt).slice(0, 160),
+      optionCount: options.length,
+      correctCount: options.filter((option) => option.isCorrect).length,
+      flags: meta.flags ?? [],
+      mediaBrief: meta.mediaBrief ?? null,
+      hasScript: Boolean(meta.script?.length),
+      /** Illustrated types can have their pictures drawn by AI. */
+      illustrated: type?.lane === "illustrated",
+      promptHasImage: hasImageBlock(prompt),
+      optionsAreImages: type?.optionsAreImages ?? false,
+      optionImages: options.map((option) => hasImageBlock(option.content)),
+    };
+  });
 }
 
 /**
