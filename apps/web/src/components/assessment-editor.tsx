@@ -313,8 +313,7 @@ function removeOption(assessment: Assessment | undefined, optionId: string) {
   };
 }
 
-/** `keysHidden`: a locked package, whose keys never reach the editor. */
-function getQuestionIssue(question: Question, keysHidden = false) {
+function getQuestionIssue(question: Question) {
   if (!hasBlockNoteContent(question.prompt)) {
     return "Pertanyaan belum diisi";
   }
@@ -325,7 +324,6 @@ function getQuestionIssue(question: Question, keysHidden = false) {
   if (question.options.some((option) => !hasBlockNoteContent(option.content))) {
     return "Ada opsi yang kosong";
   }
-  if (keysHidden) return null;
   const correctOptions = question.options.filter(
     (option) => option.isCorrect,
   ).length;
@@ -391,78 +389,6 @@ function changedAssessmentFields(
     if (!same) Object.assign(changes, { [key]: next[key] });
   }
   return changes;
-}
-
-function LockedPackageBanner({
-  questionCount,
-  swappable,
-  swapping,
-  onSwap,
-}: {
-  questionCount: number;
-  /** Until the first attempt, one question at a time can be replaced from the bank. */
-  swappable: boolean;
-  swapping: boolean;
-  onSwap: (number: number) => Promise<void>;
-}) {
-  const [number, setNumber] = useState(1);
-  return (
-    <section
-      aria-label="Paket pemantapan Hakgyo"
-      className="grid gap-3 rounded-xl border border-sky-300 bg-sky-50 p-4 text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100"
-    >
-      <div className="flex items-start gap-2">
-        <LockIcon className="mt-0.5 size-4 shrink-0" />
-        <div className="grid gap-1">
-          <p className="text-sm font-semibold">Paket pemantapan dari Hakgyo</p>
-          <p className="text-xs leading-relaxed">
-            Soal, format dan kunci jawaban paket ini dikunci supaya tetap
-            seperti ujian asli dan kuncinya tidak tersebar. Kamu bisa memakainya
-            di event Latihan atau Tryout dan melihat hasil murid.
-          </p>
-        </div>
-      </div>
-      {swappable && questionCount > 0 ? (
-        <div className="grid gap-2 border-t border-sky-200 pt-3 dark:border-sky-900">
-          <p className="text-xs leading-relaxed">
-            Selama paket belum tayang dan belum dikerjakan murid, kamu bisa
-            mengganti satu soal dengan soal lain dari bank yang tipenya sama.
-          </p>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 text-sm">
-              Nomor
-              <select
-                className="border-input bg-background h-9 rounded-md border px-2 text-sm"
-                disabled={swapping}
-                onChange={(event) => setNumber(Number(event.target.value))}
-                value={number}
-              >
-                {Array.from({ length: questionCount }, (_, index) => (
-                  <option key={index} value={index + 1}>
-                    {index + 1}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Button
-              disabled={swapping}
-              onClick={() => void onSwap(number)}
-              size="sm"
-              variant="outline"
-            >
-              {swapping ? (
-                <LoaderCircleIcon
-                  className="animate-spin"
-                  data-icon="inline-start"
-                />
-              ) : null}
-              Ganti soal
-            </Button>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
 }
 
 function LiveAssessmentBanner({
@@ -637,14 +563,11 @@ export function AssessmentEditor({
   const createImportedQuestions =
     api.assessmentImport.createQuestions.useMutation();
   const duplicateAssessment = api.assessment.duplicate.useMutation();
-  const swapQuestion = api.assessment.swapPackageQuestion.useMutation();
   const createdAssessmentIdRef = useRef<string | null>(null);
   // A live assessment (visible in a published course, or running as an open
   // event) is read-only; authors hide the item or edit a duplicate instead.
   const live = assessment.data?.live;
-  // A Hakgyo package (pemantapan) is read-only for good, and its keys never reach the client.
-  const locked = Boolean(assessment.data?.contentLocked);
-  const readOnly = Boolean(live?.isLive) || locked;
+  const readOnly = Boolean(live?.isLive);
   // Every page rendering the editor already verified organization membership on the server
   // (the delete procedure re-checks authorship), so no client-side organization fetch is needed.
   const canDelete = !attachTo;
@@ -706,32 +629,7 @@ export function AssessmentEditor({
       assessment={assessment.data}
       readOnly={readOnly}
       liveBanner={
-        // A package can't be duplicated or shared publicly, so its banner wins over the live one.
-        locked ? (
-          <LockedPackageBanner
-            questionCount={assessment.data?.questions.length ?? 0}
-            swappable={Boolean(assessment.data?.swappable)}
-            swapping={swapQuestion.isPending}
-            onSwap={async (number) => {
-              if (!assessmentId) return;
-              try {
-                const result = await swapQuestion.mutateAsync({
-                  assessmentId,
-                  number,
-                });
-                await utils.assessment.get.invalidate({ assessmentId });
-                setFormVersion((value) => value + 1);
-                toast.success(
-                  result.count > 1
-                    ? `Soal nomor ${result.number}–${result.number + result.count - 1} diganti.`
-                    : `Soal nomor ${result.number} diganti.`,
-                );
-              } catch (error) {
-                toast.error(errorMessage(error));
-              }
-            }}
-          />
-        ) : live?.isLive ? (
+        live?.isLive ? (
           <LiveAssessmentBanner
             live={live}
             organizationSlug={organizationSlug}
@@ -761,9 +659,9 @@ export function AssessmentEditor({
       contextLabel={
         attachTo ? `Tugas untuk ${attachTo.moduleTitle}` : undefined
       }
-      canDelete={canDelete && !live?.isLive}
+      canDelete={canDelete && !readOnly}
       publicQuizHref={
-        assessmentId && !locked
+        assessmentId
           ? `/workspace/${organizationSlug}/library/assessments/${assessmentId}/quiz-publik`
           : undefined
       }
@@ -2133,7 +2031,6 @@ function AssessmentEditorForm({
                       onToggle={() => toggleQuestion(question.id)}
                       onToggleCorrect={onToggleCorrect}
                       question={question}
-                      keysHidden={Boolean(assessment?.contentLocked)}
                       readOnly={readOnly}
                       recoverOnMount={Boolean(recoveredDraft)}
                       renderForm={
@@ -2192,9 +2089,7 @@ function AssessmentEditorForm({
           {readOnly ? (
             <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
               <LockIcon className="mt-0.5 size-3.5 shrink-0" />
-              {assessment?.contentLocked
-                ? "Pengaturan paket pemantapan dikunci."
-                : "Pengaturan terkunci selama tugas sedang tayang."}
+              Pengaturan terkunci selama tugas sedang tayang.
             </p>
           ) : null}
 
@@ -2492,7 +2387,6 @@ type QuestionRowProps = {
     checked: boolean,
   ) => Promise<void>;
   question: Question;
-  keysHidden: boolean;
   readOnly: boolean;
   recoverOnMount: boolean;
   renderForm: boolean;
@@ -2519,14 +2413,13 @@ const QuestionRow = memo(function QuestionRow({
   onToggle,
   onToggleCorrect,
   question,
-  keysHidden,
   readOnly,
   recoverOnMount,
   renderForm,
   theme,
   assetStorage,
 }: QuestionRowProps) {
-  const issue = getQuestionIssue(question, keysHidden);
+  const issue = getQuestionIssue(question);
   const preview = getBlockNotePlainText(question.prompt);
 
   return (
@@ -2660,7 +2553,6 @@ function areQuestionRowPropsEqual(
     previous.onDraftChange === next.onDraftChange &&
     previous.onDraftOptionChange === next.onDraftOptionChange &&
     previous.question === next.question &&
-    previous.keysHidden === next.keysHidden &&
     previous.readOnly === next.readOnly &&
     previous.recoverOnMount === next.recoverOnMount &&
     previous.renderForm === next.renderForm &&

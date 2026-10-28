@@ -6,7 +6,6 @@ import {
   authorizeReview,
   requireReviewAccess,
   reviewAccessSelect,
-  stripQuestionKeys,
 } from "~/server/assessment/access";
 import type {
   AttemptsNeedingReviewInput,
@@ -110,7 +109,6 @@ export async function getReviewAttempt(
           id: true,
           title: true,
           passingScore: true,
-          contentLocked: true,
           questions: {
             orderBy: { position: "asc" },
             select: {
@@ -134,7 +132,7 @@ export async function getReviewAttempt(
   if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
   const {
     answers,
-    assessment: { questions, contentLocked, ...assessment },
+    assessment: { questions, ...assessment },
     assessmentEvent,
     organizationId,
     cohortId,
@@ -163,8 +161,7 @@ export async function getReviewAttempt(
       invalidated,
     ),
     answers,
-    // A Hakgyo package keeps its key to itself; each answer's score still shows right or wrong.
-    questions: contentLocked ? stripQuestionKeys(questions) : questions,
+    questions,
   };
 }
 

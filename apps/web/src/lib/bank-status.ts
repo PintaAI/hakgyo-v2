@@ -4,6 +4,17 @@
  * only LIVE questions.
  */
 
+/**
+ * What `BankQuestion.meta` may hold, as read back by the bank page, the editor and the media
+ * services (AI drafts write the full shape, see `server/bank/ai-drafts.ts`).
+ */
+export type BankMetaView = {
+  flags?: Array<{ code: string; message: string }>;
+  mediaBrief?: string | null;
+  optionBriefs?: string[] | null;
+  script?: Array<{ speaker: string; text: string }>;
+};
+
 export const bankStatuses = ["DRAFT", "REVIEW", "LIVE", "RETIRED"] as const;
 export type BankStatus = (typeof bankStatuses)[number];
 

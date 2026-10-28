@@ -10,6 +10,7 @@ import {
   SearchIcon,
 } from "lucide-react";
 
+import { EpsSetGenerator } from "~/components/eps-set-generator";
 import Link from "~/components/link";
 import { PageHeader } from "~/components/ui/page-header";
 import { EmptyState } from "~/components/ui/empty-state";
@@ -50,9 +51,12 @@ function isLive(assessment: Assessment) {
 export function AssessmentLibrary({
   organizationId,
   organizationSlug,
+  canGenerateEpsSet,
 }: {
   organizationId: string;
   organizationSlug: string;
+  /** Owners and admins may draw an EPS-TOPIK set from the Hakgyo bank. */
+  canGenerateEpsSet: boolean;
 }) {
   const assessments = api.assessment.list.useQuery({ organizationId });
   const [search, setSearch] = useState("");
@@ -76,13 +80,21 @@ export function AssessmentLibrary({
         title="Tugas"
         description="Susun soal pilihan ganda dan jawaban tertulis yang dapat dipakai di kurikulum mana pun di workspace ini."
         actions={
-          <Link
-            href={`/workspace/${organizationSlug}/library/assessments/new`}
-            className={buttonVariants()}
-          >
-            <PlusIcon data-icon="inline-start" />
-            Tugas baru
-          </Link>
+          <>
+            {canGenerateEpsSet ? (
+              <EpsSetGenerator
+                organizationId={organizationId}
+                organizationSlug={organizationSlug}
+              />
+            ) : null}
+            <Link
+              href={`/workspace/${organizationSlug}/library/assessments/new`}
+              className={buttonVariants()}
+            >
+              <PlusIcon data-icon="inline-start" />
+              Tugas baru
+            </Link>
+          </>
         }
       />
 

@@ -53,7 +53,6 @@ export const learnerAssessmentItemSelect = {
     select: {
       id: true,
       title: true,
-      contentLocked: true,
       description: true,
       instructions: true,
       passingScore: true,
@@ -209,9 +208,6 @@ export function shapeLearnerAssessment(input: {
   eligibleCohorts: Array<{ id: string; name: string }>;
 }) {
   const { item, attempt } = input;
-  // Groups without questions are left out below; `contentLocked` only decides whether answers
-  // are revealed and is not sent to learners.
-  const { questionGroups, contentLocked, ...assessment } = item.assessment;
   const answersRevealed = shouldRevealAssessmentAnswers({
     attemptStatus: attempt?.status ?? "IN_PROGRESS",
     event: attempt?.assessmentEvent
@@ -220,7 +216,6 @@ export function shapeLearnerAssessment(input: {
           status: attempt.assessmentEvent.status,
         }
       : null,
-    contentLocked,
   });
   const questions = orderAssessmentQuestions(
     item.assessment.questions,
@@ -251,6 +246,7 @@ export function shapeLearnerAssessment(input: {
   const timedSeconds = timedSectionsSeconds(sections) ?? 0;
   const log = attempt?.log ?? [];
   // Groups without questions are left out like empty sections.
+  const { questionGroups, ...assessment } = item.assessment;
   const groups = questionGroups.filter((group) =>
     questions.some((question) => question.groupId === group.id),
   );

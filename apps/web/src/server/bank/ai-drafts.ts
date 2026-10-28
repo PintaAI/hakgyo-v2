@@ -12,19 +12,20 @@ import {
   getBlockNotePlainText,
   plainTextToBlockNote,
 } from "~/lib/blocknote/document";
+import { createId } from "~/server/batch";
 import {
   checkDraft,
   mostSimilar,
   type DraftFlag,
+  type ExistingQuestion,
 } from "~/server/bank/draft-checks";
-import { lockAssessment } from "~/server/assessment/lock";
-import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import { toPrismaJsonValue } from "~/server/prisma-json";
 
 /**
  * AI drafts for the question bank (docs/eps-question-generator.md section 6): a writer model drafts
  * a few original questions of one type from its reference card, a second model answers them blind,
- * automated checks flag what the reviewer should look at, and the drafts enter the bank as DRAFT.
+ * automated checks flag what the reviewer should look at, and the drafts enter the bank as DRAFT
+ * bank questions.
  * The models are injected so tests never call an AI service.
  */
 
@@ -38,7 +39,6 @@ export type DraftModel = (typeof draftModels)[number];
 const topicSlugs = epsTopicSlugs;
 
 export const createAiDraftsInput = z.object({
-  assessmentId: z.string().min(1),
   type: z.string().regex(/^eps:[RL]\d{1,2}$/),
   count: z.number().int().min(1).max(MAX_DRAFTS_PER_CALL),
   level: z.enum(["mudah", "sedang", "sulit"]),
@@ -145,7 +145,7 @@ export async function prepareDrafts(input: {
   request: CreateAiDraftsInput;
   type: EpsTypeDefinition;
   models: DraftModels;
-  existing: ReadonlyArray<{ text: string; position: number }>;
+  existing: readonly ExistingQuestion[];
 }) {
   const drafts = (
     await input.models.write({
@@ -201,10 +201,11 @@ export type BankMeta = {
   createdAt: string;
 };
 
-/** Writes AI drafts into a bank as DRAFT questions with their tags, key and production notes. */
+/** Writes AI drafts into the bank as DRAFT questions with their tags, key and production notes. */
 export async function createAiDrafts(
   db: PrismaClient,
   input: CreateAiDraftsInput,
+  userId: string,
   models: DraftModels,
 ) {
   const type = epsTypeByTag(input.type);
@@ -213,29 +214,17 @@ export async function createAiDrafts(
       code: "BAD_REQUEST",
       message: "Tipe soal tidak dikenal.",
     });
-  const bank = await db.assessment.findFirst({
-    where: {
-      id: input.assessmentId,
-      kind: "BANK",
-      organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
-    },
+  // Near copies are within a type, so only that type is compared.
+  const questions = await db.bankQuestion.findMany({
+    where: { tags: { has: type.tag } },
     select: {
       id: true,
-      // Near copies are within a type, so only that type is compared.
-      questions: {
-        where: { tags: { has: type.tag } },
-        orderBy: { position: "asc" },
-        select: {
-          position: true,
-          prompt: true,
-          options: { select: { content: true } },
-        },
-      },
+      prompt: true,
+      options: { orderBy: { position: "asc" }, select: { content: true } },
     },
   });
-  if (!bank) throw new TRPCError({ code: "NOT_FOUND" });
-  const existing = bank.questions.map((question) => ({
-    position: question.position,
+  const existing = questions.map((question) => ({
+    id: question.id,
     text: [
       getBlockNotePlainText(question.prompt),
       ...question.options.map((option) =>
@@ -258,52 +247,43 @@ export async function createAiDrafts(
     `topik:${input.topic ?? draft.topic}`,
     ...(input.chapter ? [`bab:${input.chapter}`] : []),
   ];
-  await db.$transaction(async (tx) => {
-    await lockAssessment(tx, bank.id);
-    const last = await tx.assessmentQuestion.aggregate({
-      where: { assessmentId: bank.id },
-      _max: { position: true },
-    });
-    const start = (last._max.position ?? -1) + 1;
-    const questions = await tx.assessmentQuestion.createManyAndReturn({
-      data: prepared.map(({ draft, flags, checkModel }, index) => {
-        const meta: BankMeta = {
-          origin: "ai",
-          model: input.model,
-          checkModel,
-          mediaBrief: draft.mediaBrief.trim() || null,
-          script: draft.script,
-          optionBriefs: type.optionsAreImages ? [...draft.options] : null,
-          flags,
-          createdAt: now,
-        };
-        return {
-          assessmentId: bank.id,
-          type: "SINGLE_CHOICE" as const,
-          position: start + index,
-          points: 1,
-          tags: tags(draft),
-          prompt: toPrismaJsonValue(plainTextToBlockNote(draft.prompt)),
-          explanation: toPrismaJsonValue(
-            plainTextToBlockNote(draft.explanation),
-          ),
-          bankMeta: meta,
-        };
-      }),
-      select: { id: true, position: true },
-    });
-    const byPosition = new Map(questions.map((row) => [row.position, row.id]));
-    await tx.assessmentOption.createMany({
-      data: prepared.flatMap(({ draft }, index) =>
+  const rows = prepared.map(({ draft, flags, checkModel }) => {
+    const meta: BankMeta = {
+      origin: "ai",
+      model: input.model,
+      checkModel,
+      mediaBrief: draft.mediaBrief.trim() || null,
+      script: draft.script,
+      optionBriefs: type.optionsAreImages ? [...draft.options] : null,
+      flags,
+      createdAt: now,
+    };
+    return { id: createId(), draft, meta };
+  });
+  await db.$transaction([
+    db.bankQuestion.createMany({
+      data: rows.map(({ id, draft, meta }) => ({
+        id,
+        type: "SINGLE_CHOICE" as const,
+        status: "DRAFT" as const,
+        tags: tags(draft),
+        prompt: toPrismaJsonValue(plainTextToBlockNote(draft.prompt)),
+        explanation: toPrismaJsonValue(plainTextToBlockNote(draft.explanation)),
+        meta: toPrismaJsonValue(meta),
+        createdByUserId: userId,
+      })),
+    }),
+    db.bankOption.createMany({
+      data: rows.flatMap(({ id, draft }) =>
         draft.options.map((option, optionIndex) => ({
-          questionId: byPosition.get(start + index)!,
+          questionId: id,
           content: toPrismaJsonValue(plainTextToBlockNote(option)),
           isCorrect: optionIndex === draft.key,
           position: optionIndex,
         })),
       ),
-    });
-  });
+    }),
+  ]);
   return {
     created: prepared.length,
     flagged: prepared.filter(({ flags }) => flags.length).length,

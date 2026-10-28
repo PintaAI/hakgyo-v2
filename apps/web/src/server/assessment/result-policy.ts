@@ -4,16 +4,13 @@ type AssessmentResultContext = {
     type: "QUICK_ASSESSMENT" | "TRYOUT";
     status: string;
   } | null;
-  /** A Hakgyo package: answers show only after a Latihan closes, never after a standalone attempt. */
-  contentLocked?: boolean;
 };
 
 export function shouldRevealAssessmentAnswers({
   attemptStatus,
   event,
-  contentLocked = false,
 }: AssessmentResultContext) {
   if (attemptStatus !== "GRADED") return false;
-  if (!event) return !contentLocked;
+  if (!event) return true;
   return event.type === "QUICK_ASSESSMENT" && event.status === "CLOSED";
 }

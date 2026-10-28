@@ -55,5 +55,5 @@ Jika pengajar memberi label pada soal, hasilmu juga menampilkan **Hasil per tipe
 - Nilai latihan dan tryout tidak menyelesaikan tugas di kurikulummu. Tugas bab tetap harus dikerjakan sendiri.
 - Pengajar bisa membatalkan hasil seorang peserta, misalnya karena kecurangan. Kamu akan mendapat notifikasi beserta alasannya.
 - Latihan yang sudah selesai tetap bisa dilihat di **Semua event & hasil**.
-- Tryout pemantapan EPS-TOPIK dari Hakgyo memakai suara AI untuk audio bagian Mendengar.
+- Set soal EPS-TOPIK dari bank soal Hakgyo memakai suara AI untuk audio bagian Mendengar. Keterangannya tertulis di deskripsi tugas.
 - Di aplikasi ponsel, latihan yang sedang dibuka diunduh otomatis di latar belakang saat tersambung Wi-Fi.

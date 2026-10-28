@@ -25,8 +25,6 @@ export async function sanitizeMaterialContent(
           where: {
             id: { in: references.assessmentIds },
             organizationId,
-            // The question bank is never shown to learners.
-            kind: { not: "BANK" },
           },
           select: { id: true },
         })

@@ -82,6 +82,7 @@ model User {
   preference                  UserPreference?
   payments                    Payment[]                     @relation("PaymentLearner")
   reviewedPayments            Payment[]                     @relation("PaymentReviewer")
+  bankQuestions               BankQuestion[]                @relation("BankQuestionCreator")
 
   @@unique([email])
   @@index([createdAt])
@@ -1149,7 +1150,7 @@ model AssessmentQuestion {
   sectionId        String?
   /// Questions of a group are consecutive within one section and share its instructions and stimulus.
   groupId          String?
-  /// Package questions: the bank question this copy came from (statistics flow back through it).
+  /// Generated sets: the bank question this copy came from (a record only; the copy is the organization's own).
   sourceQuestionId String?
   /// Bank questions only (assessment kind BANK).
   bankStatus       BankItemStatus?
@@ -1158,6 +1159,7 @@ model AssessmentQuestion {
   assessment       Assessment               @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   section          AssessmentSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   group            AssessmentQuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  sourceQuestion   BankQuestion?            @relation(fields: [sourceQuestionId], references: [id], onDelete: SetNull)
   options          AssessmentOption[]
   answers          AssessmentAnswer[]
   ttsJobs          TtsJob[]
@@ -1182,14 +1184,16 @@ model AssessmentQuestionGroup {
   instructions  Json?
   /// BlockNote document; under a section audio policy its audio plays with the first question only.
   stimulus      Json?
-  /// Package groups: the bank group this copy came from.
+  /// Generated sets: the bank group this copy came from (a record only; the copy is the organization's own).
   sourceGroupId String?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   assessment    Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  sourceGroup   BankGroup?           @relation(fields: [sourceGroupId], references: [id], onDelete: SetNull)
   questions     AssessmentQuestion[]
 
   @@index([assessmentId])
+  @@index([sourceGroupId])
 }
 
 /// What an assessment is for: an ordinary one, the Hakgyo question bank (system organization), or a package built from the bank. See docs/eps-question-generator.md section 3.
@@ -1197,6 +1201,63 @@ enum AssessmentKind {
   STANDARD
   BANK
   GENERATED
+}
+
+/// The Hakgyo question bank (docs/eps-question-generator.md): system data, owned by no organization and managed from the superadmin dashboard. Generated sets copy these into an organization's own assessment, so later bank edits only reach sets made afterwards.
+model BankQuestion {
+  id              String                 @id @default(cuid())
+  type            AssessmentQuestionType @default(SINGLE_CHOICE)
+  /// BlockNote document.
+  prompt          Json
+  /// BlockNote document.
+  explanation     Json?
+  /// Type, level and topic: `eps:R2`, `level:sedang`, `topik:k3` (see `assessment-tags.ts` in @hakgyo/shared).
+  tags            String[]               @default([])
+  /// The generator picks only LIVE questions; a LIVE question whose content changes goes back to REVIEW.
+  status          BankItemStatus         @default(DRAFT)
+  /// How it was made and what production still needs (origin, model, media brief, audio script, automated check flags).
+  meta            Json?
+  /// Questions sharing a passage, picture or dialogue; `position` orders them in the group.
+  groupId         String?
+  position        Int                    @default(0)
+  createdByUserId String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  group           BankGroup?             @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdBy       User?                  @relation("BankQuestionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  options         BankOption[]
+  ttsJobs         TtsJob[]
+  copies          AssessmentQuestion[]
+
+  @@index([status])
+  @@index([groupId])
+  @@index([createdAt])
+  @@index([tags], type: Gin)
+}
+
+model BankOption {
+  id         String       @id @default(cuid())
+  questionId String
+  /// BlockNote document.
+  content    Json
+  isCorrect  Boolean      @default(false)
+  position   Int
+  question   BankQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+}
+
+/// A shared passage, picture or dialogue for consecutive bank questions; a generated set takes the group as one unit.
+model BankGroup {
+  id           String                    @id @default(cuid())
+  /// BlockNote document.
+  instructions Json?
+  /// BlockNote document.
+  stimulus     Json?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  questions    BankQuestion[]
+  copies       AssessmentQuestionGroup[]
 }
 
 /// How a bank question performed in the packages learners took, recomputed when an event on a package is finalized (docs/eps-question-generator.md section 5). Derived: it can be rebuilt from answers at any time.
@@ -1254,27 +1315,32 @@ enum TtsProvider {
 
 /// Speech for one bank question (docs/eps-question-generator.md section 6): the VPS poller runs it with VoxCPM2 on the GPU worker; jobs waiting too long, or on request, go to OpenAI. One provider per question.
 model TtsJob {
-  id                String             @id @default(cuid())
-  questionId        String
+  id                String              @id @default(cuid())
+  /// Old link to a bank question stored as an assessment question; unused, removed in the follow-up migration.
+  questionId        String?
+  /// The bank question whose audio this job makes.
+  bankQuestionId    String?
   requestedByUserId String
-  status            TtsJobStatus       @default(PENDING)
+  status            TtsJobStatus        @default(PENDING)
   provider          TtsProvider?
   /// The clips to speak: `[{ key: "prompt" | "option-<n>", lines: [{ voice: "M" | "F", text }] }]`.
   clips             Json
   /// Per clip key, the stored asset id.
   result            Json?
   error             String?
-  attempts          Int                @default(0)
+  attempts          Int                 @default(0)
   /// Set fresh at every claim; uploads, completion and failure must present it, so only the current run can finish the job.
   claimToken        String?
   claimedAt         DateTime?
   finishedAt        DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  question          AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  question          AssessmentQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  bankQuestion      BankQuestion?       @relation(fields: [bankQuestionId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
   @@index([questionId])
+  @@index([bankQuestionId])
 }
 
 /// A timed part of an assessment (EPS-TOPIK: Membaca, Mendengar) with its own rules. See docs/eps-topik-simulation.md section 4.2.

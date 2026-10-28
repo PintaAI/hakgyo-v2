@@ -16,6 +16,12 @@ export type DraftFlagCode =
 
 export type DraftFlag = { code: DraftFlagCode; message: string };
 
+/** An existing bank question, as plain text (prompt and options). */
+export type ExistingQuestion = { id: string; text: string };
+
+/** The closest existing question and how close it is. */
+export type SimilarMatch = ExistingQuestion & { similarity: number };
+
 export type CheckableDraft = {
   prompt: string;
   options: readonly string[];
@@ -85,15 +91,20 @@ export function keywordFlag(
     : { code: "KEYWORDS", message: "Tidak memakai kata kunci yang diminta." };
 }
 
-export function similarityFlag(
-  match: { similarity: number; position: number } | null,
-): DraftFlag | null {
-  return match && match.similarity >= SIMILARITY_THRESHOLD
-    ? {
-        code: "SIMILAR",
-        message: `Mirip soal bank no. ${match.position + 1} (${Math.round(match.similarity * 100)}%).`,
-      }
-    : null;
+/** How much of the similar question's text the flag quotes. */
+const SIMILAR_QUOTE_LENGTH = 40;
+
+export function similarityFlag(match: SimilarMatch | null): DraftFlag | null {
+  if (!match || match.similarity < SIMILARITY_THRESHOLD) return null;
+  const text = match.text.replace(/\s+/g, " ").trim();
+  const quote =
+    text.length > SIMILAR_QUOTE_LENGTH
+      ? `${text.slice(0, SIMILAR_QUOTE_LENGTH)}…`
+      : text;
+  return {
+    code: "SIMILAR",
+    message: `Mirip soal bank "${quote}" (${Math.round(match.similarity * 100)}%).`,
+  };
 }
 
 /** A second model answered without the key: a different answer or several plausible ones. */
@@ -123,7 +134,7 @@ export function checkDraft(input: {
   draft: CheckableDraft;
   batch: readonly CheckableDraft[];
   keywords: readonly string[];
-  similar: { similarity: number; position: number } | null;
+  similar: SimilarMatch | null;
   blind: { answer: number; plausible: readonly number[] } | null;
 }): DraftFlag[] {
   return [
@@ -170,13 +181,14 @@ export function trigramSetSimilarity(
 /** The most similar existing question, for the SIMILAR check. */
 export function mostSimilar(
   text: string,
-  existing: ReadonlyArray<{ text: string; position: number }>,
+  existing: readonly ExistingQuestion[],
 ) {
-  let best: { similarity: number; position: number } | null = null;
+  const grams = trigrams(text);
+  let best: SimilarMatch | null = null;
   for (const entry of existing) {
-    const similarity = trigramSimilarity(text, entry.text);
+    const similarity = trigramSetSimilarity(grams, trigrams(entry.text));
     if (!best || similarity > best.similarity) {
-      best = { similarity, position: entry.position };
+      best = { id: entry.id, text: entry.text, similarity };
     }
   }
   return best;

@@ -1,5 +1,6 @@
 import { AssessmentLibrary } from "~/components/assessment-library";
 import { requireOrganizationMembershipBySlug } from "~/server/auth/dal";
+import { hasPermission } from "~/server/authorization/permissions";
 import { api, HydrateClient } from "~/trpc/server";
 
 export default async function Page({
@@ -18,6 +19,10 @@ export default async function Page({
       <AssessmentLibrary
         organizationId={organizationId}
         organizationSlug={organizationSlug}
+        canGenerateEpsSet={hasPermission(
+          membership.role,
+          "organization.manage",
+        )}
       />
     </HydrateClient>
   );

@@ -25,7 +25,7 @@ describe("draft checks", () => {
         draft,
         batch: [draft],
         keywords: ["전원"],
-        similar: { similarity: 0.2, position: 4 },
+        similar: { similarity: 0.2, id: "q4", text: "점심을 먹었어요" },
         blind: { answer: 0, plausible: [0] },
       }),
     ).toEqual([]);
@@ -66,10 +66,16 @@ describe("draft checks", () => {
 
   test("similarity to the bank", () => {
     expect(similarityFlag(null)).toBeNull();
-    expect(similarityFlag({ similarity: 0.72, position: 11 })).toEqual({
+    expect(
+      similarityFlag({ similarity: 0.72, id: "q12", text: "전원을  끄십시오" }),
+    ).toEqual({
       code: "SIMILAR",
-      message: "Mirip soal bank no. 12 (72%).",
+      message: 'Mirip soal bank "전원을 끄십시오" (72%).',
     });
+    expect(
+      similarityFlag({ similarity: 0.6, id: "q1", text: "가".repeat(50) })
+        ?.message,
+    ).toBe(`Mirip soal bank "${"가".repeat(40)}…" (60%).`);
   });
 
   test("blind answers", () => {
@@ -100,9 +106,9 @@ describe("trigramSimilarity", () => {
   test("mostSimilar picks the closest question", () => {
     expect(
       mostSimilar("전원을 끄십시오", [
-        { text: "점심을 먹었어요", position: 0 },
-        { text: "전원을 끄십시오", position: 3 },
+        { id: "a", text: "점심을 먹었어요" },
+        { id: "b", text: "전원을 끄십시오" },
       ]),
-    ).toEqual({ similarity: 1, position: 3 });
+    ).toEqual({ id: "b", text: "전원을 끄십시오", similarity: 1 });
   });
 });

@@ -7,7 +7,6 @@ import {
 } from "~/lib/assessment-options";
 import {
   requireAssessmentManagement,
-  LOCKED_MESSAGE,
   requireEditableAssessment,
 } from "~/server/assessment/access";
 import type {
@@ -175,18 +174,7 @@ export async function duplicateAssessment(
   });
   if (!source) throw new TRPCError({ code: "NOT_FOUND" });
   // Same permission as `create` in the organization, plus read access to the source.
-  const managed = await requireAssessmentManagement(db, assessmentId, userId);
-  // Packages come from the bank through the generator, never as plain copies.
-  if (managed.kind === "BANK") {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Bank soal tidak bisa diduplikat.",
-    });
-  }
-  // A copy would hand out the package's keys; a new package comes from the generator.
-  if (managed.contentLocked) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: LOCKED_MESSAGE });
-  }
+  await requireAssessmentManagement(db, assessmentId, userId);
   const member = await requireContentAuthor({
     organizationId: source.organizationId,
     userId,
@@ -460,7 +448,7 @@ export async function attachAsset(
   }
   const link = { assessmentId: input.assessmentId, assetId: input.assetId };
   try {
-    const linked = await db.assessmentAsset.upsert({
+    return await db.assessmentAsset.upsert({
       where: { assessmentId_assetId: link },
       create: {
         ...link,
@@ -469,18 +457,6 @@ export async function attachAsset(
       },
       update: {},
     });
-    // Bank media are shared with every organization whose package uses them (section 3.1 of
-    // docs/eps-question-generator.md).
-    if (
-      assessment.kind === "BANK" &&
-      asset.organizationId === HAKGYO_SYSTEM_ORGANIZATION_ID
-    ) {
-      await db.asset.updateMany({
-        where: { id: asset.id, sharedAt: null },
-        data: { sharedAt: new Date() },
-      });
-    }
-    return linked;
   } catch (error) {
     // Hakgyo stopped sharing the asset after the check above (the database refuses the link).
     if (error instanceof Error && error.message.includes("is not shared")) {
@@ -503,26 +479,19 @@ export async function loadAssessmentKeyForStaff(
   db: DatabaseClient,
   assessmentId: string,
 ) {
-  const [assessment, questions] = await Promise.all([
-    db.assessment.findUnique({
-      where: { id: assessmentId },
-      select: { contentLocked: true },
-    }),
-    db.assessmentQuestion.findMany({
-      where: { assessmentId },
-      orderBy: { position: "asc" },
-      select: {
-        id: true,
-        type: true,
-        prompt: true,
-        points: true,
-        tags: true,
-        options: {
-          orderBy: { position: "asc" },
-          select: { id: true, content: true, isCorrect: true },
-        },
+  return db.assessmentQuestion.findMany({
+    where: { assessmentId },
+    orderBy: { position: "asc" },
+    select: {
+      id: true,
+      type: true,
+      prompt: true,
+      points: true,
+      tags: true,
+      options: {
+        orderBy: { position: "asc" },
+        select: { id: true, content: true, isCorrect: true },
       },
-    }),
-  ]);
-  return { contentLocked: assessment?.contentLocked ?? false, questions };
+    },
+  });
 }

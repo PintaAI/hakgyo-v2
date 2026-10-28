@@ -43,8 +43,7 @@ function omit<T extends object, K extends keyof T>(
 // and `explanation` can never be selected here.
 const learnerAssessmentSelect = learnerAssessmentItemSelect.assessment.select;
 const bundleAssessmentSelect = {
-  // `contentLocked` only decides on the server whether answers are revealed.
-  ...omit(learnerAssessmentSelect, "questions", "contentLocked"),
+  ...omit(learnerAssessmentSelect, "questions"),
   questions: {
     orderBy: learnerAssessmentSelect.questions.orderBy,
     select: {
