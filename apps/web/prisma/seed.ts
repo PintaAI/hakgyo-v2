@@ -489,6 +489,8 @@ async function main() {
     });
   }
 
+  await seedEpsSample(organization.id, teacherMembership.id);
+
   const courseItems = [
     {
       id: "seed-item-material",
@@ -618,3 +620,147 @@ main()
   .finally(async () => {
     await db.$disconnect();
   });
+
+/**
+ * A short EPS-TOPIK format sample in the library (docs/eps-topik-simulation.md section 5.10):
+ * original items written for Hakgyo, never HRDK material. The listening items carry no audio
+ * yet; add it in the editor (or with the question bank's TTS) to try the paced section.
+ */
+async function seedEpsSample(organizationId: string, membershipId: string) {
+  const paragraph = (text: string) => [{ type: "paragraph", content: text }];
+  const assessment = await db.assessment.upsert({
+    where: { id: "seed-assessment-eps-sample" },
+    update: {},
+    create: {
+      id: "seed-assessment-eps-sample",
+      organizationId,
+      createdByMembershipId: membershipId,
+      title: "Contoh pemantapan EPS-TOPIK",
+      description:
+        "Contoh singkat format EPS-TOPIK dengan soal buatan Hakgyo. Soal mendengar belum punya audio.",
+      scoreBands: [
+        { label: "Manufaktur", minPercent: 60 },
+        { label: "Sektor lain", minPercent: 45 },
+      ],
+    },
+  });
+  const sections = [
+    {
+      id: "seed-eps-section-reading",
+      position: 0,
+      title: "Membaca",
+      timeLimitSeconds: 25 * 60,
+      instructions: paragraph(
+        "Contoh bagian membaca. Kamu bisa berpindah antarsoal.",
+      ),
+    },
+    {
+      id: "seed-eps-section-listening",
+      position: 1,
+      title: "Mendengar",
+      timeLimitSeconds: 25 * 60,
+      navigation: "PACED" as const,
+      allowEarlyFinish: false,
+      audioMaxPlays: 2,
+      audioAutoplay: true,
+      pacedAnswerSeconds: 7,
+      instructions: paragraph(
+        "Contoh bagian mendengar. Audio diputar otomatis dua kali, lalu soal berganti sendiri.",
+      ),
+    },
+  ];
+  for (const section of sections) {
+    await db.assessmentSection.upsert({
+      where: { id: section.id },
+      update: {},
+      create: { ...section, assessmentId: assessment.id },
+    });
+  }
+  const questions = [
+    {
+      sectionId: "seed-eps-section-reading",
+      tags: ["eps:R4", "level:mudah", "topik:kehidupan"],
+      prompt: "밑줄 친 부분이 맞는 것을 고르십시오.",
+      options: [
+        "저는 회사에 일해요.",
+        "저는 회사에서 일해요.",
+        "저는 회사을 일해요.",
+        "저는 회사가 일해요.",
+      ],
+      correct: 1,
+    },
+    {
+      sectionId: "seed-eps-section-reading",
+      tags: ["eps:R6", "level:mudah", "topik:benda"],
+      prompt: "다음 단어와 관계있는 것을 고르십시오. 작업복",
+      options: ["옷", "음식", "날씨", "교통"],
+      correct: 0,
+    },
+    {
+      sectionId: "seed-eps-section-reading",
+      tags: ["eps:R8", "level:sedang", "topik:k3"],
+      prompt:
+        "빈칸에 들어갈 가장 알맞은 것을 고르십시오. 기계를 청소하기 전에 전원을 (     ) 합니다.",
+      options: ["꺼야", "켜야", "열어야", "닫아야"],
+      correct: 0,
+    },
+    {
+      sectionId: "seed-eps-section-reading",
+      tags: ["eps:R9", "level:sedang", "topik:alat-kerja"],
+      prompt:
+        "다음 설명에 알맞은 것을 고르십시오. 일할 때 머리를 보호하려고 씁니다.",
+      options: ["안전모", "장갑", "안전화", "마스크"],
+      correct: 0,
+    },
+    {
+      sectionId: "seed-eps-section-listening",
+      tags: ["eps:L1", "level:mudah", "topik:benda"],
+      prompt: "들은 것을 고르십시오. (Audio: 가방)",
+      options: ["가방", "가반", "가봉", "거방"],
+      correct: 0,
+    },
+    {
+      sectionId: "seed-eps-section-listening",
+      tags: ["eps:L4", "level:sedang", "topik:kehidupan"],
+      prompt: "질문에 알맞은 대답을 고르십시오. (Audio: 어디에서 일해요?)",
+      options: [
+        "공장에서 일해요.",
+        "내일 일해요.",
+        "친구하고 일해요.",
+        "열심히 일해요.",
+      ],
+      correct: 0,
+    },
+  ];
+  for (const [index, question] of questions.entries()) {
+    const id = `seed-eps-question-${index + 1}`;
+    await db.assessmentQuestion.upsert({
+      where: { id },
+      update: {},
+      create: {
+        id,
+        assessmentId: assessment.id,
+        sectionId: question.sectionId,
+        type: "SINGLE_CHOICE",
+        prompt: paragraph(question.prompt),
+        points: 2.5,
+        position: index,
+        tags: question.tags,
+      },
+    });
+    for (const [optionIndex, content] of question.options.entries()) {
+      const optionId = `${id}-option-${optionIndex + 1}`;
+      await db.assessmentOption.upsert({
+        where: { id: optionId },
+        update: {},
+        create: {
+          id: optionId,
+          questionId: id,
+          content: paragraph(content),
+          isCorrect: optionIndex === question.correct,
+          position: optionIndex,
+        },
+      });
+    }
+  }
+}

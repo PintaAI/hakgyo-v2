@@ -606,6 +606,14 @@ export const mcpDomainTools = {
       effect: "change",
     },
     {
+      action: "applyEpsTopikPreset",
+      name: "apply_eps_topik_format",
+      title: "Apply EPS-TOPIK format",
+      description:
+        "Set a Tugas up as an EPS-TOPIK mock exam (pemantapan): Membaca (25 min, free navigation) and Mendengar (25 min, paced, audio autoplays twice with a 2 s gap and a 7 s answer window), 2.5 points per question, score bands Manufaktur 60 % and Sektor lain 45 %, authored order. Without sections the first 20 questions go to Membaca and the rest to Mendengar. Refused when the Tugas has more than two sections. Confirm with the user first: it overwrites points and section settings.",
+      effect: "change",
+    },
+    {
       action: "createQuestionGroup",
       name: "add_question_group",
       title: "Add Tugas question group",

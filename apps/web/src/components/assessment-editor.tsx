@@ -61,6 +61,7 @@ import {
 import Link from "~/components/link";
 import { QuestionTagsField } from "~/components/question-tags-field";
 import { AssessmentStructureSheet } from "~/components/assessment-structure";
+import { EpsFormatPanel } from "~/components/assessment-eps-format";
 import {
   QuestionGroupButton,
   QuestionGroupCard,
@@ -539,6 +540,8 @@ export function AssessmentEditor({
   const router = useRouter();
   const utils = api.useUtils();
   const { data: session } = authClient.useSession();
+  // Bumped to remount the form from fresh data (after the EPS-TOPIK preset).
+  const [formVersion, setFormVersion] = useState(0);
   const assessment = api.assessment.get.useQuery(
     { assessmentId: assessmentId ?? "" },
     { enabled: Boolean(assessmentId) },
@@ -621,7 +624,8 @@ export function AssessmentEditor({
 
   return (
     <AssessmentEditorForm
-      key={assessment.data?.id ?? "new-assessment"}
+      key={`${assessment.data?.id ?? "new-assessment"}:${formVersion}`}
+      onReload={() => setFormVersion((value) => value + 1)}
       assessment={assessment.data}
       readOnly={readOnly}
       liveBanner={
@@ -957,10 +961,13 @@ function AssessmentEditorForm({
   onSaveOption,
   onSaveQuestion,
   onToggleCorrect,
+  onReload,
 }: {
   assessment?: Assessment;
   /** Live assessments cannot be edited; nothing may autosave. */
   readOnly: boolean;
+  /** Remounts the form from the server's data (after a change made outside the form). */
+  onReload?: () => void;
   liveBanner: ReactNode;
   draftScope?: ContentDbScope;
   canDelete: boolean;
@@ -2156,6 +2163,17 @@ function AssessmentEditorForm({
               }}
             />
           </div>
+
+          {assessment ? (
+            <div className="border-t pt-5">
+              <EpsFormatPanel
+                assessment={assessment}
+                beforeApply={autosaveRegistry.flushAll}
+                onApplied={onReload ?? (() => undefined)}
+                readOnly={readOnly}
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="border-sidebar-border grid gap-3 border-t p-4">
