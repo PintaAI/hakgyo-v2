@@ -1,4 +1,4 @@
-import { epsTagVocabulary, type EpsSection } from "./assessment-tags";
+import { epsTypes, normalizeTag, type EpsSection } from "./assessment-tags";
 
 /**
  * The 25 EPS-TOPIK question types, described once (docs/eps-question-generator.md section 2,
@@ -10,32 +10,7 @@ import { epsTagVocabulary, type EpsSection } from "./assessment-tags";
  * not be copied into the bank as they are.
  */
 
-export type EpsTypeCode =
-  | "R1"
-  | "R2"
-  | "R3"
-  | "R4"
-  | "R5"
-  | "R6"
-  | "R7"
-  | "R8"
-  | "R9"
-  | "R10"
-  | "R11"
-  | "R12"
-  | "R13"
-  | "L1"
-  | "L2"
-  | "L3"
-  | "L4"
-  | "L5"
-  | "L6"
-  | "L7"
-  | "L8"
-  | "L9"
-  | "L10"
-  | "L11"
-  | "L12";
+export type EpsTypeCode = (typeof epsTypes)[number][0];
 
 /** How a type's media are made (section 6, production lanes). */
 export type ProductionLane = "text" | "template" | "illustrated";
@@ -93,26 +68,49 @@ export type EpsTypeDefinition = {
   reviewed: boolean;
 };
 
-const nameOf = (code: EpsTypeCode) => {
-  const entry = epsTagVocabulary.find((tag) => tag.tag === `eps:${code}`);
-  if (!entry) throw new Error(`Unknown EPS type ${code}`);
-  return entry.label.slice(`${code} · `.length);
-};
+const names = new Map<string, string>(epsTypes);
 
 type Definition = Omit<
   EpsTypeDefinition,
   "tag" | "section" | "name" | "reviewed"
->;
+> & {
+  /** Set once the founder has checked the Korean of the examples. */
+  reviewed?: boolean;
+};
 
-const define = (definition: Definition): EpsTypeDefinition => ({
+const define = ({
+  reviewed = false,
+  ...definition
+}: Definition): EpsTypeDefinition => ({
   ...definition,
   tag: `eps:${definition.code}`,
   section: definition.code.startsWith("R") ? "reading" : "listening",
-  name: nameOf(definition.code),
-  reviewed: false,
+  name: names.get(definition.code)!,
+  reviewed,
 });
 
-export const epsTaxonomy: readonly EpsTypeDefinition[] = [
+/**
+ * Puts each example's key at a different position from type to type, so the reference cards show
+ * no answer-position pattern (examples are written with the key first, which is easier to review).
+ */
+function spreadKeys(types: EpsTypeDefinition[]) {
+  return types.map((type, typeIndex) => ({
+    ...type,
+    examples: type.examples.map((example, exampleIndex) => {
+      const target = ((typeIndex + exampleIndex) % 4) as EpsTypeExample["key"];
+      const options: string[] = [...example.options];
+      const [answer] = options.splice(example.key, 1);
+      options.splice(target, 0, answer!);
+      return {
+        ...example,
+        options: options as unknown as EpsTypeExample["options"],
+        key: target,
+      };
+    }),
+  }));
+}
+
+export const epsTaxonomy: readonly EpsTypeDefinition[] = spreadKeys([
   define({
     code: "R1",
     instructionKo: "다음 그림을 보고 맞는 단어나 문장을 고르십시오.",
@@ -365,10 +363,11 @@ export const epsTaxonomy: readonly EpsTypeDefinition[] = [
     examples: [
       {
         prompt:
-          "한국 사람들은 설날에 가족과 함께 떡국을 먹습니다. 떡국을 먹으면 한 살을 더 먹는다고 생각합니다.",
-        options: ["설날 음식", "생일 선물", "한국 날씨", "가족 여행"],
+          "한국 사람들은 1월 1일 아침에 가족과 함께 떡국을 먹습니다. 떡국을 먹으면 한 살을 더 먹는다고 생각합니다.",
+        options: ["새해 음식", "생일 선물", "한국 날씨", "가족 여행"],
         key: 0,
-        explanation: "Teks membahas 떡국, makanan saat 설날.",
+        explanation:
+          "Teks membahas 떡국, makanan yang dimakan pada awal tahun baru.",
       },
     ],
   }),
@@ -392,7 +391,7 @@ export const epsTaxonomy: readonly EpsTypeDefinition[] = [
         prompt:
           "신입 직원은 첫 출근 날 오전 9시에 2층 교육실에서 안전 교육을 받아야 합니다.",
         options: [
-          "신입 직원은 안전 교육을 받아야 합니다.",
+          "새로 온 직원은 처음 출근하는 날 교육을 받습니다.",
           "안전 교육은 오후에 합니다.",
           "모든 직원이 매일 교육을 받습니다.",
           "교육은 1층에서 합니다.",
@@ -419,15 +418,16 @@ export const epsTaxonomy: readonly EpsTypeDefinition[] = [
     examples: [
       {
         prompt:
-          "저는 공장에서 일합니다. 일이 끝나면 한국어 학원에 갑니다. 한국어를 잘하고 싶어서 매일 공부합니다. 이 사람은 왜 한국어를 공부합니까?",
+          "저는 공장에서 일합니다. 일이 끝나면 한국어 학원에 갑니다. 다음 달에 한국어 시험을 보기 때문에 매일 공부합니다. 이 사람은 왜 매일 공부합니까?",
         options: [
-          "한국어를 잘하고 싶어서",
+          "시험이 있어서",
           "학원이 가까워서",
           "일이 일찍 끝나서",
           "친구가 공부해서",
         ],
         key: 0,
-        explanation: "Alasannya tertulis: 한국어를 잘하고 싶어서.",
+        explanation:
+          "Ia belajar setiap hari karena bulan depan ada ujian bahasa Korea.",
       },
     ],
   }),
@@ -598,7 +598,7 @@ export const epsTaxonomy: readonly EpsTypeDefinition[] = [
     code: "L6",
     instructionKo: "대화를 듣고 알맞은 그림을 고르십시오.",
     tests: "Angka: tanggal, harga, jumlah.",
-    frequency: "always",
+    frequency: "often",
     lane: "template",
     promptMedia: "none",
     optionsAreImages: true,
@@ -713,9 +713,9 @@ export const epsTaxonomy: readonly EpsTypeDefinition[] = [
   }),
   define({
     code: "L10",
-    instructionKo: "무엇에 대해 이야기하고 있습니까?",
+    instructionKo: "무엇에 대해 말하고 있습니까?",
     tests: "Topik percakapan.",
-    frequency: "sometimes",
+    frequency: "often",
     lane: "text",
     promptMedia: "none",
     optionsAreImages: false,
@@ -725,9 +725,9 @@ export const epsTaxonomy: readonly EpsTypeDefinition[] = [
     difficulty: "Sedang.",
     examples: [
       {
-        prompt: "무엇에 대해 이야기하고 있습니까?",
+        prompt: "무엇에 대해 말하고 있습니까?",
         script:
-          "남: 주말에 뭐 했어요?\n여: 친구하고 한강에서 자전거를 탔어요. 날씨가 좋아서 재미있었어요.",
+          "남: 지난 토요일에 뭐 했어요?\n여: 친구하고 한강에서 자전거를 탔어요. 날씨가 좋아서 재미있었어요.",
         options: ["주말 활동", "날씨 예보", "친구 소개", "교통 규칙"],
         key: 0,
         explanation: "Mereka membicarakan kegiatan akhir pekan.",
@@ -791,15 +791,25 @@ export const epsTaxonomy: readonly EpsTypeDefinition[] = [
       },
     ],
   }),
-];
+]);
 
 const byCode = new Map(epsTaxonomy.map((type) => [type.code, type]));
 
+/** The type of a tag as stored or typed (`EPS:r2` finds R2). */
 export function epsTypeByTag(tag: string) {
-  return tag.startsWith("eps:")
-    ? byCode.get(tag.slice("eps:".length) as EpsTypeCode)
+  const normalized = normalizeTag(tag);
+  return normalized.startsWith("eps:")
+    ? byCode.get(normalized.slice("eps:".length) as EpsTypeCode)
     : undefined;
 }
+
+const promptMediaLabels: Record<EpsTypeDefinition["promptMedia"], string> = {
+  none: "teks",
+  image: "gambar",
+  sign: "rambu",
+  document: "dokumen",
+  chart: "grafik",
+};
 
 const laneLabels: Record<ProductionLane, string> = {
   text: "teks saja",
@@ -808,7 +818,7 @@ const laneLabels: Record<ProductionLane, string> = {
 };
 
 const audioLabels: Record<AudioShape, string> = {
-  none: "tanpa audio",
+  none: "tidak ada",
   single: "satu kata atau kalimat, satu suara",
   "prompt-and-options": "pertanyaan lalu setiap opsi dibacakan",
   dialogue: "dialog dua penutur (laki-laki dan perempuan)",
@@ -824,7 +834,7 @@ export function epsReferenceCard(type: EpsTypeDefinition) {
     `${type.code} · ${type.name} (${type.section === "reading" ? "membaca" : "mendengar"})`,
     `Instruksi: ${type.instructionKo}`,
     `Menguji: ${type.tests}`,
-    `Media: ${laneLabels[type.lane]}; soal ${type.promptMedia === "none" ? "teks" : type.promptMedia}; opsi ${type.optionsAreImages ? "gambar" : "teks"}; audio ${audioLabels[type.audio]}.`,
+    `Media: ${laneLabels[type.lane]}; soal ${promptMediaLabels[type.promptMedia]}; opsi ${type.optionsAreImages ? "gambar" : "teks"}; audio ${audioLabels[type.audio]}.`,
     `Pengecoh yang baik: ${type.distractors}`,
     `Hindari: ${type.pitfalls}`,
     `Tingkat: ${type.difficulty}`,

@@ -33,14 +33,25 @@ describe("epsTaxonomy", () => {
     }
   });
 
-  test("nothing is marked reviewed before the founder checks the Korean", () => {
-    expect(epsTaxonomy.every((type) => !type.reviewed)).toBe(true);
+  test("keys are spread over the four positions", () => {
+    const keys = epsTaxonomy.flatMap((type) =>
+      type.examples.map((example) => example.key),
+    );
+    const counts = [0, 1, 2, 3].map(
+      (position) => keys.filter((key) => key === position).length,
+    );
+    expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
+  });
+
+  test("moving the key keeps the answer", () => {
+    const r8 = epsTypeByTag("EPS:r8")!;
+    expect(r8.examples[0]!.options[r8.examples[0]!.key]).toBe("끄고");
   });
 
   test("the reference card marks the key and warns against copying", () => {
     const card = epsReferenceCard(epsTypeByTag("eps:R8")!);
     expect(card).toContain("R8 · Kalimat rumpang");
-    expect(card).toContain("① 끄고 (kunci)");
+    expect(card).toMatch(/[①②③④] 끄고 \(kunci\)/);
     expect(card).toContain("jangan disalin");
   });
 });
