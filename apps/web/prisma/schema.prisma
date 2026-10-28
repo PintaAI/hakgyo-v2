@@ -1100,9 +1100,6 @@ model Assessment {
   organizationId        String
   createdByMembershipId String
   title                 String
-  kind                  AssessmentKind            @default(STANDARD)
-  /// Generated packages: staff use and schedule it but never see its answer keys or explanations, and its questions cannot be edited (docs/eps-question-generator.md section 3).
-  contentLocked         Boolean                   @default(false)
   generation            AssessmentGeneration?
   description           String?
   editorSchemaVersion   Int                       @default(1)
@@ -1152,26 +1149,17 @@ model AssessmentQuestion {
   groupId          String?
   /// Generated sets: the bank question this copy came from (a record only; the copy is the organization's own).
   sourceQuestionId String?
-  /// Bank questions only (assessment kind BANK).
-  bankStatus       BankItemStatus?
-  /// Bank questions only: how it was made and what production still needs (origin, model, media brief, audio script, automated check flags). See server/bank/ai-drafts.ts.
-  bankMeta         Json?
   assessment       Assessment               @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   section          AssessmentSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   group            AssessmentQuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   sourceQuestion   BankQuestion?            @relation(fields: [sourceQuestionId], references: [id], onDelete: SetNull)
   options          AssessmentOption[]
   answers          AssessmentAnswer[]
-  ttsJobs          TtsJob[]
-  bankStats        BankItemStats?
 
   @@unique([assessmentId, position])
   @@index([sectionId])
   @@index([groupId])
-  @@index([assessmentId, bankStatus])
   @@index([sourceQuestionId])
-  /// The question bank picks candidates by type tag (docs/eps-question-generator.md section 4.1).
-  @@index([tags], type: Gin)
 }
 
 /// Consecutive questions that share instructions ("[1~4] 다음 그림을 보고…") and a stimulus (a passage,
@@ -1194,13 +1182,6 @@ model AssessmentQuestionGroup {
 
   @@index([assessmentId])
   @@index([sourceGroupId])
-}
-
-/// What an assessment is for: an ordinary one, the Hakgyo question bank (system organization), or a package built from the bank. See docs/eps-question-generator.md section 3.
-enum AssessmentKind {
-  STANDARD
-  BANK
-  GENERATED
 }
 
 /// The Hakgyo question bank (docs/eps-question-generator.md): system data, owned by no organization and managed from the superadmin dashboard. Generated sets copy these into an organization's own assessment, so later bank edits only reach sets made afterwards.
@@ -1260,23 +1241,6 @@ model BankGroup {
   copies       AssessmentQuestionGroup[]
 }
 
-/// How a bank question performed in the packages learners took, recomputed when an event on a package is finalized (docs/eps-question-generator.md section 5). Derived: it can be rebuilt from answers at any time.
-model BankItemStats {
-  /// The bank question.
-  questionId     String             @id
-  /// Responses pooled across every package copy (graded event attempts, one row per attempt).
-  attempts       Int
-  correctRate    Float
-  discrimination Float?
-  unansweredRate Float
-  /// Share choosing each option, keyed by the bank option's position ("0" … "3").
-  optionRates    Json
-  /// `too-hard`, `too-easy`, `low-discrimination`, `weak-distractor`, `weak-group` (another question of its group is flagged).
-  flags          String[]           @default([])
-  computedAt     DateTime
-  question       AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-}
-
 /// Where a bank question is in production; the generator only picks LIVE ones, and bank questions are retired, never deleted.
 enum BankItemStatus {
   DRAFT
@@ -1315,31 +1279,27 @@ enum TtsProvider {
 
 /// Speech for one bank question (docs/eps-question-generator.md section 6): the VPS poller runs it with VoxCPM2 on the GPU worker; jobs waiting too long, or on request, go to OpenAI. One provider per question.
 model TtsJob {
-  id                String              @id @default(cuid())
-  /// Old link to a bank question stored as an assessment question; unused, removed in the follow-up migration.
-  questionId        String?
+  id                String       @id @default(cuid())
   /// The bank question whose audio this job makes.
-  bankQuestionId    String?
+  bankQuestionId    String
   requestedByUserId String
-  status            TtsJobStatus        @default(PENDING)
+  status            TtsJobStatus @default(PENDING)
   provider          TtsProvider?
   /// The clips to speak: `[{ key: "prompt" | "option-<n>", lines: [{ voice: "M" | "F", text }] }]`.
   clips             Json
   /// Per clip key, the stored asset id.
   result            Json?
   error             String?
-  attempts          Int                 @default(0)
+  attempts          Int          @default(0)
   /// Set fresh at every claim; uploads, completion and failure must present it, so only the current run can finish the job.
   claimToken        String?
   claimedAt         DateTime?
   finishedAt        DateTime?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  question          AssessmentQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  bankQuestion      BankQuestion?       @relation(fields: [bankQuestionId], references: [id], onDelete: Cascade)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  bankQuestion      BankQuestion @relation(fields: [bankQuestionId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
-  @@index([questionId])
   @@index([bankQuestionId])
 }
 

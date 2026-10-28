@@ -158,8 +158,7 @@ export async function requestTts(
 
 /**
  * Claims up to `limit` waiting jobs for the poller (and jobs whose claim went stale), oldest first,
- * each with a fresh token. A job that used up its attempts on stale claims fails instead. Jobs of
- * the old assessment-based bank (no `bankQuestionId`) are never claimed.
+ * each with a fresh token. A job that used up its attempts on stale claims fails instead.
  */
 export async function claimTtsJobs(db: PrismaClient, limit: number) {
   const staleBefore = new Date(Date.now() - STALE_CLAIM_MS);
@@ -320,9 +319,6 @@ export async function completeTtsJob(
     if (head.ContentLength !== clip.size) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Size mismatch" });
     }
-  }
-  if (!job.bankQuestionId) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Job has no question" });
   }
   const question = await bankQuestion(db, job.bankQuestionId);
   const now = new Date();
@@ -546,7 +542,6 @@ export function overdueTtsJobs(db: PrismaClient, limit: number) {
   const now = Date.now();
   return db.ttsJob.findMany({
     where: {
-      bankQuestionId: { not: null },
       OR: [
         {
           status: "PENDING",
@@ -584,6 +579,6 @@ export async function latestTtsJobs(
       })
     : [];
   return new Map(
-    jobs.map(({ bankQuestionId, ...job }) => [bankQuestionId!, job]),
+    jobs.map(({ bankQuestionId, ...job }) => [bankQuestionId, job]),
   );
 }
