@@ -17,3 +17,4 @@ export * from "./assessment-question-rules";
 export * from "./assessment-audio";
 export * from "./assessment-groups";
 export * from "./eps-blueprint";
+export * from "./eps-taxonomy";
