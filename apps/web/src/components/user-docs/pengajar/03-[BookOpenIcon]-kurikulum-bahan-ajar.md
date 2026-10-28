@@ -189,7 +189,22 @@ Untuk simulasi ujian seperti EPS-TOPIK, tugas bisa dibagi menjadi beberapa **bag
 
 Murid mengerjakan bagian satu per satu. Sebelum setiap bagian ada layar petunjuk; bagian dimulai saat murid menekan **Mulai bagian**, atau otomatis setelah 1 menit. Bagian yang sudah selesai tidak bisa dibuka lagi. Jika semua bagian punya batas waktu, waktu tugas adalah jumlah waktu bagian, dan **Batas waktu (menit)** tugas tidak dipakai. Lihat [Tugas dengan bagian](/docs/murid/mengerjakan-tugas#tugas-dengan-bagian).
 
-Aplikasi ponsel versi lama tidak bisa membuka tugas berbagian; murid diminta memperbarui aplikasinya.
+#### Aturan soal dan audio di setiap bagian
+
+Di pengaturan bagian (ikon pensil) ada aturan tambahan:
+
+- **Perpindahan soal**:
+  - **Bebas**: murid bisa pindah ke soal mana saja dan mengubah jawaban. Ini pilihan awal.
+  - **Maju saja**: soal yang sudah dilewati tidak bisa dibuka lagi.
+  - **Diatur sistem**: soal berganti sendiri, seperti bagian mendengar EPS-TOPIK. Audio soal diputar otomatis, lalu waktu menjawab berjalan (**Waktu menjawab setelah audio**, awalnya 7 detik). Soal tanpa audio memakai **Waktu soal tanpa audio** (awalnya 30 detik). Setelah soal terakhir, bagian selesai sendiri.
+- **Kunci jawaban pertama**: pilihan pertama di soal pilihan tunggal tidak bisa diganti.
+- **Boleh selesai lebih awal**: murid bisa menekan **Selesai bagian ini** sebelum waktunya habis.
+- **Batas putar audio per soal**: misalnya 2. Audio soal dan audio pilihan jawaban diputar berurutan dan dihitung satu kali putar. Dengan batas, audio tidak bisa digeser atau dijeda, dan murid melihat tulisan seperti "Diputar 1 dari 2". Kosongkan untuk tanpa batas.
+- **Putar audio otomatis**: audio mulai sendiri saat soal tampil, sampai batas putar habis, dengan **Jeda sebelum diputar lagi** di antara putaran.
+
+Putaran audio dicatat di server, jadi memuat ulang halaman tidak menambah jatah putar.
+
+Aplikasi ponsel versi lama tidak bisa membuka tugas berbagian atau tugas dengan aturan ini; murid diminta memperbarui aplikasinya.
 
 Soal baru masuk ke bagian terakhir. Menghapus bagian tidak menghapus soalnya: soal dipindahkan ke bagian sebelumnya. Jika bagian terakhir dihapus, tugas kembali menjadi satu kesatuan tanpa bagian.
 

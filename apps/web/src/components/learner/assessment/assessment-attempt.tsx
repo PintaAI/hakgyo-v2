@@ -5,11 +5,16 @@ import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
+  answerHasContent,
   assessmentContentAssetIds,
   canFinishSection,
   createLogEntry,
   formatScoreOutOf,
+  isForwardOnly,
   MAX_LOG_ENTRIES_PER_WRITE,
+  pacedQuestionEndsAt,
+  questionAudioSources,
+  sectionAudioPolicy,
   sectionTimeline,
   sectionView,
   type AttemptLogEntry,
@@ -52,6 +57,10 @@ import {
 import { ScoreBandResults } from "~/components/learner/assessment/score-band-results";
 import { TagResults } from "~/components/learner/assessment/tag-results";
 import { SectionIntro } from "~/components/learner/assessment/section-intro";
+import {
+  AssessmentAudioPlayer,
+  useAttemptAudio,
+} from "~/components/learner/assessment/assessment-audio-player";
 import { AssessmentResultReview } from "./assessment-result-review";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
@@ -65,6 +74,10 @@ type Answer = {
 // Results wait on a teacher review or on the event closing, which can take
 // hours, so waiting for one polls slowly.
 const AWAITING_REVIEW_POLL_MS = 60_000;
+
+// Audio of the content itself, hidden while a section plays it through the controlled player.
+const hiddenContentAudio =
+  "[&_[data-content-type=assetAudio]]:hidden [&_[data-content-type=audio]]:hidden";
 
 /** Device time shifted by the measured offset to the server's clock. */
 function correctedNow(offsetMs: number) {
@@ -176,6 +189,18 @@ export function AssessmentAttempt({
     TimelineEntry[]
   >([]);
   const [now, setNow] = useState(serverTime);
+  // Section rules (docs/eps-topik-simulation.md section 5.6) on top of what the server counted:
+  // the furthest position reached per section and plays per question, both absolute so a
+  // refetched server count never adds to them.
+  const [reached, setReached] = useState<Record<string, number>>({});
+  const [localPlays, setLocalPlays] = useState<Record<string, number>>({});
+  // Paced sections: when the question on screen showed and when its audio finished.
+  const [pacedClock, setPacedClock] = useState<{
+    questionId: string;
+    shownAt: Date;
+    audioEndedAt: Date | null;
+  } | null>(null);
+  const attemptAudio = useAttemptAudio();
   const [dirty, setDirty] = useState(false);
   const progress = api.assessment.recordProgress.useMutation();
   const submit = api.assessment.submitAttempt.useMutation();
@@ -220,12 +245,33 @@ export function AssessmentAttempt({
   const sectionIndexes = assessment.questions.flatMap((entry, index) =>
     !activeSection || entry.sectionId === activeSection.id ? [index] : [],
   );
-  // The shown question stays inside the running section (derived, not corrected in an effect).
-  const current =
-    activeSection && !sectionIndexes.includes(selected)
-      ? (sectionIndexes[0] ?? selected)
-      : selected;
+  const forwardOnly = isForwardOnly(activeSection?.navigation);
+  const paced = activeSection?.navigation === "PACED";
+  const furthestInSection = activeSection
+    ? Math.max(
+        assessment.questionProgress.furthest[activeSection.id] ?? -1,
+        reached[activeSection.id] ?? -1,
+      )
+    : -1;
+  // The shown question stays inside the running section, and in a forward-only one never before
+  // the furthest question reached (derived, not corrected in an effect).
+  const selectedPosition = Math.max(0, sectionIndexes.indexOf(selected));
+  const current = activeSection
+    ? (sectionIndexes[
+        forwardOnly
+          ? Math.max(selectedPosition, furthestInSection)
+          : selectedPosition
+      ] ?? selected)
+    : selected;
   const question = assessment.questions[current];
+  const playsOf = (questionId: string) =>
+    Math.max(
+      assessment.questionProgress.plays[questionId] ?? 0,
+      localPlays[questionId] ?? 0,
+    );
+  const audioPolicy = sectionAudioPolicy(activeSection);
+  const audioSources =
+    question && audioPolicy ? questionAudioSources(question) : [];
   const statuses: QuestionStatus[] = assessment.questions.map((entry) =>
     isQuestionAnswered(answers[entry.id]) ? "answered" : "unanswered",
   );
@@ -256,13 +302,28 @@ export function AssessmentAttempt({
   const sectionAnswered = sectionStatuses.filter(
     (status) => status === "answered",
   ).length;
+  // Forward-only sections cannot wrap around to earlier questions.
   const nextUnansweredInSection =
     sectionIndexes.find(
       (index, position) =>
         position > positionInSection && statuses[index] === "unanswered",
-    ) ?? sectionIndexes.find((index) => statuses[index] === "unanswered");
+    ) ??
+    (forwardOnly
+      ? undefined
+      : sectionIndexes.find((index) => statuses[index] === "unanswered"));
+  const pacedEndsAt =
+    paced && activeSection && question && pacedClock?.questionId === question.id
+      ? pacedQuestionEndsAt({
+          section: activeSection,
+          hasAudio: audioSources.length > 0,
+          shownAt: pacedClock.shownAt,
+          audioEndedAt: pacedClock.audioEndedAt,
+        })
+      : null;
   const [finishSectionOpen, setFinishSectionOpen] = useState(false);
   const autoSubmitTried = useRef(false);
+  // The paced section whose end was logged, so a tick does not log it twice.
+  const pacedEndedSection = useRef<string | null>(null);
 
   const pushEntry = (
     kind: AttemptLogEntry["kind"],
@@ -298,6 +359,36 @@ export function AssessmentAttempt({
         ]);
       }
     }
+  };
+
+  /** Shows a question and records how far its section got (forward-only sections stay there). */
+  const goTo = (index: number) => {
+    setCurrent(index);
+    const sectionId = assessment.questions[index]?.sectionId;
+    const position = sectionIndexes.indexOf(index);
+    if (sectionId && position >= 0) {
+      setReached((value) => ({
+        ...value,
+        [sectionId]: Math.max(value[sectionId] ?? -1, position),
+      }));
+    }
+  };
+
+  const recordPlay = (questionId: string) => {
+    setLocalPlays((value) => ({
+      ...value,
+      [questionId]: Math.max(value[questionId] ?? 0, playsOf(questionId)) + 1,
+    }));
+    pushEntry("AUDIO_PLAYED", { questionId });
+  };
+
+  const audioFinished = (questionId: string) => {
+    const endedAt = correctedNow(clockOffset);
+    setPacedClock((clock) =>
+      clock?.questionId === questionId
+        ? { ...clock, audioEndedAt: clock.audioEndedAt ?? endedAt }
+        : { questionId, shownAt: endedAt, audioEndedAt: endedAt },
+    );
   };
 
   const editAnswer = (
@@ -538,6 +629,35 @@ export function AssessmentAttempt({
       autoSubmitTried.current = true;
       void submitAssessment();
     }
+    // Paced sections move on by themselves once the question's time is up.
+    if (
+      !paced ||
+      !activeSection ||
+      !question ||
+      busy ||
+      tickView.mode !== "answering" ||
+      tickView.sectionId !== activeSection.id
+    ) {
+      return;
+    }
+    if (pacedClock?.questionId !== question.id) {
+      setPacedClock({
+        questionId: question.id,
+        shownAt: tickAt,
+        audioEndedAt: null,
+      });
+      return;
+    }
+    if (!pacedEndsAt || tickAt < pacedEndsAt) return;
+    if (positionInSection < sectionIndexes.length - 1) {
+      goTo(sectionIndexes[positionInSection + 1]!);
+    } else if (pacedEndedSection.current !== activeSection.id) {
+      // The last question's time is up: the section ends (the server allows it once the last
+      // question was shown).
+      pacedEndedSection.current = activeSection.id;
+      pushEntry("SECTION_ENDED", { sectionId: activeSection.id });
+      setFlushRequest((value) => value + 1);
+    }
   });
   useEffect(() => {
     if (!sectioned || isFinished) return;
@@ -553,6 +673,8 @@ export function AssessmentAttempt({
 
   const startSection = () => {
     if (view?.mode !== "intro" || busy) return;
+    // The tap lets the section's audio play by itself afterwards.
+    attemptAudio.unlock();
     pushEntry("SECTION_STARTED", { sectionId: view.sectionId });
     setFlushRequest((value) => value + 1);
   };
@@ -572,7 +694,7 @@ export function AssessmentAttempt({
   }, [current]);
 
   const chooseOption = (optionId: string) => {
-    if (!question || busy || expired || isFinished) return;
+    if (!question || busy || expired || isFinished || answerLocked) return;
     editAnswer(question.id, (currentAnswers) => {
       const existing = currentAnswers[question.id]?.optionIds ?? [];
       const optionIds =
@@ -584,6 +706,13 @@ export function AssessmentAttempt({
       return { questionId: question.id, optionIds };
     });
   };
+
+  // A locked section keeps the first choice of a single-choice question.
+  const answerLocked = Boolean(
+    activeSection?.lockAnswers &&
+    question?.type === "SINGLE_CHOICE" &&
+    answerHasContent(answers[question.id] ?? {}),
+  );
 
   const leaveHref = assessment.event
     ? `/learn/assessments/${assessment.event.id}`
@@ -803,8 +932,41 @@ export function AssessmentAttempt({
             onOpen={() => setNavigatorOpen(true)}
             disabled={busy}
           >
-            <RichContent content={question.prompt} />
+            {/* Controlled audio replaces the content's own players. */}
+            <div className={cn(audioPolicy && hiddenContentAudio)}>
+              <RichContent content={question.prompt} />
+            </div>
           </AssessmentQuestion>
+
+          {audioPolicy && audioSources.length ? (
+            <AssessmentAudioPlayer
+              key={question.id}
+              audio={attemptAudio}
+              disabled={busy || expired}
+              onFinished={() => audioFinished(question.id)}
+              onPlayStarted={() => recordPlay(question.id)}
+              playsUsed={playsOf(question.id)}
+              policy={audioPolicy}
+              sources={audioSources}
+            />
+          ) : null}
+          {pacedEndsAt ? (
+            <p
+              aria-live="off"
+              className="text-muted-foreground text-sm font-semibold tabular-nums"
+            >
+              {positionInSection < sectionIndexes.length - 1
+                ? "Soal berikutnya"
+                : "Bagian selesai"}{" "}
+              dalam{" "}
+              {formatRemaining(
+                Math.max(
+                  0,
+                  Math.ceil((pacedEndsAt.getTime() - now.getTime()) / 1000),
+                ),
+              )}
+            </p>
+          ) : null}
 
           <p className="text-sm font-bold">
             {question.type === "WRITTEN"
@@ -842,18 +1004,27 @@ export function AssessmentAttempt({
                   index={optionIndex}
                   selected={answer?.optionIds.includes(option.id) ?? false}
                   multiple={question.type === "MULTIPLE_CHOICE"}
-                  disabled={busy || expired}
+                  disabled={busy || expired || answerLocked}
                   onPress={() => chooseOption(option.id)}
                 >
-                  <RichContent content={option.content} />
+                  <div className={cn(audioPolicy && hiddenContentAudio)}>
+                    <RichContent content={option.content} />
+                  </div>
                 </AssessmentOption>
               ))}
             </div>
           )}
 
           <p className="text-muted-foreground text-xs leading-5">
-            Kamu bisa mengubah jawaban sampai mengirimnya. Jawaban tersimpan
-            otomatis selama kamu mengerjakan.
+            {paced
+              ? "Soal berganti sendiri setelah waktunya habis. "
+              : forwardOnly
+                ? "Soal yang sudah dilewati tidak bisa dibuka lagi. "
+                : ""}
+            {activeSection?.lockAnswers
+              ? "Pilihan pertama kamu langsung dikunci."
+              : "Kamu bisa mengubah jawaban sampai mengirimnya."}{" "}
+            Jawaban tersimpan otomatis selama kamu mengerjakan.
             {secondsLeft !== null || sectionSecondsLeft !== null
               ? " Timer tetap berjalan meski kamu keluar."
               : ""}
@@ -861,26 +1032,25 @@ export function AssessmentAttempt({
 
           <div className="border-border flex flex-col gap-3 border-t pt-4">
             <div className="flex gap-3">
-              {positionInSection > 0 ? (
+              {positionInSection > 0 && !forwardOnly ? (
                 <Button
                   variant="secondary"
                   className="flex-1"
                   disabled={busy}
-                  onClick={() =>
-                    setCurrent(sectionIndexes[positionInSection - 1]!)
-                  }
+                  onClick={() => goTo(sectionIndexes[positionInSection - 1]!)}
                 >
                   Sebelumnya
                 </Button>
               ) : null}
-              {!isLastInSection ||
-              (nextUnansweredInSection !== undefined &&
-                nextUnansweredInSection !== current) ? (
+              {!paced &&
+              (!isLastInSection ||
+                (nextUnansweredInSection !== undefined &&
+                  nextUnansweredInSection !== current)) ? (
                 <Button
                   className="flex-1"
                   disabled={busy}
                   onClick={() =>
-                    setCurrent(
+                    goTo(
                       isLastInSection
                         ? nextUnansweredInSection!
                         : sectionIndexes[positionInSection + 1]!,
@@ -950,8 +1120,10 @@ export function AssessmentAttempt({
             current={Math.max(0, positionInSection)}
             statuses={sectionStatuses}
             onSelect={(index) => {
-              if (busy) return false;
-              setCurrent(sectionIndexes[index] ?? current);
+              // Paced sections move by themselves; forward-only ones only ahead.
+              if (busy || paced || (forwardOnly && index < positionInSection))
+                return false;
+              goTo(sectionIndexes[index] ?? current);
               return true;
             }}
           />

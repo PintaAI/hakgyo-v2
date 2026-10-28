@@ -1,7 +1,13 @@
 import {
+  answerHasContent,
   assessmentContentAssetIds,
   canFinishSection,
   formatScoreOutOf,
+  isForwardOnly,
+  pacedQuestionEndsAt,
+  questionAudioSources,
+  ruleStateFrom,
+  sectionAudioPolicy,
   sectionTimeline,
   sectionView,
   type AttemptLogEntry,
@@ -19,6 +25,7 @@ import {
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
 import { ScoreBandResults } from "../../../../../../src/components/score-band-results";
 import { SectionIntro } from "../../../../../../src/components/section-intro";
+import { AssessmentAudioPlayer } from "../../../../../../src/components/assessment-audio-player";
 import { TagResults } from "../../../../../../src/components/tag-results";
 import {
   AssessmentOption,
@@ -63,6 +70,9 @@ import { firstParam } from "../../../../../../src/lib/route-params";
 import { SymbolIcon } from "../../../../../../src/components/ui/symbol-icon";
 
 type Answer = { content?: string; optionIds: string[] };
+
+// Audio of the content itself, hidden while a section plays it through the controlled player.
+const hiddenAudioRenderers = { assetAudio: () => null, audio: () => null };
 
 function buildAnswerPayload(
   questions: readonly { id: string; type: string }[] | undefined,
@@ -206,6 +216,17 @@ function AssessmentAttemptContent({
     TimelineEntry[]
   >([]);
   const [now, setNow] = useState(() => new Date());
+  // Section rules (docs/eps-topik-simulation.md section 5.6) from this device's log on top of what
+  // the server counted: the furthest position reached per section and plays per question.
+  const [reached, setReached] = useState<Record<string, number>>({});
+  const [localPlays, setLocalPlays] = useState<Record<string, number>>({});
+  // Paced sections: when the question on screen showed and when its audio finished.
+  const [pacedClock, setPacedClock] = useState<{
+    questionId: string;
+    shownAt: Date;
+    audioEndedAt: Date | null;
+  } | null>(null);
+  const pacedEndedSection = useRef<string | null>(null);
   const storageKey = session
     ? `hakgyo:attempt:v1:${session.user.id}:${attemptId}`
     : null;
@@ -290,6 +311,20 @@ function AssessmentAttemptContent({
             : [],
         ),
       );
+      // Plays and positions logged on this device before a restart still count. Questions are
+      // in the order shown.
+      const questions = assessment.data.questions;
+      const rules = ruleStateFrom(
+        assessment.data.sections.map((section) => ({
+          ...section,
+          questionIds: questions
+            .filter((entry) => entry.sectionId === section.id)
+            .map((entry) => entry.id),
+        })),
+        log.entries,
+      );
+      setReached(Object.fromEntries(rules.furthest));
+      setLocalPlays(Object.fromEntries(rules.plays));
       setLogReady(true);
     }
     setAnswers(saved);
@@ -407,11 +442,24 @@ function AssessmentAttemptContent({
     (entry, index) =>
       !activeSection || entry.sectionId === activeSection.id ? [index] : [],
   );
-  // The shown question stays inside the running section.
-  const currentIndex =
-    activeSection && !sectionIndexes.includes(selectedIndex)
-      ? (sectionIndexes[0] ?? selectedIndex)
-      : selectedIndex;
+  const forwardOnly = isForwardOnly(activeSection?.navigation);
+  const paced = activeSection?.navigation === "PACED";
+  const furthestInSection = activeSection
+    ? Math.max(
+        assessment.data?.questionProgress.furthest[activeSection.id] ?? -1,
+        reached[activeSection.id] ?? -1,
+      )
+    : -1;
+  // The shown question stays inside the running section, and in a forward-only one never before
+  // the furthest question reached.
+  const selectedPosition = Math.max(0, sectionIndexes.indexOf(selectedIndex));
+  const currentIndex = activeSection
+    ? (sectionIndexes[
+        forwardOnly
+          ? Math.max(selectedPosition, furthestInSection)
+          : selectedPosition
+      ] ?? selectedIndex)
+    : selectedIndex;
   const positionInSection = sectionIndexes.indexOf(currentIndex);
   const isLastInSection = positionInSection === sectionIndexes.length - 1;
   const isLastSection =
@@ -433,6 +481,29 @@ function AssessmentAttemptContent({
   const sectionExpired = sectionSecondsLeft === 0;
 
   const question = assessment.data?.questions[currentIndex];
+  const playsOf = (questionId: string) =>
+    Math.max(
+      assessment.data?.questionProgress.plays[questionId] ?? 0,
+      localPlays[questionId] ?? 0,
+    );
+  const audioPolicy = sectionAudioPolicy(activeSection);
+  const audioSources =
+    question && audioPolicy ? questionAudioSources(question) : [];
+  const pacedEndsAt =
+    paced && activeSection && question && pacedClock?.questionId === question.id
+      ? pacedQuestionEndsAt({
+          section: activeSection,
+          hasAudio: audioSources.length > 0,
+          shownAt: pacedClock.shownAt,
+          audioEndedAt: pacedClock.audioEndedAt,
+        })
+      : null;
+  // A locked section keeps the first choice of a single-choice question.
+  const answerLocked = Boolean(
+    activeSection?.lockAnswers &&
+    question?.type === "SINGLE_CHOICE" &&
+    answerHasContent(answers[question.id] ?? {}),
+  );
   const statuses: QuestionStatus[] = useMemo(
     () =>
       (assessment.data?.questions ?? []).map((item) =>
@@ -448,12 +519,15 @@ function AssessmentAttemptContent({
   const sectionAnswered = sectionStatuses.filter(
     (status) => status === "answered",
   ).length;
+  // Forward-only sections cannot wrap around to earlier questions.
   const nextUnanswered =
     sectionIndexes.find(
       (index, position) =>
         position > positionInSection && statuses[index] === "unanswered",
     ) ??
-    sectionIndexes.find((index) => statuses[index] === "unanswered") ??
+    (forwardOnly
+      ? undefined
+      : sectionIndexes.find((index) => statuses[index] === "unanswered")) ??
     -1;
   const openQuestions = useQuestionNavigator({
     title: activeSection?.title ?? assessment.data?.title ?? "Tugas",
@@ -461,7 +535,14 @@ function AssessmentAttemptContent({
     statuses: sectionStatuses,
     onSelect: async (position) => {
       const index = sectionIndexes[position];
-      if (index === undefined || result || operationPending.current) {
+      // Paced sections move by themselves; forward-only ones only ahead.
+      if (
+        index === undefined ||
+        result ||
+        operationPending.current ||
+        paced ||
+        (forwardOnly && position < positionInSection)
+      ) {
         return false;
       }
       if (expired || sectionExpired) {
@@ -515,6 +596,65 @@ function AssessmentAttemptContent({
     }).catch(() => undefined);
   }
 
+  // Paced sections move on by themselves once the question's time is up.
+  useEffect(() => {
+    if (
+      !paced ||
+      !activeSection ||
+      !question ||
+      busy ||
+      result ||
+      view?.mode !== "answering"
+    ) {
+      return;
+    }
+    if (pacedClock?.questionId !== question.id) {
+      setPacedClock({
+        questionId: question.id,
+        shownAt: now,
+        audioEndedAt: null,
+      });
+      return;
+    }
+    if (!pacedEndsAt || now < pacedEndsAt) return;
+    if (!isLastInSection) {
+      void save(sectionIndexes[positionInSection + 1]!);
+    } else if (pacedEndedSection.current !== activeSection.id) {
+      // The last question's time is up: the section ends (the server allows it once the last
+      // question was shown).
+      pacedEndedSection.current = activeSection.id;
+      logAnswerChanges(answers);
+      logSectionEntry("SECTION_ENDED", activeSection.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs with the section clock
+  }, [now]);
+
+  function recordPlay(questionId: string) {
+    setLocalPlays((value) => ({
+      ...value,
+      [questionId]: Math.max(value[questionId] ?? 0, playsOf(questionId)) + 1,
+    }));
+    const log = attemptLog.current;
+    if (!log || !session) return;
+    attemptLog.current = appendAttemptLog(log, "AUDIO_PLAYED", { questionId });
+    try {
+      saveAttemptLog(session.user.id, attemptId, attemptLog.current);
+    } catch {
+      // The in-memory log is sent with the next operation.
+    }
+  }
+
+  function audioFinished(questionId: string) {
+    const endedAt = attemptLog.current
+      ? correctedNow(attemptLog.current)
+      : new Date();
+    setPacedClock((clock) =>
+      clock?.questionId === questionId
+        ? { ...clock, audioEndedAt: clock.audioEndedAt ?? endedAt }
+        : { questionId, shownAt: endedAt, audioEndedAt: endedAt },
+    );
+  }
+
   function startSection() {
     if (view?.mode !== "intro" || busy) return;
     logSectionEntry("SECTION_STARTED", view.sectionId);
@@ -561,7 +701,7 @@ function AssessmentAttemptContent({
   }, [shownQuestionId, logReady]);
 
   function chooseOption(optionId: string) {
-    if (!question || busy || expired || result) return;
+    if (!question || busy || expired || result || answerLocked) return;
     setAnswers((current) => {
       const existing = current[question.id] ?? { optionIds: [] };
       const optionIds =
@@ -589,7 +729,25 @@ function AssessmentAttemptContent({
       }
     }
     setHasUnsavedAnswers(false);
-    if (nextIndex !== undefined) setCurrentIndex(nextIndex);
+    if (nextIndex !== undefined) {
+      // Answers are logged before the next question shows, so forward-only rules accept them.
+      if (logAnswerChanges(answers)) {
+        void queueAssessmentProgress({
+          attemptId,
+          entries: attemptLog.current?.entries ?? [],
+          organizationId: activeOrganizationId ?? undefined,
+        }).catch(() => undefined);
+      }
+      setCurrentIndex(nextIndex);
+      const sectionId = assessment.data?.questions[nextIndex]?.sectionId;
+      const position = sectionIndexes.indexOf(nextIndex);
+      if (sectionId && position >= 0) {
+        setReached((value) => ({
+          ...value,
+          [sectionId]: Math.max(value[sectionId] ?? -1, position),
+        }));
+      }
+    }
     return true;
   }
 
@@ -956,9 +1114,33 @@ function AssessmentAttemptContent({
           >
             <NativeContentRenderer
               content={question.prompt}
+              renderers={audioPolicy ? hiddenAudioRenderers : undefined}
               resolveAssetUrl={resolveAssetUrl}
             />
           </AssessmentQuestion>
+          {audioPolicy && audioSources.length ? (
+            <AssessmentAudioPlayer
+              key={question.id}
+              disabled={busy || expired || sectionExpired}
+              onFinished={() => audioFinished(question.id)}
+              onPlayStarted={() => recordPlay(question.id)}
+              playsUsed={playsOf(question.id)}
+              policy={audioPolicy}
+              resolveAssetUrl={resolveAssetUrl}
+              sources={audioSources}
+            />
+          ) : null}
+          {pacedEndsAt ? (
+            <Text className="text-sm font-semibold tabular-nums text-muted-foreground">
+              {isLastInSection ? "Bagian selesai" : "Soal berikutnya"} dalam{" "}
+              {formatRemaining(
+                Math.max(
+                  0,
+                  Math.ceil((pacedEndsAt.getTime() - now.getTime()) / 1000),
+                ),
+              )}
+            </Text>
+          ) : null}
           <Text className="text-sm font-bold text-foreground">
             {question.type === "WRITTEN"
               ? "Tulis jawaban kamu"
@@ -995,11 +1177,12 @@ function AssessmentAttemptContent({
                     answers[question.id]?.optionIds.includes(option.id) ?? false
                   }
                   multiple={question.type === "MULTIPLE_CHOICE"}
-                  disabled={busy || expired || sectionExpired}
+                  disabled={busy || expired || sectionExpired || answerLocked}
                   onPress={() => chooseOption(option.id)}
                 >
                   <NativeContentRenderer
                     content={option.content}
+                    renderers={audioPolicy ? hiddenAudioRenderers : undefined}
                     resolveAssetUrl={resolveAssetUrl}
                   />
                 </AssessmentOption>
@@ -1007,8 +1190,15 @@ function AssessmentAttemptContent({
             </View>
           )}
           <Text className="text-xs leading-5 text-muted-foreground">
-            Kamu bisa mengubah jawaban sampai mengirimnya. Draf tersimpan di
-            perangkat ini selama kamu mengerjakan.
+            {paced
+              ? "Soal berganti sendiri setelah waktunya habis. "
+              : forwardOnly
+                ? "Soal yang sudah dilewati tidak bisa dibuka lagi. "
+                : ""}
+            {activeSection?.lockAnswers
+              ? "Pilihan pertama kamu langsung dikunci."
+              : "Kamu bisa mengubah jawaban sampai mengirimnya."}{" "}
+            Draf tersimpan di perangkat ini selama kamu mengerjakan.
             {deadline !== null || sectionSecondsLeft !== null
               ? " Timer tetap berjalan meski kamu keluar."
               : ""}
@@ -1031,7 +1221,7 @@ function AssessmentAttemptContent({
           ) : null}
           <View className="gap-3 border-t border-border pt-4">
             <View className="flex-row gap-3">
-              {positionInSection > 0 ? (
+              {positionInSection > 0 && !forwardOnly ? (
                 <View className="flex-1">
                   <StudyAction
                     secondary
@@ -1046,8 +1236,9 @@ function AssessmentAttemptContent({
                   </StudyAction>
                 </View>
               ) : null}
-              {!isLastInSection ||
-              (nextUnanswered >= 0 && nextUnanswered !== currentIndex) ? (
+              {!paced &&
+              (!isLastInSection ||
+                (nextUnanswered >= 0 && nextUnanswered !== currentIndex)) ? (
                 <View className="flex-1">
                   <StudyAction
                     disabled={busy}

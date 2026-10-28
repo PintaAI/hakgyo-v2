@@ -1,4 +1,7 @@
-import { SECTIONS_RUNTIME_VERSION } from "@hakgyo/shared";
+import {
+  QUESTION_RULES_RUNTIME_VERSION,
+  SECTIONS_RUNTIME_VERSION,
+} from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -495,18 +498,28 @@ async function requireRuntimeFor(
   courseItemId: string,
   runtimeVersion: number | undefined,
 ) {
-  if ((runtimeVersion ?? 1) >= SECTIONS_RUNTIME_VERSION) return;
-  const sectioned = await ctx.db.assessmentSection.count({
+  const version = runtimeVersion ?? 1;
+  if (version >= QUESTION_RULES_RUNTIME_VERSION) return;
+  const sections = await ctx.db.assessmentSection.findMany({
     where: {
       assessment: { courseItems: { some: { id: courseItemId } } },
       questions: { some: {} },
     },
+    select: { navigation: true, lockAnswers: true, audioMaxPlays: true },
   });
-  if (sectioned) {
+  if (!sections.length) return;
+  const needsRules = sections.some(
+    (section) =>
+      section.navigation !== "FREE" ||
+      section.lockAnswers ||
+      section.audioMaxPlays !== null,
+  );
+  if (version < SECTIONS_RUNTIME_VERSION || needsRules) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message:
-        "Perbarui aplikasi Hakgyo untuk mengerjakan tugas ini. Tugas ini memakai bagian dengan waktu sendiri.",
+      message: needsRules
+        ? "Perbarui aplikasi Hakgyo untuk mengerjakan tugas ini. Tugas ini memakai aturan soal dan audio yang baru."
+        : "Perbarui aplikasi Hakgyo untuk mengerjakan tugas ini. Tugas ini memakai bagian dengan waktu sendiri.",
     });
   }
 }

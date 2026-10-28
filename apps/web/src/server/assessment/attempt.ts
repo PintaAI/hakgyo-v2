@@ -297,7 +297,7 @@ export async function gradeInProgressAttempt(
         event: attempt.assessmentEvent,
         sections: attempt.assessment.sections,
       }),
-      plan: await loadSectionPlan(tx, attempt.assessmentId),
+      plan: await loadSectionPlan(tx, attempt.assessmentId, attempt.id),
       entries: await loadSectionEntries(tx, attempt.id),
       now,
       submittedAt: options.submittedAt ?? now,

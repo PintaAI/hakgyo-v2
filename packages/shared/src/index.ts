@@ -13,3 +13,5 @@ export * from "./assessment-tags";
 export * from "./item-analysis";
 export * from "./assessment-runtime";
 export * from "./assessment-section-timeline";
+export * from "./assessment-question-rules";
+export * from "./assessment-audio";

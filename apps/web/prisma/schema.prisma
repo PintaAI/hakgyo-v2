@@ -584,6 +584,7 @@ enum AssessmentLogKind {
   SUBMITTED
   SECTION_STARTED
   SECTION_ENDED
+  AUDIO_PLAYED
 }
 
 enum AssessmentSectionEndReason {

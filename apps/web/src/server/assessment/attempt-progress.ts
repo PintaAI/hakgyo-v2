@@ -102,7 +102,7 @@ async function applyEntries(
       select: { at: true },
     }),
     // Unsectioned attempts (most autosaves) skip the section lookups.
-    sectioned ? loadSectionPlan(tx, attempt.assessmentId) : [],
+    sectioned ? loadSectionPlan(tx, attempt.assessmentId, attempt.id) : [],
     sectioned ? loadSectionEntries(tx, attempt.id) : [],
   ]);
   const deadline = attemptDeadline({
@@ -397,21 +397,13 @@ export async function inTimeEntryAnswers(
     },
   });
   if (!attempt) return [];
-  const [plan, storedSectionEntries] = await Promise.all([
-    loadSectionPlan(db, attempt.assessmentId),
-    db.assessmentAttemptLog.findMany({
-      where: {
-        attemptId,
-        kind: { in: ["SECTION_STARTED", "SECTION_ENDED", "SUBMITTED"] },
-      },
-      select: { seq: true, kind: true, sectionId: true, at: true },
-    }),
+  const [plan, storedEntries] = await Promise.all([
+    loadSectionPlan(db, attempt.assessmentId, attemptId),
+    loadSectionEntries(db, attemptId),
   ]);
-  // Section starts and ends this device did not write (another tab or device) still count.
+  // Entries this device did not write (another tab or device) still count.
   const ownSeqs = new Set(entries.map((entry) => entry.seq));
-  const otherSectionEntries = storedSectionEntries.filter(
-    (entry) => !ownSeqs.has(entry.seq),
-  );
+  const otherEntries = storedEntries.filter((entry) => !ownSeqs.has(entry.seq));
   const replay = acceptLogEntries({
     entries,
     lastSeq: 0,
@@ -426,7 +418,7 @@ export async function inTimeEntryAnswers(
     receivedAt: new Date(),
     source: "MOBILE",
     questionIds: new Set(attempt.assessment.questions.map(({ id }) => id)),
-    sections: { list: plan, priorEntries: otherSectionEntries },
+    sections: { list: plan, priorEntries: otherEntries },
   });
   return latestAnswers(replay.accepted).map(
     ({ questionId, optionIds, content }) => ({
