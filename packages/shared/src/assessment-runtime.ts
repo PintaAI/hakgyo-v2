@@ -25,14 +25,17 @@ import {
  *
  * Version 1 enforced time; version 2 adds sections (`assessment-section-timeline.ts`); version 3
  * adds forward-only and paced navigation, answer locks and audio play limits
- * (`assessment-question-rules.ts`). `RUNTIME_VERSION` says which rules a client knows, and old
- * clients are refused attempts that need newer rules.
+ * (`assessment-question-rules.ts`); version 4 shows question groups (`assessment-groups.ts`).
+ * `RUNTIME_VERSION` says which rules a client knows, and old clients are refused attempts that need
+ * newer rules.
  */
-export const RUNTIME_VERSION = 3;
+export const RUNTIME_VERSION = 4;
 /** The first runtime version that understands sections. */
 export const SECTIONS_RUNTIME_VERSION = 2;
 /** The first runtime version that understands navigation, lock and audio rules. */
 export const QUESTION_RULES_RUNTIME_VERSION = 3;
+/** The first runtime version that shows question groups (shared instructions and stimulus). */
+export const GROUPS_RUNTIME_VERSION = 4;
 
 export const attemptLogKinds = [
   "QUESTION_SHOWN",

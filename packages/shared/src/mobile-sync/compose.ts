@@ -524,6 +524,7 @@ export function composeLearnerAssessment(
     passingScore: assessment.passingScore,
     scoreBands: assessment.scoreBands ?? [],
     sections: assessment.sections ?? [],
+    groups: assessment.groups ?? [],
     // No attempt yet: no section progress or results.
     sectionEntries: [] as Array<{
       kind: "SUBMITTED" | "SECTION_STARTED" | "SECTION_ENDED";
@@ -577,6 +578,7 @@ export function composeLearnerAssessment(
         position: question.position,
         tags: question.tags ?? [],
         sectionId: question.sectionId ?? null,
+        groupId: question.groupId ?? null,
         options: [...question.options]
           .sort((left, right) => left.position - right.position)
           .map((option) => ({

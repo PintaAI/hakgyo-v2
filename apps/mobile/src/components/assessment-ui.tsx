@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Eyebrow, ProgressBar } from "./learning-ui";
 import { StudyGlass } from "./study-glass";
@@ -68,6 +68,28 @@ export function AssessmentQuestion({
   );
 }
 
+// EPS-TOPIK numbers picture options ①–④.
+const circledNumbers = ["①", "②", "③", "④"];
+
+/** Holds a question's options: a list, or the 2×2 grid for picture options. */
+export function AssessmentOptions({
+  children,
+  grid,
+}: {
+  children: ReactNode;
+  grid: boolean;
+}) {
+  if (!grid) return <View className="gap-3">{children}</View>;
+  return (
+    <View className="flex-row flex-wrap justify-between gap-y-3">
+      {Children.map(children, (child) => (
+        // Two per row, with the space between them as the gap.
+        <View className="w-[48%]">{child}</View>
+      ))}
+    </View>
+  );
+}
+
 export function AssessmentOption({
   children,
   index,
@@ -75,6 +97,7 @@ export function AssessmentOption({
   multiple = false,
   disabled = false,
   correct,
+  tile = false,
   onPress,
 }: {
   children: ReactNode;
@@ -83,6 +106,8 @@ export function AssessmentOption({
   multiple?: boolean;
   disabled?: boolean;
   correct?: boolean;
+  /** A picture option in the 2×2 grid (`usesPictureGrid`): badge on top, numbered ①–④. */
+  tile?: boolean;
   onPress?: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -100,8 +125,9 @@ export function AssessmentOption({
       tone={wrong ? "destructive" : "primary"}
       emphasized={selected || correct === true}
       isInteractive={!!onPress}
+      contentClassName={tile ? "gap-2 p-3" : undefined}
     >
-      <View className="flex-row items-center gap-4">
+      <View className={tile ? "gap-2" : "flex-row items-center gap-4"}>
         <View
           className={`size-8 items-center justify-center rounded-xl border ${wrong ? "border-destructive bg-destructive" : selected || correct === true ? "border-primary bg-primary" : "border-border bg-muted"}`}
         >
@@ -118,11 +144,13 @@ export function AssessmentOption({
             <Text
               className={`text-sm font-black ${selected ? "text-primary-foreground" : "text-muted-foreground"}`}
             >
-              {String.fromCharCode(65 + index)}
+              {tile
+                ? (circledNumbers[index] ?? String(index + 1))
+                : String.fromCharCode(65 + index)}
             </Text>
           )}
         </View>
-        <View className="min-w-0 flex-1 gap-2">
+        <View className={tile ? "gap-2" : "min-w-0 flex-1 gap-2"}>
           {label ? (
             <Text
               className={`text-xs font-bold ${wrong ? "text-destructive" : "text-primary"}`}

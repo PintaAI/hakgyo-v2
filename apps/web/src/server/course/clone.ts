@@ -14,6 +14,7 @@ import {
 } from "~/lib/course-thumbnail";
 import { remapIds } from "~/lib/remap-ids";
 import { chunk, createId, settleWithConcurrency } from "~/server/batch";
+import { questionCopyRows } from "~/server/assessment/copy";
 import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import { deleteR2Objects } from "~/server/r2";
 import { copyObject } from "~/server/storage/objects";
@@ -156,6 +157,7 @@ export async function cloneStarterCourse(
           include: { options: { orderBy: { position: "asc" } } },
         },
         sections: { orderBy: { position: "asc" } },
+        questionGroups: true,
         assets: { select: { assetId: true } },
       },
     }),
@@ -406,39 +408,26 @@ export async function cloneStarterCourse(
         await insertInBatches(sectionRows, (data) =>
           tx.assessmentSection.createMany({ data }),
         );
-        const questionRows = assessments.flatMap((assessment) =>
-          assessment.questions.map((question) => ({
-            question,
-            id: createId(),
+        // Groups, questions and options together, so groups copy as units.
+        const copies = assessments.map((assessment) =>
+          questionCopyRows({
             assessmentId: idMap.get(assessment.id)!,
-          })),
-        );
-        await insertInBatches(questionRows, (batch) =>
-          tx.assessmentQuestion.createMany({
-            data: batch.map(({ question, id, assessmentId }) => ({
-              id,
-              assessmentId,
-              type: question.type,
-              prompt: remapped(question.prompt),
-              explanation: remappedOptional(question.explanation),
-              points: question.points,
-              position: question.position,
-              tags: question.tags,
-              sectionId: question.sectionId
-                ? (sectionIds.get(question.sectionId) ?? null)
-                : null,
-            })),
+            questions: assessment.questions,
+            groups: assessment.questionGroups,
+            sectionIds,
+            transform: (value) => remapped(value as Prisma.JsonValue),
           }),
         );
         await insertInBatches(
-          questionRows.flatMap(({ question, id }) =>
-            question.options.map((option) => ({
-              questionId: id,
-              content: remapped(option.content),
-              isCorrect: option.isCorrect,
-              position: option.position,
-            })),
-          ),
+          copies.flatMap(({ groups }) => groups),
+          (data) => tx.assessmentQuestionGroup.createMany({ data }),
+        );
+        await insertInBatches(
+          copies.flatMap(({ questions }) => questions),
+          (data) => tx.assessmentQuestion.createMany({ data }),
+        );
+        await insertInBatches(
+          copies.flatMap(({ options }) => options),
           (data) => tx.assessmentOption.createMany({ data }),
         );
         await insertInBatches(

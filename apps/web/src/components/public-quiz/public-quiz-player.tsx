@@ -1,6 +1,6 @@
 "use client";
 
-import { formatScoreOutOf } from "@hakgyo/shared";
+import { formatScoreOutOf, groupRanges, usesPictureGrid } from "@hakgyo/shared";
 
 import {
   Fragment,
@@ -27,8 +27,10 @@ import { toast } from "sonner";
 
 import { AssetUrlLoaderContext } from "~/components/asset-download-url";
 import { RichContent } from "~/components/learner/practice/rich-content";
+import { QuestionGroupHeader } from "~/components/learner/assessment/question-group-header";
 import {
   AssessmentOption,
+  AssessmentOptions,
   AssessmentQuestion,
   QuestionNavigator,
   StudyCard,
@@ -560,6 +562,10 @@ function QuizRunner({
     (status) => status === "answered",
   ).length;
   const question = questions[current];
+  const groupRange = question?.groupId
+    ? groupRanges(questions).get(question.groupId)
+    : undefined;
+  const pictureGrid = question ? usesPictureGrid(question.options) : false;
   if (!question) return null;
   const selected = answers[question.id] ?? [];
   const isLast = current === questions.length - 1;
@@ -648,16 +654,21 @@ function QuizRunner({
       </div>
 
       <div key={question.id} className="flex flex-col gap-4 py-5">
+        {question.group ? (
+          <QuestionGroupHeader
+            first={groupRange?.first ?? current}
+            instructions={question.group.instructions}
+            last={groupRange?.last ?? current}
+            stimulus={question.group.stimulus}
+          />
+        ) : null}
         <div className="[&_.bn-inline-content]:text-xl [&_.bn-inline-content]:leading-8 [&_.bn-inline-content]:font-medium [&_.bn-inline-content]:tracking-[-0.02em]">
           <RichContent content={question.prompt} />
         </div>
         <p className="text-muted-foreground font-mono text-[11px] tracking-[0.12em] uppercase">
           {multiple ? "Pilih semua yang benar" : "Pilih satu jawaban"}
         </p>
-        <div
-          role={multiple ? "group" : "radiogroup"}
-          className="flex flex-col gap-2.5"
-        >
+        <AssessmentOptions grid={pictureGrid} multiple={multiple}>
           {question.options.map((option, index) => (
             <AssessmentOption
               key={option.id}
@@ -665,12 +676,13 @@ function QuizRunner({
               selected={selected.includes(option.id)}
               multiple={multiple}
               disabled={busy || expired}
+              tile={pictureGrid}
               onPress={() => choose(option.id)}
             >
               <RichContent content={option.content} />
             </AssessmentOption>
           ))}
-        </div>
+        </AssessmentOptions>
       </div>
 
       <BottomBar>
@@ -939,6 +951,20 @@ function QuizReview({ quizRef, token }: { quizRef: QuizRef; token: string }) {
                 : "Tidak dijawab"
             }`}
           >
+            {question.group ? (
+              <QuestionGroupHeader
+                first={
+                  groupRanges(review.data).get(question.groupId ?? "")?.first ??
+                  index
+                }
+                instructions={question.group.instructions}
+                last={
+                  groupRanges(review.data).get(question.groupId ?? "")?.last ??
+                  index
+                }
+                stimulus={question.group.stimulus}
+              />
+            ) : null}
             <RichContent content={question.prompt} />
           </AssessmentQuestion>
           {question.options.map((option, optionIndex) => (

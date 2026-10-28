@@ -53,12 +53,19 @@ export function contentAudioSources(...values: unknown[]): AudioSource[] {
   return sources;
 }
 
-/** A question's playlist: the prompt's audio, then each option's in the order shown. */
-export function questionAudioSources(question: {
-  prompt: unknown;
-  options: ReadonlyArray<{ content: unknown }>;
-}) {
+/**
+ * A question's playlist: its group's stimulus audio, the prompt's audio, then each option's in the
+ * order shown.
+ */
+export function questionAudioSources(
+  question: {
+    prompt: unknown;
+    options: ReadonlyArray<{ content: unknown }>;
+  },
+  group?: { stimulus: unknown } | null,
+) {
   return contentAudioSources(
+    group?.stimulus,
     question.prompt,
     ...question.options.map((option) => option.content),
   );

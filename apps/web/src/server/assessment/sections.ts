@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client";
 import { requireEditableAssessment } from "~/server/assessment/access";
+import { repairQuestionGroups } from "~/server/assessment/groups";
+import { lockAssessment } from "~/server/assessment/lock";
 import { withTransactionRetry } from "~/server/db-retry";
 import { toPrismaJsonValue } from "~/server/prisma-json";
 
@@ -65,12 +67,6 @@ type Tx = Prisma.TransactionClient;
 function instructionsData(value: Prisma.InputJsonValue | null | undefined) {
   if (value === undefined) return {};
   return { instructions: value ?? Prisma.DbNull };
-}
-
-async function lockAssessment(tx: Tx, assessmentId: string) {
-  await tx.$queryRaw`
-    SELECT "id" FROM "Assessment" WHERE "id" = ${assessmentId} FOR UPDATE
-  `;
 }
 
 /**
@@ -333,7 +329,9 @@ export async function arrangeQuestions(
           questionIds.map((id) => ({ id, sectionId })),
         ),
       );
-      return { arranged: questions.length };
+      // A question moved out of its group's run leaves the group.
+      const { detached } = await repairQuestionGroups(tx, input.assessmentId);
+      return { arranged: questions.length, detachedFromGroups: detached };
     }),
   );
 }

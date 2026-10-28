@@ -43,9 +43,10 @@ export function collectContentAssetIds(...values: unknown[]): string[] {
   return [...ids];
 }
 
-/** Asset ids of an assessment's instructions, question prompts and options. */
+/** Asset ids of an assessment's instructions, group stimuli, question prompts and options. */
 export function assessmentContentAssetIds(assessment: {
   instructions?: unknown;
+  groups?: ReadonlyArray<{ instructions: unknown; stimulus: unknown }>;
   questions: ReadonlyArray<{
     prompt: unknown;
     options: ReadonlyArray<{ content: unknown }>;
@@ -53,6 +54,10 @@ export function assessmentContentAssetIds(assessment: {
 }) {
   return collectContentAssetIds(
     assessment.instructions,
+    ...(assessment.groups ?? []).flatMap((group) => [
+      group.instructions,
+      group.stimulus,
+    ]),
     ...assessment.questions.flatMap((question) => [
       question.prompt,
       ...question.options.map((option) => option.content),

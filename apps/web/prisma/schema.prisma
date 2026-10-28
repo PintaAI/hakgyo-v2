@@ -1095,26 +1095,27 @@ model MaterialRequirement {
 }
 
 model Assessment {
-  id                    String                @id @default(cuid())
+  id                    String                    @id @default(cuid())
   organizationId        String
   createdByMembershipId String
   title                 String
   description           String?
-  editorSchemaVersion   Int                   @default(1)
+  editorSchemaVersion   Int                       @default(1)
   instructions          Json?
   passingScore          Int?
   /// Named score thresholds in percent, e.g. [{ "label": "Manufaktur", "minPercent": 60 }]. See `readScoreBands` in @hakgyo/shared.
   scoreBands            Json?
   maxAttempts           Int?
   timeLimitMinutes      Int?
-  shuffleQuestions      Boolean               @default(false)
-  shuffleOptions        Boolean               @default(false)
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  organization          Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy             OrganizationMember    @relation("AssessmentCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  shuffleQuestions      Boolean                   @default(false)
+  shuffleOptions        Boolean                   @default(false)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy             OrganizationMember        @relation("AssessmentCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
   questions             AssessmentQuestion[]
   sections              AssessmentSection[]
+  questionGroups        AssessmentQuestionGroup[]
   courseItems           CourseItem[]
   attempts              AssessmentAttempt[]
   materialRequirements  MaterialRequirement[]
@@ -1128,29 +1129,51 @@ model Assessment {
 }
 
 model AssessmentQuestion {
-  id           String                 @id @default(cuid())
+  id           String                   @id @default(cuid())
   assessmentId String
   type         AssessmentQuestionType
   prompt       Json
   explanation  Json?
   /// Up to two decimals (EPS-TOPIK uses 2.5).
-  points       Float                  @default(1)
+  points       Float                    @default(1)
   position     Int
   /// Free labels, optionally `prefix:value` (`eps:R2`, `topik:k3`, `level:sedang`, `bab:3`). See `assessment-tags.ts` in @hakgyo/shared.
-  tags         String[]               @default([])
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
+  tags         String[]                 @default([])
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
   /// Set for every question once the assessment has sections; questions are shown by section position, then question position.
   sectionId    String?
-  assessment   Assessment             @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  section      AssessmentSection?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  /// Questions of a group are consecutive within one section and share its instructions and stimulus.
+  groupId      String?
+  assessment   Assessment               @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  section      AssessmentSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  group        AssessmentQuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   options      AssessmentOption[]
   answers      AssessmentAnswer[]
 
   @@unique([assessmentId, position])
   @@index([sectionId])
+  @@index([groupId])
   /// The question bank picks candidates by type tag (docs/eps-question-generator.md section 4.1).
   @@index([tags], type: Gin)
+}
+
+/// Consecutive questions that share instructions ("[1~4] 다음 그림을 보고…") and a stimulus (a passage,
+/// picture or audio shown above each of them). Its place is its questions' place; it is copied as a
+/// unit. See docs/eps-topik-simulation.md section 4.5.
+model AssessmentQuestionGroup {
+  id           String               @id @default(cuid())
+  assessmentId String
+  /// BlockNote document.
+  instructions Json?
+  /// BlockNote document; under a section audio policy its audio plays with the first question only.
+  stimulus     Json?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  assessment   Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questions    AssessmentQuestion[]
+
+  @@index([assessmentId])
 }
 
 /// A timed part of an assessment (EPS-TOPIK: Membaca, Mendengar) with its own rules. See docs/eps-topik-simulation.md section 4.2.
@@ -1200,8 +1223,8 @@ model AssessmentAttemptSection {
   /// Filled at grading.
   score      Float?
   maxScore   Float?
-  attempt    AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  section    AssessmentSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  attempt    AssessmentAttempt           @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  section    AssessmentSection           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
   @@id([attemptId, sectionId])
   @@index([sectionId])
@@ -1384,7 +1407,7 @@ model UserAchievement {
 }
 
 model AssessmentAttempt {
-  id                String                  @id @default(cuid())
+  id                String                      @id @default(cuid())
   assessmentId      String
   courseItemId      String
   organizationId    String
@@ -1392,28 +1415,28 @@ model AssessmentAttempt {
   userId            String
   attemptNumber     Int
   shuffleSeed       String?
-  status            AssessmentAttemptStatus @default(IN_PROGRESS)
+  status            AssessmentAttemptStatus     @default(IN_PROGRESS)
   score             Float?
   maxScore          Float?
-  startedAt         DateTime                @default(now())
+  startedAt         DateTime                    @default(now())
   submittedAt       DateTime?
   gradedAt          DateTime?
   /// Rules-engine version (`RUNTIME_VERSION` in @hakgyo/shared) the attempt started with; null before the progress log.
   runtimeVersion    Int?
   submittedVia      AssessmentSubmissionSource?
   /// Highest progress-log sequence processed; clients continue after it.
-  lastLogSeq        Int                     @default(0)
+  lastLogSeq        Int                         @default(0)
   /// Set when an entry reached the server long after it happened (an offline device).
   offlineSyncedAt   DateTime?
   assessmentEventId String?
-  assessment        Assessment              @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  courseItem        CourseItem              @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  cohort            Cohort?                 @relation(fields: [cohortId], references: [id], onDelete: SetNull)
-  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessment        Assessment                  @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  courseItem        CourseItem                  @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  cohort            Cohort?                     @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  user              User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers           AssessmentAnswer[]
   log               AssessmentAttemptLog[]
   sections          AssessmentAttemptSection[]
-  assessmentEvent   AssessmentEvent?        @relation(fields: [assessmentEventId], references: [id], onDelete: Restrict)
+  assessmentEvent   AssessmentEvent?            @relation(fields: [assessmentEventId], references: [id], onDelete: Restrict)
   eventAudits       AssessmentEventAudit[]
 
   @@unique([courseItemId, userId, attemptNumber])

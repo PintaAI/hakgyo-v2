@@ -364,6 +364,11 @@ export function shapeCourseBundle(course: CourseBundleSource) {
               (question) => question.sectionId === section.id,
             ),
           ),
+          groups: assessment.questionGroups.filter((group) =>
+            assessment.questions.some(
+              (question) => question.groupId === group.id,
+            ),
+          ),
           maxAttempts: assessment.maxAttempts,
           timeLimitMinutes: assessment.timeLimitMinutes,
           shuffleQuestions: assessment.shuffleQuestions,
@@ -377,6 +382,7 @@ export function shapeCourseBundle(course: CourseBundleSource) {
             position: question.position,
             tags: question.tags,
             sectionId: question.sectionId,
+            groupId: question.groupId,
             options: question.options.map((option) => ({
               id: option.id,
               content: option.content,

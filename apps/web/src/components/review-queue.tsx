@@ -272,6 +272,19 @@ function AttemptDetail({
                 Soal {index + 1} · {formatScore(question.points)} poin ·{" "}
                 {question.type === "WRITTEN" ? "Tertulis" : "Otomatis"}
               </p>
+              {question.group ? (
+                <div className="bg-muted/40 text-muted-foreground space-y-1 rounded-md p-3 text-sm whitespace-pre-wrap">
+                  {contentText(question.group.instructions) ? (
+                    <p className="font-medium">
+                      {contentText(question.group.instructions)}
+                    </p>
+                  ) : null}
+                  <p>
+                    {contentText(question.group.stimulus) ||
+                      "Bahan bersama kelompok ini berupa gambar atau audio."}
+                  </p>
+                </div>
+              ) : null}
               <p className="font-medium whitespace-pre-wrap">
                 {contentText(question.prompt)}
               </p>

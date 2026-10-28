@@ -288,6 +288,7 @@ export async function getAssessmentSample(
             where: {
               assessmentId: { in: assessmentIds },
               type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
+              groupId: null,
             },
           })
         ).map((row) => row.assessmentId),
@@ -328,8 +329,10 @@ export async function getAssessmentSample(
             id: true,
             title: true,
             questions: {
+              // Grouped questions need their group's passage or picture, so practice skips them.
               where: {
                 type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
+                groupId: null,
               },
               orderBy: [{ position: "asc" }, { id: "asc" }],
               select: {

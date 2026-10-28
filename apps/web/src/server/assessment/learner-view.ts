@@ -65,6 +65,9 @@ export const learnerAssessmentItemSelect = {
         orderBy: { position: "asc" },
         select: learnerSectionSelect,
       },
+      questionGroups: {
+        select: { id: true, instructions: true, stimulus: true },
+      },
       questions: {
         orderBy: { position: "asc" },
         select: {
@@ -76,6 +79,7 @@ export const learnerAssessmentItemSelect = {
           position: true,
           tags: true,
           sectionId: true,
+          groupId: true,
           options: {
             orderBy: { position: "asc" },
             select: {
@@ -241,15 +245,21 @@ export function shapeLearnerAssessment(input: {
   );
   const timedSeconds = timedSectionsSeconds(sections) ?? 0;
   const log = attempt?.log ?? [];
+  // Groups without questions are left out like empty sections.
+  const { questionGroups, ...assessment } = item.assessment;
+  const groups = questionGroups.filter((group) =>
+    questions.some((question) => question.groupId === group.id),
+  );
   const rules = ruleStateFrom(ruleSectionsFor(sections, questions), log);
   const scoresVisible =
     attempt?.status === "GRADED" &&
     !attempt.assessmentEvent?.participants[0]?.invalidatedAt &&
     attempt.assessmentEvent?.status !== "CANCELLED";
   return {
-    ...item.assessment,
+    ...assessment,
     scoreBands: readScoreBands(item.assessment.scoreBands),
     sections,
+    groups,
     /** Section starts, ends and the submission of this attempt, for the section timeline. */
     sectionEntries: log.flatMap(({ kind, sectionId, at }) =>
       kind === "SECTION_STARTED" ||

@@ -43,6 +43,8 @@ Pengajar bisa menambahkan aturan pada sebuah bagian. Aturannya tertulis di bawah
 - **Pilihan pertama kamu langsung dikunci**: pilih dengan teliti, karena pilihan tidak bisa diganti.
 - **Batas putar audio**: kotak audio menunjukkan "Diputar 1 dari 2". Audio tidak bisa digeser atau dijeda. Jika audio tidak mulai sendiri, tekan **Putar**.
 
+Beberapa soal bisa memakai bahan yang sama, misalnya satu gambar, bacaan atau percakapan untuk soal 1–4. Petunjuk dan bahannya tampil di atas setiap soal kelompok itu, dengan tulisan seperti "Soal 1–4". Jika semua pilihan jawaban berupa gambar, pilihannya tampil sebagai kotak 2×2 bernomor ①–④.
+
 Setelah dinilai, hasilmu juga menunjukkan nilai setiap bagian.
 
 ## Mengirim

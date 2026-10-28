@@ -15,3 +15,4 @@ export * from "./assessment-runtime";
 export * from "./assessment-section-timeline";
 export * from "./assessment-question-rules";
 export * from "./assessment-audio";
+export * from "./assessment-groups";

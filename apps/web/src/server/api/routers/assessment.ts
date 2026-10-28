@@ -29,6 +29,13 @@ import {
   updateSectionInput,
 } from "~/server/assessment/sections";
 import {
+  createQuestionGroup,
+  createQuestionGroupInput,
+  deleteQuestionGroup,
+  updateQuestionGroup,
+  updateQuestionGroupInput,
+} from "~/server/assessment/groups";
+import {
   assessmentFields,
   attemptsNeedingReviewInput,
   id,
@@ -125,6 +132,7 @@ export const assessmentRouter = createTRPCRouter({
               include: { options: { orderBy: { position: "asc" } } },
             },
             sections: { orderBy: { position: "asc" } },
+            questionGroups: true,
           },
         }),
         getAssessmentLiveStatus(ctx.db, input.assessmentId),
@@ -207,6 +215,21 @@ export const assessmentRouter = createTRPCRouter({
     .input(z.object({ sectionId: id }))
     .mutation(({ ctx, input }) =>
       deleteSection(ctx.db, input.sectionId, ctx.actorUserId),
+    ),
+  createQuestionGroup: protectedProcedure
+    .input(createQuestionGroupInput)
+    .mutation(({ ctx, input }) =>
+      createQuestionGroup(ctx.db, input, ctx.actorUserId),
+    ),
+  updateQuestionGroup: protectedProcedure
+    .input(updateQuestionGroupInput)
+    .mutation(({ ctx, input }) =>
+      updateQuestionGroup(ctx.db, input, ctx.actorUserId),
+    ),
+  deleteQuestionGroup: protectedProcedure
+    .input(z.object({ groupId: id }))
+    .mutation(({ ctx, input }) =>
+      deleteQuestionGroup(ctx.db, input.groupId, ctx.actorUserId),
     ),
   arrangeQuestions: protectedProcedure
     .input(arrangeQuestionsInput)

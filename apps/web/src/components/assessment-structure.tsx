@@ -446,6 +446,11 @@ export function AssessmentStructureSheet({
         "(soal tanpa teks)",
     ]),
   );
+  const groupedIds = new Set(
+    assessment.questions.flatMap((question) =>
+      question.groupId ? [question.id] : [],
+    ),
+  );
   const sectionTitles = new Map(
     assessment.sections.map((section) => [section.id, section.title]),
   );
@@ -581,12 +586,16 @@ export function AssessmentStructureSheet({
 
   async function saveOrder() {
     try {
-      await arrange.mutateAsync({
+      const result = await arrange.mutateAsync({
         assessmentId: assessment.id,
         sections: layout,
       });
       await refresh();
-      toast.success("Urutan soal disimpan.");
+      toast.success(
+        result.detachedFromGroups
+          ? `Urutan soal disimpan. ${result.detachedFromGroups} soal keluar dari kelompoknya karena tidak lagi berurutan.`
+          : "Urutan soal disimpan.",
+      );
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -758,6 +767,11 @@ export function AssessmentStructureSheet({
                           {numbers.get(questionId)}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-sm">
+                          {groupedIds.has(questionId) ? (
+                            <span className="text-primary mr-1 text-xs font-semibold">
+                              Kelompok ·
+                            </span>
+                          ) : null}
                           {previews.get(questionId)}
                         </span>
                         {sectioned ? (

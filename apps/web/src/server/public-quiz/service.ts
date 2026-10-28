@@ -609,6 +609,9 @@ async function loadAttemptQuestions(
       prompt: true,
       points: true,
       sectionId: true,
+      groupId: true,
+      // A grouped question shows its group's instructions and stimulus.
+      group: { select: { instructions: true, stimulus: true } },
       options: {
         orderBy: { position: "asc" },
         select: { id: true, content: true },
@@ -942,6 +945,9 @@ export async function getPublicQuizReview(
       explanation: true,
       points: true,
       sectionId: true,
+      groupId: true,
+      // A grouped question shows its group's instructions and stimulus.
+      group: { select: { instructions: true, stimulus: true } },
       options: {
         orderBy: { position: "asc" },
         select: { id: true, content: true, isCorrect: true },

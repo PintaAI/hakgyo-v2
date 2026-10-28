@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   answerHasContent,
   assessmentContentAssetIds,
+  groupRanges,
   canFinishSection,
   createLogEntry,
   formatScoreOutOf,
@@ -17,6 +18,8 @@ import {
   sectionAudioPolicy,
   sectionTimeline,
   sectionView,
+  stimulusPlaysWith,
+  usesPictureGrid,
   type AttemptLogEntry,
   type TimelineEntry,
 } from "@hakgyo/shared";
@@ -50,6 +53,7 @@ import {
 } from "./assessment-media";
 import {
   AssessmentOption,
+  AssessmentOptions,
   AssessmentQuestion,
   QuestionNavigator,
   StudyCard,
@@ -57,6 +61,7 @@ import {
 import { ScoreBandResults } from "~/components/learner/assessment/score-band-results";
 import { TagResults } from "~/components/learner/assessment/tag-results";
 import { SectionIntro } from "~/components/learner/assessment/section-intro";
+import { QuestionGroupHeader } from "~/components/learner/assessment/question-group-header";
 import {
   AssessmentAudioPlayer,
   useAttemptAudio,
@@ -265,6 +270,13 @@ export function AssessmentAttempt({
       ] ?? selected)
     : selected;
   const question = assessment.questions[current];
+  // Groups: a question's shared part. Its stimulus audio plays with the group's first question.
+  const group = question?.groupId
+    ? assessment.groups.find(({ id }) => id === question.groupId)
+    : undefined;
+  const groupRange = question?.groupId
+    ? groupRanges(assessment.questions).get(question.groupId)
+    : undefined;
   const playsOf = (questionId: string) =>
     Math.max(
       assessment.questionProgress.plays[questionId] ?? 0,
@@ -272,7 +284,13 @@ export function AssessmentAttempt({
     );
   const audioPolicy = sectionAudioPolicy(activeSection);
   const audioSources =
-    question && audioPolicy ? questionAudioSources(question) : [];
+    question && audioPolicy
+      ? questionAudioSources(
+          question,
+          stimulusPlaysWith(assessment.questions, current, assessment.groups),
+        )
+      : [];
+  const pictureGrid = question ? usesPictureGrid(question.options) : false;
   const statuses: QuestionStatus[] = assessment.questions.map((entry) =>
     isQuestionAnswered(answers[entry.id]) ? "answered" : "unanswered",
   );
@@ -938,6 +956,15 @@ export function AssessmentAttempt({
             onOpen={() => setNavigatorOpen(true)}
             disabled={busy}
           >
+            {group && groupRange ? (
+              <QuestionGroupHeader
+                contentClassName={cn(audioPolicy && hiddenContentAudio)}
+                first={groupRange.first}
+                instructions={group.instructions}
+                last={groupRange.last}
+                stimulus={group.stimulus}
+              />
+            ) : null}
             {/* Controlled audio replaces the content's own players. */}
             <div className={cn(audioPolicy && hiddenContentAudio)}>
               <RichContent content={question.prompt} />
@@ -1000,9 +1027,9 @@ export function AssessmentAttempt({
               />
             </StudyCard>
           ) : (
-            <div
-              role={question.type === "SINGLE_CHOICE" ? "radiogroup" : "group"}
-              className="flex flex-col gap-3"
+            <AssessmentOptions
+              grid={pictureGrid}
+              multiple={question.type === "MULTIPLE_CHOICE"}
             >
               {question.options.map((option, optionIndex) => (
                 <AssessmentOption
@@ -1011,6 +1038,7 @@ export function AssessmentAttempt({
                   selected={answer?.optionIds.includes(option.id) ?? false}
                   multiple={question.type === "MULTIPLE_CHOICE"}
                   disabled={busy || expired || answerLocked}
+                  tile={pictureGrid}
                   onPress={() => chooseOption(option.id)}
                 >
                   <div className={cn(audioPolicy && hiddenContentAudio)}>
@@ -1018,7 +1046,7 @@ export function AssessmentAttempt({
                   </div>
                 </AssessmentOption>
               ))}
-            </div>
+            </AssessmentOptions>
           )}
 
           <p className="text-muted-foreground text-xs leading-5">

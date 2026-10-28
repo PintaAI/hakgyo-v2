@@ -6,6 +6,9 @@ import {
   isForwardOnly,
   pacedQuestionEndsAt,
   questionAudioSources,
+  groupRanges,
+  stimulusPlaysWith,
+  usesPictureGrid,
   ruleSectionsFor,
   ruleStateFrom,
   sectionAudioPolicy,
@@ -26,10 +29,12 @@ import {
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
 import { ScoreBandResults } from "../../../../../../src/components/score-band-results";
 import { SectionIntro } from "../../../../../../src/components/section-intro";
+import { QuestionGroupHeader } from "../../../../../../src/components/question-group-header";
 import { AssessmentAudioPlayer } from "../../../../../../src/components/assessment-audio-player";
 import { TagResults } from "../../../../../../src/components/tag-results";
 import {
   AssessmentOption,
+  AssessmentOptions,
   AssessmentQuestion,
 } from "../../../../../../src/components/assessment-ui";
 import {
@@ -476,6 +481,15 @@ function AssessmentAttemptContent({
   const sectionExpired = sectionSecondsLeft === 0;
 
   const question = assessment.data?.questions[currentIndex];
+  // Groups: a question's shared part. Its stimulus audio plays with the group's first question;
+  // bundles cached before groups have none.
+  const groups = assessment.data?.groups ?? [];
+  const group = question?.groupId
+    ? groups.find(({ id }) => id === question.groupId)
+    : undefined;
+  const groupRange = question?.groupId
+    ? groupRanges(assessment.data?.questions ?? []).get(question.groupId)
+    : undefined;
   const playsOf = (questionId: string) =>
     Math.max(
       assessment.data?.questionProgress.plays[questionId] ?? 0,
@@ -483,7 +497,17 @@ function AssessmentAttemptContent({
     );
   const audioPolicy = sectionAudioPolicy(activeSection);
   const audioSources =
-    question && audioPolicy ? questionAudioSources(question) : [];
+    question && audioPolicy
+      ? questionAudioSources(
+          question,
+          stimulusPlaysWith(
+            assessment.data?.questions ?? [],
+            currentIndex,
+            groups,
+          ),
+        )
+      : [];
+  const pictureGrid = question ? usesPictureGrid(question.options) : false;
   const pacedEndsAt =
     paced && activeSection && question && pacedClock?.questionId === question.id
       ? pacedQuestionEndsAt({
@@ -1107,6 +1131,16 @@ function AssessmentAttemptContent({
             onOpen={openQuestions}
             disabled={busy}
           >
+            {group && groupRange ? (
+              <QuestionGroupHeader
+                first={groupRange.first}
+                instructions={group.instructions}
+                last={groupRange.last}
+                renderers={audioPolicy ? hiddenAudioRenderers : undefined}
+                resolveAssetUrl={resolveAssetUrl}
+                stimulus={group.stimulus}
+              />
+            ) : null}
             <NativeContentRenderer
               content={question.prompt}
               renderers={audioPolicy ? hiddenAudioRenderers : undefined}
@@ -1163,7 +1197,7 @@ function AssessmentAttemptContent({
               />
             </StudyGlass>
           ) : (
-            <View className="gap-3">
+            <AssessmentOptions grid={pictureGrid}>
               {question.options.map((option, optionIndex) => (
                 <AssessmentOption
                   key={option.id}
@@ -1173,6 +1207,7 @@ function AssessmentAttemptContent({
                   }
                   multiple={question.type === "MULTIPLE_CHOICE"}
                   disabled={busy || expired || sectionExpired || answerLocked}
+                  tile={pictureGrid}
                   onPress={() => chooseOption(option.id)}
                 >
                   <NativeContentRenderer
@@ -1182,7 +1217,7 @@ function AssessmentAttemptContent({
                   />
                 </AssessmentOption>
               ))}
-            </View>
+            </AssessmentOptions>
           )}
           <Text className="text-xs leading-5 text-muted-foreground">
             {paced

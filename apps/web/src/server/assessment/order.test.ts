@@ -111,3 +111,37 @@ describe("sections", () => {
     expect(ids).toEqual(["r1", "r2", "r3", "l1", "l2"]);
   });
 });
+
+describe("groups", () => {
+  const grouped = [
+    { id: "q1", groupId: "g1", options: [] },
+    { id: "q2", groupId: "g1", options: [] },
+    { id: "q3", groupId: null, options: [] },
+    { id: "q4", groupId: "g2", options: [] },
+    { id: "q5", groupId: "g2", options: [] },
+    { id: "q6", groupId: null, options: [] },
+  ];
+
+  test("a group's questions stay together and in order", () => {
+    for (const seed of ["a", "b", "c", "d", "e", "f"]) {
+      const ids = orderAssessmentQuestions(grouped, seed, true, false).map(
+        ({ id }) => id,
+      );
+      expect(ids.indexOf("q2")).toBe(ids.indexOf("q1") + 1);
+      expect(ids.indexOf("q5")).toBe(ids.indexOf("q4") + 1);
+      expect([...ids].sort()).toEqual(["q1", "q2", "q3", "q4", "q5", "q6"]);
+    }
+  });
+
+  test("ungrouped questions shuffle exactly as before", () => {
+    expect(
+      orderAssessmentQuestions(questions, "seed", true, false).map(
+        ({ id }) => id,
+      ),
+    ).toEqual(
+      shuffleForAttempt(questions, "seed", true, "questions").map(
+        ({ id }) => id,
+      ),
+    );
+  });
+});

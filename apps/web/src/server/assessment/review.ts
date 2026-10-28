@@ -117,6 +117,8 @@ export async function getReviewAttempt(
               explanation: true,
               type: true,
               points: true,
+              // A grouped question refers to its group's passage or picture.
+              group: { select: { instructions: true, stimulus: true } },
               options: {
                 orderBy: { position: "asc" },
                 select: { id: true, content: true, isCorrect: true },
