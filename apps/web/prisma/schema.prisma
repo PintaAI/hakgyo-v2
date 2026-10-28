@@ -1099,6 +1099,7 @@ model Assessment {
   organizationId        String
   createdByMembershipId String
   title                 String
+  kind                  AssessmentKind            @default(STANDARD)
   description           String?
   editorSchemaVersion   Int                       @default(1)
   instructions          Json?
@@ -1145,6 +1146,8 @@ model AssessmentQuestion {
   sectionId    String?
   /// Questions of a group are consecutive within one section and share its instructions and stimulus.
   groupId      String?
+  /// Bank questions only (assessment kind BANK).
+  bankStatus   BankItemStatus?
   assessment   Assessment               @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   section      AssessmentSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   group        AssessmentQuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
@@ -1154,6 +1157,7 @@ model AssessmentQuestion {
   @@unique([assessmentId, position])
   @@index([sectionId])
   @@index([groupId])
+  @@index([assessmentId, bankStatus])
   /// The question bank picks candidates by type tag (docs/eps-question-generator.md section 4.1).
   @@index([tags], type: Gin)
 }
@@ -1174,6 +1178,21 @@ model AssessmentQuestionGroup {
   questions    AssessmentQuestion[]
 
   @@index([assessmentId])
+}
+
+/// What an assessment is for: an ordinary one, the Hakgyo question bank (system organization), or a package built from the bank. See docs/eps-question-generator.md section 3.
+enum AssessmentKind {
+  STANDARD
+  BANK
+  GENERATED
+}
+
+/// Where a bank question is in production; the generator only picks LIVE ones, and bank questions are retired, never deleted.
+enum BankItemStatus {
+  DRAFT
+  REVIEW
+  LIVE
+  RETIRED
 }
 
 /// A timed part of an assessment (EPS-TOPIK: Membaca, Mendengar) with its own rules. See docs/eps-topik-simulation.md section 4.2.

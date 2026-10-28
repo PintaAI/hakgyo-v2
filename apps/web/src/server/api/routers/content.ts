@@ -319,6 +319,8 @@ export const contentRouter = createTRPCRouter({
                 where: {
                   id: relationId,
                   organizationId: courseModule.organizationId,
+                  // The question bank is never placed in courses (docs/eps-question-generator.md).
+                  kind: { not: "BANK" },
                 },
                 select: { id: true, createdByMembershipId: true },
               })
@@ -415,6 +417,8 @@ export const contentRouter = createTRPCRouter({
                   where: {
                     id: relationId,
                     organizationId: item.organizationId,
+                    // The question bank is never placed in courses (docs/eps-question-generator.md).
+                    kind: { not: "BANK" },
                   },
                   select: { id: true, createdByMembershipId: true },
                 })
@@ -1040,6 +1044,8 @@ export const contentRouter = createTRPCRouter({
               where: {
                 id: relationId,
                 organizationId: input.organizationId,
+                // The question bank is never placed in courses (docs/eps-question-generator.md).
+                kind: { not: "BANK" },
               },
               select: { createdByMembershipId: true },
             })

@@ -447,6 +447,17 @@ export async function attachAsset(
     });
   }
   const link = { assessmentId: input.assessmentId, assetId: input.assetId };
+  // Bank media are shared with every organization whose package uses them (section 3.1 of
+  // docs/eps-question-generator.md).
+  if (
+    assessment.kind === "BANK" &&
+    asset.organizationId === HAKGYO_SYSTEM_ORGANIZATION_ID
+  ) {
+    await db.asset.updateMany({
+      where: { id: asset.id, sharedAt: null },
+      data: { sharedAt: new Date() },
+    });
+  }
   try {
     return await db.assessmentAsset.upsert({
       where: { assessmentId_assetId: link },
