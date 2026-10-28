@@ -21,7 +21,12 @@ export async function requireAssessmentManagement(
 ) {
   const assessment = await db.assessment.findUnique({
     where: { id: assessmentId },
-    select: { id: true, organizationId: true, createdByMembershipId: true },
+    select: {
+      id: true,
+      organizationId: true,
+      createdByMembershipId: true,
+      kind: true,
+    },
   });
   if (!assessment) throw new TRPCError({ code: "NOT_FOUND" });
   await requireContentAuthor({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { FilmIcon } from "lucide-react";
+import { FilmIcon, LibraryIcon } from "lucide-react";
 
 import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -65,6 +65,16 @@ export function SuperadminConsole({ initialData }: { initialData: Dashboard }) {
         >
           <FilmIcon data-icon="inline-start" />
           Media Hakgyo
+        </Link>
+        <Link
+          href="/superadmin/bank"
+          className={buttonVariants({
+            variant: "outline",
+            className: "mt-5 ml-2",
+          })}
+        >
+          <LibraryIcon data-icon="inline-start" />
+          Bank soal
         </Link>
       </header>
 

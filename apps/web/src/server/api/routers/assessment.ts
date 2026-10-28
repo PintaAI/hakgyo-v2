@@ -181,12 +181,18 @@ export const assessmentRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ assessmentId: id }))
     .mutation(async ({ ctx, input }) => {
-      await requireEditableAssessment(
+      const assessment = await requireEditableAssessment(
         ctx.db,
         input.assessmentId,
         ctx.actorUserId,
         "delete",
       );
+      if (assessment.kind === "BANK") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Bank soal tidak bisa dihapus.",
+        });
+      }
       const placements = await ctx.db.courseItem.findMany({
         where: { assessmentId: input.assessmentId },
         select: { id: true },
@@ -277,12 +283,19 @@ export const assessmentRouter = createTRPCRouter({
         select: { assessmentId: true },
       });
       if (!question) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireEditableAssessment(
+      const assessment = await requireEditableAssessment(
         ctx.db,
         question.assessmentId,
         ctx.actorUserId,
         "delete",
       );
+      if (assessment.kind === "BANK") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Soal bank tidak dihapus. Pensiunkan soal ini di Bank soal superadmin.",
+        });
+      }
       await ctx.db.assessmentQuestion.delete({
         where: { id: input.questionId },
       });

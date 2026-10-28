@@ -143,6 +143,13 @@ export async function createPublicQuiz(
   userId: string,
 ) {
   const managed = await requireAssessmentManagement(db, assessmentId, userId);
+  // Bank questions stay out of public view (docs/eps-question-generator.md section 3).
+  if (managed.kind === "BANK") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Bank soal tidak bisa dijadikan quiz publik.",
+    });
+  }
   const assessment = await db.assessment.findUniqueOrThrow({
     where: { id: assessmentId },
     select: { title: true, description: true },

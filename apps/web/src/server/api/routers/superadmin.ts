@@ -17,6 +17,15 @@ import {
   mediaDownloadUrl,
 } from "~/server/superadmin/media";
 import { revokeUserAccess } from "~/server/superadmin/user-access";
+import {
+  createBank,
+  getBankOverview,
+  joinSystemOrganization,
+  listBankQuestions,
+  listBankQuestionsInput,
+  setBankStatus,
+  setBankStatusInput,
+} from "~/server/bank/bank";
 
 const pageInput = z.object({
   search: z.string().trim().max(100).default(""),
@@ -234,6 +243,52 @@ export const superadminRouter = createTRPCRouter({
           action: "media.delete",
         });
         return { deleted: true };
+      }),
+  }),
+
+  /** The EPS-TOPIK question bank (docs/eps-question-generator.md section 6). */
+  bank: createTRPCRouter({
+    overview: superadminProcedure.query(({ ctx }) =>
+      getBankOverview(ctx.db, ctx.actorUserId),
+    ),
+    joinSystemOrganization: superadminProcedure.mutation(async ({ ctx }) => {
+      const result = await joinSystemOrganization(ctx.db, ctx.actorUserId);
+      await audit(ctx.db, {
+        actorUserId: ctx.actorUserId,
+        targetId: ctx.actorUserId,
+        targetType: "user",
+        action: "bank.join-system-organization",
+      });
+      return result;
+    }),
+    create: superadminProcedure
+      .input(z.object({ title: z.string().trim().min(1).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const bank = await createBank(ctx.db, input, ctx.actorUserId);
+        await audit(ctx.db, {
+          actorUserId: ctx.actorUserId,
+          targetId: bank.id,
+          targetType: "assessment",
+          action: "bank.create",
+        });
+        return bank;
+      }),
+    questions: superadminProcedure
+      .input(listBankQuestionsInput)
+      .query(({ ctx, input }) => listBankQuestions(ctx.db, input)),
+    setStatus: superadminProcedure
+      .input(setBankStatusInput)
+      .mutation(async ({ ctx, input }) => {
+        const result = await setBankStatus(ctx.db, input);
+        if (result.moved) {
+          await audit(ctx.db, {
+            actorUserId: ctx.actorUserId,
+            targetId: input.assessmentId,
+            targetType: "assessment",
+            action: `bank.status.${input.status.toLowerCase()}`,
+          });
+        }
+        return result;
       }),
   }),
 
