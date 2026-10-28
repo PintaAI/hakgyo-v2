@@ -25,12 +25,24 @@ export const bankTransitions: Record<BankStatus, readonly BankStatus[]> = {
 /** The most questions one status change moves; also how many the page lists. */
 export const MAX_BANK_BATCH = 500;
 
-/** Why a question can't go to review or live yet, in Indonesian (null when it can). */
+/**
+ * Why a question can't go to review or live yet, in Indonesian (null when it can). Media come
+ * first: the founder reviews pictures and audio together with the Korean.
+ */
 export function bankReadinessProblem(question: {
   type: string;
   tags: readonly string[];
   optionCount: number;
   correctCount: number;
+  /** What its EPS type needs, and what it has (see `bankMediaState`). */
+  media?: {
+    needsPromptImage: boolean;
+    promptHasImage: boolean;
+    needsOptionImages: boolean;
+    optionImagesMissing: number;
+    needsAudio: boolean;
+    hasAudio: boolean;
+  };
 }) {
   if (question.type !== "SINGLE_CHOICE") return "harus pilihan tunggal";
   if (question.optionCount !== 4) return "harus punya 4 pilihan";
@@ -41,5 +53,52 @@ export function bankReadinessProblem(question: {
   if (!question.tags.some((tag) => tag.startsWith("level:"))) {
     return "belum diberi label tingkat (level:…)";
   }
+  const media = question.media;
+  if (media?.needsPromptImage && !media.promptHasImage) {
+    return "gambar soal belum ada";
+  }
+  if (media?.needsOptionImages && media.optionImagesMissing) {
+    return `${media.optionImagesMissing} gambar pilihan belum ada`;
+  }
+  if (media?.needsAudio && !media.hasAudio) return "audio belum ada";
   return null;
+}
+
+const blockTypes = (content: unknown) =>
+  Array.isArray(content)
+    ? content.flatMap((block: unknown) =>
+        typeof block === "object" && block !== null && "type" in block
+          ? [String(block.type)]
+          : [],
+      )
+    : [];
+
+/** Whether rich content shows a picture. */
+export const contentHasImage = (content: unknown) =>
+  blockTypes(content).some((type) => type === "assetImage" || type === "image");
+const hasAudio = (content: unknown) =>
+  blockTypes(content).some((type) => type === "assetAudio" || type === "audio");
+
+/** The media a bank question's type needs and what its content has. */
+export function bankMediaState(input: {
+  type?: {
+    promptMedia: string;
+    optionsAreImages: boolean;
+    audio: string;
+  };
+  prompt: unknown;
+  options: ReadonlyArray<{ content: unknown }>;
+}) {
+  return {
+    needsPromptImage: Boolean(input.type && input.type.promptMedia !== "none"),
+    promptHasImage: contentHasImage(input.prompt),
+    needsOptionImages: Boolean(input.type?.optionsAreImages),
+    optionImagesMissing: input.options.filter(
+      (option) => !contentHasImage(option.content),
+    ).length,
+    needsAudio: Boolean(input.type && input.type.audio !== "none"),
+    hasAudio:
+      hasAudio(input.prompt) ||
+      input.options.some((option) => hasAudio(option.content)),
+  };
 }

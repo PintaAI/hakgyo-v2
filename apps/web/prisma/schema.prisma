@@ -1148,6 +1148,8 @@ model AssessmentQuestion {
   groupId      String?
   /// Bank questions only (assessment kind BANK).
   bankStatus   BankItemStatus?
+  /// Bank questions only: how it was made and what production still needs (origin, model, media brief, audio script, automated check flags). See server/bank/ai-drafts.ts.
+  bankMeta     Json?
   assessment   Assessment               @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   section      AssessmentSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   group        AssessmentQuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)

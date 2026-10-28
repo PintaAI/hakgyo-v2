@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { tagLabel } from "@hakgyo/shared";
+import { useState, type ReactNode } from "react";
+import { epsTagVocabulary, type epsTopicSlugs, tagLabel } from "@hakgyo/shared";
+import { epsTaxonomy } from "@hakgyo/shared/eps-taxonomy";
 import {
   ArrowLeftIcon,
   ExternalLinkIcon,
+  ImageIcon,
   LibraryIcon,
   LoaderCircleIcon,
 } from "lucide-react";
@@ -14,6 +16,7 @@ import Link from "~/components/link";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
+import { Input } from "~/components/ui/input";
 import { EmptyState } from "~/components/ui/empty-state";
 import { cn } from "~/lib/utils";
 import {
@@ -27,6 +30,8 @@ import { api, type RouterOutputs } from "~/trpc/react";
 
 type Overview = RouterOutputs["superadmin"]["bank"]["overview"];
 type Status = BankStatus;
+
+const topicTags = epsTagVocabulary.filter((entry) => entry.group === "topik");
 
 /** Tabs, review queue first. */
 const statusTabs: Status[] = ["REVIEW", "DRAFT", "LIVE", "RETIRED"];
@@ -259,6 +264,15 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
             </ul>
           </section>
 
+          <AiDraftForm
+            bankId={bank.id}
+            onDone={async () => {
+              setStatus("DRAFT");
+              setSelected(new Set());
+              await refresh();
+            }}
+          />
+
           <section className="space-y-3">
             <div className="flex gap-1 overflow-x-auto">
               {statusTabs.map((tab) => (
@@ -338,8 +352,26 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
                             <span className="line-clamp-2 block text-sm">
                               {question.preview || "(soal tanpa teks)"}
                             </span>
+                            {question.flags.length ? (
+                              <span className="block text-xs text-amber-700 dark:text-amber-400">
+                                {question.flags
+                                  .map((flag) => flag.message)
+                                  .join(" ")}
+                              </span>
+                            ) : null}
+                            {question.mediaBrief ? (
+                              <span className="text-muted-foreground block text-xs">
+                                Gambar: {question.mediaBrief}
+                              </span>
+                            ) : null}
                           </span>
                         </label>
+                        {question.illustrated && status !== "RETIRED" ? (
+                          <BankImageActions
+                            question={question}
+                            onDone={refresh}
+                          />
+                        ) : null}
                       </li>
                     );
                   })}
@@ -373,5 +405,273 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
         </>
       )}
     </main>
+  );
+}
+
+type Question = RouterOutputs["superadmin"]["bank"]["questions"][number];
+
+/** Draws a question's missing pictures one at a time (each call is one image). */
+function BankImageActions({
+  question,
+  onDone,
+}: {
+  question: Question;
+  onDone: () => Promise<void>;
+}) {
+  const generate = api.superadmin.bank.generateImage.useMutation();
+  const [working, setWorking] = useState(false);
+  const missingOptions = question.optionsAreImages
+    ? question.optionImages.flatMap((hasImage, index) =>
+        hasImage ? [] : [index],
+      )
+    : [];
+  const needsPrompt =
+    Boolean(question.mediaBrief) && !question.media.promptHasImage;
+  if (!needsPrompt && !missingOptions.length) return null;
+
+  async function draw(targets: Array<number | undefined>) {
+    setWorking(true);
+    try {
+      for (const optionIndex of targets) {
+        await generate.mutateAsync({ questionId: question.id, optionIndex });
+      }
+      toast.success(
+        "Gambar dibuat. Periksa gambarnya sebelum menyetujui soal.",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Gambar gagal dibuat.",
+      );
+    } finally {
+      setWorking(false);
+      await onDone();
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2 px-1 pb-3 pl-8 sm:px-3 sm:pl-10">
+      {needsPrompt ? (
+        <Button
+          disabled={working}
+          onClick={() => void draw([undefined])}
+          size="xs"
+          variant="outline"
+        >
+          {working ? (
+            <LoaderCircleIcon
+              className="animate-spin"
+              data-icon="inline-start"
+            />
+          ) : (
+            <ImageIcon data-icon="inline-start" />
+          )}
+          Gambar soal (AI)
+        </Button>
+      ) : null}
+      {missingOptions.length ? (
+        <Button
+          disabled={working}
+          onClick={() => void draw(missingOptions)}
+          size="xs"
+          variant="outline"
+        >
+          {working ? (
+            <LoaderCircleIcon
+              className="animate-spin"
+              data-icon="inline-start"
+            />
+          ) : (
+            <ImageIcon data-icon="inline-start" />
+          )}
+          Gambar {missingOptions.length} pilihan (AI)
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+const levels = [
+  { value: "mudah", label: "Mudah" },
+  { value: "sedang", label: "Sedang" },
+  { value: "sulit", label: "Sulit" },
+] as const;
+
+/**
+ * "Buat draf dengan AI" (docs/eps-question-generator.md section 6): type, count, level and
+ * optional topic, keywords and book chapter; the drafts land in Draf with their check flags.
+ */
+function AiDraftForm({
+  bankId,
+  onDone,
+}: {
+  bankId: string;
+  onDone: () => Promise<void>;
+}) {
+  const create = api.superadmin.bank.createDrafts.useMutation();
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState("eps:R8");
+  const [count, setCount] = useState("5");
+  const [level, setLevel] =
+    useState<(typeof levels)[number]["value"]>("sedang");
+  const [topic, setTopic] = useState("");
+  const [keywords, setKeywords] = useState("");
+  const [chapter, setChapter] = useState("");
+  const [model, setModel] = useState<"gpt-5.4" | "gpt-5.4-mini">("gpt-5.4");
+
+  async function submit() {
+    try {
+      const result = await create.mutateAsync({
+        assessmentId: bankId,
+        type,
+        count: Number(count),
+        level,
+        topic: topic ? (topic as (typeof epsTopicSlugs)[number]) : undefined,
+        keywords: keywords
+          .split(/[,،、]/)
+          .map((word) => word.trim())
+          .filter(Boolean),
+        chapter: chapter ? Number(chapter) : undefined,
+        model,
+      });
+      toast.success(
+        `${result.created} draf dibuat${result.flagged ? `, ${result.flagged} perlu diperhatikan` : ""}. Periksa bahasa Koreanya sebelum mengirim ke review.`,
+      );
+      await onDone();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Draf gagal dibuat.",
+      );
+    }
+  }
+
+  return (
+    <section className="space-y-3 border-y py-4 sm:rounded-lg sm:border sm:px-4">
+      <button
+        className="flex w-full items-center justify-between text-left text-sm font-semibold"
+        onClick={() => setOpen((value) => !value)}
+        type="button"
+      >
+        Buat draf dengan AI
+        <span className="text-muted-foreground text-xs font-normal">
+          {open ? "Tutup" : "Buka"}
+        </span>
+      </button>
+      {open ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Tipe soal">
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              onChange={(event) => setType(event.target.value)}
+              value={type}
+            >
+              {epsTaxonomy.map((entry) => (
+                <option key={entry.tag} value={entry.tag}>
+                  {entry.code} · {entry.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Jumlah (1–5)">
+            <Input
+              inputMode="numeric"
+              max={5}
+              min={1}
+              onChange={(event) => setCount(event.target.value)}
+              type="number"
+              value={count}
+            />
+          </Field>
+          <Field label="Tingkat">
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              onChange={(event) => setLevel(event.target.value as typeof level)}
+              value={level}
+            >
+              {levels.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Topik (opsional)">
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              onChange={(event) => setTopic(event.target.value)}
+              value={topic}
+            >
+              <option value="">Bebas</option>
+              {topicTags.map((entry) => (
+                <option
+                  key={entry.tag}
+                  value={entry.tag.slice("topik:".length)}
+                >
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Kata kunci (opsional, pisahkan dengan koma)">
+            <Input
+              onChange={(event) => setKeywords(event.target.value)}
+              placeholder="안전모, 장갑"
+              value={keywords}
+            />
+          </Field>
+          <Field label="Bab buku (opsional)">
+            <Input
+              inputMode="numeric"
+              onChange={(event) => setChapter(event.target.value)}
+              placeholder="Misalnya 12"
+              type="number"
+              value={chapter}
+            />
+          </Field>
+          <Field label="Model">
+            <select
+              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              onChange={(event) => setModel(event.target.value as typeof model)}
+              value={model}
+            >
+              <option value="gpt-5.4">gpt-5.4 (diperiksa gpt-5.4-mini)</option>
+              <option value="gpt-5.4-mini">
+                gpt-5.4-mini (diperiksa gpt-5.4)
+              </option>
+            </select>
+          </Field>
+          <div className="flex items-end sm:col-span-2">
+            <Button
+              className="w-full sm:w-auto"
+              disabled={
+                create.isPending || !(Number(count) >= 1 && Number(count) <= 5)
+              }
+              onClick={() => void submit()}
+            >
+              {create.isPending ? (
+                <LoaderCircleIcon
+                  className="animate-spin"
+                  data-icon="inline-start"
+                />
+              ) : null}
+              {create.isPending ? "Menulis draf…" : "Buat draf"}
+            </Button>
+          </div>
+          <p className="text-muted-foreground text-xs sm:col-span-2">
+            AI menulis soal baru dari kartu tipe soal, lalu model kedua
+            menjawabnya tanpa kunci. Semua draf tetap harus diperiksa sebelum
+            dipakai.
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-1.5 text-sm">
+      <span className="font-medium">{label}</span>
+      {children}
+    </label>
   );
 }

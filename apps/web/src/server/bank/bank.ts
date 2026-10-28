@@ -1,4 +1,5 @@
 import { epsTopikBlueprint } from "@hakgyo/shared";
+import { epsTypeByTag } from "@hakgyo/shared/eps-taxonomy";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -7,6 +8,8 @@ import type {
   PrismaClient,
 } from "../../../generated/prisma/client";
 import {
+  bankMediaState,
+  contentHasImage,
   bankReadinessProblem,
   bankStatuses,
   bankStatusLabels,
@@ -190,15 +193,36 @@ export async function listBankQuestions(
       bankStatus: true,
       groupId: true,
       updatedAt: true,
-      options: { select: { isCorrect: true } },
+      bankMeta: true,
+      options: {
+        orderBy: { position: "asc" },
+        select: { isCorrect: true, content: true },
+      },
     },
   });
-  return questions.map(({ prompt, options, ...question }) => ({
-    ...question,
-    preview: getBlockNotePlainText(prompt).slice(0, 160),
-    optionCount: options.length,
-    correctCount: options.filter((option) => option.isCorrect).length,
-  }));
+  return questions.map(({ prompt, options, bankMeta, ...question }) => {
+    const meta = (bankMeta ?? {}) as {
+      flags?: Array<{ code: string; message: string }>;
+      mediaBrief?: string | null;
+      optionBriefs?: string[] | null;
+      script?: Array<{ speaker: string; text: string }>;
+    };
+    const type = question.tags.map(epsTypeByTag).find(Boolean);
+    return {
+      ...question,
+      preview: getBlockNotePlainText(prompt).slice(0, 160),
+      optionCount: options.length,
+      correctCount: options.filter((option) => option.isCorrect).length,
+      flags: meta.flags ?? [],
+      mediaBrief: meta.mediaBrief ?? null,
+      hasScript: Boolean(meta.script?.length),
+      /** Illustrated types can have their pictures drawn by AI. */
+      illustrated: type?.lane === "illustrated",
+      media: bankMediaState({ type, prompt, options }),
+      optionsAreImages: type?.optionsAreImages ?? false,
+      optionImages: options.map((option) => contentHasImage(option.content)),
+    };
+  });
 }
 
 /**
@@ -218,7 +242,8 @@ export async function setBankStatus(
       type: true,
       tags: true,
       bankStatus: true,
-      options: { select: { isCorrect: true } },
+      prompt: true,
+      options: { select: { isCorrect: true, content: true } },
     },
   });
   const movable = new Map<BankItemStatus, string[]>();
@@ -241,6 +266,11 @@ export async function setBankStatus(
             optionCount: question.options.length,
             correctCount: question.options.filter((option) => option.isCorrect)
               .length,
+            media: bankMediaState({
+              type: question.tags.map(epsTypeByTag).find(Boolean),
+              prompt: question.prompt,
+              options: question.options,
+            }),
           })
         : null;
     if (problem) {
