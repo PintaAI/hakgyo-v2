@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { epsTagVocabulary, type epsTopicSlugs, tagLabel } from "@hakgyo/shared";
+import {
+  epsTagVocabulary,
+  itemFlagLabels,
+  type epsTopicSlugs,
+  tagLabel,
+} from "@hakgyo/shared";
 import { epsTaxonomy } from "@hakgyo/shared/eps-taxonomy";
 import {
   ArrowLeftIcon,
@@ -72,6 +77,8 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
   const join = api.superadmin.bank.joinSystemOrganization.useMutation();
   const create = api.superadmin.bank.create.useMutation();
   const setBankStatus = api.superadmin.bank.setStatus.useMutation();
+  // Statistics update by themselves when an event on a package closes; this redoes them all.
+  const refreshStats = api.superadmin.bank.refreshStats.useMutation();
 
   async function refresh() {
     await Promise.all([
@@ -230,11 +237,41 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
                 </Link>
               ) : null}
             </div>
-            <div>
-              <h3 className="text-sm font-semibold">Cakupan per tipe</h3>
-              <p className="text-muted-foreground text-xs">
-                Sasaran pilot: cukup untuk {data.pilotPackages} paket berbeda.
-              </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold">Cakupan per tipe</h3>
+                <p className="text-muted-foreground text-xs">
+                  Sasaran pilot: cukup untuk {data.pilotPackages} paket berbeda.
+                </p>
+              </div>
+              <Button
+                disabled={refreshStats.isPending}
+                onClick={async () => {
+                  try {
+                    const result = await refreshStats.mutateAsync();
+                    await questions.refetch();
+                    toast.success(
+                      `Statistik ${result.updated} soal dihitung ulang.`,
+                    );
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Statistik gagal dihitung.",
+                    );
+                  }
+                }}
+                size="sm"
+                variant="ghost"
+              >
+                {refreshStats.isPending ? (
+                  <LoaderCircleIcon
+                    className="animate-spin"
+                    data-icon="inline-start"
+                  />
+                ) : null}
+                Hitung ulang statistik
+              </Button>
             </div>
             <ul className="divide-y border-y sm:rounded-lg sm:border">
               {bank.types.map((row) => (
@@ -362,6 +399,9 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
                                   .map((flag) => flag.message)
                                   .join(" ")}
                               </span>
+                            ) : null}
+                            {question.bankStats ? (
+                              <BankStatsLine stats={question.bankStats} />
                             ) : null}
                             {question.mediaBrief ? (
                               <span className="text-muted-foreground block text-xs">
@@ -674,6 +714,34 @@ function AiDraftForm({
         </div>
       ) : null}
     </section>
+  );
+}
+
+const statFlagLabels: Record<string, string> = {
+  ...itemFlagLabels,
+  "weak-group": "Kelompoknya perlu diperiksa",
+};
+
+/** How the question did in packages learners took (recomputed when an event closes). */
+function BankStatsLine({
+  stats,
+}: {
+  stats: NonNullable<Question["bankStats"]>;
+}) {
+  return (
+    <span className="text-muted-foreground block text-xs">
+      Di paket: {stats.attempts}× dijawab · benar{" "}
+      {Math.round(stats.correctRate * 100)}%
+      {stats.discrimination === null
+        ? ""
+        : ` · daya beda ${stats.discrimination.toLocaleString("id-ID")}`}
+      {stats.flags.length ? (
+        <span className="text-amber-700 dark:text-amber-400">
+          {" "}
+          · {stats.flags.map((flag) => statFlagLabels[flag] ?? flag).join(", ")}
+        </span>
+      ) : null}
+    </span>
   );
 }
 

@@ -4,6 +4,7 @@ import { epsTopikBlueprint } from "@hakgyo/shared";
 import {
   balancedKeyPositions,
   moveKeyTo,
+  pickReplacement,
   refersToOptionNumbers,
   selectPackage,
   unitWeight,
@@ -218,6 +219,51 @@ describe("selectPackage", () => {
     expect(
       ids.includes("twin") && ids.includes(units[0]!.questionIds[0]!),
     ).toBe(false);
+  });
+});
+
+describe("pickReplacement", () => {
+  test("takes another unit of the slot, never one already in the package", () => {
+    const units = bank(3);
+    const replacement = pickReplacement({
+      blueprint: epsTopikBlueprint,
+      number: 14,
+      size: 1,
+      units,
+      exclude: new Set(["q14-0", "q12-1", "q13-2"]),
+      seed: "swap",
+      now,
+    });
+    expect(replacement?.type).toBe("eps:R8");
+    expect(["q14-0", "q12-1", "q13-2"]).not.toContain(
+      replacement!.questionIds[0]!,
+    );
+    // The same seed gives the same replacement.
+    expect(
+      pickReplacement({
+        blueprint: epsTopikBlueprint,
+        number: 14,
+        size: 1,
+        units,
+        exclude: new Set(["q14-0", "q12-1", "q13-2"]),
+        seed: "swap",
+        now,
+      }),
+    ).toBe(replacement);
+  });
+
+  test("is undefined when the bank has nothing else", () => {
+    expect(
+      pickReplacement({
+        blueprint: epsTopikBlueprint,
+        number: 40,
+        size: 1,
+        units: bank(1),
+        exclude: new Set(["q40-0"]),
+        seed: "swap",
+        now,
+      }),
+    ).toBeUndefined();
   });
 });
 

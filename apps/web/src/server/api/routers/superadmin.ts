@@ -387,6 +387,11 @@ export const superadminRouter = createTRPCRouter({
           throw aiError(error, "Audio cloud gagal dibuat. Silakan coba lagi.");
         }
       }),
+    /** "Hitung ulang statistik": every bank question's numbers from all packages taken. */
+    refreshStats: superadminProcedure.mutation(async ({ ctx }) => {
+      const { refreshAllBankStats } = await import("~/server/bank/stats");
+      return refreshAllBankStats(ctx.db);
+    }),
     /** Packages built so far, newest first. */
     packages: superadminProcedure.query(({ ctx }) => listPackages(ctx.db)),
     /** What a package would hold; nothing is saved. A mutation, since each call draws a new seed. */

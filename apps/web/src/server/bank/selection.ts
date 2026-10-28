@@ -342,6 +342,46 @@ export function selectPackage(input: {
 }
 
 /**
+ * "Ganti soal no. N" (section 4.3): another unit for the slot (or group of slots) starting at
+ * `number`, of the same size, each question allowed in its own slot, none already in the package.
+ * Same weights as a new package (the slot's type and closest difficulty first), seeded so a swap
+ * can be replayed. Undefined when the bank has nothing else.
+ */
+export function pickReplacement(input: {
+  blueprint: Blueprint;
+  number: number;
+  size: number;
+  units: readonly BankUnit[];
+  /** Bank question ids already in the package, the swapped ones included. */
+  exclude: ReadonlySet<string>;
+  seed: string;
+  now: number;
+}) {
+  const slots = input.blueprint.sections.flatMap((section) =>
+    section.slots.map((slot) => ({ slot, section: section.key })),
+  );
+  const start = slots.findIndex((entry) => entry.slot.number === input.number);
+  if (start < 0) return undefined;
+  const candidates = input.units.filter(
+    (unit) =>
+      unit.questionIds.length === input.size &&
+      !unit.questionIds.some((id) => input.exclude.has(id)) &&
+      unit.questionIds.every((_, offset) => {
+        const entry = slots[start + offset];
+        return (
+          entry?.section === slots[start]!.section &&
+          allows(entry.slot, unit.memberTypes?.[offset] ?? unit.type)
+        );
+      }),
+  );
+  return weightedPick(
+    candidates,
+    (unit) => unitWeight(unit, slots[start]!.slot, input.now),
+    seededRandom(input.seed),
+  );
+}
+
+/**
  * Where each question's key goes so every position is used about equally per section (EPS keeps
  * about five ① ② ③ ④ in 20 questions). Returns one target position per question, in order.
  */
