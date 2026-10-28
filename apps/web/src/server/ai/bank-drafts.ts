@@ -26,8 +26,9 @@ export const openAiDraftModels: DraftModels = {
       }),
       instructions,
       prompt: request,
-      maxRetries: 1,
-      timeout: 180_000,
+      // With the blind check this request stays well inside the 300 s function limit.
+      maxRetries: 0,
+      timeout: 150_000,
       providerOptions: { openai: { reasoningEffort: "medium", store: false } },
     });
     return output.questions;
@@ -52,8 +53,8 @@ export const openAiDraftModels: DraftModels = {
       prompt: JSON.stringify(
         questions.map((question, index) => ({ index, ...question })),
       ),
-      maxRetries: 1,
-      timeout: 120_000,
+      maxRetries: 0,
+      timeout: 90_000,
       providerOptions: { openai: { reasoningEffort: "low", store: false } },
     });
     return output.answers;

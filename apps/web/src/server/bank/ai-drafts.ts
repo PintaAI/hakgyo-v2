@@ -3,6 +3,7 @@ import {
   epsTypeByTag,
   type EpsTypeDefinition,
 } from "@hakgyo/shared/eps-taxonomy";
+import { epsTopicSlugs } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -34,16 +35,7 @@ export const MAX_DRAFTS_PER_CALL = 5;
 export const draftModels = ["gpt-5.4", "gpt-5.4-mini"] as const;
 export type DraftModel = (typeof draftModels)[number];
 
-const topicSlugs = [
-  "k3",
-  "alat-kerja",
-  "lembaga",
-  "kehidupan",
-  "budaya",
-  "angka",
-  "benda",
-  "tindakan-kerja",
-] as const;
+const topicSlugs = epsTopicSlugs;
 
 export const createAiDraftsInput = z.object({
   assessmentId: z.string().min(1),
@@ -186,6 +178,13 @@ export async function prepareDrafts(input: {
       ),
       blind: answer,
     });
+    if (!answer) {
+      flags.push({
+        code: "BLIND_MISSING",
+        message:
+          "Model pemeriksa tidak menjawab soal ini; periksa kuncinya sendiri.",
+      });
+    }
     return { draft, flags, checkModel };
   });
 }
@@ -222,7 +221,9 @@ export async function createAiDrafts(
     },
     select: {
       id: true,
+      // Near copies are within a type, so only that type is compared.
       questions: {
+        where: { tags: { has: type.tag } },
         orderBy: { position: "asc" },
         select: {
           position: true,

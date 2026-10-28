@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { epsTypeByTag } from "@hakgyo/shared/eps-taxonomy";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -12,7 +10,10 @@ import {
 import { hasImageSignature } from "~/lib/image-signature";
 import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import { toPrismaJsonValue } from "~/server/prisma-json";
-import { putObject } from "~/server/storage/objects";
+import { contentHasImage } from "~/lib/bank-status";
+import { lockAssessment } from "~/server/assessment/lock";
+import { createDocumentKey } from "~/server/storage/documents";
+import { deleteObject, putObject } from "~/server/storage/objects";
 
 /**
  * Illustrations for bank questions (docs/eps-question-generator.md section 6, illustrated lane: R1,
@@ -104,6 +105,14 @@ export async function generateBankImage(
       message: "Belum ada deskripsi gambar untuk soal ini.",
     });
   }
+  // One picture per prompt: a retry or a second tab must not add another (and pay for it).
+  const alreadyDrawn = () =>
+    new TRPCError({ code: "CONFLICT", message: "Gambar ini sudah dibuat." });
+  if (
+    option ? contentHasImage(option.content) : contentHasImage(question.prompt)
+  ) {
+    throw alreadyDrawn();
+  }
 
   const bytes = await generate(bankImagePrompt(brief));
   if (!bytes.length || !hasImageSignature(bytes, "image/webp")) {
@@ -112,54 +121,78 @@ export async function generateBankImage(
       message: "Gambar AI tidak valid.",
     });
   }
-  const objectKey = `documents/${encodeURIComponent(userId)}/${randomUUID()}-${bytes.length}.webp`;
+  const objectKey = createDocumentKey(userId, bytes.length, ".webp");
   const etag = await putObject(objectKey, bytes, "image/webp");
   const fileName = option
     ? `bank-${question.id}-pilihan-${input.optionIndex! + 1}.webp`
     : `bank-${question.id}.webp`;
   const now = new Date();
 
-  return db.$transaction(async (tx) => {
-    const asset = await tx.asset.create({
-      data: {
-        organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
-        uploadedByUserId: userId,
-        objectKey,
-        fileName,
-        contentType: "image/webp",
-        size: bytes.length,
-        etag,
-        confirmedAt: now,
-        // Bank media are shared with the organizations whose packages use them.
-        sharedAt: now,
-      },
-      select: { id: true, fileName: true },
-    });
-    await tx.assessmentAsset.create({
-      data: {
-        assessmentId: question.assessmentId,
-        assetId: asset.id,
-        organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
-        assetOrganizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
-      },
-    });
-    if (option) {
-      // A picture option is only its picture.
-      await tx.assessmentOption.update({
-        where: { id: option.id },
-        data: { content: toPrismaJsonValue([imageBlock(asset)]) },
-      });
-    } else {
-      await tx.assessmentQuestion.update({
-        where: { id: question.id },
+  try {
+    return await db.$transaction(async (tx) => {
+      await lockAssessment(tx, question.assessmentId);
+      // Read the content again: it may have changed while the picture was drawn.
+      const current = option
+        ? await tx.assessmentOption.findUniqueOrThrow({
+            where: { id: option.id },
+            select: { content: true },
+          })
+        : await tx.assessmentQuestion.findUniqueOrThrow({
+            where: { id: question.id },
+            select: { prompt: true },
+          });
+      if (
+        contentHasImage("content" in current ? current.content : current.prompt)
+      ) {
+        throw alreadyDrawn();
+      }
+      const asset = await tx.asset.create({
         data: {
-          prompt: toPrismaJsonValue([
-            ...(toBlockNoteDocument(question.prompt) as unknown[]),
-            imageBlock(asset),
-          ] as Prisma.InputJsonValue),
+          organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
+          uploadedByUserId: userId,
+          objectKey,
+          fileName,
+          contentType: "image/webp",
+          size: bytes.length,
+          etag,
+          confirmedAt: now,
+          // Bank media are shared with the organizations whose packages use them.
+          sharedAt: now,
+        },
+        select: { id: true, fileName: true },
+      });
+      await tx.assessmentAsset.create({
+        data: {
+          assessmentId: question.assessmentId,
+          assetId: asset.id,
+          organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
+          assetOrganizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
         },
       });
-    }
-    return { assetId: asset.id };
-  });
+      if (option) {
+        // A picture option is only its picture.
+        await tx.assessmentOption.update({
+          where: { id: option.id },
+          data: { content: toPrismaJsonValue([imageBlock(asset)]) },
+        });
+      } else {
+        await tx.assessmentQuestion.update({
+          where: { id: question.id },
+          data: {
+            prompt: toPrismaJsonValue([
+              ...(toBlockNoteDocument(
+                "prompt" in current ? current.prompt : question.prompt,
+              ) as unknown[]),
+              imageBlock(asset),
+            ] as Prisma.InputJsonValue),
+          },
+        });
+      }
+      return { assetId: asset.id };
+    });
+  } catch (error) {
+    // Nothing points at the file when the write failed.
+    await deleteObject(objectKey).catch(() => undefined);
+    throw error;
+  }
 }

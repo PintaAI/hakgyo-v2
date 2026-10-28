@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { epsTagVocabulary, tagLabel } from "@hakgyo/shared";
+import { epsTagVocabulary, type epsTopicSlugs, tagLabel } from "@hakgyo/shared";
 import { epsTaxonomy } from "@hakgyo/shared/eps-taxonomy";
 import {
   ArrowLeftIcon,
@@ -425,7 +425,8 @@ function BankImageActions({
         hasImage ? [] : [index],
       )
     : [];
-  const needsPrompt = Boolean(question.mediaBrief) && !question.promptHasImage;
+  const needsPrompt =
+    Boolean(question.mediaBrief) && !question.media.promptHasImage;
   if (!needsPrompt && !missingOptions.length) return null;
 
   async function draw(targets: Array<number | undefined>) {
@@ -524,7 +525,7 @@ function AiDraftForm({
         type,
         count: Number(count),
         level,
-        topic: (topic || undefined) as never,
+        topic: topic ? (topic as (typeof epsTopicSlugs)[number]) : undefined,
         keywords: keywords
           .split(/[,،、]/)
           .map((word) => word.trim())

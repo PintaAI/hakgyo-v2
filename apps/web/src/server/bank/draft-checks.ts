@@ -11,6 +11,7 @@ export type DraftFlagCode =
   | "KEYWORDS"
   | "SIMILAR"
   | "BLIND_MISMATCH"
+  | "BLIND_MISSING"
   | "AMBIGUOUS";
 
 export type DraftFlag = { code: DraftFlagCode; message: string };

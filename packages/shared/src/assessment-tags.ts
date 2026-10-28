@@ -62,7 +62,8 @@ export const epsTypes = [
   ["L12", "Monolog"],
 ] as const satisfies ReadonlyArray<readonly [string, string]>;
 
-const topics: Array<[string, string]> = [
+/** EPS-TOPIK content topics (`topik:<slug>`), slug and Indonesian name. */
+export const epsTopics = [
   ["k3", "K3 (keselamatan kerja)"],
   ["alat-kerja", "Alat dan mesin kerja"],
   ["lembaga", "Lembaga dan prosedur"],
@@ -71,6 +72,12 @@ const topics: Array<[string, string]> = [
   ["angka", "Angka"],
   ["benda", "Benda sehari-hari"],
   ["tindakan-kerja", "Tindakan kerja"],
+] as const satisfies ReadonlyArray<readonly [string, string]>;
+
+/** The topic slugs, for enums. */
+export const epsTopicSlugs = epsTopics.map(([slug]) => slug) as [
+  (typeof epsTopics)[number][0],
+  ...(typeof epsTopics)[number][0][],
 ];
 
 const levels: Array<[string, string]> = [
@@ -89,7 +96,7 @@ export const epsTagVocabulary: TagDefinition[] = [
       ? ("reading" as const)
       : ("listening" as const),
   })),
-  ...topics.map(([slug, label]) => ({
+  ...epsTopics.map(([slug, label]) => ({
     tag: `topik:${slug}`,
     label,
     group: "topik" as const,

@@ -303,12 +303,13 @@ export const superadminRouter = createTRPCRouter({
         try {
           const { openAiDraftModels } = await import("~/server/ai/bank-drafts");
           const result = await createAiDrafts(ctx.db, input, openAiDraftModels);
+          // A failed log line must not report saved work as failed.
           await audit(ctx.db, {
             actorUserId: ctx.actorUserId,
             targetId: input.assessmentId,
             targetType: "assessment",
             action: "bank.ai-drafts",
-          });
+          }).catch((error: unknown) => console.error("Audit failed", error));
           return result;
         } catch (error) {
           throw aiError(error, "Draf AI gagal dibuat. Silakan coba lagi.");
@@ -326,12 +327,13 @@ export const superadminRouter = createTRPCRouter({
             ctx.actorUserId,
             generateBankIllustration,
           );
+          // A failed log line must not report saved work as failed.
           await audit(ctx.db, {
             actorUserId: ctx.actorUserId,
             targetId: input.questionId,
             targetType: "assessment-question",
             action: "bank.ai-image",
-          });
+          }).catch((error: unknown) => console.error("Audit failed", error));
           return result;
         } catch (error) {
           throw aiError(error, "Gambar AI gagal dibuat. Silakan coba lagi.");

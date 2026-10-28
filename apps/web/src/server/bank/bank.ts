@@ -8,6 +8,8 @@ import type {
   PrismaClient,
 } from "../../../generated/prisma/client";
 import {
+  bankMediaState,
+  contentHasImage,
   bankReadinessProblem,
   bankStatuses,
   bankStatusLabels,
@@ -51,19 +53,6 @@ for (const section of epsTopikBlueprint.sections) {
   for (const slot of section.slots) {
     slotsPerType.set(slot.type, (slotsPerType.get(slot.type) ?? 0) + 1);
   }
-}
-
-function hasImageBlock(content: unknown) {
-  return (
-    Array.isArray(content) &&
-    content.some((block: unknown) => {
-      const type =
-        typeof block === "object" && block !== null && "type" in block
-          ? block.type
-          : null;
-      return type === "assetImage" || type === "image";
-    })
-  );
 }
 
 async function requireBank(db: PrismaClient, assessmentId: string) {
@@ -229,9 +218,9 @@ export async function listBankQuestions(
       hasScript: Boolean(meta.script?.length),
       /** Illustrated types can have their pictures drawn by AI. */
       illustrated: type?.lane === "illustrated",
-      promptHasImage: hasImageBlock(prompt),
+      media: bankMediaState({ type, prompt, options }),
       optionsAreImages: type?.optionsAreImages ?? false,
-      optionImages: options.map((option) => hasImageBlock(option.content)),
+      optionImages: options.map((option) => contentHasImage(option.content)),
     };
   });
 }
@@ -253,7 +242,8 @@ export async function setBankStatus(
       type: true,
       tags: true,
       bankStatus: true,
-      options: { select: { isCorrect: true } },
+      prompt: true,
+      options: { select: { isCorrect: true, content: true } },
     },
   });
   const movable = new Map<BankItemStatus, string[]>();
@@ -276,6 +266,11 @@ export async function setBankStatus(
             optionCount: question.options.length,
             correctCount: question.options.filter((option) => option.isCorrect)
               .length,
+            media: bankMediaState({
+              type: question.tags.map(epsTypeByTag).find(Boolean),
+              prompt: question.prompt,
+              options: question.options,
+            }),
           })
         : null;
     if (problem) {
