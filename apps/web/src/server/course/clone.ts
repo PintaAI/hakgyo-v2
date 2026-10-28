@@ -150,6 +150,7 @@ export async function cloneStarterCourse(
       where: {
         id: { in: [...assessmentIds] },
         organizationId: sourceOrganizationId,
+        kind: { not: "BANK" },
       },
       include: {
         questions: {

@@ -6,6 +6,13 @@ import type {
   BankItemStatus,
   PrismaClient,
 } from "../../../generated/prisma/client";
+import {
+  bankReadinessProblem,
+  bankStatuses,
+  bankStatusLabels,
+  bankTransitions,
+  MAX_BANK_BATCH,
+} from "~/lib/bank-status";
 import { getBlockNotePlainText } from "~/lib/blocknote/document";
 import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 
@@ -16,14 +23,12 @@ import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
  * Every procedure here is superadmin-only.
  */
 
-export const bankStatuses = ["DRAFT", "REVIEW", "LIVE", "RETIRED"] as const;
-
 /** Questions a pilot of this many packages needs per type (section 7: about 120 for 3). */
 export const PILOT_PACKAGES = 3;
 
 export const setBankStatusInput = z.object({
   assessmentId: z.string().min(1),
-  questionIds: z.array(z.string().min(1)).min(1).max(200),
+  questionIds: z.array(z.string().min(1)).min(1).max(MAX_BANK_BATCH),
   status: z.enum(bankStatuses),
 });
 
@@ -32,20 +37,20 @@ export const listBankQuestionsInput = z.object({
   status: z.enum(bankStatuses).optional(),
 });
 
-/** Allowed moves: forward through review, back to draft from review, retire or revive. */
-const transitions: Record<BankItemStatus, readonly BankItemStatus[]> = {
-  DRAFT: ["REVIEW", "RETIRED"],
-  REVIEW: ["LIVE", "DRAFT", "RETIRED"],
-  LIVE: ["RETIRED", "REVIEW"],
-  RETIRED: ["REVIEW"],
-};
+const emptyCounts = (): Record<BankItemStatus, number> => ({
+  DRAFT: 0,
+  REVIEW: 0,
+  LIVE: 0,
+  RETIRED: 0,
+});
 
-const statusLabels: Record<BankItemStatus, string> = {
-  DRAFT: "Draf",
-  REVIEW: "Perlu review",
-  LIVE: "Siap dipakai",
-  RETIRED: "Pensiun",
-};
+/** How many slots of each type one package has. */
+const slotsPerType = new Map<string, number>();
+for (const section of epsTopikBlueprint.sections) {
+  for (const slot of section.slots) {
+    slotsPerType.set(slot.type, (slotsPerType.get(slot.type) ?? 0) + 1);
+  }
+}
 
 async function requireBank(db: PrismaClient, assessmentId: string) {
   const bank = await db.assessment.findFirst({
@@ -91,12 +96,6 @@ export async function getBankOverview(db: PrismaClient, userId: string) {
       },
     }),
   ]);
-  const slotsPerType = new Map<string, number>();
-  for (const section of epsTopikBlueprint.sections) {
-    for (const slot of section.slots) {
-      slotsPerType.set(slot.type, (slotsPerType.get(slot.type) ?? 0) + 1);
-    }
-  }
   return {
     organizationSlug: organization?.slug ?? null,
     canEdit: Boolean(membership),
@@ -106,12 +105,7 @@ export async function getBankOverview(db: PrismaClient, userId: string) {
       for (const question of bank.questions) {
         const type =
           question.tags.find((tag) => tag.startsWith("eps:")) ?? "untagged";
-        const row = counts.get(type) ?? {
-          DRAFT: 0,
-          REVIEW: 0,
-          LIVE: 0,
-          RETIRED: 0,
-        };
+        const row = counts.get(type) ?? emptyCounts();
         row[question.bankStatus ?? "DRAFT"] += 1;
         counts.set(type, row);
       }
@@ -123,12 +117,7 @@ export async function getBankOverview(db: PrismaClient, userId: string) {
           (type) => ({
             type,
             target: (slotsPerType.get(type) ?? 0) * PILOT_PACKAGES,
-            counts: counts.get(type) ?? {
-              DRAFT: 0,
-              REVIEW: 0,
-              LIVE: 0,
-              RETIRED: 0,
-            },
+            counts: counts.get(type) ?? emptyCounts(),
           }),
         ),
       };
@@ -191,7 +180,7 @@ export async function listBankQuestions(
       ...(input.status ? { bankStatus: input.status } : {}),
     },
     orderBy: { position: "asc" },
-    take: 500,
+    take: MAX_BANK_BATCH,
     select: {
       id: true,
       position: true,
@@ -210,25 +199,6 @@ export async function listBankQuestions(
     optionCount: options.length,
     correctCount: options.filter((option) => option.isCorrect).length,
   }));
-}
-
-/** Why a question can't go to review or live yet, in Indonesian (null when it can). */
-function readinessProblem(question: {
-  type: string;
-  tags: string[];
-  optionCount: number;
-  correctCount: number;
-}) {
-  if (question.type !== "SINGLE_CHOICE") return "harus pilihan tunggal";
-  if (question.optionCount !== 4) return "harus punya 4 pilihan";
-  if (question.correctCount !== 1) return "harus punya tepat 1 jawaban benar";
-  if (!question.tags.some((tag) => tag.startsWith("eps:"))) {
-    return "belum diberi label tipe (eps:…)";
-  }
-  if (!question.tags.some((tag) => tag.startsWith("level:"))) {
-    return "belum diberi label tingkat (level:…)";
-  }
-  return null;
 }
 
 /**
@@ -251,21 +221,21 @@ export async function setBankStatus(
       options: { select: { isCorrect: true } },
     },
   });
-  const moved: string[] = [];
+  const movable = new Map<BankItemStatus, string[]>();
   const skipped: Array<{ questionId: string; reason: string }> = [];
   for (const question of questions) {
     const from = question.bankStatus ?? "DRAFT";
     if (from === input.status) continue;
-    if (!transitions[from].includes(input.status)) {
+    if (!bankTransitions[from].includes(input.status)) {
       skipped.push({
         questionId: question.id,
-        reason: `tidak bisa dari ${statusLabels[from]} ke ${statusLabels[input.status]}`,
+        reason: `tidak bisa dari ${bankStatusLabels[from]} ke ${bankStatusLabels[input.status]}`,
       });
       continue;
     }
     const problem =
       input.status === "REVIEW" || input.status === "LIVE"
-        ? readinessProblem({
+        ? bankReadinessProblem({
             type: question.type,
             tags: question.tags,
             optionCount: question.options.length,
@@ -277,13 +247,19 @@ export async function setBankStatus(
       skipped.push({ questionId: question.id, reason: problem });
       continue;
     }
-    moved.push(question.id);
+    const group = movable.get(from) ?? [];
+    group.push(question.id);
+    movable.set(from, group);
   }
-  if (moved.length) {
-    await db.assessmentQuestion.updateMany({
-      where: { id: { in: moved } },
+  // Each move only applies if the question is still where it was checked (another review may
+  // have moved it meanwhile).
+  let moved = 0;
+  for (const [from, ids] of movable) {
+    const result = await db.assessmentQuestion.updateMany({
+      where: { id: { in: ids }, bankStatus: from },
       data: { bankStatus: input.status },
     });
+    moved += result.count;
   }
-  return { moved: moved.length, skipped };
+  return { moved, skipped };
 }

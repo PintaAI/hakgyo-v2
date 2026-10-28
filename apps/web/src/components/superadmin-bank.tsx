@@ -16,34 +16,26 @@ import { Button, buttonVariants } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { EmptyState } from "~/components/ui/empty-state";
 import { cn } from "~/lib/utils";
+import {
+  bankReadinessProblem,
+  bankStatusLabels,
+  bankTransitions,
+  MAX_BANK_BATCH,
+  type BankStatus,
+} from "~/lib/bank-status";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type Overview = RouterOutputs["superadmin"]["bank"]["overview"];
-type Status = "DRAFT" | "REVIEW" | "LIVE" | "RETIRED";
+type Status = BankStatus;
 
-const statusTabs: Array<{ status: Status; label: string }> = [
-  { status: "REVIEW", label: "Perlu review" },
-  { status: "DRAFT", label: "Draf" },
-  { status: "LIVE", label: "Siap dipakai" },
-  { status: "RETIRED", label: "Pensiun" },
-];
+/** Tabs, review queue first. */
+const statusTabs: Status[] = ["REVIEW", "DRAFT", "LIVE", "RETIRED"];
 
-/** What a selection in each tab can move to. */
-const actions: Record<Status, Array<{ to: Status; label: string }>> = {
-  DRAFT: [
-    { to: "REVIEW", label: "Kirim ke review" },
-    { to: "RETIRED", label: "Pensiunkan" },
-  ],
-  REVIEW: [
-    { to: "LIVE", label: "Setujui" },
-    { to: "DRAFT", label: "Kembalikan ke draf" },
-    { to: "RETIRED", label: "Pensiunkan" },
-  ],
-  LIVE: [
-    { to: "REVIEW", label: "Kembalikan ke review" },
-    { to: "RETIRED", label: "Pensiunkan" },
-  ],
-  RETIRED: [{ to: "REVIEW", label: "Kirim ke review" }],
+const moveLabels: Record<Status, string> = {
+  DRAFT: "Kembalikan ke draf",
+  REVIEW: "Kirim ke review",
+  LIVE: "Setujui",
+  RETIRED: "Pensiunkan",
 };
 
 function levelOf(tags: readonly string[]) {
@@ -271,15 +263,15 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
             <div className="flex gap-1 overflow-x-auto">
               {statusTabs.map((tab) => (
                 <Button
-                  key={tab.status}
+                  key={tab}
                   onClick={() => {
-                    setStatus(tab.status);
+                    setStatus(tab);
                     setSelected(new Set());
                   }}
                   size="sm"
-                  variant={tab.status === status ? "default" : "ghost"}
+                  variant={tab === status ? "default" : "ghost"}
                 >
-                  {tab.label}
+                  {bankStatusLabels[tab]}
                 </Button>
               ))}
             </div>
@@ -304,14 +296,18 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
                   />
                   Pilih semua ({rows.length})
                 </label>
+                {rows.length >= MAX_BANK_BATCH ? (
+                  <p className="text-muted-foreground text-xs">
+                    Hanya {MAX_BANK_BATCH} soal pertama yang tampil.
+                  </p>
+                ) : null}
                 <ul className="divide-y border-y sm:rounded-lg sm:border">
                   {rows.map((question) => {
                     const type = question.tags.find((tag) =>
                       tag.startsWith("eps:"),
                     );
                     const level = levelOf(question.tags);
-                    const incomplete =
-                      question.optionCount !== 4 || question.correctCount !== 1;
+                    const problem = bankReadinessProblem(question);
                     return (
                       <li key={question.id}>
                         <label className="flex items-start gap-3 px-1 py-3 sm:px-3">
@@ -335,11 +331,8 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
                               {question.groupId ? (
                                 <span>· kelompok</span>
                               ) : null}
-                              {incomplete ? (
-                                <Badge variant="destructive">
-                                  {question.optionCount} pilihan,{" "}
-                                  {question.correctCount} benar
-                                </Badge>
+                              {problem && status !== "RETIRED" ? (
+                                <Badge variant="destructive">{problem}</Badge>
                               ) : null}
                             </span>
                             <span className="line-clamp-2 block text-sm">
@@ -361,15 +354,17 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
                 <span className="text-sm font-medium">
                   {selected.size} dipilih
                 </span>
-                {actions[status].map((action) => (
+                {bankTransitions[status].map((to) => (
                   <Button
-                    key={action.to}
+                    key={to}
                     disabled={setBankStatus.isPending}
-                    onClick={() => void move(action.to)}
+                    onClick={() => void move(to)}
                     size="sm"
-                    variant={action.to === "RETIRED" ? "outline" : "default"}
+                    variant={to === "RETIRED" ? "outline" : "default"}
                   >
-                    {action.label}
+                    {to === "REVIEW" && status === "LIVE"
+                      ? "Kembalikan ke review"
+                      : moveLabels[to]}
                   </Button>
                 ))}
               </div>

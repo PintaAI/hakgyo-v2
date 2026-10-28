@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 
 import { SuperadminBank } from "~/components/superadmin-bank";
 import { requireSuperadminSession } from "~/server/auth/dal";
-import { api } from "~/trpc/server";
+import { api, HydrateClient } from "~/trpc/server";
 
 export default async function SuperadminBankPage() {
   try {
@@ -14,5 +14,17 @@ export default async function SuperadminBankPage() {
   }
 
   const overview = await api.superadmin.bank.overview();
-  return <SuperadminBank initialData={overview} />;
+  // The review queue of the first bank shows first; load it with the page.
+  const firstBank = overview.banks[0];
+  if (firstBank) {
+    await api.superadmin.bank.questions.prefetch({
+      assessmentId: firstBank.id,
+      status: "REVIEW",
+    });
+  }
+  return (
+    <HydrateClient>
+      <SuperadminBank initialData={overview} />
+    </HydrateClient>
+  );
 }
