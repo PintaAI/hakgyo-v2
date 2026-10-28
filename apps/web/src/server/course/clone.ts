@@ -440,6 +440,8 @@ export async function cloneStarterCourse(
                       assessmentId: idMap.get(assessment.id)!,
                       assetId: copied,
                       organizationId,
+                      // Cloned files belong to the new organization.
+                      assetOrganizationId: organizationId,
                     },
                   ]
                 : [];

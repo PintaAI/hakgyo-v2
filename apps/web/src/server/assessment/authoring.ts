@@ -162,7 +162,7 @@ export async function duplicateAssessment(
       questionGroups: {
         select: { id: true, instructions: true, stimulus: true },
       },
-      assets: { select: { assetId: true } },
+      assets: { select: { assetId: true, assetOrganizationId: true } },
     },
   });
   if (!source) throw new TRPCError({ code: "NOT_FOUND" });
@@ -216,10 +216,12 @@ export async function duplicateAssessment(
     }
     if (assets.length) {
       await tx.assessmentAsset.createMany({
-        data: assets.map(({ assetId }) => ({
+        data: assets.map(({ assetId, assetOrganizationId }) => ({
           assessmentId: copy.id,
           assetId,
           organizationId: source.organizationId,
+          // A copy keeps pointing at the same files, shared Hakgyo ones included.
+          assetOrganizationId: assetOrganizationId ?? source.organizationId,
         })),
         skipDuplicates: true,
       });
@@ -426,7 +428,11 @@ export async function attachAsset(
   const link = { assessmentId: input.assessmentId, assetId: input.assetId };
   return db.assessmentAsset.upsert({
     where: { assessmentId_assetId: link },
-    create: { ...link, organizationId: assessment.organizationId },
+    create: {
+      ...link,
+      organizationId: assessment.organizationId,
+      assetOrganizationId: assessment.organizationId,
+    },
     update: {},
   });
 }
