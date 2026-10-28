@@ -216,6 +216,18 @@ Murid melihat petunjuk dan bahan bersama di atas setiap soal kelompok itu. Pada 
 
 Ubah soal yang termasuk lewat **Dari soal** dan **Sampai soal** di kotak kelompok. Ikon tempat sampah menghapus kelompok tanpa menghapus soalnya. Jika di **Bagian & urutan** sebuah soal dipindah sampai tidak lagi berurutan dengan kelompoknya, soal itu keluar dari kelompok.
 
+#### Format EPS-TOPIK untuk tryout dan pemantapan
+
+Di **Pengaturan tugas**, bagian **Format EPS-TOPIK**, klik **Terapkan format EPS-TOPIK**. Tugas langsung diatur seperti ujian EPS-TOPIK:
+
+- **Membaca**: 25 menit, murid bebas berpindah soal.
+- **Mendengar**: 25 menit, soal berganti sendiri. Audio setiap soal diputar otomatis dua kali dengan jeda 2 detik, lalu murid punya 7 detik untuk menjawab.
+- Setiap soal bernilai **2,5 poin** (40 soal = 100), urutan soal tidak diacak, dan ada batas nilai **Manufaktur 60%** dan **Sektor lain 45%**.
+
+Jika tugas belum punya bagian, 20 soal pertama masuk Membaca dan sisanya masuk Mendengar. Tugas dengan lebih dari dua bagian tidak bisa langsung diatur; hapus bagian lain dulu. Semua pengaturan tetap bisa diubah sesudahnya.
+
+Setelah format diterapkan, panel yang sama memeriksa soal terhadap susunan paket EPS-TOPIK: jumlah soal per bagian, label tipe soal (misalnya soal 4 seharusnya `eps:R2` rambu K3), label tingkat kesulitan, dan porsi soal pekerjaan, K3 dan lembaga (sasaran 40–50%). Beri label soal agar pemeriksaan ini lengkap.
+
 Aplikasi ponsel versi lama tidak bisa membuka tugas berbagian, tugas dengan aturan ini, atau tugas dengan kelompok soal; murid diminta memperbarui aplikasinya.
 
 Soal baru masuk ke bagian terakhir. Menghapus bagian tidak menghapus soalnya: soal dipindahkan ke bagian sebelumnya. Jika bagian terakhir dihapus, tugas kembali menjadi satu kesatuan tanpa bagian.

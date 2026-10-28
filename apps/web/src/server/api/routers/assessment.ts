@@ -28,6 +28,7 @@ import {
   updateSection,
   updateSectionInput,
 } from "~/server/assessment/sections";
+import { applyEpsTopikPreset } from "~/server/assessment/eps-preset";
 import {
   createQuestionGroup,
   createQuestionGroupInput,
@@ -215,6 +216,12 @@ export const assessmentRouter = createTRPCRouter({
     .input(z.object({ sectionId: id }))
     .mutation(({ ctx, input }) =>
       deleteSection(ctx.db, input.sectionId, ctx.actorUserId),
+    ),
+  /** "Terapkan format EPS-TOPIK": sections, points, bands and order from the blueprint. */
+  applyEpsTopikPreset: protectedProcedure
+    .input(z.object({ assessmentId: id }))
+    .mutation(({ ctx, input }) =>
+      applyEpsTopikPreset(ctx.db, input.assessmentId, ctx.actorUserId),
     ),
   createQuestionGroup: protectedProcedure
     .input(createQuestionGroupInput)
