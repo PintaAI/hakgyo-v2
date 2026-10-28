@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { epsTypeByTag } from "@hakgyo/shared/eps-taxonomy";
 
+import type { PrismaClient } from "../../../generated/prisma/client";
+import { plainTextToBlockNote } from "~/lib/blocknote/document";
 import {
+  createAiDrafts,
   createAiDraftsInput,
   draftInstructions,
   prepareDrafts,
@@ -43,7 +46,6 @@ function models(drafts: DraftOutput[], answers: number[]) {
 
 describe("prepareDrafts", () => {
   const request = createAiDraftsInput.parse({
-    assessmentId: "bank",
     type: "eps:R8",
     count: 3,
     level: "sedang",
@@ -60,7 +62,7 @@ describe("prepareDrafts", () => {
       request,
       type: r8,
       models: fake,
-      existing: [{ text: drafts[0]!.prompt, position: 6 }],
+      existing: [{ id: "bank-question", text: drafts[0]!.prompt }],
     });
     expect(calls).toEqual([
       "write:gpt-5.4:Write 3 question(s) of type R8 (Kalimat rumpang). Level: sedang.",
@@ -92,5 +94,74 @@ describe("prepareDrafts", () => {
     const instructions = draftInstructions(r8);
     expect(instructions).toContain("Never reproduce");
     expect(instructions).toContain("R8 · Kalimat rumpang");
+  });
+});
+
+describe("createAiDrafts", () => {
+  const similarPrompt = "작업이 끝나면 공구를 (   ) 정리하십시오.";
+
+  /** A stub database: one existing bank question, and the rows the drafts write. */
+  function database() {
+    const writes: Record<string, unknown[]> = {};
+    const record = (model: string) => ({
+      createMany: (args: { data: unknown[] }) => {
+        writes[model] = args.data;
+        return Promise.resolve({ count: args.data.length });
+      },
+    });
+    const stub = {
+      bankQuestion: {
+        ...record("bankQuestion"),
+        findMany: () =>
+          Promise.resolve([
+            {
+              id: "existing",
+              prompt: plainTextToBlockNote(similarPrompt),
+              options: draft(0, "").options.map((option) => ({
+                content: plainTextToBlockNote(option),
+              })),
+            },
+          ]),
+      },
+      bankOption: record("bankOption"),
+      $transaction: (operations: Array<Promise<unknown>>) =>
+        Promise.all(operations),
+    };
+    return { db: stub as unknown as PrismaClient, writes };
+  }
+
+  test("drafts become DRAFT bank questions with their options, key and notes", async () => {
+    const { db, writes } = database();
+    const { fake } = models([draft(2, similarPrompt)], [2]);
+    const result = await createAiDrafts(
+      db,
+      createAiDraftsInput.parse({ type: "eps:R8", count: 1, level: "mudah" }),
+      "superadmin",
+      fake,
+    );
+    expect(result).toEqual({ created: 1, flagged: 1 });
+    const [question] = writes.bankQuestion as Array<Record<string, unknown>>;
+    expect(question).toMatchObject({
+      type: "SINGLE_CHOICE",
+      status: "DRAFT",
+      tags: ["eps:R8", "level:mudah", "topik:k3"],
+      createdByUserId: "superadmin",
+      meta: {
+        origin: "ai",
+        model: "gpt-5.4",
+        checkModel: "gpt-5.4-mini",
+        flags: [{ code: "SIMILAR" }],
+      },
+    });
+    const options = writes.bankOption as Array<Record<string, unknown>>;
+    expect(options.map((option) => option.questionId)).toEqual(
+      Array(4).fill(question!.id),
+    );
+    expect(options.map((option) => option.isCorrect)).toEqual([
+      false,
+      false,
+      true,
+      false,
+    ]);
   });
 });

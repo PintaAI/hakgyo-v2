@@ -23,7 +23,8 @@ import {
   type TtsClip,
   type TtsVoice,
 } from "~/lib/tts-clips";
-import { lockAssessment } from "~/server/assessment/lock";
+import { bankContentUses } from "~/server/bank/assets";
+import { lockQuestion } from "~/server/bank/locks";
 import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import { toPrismaJsonValue } from "~/server/prisma-json";
 import {
@@ -41,8 +42,8 @@ import {
  * Audio for bank questions (docs/eps-question-generator.md section 6): a job per question, run by
  * the VPS poller with VoxCPM2 on the GPU worker (it claims jobs, uploads the files and completes
  * them through `/api/internal/tts/*`), or with OpenAI when a job waits too long or staff ask for it
- * now. The files become shared Hakgyo assets placed in the prompt and options. One provider per
- * question.
+ * now. The files become shared assets of the Hakgyo system organization placed in the bank
+ * question's prompt and options (generated sets link them). One provider per question.
  */
 
 /** Jobs waiting this long go to the OpenAI fallback (the PC may be off). */
@@ -99,19 +100,12 @@ type ScriptMeta = {
 };
 
 async function bankQuestion(db: PrismaClient, questionId: string) {
-  const question = await db.assessmentQuestion.findFirst({
-    where: {
-      id: questionId,
-      assessment: {
-        kind: "BANK",
-        organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
-      },
-    },
+  const question = await db.bankQuestion.findUnique({
+    where: { id: questionId },
     select: {
       id: true,
-      assessmentId: true,
       tags: true,
-      bankMeta: true,
+      meta: true,
       options: { orderBy: { position: "asc" }, select: { content: true } },
     },
   });
@@ -129,7 +123,7 @@ export async function requestTts(
   const type = question.tags.map(epsTypeByTag).find(Boolean);
   const clips = ttsClipsFor({
     audio: type?.audio ?? "none",
-    script: ((question.bankMeta ?? {}) as ScriptMeta).script ?? [],
+    script: ((question.meta ?? {}) as ScriptMeta).script ?? [],
     optionTexts: question.options.map((option) =>
       getBlockNotePlainText(option.content),
     ),
@@ -142,15 +136,18 @@ export async function requestTts(
   }
   // The question row is the lock: two requests at once still make one job.
   return db.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "AssessmentQuestion" WHERE "id" = ${questionId} FOR UPDATE`;
+    await lockQuestion(tx, questionId);
     const open = await tx.ttsJob.findFirst({
-      where: { questionId, status: { in: ["PENDING", "RUNNING"] } },
+      where: {
+        bankQuestionId: questionId,
+        status: { in: ["PENDING", "RUNNING"] },
+      },
       select: { id: true, status: true },
     });
     if (open) return open;
     return tx.ttsJob.create({
       data: {
-        questionId,
+        bankQuestionId: questionId,
         requestedByUserId: userId,
         clips: toPrismaJsonValue(clips),
       },
@@ -161,7 +158,8 @@ export async function requestTts(
 
 /**
  * Claims up to `limit` waiting jobs for the poller (and jobs whose claim went stale), oldest first,
- * each with a fresh token. A job that used up its attempts on stale claims fails instead.
+ * each with a fresh token. A job that used up its attempts on stale claims fails instead. Jobs of
+ * the old assessment-based bank (no `bankQuestionId`) are never claimed.
  */
 export async function claimTtsJobs(db: PrismaClient, limit: number) {
   const staleBefore = new Date(Date.now() - STALE_CLAIM_MS);
@@ -185,7 +183,8 @@ export async function claimTtsJobs(db: PrismaClient, limit: number) {
       "claimToken" = gen_random_uuid()::text, "updatedAt" = now()
     WHERE "id" IN (
       SELECT "id" FROM "TtsJob"
-      WHERE "status" = 'PENDING' OR ("status" = 'RUNNING' AND "claimedAt" < ${staleBefore})
+      WHERE "bankQuestionId" IS NOT NULL
+        AND ("status" = 'PENDING' OR ("status" = 'RUNNING' AND "claimedAt" < ${staleBefore}))
       ORDER BY "createdAt" ASC
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
@@ -215,7 +214,7 @@ async function requireClaim(
     select: {
       id: true,
       status: true,
-      questionId: true,
+      bankQuestionId: true,
       requestedByUserId: true,
       clips: true,
       attempts: true,
@@ -292,10 +291,11 @@ function splitAudio(content: unknown) {
 }
 
 /**
- * Stores a job's uploaded files as shared Hakgyo assets and puts them in the question: the prompt
- * clip at the end of the prompt, option clips in their options. Every clip of the job is required
- * (one provider per question, no partial audio). Earlier audio is replaced; its files are removed
- * when nothing else (a package) still uses them.
+ * Stores a job's uploaded files as shared Hakgyo assets and puts them in the bank question: the
+ * prompt clip at the end of the prompt, option clips in their options. Every clip of the job is
+ * required (one provider per question, no partial audio). Earlier audio is replaced; its files are
+ * removed only when nothing links them (a generated set keeps the audio it was made with).
+ * A LIVE question whose audio changes goes back to REVIEW.
  */
 export async function completeTtsJob(
   db: PrismaClient,
@@ -321,17 +321,21 @@ export async function completeTtsJob(
       throw new TRPCError({ code: "BAD_REQUEST", message: "Size mismatch" });
     }
   }
-  const question = await bankQuestion(db, job.questionId);
+  if (!job.bankQuestionId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Job has no question" });
+  }
+  const question = await bankQuestion(db, job.bankQuestionId);
   const now = new Date();
   const result = await db.$transaction(async (tx) => {
     // Checked again under the lock: another run (the poller, the fallback) may have finished first.
     await requireClaim(tx, jobId, input.token, true);
-    await lockAssessment(tx, question.assessmentId);
-    const current = await tx.assessmentQuestion.findUniqueOrThrow({
+    await lockQuestion(tx, question.id);
+    const current = await tx.bankQuestion.findUniqueOrThrow({
       where: { id: question.id },
       select: {
+        status: true,
         prompt: true,
-        bankMeta: true,
+        meta: true,
         options: {
           orderBy: { position: "asc" },
           select: { id: true, content: true },
@@ -362,31 +366,25 @@ export async function completeTtsJob(
         },
         select: { id: true, fileName: true, contentType: true },
       });
-      await tx.assessmentAsset.create({
-        data: {
-          assessmentId: question.assessmentId,
-          assetId: asset.id,
-          organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
-          assetOrganizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
-        },
-      });
       assetIds[clip.key] = asset.id;
       const optionIndex = optionIndexOfClip(clip.key);
       if (optionIndex === null) promptBlocks.push(audioBlock(asset));
       else nextOptions[optionIndex]?.blocks.push(audioBlock(asset));
     }
     for (const option of nextOptions) {
-      await tx.assessmentOption.update({
+      await tx.bankOption.update({
         where: { id: option.id },
         data: { content: toPrismaJsonValue(option.blocks) },
       });
     }
-    await tx.assessmentQuestion.update({
+    await tx.bankQuestion.update({
       where: { id: question.id },
       data: {
+        // New audio is a content change: a LIVE question needs another review.
+        ...(current.status === "LIVE" ? { status: "REVIEW" as const } : {}),
         prompt: toPrismaJsonValue(promptBlocks),
-        bankMeta: toPrismaJsonValue({
-          ...((current.bankMeta ?? {}) as Record<string, unknown>),
+        meta: toPrismaJsonValue({
+          ...((current.meta ?? {}) as Record<string, unknown>),
           audio: {
             provider: input.provider,
             voices: input.voices,
@@ -407,26 +405,25 @@ export async function completeTtsJob(
         finishedAt: now,
       },
     });
-    // Replaced audio leaves the bank; files no other assessment links go entirely.
-    if (replaced.length) {
-      await tx.assessmentAsset.deleteMany({
-        where: {
-          assessmentId: question.assessmentId,
-          assetId: { in: replaced },
-        },
-      });
-    }
-    const unused = replaced.length
+    // Replaced audio goes entirely unless something links it (a generated set made with it) or
+    // other bank content still shows it (a clip pasted into a group or another question).
+    const unlinked = replaced.length
       ? await tx.asset.findMany({
           where: {
             id: { in: replaced },
             organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
             assessments: { none: {} },
             materials: { none: {} },
+            vocabularyEntries: { none: {} },
+            vocabularyEntryImages: { none: {} },
           },
           select: { id: true, objectKey: true },
         })
       : [];
+    const unused: typeof unlinked = [];
+    for (const asset of unlinked) {
+      if (!(await bankContentUses(tx, asset.id))) unused.push(asset);
+    }
     if (unused.length) {
       await tx.asset.deleteMany({
         where: { id: { in: unused.map(({ id }) => id) } },
@@ -549,6 +546,7 @@ export function overdueTtsJobs(db: PrismaClient, limit: number) {
   const now = Date.now();
   return db.ttsJob.findMany({
     where: {
+      bankQuestionId: { not: null },
       OR: [
         {
           status: "PENDING",
@@ -566,18 +564,18 @@ export function overdueTtsJobs(db: PrismaClient, limit: number) {
   });
 }
 
-/** The latest job per question, for the bank page. */
+/** The latest job per bank question, for the bank page. */
 export async function latestTtsJobs(
   db: PrismaClient,
   questionIds: readonly string[],
 ) {
   const jobs = questionIds.length
     ? await db.ttsJob.findMany({
-        where: { questionId: { in: [...questionIds] } },
-        orderBy: [{ questionId: "asc" }, { createdAt: "desc" }],
-        distinct: ["questionId"],
+        where: { bankQuestionId: { in: [...questionIds] } },
+        orderBy: [{ bankQuestionId: "asc" }, { createdAt: "desc" }],
+        distinct: ["bankQuestionId"],
         select: {
-          questionId: true,
+          bankQuestionId: true,
           status: true,
           error: true,
           createdAt: true,
@@ -585,5 +583,7 @@ export async function latestTtsJobs(
         },
       })
     : [];
-  return new Map(jobs.map((job) => [job.questionId, job]));
+  return new Map(
+    jobs.map(({ bankQuestionId, ...job }) => [bankQuestionId!, job]),
+  );
 }

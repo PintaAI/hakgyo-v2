@@ -26,6 +26,11 @@ export const appRouter = createTRPCRouter({
       (m) => m.assessmentEventRouter,
     ),
   ),
+  assessmentGenerator: lazy(() =>
+    import("~/server/api/routers/assessment-generator").then(
+      (m) => m.assessmentGeneratorRouter,
+    ),
+  ),
   assessmentImport: lazy(() =>
     import("~/server/api/routers/assessment-import").then(
       (m) => m.assessmentImportRouter,

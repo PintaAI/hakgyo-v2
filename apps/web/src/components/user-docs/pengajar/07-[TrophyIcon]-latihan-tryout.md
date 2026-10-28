@@ -85,16 +85,25 @@ Di atas daftar peserta, pilih **Analisis soal** untuk melihat hasil seluruh pese
 
 Jawaban tertulis harus dinilai pengajar sebelum masuk peringkat. Anda bisa menilainya langsung dari daftar peserta ini atau dari menu **Review**. Lihat [Review dan Penilaian](/docs/pengajar/review-penilaian).
 
-## Paket pemantapan dari Hakgyo
+## Buat set EPS-TOPIK
 
-Hakgyo bisa menyiapkan paket pemantapan EPS-TOPIK untuk lembaga Anda. Setiap paket berisi 40 soal dengan urutan dan komposisi seperti ujian asli: 20 soal **Membaca** lalu 20 soal **Mendengar**. Paket muncul di **Bahan ajar** > **Tugas** dengan tanda **Paket pemantapan dari Hakgyo**.
+Untuk tryout dan pemantapan EPS-TOPIK, pemilik dan admin bisa membuat set soal dari bank soal Hakgyo.
 
-- Soal, bagian, dan kunci jawaban paket **dikunci**. Anda bisa membaca soalnya dan menghapus paket yang belum dipakai, tetapi tidak bisa mengubah soal atau pengaturannya, menyalin paket, atau menjadikannya quiz publik.
-- Kunci jawaban dan pembahasan tidak ditampilkan kepada staf, termasuk saat meninjau jawaban murid. Setiap jawaban murid tetap tertanda benar atau salah. Di **Analisis soal**, persentase benar, daya beda, dan tanda soal tetap terlihat, tetapi persentase per opsi tidak, karena itu akan menunjukkan kuncinya.
-- Pakai paket seperti tugas lain: tampilkan di kurikulum, lalu buat **Tryout**. Murid yang mengerjakan paket langsung dari kurikulum tidak melihat jawaban benar. Pilih Tryout, bukan Latihan, supaya jawaban benar juga tidak terlihat setelah ditutup dan paket tetap layak dipakai kelas berikutnya.
-- Selama paket belum tayang (itemnya masih disembunyikan di kurikulum dan tidak ada latihan yang sedang dibuka) dan belum ada murid yang mengerjakan, Anda bisa **mengganti soal**: di kotak **Paket pemantapan dari Hakgyo**, pilih nomornya lalu klik **Ganti soal**. Soal itu diganti dengan soal lain dari bank yang tipenya sama, jadi susunan paket tetap seperti ujian asli. Soal yang berbagi teks atau audio diganti bersama, dan soal yang sudah pernah diganti tidak dipilih lagi. Setelah murid pertama mulai mengerjakan, paket tidak bisa diubah lagi; minta paket baru ke Hakgyo.
-- Paket tidak muncul di latihan mandiri murid.
-- Audio soal mendengar dibuat dengan suara AI. Keterangan ini tertulis di deskripsi paket dan terlihat murid.
+1. Buka **Bahan ajar** > **Tugas**, lalu klik **Buat set EPS-TOPIK**.
+2. Hakgyo memilih 40 soal sesuai format ujian asli: 20 soal **Membaca** lalu 20 soal **Mendengar**, dengan tipe soal yang sama seperti ujian di setiap nomor. Soal yang belum pernah dipakai lembaga Anda didahulukan.
+3. Periksa daftarnya. Setiap nomor menampilkan tipe soal, tingkat kesulitan, topik, awal pertanyaannya, dan **Sudah dipakai 2×** jika soal itu sudah ada di set lembaga Anda sebelumnya. Klik **Acak lagi** untuk susunan lain.
+4. Isi **Nama set** bila perlu. Jika dikosongkan, namanya otomatis, misalnya **Set EPS-TOPIK 1**.
+5. Klik **Simpan set**. Set langsung terbuka di editor tugas.
+
+Hasilnya tugas biasa milik lembaga Anda:
+
+- Bagian **Membaca** dan **Mendengar**, poin 2,5 per soal, dan batas nilai **Manufaktur 60%** dan **Sektor lain 45%** sudah diatur seperti **Format EPS-TOPIK** di [Bagian dan urutan soal](/docs/pengajar/kurikulum-bahan-ajar#bagian-dan-urutan-soal).
+- Staf bisa mengubah soal, kunci jawaban, pembahasan, dan pengaturannya, seperti tugas lain.
+- Tampilkan set di kurikulum, lalu pakai untuk **Latihan** atau **Tryout**. Pilih Tryout jika set akan dipakai lagi untuk kelas berikutnya, karena jawaban benar tidak ditampilkan ke murid.
+- Audio soal mendengar dibuat dengan suara AI. Keterangan ini tertulis di deskripsi set dan terlihat murid.
+- Perubahan di bank soal Hakgyo nanti tidak mengubah set yang sudah dibuat. Buat set baru untuk memakai soal terbaru.
+
+Jika bank belum punya cukup soal untuk suatu nomor, nomornya ditandai dan set belum bisa disimpan. Catatan kuning, misalnya tiga soal berturut-turut bertopik sama, tidak menghalangi penyimpanan.
 
 ## Tindakan pada kartu latihan
 
@@ -123,6 +132,8 @@ Semua perubahan nilai dan pembatalan dicatat di riwayat perubahan beserta alasan
 | Membuat untuk kelas yang dipegang     | Ya                  | Ya                                                         |
 | Membuka, menutup, membatalkan latihan | Ya                  | Ya, jika semua kelas yang ikut adalah kelas yang ia pegang |
 | Memantau dan menilai peserta kelasnya | Ya                  | Ya                                                         |
+
+[Buat set EPS-TOPIK](#buat-set-eps-topik) hanya bisa dilakukan pemilik dan admin organisasi.
 
 **Pengelola kurikulum** dijelaskan di [Peran dan Akses](/docs/pengajar/peran-akses#pengelola-kurikulum). **Pengajar kelas** adalah anggota staf kelas; pada mode akses lanjutan, hanya staf berperan **Instructor** yang bisa.
 

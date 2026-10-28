@@ -1,46 +1,42 @@
-# EPS-TOPIK question bank and package generator
+# EPS-TOPIK question bank and set generator
 
-Status: **design agreed with the founder (2026-10-27); steps 1–7 are built**: taxonomy
-(`packages/shared/src/eps-taxonomy.ts`) and blueprint (`packages/shared/src/eps-blueprint.ts`), shared
-system assets for assessments, the bank and its review queue (`/superadmin/bank`), AI drafts with
-automated checks and pictures (`apps/web/src/server/bank/`), TTS jobs with the VPS poller
-(`apps/web/scripts/tts-poller/README.md`), and packages: the seeded selection engine
-(`apps/web/src/server/bank/selection.ts`) and package creation with preview
-(`apps/web/src/server/bank/packages.ts`, "Buat paket pemantapan" on `/superadmin/bank`), swapping a
-package question ("Ganti soal" in the package's editor banner) and `BankItemStats`
-(`apps/web/src/server/bank/stats.ts`), recomputed when an event on a package is finalized. It builds on the EPS-TOPIK
-simulation (`docs/eps-topik-simulation.md`) and needs its tags (step 8) and question groups (step 9)
-first. The exam format, the question-type taxonomy (R1–R13, L1–L12) and the 40-question blueprint
-are in `docs/research/eps-topik-question-patterns.md`.
+Status: **revised with the founder on 2026-10-28** (section 10). The bank is standalone system data
+managed from `/superadmin/bank`, and organization owners and admins generate an EPS-TOPIK set soal
+from it into their own library ("Buat set EPS-TOPIK"). The generated set is an ordinary assessment
+of the organization. Built: taxonomy (`packages/shared/src/eps-taxonomy.ts`), blueprint
+(`packages/shared/src/eps-blueprint.ts`), shared system assets, the bank with its editor and review
+queue, AI drafts with automated checks and pictures (`apps/web/src/server/bank/`), TTS jobs with the
+VPS poller (`apps/web/scripts/tts-poller/README.md`), and the seeded selection engine
+(`apps/web/src/server/bank/selection.ts`) with set creation (`apps/web/src/server/bank/packages.ts`).
+Statistics flowing back to the bank are postponed. It builds on the EPS-TOPIK simulation
+(`docs/eps-topik-simulation.md`). The exam format, the question-type taxonomy (R1–R13, L1–L12) and
+the 40-question blueprint are in `docs/research/eps-topik-question-patterns.md`.
 
 ## 1. Product model
 
 Hakgyo sells a machine that keeps improving, not static packages:
 
 ```text
-Question bank (Hakgyo)  +  Blueprint (40 ordered slots)
-            └──► Generator ──► Package (pemantapan) in an LPK ──► learners take it
-                                                          │
-            ◄──── per-question statistics flow back ──────┘
+Question bank (Hakgyo system data)  +  Blueprint (40 ordered slots)
+            └──► Generator ──► Set soal, an ordinary assessment of the LPK ──► learners take it
 ```
 
 - **Bank:** original questions owned by Hakgyo, each labelled with type (`eps:R1` … `eps:L12`),
   topic and difficulty.
 - **Blueprint:** the recipe of one package (slot → type, difficulty mix, topic quota).
-- **Generator:** fills every slot from the bank and saves the result as a package.
-- **Package:** a fixed set the LPK uses for one pemantapan round, shared by all its classes so
-  rankings across classes are fair. Its scores feed the readiness report.
+- **Generator:** fills every slot from the bank and saves the result as a set soal in the LPK.
+- **Set soal:** a copy the LPK owns: its staff can edit it, place it in the curriculum and use it for
+  Latihan or Tryout like any assessment. Bank edits only reach sets generated afterwards.
 - **Practice by type** (latihan per tipe): random questions from the same bank, for drilling. Not
   used for readiness reports. For LPK learners first; direct sales to individual learners later.
-- **Feedback loop:** when an event closes, answers are traced back to the bank question they came
-  from. Bad questions are retired, difficulty labels are replaced by measured values, and packages
-  become more equivalent over time.
+- **Feedback loop (postponed):** answers traced back to the bank question through
+  `sourceQuestionId`, so bad questions can be retired and difficulty measured.
 
-Three invariants:
+Invariants:
 
-1. Every package passes the blueprint (same order and composition as the real exam).
-2. A package that learners have taken never changes.
-3. Every package question remembers its bank question.
+1. Every generated set passes the blueprint when it is created (same order and composition as the
+   real exam). What the LPK changes afterwards is its own choice.
+2. Every set question remembers the bank question it was copied from (a record, not a dependency).
 
 "Unlimited" means unlimited combinations; unique questions are bounded by the bank, which keeps
 growing. Packages may reuse questions (see 4.2).
@@ -63,81 +59,49 @@ audio policy.
 
 ## 3. Data model
 
-Existing assessment tables are reused: the bank is an assessment in the Hakgyo system
-organization, a package is an assessment in the LPK. Grading, events, mobile offline and reports
-keep working without a new path.
+The bank has its own tables, owned by no organization. A generated set is an ordinary assessment, so
+grading, events, mobile offline and reports need no new path.
 
 ```prisma
-enum AssessmentKind { STANDARD  BANK  GENERATED }
-enum BankItemStatus { DRAFT  REVIEW  LIVE  RETIRED }
-
-model Assessment {
-  kind          AssessmentKind @default(STANDARD)
-  contentLocked Boolean        @default(false)
+model BankQuestion {
+  id String @id; type AssessmentQuestionType; prompt Json; explanation Json?
+  tags     String[]        // eps:R2, level:sedang, topik:k3
+  status   BankItemStatus  // DRAFT → REVIEW → LIVE, or RETIRED
+  meta     Json?           // origin, model, media brief, audio script, automated check flags
+  groupId  String?; position Int   // a shared passage, picture or dialogue, in order
+  options  BankOption[]; ttsJobs TtsJob[]; copies AssessmentQuestion[]
 }
+model BankOption { id; questionId; content Json; isCorrect Boolean; position Int }
+model BankGroup  { id; instructions Json?; stimulus Json?; questions BankQuestion[] }
 
-model AssessmentQuestion {
-  sourceQuestionId String?          // the bank question this copy came from
-  bankStatus       BankItemStatus?  // bank questions only
-  @@index([sourceQuestionId])
-}
-
-model AssessmentQuestionGroup {
-  sourceGroupId String?
-}
-
-model AssessmentGeneration {         // one per generated package
-  assessmentId     String  @id
-  organizationId   String
-  blueprintKey     String           // "eps-topik"
-  blueprintVersion String           // "2025.1"
-  seed             String
-  picks            Json             // slot → bank question or group, plus the swap history
-  createdByUserId  String
-  createdAt        DateTime @default(now())
-}
-
-model BankItemStats {                // derived, recomputable from answers
-  questionId     String  @id        // bank question
-  attempts       Int
-  correctRate    Float
-  discrimination Float?
-  optionRates    Json
-  computedAt     DateTime
+model AssessmentQuestion      { sourceQuestionId String? }   // FK BankQuestion, SetNull
+model AssessmentQuestionGroup { sourceGroupId String? }      // FK BankGroup, SetNull
+model AssessmentGeneration {   // one per generated set: blueprint version, seed, picks
+  assessmentId String @id; organizationId String; blueprintKey String; blueprintVersion String
+  seed String; picks Json; createdByUserId String; createdAt DateTime
 }
 ```
 
 - Tags carry type, difficulty and topic: `eps:R2`, `level:sedang`, `topik:k3` (plus the optional
   `bab:<n>` from the simulation plan).
-- **Packages are copies, not references.** Answers point at concrete question rows
-  (`onDelete: Restrict`), every reader (grading, review, mobile bundle) reads questions from their
-  own assessment, swaps are manual, and option order is rebalanced on copy. The seed in
-  `AssessmentGeneration` is an audit record, not a substitute for the copy.
-- **Bank questions are never deleted**, only `RETIRED`, so `sourceQuestionId` and statistics stay
-  valid. The generator only picks `LIVE` questions.
-- **`contentLocked` must hide answer keys server-side.** LPK staff can use, schedule and swap
-  questions in a locked package, but every authoring read and export must refuse or strip
-  `isCorrect` and explanations for locked content. This replaces the "licensed assessment" idea in
-  section 4.7 of the simulation design.
+- **Sets are copies, not references.** Answers point at concrete question rows, every reader
+  (grading, review, mobile bundle) reads questions from their own assessment, and option order is
+  rebalanced on copy. `AssessmentGeneration.picks` records what filled each number and the option
+  order of each copy.
+- Editing a LIVE bank question moves it back to REVIEW; only drafts can be deleted, other questions
+  are retired. Deleting or retiring never touches sets already generated.
 - Usage per LPK needs no table: it is a query over copies with `sourceQuestionId` in that
-  organization's `GENERATED` assessments.
-- As built (step 6): staff of a locked package can rename it, change its attempts and delete it
-  while unused; everything else (questions, sections, format, description) is refused, and so are
-  duplicate, public quiz, course clone and practice. The editor read, attempt review and item
-  analysis strip keys and explanations (item analysis also hides weak-distractor marks, which
-  would point at the key). Learners still see answers after a Latihan closes, so the staff guide
-  recommends Tryout for packages. The package is created in the organization's name by its first
-  owner (or admin), and its description carries the "Audio dibuat dengan suara AI" note that the
-  learner intro screens already show.
-- New columns must be mirrored where the simulation design says (draft payload, duplicate, clone,
-  content-db).
+  organization's assessments.
 
 ### 3.1 Shared system assets
 
-Package media is not copied. Assets of the Hakgyo system organization can be marked shared and
-referenced by any organization.
+Set media is not copied. Bank pictures and audio are assets of the Hakgyo system organization, which
+is only their technical owner (nobody is a member of it for the bank), marked shared and referenced
+by any organization's sets.
 
-- `Asset.sharedAt DateTime?`: set only by Hakgyo (superadmin or bank authoring).
+- `Asset.sharedAt DateTime?`: set when a superadmin uploads bank media, or when AI pictures and audio
+  are made. A superadmin may upload to the system organization without membership, and a system asset
+  that a set still links is never deleted.
 - Link tables get `assetOrganizationId` (the asset owner); the composite foreign key moves to
   `(assetId, assetOrganizationId)`. Services allow `assetOrganizationId ≠ organizationId` only when
   the asset is shared. Start with `AssessmentAsset`; `MaterialAsset`, vocabulary audio and images
@@ -155,7 +119,7 @@ referenced by any organization.
 
 ## 4. Generator
 
-### 4.1 Building one package
+### 4.1 Building one set
 
 Input: LPK, blueprint version, seed, options.
 
@@ -170,50 +134,44 @@ Input: LPK, blueprint version, seed, options.
    answer leaking into another question. Repair locally by swapping the worst slot, with a bounded
    number of attempts.
 6. Rebalance answer positions on copy (about 5 per option per section).
-7. Write in one transaction: the assessment with sections and groups, copied questions with tags,
-   `sourceQuestionId` and 2.5 points, links to shared assets, and the `AssessmentGeneration` record.
+7. Write in one transaction: an ordinary assessment created by the acting owner or admin, with the
+   blueprint's sections and score bands, copied questions with tags, `sourceQuestionId` and 2.5
+   points, links to shared assets, and the `AssessmentGeneration` record.
 
-When a type runs short the generator says so ("Bank L2 hanya punya 3 soal"), and staff can accept
-reuse.
+When a type runs short the generator says so ("Bank L2 hanya punya 3 soal") and the set cannot be
+saved until the bank has enough.
 
 ### 4.2 Reuse policy
 
 Reuse is allowed. The generator prefers questions the LPK hasn't seen, but never refuses older
 ones; the only hard rule is no duplicate inside one package. Variety grows with the bank.
 
-### 4.3 Swapping a question
+### 4.3 Changing a set
 
-"Ganti soal no. 14" reruns steps 1–6 for that slot only, with the same type and the closest
-difficulty. Swaps are allowed until the first attempt; after that the package is frozen and a
-change means a new package.
+The set belongs to the LPK: its staff edit, replace or remove questions in the ordinary editor, under
+the ordinary rules (no edits while it is live). A "replace with another bank question" action can
+come later; the selection engine already supports picking for one slot.
 
 ### 4.4 Who generates
 
-- Pilot: the Hakgyo team, from superadmin, for each LPK.
-- Product: LPK owners and admins, and teachers when an organization setting allows it (like
-  `teacherCanCreateCourse`), within the subscription quota.
+- Organization owners and admins, from Bahan ajar > Tugas ("Buat set EPS-TOPIK").
+- Later: teachers when an organization setting allows it (like `teacherCanCreateCourse`), and a
+  quota per subscription.
 - LPKs cannot pick a difficulty level yet (standard only) until calibration data exists.
 
-## 5. Statistics and calibration
+## 5. Statistics and calibration (postponed)
 
-As built (step 7): the refresh runs once, when the closed event's attempts are finalized (all graded),
-and pools graded attempts of closed events on every package, leaving out invalidated participants.
-Options are keyed by bank position through the option order recorded in `AssessmentGeneration.picks`.
-Stats show on the bank page ("Hitung ulang statistik" redoes them after later invalidations or
-regrades); the generator does not yet use them for weighting. A swap keeps the old key position,
-never brings back a question swapped out before, and is refused once the package has an attempt or
-while it is live (a visible curriculum item or an open event), so no learner can start it mid-swap.
-
-When an event closes, recompute `BankItemStats` for the bank questions it used: join answers →
-package question → `sourceQuestionId`. No cron. The computation can share code with the staff item
-analysis in the simulation plan (section 5.8). Flags: correct rate below 0.3 or above 0.9,
-discrimination below 0.2, distractors picked by under 5 %. A weak question in a group flags the
-whole group. Later, the generator targets an equal mean difficulty per package so scores are
-comparable across packages and LPKs.
+Planned: when an event closes, recompute per bank question the correct rate, discrimination and
+option rates from the copies (`sourceQuestionId`), using the staff item analysis
+(`analyzeItems` in `@hakgyo/shared`). Flags: correct rate below 0.3 or above 0.9, discrimination below
+0.2, distractors picked by under 5 %. Since sets are editable, an edited copy must stop counting.
+Later, the generator targets an equal mean difficulty per set.
 
 ## 6. Bank production (superadmin)
 
-Production runs in a superadmin area, not in LPK workspaces.
+Production runs in a superadmin area, not in LPK workspaces: the bank list and review queue on
+`/superadmin/bank`, and a bank editor per question (`/superadmin/bank/questions/<id>`) built from the
+same pieces as the assessment editor.
 
 ```text
 Maintainer form: type · count · keywords · level · book chapter / grammar point
@@ -277,7 +235,9 @@ After EPS simulation steps 8 (tags) and 9 (groups):
 5. TTS jobs, the VPS poller with `gpu-worker`, the OpenAI fallback.
 6. `sourceQuestionId`, `AssessmentGeneration`, the pure selection engine with seeded tests, package
    creation with preview and `contentLocked`.
-7. Swap, then `BankItemStats` at event close.
+7. Swap, then `BankItemStats` at event close (built, then removed by the revision below).
+8. Revision (section 10): the standalone bank, the superadmin bank editor, generation by owners and
+   admins, removal of the bank-as-assessment and locked-package code, then dropping the old columns.
 
 ## 9. Open items
 
@@ -285,3 +245,15 @@ After EPS simulation steps 8 (tags) and 9 (groups):
   no new pemantapan.
 - Whether today's UBT still uses a shared passage for two questions (being checked in the LPK
   interviews).
+
+## 10. Revision of 2026-10-28
+
+The first build stored the bank as an assessment of the Hakgyo system organization and generated
+locked packages from superadmin. That needed workarounds: the superadmin joined the system
+organization to use the editor, database triggers kept bank assessments out of courses and public
+quizzes, bank columns sat on every question, and locked packages hid keys in every staff read. The
+founder replaced it with the model above: a standalone bank, ordinary editable sets, generation by
+the organization's owners and admins, and statistics later. The old columns (`Assessment.kind`,
+`Assessment.contentLocked`, `AssessmentQuestion.bankStatus`, `AssessmentQuestion.bankMeta`,
+`TtsJob.questionId`, `BankItemStats`) and the bank triggers are dropped in a follow-up migration
+once code that no longer uses them is deployed.

@@ -3,10 +3,8 @@ import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
-  LOCKED_MESSAGE,
   requireAssessmentManagement,
   requireEditableAssessment,
-  withoutLockedKeys,
 } from "~/server/assessment/access";
 import {
   attachAsset,
@@ -31,10 +29,6 @@ import {
   updateSectionInput,
 } from "~/server/assessment/sections";
 import { applyEpsTopikPreset } from "~/server/assessment/eps-preset";
-import {
-  swapPackageQuestion,
-  swapPackageQuestionInput,
-} from "~/server/bank/packages";
 import {
   createQuestionGroup,
   createQuestionGroupInput,
@@ -81,12 +75,6 @@ import {
 } from "~/server/authorization";
 import { deleteAssessmentWithProgress } from "~/server/content/resource-deletion";
 import { assertPlacementsRemovable } from "~/server/course/readiness-service";
-
-/**
- * Settings a locked package may still change through the API (the description carries the AI
- * audio note). The editor shows packages read-only.
- */
-const lockedSettings = new Set(["title", "maxAttempts"]);
 
 /**
  * Assessment library, authoring, learner attempts and teacher review. Procedures validate
@@ -136,7 +124,7 @@ export const assessmentRouter = createTRPCRouter({
         input.assessmentId,
         ctx.actorUserId,
       );
-      const [assessment, live, attempts] = await Promise.all([
+      const [assessment, live] = await Promise.all([
         ctx.db.assessment.findUniqueOrThrow({
           where: { id: input.assessmentId },
           include: {
@@ -149,21 +137,8 @@ export const assessmentRouter = createTRPCRouter({
           },
         }),
         getAssessmentLiveStatus(ctx.db, input.assessmentId),
-        // Only packages can be swapped, so only they need the count.
-        ctx.db.assessmentAttempt.count({
-          where: {
-            assessmentId: input.assessmentId,
-            assessment: { kind: "GENERATED" },
-          },
-        }),
       ]);
-      return {
-        ...withoutLockedKeys(assessment),
-        live,
-        /** A package's questions can be swapped while it is not live and has no attempt. */
-        swappable:
-          assessment.kind === "GENERATED" && attempts === 0 && !live.isLive,
-      };
+      return { ...assessment, live };
     }),
   /** Where the assessment is live (read-only while live). */
   getLiveStatus: protectedProcedure
@@ -195,39 +170,23 @@ export const assessmentRouter = createTRPCRouter({
   update: protectedProcedure
     .input(assessmentFields.partial().extend({ assessmentId: id }))
     .mutation(async ({ ctx, input }) => {
-      const assessment = await requireEditableAssessment(
+      await requireEditableAssessment(
         ctx.db,
         input.assessmentId,
         ctx.actorUserId,
-        "edit",
-        { allowLocked: true },
       );
       const { assessmentId, ...data } = input;
-      // A package keeps the blueprint's format; only its name and attempts change.
-      if (
-        assessment.contentLocked &&
-        Object.keys(data).some((key) => !lockedSettings.has(key))
-      ) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: LOCKED_MESSAGE });
-      }
       return ctx.db.assessment.update({ where: { id: assessmentId }, data });
     }),
   delete: protectedProcedure
     .input(z.object({ assessmentId: id }))
     .mutation(async ({ ctx, input }) => {
-      const assessment = await requireEditableAssessment(
+      await requireEditableAssessment(
         ctx.db,
         input.assessmentId,
         ctx.actorUserId,
         "delete",
-        { allowLocked: true },
       );
-      if (assessment.kind === "BANK") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Bank soal tidak bisa dihapus.",
-        });
-      }
       const placements = await ctx.db.courseItem.findMany({
         where: { assessmentId: input.assessmentId },
         select: { id: true },
@@ -257,12 +216,6 @@ export const assessmentRouter = createTRPCRouter({
     .input(z.object({ sectionId: id }))
     .mutation(({ ctx, input }) =>
       deleteSection(ctx.db, input.sectionId, ctx.actorUserId),
-    ),
-  /** "Ganti soal no. N" in a pemantapan package, while it is not live and has no attempt. */
-  swapPackageQuestion: protectedProcedure
-    .input(swapPackageQuestionInput)
-    .mutation(({ ctx, input }) =>
-      swapPackageQuestion(ctx.db, input, ctx.actorUserId),
     ),
   /** "Terapkan format EPS-TOPIK": sections, points, bands and order from the blueprint. */
   applyEpsTopikPreset: protectedProcedure
@@ -324,19 +277,12 @@ export const assessmentRouter = createTRPCRouter({
         select: { assessmentId: true },
       });
       if (!question) throw new TRPCError({ code: "NOT_FOUND" });
-      const assessment = await requireEditableAssessment(
+      await requireEditableAssessment(
         ctx.db,
         question.assessmentId,
         ctx.actorUserId,
         "delete",
       );
-      if (assessment.kind === "BANK") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "Soal bank tidak dihapus. Pensiunkan soal ini di Bank soal superadmin.",
-        });
-      }
       await ctx.db.assessmentQuestion.delete({
         where: { id: input.questionId },
       });

@@ -22,22 +22,33 @@ import {
   generateBankImage,
   generateBankImageInput,
 } from "~/server/bank/images";
-import {
-  createPackage,
-  createPackageInput,
-  listPackages,
-  previewPackage,
-  previewPackageInput,
-} from "~/server/bank/packages";
 import { requestTts, runTtsWithOpenAi } from "~/server/bank/tts";
 import {
-  createBank,
+  bankQuestionInput,
+  createBankGroup,
+  createBankGroupInput,
+  createBankOption,
+  createBankOptionInput,
+  createBankQuestion,
+  createBankQuestionInput,
+  deleteBankOption,
+  deleteBankOptionInput,
+  deleteBankQuestion,
+  deleteBankQuestionInput,
   getBankOverview,
-  joinSystemOrganization,
+  getBankQuestion,
+  leaveBankGroup,
+  leaveBankGroupInput,
   listBankQuestions,
   listBankQuestionsInput,
   setBankStatus,
   setBankStatusInput,
+  updateBankGroup,
+  updateBankGroupInput,
+  updateBankOption,
+  updateBankOptionInput,
+  updateBankQuestion,
+  updateBankQuestionInput,
 } from "~/server/bank/bank";
 
 const pageInput = z.object({
@@ -275,47 +286,84 @@ export const superadminRouter = createTRPCRouter({
       }),
   }),
 
-  /** The EPS-TOPIK question bank (docs/eps-question-generator.md section 6). */
+  /**
+   * The EPS-TOPIK question bank (docs/eps-question-generator.md section 6): standalone bank
+   * questions edited here. Content edits (autosaves) are not audited; creating, deleting, status
+   * moves and AI work are.
+   */
   bank: createTRPCRouter({
-    overview: superadminProcedure.query(({ ctx }) =>
-      getBankOverview(ctx.db, ctx.actorUserId),
-    ),
-    joinSystemOrganization: superadminProcedure.mutation(async ({ ctx }) => {
-      const result = await joinSystemOrganization(ctx.db, ctx.actorUserId);
-      await audit(ctx.db, {
-        actorUserId: ctx.actorUserId,
-        targetId: ctx.actorUserId,
-        targetType: "user",
-        action: "bank.join-system-organization",
-      });
-      return result;
-    }),
-    create: superadminProcedure
-      .input(z.object({ title: z.string().trim().min(1).max(200) }))
-      .mutation(async ({ ctx, input }) => {
-        const bank = await createBank(ctx.db, input, ctx.actorUserId);
-        await audit(ctx.db, {
-          actorUserId: ctx.actorUserId,
-          targetId: bank.id,
-          targetType: "assessment",
-          action: "bank.create",
-        });
-        return bank;
-      }),
+    overview: superadminProcedure.query(({ ctx }) => getBankOverview(ctx.db)),
     questions: superadminProcedure
       .input(listBankQuestionsInput)
       .query(({ ctx, input }) => listBankQuestions(ctx.db, input)),
+    question: superadminProcedure
+      .input(bankQuestionInput)
+      .query(({ ctx, input }) => getBankQuestion(ctx.db, input)),
+    createQuestion: superadminProcedure
+      .input(createBankQuestionInput)
+      .mutation(async ({ ctx, input }) => {
+        const question = await createBankQuestion(
+          ctx.db,
+          input,
+          ctx.actorUserId,
+        );
+        await audit(ctx.db, {
+          actorUserId: ctx.actorUserId,
+          targetId: question.id,
+          targetType: "bank-question",
+          action: "bank.question-create",
+        }).catch((error: unknown) => console.error("Audit failed", error));
+        return question;
+      }),
+    updateQuestion: superadminProcedure
+      .input(updateBankQuestionInput)
+      .mutation(({ ctx, input }) => updateBankQuestion(ctx.db, input)),
+    createOption: superadminProcedure
+      .input(createBankOptionInput)
+      .mutation(({ ctx, input }) => createBankOption(ctx.db, input)),
+    updateOption: superadminProcedure
+      .input(updateBankOptionInput)
+      .mutation(({ ctx, input }) => updateBankOption(ctx.db, input)),
+    deleteOption: superadminProcedure
+      .input(deleteBankOptionInput)
+      .mutation(({ ctx, input }) => deleteBankOption(ctx.db, input)),
+    deleteQuestion: superadminProcedure
+      .input(deleteBankQuestionInput)
+      .mutation(async ({ ctx, input }) => {
+        const result = await deleteBankQuestion(ctx.db, input);
+        await audit(ctx.db, {
+          actorUserId: ctx.actorUserId,
+          targetId: input.id,
+          targetType: "bank-question",
+          action: "bank.question-delete",
+        }).catch((error: unknown) => console.error("Audit failed", error));
+        return result;
+      }),
+    createGroup: superadminProcedure
+      .input(createBankGroupInput)
+      .mutation(({ ctx, input }) => createBankGroup(ctx.db, input)),
+    updateGroup: superadminProcedure
+      .input(updateBankGroupInput)
+      .mutation(({ ctx, input }) => updateBankGroup(ctx.db, input)),
+    leaveGroup: superadminProcedure
+      .input(leaveBankGroupInput)
+      .mutation(({ ctx, input }) => leaveBankGroup(ctx.db, input)),
     createDrafts: superadminProcedure
       .input(createAiDraftsInput)
       .mutation(async ({ ctx, input }) => {
         try {
           const { openAiDraftModels } = await import("~/server/ai/bank-drafts");
-          const result = await createAiDrafts(ctx.db, input, openAiDraftModels);
+          const result = await createAiDrafts(
+            ctx.db,
+            input,
+            ctx.actorUserId,
+            openAiDraftModels,
+          );
           // A failed log line must not report saved work as failed.
           await audit(ctx.db, {
             actorUserId: ctx.actorUserId,
-            targetId: input.assessmentId,
-            targetType: "assessment",
+            targetId: input.type,
+            targetType: "bank",
             action: "bank.ai-drafts",
           }).catch((error: unknown) => console.error("Audit failed", error));
           return result;
@@ -339,7 +387,7 @@ export const superadminRouter = createTRPCRouter({
           await audit(ctx.db, {
             actorUserId: ctx.actorUserId,
             targetId: input.questionId,
-            targetType: "assessment-question",
+            targetType: "bank-question",
             action: "bank.ai-image",
           }).catch((error: unknown) => console.error("Audit failed", error));
           return result;
@@ -355,7 +403,7 @@ export const superadminRouter = createTRPCRouter({
         await audit(ctx.db, {
           actorUserId: ctx.actorUserId,
           targetId: input.questionId,
-          targetType: "assessment-question",
+          targetType: "bank-question",
           action: "bank.tts-request",
         }).catch((error: unknown) => console.error("Audit failed", error));
         return job;
@@ -379,36 +427,13 @@ export const superadminRouter = createTRPCRouter({
           await audit(ctx.db, {
             actorUserId: ctx.actorUserId,
             targetId: input.questionId,
-            targetType: "assessment-question",
+            targetType: "bank-question",
             action: "bank.tts-openai",
           }).catch((error: unknown) => console.error("Audit failed", error));
           return result;
         } catch (error) {
           throw aiError(error, "Audio cloud gagal dibuat. Silakan coba lagi.");
         }
-      }),
-    /** "Hitung ulang statistik": every bank question's numbers from all packages taken. */
-    refreshStats: superadminProcedure.mutation(async ({ ctx }) => {
-      const { refreshAllBankStats } = await import("~/server/bank/stats");
-      return refreshAllBankStats(ctx.db);
-    }),
-    /** Packages built so far, newest first. */
-    packages: superadminProcedure.query(({ ctx }) => listPackages(ctx.db)),
-    /** What a package would hold; nothing is saved. A mutation, since each call draws a new seed. */
-    previewPackage: superadminProcedure
-      .input(previewPackageInput)
-      .mutation(({ ctx, input }) => previewPackage(ctx.db, input)),
-    createPackage: superadminProcedure
-      .input(createPackageInput)
-      .mutation(async ({ ctx, input }) => {
-        const result = await createPackage(ctx.db, input, ctx.actorUserId);
-        await audit(ctx.db, {
-          actorUserId: ctx.actorUserId,
-          targetId: result.assessmentId,
-          targetType: "assessment",
-          action: "bank.package-create",
-        }).catch((error: unknown) => console.error("Audit failed", error));
-        return result;
       }),
     setStatus: superadminProcedure
       .input(setBankStatusInput)
@@ -417,8 +442,8 @@ export const superadminRouter = createTRPCRouter({
         if (result.moved) {
           await audit(ctx.db, {
             actorUserId: ctx.actorUserId,
-            targetId: input.assessmentId,
-            targetType: "assessment",
+            targetId: input.questionIds.join(","),
+            targetType: "bank-question",
             action: `bank.status.${input.status.toLowerCase()}`,
           });
         }

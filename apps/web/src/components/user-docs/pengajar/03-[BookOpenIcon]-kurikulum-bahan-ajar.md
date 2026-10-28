@@ -228,6 +228,8 @@ Jika tugas belum punya bagian, 20 soal pertama masuk Membaca dan sisanya masuk M
 
 Setelah format diterapkan, panel yang sama memeriksa soal terhadap susunan paket EPS-TOPIK: jumlah soal per bagian, label tipe soal (misalnya soal 4 seharusnya `eps:R2` rambu K3), label tingkat kesulitan, dan porsi soal pekerjaan, K3 dan lembaga (sasaran 40–50%). Beri label soal agar pemeriksaan ini lengkap.
 
+Ingin 40 soal yang sudah siap? Pemilik dan admin bisa klik **Buat set EPS-TOPIK** di **Bahan ajar** > **Tugas**. Hakgyo memilih soal dari bank soalnya dan menyimpannya sebagai tugas baru dengan format ini. Lihat [Buat set EPS-TOPIK](/docs/pengajar/latihan-tryout#buat-set-eps-topik).
+
 Aplikasi ponsel versi lama tidak bisa membuka tugas berbagian, tugas dengan aturan ini, atau tugas dengan kelompok soal; murid diminta memperbarui aplikasinya.
 
 Soal baru masuk ke bagian terakhir. Menghapus bagian tidak menghapus soalnya: soal dipindahkan ke bagian sebelumnya. Jika bagian terakhir dihapus, tugas kembali menjadi satu kesatuan tanpa bagian.

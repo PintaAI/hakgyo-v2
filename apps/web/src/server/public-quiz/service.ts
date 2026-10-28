@@ -3,10 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
-import {
-  LOCKED_MESSAGE,
-  requireAssessmentManagement,
-} from "~/server/assessment/access";
+import { requireAssessmentManagement } from "~/server/assessment/access";
 import { requireOrganizationMembership } from "~/server/authorization";
 import { orderAssessmentQuestions } from "~/server/assessment/order";
 import { isUniqueConstraintError } from "~/server/db-retry";
@@ -146,17 +143,6 @@ export async function createPublicQuiz(
   userId: string,
 ) {
   const managed = await requireAssessmentManagement(db, assessmentId, userId);
-  // Bank questions stay out of public view (docs/eps-question-generator.md section 3).
-  if (managed.kind === "BANK") {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Bank soal tidak bisa dijadikan quiz publik.",
-    });
-  }
-  // A public quiz reveals answers after submission.
-  if (managed.contentLocked) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: LOCKED_MESSAGE });
-  }
   const assessment = await db.assessment.findUniqueOrThrow({
     where: { id: assessmentId },
     select: { title: true, description: true },

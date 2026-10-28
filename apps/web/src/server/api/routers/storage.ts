@@ -39,7 +39,10 @@ import {
   requireCourseItemAccess,
   requireOrganizationPermission,
 } from "~/server/authorization";
+import { getSuperadminUser } from "~/server/authorization/superadmin";
 import { db } from "~/server/db";
+import { bankContentUses } from "~/server/bank/assets";
+import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import {
   addLandingImage,
   removeLandingImage,
@@ -156,6 +159,85 @@ async function deleteOwnAsset(
     where: { id: asset.id },
     data: { deletedAt: new Date() },
   });
+  return { deleted: true };
+}
+
+type SessionUser = Parameters<typeof getSuperadminUser>[1];
+
+const isSuperadmin = (userId: string, sessionUser: SessionUser) =>
+  getSuperadminUser(userId, sessionUser).then(
+    () => true,
+    (error: unknown) => {
+      if (error instanceof TRPCError && error.code === "NOT_FOUND")
+        return false;
+      throw error;
+    },
+  );
+
+/**
+ * Who may upload to the Hakgyo system organization: its members with the permission (the starter
+ * courses live there) and superadmins, who keep the question bank's media without being members.
+ */
+async function canUploadSystemAssets(userId: string, sessionUser: SessionUser) {
+  const member = await requireOrganizationPermission({
+    organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
+    permission: "asset.create",
+    userId,
+  }).then(
+    () => true,
+    () => false,
+  );
+  return member || isSuperadmin(userId, sessionUser);
+}
+
+/**
+ * Removes a system-organization file for a superadmin. Generated sets link bank media instead of
+ * copying them, so a file anything still links or any bank question still shows stays (the call
+ * still succeeds).
+ */
+async function deleteSystemAsset(assetId: string) {
+  const objectKey = await db.$transaction(async (tx) => {
+    // The row lock waits for, and holds off, a set linking the file at the same time.
+    await tx.$queryRaw`SELECT "id" FROM "Asset" WHERE "id" = ${assetId} FOR UPDATE`;
+    const asset = await tx.asset.findUnique({
+      where: { id: assetId },
+      select: {
+        id: true,
+        objectKey: true,
+        deletedAt: true,
+        pdfBookPage: { select: { bookId: true } },
+        pdfBookThumbnail: { select: { bookId: true } },
+        _count: {
+          select: {
+            materials: true,
+            assessments: true,
+            vocabularyEntries: true,
+            vocabularyEntryImages: true,
+          },
+        },
+      },
+    });
+    if (!asset) throw new TRPCError({ code: "NOT_FOUND" });
+    // The same file may sit in another bank question, option or group (pasted twice). A question
+    // whose edit hasn't saved yet still counts, which keeps the file: an orphan is harmless, a
+    // missing picture is not.
+    const inBank = await bankContentUses(tx, assetId);
+    if (
+      inBank ||
+      asset.deletedAt ||
+      asset.pdfBookPage ||
+      asset.pdfBookThumbnail ||
+      Object.values(asset._count).some((count) => count > 0)
+    ) {
+      return null;
+    }
+    await tx.asset.update({
+      where: { id: asset.id },
+      data: { deletedAt: new Date() },
+    });
+    return asset.objectKey;
+  });
+  if (objectKey) await deleteObject(objectKey);
   return { deleted: true };
 }
 
@@ -653,11 +735,17 @@ export const storageRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.actorUserId;
-      await requireOrganizationPermission({
-        organizationId: input.organizationId,
-        permission: "asset.create",
-        userId,
-      });
+      if (input.organizationId === HAKGYO_SYSTEM_ORGANIZATION_ID) {
+        if (!(await canUploadSystemAssets(userId, ctx.session?.user))) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+      } else {
+        await requireOrganizationPermission({
+          organizationId: input.organizationId,
+          permission: "asset.create",
+          userId,
+        });
+      }
 
       const extension =
         /\.[a-z0-9]{1,10}$/i.exec(input.fileName)?.[0].toLowerCase() ?? "";
@@ -783,7 +871,30 @@ export const storageRouter = createTRPCRouter({
 
   deleteAsset: protectedProcedure
     .input(z.object({ assetId: z.string().min(1) }))
-    .mutation(({ ctx, input }) =>
-      deleteOwnAsset({ id: input.assetId }, ctx.actorUserId),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const asset = await db.asset.findUnique({
+        where: { id: input.assetId },
+        select: { organizationId: true },
+      });
+      if (asset?.organizationId === HAKGYO_SYSTEM_ORGANIZATION_ID) {
+        // Superadmins keep the bank's media: a file a set links or other bank content shows stays.
+        if (await isSuperadmin(ctx.actorUserId, ctx.session?.user)) {
+          return deleteSystemAsset(input.assetId);
+        }
+        // Staff removing bank media from a generated set only drop their link (the editor
+        // detaches it first); the Hakgyo file itself stays. Starter-course authors, members of
+        // the system organization, delete their own uploads as before.
+        const member = await db.organizationMember.findUnique({
+          where: {
+            organizationId_userId: {
+              organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
+              userId: ctx.actorUserId,
+            },
+          },
+          select: { id: true },
+        });
+        if (!member) return { deleted: true };
+      }
+      return deleteOwnAsset({ id: input.assetId }, ctx.actorUserId);
+    }),
 });

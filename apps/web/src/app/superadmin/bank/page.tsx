@@ -13,23 +13,14 @@ export default async function SuperadminBankPage() {
     throw error;
   }
 
-  const [overview] = await Promise.all([
-    api.superadmin.bank.overview(),
-    // The package builder lists organizations and recent packages.
-    api.superadmin.listOrganizations.prefetch(),
-    api.superadmin.bank.packages.prefetch(),
+  // Coverage and the review queue (the first tab) load with the page.
+  await Promise.all([
+    api.superadmin.bank.overview.prefetch(),
+    api.superadmin.bank.questions.prefetch({ status: "REVIEW" }),
   ]);
-  // The review queue of the first bank shows first; load it with the page.
-  const firstBank = overview.banks[0];
-  if (firstBank) {
-    await api.superadmin.bank.questions.prefetch({
-      assessmentId: firstBank.id,
-      status: "REVIEW",
-    });
-  }
   return (
     <HydrateClient>
-      <SuperadminBank initialData={overview} />
+      <SuperadminBank />
     </HydrateClient>
   );
 }

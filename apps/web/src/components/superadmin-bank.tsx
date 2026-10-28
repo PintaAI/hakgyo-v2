@@ -1,31 +1,32 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import {
-  epsTagVocabulary,
-  itemFlagLabels,
-  type epsTopicSlugs,
-  tagLabel,
-} from "@hakgyo/shared";
+import { useRouter } from "next/navigation";
+import { epsTagVocabulary, type epsTopicSlugs, tagLabel } from "@hakgyo/shared";
 import { epsTaxonomy } from "@hakgyo/shared/eps-taxonomy";
 import {
   ArrowLeftIcon,
-  ExternalLinkIcon,
-  ImageIcon,
-  LibraryIcon,
+  ChevronRightIcon,
   LoaderCircleIcon,
+  PlusIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import Link from "~/components/link";
-import { LocalDateTime } from "~/components/local-date-time";
+import {
+  BankAudioActions,
+  BankImageActions,
+} from "~/components/superadmin-bank-media";
+import {
+  bankMoveLabel,
+  bankQuestionHref,
+  useMoveBankQuestions,
+} from "~/components/superadmin-bank-status";
 import { Badge } from "~/components/ui/badge";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
-import { EmptyState } from "~/components/ui/empty-state";
 import { cn } from "~/lib/utils";
-import { HAKGYO_SYSTEM_ORGANIZATION_ID } from "~/server/foundation/constants";
 import {
   bankReadinessProblem,
   bankStatusLabels,
@@ -33,52 +34,45 @@ import {
   MAX_BANK_BATCH,
   type BankStatus,
 } from "~/lib/bank-status";
-import { api, type RouterOutputs } from "~/trpc/react";
+import { api } from "~/trpc/react";
 
-type Overview = RouterOutputs["superadmin"]["bank"]["overview"];
 type Status = BankStatus;
 
 const topicTags = epsTagVocabulary.filter((entry) => entry.group === "topik");
 
-/** Tabs, review queue first. */
-const statusTabs: Status[] = ["REVIEW", "DRAFT", "LIVE", "RETIRED"];
-
-const moveLabels: Record<Status, string> = {
-  DRAFT: "Kembalikan ke draf",
-  REVIEW: "Kirim ke review",
-  LIVE: "Setujui",
-  RETIRED: "Pensiunkan",
-};
+/** Tabs, review queue first. The page prefetches the review queue (`{ status: "REVIEW" }`). */
+const bankStatusTabs: Status[] = ["REVIEW", "DRAFT", "LIVE", "RETIRED"];
 
 function levelOf(tags: readonly string[]) {
   const level = tags.find((tag) => tag.startsWith("level:"));
   return level ? tagLabel(level) : null;
 }
 
+function typeLabel(type: string) {
+  return type === "untagged" ? "Tanpa label tipe" : tagLabel(type);
+}
+
+const selectClassName =
+  "border-input bg-background h-9 w-full rounded-md border px-2 text-sm";
+
 /**
  * The superadmin bank area (docs/eps-question-generator.md section 6): coverage per question type
- * against the pilot targets, and the review queue where questions move DRAFT → REVIEW → LIVE or
- * are retired. Questions are written in the ordinary editor of the bank assessment.
+ * against the pilot targets, the review queue where questions move DRAFT → REVIEW → LIVE or are
+ * retired, and the way into each question's editor. The bank is system data, not an assessment:
+ * organizations get set soal generated from its LIVE questions.
  */
-export function SuperadminBank({ initialData }: { initialData: Overview }) {
+export function SuperadminBank() {
+  const router = useRouter();
   const utils = api.useUtils();
-  const overview = api.superadmin.bank.overview.useQuery(undefined, {
-    initialData,
-  });
-  const data = overview.data;
-  const [bankId, setBankId] = useState(data.banks[0]?.id ?? null);
-  const bank = data.banks.find(({ id }) => id === bankId) ?? data.banks[0];
+  const overview = api.superadmin.bank.overview.useQuery();
   const [status, setStatus] = useState<Status>("REVIEW");
+  const [type, setType] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const questions = api.superadmin.bank.questions.useQuery(
-    { assessmentId: bank?.id ?? "", status },
-    { enabled: Boolean(bank) },
+    type ? { status, type } : { status },
   );
-  const join = api.superadmin.bank.joinSystemOrganization.useMutation();
-  const create = api.superadmin.bank.create.useMutation();
-  const setBankStatus = api.superadmin.bank.setStatus.useMutation();
-  // Statistics update by themselves when an event on a package closes; this redoes them all.
-  const refreshStats = api.superadmin.bank.refreshStats.useMutation();
+  const createQuestion = api.superadmin.bank.createQuestion.useMutation();
+  const { move, isPending: moving } = useMoveBankQuestions();
 
   async function refresh() {
     await Promise.all([
@@ -87,42 +81,45 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
     ]);
   }
 
-  async function move(to: Status) {
-    if (!bank || !selected.size) return;
+  async function moveSelected(to: Status) {
+    if (!selected.size) return;
+    const previews = new Map(
+      rows.map((question) => [question.id, question.preview]),
+    );
+    const result = await move([...selected], to, (questionId) => {
+      const preview = previews.get(questionId);
+      return preview
+        ? `“${preview.length > 30 ? `${preview.slice(0, 30)}…` : preview}”`
+        : "soal";
+    });
+    if (result) setSelected(new Set());
+  }
+
+  async function newQuestion() {
     try {
-      const result = await setBankStatus.mutateAsync({
-        assessmentId: bank.id,
-        questionIds: [...selected],
-        status: to,
-      });
-      setSelected(new Set());
-      await refresh();
-      if (result.skipped.length) {
-        const numbers = new Map(
-          (questions.data ?? []).map((question) => [
-            question.id,
-            question.position + 1,
-          ]),
-        );
-        toast.warning(
-          `${result.moved} soal dipindah. ${result.skipped.length} tidak: ${result.skipped
-            .slice(0, 3)
-            .map(
-              (entry) => `no. ${numbers.get(entry.questionId)} ${entry.reason}`,
-            )
-            .join("; ")}${result.skipped.length > 3 ? "; …" : ""}.`,
-        );
-      } else {
-        toast.success(`${result.moved} soal dipindah.`);
-      }
+      const created = await createQuestion.mutateAsync({});
+      await utils.superadmin.bank.overview.invalidate();
+      router.push(bankQuestionHref(created.id));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal memindah.");
+      toast.error(
+        error instanceof Error ? error.message : "Soal gagal dibuat.",
+      );
     }
   }
 
+  const data = overview.data;
   const rows = questions.data ?? [];
   const allSelected =
     rows.length > 0 && rows.every(({ id }) => selected.has(id));
+  const statusTotals = data
+    ? data.types.reduce<Record<Status, number>>(
+        (totals, row) => {
+          for (const tab of bankStatusTabs) totals[tab] += row.counts[tab];
+          return totals;
+        },
+        { DRAFT: 0, REVIEW: 0, LIVE: 0, RETIRED: 0 },
+      )
+    : null;
 
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 pb-32 sm:px-6 sm:py-10">
@@ -137,152 +134,61 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
           <ArrowLeftIcon data-icon="inline-start" />
           Superadmin
         </Link>
-        <h1 className="text-3xl font-semibold tracking-tight">Bank soal</h1>
-        <p className="text-muted-foreground max-w-2xl text-sm">
-          Soal EPS-TOPIK milik Hakgyo. Tulis dan edit soal di editor tugas; di
-          sini soal ditinjau dan disetujui sebelum dipakai paket pemantapan.
-        </p>
-      </header>
-
-      {!data.canEdit ? (
-        <section className="flex flex-col gap-3 border-b pb-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm">
-            Untuk menulis dan mengedit soal bank, gabung ke organisasi Hakgyo
-            sebagai pemilik.
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-semibold tracking-tight">Bank soal</h1>
+            <p className="text-muted-foreground max-w-2xl text-sm">
+              Soal EPS-TOPIK milik Hakgyo. Tulis, periksa dan setujui soal di
+              sini. LPK membuat set soal pemantapan dari soal yang sudah siap
+              dipakai; perubahan di bank hanya berlaku untuk set soal yang
+              dibuat sesudahnya.
+            </p>
+          </div>
           <Button
-            disabled={join.isPending}
-            onClick={async () => {
-              try {
-                await join.mutateAsync();
-                await refresh();
-                toast.success("Kamu sekarang pemilik organisasi Hakgyo.");
-              } catch (error) {
-                toast.error(
-                  error instanceof Error ? error.message : "Gagal bergabung.",
-                );
-              }
-            }}
+            disabled={createQuestion.isPending}
+            onClick={() => void newQuestion()}
           >
-            {join.isPending ? (
+            {createQuestion.isPending ? (
               <LoaderCircleIcon
                 className="animate-spin"
                 data-icon="inline-start"
               />
-            ) : null}
-            Gabung ke organisasi Hakgyo
+            ) : (
+              <PlusIcon data-icon="inline-start" />
+            )}
+            Soal baru
           </Button>
-        </section>
-      ) : null}
+        </div>
+      </header>
 
-      {!bank ? (
-        <EmptyState
-          icon={LibraryIcon}
-          title="Belum ada bank soal"
-          description="Buat bank, lalu tulis soal di editornya."
-          action={
-            <Button
-              disabled={!data.canEdit || create.isPending}
-              onClick={async () => {
-                try {
-                  await create.mutateAsync({ title: "Bank soal EPS-TOPIK" });
-                  await refresh();
-                } catch (error) {
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Gagal membuat bank.",
-                  );
-                }
-              }}
-            >
-              Buat bank soal
-            </Button>
-          }
-        />
-      ) : (
-        <>
-          <section className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {data.banks.length > 1 ? (
-                data.banks.map((entry) => (
-                  <Button
-                    key={entry.id}
-                    onClick={() => {
-                      setBankId(entry.id);
-                      setSelected(new Set());
-                    }}
-                    size="sm"
-                    variant={entry.id === bank.id ? "default" : "outline"}
-                  >
-                    {entry.title}
-                  </Button>
-                ))
-              ) : (
-                <h2 className="text-lg font-semibold">{bank.title}</h2>
-              )}
-              <span className="text-muted-foreground text-sm">
-                {bank.total} soal
-              </span>
-              {data.canEdit && data.organizationSlug ? (
-                <Link
-                  href={`/workspace/${data.organizationSlug}/library/assessments/${bank.id}`}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold">Cakupan per tipe</h2>
+          <p className="text-muted-foreground text-xs">
+            {data
+              ? `${data.total} soal. Sasaran pilot: cukup untuk ${data.pilotPackages} set soal berbeda.`
+              : "Memuat cakupan…"}
+          </p>
+        </div>
+        {data ? (
+          <ul className="divide-y border-y sm:rounded-lg sm:border">
+            {data.types.map((row) => (
+              <li key={row.type}>
+                <button
                   className={cn(
-                    buttonVariants({ variant: "outline", size: "sm" }),
-                    "ml-auto",
+                    "hover:bg-muted/40 flex w-full items-center gap-3 px-1 py-2 text-left text-sm transition-colors sm:px-3",
+                    type === row.type && "bg-muted/60",
                   )}
-                >
-                  Buka di editor
-                  <ExternalLinkIcon data-icon="inline-end" />
-                </Link>
-              ) : null}
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold">Cakupan per tipe</h3>
-                <p className="text-muted-foreground text-xs">
-                  Sasaran pilot: cukup untuk {data.pilotPackages} paket berbeda.
-                </p>
-              </div>
-              <Button
-                disabled={refreshStats.isPending}
-                onClick={async () => {
-                  try {
-                    const result = await refreshStats.mutateAsync();
-                    await questions.refetch();
-                    toast.success(
-                      `Statistik ${result.updated} soal dihitung ulang.`,
+                  onClick={() => {
+                    setType((current) =>
+                      current === row.type ? "" : row.type,
                     );
-                  } catch (error) {
-                    toast.error(
-                      error instanceof Error
-                        ? error.message
-                        : "Statistik gagal dihitung.",
-                    );
-                  }
-                }}
-                size="sm"
-                variant="ghost"
-              >
-                {refreshStats.isPending ? (
-                  <LoaderCircleIcon
-                    className="animate-spin"
-                    data-icon="inline-start"
-                  />
-                ) : null}
-                Hitung ulang statistik
-              </Button>
-            </div>
-            <ul className="divide-y border-y sm:rounded-lg sm:border">
-              {bank.types.map((row) => (
-                <li
-                  key={row.type}
-                  className="flex items-center gap-3 px-1 py-2 text-sm sm:px-3"
+                    setSelected(new Set());
+                  }}
+                  type="button"
                 >
                   <span className="min-w-0 flex-1 truncate">
-                    {row.type === "untagged"
-                      ? "Tanpa label tipe"
-                      : tagLabel(row.type)}
+                    {typeLabel(row.type)}
                   </span>
                   <span
                     className={cn(
@@ -298,245 +204,200 @@ export function SuperadminBank({ initialData }: { initialData: Overview }) {
                   <span className="text-muted-foreground w-28 text-right text-xs tabular-nums">
                     review {row.counts.REVIEW} · draf {row.counts.DRAFT}
                   </span>
-                </li>
-              ))}
-            </ul>
-          </section>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
 
-          <PackageBuilder />
+      <AiDraftForm
+        onDone={async () => {
+          setStatus("DRAFT");
+          setSelected(new Set());
+          await refresh();
+        }}
+      />
 
-          <AiDraftForm
-            bankId={bank.id}
-            onDone={async () => {
-              setStatus("DRAFT");
-              setSelected(new Set());
-              await refresh();
-            }}
-          />
-
-          <section className="space-y-3">
-            <div className="flex gap-1 overflow-x-auto">
-              {statusTabs.map((tab) => (
-                <Button
-                  key={tab}
-                  onClick={() => {
-                    setStatus(tab);
-                    setSelected(new Set());
-                  }}
-                  size="sm"
-                  variant={tab === status ? "default" : "ghost"}
-                >
-                  {bankStatusLabels[tab]}
-                </Button>
-              ))}
-            </div>
-            {questions.isPending ? (
-              <p className="text-muted-foreground py-6 text-center text-sm">
-                Memuat soal…
-              </p>
-            ) : rows.length === 0 ? (
-              <p className="text-muted-foreground py-6 text-center text-sm">
-                Tidak ada soal di sini.
-              </p>
-            ) : (
-              <>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={(checked) =>
-                      setSelected(
-                        checked ? new Set(rows.map(({ id }) => id)) : new Set(),
-                      )
-                    }
-                  />
-                  Pilih semua ({rows.length})
-                </label>
-                {rows.length >= MAX_BANK_BATCH ? (
-                  <p className="text-muted-foreground text-xs">
-                    Hanya {MAX_BANK_BATCH} soal pertama yang tampil.
-                  </p>
+      <section className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="-mx-1 flex gap-1 overflow-x-auto px-1">
+            {bankStatusTabs.map((tab) => (
+              <Button
+                key={tab}
+                onClick={() => {
+                  setStatus(tab);
+                  setSelected(new Set());
+                }}
+                size="sm"
+                variant={tab === status ? "default" : "ghost"}
+              >
+                {bankStatusLabels[tab]}
+                {statusTotals ? (
+                  <span className="tabular-nums opacity-70">
+                    {statusTotals[tab]}
+                  </span>
                 ) : null}
-                <ul className="divide-y border-y sm:rounded-lg sm:border">
-                  {rows.map((question) => {
-                    const type = question.tags.find((tag) =>
-                      tag.startsWith("eps:"),
-                    );
-                    const level = levelOf(question.tags);
-                    const problem = bankReadinessProblem(question);
-                    return (
-                      <li key={question.id}>
-                        <label className="flex items-start gap-3 px-1 py-3 sm:px-3">
-                          <Checkbox
-                            checked={selected.has(question.id)}
-                            className="mt-0.5"
-                            onCheckedChange={(checked) =>
-                              setSelected((current) => {
-                                const next = new Set(current);
-                                if (checked) next.add(question.id);
-                                else next.delete(question.id);
-                                return next;
-                              })
-                            }
-                          />
-                          <span className="min-w-0 flex-1 space-y-1">
-                            <span className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
-                              <span>No. {question.position + 1}</span>
-                              {type ? <span>· {tagLabel(type)}</span> : null}
-                              {level ? <span>· {level}</span> : null}
-                              {question.groupId ? (
-                                <span>· kelompok</span>
-                              ) : null}
-                              {problem && status !== "RETIRED" ? (
-                                <Badge variant="destructive">{problem}</Badge>
-                              ) : null}
+              </Button>
+            ))}
+          </div>
+          <label className="sm:w-64">
+            <span className="sr-only">Tipe soal</span>
+            <select
+              className={selectClassName}
+              onChange={(event) => {
+                setType(event.target.value);
+                setSelected(new Set());
+              }}
+              value={type}
+            >
+              <option value="">Semua tipe</option>
+              {(data?.types ?? []).map((row) => (
+                <option key={row.type} value={row.type}>
+                  {typeLabel(row.type)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {questions.isPending ? (
+          <p className="text-muted-foreground py-6 text-center text-sm">
+            Memuat soal…
+          </p>
+        ) : questions.isError ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <p className="text-destructive text-sm">
+              {questions.error.message}
+            </p>
+            <Button
+              onClick={() => void questions.refetch()}
+              size="sm"
+              variant="outline"
+            >
+              Coba lagi
+            </Button>
+          </div>
+        ) : rows.length === 0 ? (
+          <p className="text-muted-foreground py-6 text-center text-sm">
+            Tidak ada soal di sini.
+          </p>
+        ) : (
+          <>
+            <label className="flex items-center gap-2 px-1 text-sm sm:px-3">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={(checked) =>
+                  setSelected(
+                    checked ? new Set(rows.map(({ id }) => id)) : new Set(),
+                  )
+                }
+              />
+              Pilih semua ({rows.length})
+            </label>
+            {rows.length >= MAX_BANK_BATCH ? (
+              <p className="text-muted-foreground text-xs">
+                Hanya {MAX_BANK_BATCH} soal terbaru yang tampil.
+              </p>
+            ) : null}
+            <ul className="divide-y border-y sm:rounded-lg sm:border">
+              {rows.map((question) => {
+                const epsType = question.tags.find((tag) =>
+                  tag.startsWith("eps:"),
+                );
+                const level = levelOf(question.tags);
+                const problem = bankReadinessProblem(question);
+                const retired = question.status === "RETIRED";
+                return (
+                  <li key={question.id}>
+                    <div className="flex items-start gap-3 px-1 py-3 sm:px-3">
+                      <Checkbox
+                        aria-label="Pilih soal ini"
+                        checked={selected.has(question.id)}
+                        className="mt-0.5"
+                        onCheckedChange={(checked) =>
+                          setSelected((current) => {
+                            const next = new Set(current);
+                            if (checked) next.add(question.id);
+                            else next.delete(question.id);
+                            return next;
+                          })
+                        }
+                      />
+                      <Link
+                        className="group/row focus-visible:ring-ring/50 -my-1 flex min-w-0 flex-1 items-start gap-2 rounded-md py-1 outline-none focus-visible:ring-3"
+                        href={bankQuestionHref(question.id)}
+                      >
+                        <span className="min-w-0 flex-1 space-y-1">
+                          <span className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
+                            <span>
+                              {epsType ? tagLabel(epsType) : "Tanpa label tipe"}
                             </span>
-                            <span className="line-clamp-2 block text-sm">
-                              {question.preview || "(soal tanpa teks)"}
-                            </span>
-                            {question.flags.length ? (
-                              <span className="block text-xs text-amber-700 dark:text-amber-400">
-                                {question.flags
-                                  .map((flag) => flag.message)
-                                  .join(" ")}
-                              </span>
-                            ) : null}
-                            {question.bankStats ? (
-                              <BankStatsLine stats={question.bankStats} />
-                            ) : null}
-                            {question.mediaBrief ? (
-                              <span className="text-muted-foreground block text-xs">
-                                Gambar: {question.mediaBrief}
-                              </span>
+                            {level ? <span>· {level}</span> : null}
+                            {question.groupId ? <span>· kelompok</span> : null}
+                            {problem && !retired ? (
+                              <Badge variant="destructive">{problem}</Badge>
                             ) : null}
                           </span>
-                        </label>
-                        {question.illustrated && status !== "RETIRED" ? (
-                          <BankImageActions
-                            question={question}
-                            onDone={refresh}
-                          />
-                        ) : null}
-                        {question.hasScript && status !== "RETIRED" ? (
-                          <BankAudioActions
-                            question={question}
-                            onDone={refresh}
-                          />
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
-            )}
-          </section>
+                          <span className="group-hover/row:text-primary line-clamp-2 block text-sm transition-colors">
+                            {question.preview || "(soal tanpa teks)"}
+                          </span>
+                          {question.flags.length ? (
+                            <span className="block text-xs text-amber-700 dark:text-amber-400">
+                              {question.flags
+                                .map((flag) => flag.message)
+                                .join(" ")}
+                            </span>
+                          ) : null}
+                          {question.mediaBrief ? (
+                            <span className="text-muted-foreground block text-xs">
+                              Gambar: {question.mediaBrief}
+                            </span>
+                          ) : null}
+                        </span>
+                        <ChevronRightIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                      </Link>
+                    </div>
+                    {retired ? null : (
+                      <>
+                        <BankImageActions
+                          className="px-1 pb-3 pl-8 sm:px-3 sm:pl-10"
+                          onDone={refresh}
+                          question={question}
+                        />
+                        <BankAudioActions
+                          className="px-1 pb-3 pl-8 sm:px-3 sm:pl-10"
+                          onDone={refresh}
+                          question={question}
+                        />
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </section>
 
-          {selected.size ? (
-            <div className="bg-background/95 fixed inset-x-0 bottom-0 z-20 border-t px-4 py-3 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0">
-              <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2">
-                <span className="text-sm font-medium">
-                  {selected.size} dipilih
-                </span>
-                {bankTransitions[status].map((to) => (
-                  <Button
-                    key={to}
-                    disabled={setBankStatus.isPending}
-                    onClick={() => void move(to)}
-                    size="sm"
-                    variant={to === "RETIRED" ? "outline" : "default"}
-                  >
-                    {to === "REVIEW" && status === "LIVE"
-                      ? "Kembalikan ke review"
-                      : moveLabels[to]}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </>
-      )}
+      {selected.size ? (
+        <div className="bg-background/95 fixed inset-x-0 bottom-0 z-20 border-t px-4 py-3 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">{selected.size} dipilih</span>
+            {bankTransitions[status].map((to) => (
+              <Button
+                key={to}
+                disabled={moving}
+                onClick={() => void moveSelected(to)}
+                size="sm"
+                variant={to === "RETIRED" ? "outline" : "default"}
+              >
+                {bankMoveLabel(status, to)}
+              </Button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </main>
-  );
-}
-
-type Question = RouterOutputs["superadmin"]["bank"]["questions"][number];
-
-/** Draws a question's missing pictures one at a time (each call is one image). */
-function BankImageActions({
-  question,
-  onDone,
-}: {
-  question: Question;
-  onDone: () => Promise<void>;
-}) {
-  const generate = api.superadmin.bank.generateImage.useMutation();
-  const [working, setWorking] = useState(false);
-  const missingOptions = question.optionsAreImages
-    ? question.optionImages.flatMap((hasImage, index) =>
-        hasImage ? [] : [index],
-      )
-    : [];
-  const needsPrompt =
-    Boolean(question.mediaBrief) && !question.media.promptHasImage;
-  if (!needsPrompt && !missingOptions.length) return null;
-
-  async function draw(targets: Array<number | undefined>) {
-    setWorking(true);
-    try {
-      for (const optionIndex of targets) {
-        await generate.mutateAsync({ questionId: question.id, optionIndex });
-      }
-      toast.success(
-        "Gambar dibuat. Periksa gambarnya sebelum menyetujui soal.",
-      );
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Gambar gagal dibuat.",
-      );
-    } finally {
-      setWorking(false);
-      await onDone();
-    }
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2 px-1 pb-3 pl-8 sm:px-3 sm:pl-10">
-      {needsPrompt ? (
-        <Button
-          disabled={working}
-          onClick={() => void draw([undefined])}
-          size="xs"
-          variant="outline"
-        >
-          {working ? (
-            <LoaderCircleIcon
-              className="animate-spin"
-              data-icon="inline-start"
-            />
-          ) : (
-            <ImageIcon data-icon="inline-start" />
-          )}
-          Gambar soal (AI)
-        </Button>
-      ) : null}
-      {missingOptions.length ? (
-        <Button
-          disabled={working}
-          onClick={() => void draw(missingOptions)}
-          size="xs"
-          variant="outline"
-        >
-          {working ? (
-            <LoaderCircleIcon
-              className="animate-spin"
-              data-icon="inline-start"
-            />
-          ) : (
-            <ImageIcon data-icon="inline-start" />
-          )}
-          Gambar {missingOptions.length} pilihan (AI)
-        </Button>
-      ) : null}
-    </div>
   );
 }
 
@@ -550,13 +411,7 @@ const levels = [
  * "Buat draf dengan AI" (docs/eps-question-generator.md section 6): type, count, level and
  * optional topic, keywords and book chapter; the drafts land in Draf with their check flags.
  */
-function AiDraftForm({
-  bankId,
-  onDone,
-}: {
-  bankId: string;
-  onDone: () => Promise<void>;
-}) {
+function AiDraftForm({ onDone }: { onDone: () => Promise<void> }) {
   const create = api.superadmin.bank.createDrafts.useMutation();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("eps:R8");
@@ -571,7 +426,6 @@ function AiDraftForm({
   async function submit() {
     try {
       const result = await create.mutateAsync({
-        assessmentId: bankId,
         type,
         count: Number(count),
         level,
@@ -597,6 +451,7 @@ function AiDraftForm({
   return (
     <section className="space-y-3 border-y py-4 sm:rounded-lg sm:border sm:px-4">
       <button
+        aria-expanded={open}
         className="flex w-full items-center justify-between text-left text-sm font-semibold"
         onClick={() => setOpen((value) => !value)}
         type="button"
@@ -610,7 +465,7 @@ function AiDraftForm({
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Tipe soal">
             <select
-              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              className={selectClassName}
               onChange={(event) => setType(event.target.value)}
               value={type}
             >
@@ -633,7 +488,7 @@ function AiDraftForm({
           </Field>
           <Field label="Tingkat">
             <select
-              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              className={selectClassName}
               onChange={(event) => setLevel(event.target.value as typeof level)}
               value={level}
             >
@@ -646,7 +501,7 @@ function AiDraftForm({
           </Field>
           <Field label="Topik (opsional)">
             <select
-              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              className={selectClassName}
               onChange={(event) => setTopic(event.target.value)}
               value={topic}
             >
@@ -679,7 +534,7 @@ function AiDraftForm({
           </Field>
           <Field label="Model">
             <select
-              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              className={selectClassName}
               onChange={(event) => setModel(event.target.value as typeof model)}
               value={model}
             >
@@ -717,360 +572,11 @@ function AiDraftForm({
   );
 }
 
-const statFlagLabels: Record<string, string> = {
-  ...itemFlagLabels,
-  "weak-group": "Kelompoknya perlu diperiksa",
-};
-
-/** How the question did in packages learners took (recomputed when an event closes). */
-function BankStatsLine({
-  stats,
-}: {
-  stats: NonNullable<Question["bankStats"]>;
-}) {
-  return (
-    <span className="text-muted-foreground block text-xs">
-      Di paket: {stats.attempts}× dijawab · benar{" "}
-      {Math.round(stats.correctRate * 100)}%
-      {stats.discrimination === null
-        ? ""
-        : ` · daya beda ${stats.discrimination.toLocaleString("id-ID")}`}
-      {stats.flags.length ? (
-        <span className="text-amber-700 dark:text-amber-400">
-          {" "}
-          · {stats.flags.map((flag) => statFlagLabels[flag] ?? flag).join(", ")}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-const packageDate = new Intl.DateTimeFormat("id-ID", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
-type PackagePreview = RouterOutputs["superadmin"]["bank"]["previewPackage"];
-
-/**
- * Builds a package (pemantapan) for an LPK from the LIVE bank questions: preview first, then
- * save. The same seed gives the same package, so the saved one matches what was previewed.
- */
-function PackageBuilder() {
-  const utils = api.useUtils();
-  const organizations = api.superadmin.listOrganizations.useQuery();
-  const packages = api.superadmin.bank.packages.useQuery();
-  const preview = api.superadmin.bank.previewPackage.useMutation();
-  const create = api.superadmin.bank.createPackage.useMutation();
-  const [open, setOpen] = useState(false);
-  const [organizationId, setOrganizationId] = useState("");
-  const [title, setTitle] = useState("");
-  const [result, setResult] = useState<PackagePreview | null>(null);
-  const targets = (organizations.data ?? []).filter(
-    (organization) => organization.id !== HAKGYO_SYSTEM_ORGANIZATION_ID,
-  );
-
-  async function draw(seed?: string) {
-    if (!organizationId) return;
-    try {
-      setResult(await preview.mutateAsync({ organizationId, seed }));
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Pratinjau gagal dibuat.",
-      );
-    }
-  }
-
-  async function save() {
-    if (!result) return;
-    try {
-      const saved = await create.mutateAsync({
-        organizationId: result.organization.id,
-        seed: result.seed,
-        drawnAt: result.drawnAt,
-        title: title.trim() || undefined,
-        questionIds: result.slots.flatMap((slot) => slot.questionIds),
-      });
-      toast.success(`${saved.title} tersimpan di ${result.organization.name}.`);
-      setResult(null);
-      setTitle("");
-      await utils.superadmin.bank.packages.invalidate();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Paket gagal disimpan.",
-      );
-    }
-  }
-
-  return (
-    <section className="space-y-3 border-y py-4 sm:rounded-lg sm:border sm:px-4">
-      <button
-        className="flex w-full items-center justify-between text-left text-sm font-semibold"
-        onClick={() => setOpen((value) => !value)}
-        type="button"
-      >
-        Buat paket pemantapan
-        <span className="text-muted-foreground text-xs font-normal">
-          {open ? "Tutup" : "Buka"}
-        </span>
-      </button>
-      {open ? (
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <Field label="Untuk LPK">
-              <select
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-                onChange={(event) => {
-                  setOrganizationId(event.target.value);
-                  setResult(null);
-                }}
-                value={organizationId}
-              >
-                <option value="">Pilih organisasi</option>
-                {targets.map((organization) => (
-                  <option key={organization.id} value={organization.id}>
-                    {organization.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Button
-              disabled={!organizationId || preview.isPending}
-              onClick={() => void draw()}
-              variant={result ? "outline" : "default"}
-            >
-              {preview.isPending ? (
-                <LoaderCircleIcon
-                  className="animate-spin"
-                  data-icon="inline-start"
-                />
-              ) : null}
-              {result ? "Acak lagi" : "Lihat pratinjau"}
-            </Button>
-          </div>
-          <p className="text-muted-foreground text-xs">
-            Soal diambil dari soal yang sudah disetujui, sesuai urutan dan
-            komposisi ujian asli. Soal yang jarang dipakai LPK ini didahulukan.
-            Murid dan staf LPK tidak bisa mengubah soal atau melihat kuncinya.
-          </p>
-
-          {result ? (
-            <div className="space-y-3">
-              <p className="text-sm">
-                {result.slots.reduce((sum, slot) => sum + slot.count, 0)} dari
-                40 nomor terisi, dari {result.bankSize} soal bank.
-                <span className="text-muted-foreground">
-                  {" "}
-                  Kode {result.seed}
-                </span>
-              </p>
-              {result.missing.length ? (
-                <ul className="text-destructive space-y-1 text-sm">
-                  {result.missing.map((slot) => (
-                    <li key={slot.number}>
-                      No. {slot.number}: bank {slot.typeName} hanya punya{" "}
-                      {slot.available} soal.
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {result.warnings.length ? (
-                <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-400">
-                  {result.warnings.map((warning) => (
-                    <li key={warning}>{warning}</li>
-                  ))}
-                </ul>
-              ) : null}
-              <ol className="divide-y border-y text-sm sm:rounded-lg sm:border">
-                {result.slots.map((slot) => (
-                  <li
-                    key={slot.number}
-                    className="space-y-0.5 px-1 py-2 sm:px-3"
-                  >
-                    <span className="text-muted-foreground flex flex-wrap gap-x-1.5 text-xs">
-                      <span className="text-foreground font-medium">
-                        No. {slot.number}
-                        {slot.count > 1
-                          ? `–${slot.number + slot.count - 1}`
-                          : ""}
-                      </span>
-                      <span>· {slot.typeName}</span>
-                      {slot.level ? (
-                        <span
-                          className={cn(
-                            slot.level !== slot.target &&
-                              "text-amber-700 dark:text-amber-400",
-                          )}
-                        >
-                          · {tagLabel(`level:${slot.level}`)}
-                        </span>
-                      ) : null}
-                      {slot.topic ? (
-                        <span>· {tagLabel(slot.topic)}</span>
-                      ) : null}
-                      {slot.organizationUses ? (
-                        <span>· sudah dipakai {slot.organizationUses}×</span>
-                      ) : null}
-                    </span>
-                    <span className="line-clamp-1 block">
-                      {slot.preview || "(soal tanpa teks)"}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <Field label="Nama paket (opsional)">
-                  <Input
-                    maxLength={200}
-                    onChange={(event) => setTitle(event.target.value)}
-                    placeholder="Pemantapan EPS-TOPIK 1"
-                    value={title}
-                  />
-                </Field>
-                <Button
-                  disabled={create.isPending || result.missing.length > 0}
-                  onClick={() => void save()}
-                >
-                  {create.isPending ? (
-                    <LoaderCircleIcon
-                      className="animate-spin"
-                      data-icon="inline-start"
-                    />
-                  ) : null}
-                  Simpan paket
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          {packages.data?.length ? (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">Paket terakhir</h3>
-              <ul className="divide-y border-y text-sm sm:rounded-lg sm:border">
-                {packages.data.map((entry) => (
-                  <li
-                    key={entry.id}
-                    className="flex flex-wrap items-baseline gap-x-2 px-1 py-2 sm:px-3"
-                  >
-                    <span className="font-medium">{entry.title}</span>
-                    <span className="text-muted-foreground">
-                      {entry.organization.name}
-                    </span>
-                    <span className="text-muted-foreground ml-auto text-xs">
-                      {entry.questions} soal · {entry.attempts} percobaan ·{" "}
-                      <LocalDateTime
-                        format={packageDate}
-                        value={entry.createdAt}
-                      />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="grid gap-1.5 text-sm">
       <span className="font-medium">{label}</span>
       {children}
     </label>
-  );
-}
-
-const audioJobLabels: Record<string, string> = {
-  PENDING: "Audio menunggu PC",
-  RUNNING: "Audio sedang dibuat",
-  DONE: "Audio sudah dibuat",
-  FAILED: "Audio gagal",
-};
-
-/**
- * Audio for a listening question: queue it for the PC (VoxCPM2), or make it with OpenAI now. Jobs
- * that wait more than two hours go to OpenAI by themselves.
- */
-function BankAudioActions({
-  question,
-  onDone,
-}: {
-  question: Question;
-  onDone: () => Promise<void>;
-}) {
-  const request = api.superadmin.bank.requestAudio.useMutation();
-  const now = api.superadmin.bank.generateAudioNow.useMutation();
-  const job = question.audioJob;
-  const waiting = job?.status === "PENDING" || job?.status === "RUNNING";
-  const done = question.media.hasAudio;
-  const busy = request.isPending || now.isPending;
-
-  async function run(action: "queue" | "now") {
-    try {
-      if (action === "queue") {
-        await request.mutateAsync({ questionId: question.id });
-        toast.success("Audio masuk antrean PC.");
-      } else {
-        await now.mutateAsync({ questionId: question.id });
-        toast.success(
-          "Audio dibuat dengan suara AI cloud. Dengarkan sebelum menyetujui soal.",
-        );
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Audio gagal dibuat.",
-      );
-    } finally {
-      await onDone();
-    }
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-2 px-1 pb-3 pl-8 text-xs sm:px-3 sm:pl-10">
-      {job ? (
-        <span
-          className={
-            job.status === "FAILED"
-              ? "text-destructive"
-              : "text-muted-foreground"
-          }
-        >
-          {audioJobLabels[job.status]}
-          {job.provider
-            ? ` (${job.provider === "VOXCPM" ? "PC" : "cloud"})`
-            : ""}
-          {job.status === "FAILED" && job.error ? `: ${job.error}` : ""}
-        </span>
-      ) : null}
-      {!done && !waiting ? (
-        <Button
-          disabled={busy}
-          onClick={() => void run("queue")}
-          size="xs"
-          variant="outline"
-        >
-          Buat audio (PC)
-        </Button>
-      ) : null}
-      {!done && job?.status !== "RUNNING" ? (
-        <Button
-          disabled={busy}
-          onClick={() => void run("now")}
-          size="xs"
-          variant="ghost"
-        >
-          {now.isPending ? (
-            <LoaderCircleIcon
-              className="animate-spin"
-              data-icon="inline-start"
-            />
-          ) : null}
-          Buat dengan cloud sekarang
-        </Button>
-      ) : null}
-    </div>
   );
 }

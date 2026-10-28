@@ -150,9 +150,6 @@ export async function cloneStarterCourse(
       where: {
         id: { in: [...assessmentIds] },
         organizationId: sourceOrganizationId,
-        kind: { not: "BANK" },
-        // Packages carry Hakgyo's keys; a clone would hand them out.
-        contentLocked: false,
       },
       include: {
         questions: {

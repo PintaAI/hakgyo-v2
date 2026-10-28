@@ -27,23 +27,6 @@ describe("learner answer-review policy", () => {
     ).toBe(true);
   });
 
-  test("keeps a locked package's answers for a closed Latihan", () => {
-    expect(
-      shouldRevealAssessmentAnswers({
-        attemptStatus: "GRADED",
-        event: null,
-        contentLocked: true,
-      }),
-    ).toBe(false);
-    expect(
-      shouldRevealAssessmentAnswers({
-        attemptStatus: "GRADED",
-        event: { type: "QUICK_ASSESSMENT", status: "CLOSED" },
-        contentLocked: true,
-      }),
-    ).toBe(true);
-  });
-
   test("never reveals tryout answers or explanations", () => {
     expect(
       shouldRevealAssessmentAnswers({
