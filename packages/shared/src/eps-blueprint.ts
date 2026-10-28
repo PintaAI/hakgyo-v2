@@ -326,7 +326,9 @@ export function checkBlueprint(
 export function blueprintIssueText(issue: BlueprintIssue) {
   switch (issue.kind) {
     case "MISSING":
-      return `Soal ${issue.number} belum ada: ${tagLabel(issue.slot.type)} (${issue.slot.note}).`;
+      return tagLabel(issue.slot.type).includes(issue.slot.note)
+        ? `Soal ${issue.number} belum ada: ${tagLabel(issue.slot.type)}.`
+        : `Soal ${issue.number} belum ada: ${tagLabel(issue.slot.type)} (${issue.slot.note}).`;
     case "EXTRA":
       return `Soal ke-${issue.number} di bagian ini di luar format (bagian ini berisi lebih banyak soal).`;
     case "TYPE": {
