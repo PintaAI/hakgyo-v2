@@ -23,10 +23,24 @@ const db = new PrismaClient({
   adapter: new PrismaNeon({ connectionString }),
 });
 
+/** The test accounts' password (owner, teacher, student); see AGENTS.md. */
 const password = "Hakgyo123!";
 const systemOwnerEmail = "admin@hakgyo.test";
+/**
+ * The system owner is a superadmin, so its password is not in this public repository: it comes
+ * from `SEED_SYSTEM_OWNER_PASSWORD` in apps/web/.env. Without it, the seed leaves that account's
+ * password as it is (a new account gets none until the variable is set).
+ */
+const seededSystemOwnerPassword =
+  process.env.SEED_SYSTEM_OWNER_PASSWORD?.trim() ?? "";
+// An empty value counts as unset.
+const systemOwnerPassword =
+  seededSystemOwnerPassword === "" ? null : seededSystemOwnerPassword;
 
-async function upsertUser(input: { email: string; id: string; name: string }) {
+async function upsertUser(
+  input: { email: string; id: string; name: string },
+  accountPassword: string | null = password,
+) {
   const user = await db.user.upsert({
     where: { id: input.id },
     update: {
@@ -40,7 +54,8 @@ async function upsertUser(input: { email: string; id: string; name: string }) {
     },
   });
 
-  const hashedPassword = await hashPassword(password);
+  if (accountPassword === null) return user;
+  const hashedPassword = await hashPassword(accountPassword);
   const account = await db.account.findFirst({
     where: {
       issuer: "local:credential",
@@ -88,11 +103,14 @@ async function main() {
       name: "Sari Wulandari",
       email: "student@hakgyo.test",
     }),
-    upsertUser({
-      id: "hakgyo-system-owner",
-      name: "Hakgyo System Owner",
-      email: systemOwnerEmail,
-    }),
+    upsertUser(
+      {
+        id: "hakgyo-system-owner",
+        name: "Hakgyo System Owner",
+        email: systemOwnerEmail,
+      },
+      systemOwnerPassword,
+    ),
   ]);
 
   const systemOrganization = await db.organization.upsert({
@@ -609,7 +627,11 @@ async function main() {
   console.info(`Login: owner@hakgyo.test / ${password}`);
   console.info(`Login: teacher@hakgyo.test / ${password}`);
   console.info(`Login: student@hakgyo.test / ${password}`);
-  console.info(`Login: ${systemOwnerEmail} / ${password}`);
+  console.info(
+    systemOwnerPassword
+      ? `Login: ${systemOwnerEmail} / (SEED_SYSTEM_OWNER_PASSWORD)`
+      : `${systemOwnerEmail}: password unchanged (set SEED_SYSTEM_OWNER_PASSWORD to set it)`,
+  );
 }
 
 main()
