@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { epsTagVocabulary, tagLabel } from "@hakgyo/shared";
+import {
+  blueprintTypes,
+  epsTagVocabulary,
+  epsTopikBlueprint,
+  tagLabel,
+} from "@hakgyo/shared";
 import { epsTypeByTag } from "@hakgyo/shared/eps-taxonomy";
 import {
   AlertTriangleIcon,
@@ -211,9 +216,17 @@ function BankQuestionForm({
     createOption.isPending ||
     deleteOption.isPending ||
     deleteQuestion.isPending;
+  const epsTag = (memberTags: readonly string[]) =>
+    memberTags.find((tag) => tag.startsWith("eps:")) ?? null;
+  // This question's own tags may have changed since the group was loaded.
+  const groupTypes =
+    question.group?.questions.map((member) =>
+      epsTag(member.id === question.id ? tags : member.tags),
+    ) ?? null;
   const readiness = bankReadinessProblem({
     type: question.type,
     tags,
+    groupTypes,
     optionCount: question.options.length,
     correctCount: question.options.filter((option) => option.isCorrect).length,
     promptEmpty: !hasBlockNoteContent(promptDoc),
@@ -579,6 +592,8 @@ function BankQuestionForm({
       <BankQuestionGroupCard
         assetStorage={bankAssetStorage}
         autosaveRegistry={autosaveRegistry}
+        canGroup={tags.map(epsTypeByTag).find(Boolean)?.startsGroup ?? false}
+        groupTypes={groupTypes}
         onReload={onReload}
         question={question}
         saveAll={saveAll}
@@ -1008,6 +1023,9 @@ const tagGroups = [
   { prefix: "topik:", group: "topik", label: "Topik", empty: "Tanpa topik" },
 ] as const;
 
+/** Types no slot of the blueprint takes yet are not offered, so no question is written for nothing. */
+const usableTypes = blueprintTypes(epsTopikBlueprint);
+
 const tagSelectClassName =
   "border-input bg-background h-9 w-full rounded-md border px-2 text-sm";
 
@@ -1043,7 +1061,11 @@ function BankTagFields({
       <div className="grid gap-3 sm:grid-cols-3">
         {tagGroups.map((entry) => {
           const options = epsTagVocabulary.filter(
-            (option) => option.group === entry.group,
+            (option) =>
+              option.group === entry.group &&
+              (option.group !== "eps" ||
+                usableTypes.has(option.tag) ||
+                tags.includes(option.tag)),
           );
           const current =
             tags.find(

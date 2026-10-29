@@ -35,6 +35,26 @@ describe("bank status", () => {
     );
   });
 
+  test("a type or group sets could never use is not ready", () => {
+    expect(
+      bankReadinessProblem({ ...ready, tags: ["eps:L12", "level:sedang"] }),
+    ).toBe("tipe L12 belum dipakai di set EPS-TOPIK");
+    const l8 = { ...ready, tags: ["eps:L8", "level:sulit"] };
+    expect(
+      bankReadinessProblem({ ...l8, groupTypes: ["eps:L8", "eps:L9"] }),
+    ).toBeNull();
+    expect(
+      bankReadinessProblem({ ...l8, groupTypes: ["eps:L9", "eps:L8"] }),
+    ).toBe("kelompok L9 → L8 tidak muat di nomor ujian mana pun");
+    expect(
+      bankReadinessProblem({ ...l8, groupTypes: ["eps:L9", "eps:L9"] }),
+    ).toBe("kelompok L9 → L9 tidak muat di nomor ujian mana pun");
+    // A member without a type reports that itself; the group waits for it.
+    expect(
+      bankReadinessProblem({ ...l8, groupTypes: ["eps:L8", null] }),
+    ).toBeNull();
+  });
+
   test("live questions go back through review, never straight to draft", () => {
     expect(bankTransitions.LIVE).not.toContain("DRAFT");
     expect(bankTransitions.DRAFT).not.toContain("LIVE");

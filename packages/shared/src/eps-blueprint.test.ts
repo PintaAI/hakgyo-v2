@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 
 import {
   blueprintIssueText,
+  blueprintTypes,
   checkBlueprint,
   epsTopikBlueprint,
+  fitsBlueprint,
 } from "./eps-blueprint";
 
 const [reading, listening] = epsTopikBlueprint.sections;
@@ -85,5 +87,32 @@ describe("checkBlueprint", () => {
     expect(blueprintIssueText(report[0]!.issues[0]!)).toContain(
       "Soal 20 belum ada",
     );
+  });
+});
+
+describe("fitsBlueprint", () => {
+  const fits = (...codes: string[]) =>
+    fitsBlueprint(
+      epsTopikBlueprint,
+      codes.map((code) => `eps:${code}`),
+    );
+
+  test("single questions fit where a slot or an alternative takes their type", () => {
+    expect(fits("R8")).toBe(true);
+    expect(fits("R13")).toBe(true);
+    expect(fits("L11")).toBe(false);
+    expect(fits("L12")).toBe(false);
+    expect(blueprintTypes(epsTopikBlueprint).has("eps:L12")).toBe(false);
+  });
+
+  test("groups need consecutive slots in their order, within one section", () => {
+    expect(fits("R12", "R12")).toBe(true);
+    expect(fits("R12", "R12", "R12")).toBe(true);
+    expect(fits("R12", "R12", "R12", "R12")).toBe(false);
+    expect(fits("L8", "L9")).toBe(true);
+    expect(fits("L8", "L8", "L9")).toBe(true);
+    expect(fits("L9", "L8")).toBe(false);
+    expect(fits("L9", "L9")).toBe(false);
+    expect(fits("R11", "L1")).toBe(false);
   });
 });

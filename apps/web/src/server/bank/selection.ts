@@ -1,7 +1,8 @@
-import type {
-  Blueprint,
-  BlueprintDifficulty,
-  BlueprintSlot,
+import {
+  slotAllows,
+  type Blueprint,
+  type BlueprintDifficulty,
+  type BlueprintSlot,
 } from "@hakgyo/shared";
 
 import { trigramSetSimilarity, trigrams } from "~/server/bank/draft-checks";
@@ -79,8 +80,7 @@ export function seededRandom(seed: string) {
   };
 }
 
-const allows = (slot: BlueprintSlot, type: string) =>
-  slot.type === type || Boolean(slot.alternatives?.includes(type));
+const allows = slotAllows;
 
 /** How well a unit suits a slot, before the random pick (always above 0). */
 export function unitWeight(unit: BankUnit, slot: BlueprintSlot, now: number) {

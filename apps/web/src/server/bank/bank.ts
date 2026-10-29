@@ -124,6 +124,19 @@ for (const section of epsTopikBlueprint.sections) {
 const epsTag = (tags: readonly string[]) =>
   tags.find((tag) => tag.startsWith("eps:"));
 
+/** The members of a question's group, for the placement check (see `bankPlacementProblem`). */
+const groupTypesSelect = {
+  select: {
+    questions: {
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      select: { tags: true },
+    },
+  },
+} satisfies Prisma.BankGroupDefaultArgs;
+
+const groupTypesOf = (group: { questions: Array<{ tags: string[] }> } | null) =>
+  group?.questions.map(({ tags }) => epsTag(tags) ?? null) ?? null;
+
 const epsType = (tags: readonly string[]) =>
   tags.map(epsTypeByTag).find(Boolean);
 
@@ -186,6 +199,7 @@ export async function listBankQuestions(
       tags: true,
       status: true,
       groupId: true,
+      group: groupTypesSelect,
       updatedAt: true,
       meta: true,
       options: {
@@ -198,25 +212,28 @@ export async function listBankQuestions(
     db,
     questions.map(({ id }) => id),
   );
-  return questions.map(({ prompt, options, meta: rawMeta, ...question }) => {
-    const meta = (rawMeta ?? {}) as BankMetaView;
-    const type = epsType(question.tags);
-    return {
-      ...question,
-      preview: preview(prompt),
-      optionCount: options.length,
-      correctCount: options.filter((option) => option.isCorrect).length,
-      flags: meta.flags ?? [],
-      mediaBrief: meta.mediaBrief ?? null,
-      hasScript: Boolean(meta.script?.length),
-      /** Illustrated types can have their pictures drawn by AI. */
-      illustrated: type?.lane === "illustrated",
-      media: bankMediaState({ type, prompt, options }),
-      optionsAreImages: type?.optionsAreImages ?? false,
-      optionImages: options.map((option) => contentHasImage(option.content)),
-      audioJob: jobs.get(question.id) ?? null,
-    };
-  });
+  return questions.map(
+    ({ prompt, options, meta: rawMeta, group, ...question }) => {
+      const meta = (rawMeta ?? {}) as BankMetaView;
+      const type = epsType(question.tags);
+      return {
+        ...question,
+        groupTypes: groupTypesOf(group),
+        preview: preview(prompt),
+        optionCount: options.length,
+        correctCount: options.filter((option) => option.isCorrect).length,
+        flags: meta.flags ?? [],
+        mediaBrief: meta.mediaBrief ?? null,
+        hasScript: Boolean(meta.script?.length),
+        /** Illustrated types can have their pictures drawn by AI. */
+        illustrated: type?.lane === "illustrated",
+        media: bankMediaState({ type, prompt, options }),
+        optionsAreImages: type?.optionsAreImages ?? false,
+        optionImages: options.map((option) => contentHasImage(option.content)),
+        audioJob: jobs.get(question.id) ?? null,
+      };
+    },
+  );
 }
 
 /** One question for the bank editor, with its options and group. */
@@ -248,7 +265,13 @@ export async function getBankQuestion(
           stimulus: true,
           questions: {
             orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-            select: { id: true, position: true, prompt: true, status: true },
+            select: {
+              id: true,
+              position: true,
+              prompt: true,
+              status: true,
+              tags: true,
+            },
           },
         },
       },
@@ -674,6 +697,7 @@ async function moveBankQuestions(
       status: true,
       prompt: true,
       options: { select: { isCorrect: true, content: true } },
+      group: groupTypesSelect,
     },
   });
   const movable = new Map<BankItemStatus, string[]>();
@@ -696,6 +720,7 @@ async function moveBankQuestions(
             optionCount: question.options.length,
             correctCount: question.options.filter((option) => option.isCorrect)
               .length,
+            groupTypes: groupTypesOf(question.group),
             promptEmpty: !hasBlockNoteContent(question.prompt),
             emptyOptions: question.options.filter(
               (option) => !hasBlockNoteContent(option.content),

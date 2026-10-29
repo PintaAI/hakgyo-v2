@@ -164,4 +164,27 @@ describe("createAiDrafts", () => {
       false,
     ]);
   });
+
+  test("refuses types no slot of the blueprint takes, before calling a model", async () => {
+    const { db, writes } = database();
+    const { fake } = models([draft(0, "")], [0]);
+    const created = createAiDrafts(
+      db,
+      createAiDraftsInput.parse({
+        type: "eps:L12",
+        count: 1,
+        level: "sedang",
+      }),
+      "superadmin",
+      fake,
+    );
+    let message = "";
+    try {
+      await created;
+    } catch (error) {
+      message = error instanceof Error ? error.message : "";
+    }
+    expect(message).toBe("Tipe L12 belum dipakai di set EPS-TOPIK.");
+    expect(writes.bankQuestion).toBeUndefined();
+  });
 });
