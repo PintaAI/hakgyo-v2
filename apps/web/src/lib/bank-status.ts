@@ -45,6 +45,10 @@ export function bankReadinessProblem(question: {
   tags: readonly string[];
   optionCount: number;
   correctCount: number;
+  /** The prompt has no text or media yet (the editor saves drafts as they are). */
+  promptEmpty?: boolean;
+  /** Options with no text or media yet. */
+  emptyOptions?: number;
   /** What its EPS type needs, and what it has (see `bankMediaState`). */
   media?: {
     needsPromptImage: boolean;
@@ -56,13 +60,17 @@ export function bankReadinessProblem(question: {
   };
 }) {
   if (question.type !== "SINGLE_CHOICE") return "harus pilihan tunggal";
+  if (question.promptEmpty) return "pertanyaan belum diisi";
   if (question.optionCount !== 4) return "harus punya 4 pilihan";
+  if (question.emptyOptions) {
+    return `${question.emptyOptions} pilihan masih kosong`;
+  }
   if (question.correctCount !== 1) return "harus punya tepat 1 jawaban benar";
   if (!question.tags.some((tag) => tag.startsWith("eps:"))) {
-    return "belum diberi label tipe (eps:…)";
+    return "tipe soal belum dipilih";
   }
   if (!question.tags.some((tag) => tag.startsWith("level:"))) {
-    return "belum diberi label tingkat (level:…)";
+    return "tingkat belum dipilih";
   }
   const media = question.media;
   if (media?.needsPromptImage && !media.promptHasImage) {

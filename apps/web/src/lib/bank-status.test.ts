@@ -22,10 +22,16 @@ describe("bank status", () => {
       "harus punya tepat 1 jawaban benar",
     );
     expect(bankReadinessProblem({ ...ready, tags: ["level:mudah"] })).toBe(
-      "belum diberi label tipe (eps:…)",
+      "tipe soal belum dipilih",
     );
     expect(bankReadinessProblem({ ...ready, tags: ["eps:R8"] })).toBe(
-      "belum diberi label tingkat (level:…)",
+      "tingkat belum dipilih",
+    );
+    expect(bankReadinessProblem({ ...ready, promptEmpty: true })).toBe(
+      "pertanyaan belum diisi",
+    );
+    expect(bankReadinessProblem({ ...ready, emptyOptions: 2 })).toBe(
+      "2 pilihan masih kosong",
     );
   });
 

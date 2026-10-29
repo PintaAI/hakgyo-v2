@@ -24,6 +24,7 @@ import {
 } from "~/lib/bank-status";
 import {
   getBlockNotePlainText,
+  hasBlockNoteContent,
   plainTextToBlockNote,
 } from "~/lib/blocknote/document";
 import { withTransactionRetry } from "~/server/db-retry";
@@ -501,7 +502,10 @@ export async function deleteBankOption(
   );
 }
 
-/** Deletes a DRAFT question (others are RETIRED instead); an emptied group goes with it. */
+/**
+ * Deletes a DRAFT or RETIRED question for good (REVIEW and LIVE ones are retired first); an
+ * emptied group goes with it. Sets already generated keep their copies, whose source becomes empty.
+ */
 export async function deleteBankQuestion(
   db: PrismaClient,
   input: z.infer<typeof deleteBankQuestionInput>,
@@ -513,10 +517,11 @@ export async function deleteBankQuestion(
         where: { id: input.id },
         select: { status: true, groupId: true },
       });
-      if (question.status !== "DRAFT") {
+      if (question.status !== "DRAFT" && question.status !== "RETIRED") {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Hanya draf yang bisa dihapus. Pensiunkan soal ini.",
+          message:
+            "Hanya draf atau soal pensiun yang bisa dihapus. Pensiunkan soal ini dulu.",
         });
       }
       if (question.groupId) await lockGroup(tx, question.groupId);
@@ -691,6 +696,10 @@ async function moveBankQuestions(
             optionCount: question.options.length,
             correctCount: question.options.filter((option) => option.isCorrect)
               .length,
+            promptEmpty: !hasBlockNoteContent(question.prompt),
+            emptyOptions: question.options.filter(
+              (option) => !hasBlockNoteContent(option.content),
+            ).length,
             media: bankMediaState({
               type: epsType(question.tags),
               prompt: question.prompt,

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { tagLabel } from "@hakgyo/shared";
+import { epsTagVocabulary, tagLabel } from "@hakgyo/shared";
 import { epsTypeByTag } from "@hakgyo/shared/eps-taxonomy";
 import {
   AlertTriangleIcon,
@@ -23,7 +23,6 @@ import {
   type EditorAssetStorageOptions,
 } from "~/components/editor";
 import Link from "~/components/link";
-import { QuestionTagsField } from "~/components/question-tags-field";
 import { SaveNowButton } from "~/components/save-now-button";
 import {
   BankAudioActions,
@@ -217,6 +216,10 @@ function BankQuestionForm({
     tags,
     optionCount: question.options.length,
     correctCount: question.options.filter((option) => option.isCorrect).length,
+    promptEmpty: !hasBlockNoteContent(promptDoc),
+    emptyOptions: question.options.filter(
+      (option) => !hasBlockNoteContent(option.content),
+    ).length,
     media: bankMediaState({
       type: tags.map(epsTypeByTag).find(Boolean),
       prompt: question.prompt,
@@ -251,10 +254,8 @@ function BankQuestionForm({
     schedule: scheduleQuestionSave,
     status: questionSaveStatus,
   } = useDebouncedAutosave<QuestionDraft>(async (draft) => {
-    if (!hasBlockNoteContent(draft.prompt)) {
-      toast.error("Pertanyaan wajib diisi.");
-      throw new Error("Question prompt is required");
-    }
+    // Saved as it is, an empty prompt included: the readiness check keeps an incomplete
+    // question out of review, so labels or the explanation can be filled in first.
     try {
       const saved = await updateQuestion.mutateAsync({
         id: question.id,
@@ -478,7 +479,7 @@ function BankQuestionForm({
             status={autosaveStatus}
             onSave={autosaveRegistry.flushAll}
           />
-          {status === "DRAFT" ? (
+          {status === "DRAFT" || status === "RETIRED" ? (
             <AlertDialog>
               <AlertDialogTrigger
                 render={
@@ -497,7 +498,9 @@ function BankQuestionForm({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Hapus soal ini?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Draf ini dihapus permanen dari bank soal.
+                    {status === "DRAFT"
+                      ? "Draf ini dihapus permanen dari bank soal."
+                      : "Soal pensiun ini dihapus permanen dari bank soal. Set soal yang sudah dibuat LPK tidak berubah."}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -606,21 +609,11 @@ function BankQuestionForm({
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label
-              className="text-muted-foreground text-[11px] tracking-wide uppercase"
-              htmlFor={`question-tags-${question.id}`}
-            >
-              Label soal
-            </Label>
-            <QuestionTagsField
-              id={`question-tags-${question.id}`}
+            <BankTagFields
               onChange={(next) => editQuestion({ tags: next })}
+              questionId={question.id}
               tags={tags}
             />
-            <p className="text-muted-foreground text-xs">
-              Soal bank butuh label tipe (eps:…) dan tingkat (level:…). Label
-              topik (topik:…) membantu set soal memakai topik yang beragam.
-            </p>
           </div>
           <div className="grid gap-1.5">
             <Label className="text-muted-foreground text-[11px] tracking-wide uppercase">
@@ -859,11 +852,7 @@ function BankOptionRow({
     schedule: scheduleOptionSave,
     status: optionSaveStatus,
   } = useDebouncedAutosave<BlockNoteDocument>(async (nextContent) => {
-    if (!hasBlockNoteContent(nextContent)) {
-      toast.error("Isi opsi wajib diisi.");
-      throw new Error("Option content is required");
-    }
-
+    // An empty option saves too; the readiness check names it before review.
     const saved = await onSave(option.id, nextContent);
     if (!saved) throw new Error("Option autosave failed");
   });
@@ -1004,6 +993,94 @@ function BankOptionRow({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+const tagGroups = [
+  { prefix: "eps:", group: "eps", label: "Tipe soal", empty: "Pilih tipe" },
+  {
+    prefix: "level:",
+    group: "level",
+    label: "Tingkat",
+    empty: "Pilih tingkat",
+  },
+  { prefix: "topik:", group: "topik", label: "Topik", empty: "Tanpa topik" },
+] as const;
+
+const tagSelectClassName =
+  "border-input bg-background h-9 w-full rounded-md border px-2 text-sm";
+
+/**
+ * Type, level and topic come from fixed lists, so they are picked rather than typed: a typo would
+ * keep a question out of every generated set without anyone noticing. Other labels a question
+ * already has (such as `bab:3`) are kept as they are.
+ */
+function BankTagFields({
+  questionId,
+  tags,
+  onChange,
+}: {
+  questionId: string;
+  tags: readonly string[];
+  onChange: (tags: string[]) => void;
+}) {
+  const choose = (prefix: string, value: string) => {
+    const rest = tags.filter((tag) => !tag.startsWith(prefix));
+    // Type, level and topic first, in that order, then any other labels.
+    const picked = tagGroups.flatMap((entry) => {
+      if (entry.prefix === prefix) return value ? [value] : [];
+      return tags.filter((tag) => tag.startsWith(entry.prefix)).slice(0, 1);
+    });
+    const others = rest.filter(
+      (tag) => !tagGroups.some((entry) => tag.startsWith(entry.prefix)),
+    );
+    onChange([...picked, ...others]);
+  };
+
+  return (
+    <div className="grid gap-1.5">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {tagGroups.map((entry) => {
+          const options = epsTagVocabulary.filter(
+            (option) => option.group === entry.group,
+          );
+          const current =
+            tags.find(
+              (tag) =>
+                tag.startsWith(entry.prefix) &&
+                options.some((option) => option.tag === tag),
+            ) ?? "";
+          const id = `question-${entry.group}-${questionId}`;
+          return (
+            <div key={entry.group} className="grid gap-1.5">
+              <Label
+                className="text-muted-foreground text-[11px] tracking-wide uppercase"
+                htmlFor={id}
+              >
+                {entry.label}
+              </Label>
+              <select
+                className={tagSelectClassName}
+                id={id}
+                onChange={(event) => choose(entry.prefix, event.target.value)}
+                value={current}
+              >
+                <option value="">{entry.empty}</option>
+                {options.map((option) => (
+                  <option key={option.tag} value={option.tag}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-muted-foreground text-xs">
+        Tipe dan tingkat wajib diisi sebelum soal dikirim ke review. Topik
+        membantu set soal memakai topik yang beragam.
+      </p>
     </div>
   );
 }
