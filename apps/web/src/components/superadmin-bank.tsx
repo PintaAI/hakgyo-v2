@@ -2,7 +2,13 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { epsTagVocabulary, type epsTopicSlugs, tagLabel } from "@hakgyo/shared";
+import {
+  blueprintTypes,
+  epsTagVocabulary,
+  epsTopikBlueprint,
+  type epsTopicSlugs,
+  tagLabel,
+} from "@hakgyo/shared";
 import { epsTaxonomy } from "@hakgyo/shared/eps-taxonomy";
 import {
   ArrowLeftIcon,
@@ -166,7 +172,7 @@ export function SuperadminBank() {
           <h2 className="text-sm font-semibold">Cakupan per tipe</h2>
           <p className="text-muted-foreground text-xs">
             {data
-              ? `${data.total} soal. Sasaran pilot: cukup untuk ${data.pilotPackages} set soal berbeda.`
+              ? `${data.total} soal di bank. Target min. adalah jumlah soal siap pakai agar LPK bisa membuat ${data.pilotPackages} set soal tanpa soal yang sama. Boleh lebih: makin banyak soal, makin bervariasi set soalnya. Ketuk tipe untuk menyaring daftar.`
               : "Memuat cakupan…"}
           </p>
         </div>
@@ -187,22 +193,36 @@ export function SuperadminBank() {
                   }}
                   type="button"
                 >
-                  <span className="min-w-0 flex-1 truncate">
-                    {typeLabel(row.type)}
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate">{typeLabel(row.type)}</span>
+                    {row.counts.REVIEW || row.counts.DRAFT ? (
+                      <span className="text-muted-foreground text-xs tabular-nums">
+                        {[
+                          row.counts.REVIEW
+                            ? `${row.counts.REVIEW} perlu review`
+                            : "",
+                          row.counts.DRAFT ? `${row.counts.DRAFT} draf` : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    ) : null}
                   </span>
-                  <span
-                    className={cn(
-                      "tabular-nums",
-                      row.target && row.counts.LIVE >= row.target
-                        ? "text-emerald-600"
-                        : "text-foreground",
-                    )}
-                  >
-                    {row.counts.LIVE}
-                    {row.target ? `/${row.target}` : ""}
-                  </span>
-                  <span className="text-muted-foreground w-28 text-right text-xs tabular-nums">
-                    review {row.counts.REVIEW} · draf {row.counts.DRAFT}
+                  <span className="flex shrink-0 flex-col items-end whitespace-nowrap tabular-nums">
+                    <span
+                      className={cn(
+                        row.target && row.counts.LIVE >= row.target
+                          ? "text-emerald-600"
+                          : "text-foreground",
+                      )}
+                    >
+                      {row.counts.LIVE} siap
+                    </span>
+                    {row.target ? (
+                      <span className="text-muted-foreground text-xs">
+                        target min. {row.target}
+                      </span>
+                    ) : null}
                   </span>
                 </button>
               </li>
@@ -401,6 +421,11 @@ export function SuperadminBank() {
   );
 }
 
+/** Types some slot of the blueprint takes; drafts of other types would never reach a set. */
+const draftTypes = epsTaxonomy.filter((entry) =>
+  blueprintTypes(epsTopikBlueprint).has(entry.tag),
+);
+
 const levels = [
   { value: "mudah", label: "Mudah" },
   { value: "sedang", label: "Sedang" },
@@ -469,7 +494,7 @@ function AiDraftForm({ onDone }: { onDone: () => Promise<void> }) {
               onChange={(event) => setType(event.target.value)}
               value={type}
             >
-              {epsTaxonomy.map((entry) => (
+              {draftTypes.map((entry) => (
                 <option key={entry.tag} value={entry.tag}>
                   {entry.code} · {entry.name}
                 </option>

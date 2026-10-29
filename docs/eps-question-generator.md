@@ -189,6 +189,13 @@ Maintainer form: type · count · keywords · level · book chapter / grammar po
   spread, similarity against the bank (`pg_trgm` is installed), vocabulary within the keywords and
   level, and a second model that answers each question blind; a mismatch or two plausible answers
   flags the question.
+- **Placement check:** a question goes to review or LIVE only when the generator could use it:
+  some slot of the blueprint takes its type (as the slot's type or an alternative), and a group's
+  types, in position order, fill consecutive slots of one section (`fitsBlueprint` in
+  `@hakgyo/shared`, read by `bankPlacementProblem`). Groups open with R12 (two or three questions
+  on one text, slots 18–20) or L8 (a long dialogue for L8 then L9, slots 38–40). Types no slot
+  takes yet (L11, L12) are hidden from the editor and the AI form until the blueprint gives them a
+  slot.
 - **Review:** the founder reviews the Korean (particles, numbers, naturalness) and every image
   before a question goes `LIVE`.
 - **Production lanes:** text-only types (R4, R6, R8–R11, L4, L5, L8, L9 scripts) need only AI;

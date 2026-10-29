@@ -132,6 +132,42 @@ describe("selectPackage", () => {
     expect(covered).toHaveLength(40);
   });
 
+  test("an R12 text read for two questions can stand in for slots 18-20", () => {
+    const units = bank(2);
+    units.push({
+      questionIds: ["r12-a", "r12-b"],
+      groupId: "r12",
+      type: "eps:R12",
+      level: "sedang",
+      topic: "topik:lembaga",
+      text: "공유 지문",
+      organizationUses: 0,
+      lastUsedAt: null,
+      globalUses: 0,
+    });
+    const results = Array.from({ length: 20 }, (_, index) =>
+      selectPackage({
+        blueprint: epsTopikBlueprint,
+        units,
+        seed: `r12-${index}`,
+        now,
+      }),
+    );
+    const withGroup = results.filter((result) =>
+      result.picks.some((pick) => pick.unit.groupId === "r12"),
+    );
+    // An alternative only stands in now and then.
+    expect(withGroup.length).toBeGreaterThan(0);
+    expect(withGroup.length).toBeLessThan(results.length);
+    for (const result of withGroup) {
+      expect(result.missing).toEqual([]);
+      const ids = result.picks.flatMap((pick) => pick.unit.questionIds);
+      expect(new Set(ids).size).toBe(40);
+      const group = result.picks.find((pick) => pick.unit.groupId === "r12")!;
+      expect([18, 19]).toContain(group.number);
+    }
+  });
+
   test("repairs the work-topic share and same-topic runs", () => {
     const work = new Set(epsTopikBlueprint.workTopics.tags);
     // A third of the bank is about work, below the 40% the blueprint wants.

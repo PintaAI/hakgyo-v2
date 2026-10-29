@@ -64,6 +64,11 @@ export type EpsTypeDefinition = {
   /** What makes an item easy or hard, in Indonesian. */
   difficulty: string;
   examples: readonly EpsTypeExample[];
+  /**
+   * A question of this type can open a question group that shares one passage or audio: an R12
+   * text read for two or three questions, or the long dialogue an L8 opens and an L9 closes.
+   */
+  startsGroup: boolean;
   /** The founder has checked the Korean of the examples. */
   reviewed: boolean;
 };
@@ -72,17 +77,20 @@ const names = new Map<string, string>(epsTypes);
 
 type Definition = Omit<
   EpsTypeDefinition,
-  "tag" | "section" | "name" | "reviewed"
+  "tag" | "section" | "name" | "reviewed" | "startsGroup"
 > & {
+  startsGroup?: boolean;
   /** Set once the founder has checked the Korean of the examples. */
   reviewed?: boolean;
 };
 
 const define = ({
   reviewed = false,
+  startsGroup = false,
   ...definition
 }: Definition): EpsTypeDefinition => ({
   ...definition,
+  startsGroup,
   tag: `eps:${definition.code}`,
   section: definition.code.startsWith("R") ? "reading" : "listening",
   name: names.get(definition.code)!,
@@ -404,6 +412,7 @@ export const epsTaxonomy: readonly EpsTypeDefinition[] = spreadKeys([
   }),
   define({
     code: "R12",
+    startsGroup: true,
     instructionKo: "다음 글을 읽고 물음에 답하십시오.",
     tests:
       "Informasi spesifik dari paragraf (kapan, mengapa); kadang satu teks untuk dua soal.",
@@ -653,6 +662,7 @@ export const epsTaxonomy: readonly EpsTypeDefinition[] = spreadKeys([
   }),
   define({
     code: "L8",
+    startsGroup: true,
     instructionKo: "대화를 듣고 물음에 답하십시오.",
     tests:
       "Menyimpulkan tujuan (-(으)려고) atau alasan (-아서/어서) dari dialog panjang.",

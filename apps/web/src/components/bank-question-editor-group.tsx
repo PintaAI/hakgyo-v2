@@ -6,8 +6,9 @@ import {
   CheckIcon,
   GroupIcon,
   LoaderCircleIcon,
-  LogOutIcon,
   PlusIcon,
+  Trash2Icon,
+  UnlinkIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,7 +26,7 @@ import { Label } from "~/components/ui/label";
 import { useDialogs } from "~/components/ui/use-dialogs";
 import { useDebouncedAutosave } from "~/hooks/use-debounced-autosave";
 import type { AutosaveRegistry } from "~/lib/autosave-registry";
-import { bankStatusLabels } from "~/lib/bank-status";
+import { bankPlacementProblem, bankStatusLabels } from "~/lib/bank-status";
 import {
   hasBlockNoteContent,
   toBlockNoteDocument,
@@ -52,6 +53,8 @@ type GroupDraft = {
 
 export function BankQuestionGroupCard({
   question,
+  canGroup,
+  groupTypes,
   autosaveRegistry,
   saveAll,
   onReload,
@@ -59,6 +62,10 @@ export function BankQuestionGroupCard({
   assetStorage,
 }: {
   question: BankQuestion;
+  /** The question's type can open a group in the exam (R12, L8). */
+  canGroup: boolean;
+  /** Type tags of the group's questions in order, with this question's current type. */
+  groupTypes: readonly (string | null)[] | null;
   autosaveRegistry: AutosaveRegistry;
   /** Saves every pending edit of the page; false when that failed. */
   saveAll: () => Promise<boolean>;
@@ -71,6 +78,8 @@ export function BankQuestionGroupCard({
   const group = question.group;
 
   if (!group) {
+    // Other types never share material in the exam, so a standalone question has nothing to offer.
+    if (!canGroup) return null;
     return (
       <section className="flex flex-col gap-3 border-y py-4 sm:flex-row sm:items-center sm:justify-between sm:rounded-xl sm:border sm:border-dashed sm:px-4">
         <div className="grid gap-0.5">
@@ -79,9 +88,9 @@ export function BankQuestionGroupCard({
             Kelompok soal
           </p>
           <p className="text-muted-foreground text-xs">
-            Soal ini berdiri sendiri. Buat kelompok kalau beberapa soal memakai
-            petunjuk dan bahan yang sama, misalnya satu gambar, bacaan atau
-            audio untuk soal 1–4.
+            Soal ini berdiri sendiri. Buat kelompok kalau satu bacaan atau audio
+            dipakai untuk lebih dari satu soal: satu bacaan R12 untuk 2–3 soal,
+            atau satu dialog panjang untuk soal L8 lalu L9.
           </p>
         </div>
         <Button
@@ -122,6 +131,7 @@ export function BankQuestionGroupCard({
       assetStorage={assetStorage}
       autosaveRegistry={autosaveRegistry}
       group={group}
+      groupTypes={groupTypes}
       onReload={onReload}
       questionId={question.id}
       saveAll={saveAll}
@@ -132,6 +142,7 @@ export function BankQuestionGroupCard({
 
 function BankGroupFields({
   group,
+  groupTypes,
   questionId,
   autosaveRegistry,
   saveAll,
@@ -140,6 +151,7 @@ function BankGroupFields({
   assetStorage,
 }: {
   group: NonNullable<BankQuestion["group"]>;
+  groupTypes: readonly (string | null)[] | null;
   questionId: string;
   autosaveRegistry: AutosaveRegistry;
   saveAll: () => Promise<boolean>;
@@ -157,6 +169,8 @@ function BankGroupFields({
     (left, right) => left.position - right.position,
   );
   const hasLive = questions.some(({ status }) => status === "LIVE");
+  const notLive = questions.filter(({ status }) => status !== "LIVE").length;
+  const placement = bankPlacementProblem(undefined, groupTypes);
   // The editors keep their own content after mounting; this holds both fields as typed, so
   // each save sends the whole shared part.
   const draft = useRef<GroupDraft>({
@@ -232,22 +246,34 @@ function BankGroupFields({
     }
   }
 
+  // The last question of a group leaving deletes the group with its shared part.
+  const lastQuestion = questions.length <= 1;
+
   async function leave() {
-    const confirmed = await confirm({
-      title: "Keluarkan soal ini dari kelompok?",
-      description:
-        questions.length > 1
-          ? "Soal ini tidak lagi memakai petunjuk dan bahan bersama kelompok. Soal lain di kelompok tetap."
-          : "Soal ini satu-satunya di kelompok, jadi petunjuk dan bahan bersamanya ikut dihapus.",
-      confirmLabel: "Keluarkan",
-      destructive: true,
-    });
+    const confirmed = await confirm(
+      lastQuestion
+        ? {
+            title: "Hapus kelompok ini?",
+            description:
+              "Petunjuk dan bahan bersama kelompok dihapus. Soal ini tetap ada sebagai soal mandiri.",
+            confirmLabel: "Hapus kelompok",
+            destructive: true,
+          }
+        : {
+            title: "Jadikan soal mandiri?",
+            description: `Soal ini tidak lagi memakai petunjuk dan bahan bersama di atas. ${questions.length - 1} soal lain tetap di kelompok.`,
+            confirmLabel: "Jadikan mandiri",
+          },
+    );
     if (!confirmed) return;
     if (!(await saveAll())) return;
     cancelGroupSave();
     try {
       await leaveGroup.mutateAsync({ questionId });
       await onReload();
+      toast.success(
+        lastQuestion ? "Kelompok dihapus." : "Soal ini sekarang mandiri.",
+      );
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -278,6 +304,19 @@ function BankGroupFields({
           )}
         </span>
       </div>
+      {placement ? (
+        <p className="text-destructive text-xs">
+          Urutan tipe di kelompok ini (
+          {groupTypes?.map((tag) => tag?.replace(/^eps:/, "")).join(" → ")})
+          tidak muat di nomor ujian mana pun, jadi set soal tidak akan
+          memakainya. Yang bisa dipakai: 2–3 soal R12, atau L8 lalu L9.
+        </p>
+      ) : notLive && hasLive ? (
+        <p className="text-muted-foreground text-xs">
+          Set soal baru memakai kelompok ini setelah semua soalnya Siap dipakai.
+          Masih {notLive} soal lagi.
+        </p>
+      ) : null}
       {hasLive ? (
         <p className="text-xs text-amber-700 dark:text-amber-400">
           Mengubah petunjuk atau bahan bersama mengembalikan soal kelompok yang
@@ -384,15 +423,22 @@ function BankGroupFields({
           Tambah soal ke kelompok
         </Button>
         <Button
-          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className={cn(
+            lastQuestion &&
+              "text-destructive hover:bg-destructive/10 hover:text-destructive",
+          )}
           disabled={leaveGroup.isPending}
           onClick={() => void leave()}
           size="sm"
           type="button"
           variant="ghost"
         >
-          <LogOutIcon data-icon="inline-start" />
-          Keluarkan dari kelompok
+          {lastQuestion ? (
+            <Trash2Icon data-icon="inline-start" />
+          ) : (
+            <UnlinkIcon data-icon="inline-start" />
+          )}
+          {lastQuestion ? "Hapus kelompok" : "Jadikan soal mandiri"}
         </Button>
       </div>
       {dialogs}

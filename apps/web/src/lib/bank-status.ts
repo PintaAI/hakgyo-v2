@@ -1,3 +1,5 @@
+import { epsTopikBlueprint, fitsBlueprint } from "@hakgyo/shared";
+
 /**
  * Bank question statuses (docs/eps-question-generator.md section 6), shared by the superadmin bank
  * page and the server: DRAFT → REVIEW → LIVE, and RETIRED instead of deleted. The generator picks
@@ -36,6 +38,28 @@ export const bankTransitions: Record<BankStatus, readonly BankStatus[]> = {
 /** The most questions one status change moves; also how many the page lists. */
 export const MAX_BANK_BATCH = 500;
 
+const typeCode = (tag: string) => tag.replace(/^eps:/, "");
+
+/**
+ * Why sets could never use this question (null when they can): no slot of the EPS-TOPIK blueprint
+ * takes its type, or its group's types, in order, fill no consecutive slots. `groupTypes` holds
+ * the type tag of each group member in position order (null for a member without one, which
+ * reports its own missing type instead).
+ */
+export function bankPlacementProblem(
+  type: string | undefined,
+  groupTypes?: readonly (string | null)[] | null,
+) {
+  if (groupTypes && groupTypes.length > 1) {
+    const types = groupTypes.filter((tag): tag is string => Boolean(tag));
+    if (types.length < groupTypes.length) return null;
+    if (fitsBlueprint(epsTopikBlueprint, types)) return null;
+    return `kelompok ${types.map(typeCode).join(" → ")} tidak muat di nomor ujian mana pun`;
+  }
+  if (!type || fitsBlueprint(epsTopikBlueprint, [type])) return null;
+  return `tipe ${typeCode(type)} belum dipakai di set EPS-TOPIK`;
+}
+
 /**
  * Why a question can't go to review or live yet, in Indonesian (null when it can). Media come
  * first: the founder reviews pictures and audio together with the Korean.
@@ -45,6 +69,8 @@ export function bankReadinessProblem(question: {
   tags: readonly string[];
   optionCount: number;
   correctCount: number;
+  /** Type tags of the question's group members in order, when it is in a group. */
+  groupTypes?: readonly (string | null)[] | null;
   /** The prompt has no text or media yet (the editor saves drafts as they are). */
   promptEmpty?: boolean;
   /** Options with no text or media yet. */
@@ -72,6 +98,11 @@ export function bankReadinessProblem(question: {
   if (!question.tags.some((tag) => tag.startsWith("level:"))) {
     return "tingkat belum dipilih";
   }
+  const placement = bankPlacementProblem(
+    question.tags.find((tag) => tag.startsWith("eps:")),
+    question.groupTypes,
+  );
+  if (placement) return placement;
   const media = question.media;
   if (media?.needsPromptImage && !media.promptHasImage) {
     return "gambar soal belum ada";

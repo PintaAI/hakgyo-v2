@@ -3,7 +3,11 @@ import {
   epsTypeByTag,
   type EpsTypeDefinition,
 } from "@hakgyo/shared/eps-taxonomy";
-import { epsTopicSlugs } from "@hakgyo/shared";
+import {
+  epsTopicSlugs,
+  epsTopikBlueprint,
+  fitsBlueprint,
+} from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -213,6 +217,11 @@ export async function createAiDrafts(
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Tipe soal tidak dikenal.",
+    });
+  if (!fitsBlueprint(epsTopikBlueprint, [type.tag]))
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Tipe ${type.code} belum dipakai di set EPS-TOPIK.`,
     });
   // Near copies are within a type, so only that type is compared.
   const questions = await db.bankQuestion.findMany({

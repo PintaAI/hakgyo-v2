@@ -132,17 +132,20 @@ export const epsTopikBlueprint: Blueprint = {
         slot(18, "R10", "sedang", "Topik bacaan budaya atau kehidupan", [
           "R12",
         ]),
+        // 19–20: two R11 questions, or now and then one R12 text read for both (a question group).
         slot(
           19,
           "R11",
           "sulit",
           "Isi yang sama: pengumuman tempat kerja (gambar)",
+          ["R12"],
         ),
         slot(
           20,
           "R11",
           "sulit",
           "Isi yang sama: hukum, asuransi atau hak pekerja",
+          ["R12"],
         ),
       ],
     },
@@ -230,6 +233,39 @@ export type BlueprintSectionReport = {
   workShare: number;
   workShareOk: boolean;
 };
+
+/** Whether a slot takes a question of this type tag, as its own type or an alternative. */
+export const slotAllows = (slot: BlueprintSlot, type: string) =>
+  slot.type === type || Boolean(slot.alternatives?.includes(type));
+
+/** Every type tag some slot of the blueprint takes. */
+export function blueprintTypes(blueprint: Blueprint) {
+  return new Set(
+    blueprint.sections.flatMap((section) =>
+      section.slots.flatMap((slot) => [
+        slot.type,
+        ...(slot.alternatives ?? []),
+      ]),
+    ),
+  );
+}
+
+/**
+ * Whether questions of these type tags, in this order, fill consecutive slots of one section
+ * somewhere: one tag for a single question, the member tags for a question group. The bank's set
+ * builder only picks a group where it fits, so a group that fits nowhere is never used.
+ */
+export function fitsBlueprint(blueprint: Blueprint, types: readonly string[]) {
+  if (!types.length) return false;
+  return blueprint.sections.some(({ slots }) =>
+    slots.some((_, start) =>
+      types.every((type, offset) => {
+        const slot = slots[start + offset];
+        return slot !== undefined && slotAllows(slot, type);
+      }),
+    ),
+  );
+}
 
 /** The question's type tag the slot allows, else its first type tag (or null). */
 function typeFor(tags: readonly string[], slot: BlueprintSlot) {
