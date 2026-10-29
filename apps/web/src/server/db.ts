@@ -12,8 +12,9 @@ const createPrismaClient = () => {
   const adapter = new PrismaNeon({
     connectionString: process.env.DATABASE_URL!,
     max: poolSize(),
-    // Fail fast instead of queueing forever when the pool is exhausted.
-    connectionTimeoutMillis: 5_000,
+    // Long enough for Neon to resume a suspended compute (5 s timed out on wake-up), yet still
+    // fails instead of queueing forever when the pool is exhausted.
+    connectionTimeoutMillis: 15_000,
     // Neon's pooler handles reuse; return idle clients before it drops them.
     idleTimeoutMillis: 30_000,
   });
