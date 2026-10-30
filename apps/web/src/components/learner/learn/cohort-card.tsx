@@ -14,6 +14,7 @@ import {
 
 import { CourseCover } from "~/components/course-cover";
 import Link from "~/components/link";
+import { Badge } from "~/components/ui/badge";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
   assessmentAttemptPresentation,
@@ -359,7 +360,9 @@ export function CohortCard({
       kind: "caught-up",
       eyebrow: "Semua beres",
       title: "Tidak ada tenggat saat ini",
-      meta: "Kelas dan aktivitas baru akan muncul di sini",
+      meta: cohort.selfPaced
+        ? "Materi baru akan muncul di sini"
+        : "Kelas dan aktivitas baru akan muncul di sini",
     };
   }
 
@@ -431,9 +434,16 @@ export function CohortCard({
         <span className="bg-background/70 absolute inset-0" />
         <div className="relative flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex items-center gap-2">
-            <p className="text-muted-foreground flex-1 truncate text-xs font-semibold tracking-[1px] uppercase">
-              {cohort.course.title}
-            </p>
+            {/* A Kelas Mandiri is named after its curriculum. */}
+            {cohort.selfPaced ? (
+              <span className="flex-1">
+                <Badge variant="secondary">Kelas Mandiri</Badge>
+              </span>
+            ) : (
+              <p className="text-muted-foreground flex-1 truncate text-xs font-semibold tracking-[1px] uppercase">
+                {cohort.course.title}
+              </p>
+            )}
             {progress !== null ? (
               <p className="text-muted-foreground text-xs font-semibold tabular-nums">
                 {completedCount}/{outlineItems.length}
@@ -441,7 +451,7 @@ export function CohortCard({
             ) : null}
           </div>
           <h2 className="text-xl leading-7 font-black tracking-tight sm:text-2xl">
-            {cohort.name}
+            {cohort.selfPaced ? cohort.course.title : cohort.name}
           </h2>
           {cohort.staff.length > 0 ? (
             <p className="text-muted-foreground text-xs font-semibold">

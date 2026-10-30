@@ -31,6 +31,7 @@ import { glassTint, withOpacity } from "../../theme/colors";
 import { AppSegmentedControl } from "../app-segmented-control";
 import { GlassBox } from "../GlassBox";
 import {
+  Badge,
   Chevron,
   Eyebrow,
   IconCircle,
@@ -82,6 +83,8 @@ export type LearnCohort = {
   meetings: CohortMeeting[];
   learnerCount: number;
   facilitators: { name: string; image: string | null }[];
+  /** The curriculum's Kelas Mandiri; missing from indexes cached before. */
+  selfPaced?: boolean;
 };
 
 export type CohortEvent = {
@@ -574,7 +577,9 @@ export function CohortCard({
       kind: "caught-up",
       eyebrow: "Semua beres",
       title: "Tidak ada tenggat saat ini",
-      meta: "Kelas dan aktivitas baru akan muncul di sini",
+      meta: cohort.selfPaced
+        ? "Materi baru akan muncul di sini"
+        : "Kelas dan aktivitas baru akan muncul di sini",
     };
   }
 
@@ -667,9 +672,16 @@ export function CohortCard({
         >
           <View className="min-w-0 flex-1 gap-1.5">
             <View className="flex-row items-center gap-2">
-              <Eyebrow size="md" className="flex-1" numberOfLines={1}>
-                {cohort.course.title}
-              </Eyebrow>
+              {/* A Kelas Mandiri is named after its curriculum. */}
+              {cohort.selfPaced ? (
+                <View className="flex-1 flex-row">
+                  <Badge size="sm">Kelas Mandiri</Badge>
+                </View>
+              ) : (
+                <Eyebrow size="md" className="flex-1" numberOfLines={1}>
+                  {cohort.course.title}
+                </Eyebrow>
+              )}
               {hasProgress ? (
                 <Text className="text-xs font-semibold text-muted-foreground">
                   {completedCount}/{outlineItems.length}
@@ -680,7 +692,7 @@ export function CohortCard({
               className="text-2xl font-black leading-7 tracking-tight text-foreground"
               numberOfLines={2}
             >
-              {cohort.name}
+              {cohort.selfPaced ? cohort.course.title : cohort.name}
             </Text>
             {cohort.facilitators.length > 0 ? (
               <Text

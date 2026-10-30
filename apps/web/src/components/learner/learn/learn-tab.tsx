@@ -117,7 +117,7 @@ export function LearnTab({ userId }: { userId: string }) {
                   : "bg-card text-muted-foreground hover:text-foreground",
               )}
             >
-              {cohort.name}
+              {cohort.selfPaced ? cohort.course.title : cohort.name}
             </button>
           ))}
         </nav>
