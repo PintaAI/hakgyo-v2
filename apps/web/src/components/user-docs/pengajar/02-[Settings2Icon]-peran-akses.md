@@ -38,7 +38,7 @@ Hanya pemilik yang bisa mengganti mode. Perubahan langsung tersimpan.
 
 - **Pemilik:** semua hal, termasuk mengatur staf kelas.
 - **Admin:** melihat semua kurikulum dan kelas, tetapi tidak bisa mengubah kurikulum atau membuat kelas. Admin bisa membuat tautan undangan murid dan memeriksa pembayaran di semua kelas. Admin baru bisa menambah murid manual dan menilai tugas di kelas tempat ia menjadi staf.
-- **Pengajar:** membuat dan mengubah semua kurikulum, serta membuat kelas. Pengajar hanya melihat dan mengurus kelas tempat ia menjadi staf, dan bisa menilai tugas murid belajar mandiri (tanpa kelas).
+- **Pengajar:** membuat dan mengubah semua kurikulum, serta membuat kelas. Pengajar hanya melihat dan mengurus kelas tempat ia menjadi staf, dan bisa menilai tugas murid Kelas Mandiri.
 - Hanya pemilik yang bisa mengatur staf kelas.
 
 > **Tidak melihat kelas yang Anda buat?** Pada mode sederhana, pengajar hanya melihat kelas tempat ia menjadi staf, termasuk kelas buatannya sendiri. Minta pemilik membuka kelas itu, tab **Staf**, lalu menambahkan Anda.

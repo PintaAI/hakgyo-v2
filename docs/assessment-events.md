@@ -14,14 +14,14 @@ Both show a combined leaderboard across all targeted classes.
 
 - `AssessmentEventCohort` stores the targeted classes. An event created from a class targets that
   class; from the course, staff pick classes or "Semua kelas" (`allCohorts`), which stores every
-  class granting course access (including the self-paced cohort) when the event is scheduled or
+  class granting course access (including the Kelas Mandiri) when the event is scheduled or
   opened. Classes can be added until the event closes (`addCohorts`), never removed.
 - Learners take part through an active or completed, unexpired enrollment in a targeted class.
   Opening an event adds every eligible learner as an `AssessmentEventParticipant` with the class
-  they take part through (a real class before the self-paced cohort). Learners who join a targeted
+  they take part through (a scheduled class before the Kelas Mandiri). Learners who join a targeted
   class later become participants on their first start.
 - Event attempts carry the participant's class in `AssessmentAttempt.cohortId` (null for the
-  self-paced cohort, like chapter attempts), so class review queues include them.
+  Kelas Mandiri, like chapter attempts), so class review queues include them.
 
 ## Access
 

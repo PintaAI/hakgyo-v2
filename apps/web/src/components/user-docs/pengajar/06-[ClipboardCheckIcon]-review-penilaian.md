@@ -48,11 +48,11 @@ Di layar murid, jawaban yang belum dinilai berstatus **Menunggu review**, sama d
 
 ## Siapa melihat jawaban siapa
 
-| Peran    | Mode sederhana                                                  | Mode lanjutan                                                            |
-| -------- | --------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Pemilik  | Semua                                                           | Semua                                                                    |
-| Admin    | Murid di kelas tempat ia menjadi staf                           | Semua                                                                    |
-| Pengajar | Murid belajar mandiri dan murid di kelas tempat ia menjadi staf | Murid di kurikulum yang ia kelola dan kelas tempat ia menjadi Instructor |
+| Peran    | Mode sederhana                                                | Mode lanjutan                                                            |
+| -------- | ------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Pemilik  | Semua                                                         | Semua                                                                    |
+| Admin    | Murid di kelas tempat ia menjadi staf                         | Semua                                                                    |
+| Pengajar | Murid Kelas Mandiri dan murid di kelas tempat ia menjadi staf | Murid di kurikulum yang ia kelola dan kelas tempat ia menjadi Instructor |
 
 ## Tips
 

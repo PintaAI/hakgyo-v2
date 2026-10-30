@@ -25,7 +25,7 @@ Ada tiga cara, tergantung lembaga kursusmu:
 
 Setelah bergabung ke kelas gratis, kamu diarahkan ke halaman **Lanjut di aplikasi Hakgyo**. Kamu tidak harus memakai aplikasi; kelasnya juga sudah ada di situs web. Klik menu **Belajar** untuk mulai.
 
-Jika muncul **Undangan tidak berlaku**, tautannya sudah kedaluwarsa, sudah dipakai, atau kelasnya belum dibuka. Minta tautan baru ke pengajarmu.
+Jika muncul **Undangan tidak berlaku**, tautannya sudah kedaluwarsa, sudah dipakai, kelasnya belum dibuka, atau tautan lama untuk seluruh kurikulum yang sudah tidak dipakai lagi. Minta tautan kelas yang baru ke pengajarmu.
 
 ### Ditambahkan oleh lembaga
 
@@ -33,12 +33,14 @@ Lembaga bisa menambahkanmu langsung dengan email akunmu. Kelasnya otomatis muncu
 
 ### Daftar sendiri dari katalog
 
+Kamu selalu bergabung ke sebuah kurikulum lewat salah satu kelasnya.
+
 1. Klik **Jelajahi kurikulum** di menu samping.
 2. Pilih kurikulum, lalu klik **Lihat kurikulum**.
-3. Jika kurikulumnya gratis dan terbuka, klik **Mulai belajar**.
-4. Jika ada daftar kelas, pilih kelas lalu klik **Daftar**. Untuk kelas berbayar, ikuti [Daftar dan Bayar Kelas](/docs/murid/daftar-bayar-kelas).
+3. Klik **Pilih kelas**, lalu pilih kelas di bagian **Kelas** dan klik **Daftar**. Kelas bertanda **Kelas Mandiri · belajar kapan saja** tidak punya jadwal, jadi kamu bisa mulai kapan saja.
+4. Untuk kelas gratis, klik **Gabung kelas**. Untuk kelas berbayar, ikuti [Daftar dan Bayar Kelas](/docs/murid/daftar-bayar-kelas).
 
-Kurikulum bertanda **Lewat undangan** hanya bisa diikuti dengan tautan undangan dari lembaganya.
+Jika muncul **Belum ada kelas yang dibuka untuk kurikulum ini**, kurikulumnya belum bisa diikuti. Kurikulum bertanda **Lewat undangan** hanya bisa diikuti dengan tautan undangan dari lembaganya.
 
 ## Mengenal menu
 
@@ -65,9 +67,9 @@ Halaman **Belajar** menjawab pertanyaan "apa yang harus dikerjakan sekarang?":
 
 ### Kelas Mandiri
 
-Kurikulum yang kamu pelajari sendiri, tanpa jadwal, tampil di **Belajar** sebagai kartu kelas bernama **Kelas Mandiri**. Contohnya Hangeul Mastery untuk akun baru, atau kurikulum gratis yang kamu mulai dari katalog. Kelas Mandiri tidak punya pertemuan dan tidak berakhir, jadi kamu bisa belajar kapan saja.
+Kurikulum yang kamu pelajari sendiri, tanpa jadwal, tampil di **Belajar** sebagai kartu kelas bernama **Kelas Mandiri**. Contohnya Hangeul Mastery untuk akun baru, atau Kelas Mandiri yang kamu pilih dari katalog. Kelas Mandiri tidak punya pertemuan dan tidak berakhir, jadi kamu bisa belajar kapan saja.
 
-- Jika kamu ikut kelas berjadwal untuk kurikulum yang sama, kartu Kelas Mandiri disembunyikan selama kelas itu berjalan. Kamu cukup belajar lewat kelasmu.
+- Jika kamu ikut kelas berjadwal untuk kurikulum yang sama, kartu Kelas Mandiri disembunyikan selama kelas itu berjalan. Kamu cukup belajar lewat kelasmu. Selama kelas itu berjalan, kamu juga belum bisa bergabung sendiri ke Kelas Mandiri kurikulum tersebut.
 - Setelah kelas berjadwal selesai, atau kamu keluar dari kelas itu, kartu Kelas Mandiri muncul lagi.
 - Progres belajarmu tetap terbawa, jadi tidak ada yang hilang saat berpindah antara kelas dan Kelas Mandiri.
 - Kartu Kelas Mandiri Hangeul Mastery ikut disembunyikan setelah kamu menguasai Hangeul, kecuali kamu [menampilkannya lagi](/docs/murid/hangeul-mastery).

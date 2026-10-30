@@ -87,7 +87,7 @@ const targetCohorts: TargetCohorts = {
     },
     {
       id: "belajar-mandiri",
-      name: "Belajar mandiri",
+      name: "Kelas Mandiri",
       status: "OPEN",
       selfPaced: true,
       learnerCount: 7,

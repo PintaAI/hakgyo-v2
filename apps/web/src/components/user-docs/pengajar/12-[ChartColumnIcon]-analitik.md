@@ -8,10 +8,10 @@ Halaman ini punya tiga tab: **Performa**, **Murid**, dan **Pendapatan**.
 
 | | Pemilik dan Admin | Pengajar |
 |---|---|---|
-| Cakupan data | Seluruh organisasi, termasuk murid **Belajar mandiri** | Hanya kelas yang ia pegang |
+| Cakupan data | Seluruh organisasi, termasuk setiap **Kelas Mandiri** | Hanya kelas yang ia pegang |
 | Tab | Performa, Murid, Pendapatan | Performa, Murid |
 
-Kelas yang dipegang pengajar sama dengan kelas di daftar kelasnya. Pada mode sederhana, artinya kelas tempat ia menjadi staf. Pada mode lanjutan, ditambah semua kelas dari kurikulum tempat ia menjadi **Manager**. Murid belajar mandiri tidak masuk hitungan pengajar. Lihat [Peran dan Akses](/docs/pengajar/peran-akses).
+Kelas yang dipegang pengajar sama dengan kelas di daftar kelasnya. Pada mode sederhana, artinya kelas tempat ia menjadi staf. Pada mode lanjutan, ditambah semua kelas dari kurikulum tempat ia menjadi **Manager**. Kelas Mandiri tampil seperti kelas lain jika pengajar menjadi stafnya, tetapi nilai tugas di Kelas Mandiri hanya terlihat oleh pemilik dan admin, karena tugas itu dikerjakan tanpa kelas berjadwal. Lihat [Peran dan Akses](/docs/pengajar/peran-akses).
 
 Keterangan di bawah judul halaman selalu menunjukkan cakupan yang sedang Anda lihat: **Seluruh organisasi** atau **Kelas yang Anda pegang**.
 
@@ -41,7 +41,7 @@ Di bawahnya:
 
 - **Rata-rata nilai tugas**: grafik naik turunnya nilai sepanjang periode.
 - **Tugas paling sulit**: tugas dengan rata-rata nilai terendah. Hanya tugas yang dikerjakan minimal tiga murid yang masuk daftar.
-- **Perbandingan kelas**: rata-rata nilai dan penyelesaian materi setiap kelas.
+- **Perbandingan kelas**: rata-rata nilai dan penyelesaian materi setiap kelas. Kelas Mandiri tampil sebagai baris kelas biasa dengan nama kelasnya.
 - **Penyelesaian per kurikulum**: berapa banyak murid yang sudah menuntaskan semua item.
 - **Latihan & tryout**: rata-rata dan nilai tertinggi setiap latihan atau tryout. Hasilnya dihitung terpisah dan tidak memengaruhi rata-rata nilai tugas. Lihat [Latihan dan Tryout](/docs/pengajar/latihan-tryout).
 
@@ -107,4 +107,4 @@ Belum ada kegiatan pada periode yang dipilih. Coba periode yang lebih panjang, m
 Hanya kegiatan belajar yang dihitung: menyelesaikan materi, berlatih kosakata, atau mengerjakan tugas. Membuka aplikasi saja tidak dihitung.
 
 **Kenapa angka saya berbeda dengan angka pemilik?**
-Pengajar hanya melihat kelas yang ia pegang, sedangkan pemilik dan admin melihat seluruh organisasi, termasuk murid belajar mandiri.
+Pengajar hanya melihat kelas yang ia pegang, sedangkan pemilik dan admin melihat seluruh organisasi, termasuk nilai tugas di setiap Kelas Mandiri.

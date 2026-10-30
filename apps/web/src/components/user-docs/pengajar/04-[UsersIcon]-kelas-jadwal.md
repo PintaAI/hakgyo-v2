@@ -1,18 +1,34 @@
 # Kelas dan Jadwal
 
-Kelas adalah kelompok murid yang mempelajari satu kurikulum dalam periode tertentu, misalnya "Kelas Malam Oktober". Satu kurikulum bisa punya banyak kelas dengan pengajar, jadwal, dan harga yang berbeda. Isi pelajarannya tetap sama karena berasal dari kurikulum.
+Kelas adalah kelompok murid yang mempelajari satu kurikulum, misalnya "Kelas Malam Oktober". Murid selalu belajar lewat kelas; tidak ada cara bergabung langsung ke kurikulum. Satu kurikulum bisa punya banyak kelas dengan pengajar, jadwal, dan harga yang berbeda. Isi pelajarannya tetap sama karena berasal dari kurikulum.
+
+## Kelas berjadwal dan Kelas Mandiri
+
+Ada dua jenis kelas:
+
+| Jenis | Cocok untuk | Tanggal | Berapa banyak |
+|---|---|---|---|
+| **Berjadwal** | Kelas dengan periode, pertemuan, dan pengajar | Ada **Mulai** dan **Selesai** | Sebanyak yang Anda perlukan |
+| **Mandiri** (**Kelas Mandiri**) | Murid yang belajar kapan saja, misalnya kursus rekaman | Tidak ada, kelas tidak berakhir | Satu per kurikulum |
+
+Selain tidak punya tanggal, Kelas Mandiri sama dengan kelas lain: punya status, murid, tautan undangan, harga, staf, grup WhatsApp, dan bisa dihapus. Jika murid Kelas Mandiri juga ikut kelas berjadwal untuk kurikulum yang sama, kartu Kelas Mandiri disembunyikan dari halaman **Belajar** murid selama kelas itu berjalan, lalu muncul lagi setelahnya. Aksesnya tidak dicabut.
 
 ## Membuat kelas
 
 1. Buka **Kurikulum**, pilih kurikulumnya, lalu buka tab **Kelas**.
-2. Klik **Buat kelas**.
-3. Isi **Nama kelas**. Kolom lain boleh dikosongkan:
+2. Klik **Buat kelas**. Jika kurikulum belum punya kelas, tombolnya **Buat kelas pertama**.
+3. Pilih **Berjadwal** atau **Mandiri**. Pilihan **Mandiri** tidak bisa dipilih jika kurikulum sudah punya Kelas Mandiri.
+4. Isi **Nama kelas**. Untuk Kelas Mandiri namanya otomatis **Kelas Mandiri** dan boleh diganti. Kolom lain boleh dikosongkan:
    - **Deskripsi**.
    - **Kapasitas**: jumlah maksimal murid.
-   - **Mulai** dan **Selesai**: periode kelas.
-4. Klik **Buat kelas**.
+   - **Mulai** dan **Selesai**: periode kelas (hanya kelas berjadwal).
+5. Klik **Buat kelas** atau **Buat Kelas Mandiri**.
 
-Kelas baru berstatus **Persiapan** dan belum bisa dilihat atau diikuti murid. Harga, grup WhatsApp, dan aturan pendaftaran diatur kemudian di tab **Pengaturan** kelas.
+Kelas berjadwal baru berstatus **Persiapan** dan belum bisa dilihat atau diikuti murid. Kelas Mandiri langsung berstatus **Dibuka**. Harga, grup WhatsApp, dan aturan pendaftaran diatur kemudian di tab **Pengaturan** kelas. Sampai diubah, Kelas Mandiri mengikuti harga dan tipe akses kurikulum.
+
+### Buat kelas pertama setelah membuat kurikulum
+
+Setiap kali Anda membuat kurikulum baru, Hakgyo langsung menawarkan **Buat kelas pertama** dengan pilihan **Berjadwal** atau **Mandiri**. Klik **Lewati** jika ingin membuat kelasnya nanti dari tab **Kelas**.
 
 > **Mode sederhana:** pengajar yang membuat kelas belum otomatis menjadi staf kelas tersebut, jadi kelasnya bisa tidak muncul di daftar pengajar itu. Minta pemilik menambahkan Anda di tab **Staf**. Lihat [Peran dan Akses](/docs/pengajar/peran-akses).
 
@@ -49,9 +65,9 @@ Ubah status lewat tombol **Status** di bagian atas halaman kelas.
 
 Hal yang perlu diketahui:
 
-- Status tidak berubah sendiri; ubah secara manual saat kelas dimulai dan selesai. Satu-satunya pengaruh tanggal: setelah tanggal **Selesai** lewat, murid baru tidak bisa bergabung, tetapi murid lama tetap bisa belajar.
+- Status tidak berubah sendiri; ubah secara manual saat kelas dimulai dan selesai. Kelas Mandiri memakai status yang sama. Satu-satunya pengaruh tanggal: setelah tanggal **Selesai** lewat, murid baru tidak bisa bergabung, tetapi murid lama tetap bisa belajar.
 - Setiap kali status kelas diubah dari **Dibuka** atau **Berjalan** ke status lain, **semua tautan undangan kelas langsung mati**, termasuk jika hanya sebentar dipindah ke **Persiapan**. Membuka kelas lagi tidak menghidupkan tautan lama. Buat tautan baru.
-- Seorang murid hanya bisa aktif di satu kelas untuk kurikulum yang sama.
+- Seorang murid hanya bisa aktif di satu kelas berjadwal yang sedang berjalan untuk kurikulum yang sama. Kelas Mandiri tidak dihitung, tetapi murid tidak bisa bergabung sendiri ke Kelas Mandiri selama kelas berjadwalnya masih berjalan.
 
 ## Mengatur kelas
 
@@ -62,7 +78,7 @@ Di tab **Pengaturan** kelas:
 - **Kapasitas**: kosongkan untuk tanpa batas.
 - **Harga (IDR)**: kosongkan untuk memakai harga kurikulum; isi **0** untuk gratis.
 - **WhatsApp URL**: tautan grup WhatsApp kelas, misalnya `https://chat.whatsapp.com/...`. Murid melihatnya sebagai tombol **Grup**. Jika nomor WhatsApp lembaga sudah terhubung, klik **Buat grup WhatsApp** agar Hakgyo membuatkan grupnya dan mengirim pengingat pertemuan serta jadwal latihan ke grup itu. Lihat [Grup WhatsApp Kelas](/docs/pengajar/grup-whatsapp).
-- **Mulai** dan **Selesai**.
+- **Mulai** dan **Selesai**. Tidak ada di Kelas Mandiri.
 
 Klik **Simpan pengaturan**.
 

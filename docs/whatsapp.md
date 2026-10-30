@@ -208,7 +208,8 @@ tercapai, baris tetap antre untuk cron. Prosesnya (`src/server/whatsapp/groups.t
 3. `GET /group/inviteCode/{instance}?groupJid=…` lalu simpan `inviteUrl` ke
    `whatsappGroupUrl`.
 
-Cohort self-paced (`defaultForCourseId`) tidak bisa punya grup.
+Kelas Mandiri (`defaultForCourseId`) diperlakukan seperti kelas lain: staf bisa
+membuat grupnya, dan pembuatan otomatis berlaku dengan aturan yang sama.
 
 ### Pembuatan otomatis
 

@@ -30,7 +30,7 @@ Akun baru biasanya otomatis didaftarkan ke kurikulum gratis "Hangeul Mastery", j
 2. Isi **Nama organization**, misalnya nama lembaga Anda.
 3. Pilih **Tipe kurikulum default**:
    - **Kurikulum privat**: murid hanya bisa ikut jika diundang atau ditambahkan. Cocok untuk kebanyakan lembaga. Kurikulum privat yang sudah dipublikasikan tetap terlihat di katalog dengan label **Lewat undangan**, tetapi tidak bisa diikuti tanpa undangan.
-   - **Kurikulum publik**: siapa pun bisa menemukan dan mendaftar sendiri.
+   - **Kurikulum publik**: siapa pun bisa menemukan kelasnya di katalog dan mendaftar sendiri.
 
    Pilihan ini bisa diubah nanti, juga per kurikulum.
 4. Klik **Buat organization**.
@@ -44,6 +44,8 @@ Setelah organisasi dibuat, Hakgyo menawarkan tiga cara memulai kurikulum:
 - **Salin dari Hakgyo**: salin kurikulum siap pakai buatan tim Hakgyo, lalu sesuaikan nama dan gambarnya. Cara tercepat untuk mencoba.
 - **Impor dari PDF**: ubah buku pelajaran PDF menjadi materi per bab.
 - **Buat dari nol**: tulis nama kurikulum, lalu susun sendiri.
+
+Setelah kurikulum dibuat, Hakgyo menawarkan **Buat kelas pertama**: pilih **Berjadwal** atau **Mandiri** (lihat Langkah 6), atau klik **Lewati** dan buat kelasnya nanti.
 
 Pilihan **Salin dari Hakgyo** hanya tersedia di langkah ini. Klik **Lewati untuk sekarang** jika ingin langsung ke halaman utama workspace.
 
@@ -66,9 +68,14 @@ Panduan lengkap: [Kurikulum dan Bahan Ajar](/docs/pengajar/kurikulum-bahan-ajar)
 
 ## Langkah 6: Buat kelas
 
-1. Di halaman kurikulum, buka tab **Kelas**, lalu klik **Buat kelas**.
-2. Isi **Nama kelas**, dan bila perlu kapasitas serta tanggal mulai dan selesai. Klik **Buat kelas**.
-3. Kelas baru berstatus **Persiapan** dan belum bisa diikuti murid. Saat siap, ubah statusnya menjadi **Dibuka**.
+Murid selalu belajar lewat kelas, jadi setiap kurikulum butuh setidaknya satu kelas.
+
+1. Di halaman kurikulum, buka tab **Kelas**, lalu klik **Buat kelas** (atau **Buat kelas pertama** jika belum ada kelas).
+2. Pilih jenis kelas:
+   - **Berjadwal**: kelas dengan tanggal mulai dan selesai, pertemuan, dan pengajar. Isi **Nama kelas**, dan bila perlu kapasitas serta tanggal.
+   - **Mandiri**: **Kelas Mandiri**, untuk murid yang belajar kapan saja tanpa jadwal. Satu kurikulum hanya punya satu Kelas Mandiri.
+3. Klik **Buat kelas** atau **Buat Kelas Mandiri**.
+4. Kelas berjadwal baru berstatus **Persiapan** dan belum bisa diikuti murid. Saat siap, ubah statusnya menjadi **Dibuka**. Kelas Mandiri langsung **Dibuka**.
 
 Panduan lengkap: [Kelas dan Jadwal](/docs/pengajar/kelas-jadwal).
 
