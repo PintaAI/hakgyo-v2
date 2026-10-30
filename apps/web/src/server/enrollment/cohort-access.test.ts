@@ -82,16 +82,23 @@ function matches(row: Row, where: object): boolean {
     if (!filters.every(([operator]) => filterOperators.has(operator))) {
       return matches(value as Row, condition as object);
     }
+    // Like SQL, comparisons against a NULL column never match; only
+    // `not: null` (IS NOT NULL) does.
     return filters.every(([operator, operand]) => {
       switch (operator) {
         case "in":
           return (operand as unknown[]).includes(value);
         case "notIn":
-          return !(operand as unknown[]).includes(value);
+          return value != null && !(operand as unknown[]).includes(value);
         case "not":
-          return !same(value, operand);
+          return operand === null
+            ? value != null
+            : value != null && !same(value, operand);
         case "gt":
-          return value instanceof Date && value > (operand as Date);
+          return (
+            value != null &&
+            (value as Date | number) > (operand as Date | number)
+          );
         case "some":
           return (value as Row[]).some((item) =>
             matches(item, operand as object),

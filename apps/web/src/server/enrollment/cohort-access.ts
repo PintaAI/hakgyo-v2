@@ -118,5 +118,5 @@ export async function findOtherRunningClass(
 }
 
 export function otherRunningClassMessage(className: string) {
-  return `Kamu masih terdaftar di ${className}. Satu course hanya bisa diikuti di satu kelas pada saat yang sama.`;
+  return `Kamu masih terdaftar di ${className}. Satu kurikulum hanya bisa diikuti di satu kelas pada saat yang sama.`;
 }

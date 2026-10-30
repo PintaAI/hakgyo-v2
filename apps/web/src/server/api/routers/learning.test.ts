@@ -1,6 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 
 import { learningRouter } from "~/server/api/routers/learning";
+import { HANGEUL_MASTERY_COURSE_ID } from "~/server/foundation/constants";
 import { createRequestCache } from "~/server/request-cache";
 
 function cohort(
@@ -24,9 +25,18 @@ function cohort(
   };
 }
 
-function createCaller(cohorts: ReturnType<typeof cohort>[]) {
+function createCaller(
+  cohorts: ReturnType<typeof cohort>[],
+  { hangeulMastered = false } = {},
+) {
   const readUser = mock(() =>
-    Promise.resolve({ achievements: [], preference: null }),
+    Promise.resolve({
+      achievements: hangeulMastered ? [{ id: "badge-1" }] : [],
+      preference: null,
+    }),
+  );
+  const findCohorts = mock((_args: { where: object }) =>
+    Promise.resolve(cohorts),
   );
   const countEnrollments = mock(
     (args: { where: { cohortId: { in: string[] } } }) =>
@@ -39,7 +49,7 @@ function createCaller(cohorts: ReturnType<typeof cohort>[]) {
   );
   const db = {
     user: { findUnique: readUser },
-    cohort: { findMany: () => Promise.resolve(cohorts) },
+    cohort: { findMany: findCohorts },
     course: { findMany: () => Promise.resolve([]) },
     cohortEnrollment: { groupBy: countEnrollments },
   };
@@ -51,7 +61,7 @@ function createCaller(cohorts: ReturnType<typeof cohort>[]) {
     headers: new Headers(),
     requestCache: createRequestCache(),
   });
-  return { caller, readUser, countEnrollments };
+  return { caller, readUser, countEnrollments, findCohorts };
 }
 
 describe("classes on Belajar", () => {
@@ -103,5 +113,19 @@ describe("classes on Belajar", () => {
       caller.listMyCohortMilestones(),
     ]);
     expect(readUser).toHaveBeenCalledTimes(1);
+  });
+
+  test("leaves out the Hangeul Kelas Mandiri once the learner mastered and hid it", async () => {
+    const hidden = createCaller([], { hangeulMastered: true });
+    await hidden.caller.listMyCohorts();
+    expect(
+      JSON.stringify(hidden.findCohorts.mock.calls[0]?.[0].where),
+    ).toContain(HANGEUL_MASTERY_COURSE_ID);
+
+    const shown = createCaller([]);
+    await shown.caller.listMyCohorts();
+    expect(
+      JSON.stringify(shown.findCohorts.mock.calls[0]?.[0].where),
+    ).not.toContain(HANGEUL_MASTERY_COURSE_ID);
   });
 });
