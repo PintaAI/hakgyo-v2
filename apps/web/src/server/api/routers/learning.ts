@@ -12,7 +12,7 @@ import {
 import { db } from "~/server/db";
 import { learnerClassCohortWhere } from "~/server/enrollment/cohort-access";
 import { HANGEUL_MASTERY_COURSE_ID } from "~/server/foundation/constants";
-import { getHangeulVisibility } from "~/server/preferences/hangeul-visibility";
+import { getRequestHangeulVisibility } from "~/server/preferences/hangeul-visibility";
 import {
   getCourseOutlineForUser,
   getCourseOutlinesForUser,
@@ -98,7 +98,10 @@ async function myClassCohortWhere(
   organizationId: string | undefined,
   now: Date,
 ) {
-  const { hangeulHidden } = await getHangeulVisibility(ctx.db, ctx.actorUserId);
+  const { hangeulHidden } = await getRequestHangeulVisibility(
+    ctx.db,
+    ctx.actorUserId,
+  );
   return {
     organizationId,
     course: { status: "PUBLISHED" },
@@ -110,12 +113,23 @@ async function myClassCohortWhere(
   } satisfies Prisma.CohortWhereInput;
 }
 
-// Scheduled classes by start date, then the Kelas Mandiri, which has none.
 const myClassCohortOrder = [
-  { defaultForCourseId: { sort: "asc", nulls: "first" } },
   { startsAt: "asc" },
   { id: "asc" },
 ] satisfies Prisma.CohortOrderByWithRelationInput[];
+
+/** Scheduled classes by start date, then each Kelas Mandiri by course title. */
+function sortMyClassCohorts<
+  T extends { defaultForCourseId: string | null; course: { title: string } },
+>(cohorts: T[]) {
+  const classes = cohorts.filter(
+    (cohort) => cohort.defaultForCourseId === null,
+  );
+  const kelasMandiri = cohorts
+    .filter((cohort) => cohort.defaultForCourseId !== null)
+    .sort((a, b) => a.course.title.localeCompare(b.course.title, "id"));
+  return [...classes, ...kelasMandiri];
+}
 
 export const learningRouter = createTRPCRouter({
   // Enrollment-scoped student view. Staff membership alone must not populate
@@ -126,7 +140,7 @@ export const learningRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const now = new Date();
-      const cohorts = await ctx.db.cohort.findMany({
+      const found = await ctx.db.cohort.findMany({
         where: await myClassCohortWhere(ctx, input?.organizationId, now),
         orderBy: myClassCohortOrder,
         select: {
@@ -192,15 +206,21 @@ export const learningRouter = createTRPCRouter({
           },
         },
       });
+      const cohorts = sortMyClassCohorts(found);
       // Counted per page instead of a relation `_count`, which Prisma
-      // compiles into an aggregate over every cohort enrollment.
+      // compiles into an aggregate over every cohort enrollment. A Kelas
+      // Mandiri can hold every learner of the course and no client shows its
+      // count, so it is skipped and reported as 0.
+      const countedCohortIds = cohorts
+        .filter((cohort) => cohort.defaultForCourseId === null)
+        .map((cohort) => cohort.id);
       const enrollmentCounts =
-        cohorts.length === 0
+        countedCohortIds.length === 0
           ? []
           : await ctx.db.cohortEnrollment.groupBy({
               by: ["cohortId"],
               where: {
-                cohortId: { in: cohorts.map((cohort) => cohort.id) },
+                cohortId: { in: countedCohortIds },
                 status: { in: [...activeEnrollmentStatuses] },
               },
               _count: { _all: true },
@@ -561,11 +581,19 @@ export const learningRouter = createTRPCRouter({
       );
       // Cohorts of the same course share one course tree load.
       const [cohorts, courses] = await Promise.all([
-        ctx.db.cohort.findMany({
-          where: cohortWhere,
-          orderBy: myClassCohortOrder,
-          select: { id: true, name: true, courseId: true },
-        }),
+        ctx.db.cohort
+          .findMany({
+            where: cohortWhere,
+            orderBy: myClassCohortOrder,
+            select: {
+              id: true,
+              name: true,
+              courseId: true,
+              defaultForCourseId: true,
+              course: { select: { title: true } },
+            },
+          })
+          .then(sortMyClassCohorts),
         ctx.db.course.findMany({
           where: { cohorts: { some: cohortWhere } },
           select: {

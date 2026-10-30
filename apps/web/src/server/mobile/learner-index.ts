@@ -32,8 +32,11 @@ import {
   ZERO_REVISION,
   type CourseRevisions,
 } from "~/server/mobile/sync-log";
-import { getHangeulVisibility } from "~/server/preferences/hangeul-visibility";
-import { createRequestCache } from "~/server/request-cache";
+import { getRequestHangeulVisibility } from "~/server/preferences/hangeul-visibility";
+import {
+  createRequestCache,
+  runWithRequestCache,
+} from "~/server/request-cache";
 
 type LearnerContext = TRPCContext & { actorUserId: string };
 type AccessDb = Pick<
@@ -320,7 +323,10 @@ export async function buildLearnerIndex(
       where: { userId: actorUserId, expiresAt: { gt: now } },
       select: { expiresAt: true },
     }),
-    getHangeulVisibility(ctx.db, actorUserId),
+    // Shares the lookup listMyCohorts and listMyCohortMilestones make.
+    runWithRequestCache(callerCtx.requestCache, () =>
+      getRequestHangeulVisibility(ctx.db, actorUserId),
+    ),
   ]);
 
   const organizations: Record<

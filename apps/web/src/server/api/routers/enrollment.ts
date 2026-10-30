@@ -15,14 +15,8 @@ import {
 import { withTransactionRetry } from "~/server/db-retry";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
 import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
-import {
-  findOtherRunningClass,
-  staffOtherRunningClassMessage,
-} from "~/server/enrollment/cohort-access";
-import {
-  assertNoRunningClassForKelasMandiri,
-  leaveKelasMandiriForClass,
-} from "~/server/enrollment/kelas-mandiri";
+import { findOtherRunningClass } from "~/server/enrollment/cohort-access";
+import { assertNoRunningClassForKelasMandiri } from "~/server/enrollment/kelas-mandiri";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 import {
   notifyEnrollmentAdded,
@@ -153,7 +147,6 @@ export const enrollmentRouter = createTRPCRouter({
           courseId: input.courseId,
           userId: ctx.actorUserId,
           now,
-          by: "learner",
         });
 
         const joined = {
@@ -395,16 +388,8 @@ export const enrollmentRouter = createTRPCRouter({
         },
         select: { status: true },
       });
-      const enrollment = await ctx.db.$transaction(async (tx) => {
-        if (input.status === "ACTIVE") {
-          await assertNoRunningClassForKelasMandiri(tx, {
-            courseId: input.courseId,
-            userId: user.id,
-            now: new Date(),
-            by: "staff",
-          });
-        }
-        return upsertDefaultCohortEnrollment(tx, {
+      const enrollment = await ctx.db.$transaction((tx) =>
+        upsertDefaultCohortEnrollment(tx, {
           courseId: input.courseId,
           userId: user.id,
           create: {
@@ -418,8 +403,8 @@ export const enrollmentRouter = createTRPCRouter({
             expiresAt: input.expiresAt,
             completedAt,
           },
-        });
-      });
+        }),
+      );
       await notifyIfActivated(previous?.status, enrollment);
       return enrollment;
     }),
@@ -470,50 +455,39 @@ export const enrollmentRouter = createTRPCRouter({
           message: "No Hakgyo account was found for this email",
         });
       }
-      const now = new Date();
       if (input.status === "ACTIVE") {
         const otherClass = await findOtherRunningClass(ctx.db, {
           cohortId: input.cohortId,
           courseId: cohort.courseId,
           userId: user.id,
-          now,
+          now: new Date(),
         });
         if (otherClass) {
           throw new TRPCError({
             code: "CONFLICT",
-            message: staffOtherRunningClassMessage(otherClass.name),
+            message: `Learner ini masih aktif di ${otherClass.name}. Keluarkan atau selesaikan dulu dari kelas itu.`,
           });
         }
       }
-      const completedAt = input.status === "COMPLETED" ? now : null;
+      const completedAt = input.status === "COMPLETED" ? new Date() : null;
       const previous = await ctx.db.cohortEnrollment.findUnique({
         where: {
           cohortId_userId: { cohortId: input.cohortId, userId: user.id },
         },
         select: { status: true },
       });
-      const enrollment = await ctx.db.$transaction(async (tx) => {
-        const enrollment = await tx.cohortEnrollment.upsert({
-          where: {
-            cohortId_userId: { cohortId: input.cohortId, userId: user.id },
-          },
-          create: {
-            cohortId: input.cohortId,
-            userId: user.id,
-            status: input.status,
-            completedAt,
-            source: "MANUAL",
-          },
-          update: { status: input.status, completedAt },
-        });
-        if (enrollment.status === "ACTIVE") {
-          await leaveKelasMandiriForClass(tx, {
-            cohortId: input.cohortId,
-            userId: user.id,
-            now,
-          });
-        }
-        return enrollment;
+      const enrollment = await ctx.db.cohortEnrollment.upsert({
+        where: {
+          cohortId_userId: { cohortId: input.cohortId, userId: user.id },
+        },
+        create: {
+          cohortId: input.cohortId,
+          userId: user.id,
+          status: input.status,
+          completedAt,
+          source: "MANUAL",
+        },
+        update: { status: input.status, completedAt },
       });
       await notifyIfActivated(previous?.status, enrollment);
       return enrollment;

@@ -401,19 +401,24 @@ Hangeul Mastery saat pendaftaran akun. Semua jalur ini menulis lewat
 
 Di layar Belajar murid (`learning.listMyCohorts` dan
 `listMyCohortMilestones`, filter `learnerClassCohortWhere`), Kelas Mandiri
-tampil sebagai kartu kelas (`selfPaced: true`) setelah kelas berjadwal, hanya
-selama keanggotaannya `ACTIVE`. Kelas Mandiri Hangeul Mastery disembunyikan bila
-murid menyembunyikan Hangeul setelah menguasainya.
+tampil sebagai kartu kelas (`selfPaced: true`) setelah kelas berjadwal, urut
+judul course, selama keanggotaannya `ACTIVE` atau `COMPLETED` dan belum
+kedaluwarsa. Kelas Mandiri Hangeul Mastery disembunyikan bila murid
+menyembunyikan Hangeul setelah menguasainya. Jumlah anggota Kelas Mandiri tidak
+dihitung (`_count.enrollments` selalu 0).
 
-Satu kurikulum, satu kelas: murid berada di paling banyak satu kelas berjadwal
-yang sedang berjalan atau di Kelas Mandiri course itu
-(`src/server/enrollment/kelas-mandiri.ts`). Saat murid menjadi `ACTIVE` di kelas
-berjadwal yang berjalan (join gratis, invite kelas, persetujuan pembayaran,
-atau staf), keanggotaan Kelas Mandiri-nya yang `ACTIVE` diubah menjadi
-`CANCELLED` dalam transaksi yang sama (`leaveKelasMandiriForClass`). Progress
-disimpan per murid dan item, jadi tidak ada yang hilang. Sebaliknya, masuk ke
-Kelas Mandiri ditolak selama murid masih di kelas berjadwal yang berjalan
-(`assertNoRunningClassForKelasMandiri`).
+Satu kurikulum, satu kartu: selama murid punya keanggotaan akses (`ACTIVE` atau
+`COMPLETED`, belum kedaluwarsa) di kelas berjadwal yang sedang berjalan
+(`liveClassCohortWhere`) pada course yang sama, Kelas Mandiri-nya **dijeda**:
+keanggotaan dan aksesnya tetap, hanya kartunya yang tidak tampil. Aturan ini
+dihitung saat membaca, bukan saat menulis, jadi kartunya kembali dengan sendirinya
+begitu kelas berakhir atau murid keluar. Bergabung ke kelas tidak mengubah
+keanggotaan Kelas Mandiri. Progress disimpan per murid dan item, jadi tidak ada
+yang hilang. Murid tidak bisa bergabung sendiri ke Kelas Mandiri (join katalog
+atau invite course) selama masih di kelas berjadwal yang berjalan
+(`assertNoRunningClassForKelasMandiri` di
+`src/server/enrollment/kelas-mandiri.ts`), karena kartunya tidak akan tampil;
+staf tetap boleh menambahkannya.
 
 Kelas Mandiri tidak muncul di daftar dan hitungan cohort staf, dan
 `requireCohortPermission` menolaknya; muridnya dikelola dari halaman Murid pada

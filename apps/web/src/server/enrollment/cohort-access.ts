@@ -30,9 +30,11 @@ export function liveClassCohortWhere(now: Date) {
 
 /**
  * The learner's classes on the Belajar screen: running class cohorts, and
- * the Kelas Mandiri of courses they study on their own. Ended Kelas Mandiri
- * memberships (completed or moved into a class) show no card.
- * `hiddenKelasMandiriCourseIds` leaves out the Kelas Mandiri of those courses.
+ * the Kelas Mandiri of courses they study on their own. A Kelas Mandiri is
+ * paused (no card, access kept) while the learner has access in a running
+ * class of the same course, and returns once that class ends or they leave
+ * it. `hiddenKelasMandiriCourseIds` leaves out the Kelas Mandiri of those
+ * courses.
  */
 export function learnerClassCohortWhere(
   userId: string,
@@ -42,26 +44,25 @@ export function learnerClassCohortWhere(
   const hidden = options.hiddenKelasMandiriCourseIds ?? [];
   const membership = {
     userId,
+    status: { in: [...accessMembershipStatuses] },
     OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
   } satisfies Prisma.CohortEnrollmentWhereInput;
+  const liveClass = liveClassCohortWhere(now);
   return {
     OR: [
-      {
-        ...liveClassCohortWhere(now),
-        enrollments: {
-          some: {
-            ...membership,
-            status: { in: [...accessMembershipStatuses] },
-          },
-        },
-      },
+      { ...liveClass, enrollments: { some: membership } },
       {
         defaultForCourseId: {
           not: null,
           ...(hidden.length > 0 ? { notIn: hidden } : {}),
         },
         status: { in: [...courseAccessCohortStatuses] },
-        enrollments: { some: { ...membership, status: "ACTIVE" } },
+        enrollments: { some: membership },
+        course: {
+          cohorts: {
+            none: { ...liveClass, enrollments: { some: membership } },
+          },
+        },
       },
     ],
   } satisfies Prisma.CohortWhereInput;
@@ -118,8 +119,4 @@ export async function findOtherRunningClass(
 
 export function otherRunningClassMessage(className: string) {
   return `Kamu masih terdaftar di ${className}. Satu course hanya bisa diikuti di satu kelas pada saat yang sama.`;
-}
-
-export function staffOtherRunningClassMessage(className: string) {
-  return `Learner ini masih aktif di ${className}. Keluarkan atau selesaikan dulu dari kelas itu.`;
 }

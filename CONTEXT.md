@@ -14,7 +14,7 @@ A curriculum's open-ended class for students who study on their own, without a s
 
 ## One class per curriculum
 
-A student is in at most one of a running scheduled class or the Kelas Mandiri of a curriculum. Becoming active in a running scheduled class ends their Kelas Mandiri membership (auto move-out) and keeps their progress, which belongs to the student and the item. Joining the Kelas Mandiri is refused while they are in a running class of that curriculum.
+A student takes at most one running scheduled class of a curriculum at a time, and Belajar shows one class card per curriculum. While they have access in a running scheduled class, their Kelas Mandiri of that curriculum is paused: the membership and its access stay, only its card is hidden. The card returns when the class ends or they leave it. Progress belongs to the student and the item, so nothing is lost. A student cannot join the Kelas Mandiri themselves while in a running class of that curriculum; staff can still add them.
 
 ## Assessment
 

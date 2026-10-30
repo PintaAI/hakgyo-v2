@@ -63,6 +63,15 @@ Halaman **Belajar** menjawab pertanyaan "apa yang harus dikerjakan sekarang?":
 4. **Perlu dikerjakan** berisi daftar tugas dan materi berikutnya.
 5. **Materi kurikulum** menampilkan semua bab. Pilih **Selesai** untuk melihat yang sudah kamu tuntaskan.
 
+### Kelas Mandiri
+
+Kurikulum yang kamu pelajari sendiri, tanpa jadwal, tampil di **Belajar** sebagai kartu kelas bernama **Kelas Mandiri**. Contohnya Hangeul Mastery untuk akun baru, atau kurikulum gratis yang kamu mulai dari katalog. Kelas Mandiri tidak punya pertemuan dan tidak berakhir, jadi kamu bisa belajar kapan saja.
+
+- Jika kamu ikut kelas berjadwal untuk kurikulum yang sama, kartu Kelas Mandiri disembunyikan selama kelas itu berjalan. Kamu cukup belajar lewat kelasmu.
+- Setelah kelas berjadwal selesai, atau kamu keluar dari kelas itu, kartu Kelas Mandiri muncul lagi.
+- Progres belajarmu tetap terbawa, jadi tidak ada yang hilang saat berpindah antara kelas dan Kelas Mandiri.
+- Kartu Kelas Mandiri Hangeul Mastery ikut disembunyikan setelah kamu menguasai Hangeul, kecuali kamu [menampilkannya lagi](/docs/murid/hangeul-mastery).
+
 ## Langkah berikutnya
 
 - [Hangeul Mastery](/docs/murid/hangeul-mastery)

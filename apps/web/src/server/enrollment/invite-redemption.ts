@@ -6,7 +6,6 @@ import {
   otherRunningClassMessage,
 } from "~/server/enrollment/cohort-access";
 import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
-import { leaveKelasMandiriForClass } from "~/server/enrollment/kelas-mandiri";
 import { effectiveCohortPrice } from "~/server/payment/cohort-offer";
 
 export async function findRedeemableEnrollmentInvite(
@@ -128,7 +127,7 @@ export async function redeemEnrollmentInvite(
   }
 
   // Course invites join the Kelas Mandiri, which a running class rules out
-  // just like another class does.
+  // just like another class does: it would stay paused and show nothing.
   const otherClass = await findOtherRunningClass(tx, {
     cohortId: invite.cohortId ?? undefined,
     courseId: invite.courseId,
@@ -156,11 +155,6 @@ export async function redeemEnrollmentInvite(
       },
       create: { cohortId: invite.cohortId, userId: input.userId, ...joined },
       update: joined,
-    });
-    await leaveKelasMandiriForClass(tx, {
-      cohortId: invite.cohortId,
-      userId: input.userId,
-      now: input.now,
     });
   } else {
     await upsertDefaultCohortEnrollment(tx, {
