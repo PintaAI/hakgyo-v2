@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import {
   ArrowRightIcon,
-  BookOpenIcon,
   Building2Icon,
   CheckCircle2Icon,
   ClipboardCheckIcon,
@@ -47,7 +46,6 @@ const inviteGrid =
 
 const typeLabels = {
   ORGANIZATION: "Undangan organisasi",
-  COURSE: "Undangan kurikulum",
   COHORT: "Undangan kelas",
 } as const;
 
@@ -95,19 +93,34 @@ export function InviteRedemption({ token }: { token: string }) {
     );
   }
 
+  // Old links that joined a curriculum directly; learners now join a class.
+  if (invite.data.type === "RETIRED") {
+    return (
+      <FlowShell>
+        <section className="max-w-2xl pt-2 sm:pt-14">
+          <Kicker>Undangan · {invite.data.organization.name}</Kicker>
+          <Headline
+            as="h1"
+            title="Undangan tidak berlaku."
+            muted="Link ini sudah tidak dipakai lagi."
+            className="mt-3 sm:mt-5"
+          />
+          <p className={cn(leadText, "mt-4 sm:mt-6")}>
+            Murid sekarang bergabung lewat kelas. Mintalah link undangan kelas
+            yang baru kepada {invite.data.organization.name}.
+          </p>
+        </section>
+      </FlowShell>
+    );
+  }
+
   const data = invite.data;
   const title =
-    data.type === "ORGANIZATION"
-      ? data.organization.name
-      : data.type === "COHORT"
-        ? data.cohort.name
-        : data.course.title;
+    data.type === "ORGANIZATION" ? data.organization.name : data.cohort.name;
   const description =
     data.type === "ORGANIZATION"
       ? `Bergabung sebagai ${data.role === "ADMIN" ? "Admin" : "Pengajar"}`
-      : data.type === "COHORT"
-        ? `Kelas untuk ${data.course.title}`
-        : "Akses langsung ke kurikulum";
+      : `Kelas untuk ${data.course.title}`;
   const unavailable = data.status !== "PENDING";
   const emailMismatch =
     data.type === "ORGANIZATION" && data.emailMatches === false;
@@ -132,9 +145,7 @@ export function InviteRedemption({ token }: { token: string }) {
       toast.success(
         result.type === "ORGANIZATION"
           ? `Berhasil bergabung ke ${result.organization.name}.`
-          : result.type === "COHORT"
-            ? "Berhasil bergabung ke kelas."
-            : "Kurikulum berhasil ditambahkan ke ruang belajar.",
+          : "Berhasil bergabung ke kelas.",
       );
 
       // Learning happens in the app, so learners are handed over to it
@@ -180,19 +191,12 @@ export function InviteRedemption({ token }: { token: string }) {
       "Akses",
       data.type === "COHORT"
         ? "Kurikulum + kelas"
-        : data.type === "COURSE"
-          ? "Kurikulum"
-          : data.role === "ADMIN"
-            ? "Admin"
-            : "Pengajar",
+        : data.role === "ADMIN"
+          ? "Admin"
+          : "Pengajar",
     ],
   ] as const;
-  const TypeIcon =
-    data.type === "ORGANIZATION"
-      ? Building2Icon
-      : data.type === "COHORT"
-        ? UsersIcon
-        : BookOpenIcon;
+  const TypeIcon = data.type === "ORGANIZATION" ? Building2Icon : UsersIcon;
   const action = "h-11 w-full";
 
   return (

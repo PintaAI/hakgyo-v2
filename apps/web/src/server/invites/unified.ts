@@ -1,7 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
-import { courseAccessCohortStatuses } from "~/server/enrollment/cohort-access";
 import { effectiveCohortPrice } from "~/server/payment/cohort-offer";
 import {
   hashOrganizationInviteToken,
@@ -110,7 +109,17 @@ export async function resolveUnifiedInvite(
       organization: organizationInvite.organization,
     };
   }
-  if (enrollmentInvite) {
+  // Course-level invites (no class) were retired and revoked when learners
+  // stopped joining curricula directly. Their links still open, as invalid.
+  if (enrollmentInvite && !enrollmentInvite.cohort) {
+    return {
+      type: "RETIRED" as const,
+      status: "REVOKED" as const,
+      organization: enrollmentInvite.course.organization,
+    };
+  }
+  if (enrollmentInvite?.cohort) {
+    const cohort = enrollmentInvite.cohort;
     const curriculumItems = enrollmentInvite.course.modules.flatMap((module) =>
       module.items.map((item) => ({
         id: item.id,
@@ -127,11 +136,8 @@ export async function resolveUnifiedInvite(
       enrollmentInvite.maxUses !== null &&
       enrollmentInvite.useCount >= enrollmentInvite.maxUses;
     const unavailableCohort =
-      enrollmentInvite.cohort !== null &&
-      ((enrollmentInvite.cohort.status !== "OPEN" &&
-        enrollmentInvite.cohort.status !== "IN_PROGRESS") ||
-        (enrollmentInvite.cohort.endsAt !== null &&
-          enrollmentInvite.cohort.endsAt <= now));
+      (cohort.status !== "OPEN" && cohort.status !== "IN_PROGRESS") ||
+      (cohort.endsAt !== null && cohort.endsAt <= now);
     const status =
       enrollmentInvite.revokedAt || unavailableCohort
         ? ("REVOKED" as const)
@@ -140,7 +146,8 @@ export async function resolveUnifiedInvite(
           : exhausted
             ? ("EXHAUSTED" as const)
             : ("PENDING" as const);
-    const base = {
+    return {
+      type: "COHORT" as const,
       status,
       organization: enrollmentInvite.course.organization,
       course: {
@@ -155,46 +162,16 @@ export async function resolveUnifiedInvite(
         ),
         items: curriculumItems.slice(0, previewItemCount),
       },
-    };
-    if (enrollmentInvite.cohort) {
-      return {
-        ...base,
-        type: "COHORT" as const,
-        cohort: {
-          id: enrollmentInvite.cohort.id,
-          name: enrollmentInvite.cohort.name,
-          status: enrollmentInvite.cohort.status,
-          startsAt: enrollmentInvite.cohort.startsAt,
-          endsAt: enrollmentInvite.cohort.endsAt,
-          // Paid cohorts are joined through checkout with this invite.
-          price: effectiveCohortPrice(
-            enrollmentInvite.cohort,
-            enrollmentInvite.course,
-          ),
-        },
-        joinedCount: enrollmentInvite.cohort._count.enrollments,
-      };
-    }
-    // Distinct learners with course access, who may be in several cohorts.
-    const joinedCount = await db.user.count({
-      where: {
-        cohortEnrollments: {
-          some: {
-            status: { in: ["ACTIVE", "COMPLETED"] },
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-            cohort: {
-              courseId: enrollmentInvite.course.id,
-              status: { in: [...courseAccessCohortStatuses] },
-            },
-          },
-        },
+      cohort: {
+        id: cohort.id,
+        name: cohort.name,
+        status: cohort.status,
+        startsAt: cohort.startsAt,
+        endsAt: cohort.endsAt,
+        // Paid cohorts are joined through checkout with this invite.
+        price: effectiveCohortPrice(cohort, enrollmentInvite.course),
       },
-    });
-    return {
-      ...base,
-      type: "COURSE" as const,
-      cohort: null,
-      joinedCount,
+      joinedCount: cohort._count.enrollments,
     };
   }
 

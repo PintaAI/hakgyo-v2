@@ -4,19 +4,10 @@ import type { Prisma } from "../../../../generated/prisma/client";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userSearchWhere } from "~/server/api/user-search";
-import {
-  requireCohortPermission,
-  requireCoursePermission,
-} from "~/server/authorization";
-import {
-  getOpenEnrollmentRejection,
-  getOpenEnrollmentUpdate,
-} from "~/server/enrollment/open-enrollment";
+import { requireCohortPermission } from "~/server/authorization";
 import { withTransactionRetry } from "~/server/db-retry";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
-import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
 import { findOtherRunningClass } from "~/server/enrollment/cohort-access";
-import { assertNoRunningClassForKelasMandiri } from "~/server/enrollment/kelas-mandiri";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 import {
   notifyEnrollmentAdded,
@@ -51,7 +42,11 @@ function enrollmentTotals(
   };
 }
 
-/** Cohort invites need `invites.manage` on the cohort; course invites need `course.manage`. */
+/**
+ * Invites belong to a class and need `invites.manage` on it. Course-level
+ * invites were retired (and revoked) when learners stopped joining curricula
+ * directly, so they are not found.
+ */
 async function requireInviteManager(
   database: Pick<Prisma.TransactionClient, "enrollmentInvite">,
   inviteId: string,
@@ -59,22 +54,14 @@ async function requireInviteManager(
 ) {
   const invite = await database.enrollmentInvite.findUnique({
     where: { id: inviteId },
-    select: { courseId: true, cohortId: true },
+    select: { cohortId: true },
   });
-  if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
-  if (invite.cohortId) {
-    await requireCohortPermission({
-      cohortId: invite.cohortId,
-      permission: "invites.manage",
-      userId,
-    });
-  } else {
-    await requireCoursePermission({
-      courseId: invite.courseId,
-      permission: "course.manage",
-      userId,
-    });
-  }
+  if (!invite?.cohortId) throw new TRPCError({ code: "NOT_FOUND" });
+  await requireCohortPermission({
+    cohortId: invite.cohortId,
+    permission: "invites.manage",
+    userId,
+  });
 }
 
 /** Pushes only when a staff change newly grants active access. */
@@ -102,91 +89,21 @@ async function notifyIfDeactivated(
 }
 
 export const enrollmentRouter = createTRPCRouter({
-  enrollOpenCourse: protectedProcedure
-    .input(z.object({ courseId: id }))
-    .mutation(async ({ ctx, input }) => {
-      const course = await ctx.db.course.findUnique({
-        where: { id: input.courseId },
-        select: {
-          status: true,
-          price: true,
-          enrollmentMode: true,
-          organization: { select: { defaultEnrollmentMode: true } },
-        },
-      });
-      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
-
-      const rejection = getOpenEnrollmentRejection(course);
-      if (rejection === "COURSE_NOT_PUBLISHED") {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-      if (rejection === "INVITE_REQUIRED") {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Kurikulum ini memerlukan undangan.",
-        });
-      }
-      if (rejection === "PAYMENT_REQUIRED") {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Pendaftaran berbayar belum tersedia.",
-        });
-      }
-
-      return ctx.db.$transaction(async (tx) => {
-        const existing = await tx.cohortEnrollment.findFirst({
-          where: {
-            userId: ctx.actorUserId,
-            cohort: { defaultForCourseId: input.courseId },
-          },
-        });
-        const now = new Date();
-        const update = getOpenEnrollmentUpdate(existing, now);
-        if (!update && existing) return existing;
-        await assertNoRunningClassForKelasMandiri(tx, {
-          courseId: input.courseId,
-          userId: ctx.actorUserId,
-          now,
-        });
-
-        const joined = {
-          status: "ACTIVE",
-          source: "OPEN",
-          completedAt: null,
-          expiresAt: null,
-        } as const;
-        return upsertDefaultCohortEnrollment(tx, {
-          courseId: input.courseId,
-          userId: ctx.actorUserId,
-          create: joined,
-          update: update ?? joined,
-        });
-      });
-    }),
-
   listInvites: protectedProcedure
     .input(
       pageInput.extend({
         courseId: id,
-        cohortId: id.optional(),
+        cohortId: id,
       }),
     )
     .query(async ({ ctx, input }) => {
-      if (input.cohortId) {
-        const cohort = await requireCohortPermission({
-          cohortId: input.cohortId,
-          permission: "invites.manage",
-          userId: ctx.actorUserId,
-        });
-        if (cohort.courseId !== input.courseId)
-          throw new TRPCError({ code: "BAD_REQUEST" });
-      } else {
-        await requireCoursePermission({
-          courseId: input.courseId,
-          permission: "course.manage",
-          userId: ctx.actorUserId,
-        });
-      }
+      const cohort = await requireCohortPermission({
+        cohortId: input.cohortId,
+        permission: "invites.manage",
+        userId: ctx.actorUserId,
+      });
+      if (cohort.courseId !== input.courseId)
+        throw new TRPCError({ code: "BAD_REQUEST" });
       const where = { courseId: input.courseId, cohortId: input.cohortId };
       const [items, total] = await Promise.all([
         ctx.db.enrollmentInvite.findMany({
@@ -228,10 +145,10 @@ export const enrollmentRouter = createTRPCRouter({
           createdAt: true,
         },
       });
-      if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireCoursePermission({
-        courseId: invite.courseId,
-        permission: "course.manage",
+      if (!invite?.cohortId) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireCohortPermission({
+        cohortId: invite.cohortId,
+        permission: "invites.manage",
         userId: ctx.actorUserId,
       });
       return invite;
@@ -260,54 +177,6 @@ export const enrollmentRouter = createTRPCRouter({
       if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
       return invite;
     }),
-  listCourseEnrollments: protectedProcedure
-    .input(
-      pageInput.extend({
-        courseId: id,
-        search: z.string().trim().max(200).optional(),
-        status: enrollmentStatus.optional(),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      await requireCoursePermission({
-        courseId: input.courseId,
-        permission: "course.manage",
-        userId: ctx.actorUserId,
-      });
-      // Self-paced learners; class cohort learners are listed per cohort.
-      const where = {
-        cohort: { defaultForCourseId: input.courseId },
-        status: input.status,
-        ...(input.search
-          ? { user: { is: userSearchWhere(input.search) } }
-          : {}),
-      };
-      const [items, statusCounts] = await Promise.all([
-        ctx.db.cohortEnrollment.findMany({
-          where,
-          orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
-          ...pageArgs(input),
-          include: {
-            user: {
-              select: { id: true, name: true, email: true, image: true },
-            },
-          },
-        }),
-        input.includeTotal
-          ? ctx.db.cohortEnrollment.groupBy({
-              by: ["status"],
-              where: { ...where, status: undefined },
-              _count: { _all: true },
-            })
-          : Promise.resolve(undefined),
-      ]);
-      const { total, activeTotal } = enrollmentTotals(
-        statusCounts,
-        input.status,
-      );
-      return { ...pageResult(items, input.limit, total), activeTotal };
-    }),
-
   listCohortEnrollments: protectedProcedure
     .input(
       pageInput.extend({
@@ -355,88 +224,14 @@ export const enrollmentRouter = createTRPCRouter({
       return { ...pageResult(items, input.limit, total), activeTotal };
     }),
 
-  setCourseEnrollment: protectedProcedure
-    .input(
-      z.object({
-        courseId: id,
-        email: z.string().trim().toLowerCase().email().max(320),
-        status: enrollmentStatus,
-        expiresAt: z.coerce.date().nullable().optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      await requireCoursePermission({
-        courseId: input.courseId,
-        permission: "course.manage",
-        userId: ctx.actorUserId,
-      });
-      const user = await ctx.db.user.findUnique({
-        where: { email: input.email },
-        select: { id: true },
-      });
-      if (!user) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "No Hakgyo account was found for this email",
-        });
-      }
-      const completedAt = input.status === "COMPLETED" ? new Date() : null;
-      const previous = await ctx.db.cohortEnrollment.findFirst({
-        where: {
-          userId: user.id,
-          cohort: { defaultForCourseId: input.courseId },
-        },
-        select: { status: true },
-      });
-      const enrollment = await ctx.db.$transaction((tx) =>
-        upsertDefaultCohortEnrollment(tx, {
-          courseId: input.courseId,
-          userId: user.id,
-          create: {
-            status: input.status,
-            expiresAt: input.expiresAt,
-            completedAt,
-            source: "MANUAL",
-          },
-          update: {
-            status: input.status,
-            expiresAt: input.expiresAt,
-            completedAt,
-          },
-        }),
-      );
-      await notifyIfActivated(previous?.status, enrollment);
-      return enrollment;
-    }),
-
-  removeCourseEnrollment: protectedProcedure
-    .input(z.object({ courseId: id, userId: id }))
-    .mutation(async ({ ctx, input }) => {
-      await requireCoursePermission({
-        courseId: input.courseId,
-        permission: "course.manage",
-        userId: ctx.actorUserId,
-      });
-      // Only self-paced access; class cohort memberships stay.
-      const where = {
-        userId: input.userId,
-        cohort: { defaultForCourseId: input.courseId },
-      };
-      const previous = await ctx.db.cohortEnrollment.findFirst({
-        where,
-        select: { cohortId: true, status: true },
-      });
-      const result = await ctx.db.cohortEnrollment.deleteMany({ where });
-      await notifyIfDeactivated(input.userId, previous, result.count);
-      return result;
-    }),
-
   setCohortEnrollment: protectedProcedure
     .input(
       z.object({
         cohortId: id,
         email: z.string().trim().toLowerCase().email().max(320),
         status: enrollmentStatus,
+        /** Access ends then; null clears it, omitted keeps the current one. */
+        expiresAt: z.coerce.date().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -455,7 +250,9 @@ export const enrollmentRouter = createTRPCRouter({
           message: "No Hakgyo account was found for this email",
         });
       }
-      if (input.status === "ACTIVE") {
+      // Staff may add a learner to the Kelas Mandiri while another class
+      // runs: it simply stays paused (see kelas-mandiri.ts).
+      if (input.status === "ACTIVE" && cohort.defaultForCourseId === null) {
         const otherClass = await findOtherRunningClass(ctx.db, {
           cohortId: input.cohortId,
           courseId: cohort.courseId,
@@ -485,9 +282,14 @@ export const enrollmentRouter = createTRPCRouter({
           userId: user.id,
           status: input.status,
           completedAt,
+          expiresAt: input.expiresAt,
           source: "MANUAL",
         },
-        update: { status: input.status, completedAt },
+        update: {
+          status: input.status,
+          completedAt,
+          expiresAt: input.expiresAt,
+        },
       });
       await notifyIfActivated(previous?.status, enrollment);
       return enrollment;
@@ -515,27 +317,19 @@ export const enrollmentRouter = createTRPCRouter({
     .input(
       z.object({
         courseId: id,
-        cohortId: id.nullable().optional(),
+        cohortId: id,
         expiresAt: z.coerce.date().nullable().optional(),
         maxUses: z.number().int().positive().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.cohortId) {
-        const cohort = await requireCohortPermission({
-          cohortId: input.cohortId,
-          permission: "invites.manage",
-          userId: ctx.actorUserId,
-        });
-        if (cohort.courseId !== input.courseId) {
-          throw new TRPCError({ code: "BAD_REQUEST" });
-        }
-      } else {
-        await requireCoursePermission({
-          courseId: input.courseId,
-          permission: "course.manage",
-          userId: ctx.actorUserId,
-        });
+      const cohort = await requireCohortPermission({
+        cohortId: input.cohortId,
+        permission: "invites.manage",
+        userId: ctx.actorUserId,
+      });
+      if (cohort.courseId !== input.courseId) {
+        throw new TRPCError({ code: "BAD_REQUEST" });
       }
       const course = await ctx.db.course.findUnique({
         where: { id: input.courseId },

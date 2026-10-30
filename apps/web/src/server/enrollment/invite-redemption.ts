@@ -5,7 +5,6 @@ import {
   findOtherRunningClass,
   otherRunningClassMessage,
 } from "~/server/enrollment/cohort-access";
-import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
 import { effectiveCohortPrice } from "~/server/payment/cohort-offer";
 
 export async function findRedeemableEnrollmentInvite(
@@ -21,20 +20,22 @@ export async function findRedeemableEnrollmentInvite(
     },
   });
   if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
+  // Course-level invites (no class) were retired; their links stay invalid.
   if (
+    !invite.cohortId ||
+    !invite.cohort ||
     invite.revokedAt ||
     (invite.expiresAt && invite.expiresAt <= now) ||
-    (invite.cohort &&
-      invite.cohort.status !== "OPEN" &&
+    (invite.cohort.status !== "OPEN" &&
       invite.cohort.status !== "IN_PROGRESS") ||
-    (invite.cohort?.endsAt && invite.cohort.endsAt <= now)
+    (invite.cohort.endsAt && invite.cohort.endsAt <= now)
   ) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Invite is no longer valid",
     });
   }
-  return invite;
+  return { ...invite, cohortId: invite.cohortId, cohort: invite.cohort };
 }
 
 /**
@@ -90,22 +91,18 @@ export async function redeemEnrollmentInvite(
     input.token,
     input.now,
   );
-  // Serialize redemptions by the same learner for the same target so a double-click cannot
+  // Serialize redemptions by the same learner for the same class so a double-click cannot
   // consume two uses before either enrollment is visible.
   await tx.$executeRaw`
-    SELECT pg_advisory_xact_lock(hashtextextended(${`invite-redeem:${invite.cohortId ?? invite.courseId}:${input.userId}`}, 0))
+    SELECT pg_advisory_xact_lock(hashtextextended(${`invite-redeem:${invite.cohortId}:${input.userId}`}, 0))
   `;
-  // Course invites join the course's Kelas Mandiri.
-  const existing = await tx.cohortEnrollment.findFirst({
+  const existing = await tx.cohortEnrollment.findUnique({
     where: {
-      userId: input.userId,
-      cohort: invite.cohortId
-        ? { id: invite.cohortId }
-        : { defaultForCourseId: invite.courseId },
+      cohortId_userId: { cohortId: invite.cohortId, userId: input.userId },
     },
   });
   const result = {
-    type: invite.cohortId ? ("COHORT" as const) : ("COURSE" as const),
+    type: "COHORT" as const,
     courseId: invite.courseId,
     cohortId: invite.cohortId,
   };
@@ -119,17 +116,17 @@ export async function redeemEnrollmentInvite(
   }
 
   // Paid cohorts are joined through checkout; the invite only opens it.
-  if (invite.cohort && effectiveCohortPrice(invite.cohort, invite.course) > 0) {
+  if (effectiveCohortPrice(invite.cohort, invite.course) > 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "Kelas ini berbayar. Lanjutkan ke pembayaran.",
     });
   }
 
-  // Course invites join the Kelas Mandiri, which a running class rules out
-  // just like another class does: it would stay paused and show nothing.
+  // One class per curriculum. A Kelas Mandiri is refused too while another
+  // class runs: it would stay paused and show nothing.
   const otherClass = await findOtherRunningClass(tx, {
-    cohortId: invite.cohortId ?? undefined,
+    cohortId: invite.cohortId,
     courseId: invite.courseId,
     userId: input.userId,
     now: input.now,
@@ -148,20 +145,12 @@ export async function redeemEnrollmentInvite(
     completedAt: null,
     expiresAt: null,
   } as const;
-  if (invite.cohortId) {
-    await tx.cohortEnrollment.upsert({
-      where: {
-        cohortId_userId: { cohortId: invite.cohortId, userId: input.userId },
-      },
-      create: { cohortId: invite.cohortId, userId: input.userId, ...joined },
-      update: joined,
-    });
-  } else {
-    await upsertDefaultCohortEnrollment(tx, {
-      courseId: invite.courseId,
-      userId: input.userId,
-      create: joined,
-    });
-  }
+  await tx.cohortEnrollment.upsert({
+    where: {
+      cohortId_userId: { cohortId: invite.cohortId, userId: input.userId },
+    },
+    create: { cohortId: invite.cohortId, userId: input.userId, ...joined },
+    update: joined,
+  });
   return result;
 }

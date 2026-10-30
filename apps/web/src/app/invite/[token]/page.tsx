@@ -14,19 +14,15 @@ export async function generateMetadata({
   try {
     const invite = await resolveUnifiedInvite(db, token);
     const title =
-      invite.type === "ORGANIZATION"
-        ? invite.organization.name
-        : invite.type === "COHORT"
-          ? invite.cohort.name
-          : invite.course.title;
+      invite.type === "COHORT" ? invite.cohort.name : invite.organization.name;
     const description =
       invite.type === "ORGANIZATION"
         ? "Bergabung dengan organisasi di Hakgyo."
         : invite.type === "COHORT"
-          ? `Bergabung dengan cohort ${invite.course.title} di Hakgyo.`
-          : `Bergabung dengan kurikulum ${invite.course.title} di Hakgyo.`;
+          ? `Bergabung dengan kelas ${invite.course.title} di Hakgyo.`
+          : "Undangan ini sudah tidak berlaku.";
     const thumbnailUrl =
-      invite.type === "ORGANIZATION" ? null : invite.course.thumbnailUrl;
+      invite.type === "COHORT" ? invite.course.thumbnailUrl : null;
 
     return {
       title,

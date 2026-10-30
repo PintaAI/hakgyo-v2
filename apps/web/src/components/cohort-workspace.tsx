@@ -578,18 +578,22 @@ function Overview({
           </CardHeader>
           <dl className="divide-border divide-y">
             {[
-              [
-                "Mulai",
-                cohort.startsAt
-                  ? dateFormatter.format(cohort.startsAt)
-                  : "Belum diatur",
-              ],
-              [
-                "Selesai",
-                cohort.endsAt
-                  ? dateFormatter.format(cohort.endsAt)
-                  : "Belum diatur",
-              ],
+              ...(cohort.defaultForCourseId
+                ? [["Jadwal", "Belajar kapan saja"]]
+                : [
+                    [
+                      "Mulai",
+                      cohort.startsAt
+                        ? dateFormatter.format(cohort.startsAt)
+                        : "Belum diatur",
+                    ],
+                    [
+                      "Selesai",
+                      cohort.endsAt
+                        ? dateFormatter.format(cohort.endsAt)
+                        : "Belum diatur",
+                    ],
+                  ]),
               [
                 "Pendaftaran",
                 cohort.enrollmentMode === "OPEN"
@@ -747,14 +751,20 @@ function Learners({
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<CohortEnrollment["status"]>("ACTIVE");
+  const [expiresAt, setExpiresAt] = useState("");
   const mutation = api.enrollment.setCohortEnrollment.useMutation();
   const removeEnrollment = api.enrollment.removeCohortEnrollment.useMutation();
   const [removing, setRemoving] = useState<CohortEnrollment | null>(null);
   const visible = data;
 
-  async function save(email: string, status: CohortEnrollment["status"]) {
+  /** `expiresAt` undefined keeps the learner's current access end. */
+  async function save(
+    email: string,
+    status: CohortEnrollment["status"],
+    expiresAt?: Date | null,
+  ) {
     try {
-      await mutation.mutateAsync({ cohortId, email, status });
+      await mutation.mutateAsync({ cohortId, email, status, expiresAt });
       await utils.enrollment.listCohortEnrollments.invalidate({ cohortId });
       toast.success("Status murid diperbarui.");
       return true;
@@ -766,10 +776,12 @@ function Learners({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (await save(email, status)) {
+    const accessEnd = expiresAt ? new Date(`${expiresAt}T23:59:59`) : null;
+    if (await save(email, status, accessEnd)) {
       setOpen(false);
       setEmail("");
       setStatus("ACTIVE");
+      setExpiresAt("");
     }
   }
 
@@ -876,6 +888,12 @@ function Learners({
                           <span className="text-muted-foreground block truncate text-xs">
                             {enrollment.user.email}
                           </span>
+                          {enrollment.expiresAt ? (
+                            <span className="text-muted-foreground mt-0.5 block text-xs">
+                              Akses hingga{" "}
+                              {dateFormatter.format(enrollment.expiresAt)}
+                            </span>
+                          ) : null}
                           <span className="text-muted-foreground mt-0.5 block text-xs sm:hidden">
                             {enrollmentSourceLabels[enrollment.source] ??
                               enrollment.source}{" "}
@@ -1007,6 +1025,17 @@ function Learners({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cohort-learner-expiry">Akses hingga</Label>
+                <DatePicker
+                  id="cohort-learner-expiry"
+                  value={expiresAt}
+                  onChange={setExpiresAt}
+                />
+                <p className="text-muted-foreground text-xs">
+                  Opsional. Kosongkan jika akses tidak berakhir.
+                </p>
               </div>
             </div>
             <DialogFooter className="mt-5">
@@ -1785,6 +1814,7 @@ function Settings({
     }
   }
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const kelasMandiri = cohort.defaultForCourseId !== null;
   const update = api.cohort.update.useMutation();
   const remove = api.cohort.delete.useMutation();
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -1958,10 +1988,12 @@ function Settings({
           <Card className="gap-0 py-0">
             <CardHeader className="border-b py-4">
               <CardTitle className="font-heading text-lg">
-                Jadwal & tautan
+                {kelasMandiri ? "Tautan" : "Jadwal & tautan"}
               </CardTitle>
               <CardDescription>
-                Periode kelas dan tautan komunitas.
+                {kelasMandiri
+                  ? "Kelas Mandiri tidak punya jadwal: murid belajar kapan saja."
+                  : "Periode kelas dan tautan komunitas."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 py-5">
@@ -1971,25 +2003,27 @@ function Settings({
                 manualUrl={whatsapp}
                 onManualUrlChange={setWhatsapp}
               />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="settings-cohort-start">Mulai</Label>
-                  <DatePicker
-                    id="settings-cohort-start"
-                    value={startsAt}
-                    onChange={setStartsAt}
-                  />
+              {kelasMandiri ? null : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="settings-cohort-start">Mulai</Label>
+                    <DatePicker
+                      id="settings-cohort-start"
+                      value={startsAt}
+                      onChange={setStartsAt}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="settings-cohort-end">Selesai</Label>
+                    <DatePicker
+                      id="settings-cohort-end"
+                      min={startsAt || undefined}
+                      value={endsAt}
+                      onChange={setEndsAt}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="settings-cohort-end">Selesai</Label>
-                  <DatePicker
-                    id="settings-cohort-end"
-                    min={startsAt || undefined}
-                    value={endsAt}
-                    onChange={setEndsAt}
-                  />
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
