@@ -25,7 +25,7 @@ type Attempt = { id: string; status: string; score: number | null };
 function learnerIndex(
   input: {
     courseIds?: string[];
-    cohorts?: Array<{ id: string; meetings: Meeting[] }>;
+    cohorts?: Array<{ id: string; meetings: Meeting[]; selfPaced?: boolean }>;
     events?: Event[];
     attempts?: Attempt[];
   } = {},
@@ -42,6 +42,9 @@ function learnerIndex(
     cohorts: (input.cohorts ?? []).map((cohort) => ({
       id: cohort.id,
       name: `Kelas ${cohort.id}`,
+      ...(cohort.selfPaced === undefined
+        ? {}
+        : { selfPaced: cohort.selfPaced }),
       course: course("course-1"),
       meetings: cohort.meetings.map((meeting) => ({
         title: `Meeting ${meeting.id}`,
@@ -100,6 +103,24 @@ describe("index notices", () => {
       ["COHORT_ADDED", "cohort:cohort-1@added"],
     ]);
     expect(notices[0]!.organizationId).toBe("org-1");
+  });
+
+  test("a Kelas Mandiri appearing or returning is not news", () => {
+    const notices = diff(
+      learnerIndex(),
+      learnerIndex({
+        cohorts: [
+          { id: "mandiri", selfPaced: true, meetings: [] },
+          { id: "class", selfPaced: false, meetings: [] },
+          // Cached before the server sent `selfPaced`.
+          { id: "older", meetings: [] },
+        ],
+      }),
+    );
+    expect(notices.map((notice) => notice.id)).toEqual([
+      "cohort:class@added",
+      "cohort:older@added",
+    ]);
   });
 
   test("reports new, moved and cancelled upcoming meetings", () => {

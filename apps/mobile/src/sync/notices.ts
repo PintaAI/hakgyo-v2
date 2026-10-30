@@ -11,7 +11,8 @@ import type { LearnerIndex } from "./types";
  * syncs of the same user and organization.
  *
  * News, compared with the previous server index of the same scope:
- * - an enrolled course or a joined cohort that was not there before;
+ * - an enrolled course or a joined scheduled class (not a Kelas Mandiri)
+ *   that was not there before;
  * - a new upcoming meeting in a known cohort, a rescheduled or cancelled one;
  * - a Tugas that opened, whose deadline moved, or that was cancelled;
  * - an attempt the learner submitted for review that is now graded (or
@@ -230,6 +231,11 @@ export function diffIndexNotices(
     const knownMeetings = previous.cohorts[cohort.id];
     const organizationId = cohort.course.organization.id;
     if (!knownMeetings) {
+      // A Kelas Mandiri has no meetings, and it appears for every learner of
+      // a curriculum (or returns after a class ends): not news.
+      // `selfPaced` is missing from indexes cached before the server sent it.
+      const { selfPaced } = cohort as { selfPaced?: boolean };
+      if (selfPaced === true) continue;
       // Its meetings arrive with it; the cohort notice covers them.
       notices.push(
         notice(

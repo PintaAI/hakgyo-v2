@@ -6,7 +6,6 @@ import {
   canTransitionPayment,
   openPaymentStatuses,
 } from "~/lib/payments/payment";
-import { leaveKelasMandiriForClass } from "~/server/enrollment/kelas-mandiri";
 
 type Transaction = Prisma.TransactionClient;
 
@@ -68,9 +67,9 @@ function assertTransition(from: PaymentStatus, to: PaymentStatus) {
 
 /**
  * Settles a payment and grants the seat: the learner becomes an ACTIVE
- * member with source PURCHASE unless they already have access (leaving the
- * course's Kelas Mandiri), and their other open checkouts for the cohort are
- * cancelled. Staff approval and gateway webhooks both end here.
+ * member with source PURCHASE unless they already have access, and their
+ * other open checkouts for the cohort are cancelled. Staff approval and
+ * gateway webhooks both end here.
  */
 export async function markPaymentPaid(
   tx: Transaction,
@@ -120,11 +119,6 @@ export async function markPaymentPaid(
       where: membershipKey,
       create: { cohortId: payment.cohortId, userId: payment.userId, ...joined },
       update: { ...joined, enrolledAt: input.now },
-    });
-    await leaveKelasMandiriForClass(tx, {
-      cohortId: payment.cohortId,
-      userId: payment.userId,
-      now: input.now,
     });
   }
 

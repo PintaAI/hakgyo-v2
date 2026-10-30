@@ -7,7 +7,6 @@ import {
   findOtherRunningClass,
   otherRunningClassMessage,
 } from "~/server/enrollment/cohort-access";
-import { leaveKelasMandiriForClass } from "~/server/enrollment/kelas-mandiri";
 import {
   consumeEnrollmentInvite,
   redeemEnrollmentInvite,
@@ -258,7 +257,6 @@ export async function startCohortCheckout(
         create: { cohortId: input.cohortId, userId: input.userId, ...joined },
         update: joined,
       });
-      await leaveKelasMandiriForClass(tx, input);
     }
     return { type: "ENROLLED" as const, courseId };
   }
