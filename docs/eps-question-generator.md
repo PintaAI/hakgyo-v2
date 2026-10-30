@@ -187,8 +187,8 @@ Maintainer form: type · count · keywords · level · book chapter / grammar po
   put HRDK items in prompts. Pick the model after a 20-question trial with two models.
 - **Automated checks** before review: schema and one key, similar option lengths, key position
   spread, similarity against the bank (`pg_trgm` is installed), vocabulary within the keywords and
-  level, and a second model that answers each question blind; a mismatch or two plausible answers
-  flags the question.
+  level, an explanation in Indonesian (Korean only inside quoted option text), and a second model
+  that answers each question blind; a mismatch or two plausible answers flags the question.
 - **Placement check:** a question goes to review or LIVE only when the generator could use it:
   some slot of the blueprint takes its type (as the slot's type or an alternative), and a group's
   types, in position order, fill consecutive slots of one section (`fitsBlueprint` in

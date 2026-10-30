@@ -4,6 +4,7 @@ import {
   blindFlags,
   checkDraft,
   duplicateOptionFlag,
+  explanationLanguageFlag,
   keyPatternFlag,
   keywordFlag,
   optionLengthFlag,
@@ -29,6 +30,23 @@ describe("draft checks", () => {
         blind: { answer: 0, plausible: [0] },
       }),
     ).toEqual([]);
+  });
+
+  test("explanation language", () => {
+    expect(
+      explanationLanguageFlag(
+        '"늦지 않게" menyatakan tujuan: berangkat cepat supaya tidak terlambat.',
+      ),
+    ).toBeNull();
+    expect(
+      explanationLanguageFlag("“끄고” menghubungkan dua tindakan berurutan."),
+    ).toBeNull();
+    expect(
+      explanationLanguageFlag(
+        '"늦지 않게"는 목적을 나타내서 문장에 가장 알맞습니다.',
+      )?.code,
+    ).toBe("EXPLANATION_LANGUAGE");
+    expect(explanationLanguageFlag(undefined)).toBeNull();
   });
 
   test("option lengths", () => {
