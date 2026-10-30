@@ -1,5 +1,4 @@
-import Link from "~/components/link";
-
+import { LandingFooter } from "../footer";
 import { landingContainer } from "../layout";
 import { reveal } from "../reveal";
 import { Eyebrow, WhatsAppLink } from "../slide";
@@ -37,35 +36,7 @@ export function ContactSlide() {
           </WhatsAppLink>
         </div>
       </div>
-      <footer className={`${landingContainer} pb-8 sm:pb-10 lg:pb-24`}>
-        <div className="border-primary-foreground/20 flex flex-col justify-between gap-4 border-t pt-6 text-sm sm:flex-row sm:items-center sm:gap-6 sm:pt-8">
-          <p className="font-semibold tracking-[-0.04em]">hakgyo</p>
-          <nav
-            aria-label="Navigasi footer"
-            className="flex flex-wrap gap-6 opacity-80"
-          >
-            <Link href="/catalog" className="hover:opacity-100">
-              Katalog
-            </Link>
-            <Link href="/docs" className="hover:opacity-100">
-              Panduan
-            </Link>
-            <Link href="/privacy" className="hover:opacity-100">
-              Privasi
-            </Link>
-            <Link href="/terms" className="hover:opacity-100">
-              Ketentuan
-            </Link>
-            <Link href="/support" className="hover:opacity-100">
-              Bantuan
-            </Link>
-            <Link href="/auth" className="hover:opacity-100">
-              Masuk
-            </Link>
-          </nav>
-          <p className="opacity-70">© {new Date().getFullYear()} Hakgyo</p>
-        </div>
-      </footer>
+      <LandingFooter />
     </section>
   );
 }

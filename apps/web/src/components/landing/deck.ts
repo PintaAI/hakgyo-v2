@@ -22,16 +22,36 @@ export const slides = [
   { id: "hubungi", label: "Hubungi kami" },
 ] as const;
 
-export type SlideId = (typeof slides)[number]["id"];
+/**
+ * The learner app page (/aplikasi), numbered on its own. Its ids must not
+ * repeat the main deck's, since slides look up their number by id.
+ */
+export const appSlides = [
+  { id: "unduh", label: "Unduh aplikasi" },
+  { id: "belajar", label: "Belajar di ponsel" },
+  { id: "game", label: "Game latihan" },
+  { id: "ujian", label: "Latihan ujian" },
+  { id: "pasang", label: "Cara pasang" },
+  { id: "tanya", label: "FAQ" },
+  { id: "mulai-belajar", label: "Unduh sekarang" },
+] as const;
 
-/** Two-digit position of a slide, as shown in its eyebrow. */
+export type MainSlideId = (typeof slides)[number]["id"];
+export type AppSlideId = (typeof appSlides)[number]["id"];
+export type SlideId = MainSlideId | AppSlideId;
+
+function deckOf(id: SlideId): readonly { id: string; label: string }[] {
+  return slides.some((slide) => slide.id === id) ? slides : appSlides;
+}
+
+/** Two-digit position of a slide in its deck, as shown in its eyebrow. */
 export function slideNumber(id: SlideId) {
-  return String(slides.findIndex((slide) => slide.id === id) + 1).padStart(
+  return String(deckOf(id).findIndex((slide) => slide.id === id) + 1).padStart(
     2,
     "0",
   );
 }
 
 export function slideLabel(id: SlideId) {
-  return slides.find((slide) => slide.id === id)!.label;
+  return deckOf(id).find((slide) => slide.id === id)!.label;
 }

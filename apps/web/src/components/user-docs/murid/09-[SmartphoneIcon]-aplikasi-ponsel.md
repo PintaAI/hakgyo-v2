@@ -4,7 +4,7 @@ Aplikasi Hakgyo untuk iPhone dan Android memungkinkan kamu belajar di mana saja,
 
 ## Memasang dan masuk
 
-1. Pasang aplikasi Hakgyo dari App Store atau Google Play. Jika halaman Hakgyo masih menampilkan **Segera hadir** pada tombol toko aplikasi, aplikasinya belum tersedia untukmu; gunakan situs web dulu.
+1. Pasang aplikasi Hakgyo dari App Store atau Google Play. Selama Hakgyo belum ada di toko aplikasi, pasang versi beta dari halaman [hakgyo.id/aplikasi](/aplikasi). Di iPhone, ketuk **Unduh untuk iPhone**, pasang aplikasi TestFlight dari App Store, lalu ketuk **Terima** dan **Pasang**. Di Android, ketuk **Unduh untuk Android**, buka file yang terunduh, lalu izinkan browser memasang aplikasi jika diminta. Jika tombol toko aplikasi masih menampilkan **Segera hadir**, aplikasinya belum tersedia untukmu; gunakan situs web dulu.
 2. Buka aplikasinya dan geser layar perkenalan.
 3. Ketuk **Daftar gratis** jika belum punya akun, atau **Sudah punya akun? Masuk**.
 4. Masuk dengan email dan kata sandi, **Lanjutkan dengan Google**, atau Apple (khusus iPhone).

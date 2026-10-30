@@ -5,6 +5,7 @@ export const MAX_LANDING_FIELD_LENGTH = 2_000;
 
 const reservedSlugs = new Set([
   "api",
+  "aplikasi",
   "auth",
   "catalog",
   "learn",
