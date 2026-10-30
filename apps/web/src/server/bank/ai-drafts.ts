@@ -61,7 +61,11 @@ export const draftOutputSchema = z.object({
         prompt: z.string(),
         options: z.array(z.string()).length(4),
         key: z.number().int().min(0).max(3),
-        explanation: z.string(),
+        explanation: z
+          .string()
+          .describe(
+            "In Bahasa Indonesia; Korean only inside the quoted option text",
+          ),
         mediaBrief: z.string(),
         script: z.array(
           z.object({ speaker: z.enum(["M", "F", "N"]), text: z.string() }),
@@ -115,7 +119,8 @@ export function draftInstructions(type: EpsTypeDefinition) {
       ? "This type has picture options: each option is a short Indonesian description of the picture to draw (the four pictures share one style and differ in one detail)."
       : "Options are Korean text.",
     "mediaBrief describes, in Indonesian, the picture, sign, document or chart the prompt needs (with fictional names and data); empty when the type needs none.",
-    "explanation is one or two Indonesian sentences on why the key is right. Quote the option text; never name options by number or position, since packages reorder them.",
+    "explanation is one or two sentences in Bahasa Indonesia (never Korean or English) on why the key is right; Korean appears only inside the quoted option text. Never name options by number or position, since packages reorder them.",
+    'Example explanation: "늦지 않게" menyatakan tujuan: berangkat cepat supaya tidak terlambat ke kantor.',
     "topic is the closest topic slug.",
     "Reference card:",
     epsReferenceCard(type),

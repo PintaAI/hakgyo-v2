@@ -12,7 +12,8 @@ export type DraftFlagCode =
   | "SIMILAR"
   | "BLIND_MISMATCH"
   | "BLIND_MISSING"
-  | "AMBIGUOUS";
+  | "AMBIGUOUS"
+  | "EXPLANATION_LANGUAGE";
 
 export type DraftFlag = { code: DraftFlagCode; message: string };
 
@@ -26,6 +27,7 @@ export type CheckableDraft = {
   prompt: string;
   options: readonly string[];
   key: number;
+  explanation?: string;
 };
 
 /** The longest option at most this many times the shortest (and a few characters apart). */
@@ -91,6 +93,28 @@ export function keywordFlag(
     : { code: "KEYWORDS", message: "Tidak memakai kata kunci yang diminta." };
 }
 
+/** Quoted spans (the option text an explanation cites), dropped before the language check. */
+const QUOTED = /"[^"]*"|“[^”]*”|'[^']*'|‘[^’]*’|「[^」]*」|『[^』]*』/g;
+
+/**
+ * The explanation is for Indonesian learners: outside quoted option text it must be mostly
+ * Indonesian, not Korean.
+ */
+export function explanationLanguageFlag(
+  explanation: string | undefined,
+): DraftFlag | null {
+  if (explanation === undefined) return null;
+  const text = explanation.replace(QUOTED, " ");
+  const hangul = text.match(/\p{Script=Hangul}/gu)?.length ?? 0;
+  const latin = text.match(/\p{Script=Latin}/gu)?.length ?? 0;
+  return hangul > 0 && hangul >= latin / 4
+    ? {
+        code: "EXPLANATION_LANGUAGE",
+        message: "Penjelasan tidak ditulis dalam bahasa Indonesia.",
+      }
+    : null;
+}
+
 /** How much of the similar question's text the flag quotes. */
 const SIMILAR_QUOTE_LENGTH = 40;
 
@@ -144,6 +168,7 @@ export function checkDraft(input: {
     keywordFlag(input.keywords, input.draft),
     similarityFlag(input.similar),
     ...blindFlags(input.draft.key, input.blind),
+    explanationLanguageFlag(input.draft.explanation),
   ].filter((flag): flag is DraftFlag => flag !== null);
 }
 
