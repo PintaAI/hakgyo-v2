@@ -21,8 +21,6 @@ export async function listMcpCatalog(input: {
       slug: true,
       description: true,
       thumbnailUrl: true,
-      price: true,
-      currency: true,
       organization: { select: { id: true, name: true, slug: true } },
       _count: {
         select: { modules: true, cohorts: true },
@@ -47,8 +45,6 @@ export async function getMcpCatalogCourse(courseId: string) {
       slug: true,
       description: true,
       thumbnailUrl: true,
-      price: true,
-      currency: true,
       progressionMode: true,
       organization: { select: { id: true, name: true, slug: true } },
       modules: {

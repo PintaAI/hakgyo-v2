@@ -36,8 +36,6 @@ function createDatabase(input: {
             title: "TOPIK I",
             thumbnailUrl: null,
             status: "PUBLISHED",
-            price: 0,
-            enrollmentMode: null,
             organization: { name: "Hakgyo", defaultEnrollmentMode: "OPEN" },
           },
         }),

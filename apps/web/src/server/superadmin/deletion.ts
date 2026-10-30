@@ -130,9 +130,6 @@ async function deleteOrganizationCourses(
   await tx.cohort.deleteMany({ where: { organizationId } });
   await tx.courseCollaborator.deleteMany({ where: { organizationId } });
   await tx.enrollmentInvite.deleteMany({ where: { organizationId } });
-  await tx.courseEnrollment.deleteMany({
-    where: { course: { organizationId } },
-  });
   await tx.course.deleteMany({ where: { organizationId } });
 }
 
@@ -179,7 +176,6 @@ async function deleteCourseChildren(
     where: { courseId: input.courseId },
   });
   await tx.enrollmentInvite.deleteMany({ where: { courseId: input.courseId } });
-  await tx.courseEnrollment.deleteMany({ where: { courseId: input.courseId } });
 }
 
 async function collectPaymentProofKeys(

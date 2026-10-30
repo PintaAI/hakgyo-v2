@@ -49,6 +49,13 @@ export function formatRupiah(amount: number) {
   }).format(amount);
 }
 
+/** A curriculum's price as "Mulai Rp X" from its cheapest open class. */
+export function formatLowestPrice(lowestPrice: number | null) {
+  if (lowestPrice === null) return "-";
+  if (lowestPrice === 0) return "Gratis";
+  return `Mulai ${formatRupiah(lowestPrice)}`;
+}
+
 /**
  * Where to pay, snapshotted on the payment at checkout so later changes to
  * the organization's settings do not alter what the learner was shown.

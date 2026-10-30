@@ -65,7 +65,7 @@ Supported data-hakgyo-field values inside the template: ${landingCourseFields.jo
 - link (required, on an <a>): href is set to the course page.
 - image (on an <img>): src is set to the thumbnail; removed when missing.
 - description: text replaced; removed when missing.
-- price: text replaced, e.g. "Gratis" or "Rp150.000".
+- price: text replaced, e.g. "Gratis" or "Mulai Rp150.000" (the cheapest open class).
 The filled slot gets data-hakgyo-count="<n>"; style the empty state with
 [data-hakgyo-count="0"].
 

@@ -5,6 +5,7 @@ import {
   effectiveCohortPrice,
   getCohortJoinBlocker,
   isCohortJoinable,
+  lowestOpenCohortPrice,
 } from "./cohort-offer";
 
 const now = new Date("2026-10-01T00:00:00Z");
@@ -22,35 +23,52 @@ const open = {
 };
 
 describe("effective cohort settings", () => {
-  test("cohort price overrides the course price, including free", () => {
-    expect(effectiveCohortPrice({ price: null }, { price: 100 })).toBe(100);
-    expect(effectiveCohortPrice({ price: 0 }, { price: 100 })).toBe(0);
-    expect(effectiveCohortPrice({ price: 250 }, { price: 100 })).toBe(250);
+  test("a class without a price is free", () => {
+    expect(effectiveCohortPrice({ price: null })).toBe(0);
+    expect(effectiveCohortPrice({ price: 250 })).toBe(250);
   });
 
-  test("enrollment mode falls back from cohort to course to organization", () => {
+  test("enrollment mode falls back from class to organization", () => {
     const organization = { defaultEnrollmentMode: "INVITE_ONLY" as const };
     expect(
-      effectiveCohortEnrollmentMode(
-        { enrollmentMode: null },
-        { enrollmentMode: null },
-        organization,
-      ),
+      effectiveCohortEnrollmentMode({ enrollmentMode: null }, organization),
     ).toBe("INVITE_ONLY");
     expect(
-      effectiveCohortEnrollmentMode(
-        { enrollmentMode: null },
-        { enrollmentMode: "OPEN" },
-        organization,
-      ),
+      effectiveCohortEnrollmentMode({ enrollmentMode: "OPEN" }, organization),
     ).toBe("OPEN");
+  });
+});
+
+describe("lowestOpenCohortPrice", () => {
+  const organization = { defaultEnrollmentMode: "OPEN" as const };
+
+  test("picks the cheapest open class, a class without a price as free", () => {
     expect(
-      effectiveCohortEnrollmentMode(
-        { enrollmentMode: "INVITE_ONLY" },
-        { enrollmentMode: "OPEN" },
+      lowestOpenCohortPrice(
+        [
+          { price: 250, enrollmentMode: null },
+          { price: null, enrollmentMode: "INVITE_ONLY" },
+          { price: 100, enrollmentMode: "OPEN" },
+        ],
         organization,
       ),
-    ).toBe("INVITE_ONLY");
+    ).toBe(100);
+    expect(
+      lowestOpenCohortPrice(
+        [{ price: null, enrollmentMode: null }],
+        organization,
+      ),
+    ).toBe(0);
+  });
+
+  test("is null when no class is open", () => {
+    expect(lowestOpenCohortPrice([], organization)).toBeNull();
+    expect(
+      lowestOpenCohortPrice(
+        [{ price: 100, enrollmentMode: "INVITE_ONLY" }],
+        organization,
+      ),
+    ).toBeNull();
   });
 });
 

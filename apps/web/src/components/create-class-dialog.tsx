@@ -109,6 +109,7 @@ export function CreateClassDialog({
   const [name, setName] = useState("");
   const [classDescription, setClassDescription] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [price, setPrice] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const selfPaced = kind === "SELF_PACED";
@@ -119,6 +120,7 @@ export function CreateClassDialog({
     setName("");
     setClassDescription("");
     setCapacity("");
+    setPrice("");
     setStartsAt("");
     setEndsAt("");
   }
@@ -140,6 +142,7 @@ export function CreateClassDialog({
         name: name.trim() || undefined,
         description: classDescription.trim() || null,
         capacity: capacity ? Number(capacity) : null,
+        price: price ? Number(price) : null,
         ...(selfPaced
           ? {}
           : {
@@ -226,7 +229,7 @@ export function CreateClassDialog({
                 onChange={(event) => setClassDescription(event.target.value)}
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="class-capacity">Kapasitas</Label>
                 <Input
@@ -235,6 +238,17 @@ export function CreateClassDialog({
                   type="number"
                   value={capacity}
                   onChange={(event) => setCapacity(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="class-price">Harga (IDR)</Label>
+                <Input
+                  id="class-price"
+                  min={0}
+                  placeholder="Gratis"
+                  type="number"
+                  value={price}
+                  onChange={(event) => setPrice(event.target.value)}
                 />
               </div>
               {/* A Kelas Mandiri has no dates. */}

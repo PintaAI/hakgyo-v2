@@ -146,7 +146,7 @@ export const mcpDomainTools = {
       name: "create_course",
       title: "Create course",
       description:
-        "Create a course in an organization. ownerMembershipId is the owning teacher's membershipId from get_current_user or list_organization_members. Courses start as DRAFT; status PUBLISHED lists the course, its thumbnail and price on Hakgyo's public catalog and the organization's public pages. Price is what learners pay the organization in Hakgyo; nothing is sold through this tool. Confirm with the user before publishing.",
+        "Create a course in an organization. ownerMembershipId is the owning teacher's membershipId from get_current_user or list_organization_members. Courses start as DRAFT; status PUBLISHED lists the course and its thumbnail on Hakgyo's public catalog and the organization's public pages. Learners join a class of the course; price and enrollment mode are set on each class (create_cohort, update_cohort). Confirm with the user before publishing.",
       effect: "add",
       external: true,
     },
@@ -155,7 +155,7 @@ export const mcpDomainTools = {
       name: "update_course",
       title: "Update course",
       description:
-        "Change a course's title, description, price, enrollment mode, progression mode, owner, or DRAFT/PUBLISHED status. Only the fields you send are changed. Publishing, or editing a published course, changes what anyone can see on Hakgyo's public catalog and the organization's public pages, so confirm with the user first.",
+        "Change a course's title, description, progression mode, owner, or DRAFT/PUBLISHED status. Price and enrollment mode are set on each class. Only the fields you send are changed. Publishing, or editing a published course, changes what anyone can see on Hakgyo's public catalog and the organization's public pages, so confirm with the user first.",
       effect: "change",
       external: true,
     },

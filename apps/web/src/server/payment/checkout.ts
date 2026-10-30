@@ -88,8 +88,6 @@ export async function loadCohortCheckout(
           title: true,
           thumbnailUrl: true,
           status: true,
-          price: true,
-          enrollmentMode: true,
           organization: {
             select: { name: true, defaultEnrollmentMode: true },
           },
@@ -145,11 +143,10 @@ export async function loadCohortCheckout(
     }),
   ]);
 
-  const price = effectiveCohortPrice(cohort, cohort.course);
+  const price = effectiveCohortPrice(cohort);
   const methods = availablePaymentMethods(destinations);
   const enrollmentMode = effectiveCohortEnrollmentMode(
     cohort,
-    cohort.course,
     cohort.course.organization,
   );
   const alreadyEnrolled =
@@ -312,8 +309,6 @@ export async function listPublicCohorts(
   db: Database,
   course: {
     id: string;
-    price: number;
-    enrollmentMode: "OPEN" | "INVITE_ONLY" | null;
     organization: { defaultEnrollmentMode: "OPEN" | "INVITE_ONLY" };
   },
   now: Date,
@@ -344,8 +339,7 @@ export async function listPublicCohorts(
   });
   const open = cohorts.filter(
     (cohort) =>
-      effectiveCohortEnrollmentMode(cohort, course, course.organization) ===
-      "OPEN",
+      effectiveCohortEnrollmentMode(cohort, course.organization) === "OPEN",
   );
   if (open.length === 0) return [];
 
@@ -364,7 +358,7 @@ export async function listPublicCohorts(
     ({ enrollmentMode: _mode, defaultForCourseId, price, ...cohort }) => ({
       ...cohort,
       selfPaced: defaultForCourseId !== null,
-      price: effectiveCohortPrice({ price }, course),
+      price: effectiveCohortPrice({ price }),
       seatsLeft:
         cohort.capacity === null
           ? null

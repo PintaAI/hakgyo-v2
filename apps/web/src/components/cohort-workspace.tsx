@@ -290,8 +290,7 @@ export function CohortWorkspace({
   );
   const cohort = cohortQuery.data;
   // Free classes have nothing to pay, so the payments tab stays hidden.
-  const showPayments =
-    cohort.access.managePayments && (cohort.price ?? cohort.course.price) > 0;
+  const showPayments = cohort.access.managePayments && (cohort.price ?? 0) > 0;
   const availableViews = views.filter(({ value }) => {
     if (value === "learners")
       return cohort.access.manageLearners || cohort.access.manageInvites;
@@ -539,7 +538,7 @@ function Overview({
   paymentsToReview?: number;
   onNavigate: (view: CohortView) => void;
 }) {
-  const price = cohort.price ?? cohort.course.price;
+  const price = cohort.price ?? 0;
   const active =
     learnersActiveTotal ??
     learners?.filter(({ status }) => status === "ACTIVE").length ??
@@ -600,12 +599,9 @@ function Overview({
                   ? "Daftar sendiri"
                   : cohort.enrollmentMode === "INVITE_ONLY"
                     ? "Lewat undangan"
-                    : "Ikuti kurikulum",
+                    : "Ikuti organisasi",
               ],
-              [
-                "Harga",
-                `${price > 0 ? formatRupiah(price) : "Gratis"}${cohort.price === null ? " (ikuti kurikulum)" : ""}`,
-              ],
+              ["Harga", price > 0 ? formatRupiah(price) : "Gratis"],
             ].map(([label, value]) => (
               <div
                 key={label}
@@ -1930,9 +1926,9 @@ function Settings({
                   value={enrollmentMode}
                   onChange={setEnrollmentMode}
                   options={[
-                    ["INHERIT", "Ikuti kurikulum"],
-                    ["OPEN", "Kurikulum publik"],
-                    ["INVITE_ONLY", "Kurikulum privat"],
+                    ["INHERIT", "Ikuti organisasi"],
+                    ["OPEN", "Daftar sendiri"],
+                    ["INVITE_ONLY", "Lewat undangan"],
                   ]}
                 />
                 <div className="space-y-2">
@@ -1972,11 +1968,7 @@ function Settings({
                     id="settings-cohort-price"
                     type="number"
                     min={0}
-                    placeholder={
-                      cohort.course.price > 0
-                        ? `Ikuti kurikulum (${formatRupiah(cohort.course.price)})`
-                        : "Ikuti kurikulum (gratis)"
-                    }
+                    placeholder="Gratis"
                     value={price}
                     onChange={(event) => setPrice(event.target.value)}
                   />

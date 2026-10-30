@@ -24,6 +24,7 @@ import { organizationBrandSelect } from "~/server/brand/context";
 import { db } from "~/server/db";
 import { deleteCourseTree } from "~/server/superadmin/deletion";
 import { listPublicCohorts } from "~/server/payment/checkout";
+import { lowestOpenCohortPrice } from "~/server/payment/cohort-offer";
 import { generateCourseThumbnail } from "~/server/ai/course-thumbnail";
 import {
   createCourseThumbnailKey,
@@ -50,14 +51,6 @@ const fields = z.object({
     .optional(),
   description: z.string().max(10000).nullable().optional(),
   thumbnailUrl: z.string().url().max(2048).nullable().optional(),
-  price: z.number().int().nonnegative().max(2_147_483_647).optional(),
-  currency: z
-    .string()
-    .trim()
-    .length(3)
-    .transform((v) => v.toUpperCase())
-    .optional(),
-  enrollmentMode: z.enum(["OPEN", "INVITE_ONLY"]).nullable().optional(),
   status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
   progressionMode: z.enum(["OPEN", "SEQUENTIAL"]).optional(),
 });
@@ -293,18 +286,28 @@ export const courseRouter = createTRPCRouter({
           slug: true,
           description: true,
           thumbnailUrl: true,
-          price: true,
-          currency: true,
-          enrollmentMode: true,
           organization: {
             select: {
               ...organizationBrandSelect,
               defaultEnrollmentMode: true,
             },
           },
+          cohorts: {
+            where: {
+              status: { in: ["OPEN", "IN_PROGRESS"] },
+              OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+            },
+            select: { price: true, enrollmentMode: true },
+          },
         },
       });
-      return withCourseCounts(courses);
+      return withCourseCounts(
+        courses.map(({ cohorts, ...course }) => ({
+          ...course,
+          // The cheapest class anyone can join, or null when none is open.
+          lowestPrice: lowestOpenCohortPrice(cohorts, course.organization),
+        })),
+      );
     }),
   getPublished: publicProcedure
     .input(z.object({ courseId: id }))
@@ -317,9 +320,6 @@ export const courseRouter = createTRPCRouter({
           slug: true,
           description: true,
           thumbnailUrl: true,
-          price: true,
-          currency: true,
-          enrollmentMode: true,
           organization: {
             select: {
               ...organizationBrandSelect,

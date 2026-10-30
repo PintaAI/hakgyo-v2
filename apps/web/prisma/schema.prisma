@@ -58,7 +58,6 @@ model User {
   organizationMemberships     OrganizationMember[]
   landingRevisions            OrganizationLandingRevision[]
   acceptedOrganizationInvites OrganizationInvite[]          @relation("OrganizationInviteAcceptedBy")
-  courseEnrollments           CourseEnrollment[]
   cohortEnrollments           CohortEnrollment[]
   assessmentEventParticipants AssessmentEventParticipant[]
   vocabularyProgress          VocabularyProgress[]
@@ -780,8 +779,11 @@ model Course {
   slug              String
   description       String?
   thumbnailUrl      String?
+  /// Unused: price and join mode live on the class (Cohort). Dropped later.
   price             Int                   @default(0)
+  /// Unused, see price.
   currency          String                @default("IDR")
+  /// Unused, see price.
   enrollmentMode    EnrollmentMode?
   status            CourseStatus          @default(DRAFT)
   progressionMode   CourseProgressionMode @default(OPEN)
@@ -792,7 +794,6 @@ model Course {
   modules           CourseModule[]
   collaborators     CourseCollaborator[]
   cohorts           Cohort[]
-  enrollments       CourseEnrollment[]
   enrollmentInvites EnrollmentInvite[]
   assessmentEvents  AssessmentEvent[]
 
@@ -1417,23 +1418,6 @@ model VocabularyEntry {
   @@index([imageAssetId])
   @@index([term(ops: raw("gin_trgm_ops"))], type: Gin, map: "VocabularyEntry_term_trgm_idx")
   @@index([definition(ops: raw("gin_trgm_ops"))], type: Gin, map: "VocabularyEntry_definition_trgm_idx")
-}
-
-model CourseEnrollment {
-  id          String           @id @default(cuid())
-  courseId    String
-  userId      String
-  status      EnrollmentStatus @default(PENDING)
-  source      EnrollmentSource
-  enrolledAt  DateTime         @default(now())
-  completedAt DateTime?
-  expiresAt   DateTime?
-  course      Course           @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([courseId, userId])
-  @@index([courseId, enrolledAt])
-  @@index([userId, status])
 }
 
 model CohortEnrollment {

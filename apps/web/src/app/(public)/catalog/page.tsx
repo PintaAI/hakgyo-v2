@@ -6,6 +6,7 @@ import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { EmptyState } from "~/components/ui/empty-state";
 import { PageHeader } from "~/components/ui/page-header";
+import { formatLowestPrice } from "~/lib/payments/payment";
 import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
@@ -14,20 +15,6 @@ export const metadata: Metadata = {
 };
 
 const pageSize = 24;
-
-function formatPrice(price: number, currency: string) {
-  if (price === 0) return "Gratis";
-
-  try {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(price);
-  } catch {
-    return `${currency} ${price.toLocaleString("id-ID")}`;
-  }
-}
 
 export default async function CatalogPage({
   searchParams,
@@ -92,14 +79,13 @@ export default async function CatalogPage({
                   <div>
                     <dt>Harga</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
-                      {formatPrice(course.price, course.currency)}
+                      {formatLowestPrice(course.lowestPrice)}
                     </dd>
                   </div>
                   <div>
                     <dt>Pendaftaran</dt>
                     <dd className="text-foreground mt-0.5 font-medium">
-                      {(course.enrollmentMode ??
-                        course.organization.defaultEnrollmentMode) === "OPEN"
+                      {course.lowestPrice !== null
                         ? "Daftar sendiri"
                         : "Lewat undangan"}
                     </dd>
