@@ -389,16 +389,33 @@ cohort `DRAFT` dan `CANCELLED` tidak memberi akses. Filter ini ada di
 `courseAccessWhere`). Tampilan yang hanya berlaku selama kelas berjalan, seperti
 jadwal, meeting, dan atribusi attempt, memakai `liveClassCohortWhere`.
 
-### Cohort default (belajar mandiri)
+### Kelas Mandiri (cohort default)
 
 Setiap course dapat memiliki satu cohort sistem dengan `defaultForCourseId`
-berisi `courseId`. Cohort ini dibuat saat pertama dipakai
-(`ensureDefaultCohort`) dan menampung murid yang belajar tanpa kelas: join dari
-katalog, invite course, murid yang ditambahkan manual dari halaman course, dan
-course Hangeul Mastery saat pendaftaran akun. Semua jalur ini menulis lewat
+berisi `courseId`, bernama **Kelas Mandiri** (`DEFAULT_COHORT_NAME`). Ini kelas
+tanpa jadwal dan tanpa akhir untuk murid yang belajar sendiri. Cohort ini dibuat
+saat pertama dipakai (`ensureDefaultCohort`) dan menampung join dari katalog,
+invite course, murid yang ditambahkan manual dari halaman course, dan course
+Hangeul Mastery saat pendaftaran akun. Semua jalur ini menulis lewat
 `upsertDefaultCohortEnrollment`.
 
-Cohort default tidak muncul di daftar dan hitungan cohort, dan
+Di layar Belajar murid (`learning.listMyCohorts` dan
+`listMyCohortMilestones`, filter `learnerClassCohortWhere`), Kelas Mandiri
+tampil sebagai kartu kelas (`selfPaced: true`) setelah kelas berjadwal, hanya
+selama keanggotaannya `ACTIVE`. Kelas Mandiri Hangeul Mastery disembunyikan bila
+murid menyembunyikan Hangeul setelah menguasainya.
+
+Satu kurikulum, satu kelas: murid berada di paling banyak satu kelas berjadwal
+yang sedang berjalan atau di Kelas Mandiri course itu
+(`src/server/enrollment/kelas-mandiri.ts`). Saat murid menjadi `ACTIVE` di kelas
+berjadwal yang berjalan (join gratis, invite kelas, persetujuan pembayaran,
+atau staf), keanggotaan Kelas Mandiri-nya yang `ACTIVE` diubah menjadi
+`CANCELLED` dalam transaksi yang sama (`leaveKelasMandiriForClass`). Progress
+disimpan per murid dan item, jadi tidak ada yang hilang. Sebaliknya, masuk ke
+Kelas Mandiri ditolak selama murid masih di kelas berjadwal yang berjalan
+(`assertNoRunningClassForKelasMandiri`).
+
+Kelas Mandiri tidak muncul di daftar dan hitungan cohort staf, dan
 `requireCohortPermission` menolaknya; muridnya dikelola dari halaman Murid pada
 course.
 
