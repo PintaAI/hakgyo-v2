@@ -1,12 +1,19 @@
 // Learning happens in the native app; the web only hands learners over to it.
 // Store links stay null until the app is published, which renders the store
-// badges as "Segera hadir".
+// badges as "Segera hadir". Until the store listings exist, iPhone users join
+// the public TestFlight beta and Android users install the EAS preview APK,
+// copied to R2 under `app-releases/android/`.
 export const mobileAppStoreLinks: {
   appStore: string | null;
   playStore: string | null;
+  testFlight: string | null;
+  androidApk: string | null;
 } = {
   appStore: null,
   playStore: null,
+  testFlight: "https://testflight.apple.com/join/yGEtbK2q",
+  androidApk:
+    "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/app-releases/android/hakgyo-1.0.0-preview-825b9d98.apk",
 };
 
 export const mobileAppScheme = "hakgyo";

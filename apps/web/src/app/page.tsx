@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 import type { Metadata } from "next";
 
 import { LandingAtmosphere } from "~/components/landing/atmosphere";
-import { slides, type SlideId } from "~/components/landing/deck";
+import { slides, type MainSlideId } from "~/components/landing/deck";
 import { LandingHeader } from "~/components/landing/header";
 import { SlideNavigator } from "~/components/landing/slide-navigator";
 import { AiSlide } from "~/components/landing/slides/ai";
@@ -56,7 +56,7 @@ const structuredData = {
 };
 
 /** Each slide's component; the order comes from `slides` in deck.ts. */
-const slideComponents: Record<SlideId, ComponentType> = {
+const slideComponents: Record<MainSlideId, ComponentType> = {
   mulai: HeroSlide,
   masalah: ProblemSlide,
   solusi: SolutionSlide,

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Image from "next/image";
 import { BellIcon, PaletteIcon, WifiOffIcon } from "lucide-react";
 
@@ -27,45 +28,37 @@ const timeline = [3600, 3600, 3600] as const;
 const notificationScreen = 1;
 
 /** Real screenshots of the learner app in an iPhone frame, one tab at a time. */
-export function LearnerAppDemo() {
+export function LearnerAppDemo({
+  brandCallout = true,
+}: {
+  /** The "your logo and colours" callout, for pages aimed at institutions. */
+  brandCallout?: boolean;
+}) {
   const { ref, step } = useTimeline<HTMLDivElement>(timeline);
 
   return (
     <div ref={ref} className="relative mx-auto w-fit">
-      <div
-        className={cn(
-          "relative w-[236px] rounded-[2.7rem] bg-[#1d1e22] p-[9px] ring-1 ring-black/10 sm:w-[272px] sm:rounded-[3rem] dark:ring-white/15",
-          demoShadow,
-        )}
-      >
-        {/* Side buttons: action and volume on the left, power on the right. */}
-        <span className="absolute top-[88px] -left-[3px] h-6 w-[3px] rounded-l bg-[#2b2c31]" />
-        <span className="absolute top-[128px] -left-[3px] h-11 w-[3px] rounded-l bg-[#2b2c31]" />
-        <span className="absolute top-[182px] -left-[3px] h-11 w-[3px] rounded-l bg-[#2b2c31]" />
-        <span className="absolute top-[150px] -right-[3px] h-16 w-[3px] rounded-r bg-[#2b2c31]" />
-        <div className="relative aspect-[1179/2556] overflow-hidden rounded-[2.15rem] bg-black sm:rounded-[2.45rem]">
-          {screens.map(({ name, alt }, index) => (
-            <Image
-              key={name}
-              src={`/images/landing/app-${name}.webp`}
-              alt={alt}
-              width={886}
-              height={1921}
-              sizes="(min-width: 40rem) 254px, 218px"
-              aria-hidden={index !== step}
-              className={cn(
-                "absolute inset-0 h-full w-full object-cover transition-[opacity,translate] duration-700 ease-[cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:transition-none",
-                index === step
-                  ? "translate-x-0 opacity-100"
-                  : index < step
-                    ? "-translate-x-6 opacity-0"
-                    : "translate-x-6 opacity-0",
-              )}
-            />
-          ))}
-          <span className="absolute top-[9px] left-1/2 h-[22px] w-[78px] -translate-x-1/2 rounded-full bg-black" />
-        </div>
-      </div>
+      <PhoneFrame>
+        {screens.map(({ name, alt }, index) => (
+          <Image
+            key={name}
+            src={`/images/landing/app-${name}.webp`}
+            alt={alt}
+            width={886}
+            height={1921}
+            sizes="(min-width: 40rem) 254px, 218px"
+            aria-hidden={index !== step}
+            className={cn(
+              "absolute inset-0 h-full w-full object-cover transition-[opacity,translate] duration-700 ease-[cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:transition-none",
+              index === step
+                ? "translate-x-0 opacity-100"
+                : index < step
+                  ? "-translate-x-6 opacity-0"
+                  : "translate-x-6 opacity-0",
+            )}
+          />
+        ))}
+      </PhoneFrame>
       <div
         className={cn(
           "border-border bg-card absolute top-[30%] right-[calc(100%-2rem)] hidden w-56 items-start gap-2.5 rounded-2xl border p-3 transition-[opacity,translate] duration-500 ease-out sm:flex",
@@ -96,15 +89,62 @@ export function LearnerAppDemo() {
         <WifiOffIcon className="size-3.5" />
         Tetap jalan saat offline
       </div>
-      <div
-        className={cn(
-          "border-border bg-card absolute -top-5 left-[calc(100%-4.5rem)] hidden items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium whitespace-nowrap sm:flex",
-          demoShadow,
-        )}
-      >
-        <PaletteIcon className="size-3.5" />
-        Logo & warna lembaga Anda
+      {brandCallout ? (
+        <div
+          className={cn(
+            "border-border bg-card absolute -top-5 left-[calc(100%-4.5rem)] hidden items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium whitespace-nowrap sm:flex",
+            demoShadow,
+          )}
+        >
+          <PaletteIcon className="size-3.5" />
+          Logo & warna lembaga Anda
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** An iPhone frame around a screen. */
+function PhoneFrame({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "relative w-[236px] rounded-[2.7rem] bg-[#1d1e22] p-[9px] ring-1 ring-black/10 sm:w-[272px] sm:rounded-[3rem] dark:ring-white/15",
+        demoShadow,
+      )}
+    >
+      {/* Side buttons: action and volume on the left, power on the right. */}
+      <span className="absolute top-[88px] -left-[3px] h-6 w-[3px] rounded-l bg-[#2b2c31]" />
+      <span className="absolute top-[128px] -left-[3px] h-11 w-[3px] rounded-l bg-[#2b2c31]" />
+      <span className="absolute top-[182px] -left-[3px] h-11 w-[3px] rounded-l bg-[#2b2c31]" />
+      <span className="absolute top-[150px] -right-[3px] h-16 w-[3px] rounded-r bg-[#2b2c31]" />
+      <div className="relative aspect-[1179/2556] overflow-hidden rounded-[2.15rem] bg-black sm:rounded-[2.45rem]">
+        {children}
+        <span className="absolute top-[9px] left-1/2 h-[22px] w-[78px] -translate-x-1/2 rounded-full bg-black" />
       </div>
+    </div>
+  );
+}
+
+/** One real screenshot of the learner app in an iPhone frame. */
+export function PhoneScreenshot({
+  screen,
+}: {
+  screen: (typeof screens)[number]["name"];
+}) {
+  const { name, alt } = screens.find((entry) => entry.name === screen)!;
+  return (
+    <div className="mx-auto w-fit">
+      <PhoneFrame>
+        <Image
+          src={`/images/landing/app-${name}.webp`}
+          alt={alt}
+          width={886}
+          height={1921}
+          sizes="(min-width: 40rem) 254px, 218px"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </PhoneFrame>
     </div>
   );
 }

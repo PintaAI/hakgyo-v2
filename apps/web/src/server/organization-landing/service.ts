@@ -158,10 +158,19 @@ function buildLandingPolicy(
     ]),
     ...(mobileAppStoreLinks.appStore
       ? [{ url: mobileAppStoreLinks.appStore, label: "App Store" }]
-      : []),
+      : mobileAppStoreLinks.testFlight
+        ? [
+            {
+              url: mobileAppStoreLinks.testFlight,
+              label: "iPhone beta (TestFlight)",
+            },
+          ]
+        : []),
     ...(mobileAppStoreLinks.playStore
       ? [{ url: mobileAppStoreLinks.playStore, label: "Google Play" }]
-      : []),
+      : mobileAppStoreLinks.androidApk
+        ? [{ url: mobileAppStoreLinks.androidApk, label: "Android beta (APK)" }]
+        : []),
   ];
   const assetOrigins = [
     ...new Set(

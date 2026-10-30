@@ -26,6 +26,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     {
+      url: `${env.APP_URL}/aplikasi`,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
       url: `${env.APP_URL}/catalog`,
       changeFrequency: "daily",
       priority: 0.8,

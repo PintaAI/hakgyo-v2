@@ -7,8 +7,20 @@ import { buttonVariants } from "~/components/ui/button";
 
 import { landingContainer } from "./layout";
 
+const mainLinks = [
+  { href: "#solusi", label: "Fitur" },
+  { href: "#untuk-siapa", label: "Untuk siapa" },
+  { href: "#ai", label: "AI" },
+  { href: "#faq", label: "FAQ" },
+];
+
 /** The page header, laid over the opening slide. */
-export function LandingHeader() {
+export function LandingHeader({
+  links = mainLinks,
+}: {
+  /** Section links; the main landing page's by default. */
+  links?: readonly { href: string; label: string }[];
+}) {
   return (
     <header className="absolute inset-x-0 top-0 z-30">
       <div
@@ -19,21 +31,15 @@ export function LandingHeader() {
           aria-label="Navigasi utama"
           className="text-muted-foreground hidden items-center gap-8 text-sm md:flex"
         >
-          <a href="#solusi" className="hover:text-foreground transition-colors">
-            Fitur
-          </a>
-          <a
-            href="#untuk-siapa"
-            className="hover:text-foreground transition-colors"
-          >
-            Untuk siapa
-          </a>
-          <a href="#ai" className="hover:text-foreground transition-colors">
-            AI
-          </a>
-          <a href="#faq" className="hover:text-foreground transition-colors">
-            FAQ
-          </a>
+          {links.map(({ href, label }) => (
+            <a
+              key={href}
+              href={href}
+              className="hover:text-foreground transition-colors"
+            >
+              {label}
+            </a>
+          ))}
         </nav>
         <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />

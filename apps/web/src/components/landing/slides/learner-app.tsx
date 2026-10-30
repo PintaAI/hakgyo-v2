@@ -1,4 +1,9 @@
+import { ArrowRightIcon } from "lucide-react";
+
 import { Headline } from "~/components/brand/typography";
+import Link from "~/components/link";
+import { buttonVariants } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 import { ConversationDemo } from "../demos/conversation";
 import { LearnerAppDemo } from "../demos/learner-app";
@@ -6,7 +11,7 @@ import { Panel, SlidePanels } from "../panels";
 import { reveal } from "../reveal";
 import { CheckList, Slide, SlideHeading } from "../slide";
 
-const games = [
+export const games = [
   {
     glyph: "한",
     name: "Hangeul",
@@ -70,6 +75,16 @@ export function LearnerAppSlide() {
               "XP, streak, notifikasi, dan tetap jalan saat offline",
             ]}
           />
+          <Link
+            {...reveal(7)}
+            href="/aplikasi"
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "mt-5 h-11 gap-2 px-5 sm:mt-8 sm:h-12 sm:px-6",
+            )}
+          >
+            Unduh aplikasi murid <ArrowRightIcon aria-hidden="true" />
+          </Link>
         </Panel>
         <Panel page={1} sharesPage className="lg:mr-[10%] lg:justify-self-end">
           <div {...reveal(3)} className="py-1 sm:py-4 lg:py-0">
@@ -90,28 +105,7 @@ export function LearnerAppSlide() {
             muted="di aplikasi murid."
             className="hidden max-w-3xl lg:block"
           />
-          {/* A list on phones, a grid of cards on large screens. */}
-          <ul className="mt-3 grid gap-2 lg:mt-12 lg:grid-cols-4 lg:gap-4">
-            {games.map(({ glyph, name, description }, index) => (
-              <li
-                key={name}
-                {...reveal(2 + index)}
-                className="border-border bg-card flex items-center gap-3 rounded-xl border p-1.5 lg:flex-col lg:items-start lg:gap-0 lg:rounded-2xl lg:p-5"
-              >
-                <span className="bg-secondary grid size-9 shrink-0 place-items-center rounded-lg text-sm font-semibold lg:h-12 lg:w-auto lg:min-w-12 lg:rounded-xl lg:px-3 lg:text-lg">
-                  {glyph}
-                </span>
-                <span className="min-w-0 text-sm lg:mt-6">
-                  <span className="block font-medium lg:text-lg lg:tracking-tight">
-                    {name}
-                  </span>
-                  <span className="text-muted-foreground block text-[13px] leading-5 lg:mt-1 lg:text-sm lg:leading-6">
-                    {description}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <GameList />
         </Panel>
         <Panel
           page={3}
@@ -126,5 +120,32 @@ export function LearnerAppSlide() {
         </Panel>
       </SlidePanels>
     </Slide>
+  );
+}
+
+/** The practice games: a list on phones, a grid of cards on large screens. */
+export function GameList() {
+  return (
+    <ul className="mt-3 grid gap-2 lg:mt-12 lg:grid-cols-4 lg:gap-4">
+      {games.map(({ glyph, name, description }, index) => (
+        <li
+          key={name}
+          {...reveal(2 + index)}
+          className="border-border bg-card flex items-center gap-3 rounded-xl border p-1.5 lg:flex-col lg:items-start lg:gap-0 lg:rounded-2xl lg:p-5"
+        >
+          <span className="bg-secondary grid size-9 shrink-0 place-items-center rounded-lg text-sm font-semibold lg:h-12 lg:w-auto lg:min-w-12 lg:rounded-xl lg:px-3 lg:text-lg">
+            {glyph}
+          </span>
+          <span className="min-w-0 text-sm lg:mt-6">
+            <span className="block font-medium lg:text-lg lg:tracking-tight">
+              {name}
+            </span>
+            <span className="text-muted-foreground block text-[13px] leading-5 lg:mt-1 lg:text-sm lg:leading-6">
+              {description}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
