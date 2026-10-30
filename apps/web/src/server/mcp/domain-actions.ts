@@ -357,7 +357,7 @@ export const mcpDomainTools = {
       name: "create_cohort",
       title: "Create cohort",
       description:
-        'Create a cohort (class) for a course. kind SCHEDULED (default) is a class with its own dates; startsAt and endsAt are ISO 8601 date-times. kind SELF_PACED creates the course\'s Kelas Mandiri: open-ended, no dates, status OPEN, named "Kelas Mandiri" unless a name is given; a course has at most one.',
+        'Create a cohort (class) for a course. kind SCHEDULED (default) is a class with its own dates; startsAt and endsAt are ISO 8601 date-times. kind SELF_PACED creates the course\'s Kelas Mandiri: open-ended, no dates, status OPEN by default, named "Kelas Mandiri" unless a name is given; a course has at most one.',
       effect: "add",
     },
     {
@@ -365,7 +365,7 @@ export const mcpDomainTools = {
       name: "update_cohort",
       title: "Update cohort",
       description:
-        "Change a cohort's name, schedule, status, price, capacity or enrollment mode. Only the fields you send are changed. A Kelas Mandiri (defaultForCourseId set) has no dates and is only OPEN or CANCELLED.",
+        "Change a cohort's name, schedule, status, price, capacity or enrollment mode. Only the fields you send are changed. A Kelas Mandiri (defaultForCourseId set) has no dates.",
       effect: "change",
     },
     {

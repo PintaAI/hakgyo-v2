@@ -251,7 +251,7 @@ export const enrollmentRouter = createTRPCRouter({
         });
       }
       // Staff may add a learner to the Kelas Mandiri while another class
-      // runs: it simply stays paused (see kelas-mandiri.ts).
+      // runs: it simply stays paused (see CONTEXT.md, Kelas Mandiri).
       if (input.status === "ACTIVE" && cohort.defaultForCourseId === null) {
         const otherClass = await findOtherRunningClass(ctx.db, {
           cohortId: input.cohortId,

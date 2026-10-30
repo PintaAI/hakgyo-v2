@@ -231,14 +231,8 @@ export async function getPerformanceAnalytics(
     >`
       WITH best AS (${bestCourseAttempts(scope, range.start, range.end)}),
       scores AS (
-        -- Kelas Mandiri attempts carry no cohort: they count for the
-        -- Kelas Mandiri of the attempted item's curriculum.
-        SELECT COALESCE(b."cohortId", mandiri."id") AS "cohortId",
-          COUNT(*)::int AS "assessed", AVG(b."score")::float8 AS "averageScore"
+        SELECT b."cohortId", COUNT(*)::int AS "assessed", AVG(b."score")::float8 AS "averageScore"
         FROM best b
-        LEFT JOIN "CourseItem" item ON b."cohortId" IS NULL AND item."id" = b."courseItemId"
-        LEFT JOIN "CourseModule" m ON m."id" = item."moduleId"
-        LEFT JOIN "Cohort" mandiri ON mandiri."defaultForCourseId" = m."courseId"
         GROUP BY 1
       ),
       completion AS (

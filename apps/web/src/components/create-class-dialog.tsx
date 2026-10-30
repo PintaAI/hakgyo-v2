@@ -184,7 +184,7 @@ export function CreateClassDialog({
                   selected={kind === "SCHEDULED"}
                   icon={<CalendarDaysIcon className="size-4" />}
                   title="Berjadwal"
-                  description="Punya tanggal mulai dan selesai, pertemuan, dan pengajar."
+                  description="Punya tanggal mulai dan selesai."
                   onSelect={() => chooseKind("SCHEDULED")}
                 />
                 <KindOption

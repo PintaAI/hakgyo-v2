@@ -386,7 +386,6 @@ export async function notifyEnrollmentAdded(userId: string, cohortId: string) {
       name: true,
       organizationId: true,
       courseId: true,
-      defaultForCourseId: true,
       course: { select: { title: true } },
     },
   });
@@ -394,9 +393,7 @@ export async function notifyEnrollmentAdded(userId: string, cohortId: string) {
   return notifyUsers([userId], {
     type: "enrollment",
     title: `Kamu terdaftar di ${cohort.course.title}`,
-    body: cohort.defaultForCourseId
-      ? "Kamu bergabung dengan Kelas Mandiri dan bisa belajar kapan saja."
-      : `Kamu bergabung dengan kelas ${cohort.name}.`,
+    body: `Kamu bergabung dengan kelas ${cohort.name}.`,
     organizationId: cohort.organizationId,
     data: { cohortId, courseId: cohort.courseId },
     path: `/learn/${cohort.courseId}`,
@@ -416,7 +413,6 @@ export async function notifyEnrollmentRemoved(
       name: true,
       organizationId: true,
       courseId: true,
-      defaultForCourseId: true,
       course: { select: { title: true } },
     },
   });
@@ -424,9 +420,7 @@ export async function notifyEnrollmentRemoved(
   return notifyUsers([userId], {
     type: "enrollment",
     title: `Akses ${cohort.course.title} berakhir`,
-    body: cohort.defaultForCourseId
-      ? "Kamu tidak lagi terdaftar di Kelas Mandiri."
-      : `Kamu tidak lagi terdaftar di kelas ${cohort.name}.`,
+    body: `Kamu tidak lagi terdaftar di kelas ${cohort.name}.`,
     organizationId: cohort.organizationId,
     data: { cohortId, courseId: cohort.courseId },
     path: "/learn",

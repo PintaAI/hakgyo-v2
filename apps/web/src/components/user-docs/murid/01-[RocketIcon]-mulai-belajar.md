@@ -67,7 +67,7 @@ Halaman **Belajar** menjawab pertanyaan "apa yang harus dikerjakan sekarang?":
 
 ### Kelas Mandiri
 
-Kurikulum yang kamu pelajari sendiri, tanpa jadwal, tampil di **Belajar** sebagai kartu kelas bernama **Kelas Mandiri**. Contohnya Hangeul Mastery untuk akun baru, atau Kelas Mandiri yang kamu pilih dari katalog. Kelas Mandiri tidak punya pertemuan dan tidak berakhir, jadi kamu bisa belajar kapan saja.
+Kurikulum yang kamu pelajari sendiri, tanpa jadwal, tampil di **Belajar** sebagai kartu **Kelas Mandiri**. Contohnya Hangeul Mastery untuk akun baru, atau Kelas Mandiri yang kamu pilih dari katalog. Kelas Mandiri tidak punya jadwal dan tidak berakhir, jadi kamu bisa belajar kapan saja.
 
 - Jika kamu ikut kelas berjadwal untuk kurikulum yang sama, kartu Kelas Mandiri disembunyikan selama kelas itu berjalan. Kamu cukup belajar lewat kelasmu. Selama kelas itu berjalan, kamu juga belum bisa bergabung sendiri ke Kelas Mandiri kurikulum tersebut.
 - Setelah kelas berjadwal selesai, atau kamu keluar dari kelas itu, kartu Kelas Mandiri muncul lagi.
