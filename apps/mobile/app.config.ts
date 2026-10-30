@@ -26,7 +26,7 @@ export default {
     name: isDev ? "Hakgyo Dev" : "Hakgyo",
     slug: "hakgyo",
     scheme: "hakgyo",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
@@ -51,6 +51,10 @@ export default {
       infoPlist: {
         CFBundleDevelopmentRegion: "id",
         CFBundleLocalizations: ["id"],
+        // expo-image links the photo library loader, so App Store upload
+        // requires this string even though Hakgyo never opens the library.
+        NSPhotoLibraryUsageDescription:
+          "Hakgyo tidak mengakses galeri fotomu dan tidak pernah meminta izin ini.",
       },
       // Data Hakgyo itself collects plus the required-reason APIs used by
       // React Native and Expo modules. Nothing is used for tracking.
