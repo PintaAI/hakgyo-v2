@@ -220,9 +220,9 @@ export async function getPerformanceAnalytics(
     `,
     db.$queryRaw<
       Array<{
-        cohortId: string | null;
-        cohortName: string | null;
-        courseTitle: string | null;
+        cohortId: string;
+        cohortName: string;
+        courseTitle: string;
         learners: number;
         averageScore: number | null;
         completed: number;
@@ -231,8 +231,14 @@ export async function getPerformanceAnalytics(
     >`
       WITH best AS (${bestCourseAttempts(scope, range.start, range.end)}),
       scores AS (
-        SELECT b."cohortId", COUNT(*)::int AS "assessed", AVG(b."score")::float8 AS "averageScore"
+        -- Kelas Mandiri attempts carry no cohort: they count for the
+        -- Kelas Mandiri of the attempted item's curriculum.
+        SELECT COALESCE(b."cohortId", mandiri."id") AS "cohortId",
+          COUNT(*)::int AS "assessed", AVG(b."score")::float8 AS "averageScore"
         FROM best b
+        LEFT JOIN "CourseItem" item ON b."cohortId" IS NULL AND item."id" = b."courseItemId"
+        LEFT JOIN "CourseModule" m ON m."id" = item."moduleId"
+        LEFT JOIN "Cohort" mandiri ON mandiri."defaultForCourseId" = m."courseId"
         GROUP BY 1
       ),
       completion AS (
@@ -253,30 +259,7 @@ export async function getPerformanceAnalytics(
       JOIN "Cohort" c ON c."id" = completion."cohortId"
       JOIN "Course" course ON course."id" = c."courseId"
       LEFT JOIN scores ON scores."cohortId" = c."id"
-      WHERE c."defaultForCourseId" IS NULL
-      UNION ALL
-      -- Self-paced learners: their attempts carry no cohort.
-      SELECT
-        NULL,
-        NULL,
-        NULL,
-        COALESCE((
-          SELECT SUM(completion."learners") FROM completion
-          JOIN "Cohort" c ON c."id" = completion."cohortId"
-          WHERE c."defaultForCourseId" IS NOT NULL
-        ), 0)::int,
-        (SELECT scores."averageScore" FROM scores WHERE scores."cohortId" IS NULL),
-        COALESCE((
-          SELECT SUM(completion."completed") FROM completion
-          JOIN "Cohort" c ON c."id" = completion."cohortId"
-          WHERE c."defaultForCourseId" IS NOT NULL
-        ), 0)::int,
-        COALESCE((
-          SELECT SUM(completion."items") FROM completion
-          JOIN "Cohort" c ON c."id" = completion."cohortId"
-          WHERE c."defaultForCourseId" IS NOT NULL
-        ), 0)::int
-      ORDER BY 4 DESC
+      ORDER BY completion."learners" DESC, c."name" ASC
     `,
     db.$queryRaw<
       Array<{
@@ -421,7 +404,6 @@ export async function getPerformanceAnalytics(
         cohortId: row.cohortId,
         cohortName: row.cohortName,
         courseTitle: row.courseTitle,
-        selfPaced: row.cohortId === null,
         learners: toNumber(row.learners),
         averageScore: row.averageScore,
         completionRate: ratio(toNumber(row.completed), toNumber(row.items)),

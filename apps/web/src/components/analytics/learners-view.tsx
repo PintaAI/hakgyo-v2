@@ -193,17 +193,13 @@ export function LearnersView({
                   <LearnerAvatar name={learner.name} image={learner.image} />
                 ),
                 title: learner.name,
-                subtitle: learner.selfPaced
-                  ? `Belajar mandiri · ${learner.courseTitle}`
-                  : `${learner.cohortName} · ${learner.courseTitle}`,
+                subtitle: `${learner.cohortName} · ${learner.courseTitle}`,
                 value: `${formatCount(days)} hari`,
                 detail: learner.lastActiveAt
                   ? `aktif ${formatShortDate(learner.lastActiveAt)}`
                   : "belum pernah aktif",
                 warn: true,
-                href: learner.selfPaced
-                  ? `${root}/courses/${learner.courseId}?view=learners`
-                  : `${root}/courses/${learner.courseId}/cohorts/${learner.cohortId}?view=learners`,
+                href: `${root}/courses/${learner.courseId}/cohorts/${learner.cohortId}?view=learners`,
               };
             })}
           />
@@ -244,7 +240,7 @@ export function LearnersView({
               : null;
             return {
               key: cohort.cohortId,
-              title: cohort.selfPaced ? "Belajar mandiri" : cohort.cohortName,
+              title: cohort.cohortName,
               subtitle:
                 cohort.status === "COMPLETED"
                   ? `Kelas selesai · ${cohort.courseTitle}`
@@ -258,9 +254,7 @@ export function LearnersView({
               // Finished classes are expected to go quiet.
               warn:
                 cohort.status !== "COMPLETED" && share !== null && share < 0.5,
-              href: cohort.selfPaced
-                ? `${root}/courses/${cohort.courseId}?view=learners`
-                : `${root}/courses/${cohort.courseId}/cohorts/${cohort.cohortId}?view=learners`,
+              href: `${root}/courses/${cohort.courseId}/cohorts/${cohort.cohortId}?view=learners`,
             };
           })}
         />

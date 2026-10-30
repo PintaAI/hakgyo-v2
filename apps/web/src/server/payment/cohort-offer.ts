@@ -21,17 +21,15 @@ export function effectiveCohortEnrollmentMode(
   );
 }
 
-/** Class cohorts learners can still join: open or running, not ended. */
+/**
+ * Classes learners can still join, a Kelas Mandiri included: open or
+ * running, not ended.
+ */
 export function isCohortJoinable(
-  cohort: {
-    status: string;
-    endsAt: Date | null;
-    defaultForCourseId: string | null;
-  },
+  cohort: { status: string; endsAt: Date | null },
   now: Date,
 ) {
   return (
-    cohort.defaultForCourseId === null &&
     (cohort.status === "OPEN" || cohort.status === "IN_PROGRESS") &&
     (cohort.endsAt === null || cohort.endsAt > now)
   );

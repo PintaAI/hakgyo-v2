@@ -153,7 +153,11 @@ export function CohortCheckout({
             <div className="flex items-center gap-2">
               <CalendarDaysIcon className="text-muted-foreground size-4" />
               <dt className="sr-only">Periode</dt>
-              <dd>{formatPeriod(data.cohort.startsAt, data.cohort.endsAt)}</dd>
+              <dd>
+                {data.cohort.selfPaced
+                  ? "Kelas Mandiri · belajar kapan saja"
+                  : formatPeriod(data.cohort.startsAt, data.cohort.endsAt)}
+              </dd>
             </div>
             {data.cohort.seatsLeft !== null ? (
               <div className="flex items-center gap-2">

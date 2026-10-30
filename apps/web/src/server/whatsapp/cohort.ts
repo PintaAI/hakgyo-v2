@@ -88,13 +88,8 @@ export async function requestCohortGroup(input: {
 }) {
   const cohort = await db.cohort.findUniqueOrThrow({
     where: { id: input.cohortId },
-    select: {
-      organizationId: true,
-      whatsappGroupJid: true,
-      defaultForCourseId: true,
-    },
+    select: { organizationId: true, whatsappGroupJid: true },
   });
-  if (cohort.defaultForCourseId) throw new TRPCError({ code: "NOT_FOUND" });
   if (cohort.whatsappGroupJid) {
     throw new TRPCError({
       code: "CONFLICT",
@@ -207,7 +202,6 @@ export async function enqueueAutoCohortGroup(cohortId: string) {
     select: {
       organizationId: true,
       status: true,
-      defaultForCourseId: true,
       whatsappGroupJid: true,
       whatsappGroupUrl: true,
     },
@@ -219,7 +213,6 @@ export async function enqueueAutoCohortGroup(cohortId: string) {
   });
   if (
     cohort.status !== "OPEN" ||
-    cohort.defaultForCourseId ||
     cohort.whatsappGroupJid ||
     cohort.whatsappGroupUrl ||
     connection?.status !== "CONNECTED" ||

@@ -56,15 +56,12 @@ export async function createCohortGroup(
       id: true,
       name: true,
       description: true,
-      defaultForCourseId: true,
       whatsappGroupJid: true,
       whatsappGroupUrl: true,
       course: { select: { id: true, title: true, thumbnailUrl: true } },
     },
   });
-  if (!cohort || cohort.defaultForCourseId) {
-    throw new WhatsappWorkCancelled("Kelas tidak ditemukan.");
-  }
+  if (!cohort) throw new WhatsappWorkCancelled("Kelas tidak ditemukan.");
 
   let groupJid = cohort.whatsappGroupJid;
   if (!groupJid) {

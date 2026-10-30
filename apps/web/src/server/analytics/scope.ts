@@ -11,9 +11,8 @@ export type AnalyticsDb = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
 /**
  * Which classes an analytics viewer sees. Owners and admins see the whole
- * organization, including the self-paced "Belajar mandiri" cohorts.
- * Teachers see the class cohorts they are staff on (and, in ADVANCED mode,
- * the classes of courses they own), never self-paced learners.
+ * organization. Teachers see the classes they are staff on (and, in ADVANCED
+ * mode, the classes of courses they own), a Kelas Mandiri like any other.
  */
 export type AnalyticsScope = {
   organizationId: string;
@@ -41,7 +40,6 @@ export async function resolveAnalyticsScope(
   const cohorts = await db.cohort.findMany({
     where: {
       organizationId: input.organizationId,
-      defaultForCourseId: null,
       ...getOrganizationCohortScope({
         membershipId: membership.id,
         permissionMode: membership.organization.permissionMode,
@@ -72,7 +70,7 @@ export async function requireRevenueViewer(input: {
 
 /**
  * `AND <column> = ANY(<cohorts>)` for a scoped viewer, nothing otherwise.
- * Rows without a cohort (self-paced attempts) drop out of a scoped view.
+ * Rows without a cohort (Kelas Mandiri attempts) drop out of a scoped view.
  */
 export function cohortFilter(scope: AnalyticsScope, column: Prisma.Sql) {
   if (scope.cohortIds === null) return Prisma.empty;

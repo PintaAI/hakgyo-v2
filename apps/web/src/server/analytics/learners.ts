@@ -21,7 +21,7 @@ const enrollmentSources = [
 
 /**
  * Memberships the viewer can see, joined to their cohort. Owners and admins
- * see every cohort, including the self-paced "Belajar mandiri" ones.
+ * see every cohort, including each curriculum's Kelas Mandiri.
  */
 export function scopedEnrollments(scope: AnalyticsScope) {
   return Prisma.sql`
@@ -130,7 +130,6 @@ export async function getLearnerAnalytics(
           image: string | null;
           cohortId: string;
           cohortName: string;
-          selfPaced: boolean;
           courseId: string;
           courseTitle: string;
           enrolledAt: Date;
@@ -165,7 +164,6 @@ export async function getLearnerAnalytics(
           u."image",
           c."id" AS "cohortId",
           c."name" AS "cohortName",
-          (c."defaultForCourseId" IS NOT NULL) AS "selfPaced",
           course."id" AS "courseId",
           course."title" AS "courseTitle",
           latest."enrolledAt",
@@ -184,7 +182,6 @@ export async function getLearnerAnalytics(
         Array<{
           cohortId: string;
           cohortName: string;
-          selfPaced: boolean;
           status: CohortStatus;
           courseId: string;
           courseTitle: string;
@@ -201,7 +198,6 @@ export async function getLearnerAnalytics(
         SELECT
           c."id" AS "cohortId",
           c."name" AS "cohortName",
-          (c."defaultForCourseId" IS NOT NULL) AS "selfPaced",
           c."status"::text AS "status",
           course."id" AS "courseId",
           course."title" AS "courseTitle",

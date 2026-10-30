@@ -21,7 +21,7 @@ export async function withCourseCounts<T extends { id: string }>(
     }),
     db.cohort.groupBy({
       by: ["courseId"],
-      where: { ...where, defaultForCourseId: null },
+      where,
       _count: { _all: true },
     }),
   ]);

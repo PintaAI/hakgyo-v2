@@ -183,6 +183,25 @@ describe("requireCohortPermission", () => {
     });
     expect(access).toMatchObject({ courseId: "course-1" });
   });
+
+  test("manages the course's Kelas Mandiri like any other class", async () => {
+    cohortFindUnique.mockImplementationOnce(async () => ({
+      courseId: "course-1",
+      defaultForCourseId: "course-1",
+      course: await courseFindUnique(),
+      staff: [],
+    }));
+
+    const access = await requireCohortPermission({
+      cohortId: "kelas-mandiri",
+      permission: "learners.manage",
+      userId: "owner-1",
+    });
+    expect(access).toMatchObject({
+      courseId: "course-1",
+      defaultForCourseId: "course-1",
+    });
+  });
 });
 
 describe("requireOrganizationPermission", () => {
