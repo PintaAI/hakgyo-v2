@@ -86,13 +86,12 @@ Murid tetap bisa ikut kelas berjadwal untuk kurikulum yang sama. Selama kelas it
 
 ## Pendaftaran tanpa undangan
 
-Murid bisa mendaftar sendiri dari katalog Hakgyo jika kelas atau kurikulumnya **publik**. Aturan ini bisa diatur di tiga tempat. Pengaturan kelas mengalahkan pengaturan kurikulum, dan pengaturan kurikulum mengalahkan pengaturan organisasi:
+Murid bisa mendaftar sendiri dari katalog Hakgyo jika kelasnya terbuka untuk umum. Aturan ini diatur di dua tempat. Pengaturan kelas mengalahkan pengaturan organisasi:
 
 1. **Kelas**: tab **Pengaturan**, pilihan **Tipe akses**.
-2. **Kurikulum**: tab **Pengaturan**, pilihan **Tipe kurikulum**.
-3. **Organisasi**: **Pengaturan**, tab **Umum**, tombol **Kurikulum publik secara default**.
+2. **Organisasi**: **Pengaturan**, tab **Umum**, tombol **Kurikulum publik secara default**.
 
-Kelas tampil di katalog dan bisa dipilih murid jika statusnya **Dibuka** atau **Berjalan**, belum lewat tanggal selesai, dan aturannya publik. Kelas Mandiri tampil sebagai **Kelas Mandiri · belajar kapan saja**. Murid selalu bergabung lewat kelas; jika kurikulum belum punya kelas yang dibuka, katalog menampilkan **Belum ada kelas yang dibuka untuk kurikulum ini**.
+Kelas tampil di katalog dan bisa dipilih murid jika statusnya **Dibuka** atau **Berjalan**, belum lewat tanggal selesai, dan aturannya **Daftar sendiri**. Kelas Mandiri tampil sebagai **Kelas Mandiri · belajar kapan saja**. Murid selalu bergabung lewat kelas; jika kurikulum belum punya kelas yang dibuka, katalog menampilkan **Belum ada kelas yang dibuka untuk kurikulum ini**.
 
 ## Menerima pembayaran
 
@@ -114,7 +113,7 @@ Mengubah QRIS atau rekening tidak mengubah pembayaran yang sudah dibuat.
 
 ### Langkah 2: Beri harga kelas
 
-Isi **Harga (IDR)** di tab **Pengaturan** kelas, atau **Harga** di pengaturan kurikulum. Tab **Pembayaran** di halaman kelas hanya muncul jika harganya lebih dari 0.
+Isi **Harga (IDR)** saat membuat kelas atau di tab **Pengaturan** kelas. Harga hanya diatur per kelas. Tab **Pembayaran** di halaman kelas hanya muncul jika harganya lebih dari 0.
 
 ### Langkah 3: Periksa bukti bayar
 

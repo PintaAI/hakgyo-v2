@@ -572,7 +572,10 @@ query({
 - Hanya course `PUBLISHED`.
 - Untuk pagination, kirim `id` item terakhir sebagai `cursor`; pagination selesai
   ketika jumlah output lebih kecil dari `limit`.
-- Output: metadata katalog, organization, jumlah module dan cohort.
+- Output: metadata katalog, organization, jumlah module dan cohort, dan
+  `lowestPrice`: harga termurah kelas yang bisa diikuti siapa pun (status
+  `OPEN`/`IN_PROGRESS`, belum berakhir, mode efektif `OPEN`), atau `null` jika
+  tidak ada. Katalog menampilkannya sebagai "Mulai Rp X" atau "Gratis".
 - Tidak mengembalikan konten material atau jawaban assessment.
 
 ### `course.getPublished`
@@ -634,9 +637,6 @@ type CourseFields = {
   slug: string; // kebab-case, 2..100
   description?: string | null; // max 10,000
   thumbnailUrl?: string | null; // URL, max 2,048
-  price?: number; // integer >= 0
-  currency?: string; // tepat 3 karakter, uppercase
-  enrollmentMode?: "OPEN" | "INVITE_ONLY" | null;
   status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   progressionMode?: "OPEN" | "SEQUENTIAL";
 };
@@ -1022,8 +1022,8 @@ type CohortFields = {
   description?: string | null; // max 10,000
   whatsappGroupUrl?: string | null;
   status?: "DRAFT" | "OPEN" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  enrollmentMode?: "OPEN" | "INVITE_ONLY" | null;
-  price?: number | null; // integer >= 0
+  enrollmentMode?: "OPEN" | "INVITE_ONLY" | null; // null: ikuti organisasi
+  price?: number | null; // integer >= 0, IDR; null: gratis
   capacity?: number | null; // integer > 0
   startsAt?: Date | null;
   endsAt?: Date | null;
@@ -1081,7 +1081,7 @@ mutation(Omit<CohortFields, "name"> & {
 - `SCHEDULED`: kelas berjadwal biasa; status default `DRAFT`.
 - `SELF_PACED`: Kelas Mandiri course. `defaultForCourseId = courseId`, nama
   default `"Kelas Mandiri"`, status default `OPEN`, `enrollmentMode` `null`
-  (mengikuti course/organization), tanpa staff otomatis. Baris yang sama
+  (mengikuti organization), `price` `null` (gratis), tanpa staff otomatis. Baris yang sama
   dengan yang dibuat `ensureDefaultCohort` saat pertama dipakai.
 - Satu course hanya punya satu Kelas Mandiri; yang kedua menghasilkan
   `CONFLICT`.

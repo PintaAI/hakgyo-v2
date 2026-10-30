@@ -17,7 +17,7 @@ Hakgyo menggunakan PostgreSQL dan Prisma. Database dibagi menjadi tujuh domain:
 | Cohort             | `Cohort`, `CohortStaff`, `CohortMeeting`, `ZoomConnection`                                                                   | Kelas berbasis batch dan live meeting                 |
 | Materi             | `Material`, `VocabularySet`, `VocabularyEntry`, `MaterialRequirement`                                                        | Materi BlockNote, kosakata, dan syarat penyelesaian   |
 | Assessment         | `Assessment`, `AssessmentQuestion`, `AssessmentOption`, `AssessmentAttempt`, `AssessmentAnswer`, `AssessmentAnswerSelection` | Quiz, pengerjaan, penilaian otomatis, dan review guru |
-| Akses dan progress | `CourseEnrollment`, `CohortEnrollment`, `EnrollmentInvite`, `ContentProgress`                                                | Pendaftaran, undangan, dan kemajuan belajar           |
+| Akses dan progress | `CohortEnrollment`, `EnrollmentInvite`, `ContentProgress`                                                                    | Pendaftaran, undangan, dan kemajuan belajar           |
 | File               | `Asset`, `MaterialAsset`                                                                                                     | Metadata file R2 dan keterkaitannya dengan materi     |
 
 ## Gambaran Besar
@@ -35,8 +35,6 @@ flowchart TD
   CourseItem -->|type ASSESSMENT| Assessment
   CourseItem -->|type VOCABULARY_SET| VocabularySet
 
-  User --> CourseEnrollment
-  Course --> CourseEnrollment
   User --> CohortEnrollment
   Cohort --> CohortEnrollment
 
@@ -123,13 +121,12 @@ Produk pembelajaran utama, misalnya `Korean Beginner 1`.
 
 Field penting:
 
-| Field               | Keterangan                                             |
-| ------------------- | ------------------------------------------------------ |
-| `ownerMembershipId` | Anggota organisasi yang bertanggung jawab atas course  |
-| `slug`              | Unik di dalam organisasi                               |
-| `price`, `currency` | Harga default cohort; lihat `docs/payments.md`         |
-| `enrollmentMode`    | Override aturan enrollment organisasi, jika diperlukan |
-| `status`            | `DRAFT`, `PUBLISHED`, atau `ARCHIVED`                  |
+| Field                                 | Keterangan                                                                                     |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `ownerMembershipId`                   | Anggota organisasi yang bertanggung jawab atas course                                          |
+| `slug`                                | Unik di dalam organisasi                                                                       |
+| `price`, `currency`, `enrollmentMode` | Tidak dipakai lagi; harga dan mode enrollment ada di cohort. Dihapus pada migration berikutnya |
+| `status`                              | `DRAFT`, `PUBLISHED`, atau `ARCHIVED`                                                          |
 
 ### CourseModule
 
@@ -326,13 +323,14 @@ Batch kelas untuk course tertentu, misalnya `Korean Beginner - Agustus 2026`.
 
 Field penting:
 
-| Field                | Keterangan                                      |
-| -------------------- | ----------------------------------------------- |
-| `status`             | Draft, open, berjalan, selesai, atau dibatalkan |
-| `capacity`           | Batas learner dalam cohort                      |
-| `startsAt`, `endsAt` | Periode cohort                                  |
-| `whatsappGroupUrl`   | Grup komunikasi cohort                          |
-| `price`              | Override harga course untuk cohort tertentu     |
+| Field                | Keterangan                                       |
+| -------------------- | ------------------------------------------------ |
+| `status`             | Draft, open, berjalan, selesai, atau dibatalkan  |
+| `capacity`           | Batas learner dalam cohort                       |
+| `startsAt`, `endsAt` | Periode cohort                                   |
+| `whatsappGroupUrl`   | Grup komunikasi cohort                           |
+| `price`              | Harga kelas dalam IDR; kosong berarti gratis     |
+| `enrollmentMode`     | Mode enrollment; kosong berarti ikuti organisasi |
 
 ### CohortStaff
 
@@ -361,8 +359,6 @@ divalidasi melalui enrollment atau role pengguna.
 
 ```mermaid
 erDiagram
-  User ||--o{ CourseEnrollment : mendaftar
-  Course ||--o{ CourseEnrollment : menerima
   User ||--o{ CohortEnrollment : bergabung
   Cohort ||--o{ CohortEnrollment : menerima
   Course ||--o{ EnrollmentInvite : memiliki
@@ -372,11 +368,9 @@ erDiagram
   CourseItem ||--o{ ContentProgress : dilacak
 ```
 
-### CourseEnrollment
-
-Tabel lama yang tidak lagi dibaca maupun ditulis. Akses course sekarang hanya
-berasal dari `CohortEnrollment`; tabel ini akan dihapus pada migration
-berikutnya.
+Tabel lama `CourseEnrollment` sudah dihapus dari schema Prisma dan tidak
+dipakai kode; tabelnya di-drop pada migration berikutnya. Akses course hanya
+berasal dari `CohortEnrollment`.
 
 ### CohortEnrollment
 
@@ -403,7 +397,7 @@ update), dan paling banyak satu per course (unique index
 dipakai (`ensureDefaultCohort`, misalnya course Hangeul Mastery saat
 pendaftaran akun lewat `upsertDefaultCohortEnrollment`). Keduanya memakai baris
 yang sama (`kelasMandiriData`): status `OPEN`, `enrollmentMode` kosong
-(mengikuti course/organization), tanpa staf.
+(mengikuti organization), harga kosong (gratis), tanpa staf.
 
 Di layar Belajar murid (`learning.listMyCohorts` dan
 `listMyCohortMilestones`, filter `learnerClassCohortWhere`), Kelas Mandiri
