@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CreateClassDialog } from "~/components/create-class-dialog";
 import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -86,13 +87,18 @@ export function CourseCreateForm({
   const { error } = createCourse;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  // The new curriculum, while "Buat kelas pertama" is offered.
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const coursesHref = `/workspace/${organizationSlug}/courses`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const course = await createCourse.create({ title, description });
-    if (!course) return;
-    router.replace(coursesHref);
+    if (course) setCreatedId(course.id);
+  }
+
+  function leave(destination: string) {
+    router.replace(destination);
     router.refresh();
   }
 
@@ -184,7 +190,10 @@ export function CourseCreateForm({
             >
               Batal
             </Link>
-            <Button type="submit" disabled={createCourse.isPending}>
+            <Button
+              type="submit"
+              disabled={createCourse.isPending || createdId !== null}
+            >
               {createCourse.isPending ? (
                 <LoaderCircleIcon
                   className="animate-spin"
@@ -228,6 +237,21 @@ export function CourseCreateForm({
           </div>
         </aside>
       </div>
+
+      {createdId ? (
+        <CreateClassDialog
+          courseId={createdId}
+          open
+          hasKelasMandiri={false}
+          title="Buat kelas pertama"
+          description="Kurikulum sudah dibuat. Murid bergabung lewat kelas: buat kelas berjadwal atau Kelas Mandiri sekarang, atau lewati dan buat nanti di tab Kelas."
+          cancelLabel="Lewati"
+          onOpenChange={(open) => {
+            if (!open) leave(coursesHref);
+          }}
+          onCreated={() => leave(`${coursesHref}/${createdId}?view=cohorts`)}
+        />
+      ) : null}
     </div>
   );
 }

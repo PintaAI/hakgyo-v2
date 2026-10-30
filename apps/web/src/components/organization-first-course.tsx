@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { CourseCover } from "~/components/course-cover";
 import { CourseCoverEditor } from "~/components/course-cover-editor";
 import { useCreateCourse } from "~/components/course-create-form";
+import { CreateClassDialog } from "~/components/create-class-dialog";
 import { FlowShell, surfaceCard } from "~/components/brand/flow-shell";
 import { Headline, Kicker, leadText } from "~/components/brand/typography";
 import Link from "~/components/link";
@@ -63,6 +64,12 @@ export function OrganizationFirstCourse({
   const utils = api.useUtils();
   const [start, setStart] = useState<Start | null>(null);
   const [cloned, setCloned] = useState<ClonedCourse | null>(null);
+  // A curriculum was just made: "Buat kelas pertama" is offered, then the
+  // owner continues to `destination` whether they create a class or skip.
+  const [firstClass, setFirstClass] = useState<{
+    courseId: string;
+    destination: string;
+  } | null>(null);
   const dashboardHref = `/workspace/${organizationSlug}/dashboard`;
   const courseHref = (courseId: string) =>
     `/workspace/${organizationSlug}/courses/${courseId}/kurikulum`;
@@ -74,7 +81,7 @@ export function OrganizationFirstCourse({
 
   async function customized(courseId: string) {
     await utils.course.list.invalidate({ organizationId });
-    open(courseHref(courseId));
+    setFirstClass({ courseId, destination: courseHref(courseId) });
   }
 
   const leave = (
@@ -131,15 +138,32 @@ export function OrganizationFirstCourse({
             ownerMembershipId={ownerMembershipId}
             onBack={() => setStart(null)}
             onCreated={(courseId) =>
-              open(
-                start === "pdf"
-                  ? `${courseHref(courseId)}/impor-pdf`
-                  : courseHref(courseId),
-              )
+              setFirstClass({
+                courseId,
+                destination:
+                  start === "pdf"
+                    ? `${courseHref(courseId)}/impor-pdf`
+                    : courseHref(courseId),
+              })
             }
           />
         )}
       </div>
+
+      {firstClass ? (
+        <CreateClassDialog
+          courseId={firstClass.courseId}
+          open
+          hasKelasMandiri={false}
+          title="Buat kelas pertama"
+          description="Murid bergabung ke kurikulum lewat kelas. Buat kelas berjadwal atau Kelas Mandiri sekarang, atau lewati dan buat nanti di tab Kelas."
+          cancelLabel="Lewati"
+          onOpenChange={(next) => {
+            if (!next) open(firstClass.destination);
+          }}
+          onCreated={() => open(firstClass.destination)}
+        />
+      ) : null}
     </FlowShell>
   );
 }
