@@ -15,6 +15,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 
 import { PrismaClient } from "../generated/prisma/client";
 import { sendWeeklyAnalyticsDigests } from "../src/server/analytics/weekly-digest";
+import { DEFAULT_COHORT_NAME } from "../src/server/enrollment/default-cohort";
 import type {
   CohortStatus,
   EnrollmentSource,
@@ -489,13 +490,13 @@ async function main() {
     }
     courseItems.set(spec.key, items);
 
-    // The course's self-paced cohort ("Belajar mandiri").
+    // The course's Kelas Mandiri, its open-ended cohort.
     await db.cohort.create({
       data: {
         id: `${courseId}-self-paced`,
         courseId,
         organizationId: ORG_ID,
-        name: "Belajar mandiri",
+        name: DEFAULT_COHORT_NAME,
         status: "OPEN",
         defaultForCourseId: courseId,
         createdAt: daysAgo(370),

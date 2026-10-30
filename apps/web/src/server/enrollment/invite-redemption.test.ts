@@ -264,4 +264,83 @@ describe("invite redemption", () => {
       },
     ]);
   });
+
+  test("refuses a course invite while the learner takes a running class of the course", async () => {
+    const { tx, getUseCount } = createTransaction();
+    const lookups: unknown[] = [];
+    Object.assign(tx, {
+      $executeRaw: () => Promise.resolve(1),
+      cohortEnrollment: {
+        // Not in the Kelas Mandiri, but active in a running class.
+        findFirst: (args: unknown) => {
+          lookups.push(args);
+          return Promise.resolve(
+            lookups.length === 1
+              ? null
+              : { cohort: { id: "cohort-1", name: "Kelas Pagi" } },
+          );
+        },
+      },
+    });
+
+    expect(
+      await rejectionCode(
+        redeemEnrollmentInvite(tx, {
+          token: "one-time-token-that-is-long-enough",
+          userId: "user-1",
+          now,
+        }),
+      ),
+    ).toBe("PRECONDITION_FAILED");
+    expect(getUseCount()).toBe(0);
+  });
+
+  test("moves the learner out of the Kelas Mandiri when a class invite is redeemed", async () => {
+    const membershipUpdates: unknown[] = [];
+    const tx = {
+      $executeRaw: () => Promise.resolve(1),
+      enrollmentInvite: {
+        findUnique: () =>
+          Promise.resolve({
+            id: "invite-1",
+            courseId: "course-1",
+            cohortId: "cohort-2",
+            revokedAt: null,
+            expiresAt: null,
+            maxUses: null,
+            useCount: 0,
+            course: { price: 0 },
+            cohort: { status: "OPEN", endsAt: null, price: null },
+          }),
+        updateMany: () => Promise.resolve({ count: 1 }),
+      },
+      cohort: {
+        findFirst: () => Promise.resolve({ courseId: "course-1" }),
+      },
+      cohortEnrollment: {
+        findFirst: () => Promise.resolve(null),
+        upsert: () => Promise.resolve({ id: "membership-1" }),
+        updateMany: (args: unknown) => {
+          membershipUpdates.push(args);
+          return Promise.resolve({ count: 1 });
+        },
+      },
+    } as unknown as Prisma.TransactionClient;
+
+    await redeemEnrollmentInvite(tx, {
+      token: "class-invite-token-long-enough",
+      userId: "user-1",
+      now,
+    });
+    expect(membershipUpdates).toEqual([
+      {
+        where: {
+          userId: "user-1",
+          status: "ACTIVE",
+          cohort: { defaultForCourseId: "course-1" },
+        },
+        data: { status: "CANCELLED" },
+      },
+    ]);
+  });
 });

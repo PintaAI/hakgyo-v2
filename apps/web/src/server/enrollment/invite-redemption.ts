@@ -6,6 +6,7 @@ import {
   otherRunningClassMessage,
 } from "~/server/enrollment/cohort-access";
 import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
+import { leaveKelasMandiriForClass } from "~/server/enrollment/kelas-mandiri";
 import { effectiveCohortPrice } from "~/server/payment/cohort-offer";
 
 export async function findRedeemableEnrollmentInvite(
@@ -95,7 +96,7 @@ export async function redeemEnrollmentInvite(
   await tx.$executeRaw`
     SELECT pg_advisory_xact_lock(hashtextextended(${`invite-redeem:${invite.cohortId ?? invite.courseId}:${input.userId}`}, 0))
   `;
-  // Course invites join the course's default self-paced cohort.
+  // Course invites join the course's Kelas Mandiri.
   const existing = await tx.cohortEnrollment.findFirst({
     where: {
       userId: input.userId,
@@ -126,19 +127,19 @@ export async function redeemEnrollmentInvite(
     });
   }
 
-  if (invite.cohortId) {
-    const otherClass = await findOtherRunningClass(tx, {
-      cohortId: invite.cohortId,
-      courseId: invite.courseId,
-      userId: input.userId,
-      now: input.now,
+  // Course invites join the Kelas Mandiri, which a running class rules out
+  // just like another class does.
+  const otherClass = await findOtherRunningClass(tx, {
+    cohortId: invite.cohortId ?? undefined,
+    courseId: invite.courseId,
+    userId: input.userId,
+    now: input.now,
+  });
+  if (otherClass) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: otherRunningClassMessage(otherClass.name),
     });
-    if (otherClass) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: otherRunningClassMessage(otherClass.name),
-      });
-    }
   }
 
   await claimEnrollmentInviteUse(tx, invite, input.now);
@@ -155,6 +156,11 @@ export async function redeemEnrollmentInvite(
       },
       create: { cohortId: invite.cohortId, userId: input.userId, ...joined },
       update: joined,
+    });
+    await leaveKelasMandiriForClass(tx, {
+      cohortId: invite.cohortId,
+      userId: input.userId,
+      now: input.now,
     });
   } else {
     await upsertDefaultCohortEnrollment(tx, {

@@ -10,7 +10,9 @@ import {
   requireCoursePermission,
 } from "~/server/authorization";
 import { db } from "~/server/db";
-import { liveClassCohortWhere } from "~/server/enrollment/cohort-access";
+import { learnerClassCohortWhere } from "~/server/enrollment/cohort-access";
+import { HANGEUL_MASTERY_COURSE_ID } from "~/server/foundation/constants";
+import { getHangeulVisibility } from "~/server/preferences/hangeul-visibility";
 import {
   getCourseOutlineForUser,
   getCourseOutlinesForUser,
@@ -87,6 +89,34 @@ export function recordVocabularyAttemptsForUser(
   );
 }
 
+/**
+ * The learner's classes on the Belajar screen: running classes and the Kelas
+ * Mandiri they study in, without Hangeul Mastery once they hid it.
+ */
+async function myClassCohortWhere(
+  ctx: { db: typeof db; actorUserId: string },
+  organizationId: string | undefined,
+  now: Date,
+) {
+  const { hangeulHidden } = await getHangeulVisibility(ctx.db, ctx.actorUserId);
+  return {
+    organizationId,
+    course: { status: "PUBLISHED" },
+    ...learnerClassCohortWhere(ctx.actorUserId, now, {
+      hiddenKelasMandiriCourseIds: hangeulHidden
+        ? [HANGEUL_MASTERY_COURSE_ID]
+        : [],
+    }),
+  } satisfies Prisma.CohortWhereInput;
+}
+
+// Scheduled classes by start date, then the Kelas Mandiri, which has none.
+const myClassCohortOrder = [
+  { defaultForCourseId: { sort: "asc", nulls: "first" } },
+  { startsAt: "asc" },
+  { id: "asc" },
+] satisfies Prisma.CohortOrderByWithRelationInput[];
+
 export const learningRouter = createTRPCRouter({
   // Enrollment-scoped student view. Staff membership alone must not populate
   // the mobile learning experience or expose meeting links.
@@ -97,21 +127,12 @@ export const learningRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const now = new Date();
       const cohorts = await ctx.db.cohort.findMany({
-        where: {
-          organizationId: input?.organizationId,
-          ...liveClassCohortWhere(now),
-          course: { status: "PUBLISHED" },
-          enrollments: {
-            some: {
-              userId: ctx.actorUserId,
-              status: { in: [...activeEnrollmentStatuses] },
-            },
-          },
-        },
-        orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+        where: await myClassCohortWhere(ctx, input?.organizationId, now),
+        orderBy: myClassCohortOrder,
         select: {
           id: true,
           name: true,
+          defaultForCourseId: true,
           description: true,
           startsAt: true,
           endsAt: true,
@@ -216,8 +237,10 @@ export const learningRouter = createTRPCRouter({
             }),
         ),
       );
-      return cohorts.map((cohort) => ({
+      return cohorts.map(({ defaultForCourseId, ...cohort }) => ({
         ...cohort,
+        /** The course's Kelas Mandiri rather than a scheduled class. */
+        selfPaced: defaultForCourseId !== null,
         meetings: cohort.meetings.map(
           ({
             organizationId: _organizationId,
@@ -531,22 +554,16 @@ export const learningRouter = createTRPCRouter({
       z.object({ organizationId: z.string().min(1).optional() }).optional(),
     )
     .query(async ({ ctx, input }) => {
-      const cohortWhere = {
-        organizationId: input?.organizationId,
-        ...liveClassCohortWhere(new Date()),
-        course: { status: "PUBLISHED" },
-        enrollments: {
-          some: {
-            userId: ctx.actorUserId,
-            status: { in: [...activeEnrollmentStatuses] },
-          },
-        },
-      } satisfies Prisma.CohortWhereInput;
+      const cohortWhere = await myClassCohortWhere(
+        ctx,
+        input?.organizationId,
+        new Date(),
+      );
       // Cohorts of the same course share one course tree load.
       const [cohorts, courses] = await Promise.all([
         ctx.db.cohort.findMany({
           where: cohortWhere,
-          orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+          orderBy: myClassCohortOrder,
           select: { id: true, name: true, courseId: true },
         }),
         ctx.db.course.findMany({

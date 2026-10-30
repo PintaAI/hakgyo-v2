@@ -7,9 +7,9 @@ type DefaultCohortDb = Pick<
   "course" | "cohort" | "cohortEnrollment"
 >;
 
-export const DEFAULT_COHORT_NAME = "Belajar mandiri";
+export const DEFAULT_COHORT_NAME = "Kelas Mandiri";
 
-/** The course's self-paced cohort, created on first use. */
+/** The course's Kelas Mandiri (its open-ended cohort), created on first use. */
 export async function ensureDefaultCohort(
   db: DefaultCohortDb,
   courseId: string,
