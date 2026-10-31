@@ -120,17 +120,6 @@ const courseStatus = {
   },
 };
 
-const courseCurrencies = [
-  { code: "IDR", symbol: "Rp", flag: "🇮🇩" },
-  { code: "USD", symbol: "$", flag: "🇺🇸" },
-  { code: "SGD", symbol: "S$", flag: "🇸🇬" },
-  { code: "MYR", symbol: "RM", flag: "🇲🇾" },
-  { code: "EUR", symbol: "€", flag: "🇪🇺" },
-  { code: "JPY", symbol: "¥", flag: "🇯🇵" },
-  { code: "GBP", symbol: "£", flag: "🇬🇧" },
-  { code: "AUD", symbol: "A$", flag: "🇦🇺" },
-] as const;
-
 const cohortStatus = {
   // Cohort DRAFT: set up but not visible to learners yet.
   DRAFT: "Persiapan",
@@ -1415,9 +1404,6 @@ function courseSettingsValues(course: Course) {
   return {
     title: course.title,
     description: course.description ?? "",
-    price: String(course.price),
-    currency: course.currency,
-    enrollmentMode: course.enrollmentMode ?? "INHERIT",
     progressionMode: course.progressionMode,
   };
 }
@@ -1438,12 +1424,6 @@ function SettingsSection({
   const loaded = courseSettingsValues(course);
   const [title, setTitle] = useState(loaded.title);
   const [description, setDescription] = useState(loaded.description);
-  const [price, setPrice] = useState(loaded.price);
-  const [currency, setCurrency] = useState(loaded.currency);
-  const selectedCurrency = courseCurrencies.find(
-    (item) => item.code === currency,
-  );
-  const [enrollmentMode, setEnrollmentMode] = useState(loaded.enrollmentMode);
   const [progressionMode, setProgressionMode] = useState(
     loaded.progressionMode,
   );
@@ -1460,11 +1440,6 @@ function SettingsSection({
     if (loaded.title !== source.title) setTitle(loaded.title);
     if (loaded.description !== source.description) {
       setDescription(loaded.description);
-    }
-    if (loaded.price !== source.price) setPrice(loaded.price);
-    if (loaded.currency !== source.currency) setCurrency(loaded.currency);
-    if (loaded.enrollmentMode !== source.enrollmentMode) {
-      setEnrollmentMode(loaded.enrollmentMode);
     }
     if (loaded.progressionMode !== source.progressionMode) {
       setProgressionMode(loaded.progressionMode);
@@ -1489,23 +1464,10 @@ function SettingsSection({
     // was loaded from), so saving never reverts changes made elsewhere.
     const nextTitle = title.trim();
     const nextDescription = description.trim();
-    const nextCurrency = currency.trim().toUpperCase();
     const changes = {
       ...(nextTitle !== source.title ? { title: nextTitle } : {}),
       ...(nextDescription !== source.description.trim()
         ? { description: nextDescription || null }
-        : {}),
-      ...(Number(price) !== Number(source.price)
-        ? { price: Number(price) }
-        : {}),
-      ...(nextCurrency !== source.currency ? { currency: nextCurrency } : {}),
-      ...(enrollmentMode !== source.enrollmentMode
-        ? {
-            enrollmentMode:
-              enrollmentMode === "INHERIT"
-                ? null
-                : (enrollmentMode as "OPEN" | "INVITE_ONLY"),
-          }
         : {}),
       ...(progressionMode !== source.progressionMode
         ? { progressionMode }
@@ -1543,7 +1505,8 @@ function SettingsSection({
           Pengaturan
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Metadata, tipe kurikulum (public/private), dan lifecycle kurikulum.
+          Metadata, alur belajar, dan lifecycle kurikulum. Harga dan cara
+          bergabung diatur di setiap kelas.
         </p>
       </div>
 
@@ -1576,96 +1539,13 @@ function SettingsSection({
                 onChange={(event) => setDescription(event.target.value)}
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="settings-price">Harga</Label>
-                <Input
-                  id="settings-price"
-                  min={0}
-                  required
-                  type="number"
-                  value={price}
-                  onChange={(event) => setPrice(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="settings-currency">Currency</Label>
-                <Select
-                  value={selectedCurrency?.code}
-                  onValueChange={(value) => {
-                    if (value) setCurrency(value);
-                  }}
-                >
-                  <SelectTrigger id="settings-currency" className="w-full">
-                    <span className="flex flex-1 items-center gap-2 text-left">
-                      {selectedCurrency ? (
-                        <>
-                          <span aria-hidden="true">
-                            {selectedCurrency.flag}
-                          </span>
-                          <span>
-                            {selectedCurrency.code} · {selectedCurrency.symbol}
-                          </span>
-                        </>
-                      ) : (
-                        currency || "Pilih currency"
-                      )}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courseCurrencies.map((item) => (
-                      <SelectItem key={item.code} value={item.code}>
-                        <span aria-hidden="true">{item.flag}</span>
-                        {item.code} · {item.symbol}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
           </CardContent>
           <CardContent className="border-t pt-5">
             <h3 className="font-heading font-medium">Aturan akses</h3>
             <p className="text-muted-foreground mt-0.5 text-sm">
-              Siapa yang bisa mengikuti kurikulum dan bagaimana murid membuka
-              materinya.
+              Bagaimana murid membuka materinya.
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5">
-                  <Label htmlFor="settings-enrollment">Tipe kurikulum</Label>
-                  <FieldHelp content="Ikuti organisasi untuk memakai pengaturan default, atau timpa khusus kurikulum ini. Public bisa ditemukan dan diikuti murid, private hanya untuk murid yang diundang." />
-                </div>
-                <Select
-                  value={enrollmentMode}
-                  onValueChange={(value) => {
-                    if (value) setEnrollmentMode(value);
-                  }}
-                >
-                  <SelectTrigger
-                    id="settings-enrollment"
-                    aria-label="Tipe kurikulum"
-                    className="w-full"
-                  >
-                    <span className="flex flex-1 text-left">
-                      {
-                        {
-                          INHERIT: "Ikuti organisasi",
-                          OPEN: "Kurikulum publik",
-                          INVITE_ONLY: "Kurikulum privat",
-                        }[enrollmentMode]
-                      }
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INHERIT">Ikuti organisasi</SelectItem>
-                    <SelectItem value="OPEN">Kurikulum publik</SelectItem>
-                    <SelectItem value="INVITE_ONLY">
-                      Kurikulum privat
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Label htmlFor="settings-progression">Alur belajar</Label>
@@ -1699,11 +1579,7 @@ function SettingsSection({
           <CardFooter className="justify-end border-t">
             <Button
               type="submit"
-              disabled={
-                updateCourse.isPending ||
-                !title.trim() ||
-                currency.trim().length !== 3
-              }
+              disabled={updateCourse.isPending || !title.trim()}
             >
               {updateCourse.isPending ? (
                 <LoaderCircleIcon className="animate-spin" />

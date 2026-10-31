@@ -47,7 +47,9 @@ AI clients. `validateLandingHtml` in `html.ts` enforces it:
   only text; `<meta name="description">` edits its `content`.
 - `data-hakgyo-slot="courses"` contains one `<template>` course card with
   `data-hakgyo-field` values `title`, `link`, `image`, `description`, and
-  `price`. The server fills it with live public courses on every request.
+  `price`. The server fills it on every request with the published courses
+  that have a class anyone can join; `price` is the cheapest such class
+  ("Mulai Rp X" or "Gratis").
 
 The editor saves copy by replacing the text of marked elements
 (`applyLandingCopy`), so owners never edit markup.

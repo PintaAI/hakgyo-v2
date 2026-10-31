@@ -1,24 +1,36 @@
 type EnrollmentMode = "OPEN" | "INVITE_ONLY";
 
-/** A cohort's own price, or the course price when it does not set one. */
-export function effectiveCohortPrice(
-  cohort: { price: number | null },
-  course: { price: number },
-) {
-  return cohort.price ?? course.price;
+/** A class's price; a class without one is free. */
+export function effectiveCohortPrice(cohort: { price: number | null }) {
+  return cohort.price ?? 0;
 }
 
-/** Cohort override, then course override, then the organization default. */
+/** The class's join mode, else the organization default. */
 export function effectiveCohortEnrollmentMode(
   cohort: { enrollmentMode: EnrollmentMode | null },
-  course: { enrollmentMode: EnrollmentMode | null },
   organization: { defaultEnrollmentMode: EnrollmentMode },
 ) {
-  return (
-    cohort.enrollmentMode ??
-    course.enrollmentMode ??
-    organization.defaultEnrollmentMode
-  );
+  return cohort.enrollmentMode ?? organization.defaultEnrollmentMode;
+}
+
+/**
+ * The lowest price among classes anyone can join on their own, or null when
+ * none of them is open. Pass only joinable classes.
+ */
+export function lowestOpenCohortPrice(
+  cohorts: Array<{
+    price: number | null;
+    enrollmentMode: EnrollmentMode | null;
+  }>,
+  organization: { defaultEnrollmentMode: EnrollmentMode },
+) {
+  const prices = cohorts
+    .filter(
+      (cohort) =>
+        effectiveCohortEnrollmentMode(cohort, organization) === "OPEN",
+    )
+    .map(effectiveCohortPrice);
+  return prices.length === 0 ? null : Math.min(...prices);
 }
 
 /**

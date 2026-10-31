@@ -376,7 +376,7 @@ export const cohortRouter = createTRPCRouter({
         where: { id: input.cohortId },
         include: {
           course: {
-            select: { id: true, title: true, thumbnailUrl: true, price: true },
+            select: { id: true, title: true, thumbnailUrl: true },
           },
           staff: {
             include: {

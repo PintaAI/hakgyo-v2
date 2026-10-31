@@ -130,9 +130,8 @@ async function deleteOrganizationCourses(
   await tx.cohort.deleteMany({ where: { organizationId } });
   await tx.courseCollaborator.deleteMany({ where: { organizationId } });
   await tx.enrollmentInvite.deleteMany({ where: { organizationId } });
-  await tx.courseEnrollment.deleteMany({
-    where: { course: { organizationId } },
-  });
+  // Legacy table, no longer in the Prisma schema; dropped by a later migration.
+  await tx.$executeRaw`DELETE FROM "CourseEnrollment" WHERE "courseId" IN (SELECT "id" FROM "Course" WHERE "organizationId" = ${organizationId})`;
   await tx.course.deleteMany({ where: { organizationId } });
 }
 
@@ -179,7 +178,8 @@ async function deleteCourseChildren(
     where: { courseId: input.courseId },
   });
   await tx.enrollmentInvite.deleteMany({ where: { courseId: input.courseId } });
-  await tx.courseEnrollment.deleteMany({ where: { courseId: input.courseId } });
+  // Legacy table, no longer in the Prisma schema; dropped by a later migration.
+  await tx.$executeRaw`DELETE FROM "CourseEnrollment" WHERE "courseId" = ${input.courseId}`;
 }
 
 async function collectPaymentProofKeys(

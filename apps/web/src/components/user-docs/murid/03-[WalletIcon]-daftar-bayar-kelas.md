@@ -8,7 +8,7 @@ Pendaftaran dan pembayaran hanya bisa dilakukan di situs web Hakgyo, tidak di ap
 
 Mulai dari salah satu:
 
-- **Katalog:** buka **Jelajahi kurikulum**, pilih kurikulum, lalu di bagian **Kelas** klik **Daftar** pada kelas yang kamu mau. Setiap kelas menampilkan jadwal, sisa kursi, dan harga. **Kelas Mandiri** tidak punya jadwal dan ditandai **Kelas Mandiri · belajar kapan saja**.
+- **Katalog:** buka **Jelajahi kurikulum**. Setiap kurikulum menampilkan harga kelas termurahnya, misalnya **Mulai Rp150.000** atau **Gratis**. Pilih kurikulum, lalu di bagian **Kelas** klik **Daftar** pada kelas yang kamu mau. Setiap kelas menampilkan jadwal, sisa kursi, dan harga. **Kelas Mandiri** tidak punya jadwal dan ditandai **Kelas Mandiri · belajar kapan saja**.
 - **Tautan undangan:** buka tautan dari lembaga, lalu klik **Lanjut ke pembayaran**.
 
 Untuk kelas gratis, kamu cukup klik **Gabung kelas** di langkah berikutnya dan langsung terdaftar. Langkah 3 dan 4 hanya untuk kelas berbayar.

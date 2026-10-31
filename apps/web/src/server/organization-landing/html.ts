@@ -51,8 +51,8 @@ export type LandingCourse = {
   title: string;
   description: string | null;
   thumbnailUrl: string | null;
+  /** The lowest price among the course's open classes. */
   price: number;
-  currency: string;
   url: string;
 };
 
@@ -521,17 +521,13 @@ export function extractLandingMetadata(html: string) {
   };
 }
 
-export function formatLandingPrice(price: number, currency: string) {
+export function formatLandingPrice(price: number) {
   if (!price) return "Gratis";
-  try {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(price);
-  } catch {
-    return `${currency} ${price}`;
-  }
+  return `Mulai ${new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(price)}`;
 }
 
 function cloneNode(node: Node): ChildNode | null {
@@ -561,7 +557,7 @@ function renderCourseCard(template: Template, course: LandingCourse) {
       const field = attr(element, FIELD);
       if (field === "title") replaceText(element, course.title);
       else if (field === "price")
-        replaceText(element, formatLandingPrice(course.price, course.currency));
+        replaceText(element, formatLandingPrice(course.price));
       else if (field === "description") {
         if (course.description) replaceText(element, course.description);
         else defaultTreeAdapter.detachNode(element);

@@ -37,8 +37,6 @@ function emptySnapshot(): Snapshot {
       description: "old",
       status: "PUBLISHED",
       progressionMode: "SEQUENTIAL",
-      enrollmentMode: "OPEN",
-      price: 0,
     },
     modules: [],
     items: [],

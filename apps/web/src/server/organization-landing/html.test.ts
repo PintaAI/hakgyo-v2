@@ -221,7 +221,6 @@ describe("landing rendering", () => {
           description: null,
           thumbnailUrl: "https://cdn.hakgyo.test/c1.jpg",
           price: 150000,
-          currency: "IDR",
           url: "https://hakgyo.test/catalog/c1",
         },
         {
@@ -230,7 +229,6 @@ describe("landing rendering", () => {
           description: "Gratis untuk semua",
           thumbnailUrl: null,
           price: 0,
-          currency: "IDR",
           url: "https://hakgyo.test/catalog/c2",
         },
       ],
@@ -239,7 +237,7 @@ describe("landing rendering", () => {
     expect(rendered).not.toContain("<template>");
     expect(rendered).toContain('data-hakgyo-count="2"');
     expect(rendered).toContain(
-      '<a data-hakgyo-field="link" href="https://hakgyo.test/catalog/c1"><img data-hakgyo-field="image" alt="Korean <1>" src="https://cdn.hakgyo.test/c1.jpg"><h3 data-hakgyo-field="title">Korean &lt;1&gt;</h3><span data-hakgyo-field="price">Rp',
+      '<a data-hakgyo-field="link" href="https://hakgyo.test/catalog/c1"><img data-hakgyo-field="image" alt="Korean <1>" src="https://cdn.hakgyo.test/c1.jpg"><h3 data-hakgyo-field="title">Korean &lt;1&gt;</h3><span data-hakgyo-field="price">Mulai Rp',
     );
     expect(rendered).toContain(
       '<a data-hakgyo-field="link" href="https://hakgyo.test/catalog/c2"><h3 data-hakgyo-field="title">Free</h3><p data-hakgyo-field="description">Gratis untuk semua</p><span data-hakgyo-field="price">Gratis</span></a>',

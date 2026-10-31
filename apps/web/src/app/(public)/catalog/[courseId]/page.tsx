@@ -16,6 +16,7 @@ import {
 import { CourseCover } from "~/components/course-cover";
 import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
+import { formatLowestPrice, formatRupiah } from "~/lib/payments/payment";
 import { getSession } from "~/server/better-auth/server";
 import { api } from "~/trpc/server";
 
@@ -27,19 +28,6 @@ const getCourse = cache(async (courseId: string) => {
     throw error;
   }
 });
-
-function formatPrice(price: number, currency: string) {
-  if (price === 0) return "Gratis";
-  try {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(price);
-  } catch {
-    return `${currency} ${price.toLocaleString("id-ID")}`;
-  }
-}
 
 const cohortDateFormatter = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
@@ -83,8 +71,11 @@ export default async function CatalogCoursePage({
     getCourse(courseId),
     getSession(),
   ]);
-  const enrollmentMode =
-    course.enrollmentMode ?? course.organization.defaultEnrollmentMode;
+  // Listed classes are the ones anyone can join on their own.
+  const lowestPrice =
+    course.cohorts.length > 0
+      ? Math.min(...course.cohorts.map((cohort) => cohort.price))
+      : null;
   const itemCount = course.modules.reduce(
     (total, module) => total + module.items.length,
     0,
@@ -118,13 +109,13 @@ export default async function CatalogCoursePage({
               <div>
                 <dt className="text-muted-foreground">Harga</dt>
                 <dd className="mt-1 font-semibold">
-                  {formatPrice(course.price, course.currency)}
+                  {formatLowestPrice(lowestPrice)}
                 </dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Akses</dt>
                 <dd className="mt-1 font-semibold">
-                  {enrollmentMode === "OPEN" ? "Terbuka" : "Undangan"}
+                  {lowestPrice !== null ? "Terbuka" : "Undangan"}
                 </dd>
               </div>
               <div>
@@ -240,7 +231,7 @@ export default async function CatalogCoursePage({
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-semibold">
-                      {formatPrice(cohort.price, "IDR")}
+                      {cohort.price > 0 ? formatRupiah(cohort.price) : "Gratis"}
                     </p>
                     {full ? null : (
                       <Link

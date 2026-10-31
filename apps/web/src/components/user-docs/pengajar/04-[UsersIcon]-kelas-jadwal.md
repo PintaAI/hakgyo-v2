@@ -21,10 +21,11 @@ Selain tidak punya tanggal, Kelas Mandiri sama dengan kelas lain: punya status, 
 4. Isi **Nama kelas**. Untuk Kelas Mandiri namanya otomatis **Kelas Mandiri** dan boleh diganti. Kolom lain boleh dikosongkan:
    - **Deskripsi**.
    - **Kapasitas**: jumlah maksimal murid.
+   - **Harga (IDR)**: kosongkan atau isi **0** untuk kelas gratis.
    - **Mulai** dan **Selesai**: periode kelas (hanya kelas berjadwal).
 5. Klik **Buat kelas** atau **Buat Kelas Mandiri**.
 
-Kelas berjadwal baru berstatus **Persiapan** dan belum bisa dilihat atau diikuti murid. Kelas Mandiri langsung berstatus **Dibuka**. Harga, grup WhatsApp, dan aturan pendaftaran diatur kemudian di tab **Pengaturan** kelas. Sampai diubah, Kelas Mandiri mengikuti harga dan tipe akses kurikulum.
+Kelas berjadwal baru berstatus **Persiapan** dan belum bisa dilihat atau diikuti murid. Kelas Mandiri langsung berstatus **Dibuka**. Grup WhatsApp dan aturan pendaftaran diatur kemudian di tab **Pengaturan** kelas. Sampai diubah, kelas mengikuti aturan pendaftaran organisasi.
 
 ### Buat kelas pertama setelah membuat kurikulum
 
@@ -74,9 +75,9 @@ Hal yang perlu diketahui:
 Di tab **Pengaturan** kelas:
 
 - **Nama kelas** dan **Deskripsi**. Kosongkan deskripsi untuk memakai deskripsi kurikulum.
-- **Tipe akses**: **Ikuti kurikulum**, **Kurikulum publik** (bisa diikuti tanpa undangan), atau **Kurikulum privat** (hanya lewat undangan). Walaupun namanya "kurikulum", pilihan di sini hanya berlaku untuk kelas ini.
+- **Tipe akses**: **Ikuti organisasi**, **Daftar sendiri** (bisa diikuti tanpa undangan), atau **Lewat undangan**.
 - **Kapasitas**: kosongkan untuk tanpa batas.
-- **Harga (IDR)**: kosongkan untuk memakai harga kurikulum; isi **0** untuk gratis.
+- **Harga (IDR)**: kosongkan atau isi **0** untuk gratis.
 - **WhatsApp URL**: tautan grup WhatsApp kelas, misalnya `https://chat.whatsapp.com/...`. Murid melihatnya sebagai tombol **Grup**. Jika nomor WhatsApp lembaga sudah terhubung, klik **Buat grup WhatsApp** agar Hakgyo membuatkan grupnya dan mengirim pengingat pertemuan serta jadwal latihan ke grup itu. Lihat [Grup WhatsApp Kelas](/docs/pengajar/grup-whatsapp).
 - **Mulai** dan **Selesai**. Tidak ada di Kelas Mandiri.
 

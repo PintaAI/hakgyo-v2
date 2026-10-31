@@ -67,8 +67,6 @@ async function loadSnapshot(
       description: true,
       status: true,
       progressionMode: true,
-      enrollmentMode: true,
-      price: true,
     },
   });
   if (course && course.organizationId !== organizationId) {
@@ -277,8 +275,6 @@ async function loadSnapshot(
           description: course.description,
           status: course.status,
           progressionMode: course.progressionMode,
-          enrollmentMode: course.enrollmentMode,
-          price: course.price,
         }
       : null,
     modules,

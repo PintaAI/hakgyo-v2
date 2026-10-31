@@ -20,12 +20,13 @@ Atur QRIS / rekening  ──►  Katalog atau undangan
                                                                  tolak ──► REJECTED
 ```
 
-- Harga efektif cohort adalah `Cohort.price`, atau `Course.price` jika cohort
-  tidak mengisi harga. Harga 0 berarti gratis: checkout langsung membuat
-  membership.
+- Harga dan mode enrollment hanya ada di cohort (kelas). Harga efektif adalah
+  `Cohort.price`; kosong atau 0 berarti gratis: checkout langsung membuat
+  membership. Mata uang selalu IDR. Kolom `Course.price`, `currency` dan
+  `enrollmentMode` tidak dibaca lagi dan akan dihapus.
 - Cohort bisa di-checkout bila status `OPEN`/`IN_PROGRESS`, belum berakhir,
   course `PUBLISHED`, kapasitas belum penuh, dan mode enrollment efektif
-  (`cohort → course → organisasi`) `OPEN` atau learner membawa invite valid ke
+  (`cohort → organisasi`) `OPEN` atau learner membawa invite valid ke
   cohort tersebut.
 - Kapasitas hanya menghitung member aktif; checkout yang belum dibayar tidak
   menahan kursi. Staff tetap dapat menyetujui pembayaran walau kuota penuh.

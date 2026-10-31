@@ -57,9 +57,25 @@ export function publicLandingCourseWhere(
   return {
     organizationId,
     status: "PUBLISHED",
-    OR: [
-      { enrollmentMode: "OPEN" },
-      { enrollmentMode: null, organization: { defaultEnrollmentMode: "OPEN" } },
+    cohorts: { some: openCohortWhere(new Date()) },
+  };
+}
+
+/** Classes anyone can join on their own right now. */
+function openCohortWhere(now: Date): Prisma.CohortWhereInput {
+  return {
+    status: { in: ["OPEN", "IN_PROGRESS"] },
+    AND: [
+      { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+      {
+        OR: [
+          { enrollmentMode: "OPEN" },
+          {
+            enrollmentMode: null,
+            course: { organization: { defaultEnrollmentMode: "OPEN" } },
+          },
+        ],
+      },
     ],
   };
 }
@@ -79,13 +95,13 @@ async function getLandingCourses(
       title: true,
       description: true,
       thumbnailUrl: true,
-      price: true,
-      currency: true,
+      cohorts: { where: openCohortWhere(new Date()), select: { price: true } },
     },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
   });
-  return courses.map((course) => ({
+  return courses.map(({ cohorts, ...course }) => ({
     ...course,
+    price: Math.min(...cohorts.map((cohort) => cohort.price ?? 0)),
     url: appUrl(`/catalog/${encodeURIComponent(course.id)}`),
   }));
 }

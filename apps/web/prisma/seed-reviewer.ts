@@ -145,8 +145,6 @@ async function main() {
       slug: "korean-basics-1",
       description:
         "Hangeul, sapaan dan perkenalan diri untuk pemula bahasa Korea.",
-      enrollmentMode: "INVITE_ONLY",
-      price: 0,
       progressionMode: "OPEN",
       status: "PUBLISHED",
     },
@@ -165,8 +163,6 @@ async function main() {
       title: "Korean Conversation Practice",
       slug: "korean-conversation-practice",
       description: "Latihan percakapan singkat untuk dipelajari sendiri.",
-      enrollmentMode: "INVITE_ONLY",
-      price: 0,
       progressionMode: "OPEN",
       status: "PUBLISHED",
     },
@@ -384,17 +380,6 @@ async function main() {
     },
   });
 
-  await db.courseEnrollment.upsert({
-    where: { courseId_userId: { courseId: course.id, userId: learner.id } },
-    update: { status: "ACTIVE" },
-    create: {
-      id: "reviewer-enrollment-learner",
-      courseId: course.id,
-      userId: learner.id,
-      source: "MANUAL",
-      status: "ACTIVE",
-    },
-  });
   await db.cohortEnrollment.upsert({
     where: { cohortId_userId: { cohortId: cohort.id, userId: learner.id } },
     update: { status: "ACTIVE" },

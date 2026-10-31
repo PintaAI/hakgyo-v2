@@ -157,8 +157,6 @@ async function main() {
       slug: "hangeul-mastery",
       description:
         "Fondasi membaca dan menulis Hangeul sebelum memulai perjalanan belajar bahasa Korea.",
-      enrollmentMode: "OPEN",
-      price: 0,
       progressionMode: "SEQUENTIAL",
       status: "PUBLISHED",
     },
@@ -232,8 +230,6 @@ async function main() {
     },
     update: {
       description: "Fondasi membaca Hangul dan percakapan sehari-hari.",
-      enrollmentMode: "OPEN",
-      price: 0,
       progressionMode: "SEQUENTIAL",
       status: "PUBLISHED",
       thumbnailUrl:
@@ -247,8 +243,6 @@ async function main() {
       title: "Bahasa Korea Dasar",
       slug: "bahasa-korea-dasar",
       description: "Fondasi membaca Hangul dan percakapan sehari-hari.",
-      enrollmentMode: "OPEN",
-      price: 0,
       progressionMode: "SEQUENTIAL",
       status: "PUBLISHED",
       thumbnailUrl:
@@ -275,8 +269,6 @@ async function main() {
       title: "Persiapan TOPIK I",
       slug: "persiapan-topik-i",
       description: "Course draft untuk menguji filter publikasi.",
-      enrollmentMode: "INVITE_ONLY",
-      price: 250_000,
       status: "DRAFT",
       thumbnailUrl:
         "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80",

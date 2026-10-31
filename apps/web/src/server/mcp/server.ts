@@ -28,8 +28,6 @@ const catalogCourseSchema = z.object({
   slug: z.string(),
   description: z.string().nullable(),
   thumbnailUrl: z.string().nullable(),
-  price: z.number().int(),
-  currency: z.string(),
   organization: organizationSchema,
   moduleCount: z.number().int(),
   cohortCount: z.number().int(),
@@ -41,8 +39,6 @@ const catalogCourseDetailSchema = z.object({
   slug: z.string(),
   description: z.string().nullable(),
   thumbnailUrl: z.string().nullable(),
-  price: z.number().int(),
-  currency: z.string(),
   progressionMode: z.enum(["OPEN", "SEQUENTIAL"]),
   organization: organizationSchema,
   modules: z.array(
@@ -167,7 +163,7 @@ export const mcpHandler = createMcpHandler(
       {
         title: "Get published course",
         description:
-          "Read a published course's public details, price and kurikulum outline from the Hakgyo catalog.",
+          "Read a published course's public details and kurikulum outline from the Hakgyo catalog. Prices are set per class.",
         inputSchema: z.object({ courseId: z.string().min(1) }),
         outputSchema: catalogCourseDetailSchema,
         annotations: {

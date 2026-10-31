@@ -24,8 +24,6 @@ export type SnapshotCourse = {
   description: string | null;
   status: string;
   progressionMode: string;
-  enrollmentMode: string | null;
-  price: number;
 };
 export type SnapshotModule = {
   id: string;
@@ -179,8 +177,6 @@ export type CourseRow = {
   description: string | null;
   status: "PUBLISHED";
   progressionMode: "SEQUENTIAL";
-  enrollmentMode: "OPEN";
-  price: 0;
 };
 
 // ---------------------------------------------------------------- comparison
@@ -293,8 +289,6 @@ export function planImport(
     description: desired.description,
     status: "PUBLISHED",
     progressionMode: "SEQUENTIAL",
-    enrollmentMode: "OPEN",
-    price: 0,
   };
   const courseUpdate = snapshot.course
     ? changedFields({ id: snapshot.course.id, ...courseRow }, snapshot.course, [
@@ -302,8 +296,6 @@ export function planImport(
         "description",
         "status",
         "progressionMode",
-        "enrollmentMode",
-        "price",
       ])
     : null;
 

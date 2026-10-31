@@ -398,8 +398,6 @@ async function main() {
         title: manifest.course.title,
         description: manifest.course.description,
         status: manifest.course.status,
-        enrollmentMode: "OPEN",
-        price: 0,
         progressionMode: "SEQUENTIAL",
       },
       create: {
@@ -410,8 +408,6 @@ async function main() {
         title: manifest.course.title,
         description: manifest.course.description,
         status: manifest.course.status,
-        enrollmentMode: "OPEN",
-        price: 0,
         progressionMode: "SEQUENTIAL",
       },
     });

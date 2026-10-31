@@ -288,8 +288,6 @@ describe("buildCurricula", () => {
       expect(course).toMatchObject({
         status: "PUBLISHED",
         progressionMode: "OPEN",
-        enrollmentMode: "INVITE_ONLY",
-        price: 0,
         slug: POLA_COURSES[course.key].slug,
       });
       const babs = POLA_BABS.filter((bab) => bab.course === course.key);
@@ -830,8 +828,6 @@ function snapshotOf({
       description: course.description,
       status: course.status,
       progressionMode: course.progressionMode,
-      enrollmentMode: course.enrollmentMode,
-      price: course.price,
       enrollmentCount: 0,
     });
     for (const row of course.modules) {

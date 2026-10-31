@@ -303,7 +303,7 @@ export async function listCohortPayments(
     }),
     db.cohort.findUniqueOrThrow({
       where: { id: input.cohortId },
-      select: { price: true, course: { select: { price: true } } },
+      select: { price: true },
     }),
     getCheckoutDestinations(db, cohort.organizationId),
   ]);
@@ -319,7 +319,7 @@ export async function listCohortPayments(
       input.limit,
     ),
     counts,
-    price: effectiveCohortPrice(offer, offer.course),
+    price: effectiveCohortPrice(offer),
     methods: availablePaymentMethods(destinations),
   };
 }

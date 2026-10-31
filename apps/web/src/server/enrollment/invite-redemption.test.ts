@@ -33,7 +33,6 @@ function createTransaction(cohortId = "cohort-1") {
     maxUses: 1,
     revokedAt: null,
     createdAt: now,
-    course: { price: 0 },
     cohort: { status: "OPEN", endsAt: null, price: null },
   };
 
@@ -128,7 +127,6 @@ describe("invite redemption", () => {
             expiresAt: null,
             maxUses: null,
             useCount: 0,
-            course: { price: 0 },
             cohort: null,
           }),
         updateMany: () => {
@@ -197,7 +195,6 @@ describe("invite redemption", () => {
             expiresAt: null,
             maxUses: null,
             useCount: 0,
-            course: { price: 0 },
             cohort: { status: "OPEN", endsAt: null, price: 350000 },
           }),
         updateMany: () => {

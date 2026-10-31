@@ -49,7 +49,6 @@ export async function resolveUnifiedInvite(
             title: true,
             description: true,
             thumbnailUrl: true,
-            price: true,
             organization: { select: { name: true, slug: true } },
             modules: {
               where: { items: { some: { isPublished: true } } },
@@ -169,7 +168,7 @@ export async function resolveUnifiedInvite(
         startsAt: cohort.startsAt,
         endsAt: cohort.endsAt,
         // Paid cohorts are joined through checkout with this invite.
-        price: effectiveCohortPrice(cohort, enrollmentInvite.course),
+        price: effectiveCohortPrice(cohort),
       },
       joinedCount: cohort._count.enrollments,
     };

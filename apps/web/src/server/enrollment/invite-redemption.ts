@@ -15,7 +15,6 @@ export async function findRedeemableEnrollmentInvite(
   const invite = await tx.enrollmentInvite.findUnique({
     where: { token },
     include: {
-      course: { select: { price: true } },
       cohort: { select: { status: true, endsAt: true, price: true } },
     },
   });
@@ -116,7 +115,7 @@ export async function redeemEnrollmentInvite(
   }
 
   // Paid cohorts are joined through checkout; the invite only opens it.
-  if (effectiveCohortPrice(invite.cohort, invite.course) > 0) {
+  if (effectiveCohortPrice(invite.cohort) > 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "Kelas ini berbayar. Lanjutkan ke pembayaran.",
