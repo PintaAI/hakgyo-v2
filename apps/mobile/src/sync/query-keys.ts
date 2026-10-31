@@ -16,6 +16,12 @@ export const syncQueryKeys = {
   itemCourseMap: () => ["mobileSync", "itemCourseMap"] as const,
   /** Sync notices of the user from the last 30 days (every organization). */
   notices: () => ["mobileSync", "notices"] as const,
+  /**
+   * Search documents built from every local index and bundle. Writers
+   * invalidate it whenever either changes, so the Cari tab never lags behind
+   * a bundle downloaded in the background.
+   */
+  searchCorpus: () => ["mobileSync", "search", "corpus"] as const,
   /** Persisted small tRPC results (resumable attempts, vocab progress...). */
   query: (queryKey: string) => ["mobileSync", "query", queryKey] as const,
 } as const;

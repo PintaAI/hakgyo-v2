@@ -343,6 +343,9 @@ export function createMobileSyncEngine({
   function publishIndex(scope: string, entry: IndexEntry) {
     indexes.set(scope, entry);
     queryClient.setQueryData(syncQueryKeys.index(scope), indexRecord(entry));
+    void queryClient.invalidateQueries({
+      queryKey: syncQueryKeys.searchCorpus(),
+    });
     onIndexApplied?.(scope, entry.index);
   }
 
