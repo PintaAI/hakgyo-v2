@@ -439,8 +439,14 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
           assessmentDetail: result.assessmentDetail,
         });
       }
+      // Outlines composed locally already include the learner patch, but a
+      // course whose bundle is not on the device yet is served by the online
+      // procedure, and that cached copy predates the progress just synced.
+      // Active outlines refetch before this resolves, so "complete & continue"
+      // reads the new progress; inactive ones refetch on their next mount.
+      await utils.learning.getCourseOutline.invalidate();
     },
-    [localData, queryClient, utils.assessment],
+    [localData, queryClient, utils.assessment, utils.learning],
   );
 
   const lastProgressSync = useRef(0);
