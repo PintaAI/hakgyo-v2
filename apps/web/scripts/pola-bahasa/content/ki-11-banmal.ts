@@ -21,6 +21,7 @@ export default defineBab({
         grammar({
           number: "01",
           title: "-요 빼기 · buang -요",
+          theme: "amber",
           descriptionKo: "대부분의 존댓말은 끝의 ‘요’를 빼면 반말이 돼요.",
           descriptionTranslation:
             "Aturan utamanya cuma satu: ambil kalimat sopan yang berakhiran -요, terus buang -요-nya. 먹어요 jadi 먹어, 말했잖아요 jadi 말했잖아. Ini berlaku buat hampir semua akhiran yang udah kamu pelajari.",
@@ -109,69 +110,40 @@ export default defineBab({
         grammar({
           number: "02",
           title: "이야 · 응 · 나 · -자",
+          theme: "amber",
           descriptionKo: "어떤 말은 ‘요’만 빼면 안 되고 모양이 바뀌어요.",
           descriptionTranslation:
             "Ada beberapa bentuk yang nggak bisa cuma dibuang -요-nya. Kalau 학생이에요 dibuang -요, hasilnya 학생이에, dan itu salah. Daftarnya pendek, tapi wajib hafal karena muncul terus.",
           rules: [
             {
-              condition: "Kata benda, akhiran konsonan",
-              form: "이에요 → 이야",
-              example: "학생이에요 → 학생이야",
+              condition: "Kata benda",
+              form: "이에요 / 예요 → 이야 / 야",
+              example: "학생이야, 의사야, 뭐야?",
             },
             {
-              condition: "Kata benda, akhiran vokal",
-              form: "예요 → 야",
-              example: "의사예요 → 의사야, 뭐예요? → 뭐야?",
+              condition: "Bukan, iya, nggak",
+              form: "아니에요 → 아니야, 네 → 응, 아니요 → 아니",
+              example: "응, 좋아! / 아니, 괜찮아.",
             },
             {
-              condition: "Bukan",
-              form: "아니에요 → 아니야",
-              example: "제 거 아니에요 → 내 거 아니야",
-            },
-            {
-              condition: "Iya / nggak",
-              form: "네 → 응 (어), 아니요 → 아니",
-              example: "응, 좋아!",
-            },
-            {
-              condition: "Aku",
-              form: "저 / 제가 / 제 → 나 / 내가 / 내",
+              condition: "Aku, kami",
+              form: "저 / 제가 / 저희 → 나 / 내가 / 우리",
               example: "제가 할게요 → 내가 할게",
             },
             {
-              condition: "Kami",
-              form: "저희 → 우리",
-              example: "저희 집 → 우리 집",
+              condition: "Silakan, tolong",
+              form: "-(으)세요 → -아/어, 주세요 → 줘",
+              example: "앉으세요 → 앉아, 도와주세요 → 도와줘",
             },
             {
-              condition: "Silakan, ... ya",
-              form: "-(으)세요 → -아/어",
-              example: "앉으세요 → 앉아",
+              condition: "Jangan, yuk",
+              form: "-지 마세요 → -지 마, -(으)ㅂ시다 → -자",
+              example: "가지 마, 가자",
             },
             {
-              condition: "Tolong",
-              form: "-아/어 주세요 → -아/어 줘",
-              example: "도와주세요 → 도와줘",
-            },
-            {
-              condition: "Jangan",
-              form: "-지 마세요 → -지 마",
-              example: "가지 마세요 → 가지 마",
-            },
-            {
-              condition: "Mari, yuk",
-              form: "-(으)ㅂ시다 → -자",
-              example: "갑시다 → 가자",
-            },
-            {
-              condition: "Oh, gitu ya",
-              form: "-군요 → -구나",
-              example: "그렇군요 → 그렇구나",
-            },
-            {
-              condition: "Ternyata (dilihat sendiri)",
-              form: "-더라고요 → -더라",
-              example: "맛있더라고요 → 맛있더라",
+              condition: "Oh gitu, ternyata",
+              form: "-군요 → -구나, -더라고요 → -더라",
+              example: "그렇구나, 맛있더라",
             },
           ],
           examples: [
@@ -179,6 +151,9 @@ export default defineBab({
             { before: "우리 밥 먹으러 ", emphasis: "가자", after: "!" },
             { before: "잠깐만, ", emphasis: "기다려 줘", after: "!" },
           ],
+          tipKo: "이름을 부를 때 받침이 있으면 ‘아’, 없으면 ‘야’를 붙여요.",
+          tipTranslation:
+            "Manggil nama juga ganti: akhiran konsonan + 아 (지은아), akhiran vokal + 야 (리나야).",
         }),
         p(
           b("Artinya apa sih? "),
@@ -190,7 +165,7 @@ export default defineBab({
           i("‘silakan duduk’"),
           " ke ",
           i("‘duduk sini’"),
-          ". Manggil nama juga ganti: akhiran konsonan + 아 (지은아), akhiran vokal + 야 (리나야).",
+          ". Bukan cuma ujung kalimatnya yang berubah, kata-katanya juga ganti.",
         ),
         h3("Contoh"),
         ex("야, 이거 뭐야?", "Eh, ini apaan?"),
@@ -224,6 +199,56 @@ export default defineBab({
       description:
         "반말 itu ngoko-nya bahasa Korea: soal hubungan, bukan soal ramah atau nggak. Kapan boleh, kapan wajib -요.",
       blocks: [
+        grammar({
+          number: "03",
+          title: "반말 vs 존댓말",
+          theme: "amber",
+          descriptionKo:
+            "반말은 친한 사이에서만 쓰고, 처음 만난 사람이나 윗사람에게는 존댓말을 써요.",
+          descriptionTranslation:
+            "반말 itu ngoko-nya bahasa Korea, dan -요 itu krama-nya. Yang nentuin bukan ramah atau nggak, tapi hubungan: umur, keakraban, dan posisi. Kalau ragu, pakai -요.",
+          rules: [
+            {
+              condition: "Orang baru kenal",
+              form: "-요, umur berapa pun",
+              example: "만나서 반가워요.",
+            },
+            {
+              condition: "Temen sebaya yang akrab",
+              form: "반말",
+              example: "밥 먹었어?",
+            },
+            {
+              condition: "Lebih tua, atasan",
+              form: "-요 / -습니다",
+              example: "네, 알겠습니다!",
+            },
+            {
+              condition: "Mau pindah ke 반말",
+              form: "minta izin dulu",
+              example: "말 놓을까요?",
+            },
+            {
+              condition: "Yang lebih tua nawarin",
+              form: "boleh 반말",
+              example: "편하게 말해.",
+            },
+            {
+              condition: "Seruan ke diri sendiri",
+              form: "bentuk -다, aman",
+              example: "아, 맵다!",
+            },
+          ],
+          examples: [
+            { before: "우리 동갑이죠? ", emphasis: "말 놓을까요", after: "?" },
+            { before: "나한테는 ", emphasis: "편하게 말해", after: "." },
+            {
+              before: "사장님이 반말해도 저는 ",
+              emphasis: "존댓말",
+              after: "을 써요.",
+            },
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Kalau kamu orang Jawa, kamu udah paham konsepnya: ke temen sebaya pakai ngoko (",
@@ -274,10 +299,15 @@ export default defineBab({
         }),
         h3("Contoh"),
         ex(
-          "우리 동갑이죠? 말 놓을까요?",
-          "Kita seumuran kan? Ngomong santai aja yuk?",
+          "혹시 몇 년생이세요?",
+          "Maaf, lahir tahun berapa?",
+          "sebelum 말 놓기",
         ),
-        ex("말 편하게 해도 돼요?", "Boleh ngomong santai aja?"),
+        ex(
+          "우리 동갑이네요! 그럼 말 놓을까요?",
+          "Kita seumuran ya! Ngomong santai aja yuk?",
+        ),
+        ex("그래, 이제 말 놓자.", "Oke, mulai sekarang santai aja ya.", "반말"),
         ex(
           "편하게 말해. 나한테 반말해도 돼.",
           "Santai aja. Ngomong 반말 ke aku juga boleh.",

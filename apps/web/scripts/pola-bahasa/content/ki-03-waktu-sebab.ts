@@ -10,6 +10,7 @@ export default defineBab({
         grammar({
           number: "01",
           title: "-기 전에",
+          theme: "amber",
           descriptionKo: "어떤 일을 하기 앞서 다른 일을 할 때 써요.",
           descriptionTranslation:
             "Artinya “sebelum”. Tempel -기 전에 ke kata kerja, bentuknya sama buat semua, nggak peduli akhiran vokal atau konsonan. Buat kata benda cukup N 전에.",
@@ -104,6 +105,7 @@ export default defineBab({
         grammar({
           number: "02",
           title: "-(으)ㄴ 후에 / -(으)ㄴ 다음에",
+          theme: "amber",
           descriptionKo: "어떤 일이 끝나고 그 뒤에 다른 일을 할 때 써요.",
           descriptionTranslation:
             "Artinya “setelah” atau “abis …”. 후에 agak rapi, 다음에 lebih santai, artinya sama. Huruf ㄴ di sini udah nandain “selesai”, jadi nggak perlu -았/었- lagi.",
@@ -203,6 +205,7 @@ export default defineBab({
         grammar({
           number: "03",
           title: "-(으)ㄹ 때",
+          theme: "amber",
           descriptionKo: "어떤 일이 일어나는 시간이나 상황을 말할 때 써요.",
           descriptionTranslation:
             "Artinya “pas”, “waktu”, “ketika”. Bisa nempel ke kata kerja dan kata sifat. Kalau kejadiannya udah selesai duluan, pakai -았/었을 때.",
@@ -219,13 +222,13 @@ export default defineBab({
             },
             {
               condition: "Akhiran ㄹ",
-              form: "langsung + 때",
+              form: "ㄹ tetap + 때",
               example: "힘들다 → 힘들 때",
             },
             {
               condition: "Kata sifat",
-              form: "sama",
-              example: "바쁘다 → 바쁠 때",
+              form: "-(으)ㄹ 때 juga",
+              example: "바쁘다 → 바쁠 때, 좋다 → 좋을 때",
             },
             {
               condition: "Udah selesai duluan",
@@ -310,6 +313,7 @@ export default defineBab({
         grammar({
           number: "04",
           title: "-아도/어도",
+          theme: "amber",
           descriptionKo: "앞의 내용과 상관없이 뒤의 일이 일어날 때 써요.",
           descriptionTranslation:
             "Artinya “walaupun”, “biarpun”, “… pun tetep”. Cara nempelnya sama kayak -아요/어요: ganti 요 jadi 도. Ditambah 아무리 di depan, artinya jadi “se-… apa pun”.",
@@ -335,9 +339,14 @@ export default defineBab({
               example: "춥다 → 추워도",
             },
             {
+              condition: "Kata benda",
+              form: "-여도 / -이어도",
+              example: "친구여도, 학생이어도",
+            },
+            {
               condition: "Lampau",
               form: "-았/었어도",
-              example: "했다 → 했어도",
+              example: "하다 → 했어도",
             },
           ],
           examples: [
@@ -391,13 +400,13 @@ export default defineBab({
         ),
         callout(
           "tip",
-          "Mau praktik ngomong? Cek ",
-          ref("padahal", "ik-padahal-hasil"),
-          ". Bedanya sama ",
+          "Bedanya sama ",
           ref("-는데도", "ki-neundedo"),
           ": -는데도 selalu fakta (",
           i("padahal udah …"),
-          "), -아도/어도 boleh andai-andai.",
+          "), -아도/어도 boleh andai-andai. Versi awal kalimatnya: ",
+          ref("그래도", "ki-geuraedo"),
+          ".",
         ),
       ],
     },
@@ -408,6 +417,7 @@ export default defineBab({
         grammar({
           number: "05",
           title: "-다가",
+          theme: "amber",
           descriptionKo:
             "어떤 일을 하는 도중에 다른 일이 생기거나 바뀔 때 써요.",
           descriptionTranslation:
@@ -497,6 +507,7 @@ export default defineBab({
         grammar({
           number: "06",
           title: "-자마자",
+          theme: "amber",
           descriptionKo: "앞의 일이 끝나고 바로 뒤의 일이 일어날 때 써요.",
           descriptionTranslation:
             "Artinya “begitu …, langsung …”. Jarak antara dua kejadian hampir nol. Bentuknya cuma satu dan cuma buat kata kerja. Sering ditemenin 바로 (langsung).",
@@ -584,6 +595,7 @@ export default defineBab({
         grammar({
           number: "07",
           title: "-느라고 / -느라",
+          theme: "amber",
           descriptionKo:
             "어떤 일을 하느라 다른 일을 못 했거나 힘들었을 때 써요.",
           descriptionTranslation:
@@ -686,6 +698,7 @@ export default defineBab({
         grammar({
           number: "08",
           title: "-기 때문에 / N 때문에",
+          theme: "amber",
           descriptionKo: "이유를 분명하게 말할 때 써요.",
           descriptionTranslation:
             "Artinya “karena” versi tegas dan agak resmi. Sering muncul di tulisan, presentasi, dan soal EPS-TOPIK. Beda sama -아서, di sini boleh pakai tanda lampau sebelum 기.",
@@ -780,6 +793,7 @@ export default defineBab({
         grammar({
           number: "09",
           title: "-는 바람에",
+          theme: "amber",
           descriptionKo: "갑자기 생긴 일 때문에 안 좋은 결과가 생겼을 때 써요.",
           descriptionTranslation:
             "Artinya “gara-gara (tiba-tiba) …, jadinya …”. Ada kejadian yang nggak kamu duga, lalu hasilnya jelek. Bentuknya selalu -는, walaupun kejadiannya udah lewat.",
@@ -874,6 +888,7 @@ export default defineBab({
         grammar({
           number: "10",
           title: "-는 김에 / -(으)ㄴ 김에",
+          theme: "amber",
           descriptionKo: "어떤 일을 하는 기회에 다른 일도 같이 할 때 써요.",
           descriptionTranslation:
             "Artinya “sekalian” atau “mumpung lagi …”. Kamu udah (atau lagi) ngelakuin A, jadi sekalian aja B. Pakai -는 kalau A lagi atau mau dilakuin, -(으)ㄴ kalau A udah terjadi.",
@@ -901,13 +916,13 @@ export default defineBab({
           ],
           examples: [
             {
-              before: "편의점 가",
-              emphasis: "는 김에",
+              before: "편의점 ",
+              emphasis: "가는 김에",
               after: " 물 좀 사다 줘.",
             },
             {
-              before: "서울에 온",
-              emphasis: " 김에",
+              before: "서울에 ",
+              emphasis: "온 김에",
               after: " 친구도 만났어요.",
             },
           ],
@@ -973,6 +988,7 @@ export default defineBab({
         grammar({
           number: "11",
           title: "-기는커녕 / N은/는커녕",
+          theme: "amber",
           descriptionKo:
             "기대한 일은 물론이고 더 쉬운 일도 안 될 때, 또는 반대 결과가 나올 때 써요.",
           descriptionTranslation:
@@ -1063,6 +1079,7 @@ export default defineBab({
         grammar({
           number: "12",
           title: "-(으)면 -(으)ㄹ수록",
+          theme: "amber",
           descriptionKo: "앞의 정도가 커지면 뒤의 정도도 같이 커질 때 써요.",
           descriptionTranslation:
             "Artinya “makin … makin …”. Kata kerjanya diulang dua kali, sama kayak kita ngulang “makin”. Bagian -(으)면 di depan boleh dibuang: 들을수록 좋아요 juga bener.",
@@ -1079,7 +1096,7 @@ export default defineBab({
             },
             {
               condition: "Akhiran ㄹ",
-              form: "-면 -수록",
+              form: "-면 -수록 (ㄹ tetap)",
               example: "알다 → 알면 알수록",
             },
             {
@@ -1147,7 +1164,7 @@ export default defineBab({
           ") itu bukan -(으)ㄹ수록, tapi ",
           ref("-아/어지다", "ki-ajida"),
           ": ",
-          b("추워졌어요"),
+          b("점점 추워져요"),
           ". -(으)ㄹ수록 cuma dipakai kalau ada dua hal yang naik bareng.",
         ),
         callout(
@@ -1165,6 +1182,7 @@ export default defineBab({
         grammar({
           number: "13",
           title: "-기만 하면",
+          theme: "amber",
           descriptionKo:
             "그 일 하나만 하면 된다고 말하거나, 그 일을 할 때마다 같은 결과가 생길 때 써요.",
           descriptionTranslation:

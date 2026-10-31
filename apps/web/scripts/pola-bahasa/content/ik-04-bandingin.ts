@@ -1,4 +1,18 @@
-import { b, callout, defineBab, ex, h3, i, p, ref, table } from "../blocks";
+import { b, callout, defineBab, ex, grammar, h3, i, p, ref } from "../blocks";
+
+/** One rule row of a grammar card: situation, Korean pattern, short example. */
+const r = (condition: string, form: string, example: string) => ({
+  condition,
+  form,
+  example,
+});
+
+/** One grammar-card example; `emphasis` is the pattern part. */
+const e = (before: string, emphasis: string, after: string) => ({
+  before,
+  emphasis,
+  after,
+});
 
 export default defineBab({
   key: "ik-04-bandingin",
@@ -7,34 +21,49 @@ export default defineBab({
       description:
         "Malah: hasilnya kebalik dari harapan (오히려), atau bukannya ..., malah ... (-기는커녕).",
       blocks: [
+        grammar({
+          theme: "blue",
+          number: "01",
+          title: "malah → 오히려, -기는커녕",
+          descriptionKo: "기대와 반대되는 결과가 나왔을 때 써요.",
+          descriptionTranslation:
+            "Malah dipakai kalau hasilnya justru kebalikan dari harapan. Pakai 오히려, biasanya setelah -는데. Kalau yang diharapin nggak kejadian sama sekali (bukannya ..., malah ...), pakai -기는커녕.",
+          rules: [
+            r("Hasil kebalik", "-는데 오히려", "먹었는데 오히려 더 아파."),
+            r("Yang jelek jadi bagus", "오히려", "오히려 잘됐네!"),
+            r("Bukannya ..., malah", "-기는커녕", "사과하기는커녕 화를 냈어."),
+            r("Kata benda", "N은/는커녕", "칭찬은커녕 혼났어."),
+          ],
+          examples: [
+            e("도와주려고 했는데 ", "오히려", " 방해가 됐어요."),
+            e("야근이 없어서 ", "오히려", " 좋아요."),
+            e("돈을 ", "모으기는커녕", " 빚만 늘었어요."),
+          ],
+        }),
         p(
           i('"Udah minum obat, malah tambah sakit."'),
           " Kamu ngarepin satu hasil, yang keluar justru kebalikannya. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("약을 먹었는데 오히려 더 아파.", "ki-ohiryeo"),
-            "Hasilnya kebalik dari harapan. Biasanya ada -는데 di depannya, kayak padahal.",
-          ],
-          [
-            ref("오히려 잘됐네!", "ki-ohiryeo"),
-            '"Malah bagus dong!" Yang kelihatan jelek ternyata nguntungin.',
-          ],
-          [
-            ref("사과하기는커녕 화를 냈어.", "ki-gineunkeonyeong"),
-            '"Bukannya minta maaf, malah marah." Yang diharapin nggak kejadian sama sekali.',
-          ],
-        ]),
+        p(
+          "Hasil yang kebalik pakai ",
+          ref("오히려", "ki-ohiryeo"),
+          ": ",
+          b("약을 먹었는데 오히려 더 아파."),
+          " Kalau yang diharapin nggak kejadian sama sekali, pakai ",
+          ref("-기는커녕", "ki-gineunkeonyeong"),
+          ": ",
+          b("사과하기는커녕 화를 냈어."),
+        ),
         h3("Contoh"),
         ex(
-          "도와주려고 했는데 오히려 방해가 됐어요.",
-          "Niatnya bantu, malah jadi ganggu.",
+          "약을 먹었는데 오히려 더 아파.",
+          "Udah minum obat, malah tambah sakit.",
+          "반말",
         ),
-        ex("야근이 없어서 오히려 좋아요.", "Nggak ada lembur, malah enak."),
+        ex("오히려 잘됐네!", "Malah bagus dong!"),
         ex(
-          "돈을 모으기는커녕 빚만 늘었어요.",
-          "Boro-boro nabung, utang malah nambah.",
+          "사과하기는커녕 화를 냈어.",
+          "Bukannya minta maaf, dia malah marah.",
         ),
         ex(
           "칭찬은커녕 혼나기만 했어.",
@@ -51,42 +80,70 @@ export default defineBab({
           ": ",
           b("착하고 심지어 밥도 자주 사 줘."),
         ),
+        callout(
+          "tip",
+          "Hasilnya cuma nggak sesuai harapan? Cek ",
+          ref("padahal (hasil nggak sesuai)", "ik-padahal-hasil"),
+          ". Baru nyadar keadaannya beda dari dugaan? Cek ",
+          ref("ternyata", "ik-ternyata"),
+          ".",
+        ),
       ],
     },
     "ik-bahkan": {
       description:
         "Bahkan: nambahin info paling ekstrem pakai 심지어, -조차, atau -까지.",
       blocks: [
+        grammar({
+          theme: "blue",
+          number: "02",
+          title: "bahkan → 심지어, -조차, -까지",
+          descriptionKo: "놀라운 정보를 하나 더 말할 때 써요.",
+          descriptionTranslation:
+            "Bahkan nambahin info paling ekstrem yang bikin orang kaget. 심지어 ditaruh di awal dan paling netral. -조차 dan -까지 nempel di kata benda: -조차 buat hal negatif, -까지 bisa buat yang positif.",
+          rules: [
+            r("Paling netral, di awal", "심지어", "심지어 사장님도 몰라."),
+            r("Negatif (nggak, belum)", "N조차", "사장님조차 몰라."),
+            r(
+              "Nambah satu lagi, positif juga",
+              "N까지",
+              "사장님까지 도와주셨어요.",
+            ),
+            r("Bahkan ... aja", "N도", "점심도 못 먹었어요."),
+          ],
+          examples: [
+            e("너무 바빠서 ", "심지어", " 점심도 못 먹었어요."),
+            e("나는 그 사람 이름", "조차", " 몰라."),
+            e("감기에 걸렸는데 열", "까지", " 나요."),
+          ],
+        }),
         p(
           i('"Bahkan bos juga nggak tahu."'),
           " Kamu nambahin info paling ekstrem yang bikin orang kaget. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("심지어 사장님도 몰라.", "ki-simjieo"),
-            "심지어 di awal: bahkan yang paling netral. Bisa positif, bisa negatif.",
-          ],
-          [
-            ref("사장님조차 몰라.", "ki-simjieo"),
-            '"Bos pun nggak tahu." -조차 nempel di kata benda. Hampir selalu buat hal negatif.',
-          ],
-          [
-            ref("사장님까지 도와주셨어요.", "ki-simjieo"),
-            '"Sampai-sampai bos ikut bantu." -까지 buat nambah satu lagi, bisa positif.',
-          ],
-        ]),
-        h3("Contoh"),
-        ex(
-          "너무 바빠서 심지어 점심도 못 먹었어요.",
-          "Sibuk banget, bahkan makan siang aja nggak sempet.",
+        p(
+          "Ketiganya ada di ",
+          ref("심지어 / -조차 / -까지", "ki-simjieo"),
+          ". Yang paling aman ",
+          b("심지어"),
+          " di awal: ",
+          b("심지어 사장님도 몰라."),
+          " Mau lebih nempel ke kata bendanya, pakai -조차 buat yang negatif atau -까지 buat yang positif.",
         ),
+        h3("Contoh"),
+        ex("심지어 사장님도 몰라.", "Bahkan bos juga nggak tahu."),
         ex(
           "한국에 3년 살았는데 김치조차 못 먹어.",
           "Udah tiga tahun di Korea, bahkan kimchi aja belum bisa makan.",
         ),
-        ex("나는 그 사람 이름조차 몰라.", "Aku bahkan nggak tahu namanya."),
-        ex("감기에 걸렸는데 열까지 나요.", "Lagi pilek, bahkan sampai demam."),
+        ex(
+          "이사할 때 사장님까지 도와주셨어요.",
+          "Pas pindahan, bahkan bos ikut bantuin.",
+        ),
+        ex(
+          "주말에도 일하고 심지어 공휴일에도 일해요.",
+          "Weekend kerja, bahkan tanggal merah juga kerja.",
+        ),
         callout(
           "warning",
           b("-조차 buat yang jelek-jelek."),
@@ -96,48 +153,70 @@ export default defineBab({
           b("사장님까지 도와주셨어요"),
           ", bukan 사장님조차 도와주셨어요.",
         ),
+        callout(
+          "tip",
+          "Hasilnya justru kebalik dari harapan? Cek ",
+          ref("malah", "ik-malah"),
+          ". Nekanin usaha yang udah kamu keluarin? Cek ",
+          ref("padahal udah ... (kesel)", "ik-padahal-kesal"),
+          ".",
+        ),
       ],
     },
     "ik-mendingan": {
       description:
         "Mendingan: bandingin pilihan pakai -는 게 낫다, atau nyerah dan pilih jalan lain pakai 차라리.",
       blocks: [
+        grammar({
+          theme: "blue",
+          number: "03",
+          title: "mendingan → -는 게 낫다, 차라리",
+          descriptionKo: "두 가지를 비교해서 더 좋은 쪽을 권할 때 써요.",
+          descriptionTranslation:
+            "Mendingan dipakai buat nimbang dua pilihan, terus ngasih saran. Pakai -는 게 나아. Kalau nadanya udahlah (nyerah sama keadaan, terus pilih jalan lain), pakai 차라리.",
+          rules: [
+            r("Ngasih saran", "-는 게 나아(요)", "택시 타는 게 나아."),
+            r("Dua benda", "A보다 B가 나아요", "버스보다 지하철이 나아요."),
+            r(
+              "Ke atasan, halus",
+              "-는 게 좋을 것 같아요",
+              "택시 타는 게 좋을 것 같아요.",
+            ),
+            r("Udahlah, nyerah", "차라리", "차라리 내가 할게."),
+            r("Kondisi badan", "나아지다", "좀 나아졌어?"),
+          ],
+          examples: [
+            e("오늘은 집에서 ", "쉬는 게 나아요", "."),
+            e("버스보다 지하철이 ", "나아요", "."),
+            e("버스가 안 오네. ", "차라리", " 걸어가자."),
+          ],
+        }),
         p(
           i('"Mendingan naik taksi aja."'),
           " Kamu nimbang dua pilihan, terus ngasih saran. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("택시 타는 게 나아.", "ki-neun-ge-natda"),
-            '"Mending naik taksi." Bandingin dan ngasih saran. Sopannya 나아요.',
-          ],
-          [
-            ref("버스보다 지하철이 나아요.", "ki-neun-ge-natda"),
-            '"Mending subway daripada bus." Dua benda dibandingin pakai 보다.',
-          ],
-          [
-            ref("택시 타는 게 좋을 것 같아요.", "ki-geot-gatda"),
-            "Lebih halus. Pas buat ngasih saran ke atasan.",
-          ],
-          [
-            ref("차라리 내가 할게.", "ki-charari"),
-            '"Udahlah, mending aku aja." Nyerah sama keadaan, terus milih jalan lain.',
-          ],
-        ]),
-        h3("Contoh"),
-        ex(
-          "오늘은 집에서 쉬는 게 나아요.",
-          "Hari ini mending istirahat di rumah.",
+        p(
+          "Saran biasa pakai ",
+          ref("-는 게 낫다", "ki-neun-ge-natda"),
+          ": ",
+          b("택시 타는 게 나아."),
+          " Ke atasan, bikin lebih halus pakai ",
+          ref("-는 게 좋을 것 같아요", "ki-geot-gatda"),
+          ". Kalau udah nyerah sama keadaan, pakai ",
+          ref("차라리", "ki-charari"),
+          ".",
         ),
+        h3("Contoh"),
         ex(
           "지하철 타는 게 나아요. 더 빠르거든요.",
           "Mending naik subway, soalnya lebih cepet.",
         ),
         ex(
-          "버스가 안 오네. 차라리 걸어가자.",
-          "Busnya nggak dateng-dateng. Udahlah, mending jalan kaki aja.",
+          "택시 타는 게 좋을 것 같아요.",
+          "Kayaknya mending naik taksi, Pak.",
+          "halus, ke atasan",
         ),
+        ex("차라리 내가 할게.", "Udahlah, mending aku aja."),
         ex("좀 나아졌어?", "Udah mendingan?", "soal kondisi badan"),
         callout(
           "warning",
@@ -150,35 +229,54 @@ export default defineBab({
           b("낳다"),
           " (melahirkan).",
         ),
+        callout(
+          "tip",
+          "Nyesel karena tadi nggak milih yang lebih baik? Cek ",
+          ref("harusnya", "ik-harusnya"),
+          ". Mau nyerahin pilihannya ke orang lain? Cek ",
+          ref("terserah", "ik-terserah"),
+          ".",
+        ),
       ],
     },
     "ik-makin": {
       description:
         "Makin ... makin: dua hal naik barengan, pakai -(으)면 -(으)ㄹ수록.",
       blocks: [
+        grammar({
+          theme: "blue",
+          number: "04",
+          title: "makin ... makin → -(으)면 -(으)ㄹ수록",
+          descriptionKo: "한 가지가 변하면 다른 것도 따라 변할 때 써요.",
+          descriptionTranslation:
+            "Makin ... makin dipakai kalau dua hal naik barengan. Kata kerjanya diulang: -(으)면 dulu, terus -(으)ㄹ수록. Versi pendeknya cukup -(으)ㄹ수록, dan buat perubahan pelan-pelan pakai 갈수록 atau 점점 + -아/어지다.",
+          rules: [
+            r("Bentuk lengkap", "-(으)면 -(으)ㄹ수록", "하면 할수록"),
+            r("Versi pendek", "-(으)ㄹ수록", "볼수록"),
+            r("Kata sifat", "-(으)면 -(으)ㄹ수록", "빠르면 빠를수록 좋아요."),
+            r("ㄷ jadi ㄹ", "듣다 → 들을수록", "들으면 들을수록"),
+            r("Makin lama", "갈수록 / 점점 -아/어지다", "점점 추워져요."),
+          ],
+          examples: [
+            e("한국어는 ", "공부하면 할수록", " 재미있어요."),
+            e("그 사람은 ", "볼수록", " 매력 있어요."),
+            e("일이 ", "갈수록", " 힘들어져요."),
+          ],
+        }),
         p(
           i('"Makin dipelajari, makin seru."'),
           " Dua hal naik barengan: yang satu nambah, yang lain ikut nambah. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("공부하면 할수록 재미있어요.", "ki-eulsurok"),
-            "Bentuk lengkap. Kata kerjanya diulang dua kali.",
-          ],
-          [
-            ref("공부할수록 재미있어요.", "ki-eulsurok"),
-            "Versi pendek, artinya sama. Sering banget dipakai ngobrol.",
-          ],
-          [
-            ref("빠르면 빠를수록 좋아요.", "ki-eulsurok"),
-            '"Makin cepet makin bagus." Ungkapan wajib hafal, sering keluar dari mulut 사장님.',
-          ],
-          [
-            ref("일이 갈수록 힘들어져요.", "ki-ajida"),
-            '"Makin lama makin berat." 갈수록 atau 점점 + -아/어지다 buat perubahan pelan-pelan.',
-          ],
-        ]),
+        p(
+          "Pakai ",
+          ref("-(으)면 -(으)ㄹ수록", "ki-eulsurok"),
+          ": ",
+          b("공부하면 할수록 재미있어요."),
+          " Kalau yang berubah cuma satu hal, pelan-pelan seiring waktu, pakai 점점 + ",
+          ref("-아/어지다", "ki-ajida"),
+          ": ",
+          b("날씨가 점점 추워져요."),
+        ),
         h3("Contoh"),
         ex("생각하면 할수록 화가 나.", "Makin dipikirin makin kesel."),
         ex(
@@ -187,8 +285,9 @@ export default defineBab({
           "듣다 → 들을수록",
         ),
         ex(
-          "그 사람은 볼수록 매력 있어요.",
-          "Orang itu makin dilihat makin menarik.",
+          "빠르면 빠를수록 좋아요.",
+          "Makin cepet makin bagus.",
+          "sering keluar dari mulut 사장님",
         ),
         ex("날씨가 점점 추워져요.", "Cuacanya makin lama makin dingin."),
         callout(
@@ -201,6 +300,14 @@ export default defineBab({
           ' cukup buat "lebih" biasa: ',
           b("더 주세요"),
           " (minta lagi dong).",
+        ),
+        callout(
+          "tip",
+          "Bandingin dua pilihan, bukan dua hal yang naik bareng? Cek ",
+          ref("mendingan", "ik-mendingan"),
+          ". Mau nambahin info paling ekstrem? Cek ",
+          ref("bahkan", "ik-bahkan"),
+          ".",
         ),
       ],
     },

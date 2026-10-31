@@ -12,7 +12,7 @@ export default defineBab({
           title: "-았/었어야 했는데",
           descriptionKo: "과거에 하지 않은 일을 후회할 때 써요.",
           descriptionTranslation:
-            "Nyesel karena sesuatu yang nggak kamu lakuin di masa lalu: ‘harusnya tadi bawa payung’. Ujung -는데 sengaja digantung, kayak kita bilang ‘harusnya tadi...’ terus menghela napas.",
+            "Nyesel karena sesuatu yang nggak kamu lakuin di masa lalu: “harusnya tadi bawa payung”. Ujung -는데 sengaja digantung, kayak kita bilang “harusnya tadi...” terus menghela napas.",
           rules: [
             {
               condition: "Vokal terakhir ㅏ / ㅗ",
@@ -54,7 +54,7 @@ export default defineBab({
               after: "...",
             },
           ],
-          theme: "green",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -90,7 +90,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "‘Harusnya’ di bahasa Indonesia juga dipakai buat nebak. ‘Harusnya dia udah sampai sekarang’ itu bukan nyesel, jadi pakai -았/었을 거예요: 지금쯤 도착했을 거예요. Kalau pakai 도착했어야 했는데, kesannya kamu ngeluh dia belum sampai.",
+          "Jebakan: “harusnya” di bahasa Indonesia juga dipakai buat nebak. “Harusnya dia udah sampai sekarang” itu bukan nyesel, jadi pakai -았/었을 거예요: 지금쯤 도착했을 거예요. Kalau pakai 도착했어야 했는데, kesannya kamu ngeluh dia belum sampai.",
         ),
         callout(
           "tip",
@@ -109,10 +109,9 @@ export default defineBab({
         grammar({
           number: "02",
           title: "-았/었으면 좋았을 텐데",
-          descriptionKo:
-            "이미 지나간 일을 아쉬워하면서 ‘그랬다면 좋았을 거예요’라고 말할 때 써요.",
+          descriptionKo: "이미 지나간 일을 아쉬워할 때 써요.",
           descriptionTranslation:
-            "Berandai-andai soal masa lalu yang udah nggak bisa diubah: ‘coba kamu ikut kemarin’, ‘kalau aja aku belajar dari dulu’. Rasanya sayang dan agak nyesek. Saudaranya, -았/었으면 좋겠다, dipakai buat harapan ke depan: ‘semoga ...’.",
+            "Berandai-andai soal masa lalu yang udah nggak bisa diubah: “coba kamu ikut kemarin”, “kalau aja aku belajar dari dulu”. Rasanya sayang dan agak nyesek. Saudaranya, -았/었으면 좋겠다, dipakai buat harapan ke depan: “semoga ...”.",
           rules: [
             {
               condition: "Vokal terakhir ㅏ / ㅗ",
@@ -157,7 +156,7 @@ export default defineBab({
               after: ".",
             },
           ],
-          theme: "green",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -188,9 +187,9 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "‘Coba’ punya dua arti. ‘Coba deh’ = nyoba, pakai ",
+          "Jebakan: “coba” punya dua arti. “Coba deh” = nyoba, pakai ",
           ref("-아/어 보다", "ki-a-boda"),
-          ". ‘Coba kemarin kamu datang’ = berandai-andai, pakai pola ini. Jangan bilang ✗ 어제 와 보세요.",
+          ". “Coba kemarin kamu datang” = berandai-andai, pakai pola ini. Jangan bilang ✗ 어제 와 보세요.",
         ),
         callout(
           "tip",
@@ -211,7 +210,7 @@ export default defineBab({
           title: "-는 게 낫다",
           descriptionKo: "두 가지 중에서 더 좋은 쪽을 말할 때 써요.",
           descriptionTranslation:
-            "Artinya ‘mendingan ...’ atau ‘lebih baik ...’. Dipakai buat milih di antara dua pilihan atau nyaranin dengan halus. 게 itu singkatan 것이, jadi harfiahnya: ‘yang ... itu lebih baik’.",
+            "Artinya “mendingan ...” atau “lebih baik ...”. Dipakai buat milih di antara dua pilihan atau nyaranin dengan halus. 게 itu singkatan 것이, jadi harfiahnya: “yang ... itu lebih baik”.",
           rules: [
             {
               condition: "Kata kerja",
@@ -252,14 +251,14 @@ export default defineBab({
             },
             { before: "이거보다 저게 더 ", emphasis: "나아요", after: "." },
           ],
-          theme: "green",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Sama persis kayak ",
           i("mendingan"),
           " waktu lagi nimbang-nimbang: ",
-          i("‘Jam segini macet. Mendingan naik subway.’"),
+          i("“Jam segini macet. Mendingan naik subway.”"),
           " Kamu bandingin dua pilihan, terus nunjuk yang lebih oke.",
         ),
         h3("Contoh"),
@@ -282,7 +281,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "낫다 itu ㅅ tidak beraturan: 나아요, bukan ✗ 낫아요. Jangan ketuker sama 낳다 (melahirkan). Satu lagi, 낫다 juga bisa berarti ‘sembuh’: 감기가 다 나았어요 = flunya udah sembuh.",
+          "Jebakan: 낫다 itu ㅅ tidak beraturan: 나아요, bukan ✗ 낫아요. Jangan ketuker sama 낳다 (melahirkan). Satu lagi, 낫다 juga bisa berarti “sembuh”: 감기가 다 나았어요 = flunya udah sembuh.",
         ),
         callout(
           "tip",
@@ -290,7 +289,7 @@ export default defineBab({
           ref("mendingan", "ik-mendingan"),
           ". Bedanya sama ",
           ref("차라리", "ki-charari"),
-          ": 차라리 itu mendingan yang pasrah, kayak ‘udahlah, mending aku aja’.",
+          ": 차라리 itu mendingan yang pasrah, kayak “udahlah, mending aku aja”.",
         ),
       ],
     },
@@ -303,7 +302,7 @@ export default defineBab({
           title: "-(으)려고 했는데",
           descriptionKo: "하려고 계획했지만 그렇게 되지 않았을 때 써요.",
           descriptionTranslation:
-            "Artinya ‘tadinya mau ..., tapi ...’. Kamu udah niat, tapi rencananya gagal atau berubah. Sering dipakai buat minta maaf atau jelasin kenapa sesuatu nggak jadi.",
+            "Artinya “tadinya mau ..., tapi ...”. Kamu udah niat, tapi rencananya gagal atau berubah. Sering dipakai buat minta maaf atau jelasin kenapa sesuatu nggak jadi.",
           rules: [
             {
               condition: "Akhiran vokal / ㄹ",
@@ -343,7 +342,7 @@ export default defineBab({
               after: "!",
             },
           ],
-          theme: "green",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -360,7 +359,7 @@ export default defineBab({
         ),
         ex(
           "오늘 운동하려고 했는데 비가 와서 못 했어요.",
-          "Hari ini tadinya mau olahraga, tapi hujan jadi nggak jadi.",
+          "Hari ini tadinya mau olahraga, tapi hujan, jadi batal deh.",
         ),
         ex(
           "일찍 자려고 했는데 결국 새벽까지 게임했어요.",
@@ -377,10 +376,11 @@ export default defineBab({
         ),
         callout(
           "warning",
+          "Jebakan: ",
           ref("-(으)려고", "ki-ryeogo"),
           " dan ",
           ref("-(으)러", "ki-reo"),
-          " sama-sama sering diterjemahin ‘untuk’. Tapi ‘tadinya mau’ selalu -(으)려고 했는데, bukan ✗ -(으)러 했는데. -(으)러 cuma bisa diikuti 가다 atau 오다.",
+          " sama-sama sering diterjemahin “untuk”. Tapi “tadinya mau” selalu -(으)려고 했는데, bukan ✗ -(으)러 했는데. -(으)러 cuma bisa diikuti 가다 atau 오다.",
         ),
         callout(
           "tip",
@@ -440,7 +440,7 @@ export default defineBab({
     questions: [
       {
         key: "ki08-asseoya-payung",
-        prompt: "‘Aduh, harusnya tadi bawa payung.’ Bahasa Koreanya?",
+        prompt: "“Aduh, harusnya tadi bawa payung.” Bahasa Koreanya?",
         options: [
           { text: "아, 우산을 가져왔어야 했는데.", correct: true },
           { text: "아, 우산을 가져오려고 했는데." },
@@ -448,11 +448,11 @@ export default defineBab({
           { text: "아, 우산을 가져와 봤어요." },
         ],
         explanation:
-          "Nyesel karena nggak ngelakuin sesuatu = -았/었어야 했는데. 가져오려고 했는데 artinya ‘tadinya mau bawa’, dan 좋겠어요 itu harapan ke depan.",
+          "Nyesel karena nggak ngelakuin sesuatu = -았/었어야 했는데. 가져오려고 했는데 artinya “tadinya mau bawa”, dan 좋겠어요 itu harapan ke depan.",
       },
       {
         key: "ki08-asseoya-jimalgo",
-        prompt: "‘Harusnya aku nggak ngomong gitu...’ Yang pas?",
+        prompt: "“Harusnya aku nggak ngomong gitu...” Yang pas?",
         options: [
           { text: "그 말은 하지 말았어야 했는데...", correct: true },
           { text: "그 말은 하려고 했는데..." },
@@ -460,12 +460,12 @@ export default defineBab({
           { text: "그 말은 하는 게 나아요..." },
         ],
         explanation:
-          "‘Harusnya nggak’ = -지 말았어야 했는데. 하지 마세요 itu larangan ke orang lain, bukan nyesel.",
+          "“Harusnya nggak” = -지 말았어야 했는데. 하지 마세요 itu larangan ke orang lain, bukan nyesel.",
       },
       {
         key: "ki08-harusnya-dugaan",
         prompt:
-          "‘Harusnya dia udah sampai sekarang.’ Di sini ‘harusnya’ artinya nebak, bukan nyesel. Yang pas?",
+          "“Harusnya dia udah sampai sekarang.” Di sini “harusnya” artinya nebak, bukan nyesel. Yang pas?",
         options: [
           { text: "지금쯤 도착했을 거예요.", correct: true },
           { text: "지금쯤 도착했어야 했는데요." },
@@ -473,11 +473,11 @@ export default defineBab({
           { text: "지금쯤 도착하는 게 나아요." },
         ],
         explanation:
-          "‘Harusnya’ yang nebak pakai -았/었을 거예요. Kalau pakai 도착했어야 했는데, artinya jadi ngeluh: ‘harusnya udah sampai (tapi kok belum)’.",
+          "“Harusnya” yang nebak pakai -았/었을 거예요. Kalau pakai 도착했어야 했는데, artinya jadi ngeluh: “harusnya udah sampai (tapi kok belum)”.",
       },
       {
         key: "ki08-teonde-coba",
-        prompt: "‘Coba kemarin kamu ikut.’ Yang pas?",
+        prompt: "“Coba kemarin kamu ikut.” Yang pas?",
         options: [
           { text: "어제 너도 같이 갔으면 좋았을 텐데.", correct: true },
           { text: "어제 너도 같이 가 봐." },
@@ -485,18 +485,18 @@ export default defineBab({
           { text: "어제 너도 같이 갔으면 좋겠다." },
         ],
         explanation:
-          "‘Coba’ yang berandai-andai soal masa lalu = -았/었으면 좋았을 텐데. 가 봐 itu ‘coba’ yang nyoba, dan 좋겠다 dipakai buat yang belum kejadian.",
+          "“Coba” yang berandai-andai soal masa lalu = -았/었으면 좋았을 텐데. 가 봐 itu “coba” yang nyoba, dan 좋겠다 dipakai buat yang belum kejadian.",
       },
       {
         key: "ki08-joketda-harapan",
-        prompt: "‘Semoga besok nggak hujan.’ Yang pas?",
+        prompt: "“Semoga besok nggak hujan.” Yang pas?",
         options: [
           { text: "내일 비가 안 왔으면 좋겠어요.", correct: true },
           { text: "내일 비가 안 왔으면 좋았을 텐데." },
           { text: "내일 비가 안 왔어야 했는데." },
         ],
         explanation:
-          "Harapan ke depan = -았/었으면 좋겠다. Bentuknya lampau, tapi artinya ‘semoga’. 좋았을 텐데 cuma buat yang udah lewat.",
+          "Harapan ke depan = -았/었으면 좋겠다. Bentuknya lampau, tapi artinya “semoga”. 좋았을 텐데 cuma buat yang udah lewat.",
       },
       {
         key: "ki08-teonde-teman",
@@ -508,11 +508,11 @@ export default defineBab({
           { text: "너도 왔어야 했는데." },
         ],
         explanation:
-          "-았/었으면 좋았을 텐데 fokus ke ‘sayang ya’. 왔어야지 itu negur, dan 왔어야 했는데 ke orang lain kedengeran kayak nyalahin.",
+          "-았/었으면 좋았을 텐데 fokus ke “sayang ya”. 왔어야지 itu negur, dan 왔어야 했는데 ke orang lain kedengeran kayak nyalahin.",
       },
       {
         key: "ki08-natda-subway",
-        prompt: "‘Jam segini macet. Mendingan naik subway.’ Bagian keduanya?",
+        prompt: "“Jam segini macet. Mendingan naik subway.” Bagian keduanya?",
         options: [
           { text: "지하철 타는 게 나아요.", correct: true },
           { text: "지하철 탔어야 했는데요." },
@@ -536,7 +536,7 @@ export default defineBab({
       },
       {
         key: "ki08-ryeogo-telepon",
-        prompt: "‘Kemarin tadinya mau nelepon, tapi lupa.’ Yang benar?",
+        prompt: "“Kemarin tadinya mau nelepon, tapi lupa.” Yang benar?",
         options: [
           { text: "어제 전화하려고 했는데 깜빡했어요.", correct: true },
           { text: "어제 전화하러 했는데 깜빡했어요." },
@@ -544,12 +544,12 @@ export default defineBab({
           { text: "어제 전화했어야 했는데 깜빡했어요." },
         ],
         explanation:
-          "‘Tadinya mau ... tapi’ selalu -(으)려고 했는데. -(으)러 cuma bisa diikuti 가다/오다, jadi ✗ 하러 했는데 salah.",
+          "“Tadinya mau ... tapi” selalu -(으)려고 했는데. -(으)러 cuma bisa diikuti 가다/오다, jadi ✗ 하러 했는데 salah.",
       },
       {
         key: "ki08-ryeodeon-cham",
         prompt:
-          "Teman nelepon duluan, padahal kamu juga baru mau nelepon dia. Kamu bilang: ‘Aku juga baru mau nelepon!’",
+          "Teman nelepon duluan, padahal kamu juga baru mau nelepon dia. Kamu bilang: “Aku juga baru mau nelepon!”",
         options: [
           { text: "저도 전화하려던 참이었어요!", correct: true },
           { text: "저도 전화했어야 했는데요!" },
@@ -557,7 +557,7 @@ export default defineBab({
           { text: "저도 전화하는 게 나아요!" },
         ],
         explanation:
-          "-(으)려던 참이었어요 = ‘baru aja mau ...’. Pas banget buat momen kebetulan kayak gini.",
+          "-(으)려던 참이었어요 = “baru aja mau ...”. Pas banget buat momen kebetulan kayak gini.",
       },
     ],
   },

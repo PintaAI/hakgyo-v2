@@ -20,31 +20,52 @@ Isi versi lama (satu materi panjang berisi banyak pola) ada di `/home/dev/hakgyo
 
 ## Template satu materi (pendek dan seragam, 2–3 menit baca)
 
-Urutannya selalu sama. Maksimal sekitar 15 blok.
+Urutannya selalu sama, dan **setiap materi wajib dibuka dengan satu kartu `grammar({...})`** (custom block "Tata bahasa" di editor). Tidak ada pengecualian, termasuk untuk kata sambung, kata keterangan, dan kursus `ik-*`. Validator menolak materi tanpa kartu. Panjang maksimal sekitar 15 blok.
 
-**Kursus `ki-*` (pola Korea):**
+### 1. Kartu tata bahasa (wajib, blok pertama, tepat satu)
 
-1. `grammar({...})`: kartu pola.
-   - `descriptionKo`: 1 kalimat Korea sederhana.
-   - `descriptionTranslation`: penjelasan dalam bahasa Indonesia, 2–3 kalimat.
-   - `rules`: cara menempel (akhiran vokal, akhiran konsonan, 하다, lampau), hanya kalau relevan.
-   - `examples`: 2–3 contoh, dengan `emphasis` berisi bagian polanya.
-   - Kata keterangan dan kata kecil (bab 9–10) tidak memakai kartu. Ganti dengan `callout("info", ...)` berisi arti dan cara pakainya.
-2. `p(b("Artinya apa sih? "), ...)`: jembatan ke bahasa Indonesia, 1–3 kalimat.
-3. `h3("Contoh")`, lalu 3–5 `ex(korea, indonesia)`.
-4. `callout("warning", ...)`: **satu** jebakan khas orang Indonesia. Hanya kalau memang ada.
-5. Satu baris tautan: `callout("tip", "Mau praktik ngomong? Cek ", ref("padahal", "ik-padahal-hasil"), ".")`, ke materi `ik-*` yang memakai pola ini. Kalau perlu, tambahkan satu pembanding: `"Bedanya sama ", ref("-지만", "ki-jiman"), ": ..."`.
+- `theme`: `"amber"` untuk semua materi `ki-*`, dan `"blue"` untuk semua materi `ik-*`.
+- `number`: nomor urut materi di babnya, dua digit (`"01"`, `"02"`, …).
+- `title`: pola atau kata yang dibahas.
+  - `ki-*`: misalnya `"-는데 / -(으)ㄴ데"` atau `"그리고"`.
+  - `ik-*`: kata Indonesia beserta bentuk Koreanya, misalnya `"padahal → -는데"`.
+- `descriptionKo`: satu kalimat Korea sederhana tentang fungsi pola itu.
+- `descriptionTranslation`: penjelasan utama dalam bahasa Indonesia, 2–3 kalimat pendek dan jelas.
+- `rules`: 2–6 baris, karena di HP setiap baris tampil ringkas. Isi kolomnya tergantung jenis materi:
 
-**Kursus `ik-*` (kata Indonesia):**
+| Jenis                      | `condition` (Kalau)                                                       | `form` (Pakai)                                                | `example` (Contoh)   |
+| -------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------- | -------------------- |
+| Pola grammar `ki-*`        | kata kerja / sifat / benda, akhiran vokal / konsonan, lampau              | bentuknya                                                     | `먹다 → 먹는데`      |
+| Kata `ki-*` (bab 1, 9, 10) | situasi atau posisi pakai, misalnya "Awal kalimat", "Ke atasan", "Santai" | bentuk atau variasinya, misalnya `그리고`, `근데`, `그런데요` | kalimat pendek       |
+| 반말 `ki-banmal-*`         | ke siapa atau bentuk sopan                                                | bentuk santainya                                              | `먹어요 → 먹어`      |
+| `ik-*`                     | maksud atau situasi, misalnya "Hasil nggak sesuai", "Ke 사장님", "Santai" | pola Korea yang dipakai                                       | kalimat Korea pendek |
 
-1. `p(...)`: kalimat Indonesia yang sering diucapkan, lalu "Gimana bilangnya?"
-2. `table([...])` berisi pilihan bahasa Korea. Kolomnya: **Korea | Nuansa**. Setiap pola Korea **ditautkan** ke materi `ki-*`-nya dengan `ref(...)`. Maksimal 2 kolom supaya muat di HP.
-3. `h3("Contoh")`, lalu 3–4 `ex(...)`. Kalau situasinya memang obrolan, boleh satu `...chat([...])` pendek (maksimal 6 baris).
-4. `callout("warning", ...)`: satu jebakan, misalnya urutan kata atau kata yang maknanya ganda.
+- `examples`: 2–4 kalimat Korea natural, dengan `emphasis` berisi bagian polanya.
+- `tipKo` dan `tipTranslation`: satu tip pendek. Boleh dikosongkan kalau jebakannya sudah ada di callout.
 
-**Jangan dipakai di materi:** `opener()`, `culture()`, latihan "Coba bikin sendiri", tabel 3 kolom, atau heading level 2. Latihan sudah ada di kuis bab.
+Isi kartu adalah string biasa, jadi tidak bisa memuat tautan.
 
-Pengecualian: materi `ki-banmal-kapan` boleh memakai satu `culture({...})`.
+### 2. Jembatan
+
+- `ki-*`: `p(b("Artinya apa sih? "), ...)`, 1–3 kalimat yang menjelaskan lewat bahasa Indonesia (_kan, sih, nah, soalnya, ngoko/krama_).
+- `ik-*`: `p(...)` berisi kalimat Indonesia yang sering diucapkan, lalu "Gimana bilangnya?". Setelah itu `p(...)` pendek yang menyebut pilihan polanya **dengan tautan** `ref(...)` ke materi `ki-*` masing-masing. Ini pengganti tabel lama; jangan pakai tabel lagi di `ik-*`.
+
+### 3. Contoh
+
+`h3("Contoh")`, lalu 3–5 `ex(korea, indonesia)`. Tulis versi sopan dulu, lalu versi 반말 kalau polanya sering dipakai santai. Di `ik-*`, kalau situasinya memang obrolan, boleh satu `...chat([...])` pendek (maksimal 6 baris).
+
+### 4. Jebakan
+
+Satu `callout("warning", ...)` berisi jebakan khas orang Indonesia. Hanya kalau memang ada.
+
+### 5. Tautan
+
+Satu `callout("tip", ...)`:
+
+- `ki-*`: "Mau praktik ngomong? Cek …" ke materi `ik-*` yang memakai pola ini. Kalau perlu, tambahkan satu pembanding: "Bedanya sama …".
+- `ik-*`: kata Indonesia lain yang maknanya bertetangga.
+
+**Jangan dipakai di materi:** `opener()`, tabel, latihan "Coba bikin sendiri", heading level 2, atau lebih dari satu kartu grammar. `culture()` hanya boleh di `ki-banmal-kapan`, dan letaknya setelah kartu grammar. Latihan sudah ada di kuis bab.
 
 ## Set kosakata bab
 

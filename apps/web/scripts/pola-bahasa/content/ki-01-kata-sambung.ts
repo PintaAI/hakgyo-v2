@@ -1,4 +1,18 @@
-import { b, callout, defineBab, ex, h3, i, p, ref } from "../blocks";
+import { b, callout, defineBab, ex, grammar, h3, i, p, ref } from "../blocks";
+
+/** One rule row of a grammar card. */
+const r = (condition: string, form: string, example: string) => ({
+  condition,
+  form,
+  example,
+});
+
+/** One grammar-card example; `emphasis` is the word itself. */
+const e = (before: string, emphasis: string, after: string) => ({
+  before,
+  emphasis,
+  after,
+});
 
 export default defineBab({
   key: "ki-01-kata-sambung",
@@ -7,13 +21,30 @@ export default defineBab({
       description:
         "그리고 dipakai di awal kalimat baru buat nambahin info atau nyebut kejadian berikutnya.",
       blocks: [
-        callout(
-          "info",
-          b("그리고"),
-          " = ",
-          i("dan, terus"),
-          ". Taruh di awal kalimat baru buat nambahin info atau nyebut kejadian berikutnya. Nadanya netral, aman buat ngobrol, chat, sampai tulisan resmi.",
-        ),
+        grammar({
+          number: "01",
+          title: "그리고",
+          theme: "amber",
+          descriptionKo:
+            "앞 문장에 내용을 더하거나 다음에 한 일을 말할 때 써요.",
+          descriptionTranslation:
+            "그리고 artinya “dan” atau “terus”. Taruh di awal kalimat baru buat nambah info atau nyebut kejadian berikutnya. Nadanya netral, aman buat ngobrol, chat, sampai tulisan resmi.",
+          rules: [
+            r("Nambah info", "그리고", "싸요. 그리고 맛있어요."),
+            r("Kejadian berikutnya", "그리고", "밥 먹었어요. 그리고 잤어요."),
+            r("Nambah pesanan", "그리고 ...도", "그리고 물도 주세요."),
+            r("Dua kata benda", "하고 / (이)랑", "밥하고 김치"),
+          ],
+          examples: [
+            e(
+              "저는 인도네시아 사람이에요. ",
+              "그리고",
+              " 지금 안산에서 일해요.",
+            ),
+            e("편의점에 갔어요. ", "그리고", " 라면을 샀어요."),
+            e("이 김밥 주세요. ", "그리고", " 물도 하나 주세요."),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Persis kayak ",
@@ -24,21 +55,22 @@ export default defineBab({
         ),
         h3("Contoh"),
         ex(
-          "저는 인도네시아 사람이에요. 그리고 지금 안산에서 일해요.",
-          "Aku orang Indonesia. Terus sekarang aku kerja di Ansan.",
-        ),
-        ex(
           "퇴근하고 편의점에 갔어요. 그리고 라면을 샀어요.",
           "Pulang kerja aku mampir ke minimarket. Terus beli ramyeon.",
         ),
         ex(
-          "이 김밥 주세요. 그리고 물도 하나 주세요.",
-          "Kimbap ini satu ya. Terus airnya juga satu.",
+          "이 식당은 싸요. 그리고 양도 많아요.",
+          "Restoran ini murah. Terus porsinya juga banyak.",
         ),
         ex(
           "오늘은 청소 좀 해 주세요. 그리고 내일은 창고 정리해 주세요.",
           "Hari ini tolong bersih-bersih ya. Terus besok beresin gudang.",
           "반장님 ke pekerja",
+        ),
+        ex(
+          "숙제 다 했어. 그리고 빨래도 했어.",
+          "PR udah kelar. Terus cucian juga udah.",
+          "반말",
         ),
         callout(
           "warning",
@@ -70,15 +102,36 @@ export default defineBab({
       description:
         "그래서 menyambung alasan di kalimat pertama dengan akibatnya di kalimat berikutnya.",
       blocks: [
-        callout(
-          "info",
-          b("그래서"),
-          " = ",
-          i("jadi, makanya, karena itu"),
-          ". Kalimat sebelumnya alasan, kalimat sesudahnya akibat. Asalnya dari ",
-          b("그렇다 + -아서"),
-          ", jadi aturan mainnya ikut -아서.",
-        ),
+        grammar({
+          number: "02",
+          title: "그래서",
+          theme: "amber",
+          descriptionKo: "앞 문장이 이유이고 뒤 문장이 그 결과일 때 써요.",
+          descriptionTranslation:
+            "그래서 artinya “jadi”, “makanya”, “karena itu”. Kalimat sebelumnya alasan, kalimat sesudahnya akibat. Asalnya dari 그렇다 + -아서, jadi aturan mainnya ikut -아서.",
+          rules: [
+            r("Alasan → akibat", "그래서", "늦잠 잤어요. 그래서 늦었어요."),
+            r(
+              "Minta lanjut cerita",
+              "그래서 + pertanyaan",
+              "그래서 어떻게 됐어요?",
+            ),
+            r("Tulisan resmi", "따라서", "따라서 회의를 연기합니다."),
+            r(
+              "Habis itu nyuruh atau ngajak",
+              "그러니까",
+              "그러니까 우산 가져가세요.",
+            ),
+          ],
+          examples: [
+            e("어제 야근했어요. ", "그래서", " 너무 피곤해요."),
+            e("버스를 놓쳤어요. ", "그래서", " 늦었어요."),
+            e("", "그래서", " 어떻게 됐어요?"),
+          ],
+          tipKo: "그래서 뒤에는 명령이나 제안을 잘 안 써요.",
+          tipTranslation:
+            "Habis 그래서, jangan langsung nyuruh atau ngajak. Buat itu, pakai 그러니까.",
+        }),
         p(
           b("Artinya apa sih? "),
           "Kayak ",
@@ -93,17 +146,17 @@ export default defineBab({
           "Kemarin aku lembur. Jadi sekarang capek banget.",
         ),
         ex(
-          "버스를 놓쳤어요. 그래서 늦었어요.",
-          "Aku ketinggalan bus. Makanya telat.",
-        ),
-        ex(
           "다음 달에 한국에 가요. 그래서 요즘 한국어를 열심히 공부해요.",
           "Bulan depan aku berangkat ke Korea. Makanya sekarang rajin belajar bahasa Korea.",
         ),
         ex(
-          "그래서 어떻게 됐어요?",
+          "길이 너무 막혔어요. 그래서 지하철을 탔어요.",
+          "Jalanan macet parah. Jadi aku naik subway.",
+        ),
+        ex(
+          "그래서 어떻게 됐어?",
           "Terus akhirnya gimana?",
-          "minta orang lanjutin cerita",
+          "반말, minta teman lanjutin cerita",
         ),
         callout(
           "warning",
@@ -119,10 +172,12 @@ export default defineBab({
         ),
         callout(
           "tip",
-          "Mau praktik ngomong? Cek ",
+          "Mau praktik kasih alasan? Cek ",
           ref("soalnya", "ik-soalnya"),
           " dan ",
           ref("gara-gara", "ik-gara-gara"),
+          ", yang pakai versi nempelnya, ",
+          ref("-아서/어서", "ki-aseo-karena"),
           ". Bedanya sama ",
           ref("그러니까", "ki-geureonikka"),
           ": habis 그러니까 boleh nyuruh atau ngajak.",
@@ -133,38 +188,49 @@ export default defineBab({
       description:
         "그런데 atau 근데 bisa berarti tapi yang lembut, bisa juga buat ganti topik kayak eh btw.",
       blocks: [
-        callout(
-          "info",
-          b("그런데"),
-          " (di omongan hampir selalu ",
-          b("근데"),
-          ") punya dua arti: ",
-          i("tapi"),
-          " yang lembut, dan ",
-          i("eh btw, ngomong-ngomong"),
-          " buat ganti topik. Asalnya dari ",
-          b("그렇다 + -는데"),
-          ".",
-        ),
+        grammar({
+          number: "03",
+          title: "그런데 / 근데",
+          theme: "amber",
+          descriptionKo: "앞 말과 다른 내용을 말하거나 화제를 바꿀 때 써요.",
+          descriptionTranslation:
+            "그런데 punya dua arti: “tapi” yang lembut, dan “ngomong-ngomong” buat ganti topik. Di omongan, orang Korea hampir selalu bilang 근데. Asalnya dari 그렇다 + -는데.",
+          rules: [
+            r("Tapi yang lembut", "근데", "맛있어요. 근데 좀 비싸요."),
+            r("Ganti topik", "근데", "근데 밥 먹었어?"),
+            r("Tulisan, email resmi", "그런데", "그런데 문제가 하나 있습니다."),
+            r("Versi nempelnya", "-는데", "맛있는데 비싸요."),
+          ],
+          examples: [
+            e("이 식당 맛있어요. ", "근데", " 좀 비싸요."),
+            e("", "근데", " 너 밥 먹었어?"),
+            e("", "근데", " 반장님 어디 가셨어요?"),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Lihat kalimat sebelumnya. Kalau isinya berlawanan, artinya ",
           i("tapi"),
           ". Kalau topiknya pindah, artinya ",
           i("ngomong-ngomong"),
-          ". Orang Korea yang buka kalimat pakai 근데 belum tentu mau membantah.",
+          ". Jadi orang Korea yang buka kalimat pakai 근데 belum tentu mau membantah.",
         ),
         h3("Contoh"),
-        ex(
-          "이 식당 맛있어요. 근데 좀 비싸요.",
-          "Restoran ini enak. Tapi agak mahal sih.",
-        ),
         ex(
           "한국어를 열심히 공부했어요. 그런데 아직 말하기가 어려워요.",
           "Aku udah rajin belajar bahasa Korea. Tapi ngomongnya masih susah.",
         ),
+        ex(
+          "이 옷 예쁘다. 근데 사이즈가 없네.",
+          "Bajunya cakep. Tapi ukurannya nggak ada.",
+          "반말",
+        ),
         ex("근데 너 밥 먹었어?", "Eh, kamu udah makan?", "반말, ganti topik"),
-        ex("근데 반장님 어디 가셨어요?", "Ngomong-ngomong, 반장님 ke mana ya?"),
+        ex(
+          "근데 반장님 어디 가셨어요?",
+          "Ngomong-ngomong, 반장님 ke mana ya?",
+          "ganti topik",
+        ),
         callout(
           "warning",
           "Jebakan: ",
@@ -177,7 +243,9 @@ export default defineBab({
         ),
         callout(
           "tip",
-          "Mau praktik ngomong? Cek ",
+          "Mau praktik ngomong? Versi nempelnya, ",
+          ref("-는데", "ki-neunde"),
+          ", dipakai di ",
           ref("sih", "ik-sih"),
           ". Bedanya sama ",
           ref("하지만", "ki-hajiman"),
@@ -189,21 +257,29 @@ export default defineBab({
       description:
         "그럼 dipakai buat nanggepin omongan orang, lalu ambil keputusan atau kasih usul.",
       blocks: [
-        callout(
-          "info",
-          b("그럼"),
-          " = singkatan ",
-          b("그러면"),
-          " (",
-          b("그렇다 + -(으)면"),
-          "). Artinya ",
-          i("kalau gitu"),
-          ". Dipakai buat nanggepin info dari orang lain, terus ambil keputusan atau kasih usul. ",
-          b("그럼요!"),
-          " juga bisa berarti ",
-          i("ya iyalah!"),
-          ".",
-        ),
+        grammar({
+          number: "04",
+          title: "그럼 / 그러면",
+          theme: "amber",
+          descriptionKo: "상대방의 말을 듣고 결정하거나 제안할 때 써요.",
+          descriptionTranslation:
+            "그럼 itu singkatan 그러면 (그렇다 + -(으)면), artinya “kalau gitu”. Kamu denger info dari orang lain, lalu ambil keputusan atau kasih usul. 그럼요! juga bisa berarti “ya iyalah!”.",
+          rules: [
+            r(
+              "Nanggepin info, terus usul",
+              "그럼",
+              "바빠요? 그럼 내일 만나요.",
+            ),
+            r("Versi lengkap, lebih rapi", "그러면", "그러면 이렇게 할까요?"),
+            r("Pamitan", "그럼", "그럼 내일 봬요!"),
+            r("Setuju banget (sopan)", "그럼요!", "A: 내일도 와요? B: 그럼요!"),
+          ],
+          examples: [
+            e("오늘 시간 없어요? ", "그럼", " 내일 만날까요?"),
+            e("아, 다 팔렸어요? ", "그럼", " 이걸로 주세요."),
+            e("", "그럼요", "! 당연하죠."),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Persis ",
@@ -249,7 +325,9 @@ export default defineBab({
           ref("dong", "ik-dong"),
           ". Bedanya sama ",
           ref("그래서", "ki-geuraeseo"),
-          ": 그래서 buat akibat dari cerita kamu sendiri, 그럼 buat nanggepin omongan orang.",
+          ": 그래서 buat akibat dari cerita kamu sendiri, 그럼 buat nanggepin omongan orang. Versi nempelnya: ",
+          ref("-(으)면", "ki-myeon"),
+          ".",
         ),
       ],
     },
@@ -257,21 +335,34 @@ export default defineBab({
       description:
         "그러니까 nekenin alasan sebelum saran, dipakai buat setuju banget, atau buat jelasin ulang.",
       blocks: [
-        callout(
-          "info",
-          b("그러니까"),
-          " (",
-          b("그렇다 + -(으)니까"),
-          ", di omongan cepat ",
-          b("그니까"),
-          ") punya tiga pemakaian: ",
-          i("makanya"),
-          " sebelum saran atau perintah, ",
-          i("iya kan!"),
-          " buat setuju banget, dan ",
-          i("jadi gini, maksudku"),
-          " buat jelasin ulang.",
-        ),
+        grammar({
+          number: "05",
+          title: "그러니까 / 그니까",
+          theme: "amber",
+          descriptionKo:
+            "이유를 강조하면서 부탁하거나, 맞장구치거나, 다시 설명할 때 써요.",
+          descriptionTranslation:
+            "그러니까 (그렇다 + -(으)니까) punya tiga pemakaian: “makanya” sebelum saran atau perintah, “iya kan!” buat setuju banget, dan “jadi gini” buat jelasin ulang. Di omongan cepat sering jadi 그니까.",
+          rules: [
+            r(
+              "Alasan + saran / perintah",
+              "그러니까",
+              "추워요. 그러니까 따뜻하게 입으세요.",
+            ),
+            r("Setuju banget", "그러니까! / 그니까!", "그니까, 진짜 덥다."),
+            r("Jelasin ulang", "그러니까 제 말은...", "그러니까 제 말은요..."),
+            r(
+              "Ke atasan",
+              "Hindari, kedengeran nyalahin",
+              "✗ 그러니까 제가 말했잖아요",
+            ),
+          ],
+          examples: [
+            e("내일 비가 온대요. ", "그러니까", " 우산 꼭 챙기세요."),
+            e("이 기계는 위험해요. ", "그러니까", " 장갑 끼고 하세요."),
+            e("", "그러니까", "! 나도 그렇게 생각했어."),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Rasanya kayak ",
@@ -310,7 +401,9 @@ export default defineBab({
           "tip",
           "Mau praktik ngomong? Cek ",
           ref("soalnya", "ik-soalnya"),
-          " dan ",
+          " (versi nempelnya, ",
+          ref("-(으)니까", "ki-nikka"),
+          ") dan ",
           ref("kan", "ik-kan"),
           ". Bedanya sama ",
           ref("그래서", "ki-geuraeseo"),
@@ -322,17 +415,29 @@ export default defineBab({
       description:
         "하지만 dan 그렇지만 itu tetapi yang tegas, paling sering ketemu di tulisan dan omongan resmi.",
       blocks: [
-        callout(
-          "info",
-          b("하지만"),
-          " dan ",
-          b("그렇지만"),
-          " = ",
-          i("tetapi, namun"),
-          ". Kontrasnya jelas dan tegas. Paling sering di tulisan, pidato, soal ujian, dan lirik lagu. ",
-          b("그렇지만"),
-          " sedikit lebih halus.",
-        ),
+        grammar({
+          number: "06",
+          title: "하지만 / 그렇지만",
+          theme: "amber",
+          descriptionKo: "앞 문장과 반대되는 내용을 분명하게 말할 때 써요.",
+          descriptionTranslation:
+            "하지만 dan 그렇지만 artinya “tetapi” atau “namun”. Kontrasnya jelas dan tegas. Paling sering muncul di tulisan, pidato, soal ujian, dan lirik lagu.",
+          rules: [
+            r(
+              "Tulisan, pidato, ujian",
+              "하지만",
+              "하지만 결과는 좋지 않았습니다.",
+            ),
+            r("Sedikit lebih halus", "그렇지만", "그렇지만 동료들이 친절해요."),
+            r("Ngobrol santai", "근데", "근데 좀 비싸."),
+            r("Di tengah kalimat", "-지만", "비싸지만 맛있어요."),
+          ],
+          examples: [
+            e("한국 생활은 힘들어요. ", "하지만", " 많이 배워요."),
+            e("월급은 많지 않아요. ", "그렇지만", " 동료들이 친절해요."),
+            e("열심히 준비했습니다. ", "하지만", " 결과는 좋지 않았습니다."),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Kayak ",
@@ -371,13 +476,13 @@ export default defineBab({
         ),
         callout(
           "tip",
-          "Mau praktik ngomong? Cek ",
-          ref("padahal", "ik-padahal-hasil"),
-          ". Bedanya sama ",
+          "Mau praktik ngomong? Versi nempelnya, ",
           ref("-지만", "ki-jiman"),
-          ": -지만 nempel di tengah kalimat (",
+          ", ada di ",
+          ref("padahal", "ik-padahal-hasil"),
+          ". -지만 nempel di tengah kalimat (",
           b("비싸지만 맛있어요"),
-          "), 하지만 berdiri di awal kalimat baru.",
+          "), sedangkan 하지만 berdiri di awal kalimat baru.",
         ),
       ],
     },
@@ -385,15 +490,26 @@ export default defineBab({
       description:
         "그래도 dipakai kalau situasinya nggak mendukung, tapi kamu tetap milih atau ngelakuin sesuatu.",
       blocks: [
-        callout(
-          "info",
-          b("그래도"),
-          " (",
-          b("그렇다 + -아도"),
-          ") = ",
-          i("walaupun gitu, tetap aja"),
-          ". Dipakai kalau ada halangan, tapi kamu tetap milih, ngerasa, atau ngelakuin sesuatu. Sering juga dipakai buat menghibur.",
-        ),
+        grammar({
+          number: "07",
+          title: "그래도",
+          theme: "amber",
+          descriptionKo:
+            "앞의 상황과 상관없이 뒤의 일을 하거나 그렇게 느낄 때 써요.",
+          descriptionTranslation:
+            "그래도 (그렇다 + -아도) artinya “walaupun gitu” atau “tetap aja”. Ada halangan, tapi kamu tetap milih, ngerasa, atau ngelakuin sesuatu. Sering juga dipakai buat menghibur.",
+          rules: [
+            r("Ada halangan, tetap jalan", "그래도", "비가 와요. 그래도 가요."),
+            r("Ngebujuk", "그래도 + -세요", "그래도 조금 드세요."),
+            r("Menghibur", "그래도", "그래도 다행이에요."),
+            r("Versi nempelnya", "-아도/어도, -는데도", "비가 와도 가요."),
+          ],
+          examples: [
+            e("일이 힘들어요. ", "그래도", " 재미있어요."),
+            e("비가 와요. ", "그래도", " 갈 거예요?"),
+            e("", "그래도", " 다행이에요."),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Kayak ",
@@ -407,7 +523,6 @@ export default defineBab({
           "일이 힘들어요. 그래도 재미있어요.",
           "Kerjaannya berat. Tapi tetap seru sih.",
         ),
-        ex("비가 와요. 그래도 갈 거예요?", "Hujan loh. Tetap mau pergi?"),
         ex(
           "시험에 떨어졌어요. 그래도 다음에 다시 도전할 거예요.",
           "Aku nggak lulus ujian. Tapi aku bakal coba lagi.",
@@ -416,7 +531,11 @@ export default defineBab({
           "입맛이 없어요? 그래도 조금이라도 드세요.",
           "Nggak nafsu makan? Tetap makan ya, walaupun dikit.",
         ),
-        ex("그래도 다행이에요.", "Ya tapi masih untung.", "buat menghibur"),
+        ex(
+          "그래도 다치지 않아서 다행이에요.",
+          "Ya tapi untung kamu nggak luka.",
+          "buat menghibur",
+        ),
         callout(
           "warning",
           "Jebakan: jangan ketuker ",
@@ -436,13 +555,13 @@ export default defineBab({
           "tip",
           "Mau praktik ngomong? Cek ",
           ref("padahal", "ik-padahal-hasil"),
-          ". Versi nempelnya ada di ",
-          ref("-아도/어도", "ki-ado"),
-          " dan ",
+          ", yang pakai versi nempelnya, ",
           ref("-는데도", "ki-neundedo"),
           " (",
           b("먹었는데도 배고파요"),
-          ").",
+          "). Versi nempel buat andai-andai: ",
+          ref("-아도/어도", "ki-ado"),
+          ".",
         ),
       ],
     },
@@ -450,17 +569,26 @@ export default defineBab({
       description:
         "아니면 dipakai buat nawarin pilihan lain di antara dua pertanyaan atau dua tebakan.",
       blocks: [
-        callout(
-          "info",
-          b("아니면"),
-          " (",
-          b("아니다 + -(으)면"),
-          ") literally ",
-          i("kalau bukan"),
-          ". Dipakai buat nawarin pilihan lain: ",
-          i("atau"),
-          ". Paling sering di pertanyaan, atau waktu kamu nebak-nebak.",
-        ),
+        grammar({
+          number: "08",
+          title: "아니면",
+          theme: "amber",
+          descriptionKo: "다른 선택지를 말하거나 다른 가능성을 추측할 때 써요.",
+          descriptionTranslation:
+            "아니면 (아니다 + -(으)면) arti harfiahnya “kalau bukan”. Dipakai buat nawarin pilihan lain, jadi artinya “atau”. Paling sering di pertanyaan, atau waktu kamu nebak-nebak.",
+          rules: [
+            r("Di antara dua pertanyaan", "아니면", "커피? 아니면 차?"),
+            r("Usul cadangan", "아니면", "아니면 다음 주에 만날까요?"),
+            r("Nebak-nebak", "아니면", "자나? 아니면 일하나?"),
+            r("Satu kalimat, kata kerja", "-거나", "쉬거나 운동해요."),
+            r("Satu kalimat, kata benda", "(이)나", "커피나 차"),
+          ],
+          examples: [
+            e("커피 드릴까요, ", "아니면", " 차 드릴까요?"),
+            e("라면 먹을래? ", "아니면", " 나가서 먹을래?"),
+            e("자나? ", "아니면", " 아직 일하나?"),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Persis ",

@@ -24,6 +24,7 @@ export default defineBab({
         grammar({
           number: "01",
           title: "-고",
+          theme: "amber",
           descriptionKo:
             "두 가지를 나열하거나, 일을 순서대로 이어서 말할 때 써요.",
           descriptionTranslation:
@@ -97,7 +98,7 @@ export default defineBab({
         grammar({
           number: "02",
           title: "-아서/어서 (karena)",
-          theme: "blue",
+          theme: "amber",
           descriptionKo: "앞의 내용이 뒤의 내용의 이유가 될 때 써요.",
           descriptionTranslation:
             "-아서/어서 itu “karena” atau “gara-gara” yang nempel di alasannya. Ini cara paling netral buat kasih alasan di obrolan sehari-hari. Alasan di depan, akibat di belakang, persis kayak “karena hujan, aku nggak pergi”.",
@@ -192,7 +193,7 @@ export default defineBab({
         grammar({
           number: "03",
           title: "-아서/어서 (lalu)",
-          theme: "blue",
+          theme: "amber",
           descriptionKo:
             "앞의 행동을 하고, 그 장소나 결과를 이어서 뒤의 행동을 할 때 써요.",
           descriptionTranslation:
@@ -203,8 +204,8 @@ export default defineBab({
             r("하다", "-해서", "요리하다 → 요리해서"),
             r("Lampau", "Tetap tanpa -았/었", "가서 샀어요"),
             r(
-              "Kata kerja yang sering dipakai",
-              "가다, 오다, 만나다, 앉다, 일어나다, 만들다",
+              "Sering dipakai",
+              "가서, 와서, 만나서, 앉아서",
               "앉아서 기다려요",
             ),
           ],
@@ -273,7 +274,7 @@ export default defineBab({
         grammar({
           number: "04",
           title: "-(으)니까",
-          theme: "blue",
+          theme: "amber",
           descriptionKo:
             "이유를 말할 때 써요. 뒤에 명령이나 제안이 올 수 있어요.",
           descriptionTranslation:
@@ -286,7 +287,6 @@ export default defineBab({
               "ㄹ hilang + -니까",
               "살다 → 사니까, 멀다 → 머니까",
             ),
-            r("하다", "-하니까", "피곤하다 → 피곤하니까"),
             r("ㅂ tak beraturan", "-우니까", "춥다 → 추우니까"),
             r("Kata benda", "-(이)니까", "주말이니까, 친구니까"),
             r("Lampau", "-았/었으니까", "늦었으니까, 먹었으니까"),
@@ -296,7 +296,7 @@ export default defineBab({
             e("비가 ", "오니까", " 우산 가져가세요."),
             e("", "늦었으니까", " 택시 타요."),
           ],
-          tipKo: "-(으)니까는 과거 '-았/었-'과 같이 쓸 수 있어요.",
+          tipKo: "-(으)니까 앞에는 과거 '-았/었-'을 쓸 수 있어요.",
           tipTranslation:
             "Beda dengan -아서, -(으)니까 boleh pakai lampau: 다 먹었으니까 가자 = “udah selesai makan, yuk cabut”.",
         }),
@@ -355,7 +355,7 @@ export default defineBab({
         grammar({
           number: "05",
           title: "-지만",
-          theme: "rose",
+          theme: "amber",
           descriptionKo: "앞의 내용과 반대되는 내용을 말할 때 써요.",
           descriptionTranslation:
             "-지만 itu “tapi” yang nempel di kata kerja atau kata sifat. Kontrasnya jelas: bagian depan dan belakang beda arah. Nadanya netral sampai agak formal, jadi aman dipakai ke siapa aja.",
@@ -431,7 +431,7 @@ export default defineBab({
         grammar({
           number: "06",
           title: "-는데 / -(으)ㄴ데",
-          theme: "rose",
+          theme: "amber",
           descriptionKo:
             "뒤의 말을 하기 전에 배경이나 상황을 먼저 말할 때 써요.",
           descriptionTranslation:
@@ -439,12 +439,7 @@ export default defineBab({
           rules: [
             r("Kata kerja", "-는데", "먹다 → 먹는데, 가다 → 가는데"),
             r("있다 / 없다", "-는데", "맛있다 → 맛있는데, 없다 → 없는데"),
-            r("Kata sifat, batang vokal", "-ㄴ데", "비싸다 → 비싼데"),
-            r(
-              "Kata sifat, batang konsonan",
-              "-은데",
-              "작다 → 작은데, 좋다 → 좋은데",
-            ),
+            r("Kata sifat", "-(으)ㄴ데", "비싸다 → 비싼데, 좋다 → 좋은데"),
             r(
               "Batang berakhiran ㄹ",
               "ㄹ hilang",
@@ -532,7 +527,7 @@ export default defineBab({
         grammar({
           number: "07",
           title: "-는데도 / -(으)ㄴ데도",
-          theme: "rose",
+          theme: "amber",
           descriptionKo:
             "앞의 상황이 있었는데도 예상과 다른 결과가 나올 때 써요.",
           descriptionTranslation:
@@ -618,7 +613,7 @@ export default defineBab({
         grammar({
           number: "08",
           title: "-(으)면서 (padahal)",
-          theme: "rose",
+          theme: "amber",
           descriptionKo: "앞의 사실과 맞지 않는 말이나 행동을 따질 때 써요.",
           descriptionTranslation:
             "Bentuknya sama persis dengan -(으)면서 “sambil”, tapi di sini artinya “padahal” yang nyalahin atau protes. Kamu nunjukin omongan atau sikap orang nggak cocok sama kenyataan.",
@@ -691,7 +686,7 @@ export default defineBab({
         grammar({
           number: "09",
           title: "-(으)면",
-          theme: "green",
+          theme: "amber",
           descriptionKo: "조건이나 가정을 말할 때 써요.",
           descriptionTranslation:
             "-(으)면 = “kalau” atau “nanti kalau udah”. Syarat di depan, hasil di belakang, sama kayak bahasa Indonesia. Bisa buat syarat nyata, kebiasaan, sampai andai-andai.",
@@ -703,7 +698,6 @@ export default defineBab({
               "먹다 → 먹으면, 있다 → 있으면",
             ),
             r("Batang berakhiran ㄹ", "-면", "알다 → 알면, 멀다 → 멀면"),
-            r("하다", "-하면", "공부하다 → 공부하면"),
             r("ㅂ tak beraturan", "-우면", "덥다 → 더우면"),
             r("Kata benda", "-(이)면", "학생이면, 주말이면"),
             r("Lampau", "-았/었으면", "끝났으면, 먹었으면"),
@@ -758,8 +752,10 @@ export default defineBab({
         ),
         callout(
           "tip",
-          "Mau praktik berandai-andai? Cek ",
+          "Mau praktik ngomong? Cek ",
           ref("kalau aja", "ik-kalau-aja"),
+          " dan ",
+          ref("asal", "ik-asal"),
           ". Bedanya sama ",
           ref("-(으)ㄹ 때", "ki-eul-ttae"),
           ": buat momen tertentu (",
@@ -779,7 +775,7 @@ export default defineBab({
         grammar({
           number: "10",
           title: "-(으)러 가다/오다",
-          theme: "green",
+          theme: "amber",
           descriptionKo: "어떤 곳에 가거나 오는 목적을 말할 때 써요.",
           descriptionTranslation:
             "-(으)러 = “buat” atau “untuk” yang nunjukin tujuan pergi. Kuncinya: habis -(으)러 wajib kata kerja gerak, kayak 가다, 오다, 다니다, 나가다.",
@@ -814,7 +810,7 @@ export default defineBab({
           ". Korea kebalik: tujuannya dulu, baru geraknya. ",
           b("밥 먹으러 가요"),
           " = ",
-          i("makan-buat pergi"),
+          i("(buat) makan, pergi"),
           ".",
         ),
         h3("Contoh"),
@@ -856,7 +852,7 @@ export default defineBab({
         grammar({
           number: "11",
           title: "-(으)려고",
-          theme: "green",
+          theme: "amber",
           descriptionKo: "어떤 일을 하려는 의도나 목적을 말할 때 써요.",
           descriptionTranslation:
             "-(으)려고 = “biar”, “supaya”, atau “buat” yang nunjukin niat. Beda sama -(으)러, habis -(으)려고 boleh kata kerja apa aja. Ada juga -(으)려고 하다 = “berencana” atau “mau...”.",
@@ -936,6 +932,7 @@ export default defineBab({
         grammar({
           number: "12",
           title: "-(으)면서",
+          theme: "amber",
           descriptionKo: "두 가지 행동이 동시에 일어날 때 써요.",
           descriptionTranslation:
             "-(으)면서 = “sambil”. Dua kegiatan barengan, dilakuin orang yang sama. Bisa juga berarti “selama” (selama tinggal di Korea).",
@@ -1015,6 +1012,7 @@ export default defineBab({
         grammar({
           number: "13",
           title: "-거나",
+          theme: "amber",
           descriptionKo: "두 가지 중에서 하나를 고를 때 써요.",
           descriptionTranslation:
             "-거나 = “atau” buat kata kerja dan kata sifat. “Weekend aku istirahat atau olahraga.” Tinggal tempel ke batang kata. Buat kata benda, pakai (이)나.",

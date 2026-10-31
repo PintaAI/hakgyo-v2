@@ -12,7 +12,7 @@ export default defineBab({
           title: "-잖아요",
           descriptionKo: "듣는 사람도 이미 아는 사실을 다시 말할 때 써요.",
           descriptionTranslation:
-            "Dipakai buat ngingetin hal yang lawan bicara sebenarnya udah tahu. Rasanya persis kayak kan di ‘kan udah aku bilang’. Nadanya bisa santai, bisa juga protes, tergantung intonasi.",
+            "Dipakai buat ngingetin hal yang lawan bicara sebenarnya udah tahu. Rasanya persis kayak kan di “kan udah aku bilang”. Nadanya bisa santai, bisa juga protes, tergantung intonasi.",
           rules: [
             {
               condition: "Kata kerja / sifat",
@@ -41,13 +41,13 @@ export default defineBab({
             { before: "오늘 일요일", emphasis: "이잖아요", after: "." },
             { before: "너 매운 거 잘 먹", emphasis: "잖아", after: "." },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Kuncinya: infonya ",
           b("udah diketahui berdua"),
-          ". Kamu nggak ngasih info baru, kamu cuma bilang ‘inget kan?’. Persis kayak ",
+          ". Kamu nggak ngasih info baru, kamu cuma bilang “inget kan?”. Persis kayak ",
           i("Kan aku udah bilang"),
           " atau ",
           i("Kamu kan Muslim"),
@@ -68,7 +68,7 @@ export default defineBab({
         ex("너 매운 거 잘 먹잖아.", "Kamu kan jago makan pedas.", "반말"),
         callout(
           "warning",
-          "Jangan pakai -잖아요 buat info baru. 저 인도네시아 사람이잖아요 ke orang yang baru kenal kedengeran aneh, kayak bilang ‘aku kan orang Indonesia’ ke orang asing. Buat info baru, pakai ",
+          "Jebakan: jangan pakai -잖아요 buat info baru. 저 인도네시아 사람이잖아요 ke orang yang baru kenal kedengeran aneh, kayak bilang “aku kan orang Indonesia” ke orang asing. Buat info baru, pakai ",
           ref("-거든요", "ki-geodeunyo"),
           ".",
         ),
@@ -93,7 +93,7 @@ export default defineBab({
           title: "-지요 / -죠",
           descriptionKo: "상대방에게 확인하거나 동의를 구할 때 써요.",
           descriptionTranslation:
-            "Dipakai buat mastiin atau minta setuju: ‘besok datang kan?’, ‘dingin ya?’. Di obrolan hampir selalu disingkat jadi -죠. Kamu udah punya dugaan, tinggal minta lawan bicara bilang ‘iya’.",
+            "Dipakai buat mastiin atau minta setuju: “besok datang kan?”, “dingin ya?”. Di obrolan hampir selalu disingkat jadi -죠. Kamu udah punya dugaan, tinggal minta lawan bicara bilang “iya”.",
           rules: [
             {
               condition: "Kata kerja / sifat",
@@ -118,7 +118,7 @@ export default defineBab({
             { before: "한국 겨울 진짜 춥", emphasis: "죠", after: "?" },
             { before: "그렇", emphasis: "죠", after: "!" },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -143,7 +143,7 @@ export default defineBab({
         ex("너도 같이 가지?", "Kamu ikut juga kan?", "반말"),
         callout(
           "warning",
-          "Jangan ketuker sama 줘요 (kasih, tolong). Bunyinya mirip, tapi 내일 오죠? artinya ‘besok datang kan?’, bukan permintaan. Waktu nulis chat, pastiin kamu nulis 죠, bukan 줘.",
+          "Jebakan: jangan ketuker sama 줘요 (kasih, tolong). Bunyinya mirip, tapi 내일 오죠? artinya “besok datang kan?”, bukan permintaan. Waktu nulis chat, pastiin kamu nulis 죠, bukan 줘.",
         ),
         callout(
           "tip",
@@ -164,7 +164,7 @@ export default defineBab({
           title: "-거든요",
           descriptionKo: "상대방이 모르는 이유나 사정을 알려 줄 때 써요.",
           descriptionTranslation:
-            "Dipakai buat ngasih alasan atau latar belakang yang lawan bicara belum tahu. Padanan paling pas: soalnya, yang ditaruh di belakang. Bisa juga buat buka cerita, kayak ‘jadi gini...’.",
+            "Dipakai buat ngasih alasan atau latar belakang yang lawan bicara belum tahu. Padanan paling pas: soalnya, yang ditaruh di belakang. Bisa juga buat buka cerita, kayak “jadi gini...”.",
           rules: [
             {
               condition: "Kata kerja / sifat",
@@ -201,7 +201,7 @@ export default defineBab({
               after: ". 근데...",
             },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -234,7 +234,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "-거든요 cuma bisa di akhir kalimat. Kalau alasannya mau ditaruh di depan, pakai ",
+          "Jebakan: -거든요 cuma bisa di akhir kalimat. Kalau alasannya mau ditaruh di depan, pakai ",
           ref("-아서/어서", "ki-aseo-karena"),
           " atau ",
           ref("-(으)니까", "ki-nikka"),
@@ -261,7 +261,7 @@ export default defineBab({
           title: "-네요",
           descriptionKo: "지금 새로 알게 된 것에 놀라거나 감탄할 때 써요.",
           descriptionTranslation:
-            "Reaksi spontan waktu kamu baru ngeh sesuatu, saat itu juga: ‘wah, enak!’, ‘eh, udah jam lima aja’. Kuncinya, kamu baru ngalamin atau lihat sendiri barusan.",
+            "Reaksi spontan waktu kamu baru ngeh sesuatu, saat itu juga: “wah, enak!”, “eh, udah jam lima aja”. Kuncinya, kamu baru ngalamin atau lihat sendiri barusan.",
           rules: [
             {
               condition: "Kata kerja / sifat",
@@ -291,7 +291,7 @@ export default defineBab({
             { before: "벌써 다섯 시", emphasis: "네요", after: "." },
             { before: "한국어 잘하시", emphasis: "네요", after: "!" },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -315,7 +315,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "-네요 cuma buat hal yang baru kamu sadari. ✗ 저는 인도네시아 사람이네요 kedengeran kayak kamu baru nyadar kamu orang Indonesia. Cukup bilang 인도네시아 사람이에요.",
+          "Jebakan: -네요 cuma buat hal yang baru kamu sadari. ✗ 저는 인도네시아 사람이네요 kedengeran kayak kamu baru nyadar kamu orang Indonesia. Cukup bilang 인도네시아 사람이에요.",
         ),
         callout(
           "tip",
@@ -338,7 +338,7 @@ export default defineBab({
           title: "-군요 / -구나",
           descriptionKo: "새로 알게 된 사실을 받아들이면서 말할 때 써요.",
           descriptionTranslation:
-            "Dipakai waktu kamu baru dapat info dan nerima info itu: ‘oh, gitu ya’, ‘oh, pantes’. Bentuk sopannya, -군요, agak resmi. Di obrolan santai, versi 반말 -구나 jauh lebih sering.",
+            "Dipakai waktu kamu baru dapat info dan nerima info itu: “oh, gitu ya”, “oh, pantes”. Bentuk sopannya, -군요, agak resmi. Di obrolan santai, versi 반말 -구나 jauh lebih sering.",
           rules: [
             {
               condition: "Kata sifat",
@@ -367,12 +367,12 @@ export default defineBab({
             { before: "그래서 오늘 안 왔", emphasis: "군요", after: "." },
             { before: "아, 오늘 휴일이", emphasis: "구나", after: "!" },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Bayangin teman cerita, terus kamu manggut-manggut: ",
-          i("‘Ooh, gitu ya.’ ‘Oh, pantes.’"),
+          i("“Ooh, gitu ya.” “Oh, pantes.”"),
           " Itu -군요. Yang wajib dihafal: ",
           b("그렇군요"),
           " (sopan) dan ",
@@ -397,7 +397,7 @@ export default defineBab({
         ex("아, 오늘 휴일이구나!", "Oh, hari ini tanggal merah toh!", "반말"),
         callout(
           "warning",
-          "-군요 di obrolan sopan kedengeran agak kaku, kayak bapak-bapak. Ke teman kerja seumuran, 아, 그렇구나 atau 아, 그래요? lebih natural. Ke 사장님, 아, 그렇군요 aman dan sopan.",
+          "Jebakan: -군요 di obrolan sopan kedengeran agak kaku, kayak bapak-bapak. Ke teman kerja seumuran, 아, 그렇구나 atau 아, 그래요? lebih natural. Ke 사장님, 아, 그렇군요 aman dan sopan.",
         ),
         callout(
           "tip",
@@ -420,12 +420,12 @@ export default defineBab({
           title: "-(으)ㄴ/는/(으)ㄹ 것 같다",
           descriptionKo: "추측하거나 자기 생각을 부드럽게 말할 때 써요.",
           descriptionTranslation:
-            "Ini kayaknya yang serba guna. Bisa buat nebak (‘kayaknya mau hujan’) atau buat ngalusin pendapat (‘kayaknya agak kekecilan’). Bentuk di depan 것 ikut waktunya: udah, lagi, atau bakal terjadi.",
+            "Ini kayaknya yang serba guna. Bisa buat nebak (“kayaknya mau hujan”) atau buat ngalusin pendapat (“kayaknya agak kekecilan”). Bentuk di depan 것 ikut waktunya: udah, lagi, atau bakal terjadi.",
           rules: [
             {
-              condition: "Kata kerja, sekarang",
+              condition: "Kata kerja / 있다·없다, sekarang",
               form: "-는 것 같다",
-              example: "비가 오는 것 같아요",
+              example: "비가 오는 것 같아요, 맛있는 것 같아요",
             },
             {
               condition: "Kata kerja, lampau",
@@ -441,11 +441,6 @@ export default defineBab({
               condition: "Kata sifat, sekarang",
               form: "-(으)ㄴ 것 같다",
               example: "바쁜 것 같아요, 작은 것 같아요",
-            },
-            {
-              condition: "있다 / 없다",
-              form: "-는 것 같다",
-              example: "맛있는 것 같아요",
             },
             {
               condition: "Kata benda",
@@ -469,16 +464,16 @@ export default defineBab({
               emphasis: "좋은 것 같아요",
               after: ".",
             },
-            { before: "길을 잘못 ", emphasis: "든 것 같아요", after: "." },
+            { before: "버스를 잘못 ", emphasis: "탄 것 같아요", after: "." },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Persis kayak ",
           i("kayaknya"),
           ", termasuk kebiasaan kita bilang ",
-          i("‘kayaknya aku laper deh’"),
+          i("“kayaknya aku laper deh”"),
           " padahal jelas laper. Orang Korea juga gitu, biar omongannya nggak terlalu tegas.",
         ),
         h3("Contoh"),
@@ -506,7 +501,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "Jangan pakai ‘kayaknya’ buat hal yang harus tegas di tempat kerja. Kalau 사장님 nanya 이거 할 수 있어요? terus kamu jawab 할 수 있을 것 같아요, artinya ‘kayaknya sih bisa...’, dan itu bikin dia ragu. Kalau yakin, bilang aja 네, 할 수 있어요!",
+          "Jebakan: jangan pakai “kayaknya” buat hal yang harus tegas di tempat kerja. Kalau 사장님 nanya 이거 할 수 있어요? terus kamu jawab 할 수 있을 것 같아요, artinya “kayaknya sih bisa...”, dan itu bikin dia ragu. Kalau yakin, bilang aja 네, 할 수 있어요!",
         ),
         callout(
           "tip",
@@ -529,22 +524,17 @@ export default defineBab({
           title: "-나 봐요 / -(으)ㄴ가 봐요",
           descriptionKo: "보거나 들은 것을 근거로 추측할 때 써요.",
           descriptionTranslation:
-            "Kayaknya versi detektif. Kamu lihat atau dengar suatu tanda, terus nyimpulin dari situ: ‘antreannya panjang, kayaknya enak’. Biasanya soal orang lain atau keadaan di luar kamu.",
+            "Kayaknya versi detektif. Kamu lihat atau dengar suatu tanda, terus nyimpulin dari situ: “antreannya panjang, kayaknya enak”. Biasanya soal orang lain atau keadaan di luar kamu.",
           rules: [
             {
-              condition: "Kata kerja",
+              condition: "Kata kerja / 있다·없다",
               form: "-나 봐요",
-              example: "오다 → 오나 봐요",
+              example: "오다 → 오나 봐요, 맛있나 봐요",
             },
             {
               condition: "Lampau",
               form: "-았/었나 봐요",
               example: "못 잤나 봐요",
-            },
-            {
-              condition: "있다 / 없다",
-              form: "-나 봐요",
-              example: "맛있나 봐요",
             },
             {
               condition: "Kata sifat, akhiran vokal",
@@ -580,13 +570,17 @@ export default defineBab({
               after: ".",
             },
           ],
-          theme: "rose",
+          tipKo:
+            "말할 때는 형용사에도 -나 봐요를 자주 써요. 바쁜가 봐요 = 바쁘나 봐요.",
+          tipTranslation:
+            "Di obrolan, kata sifat juga sering pakai -나 봐요: 바쁘나 봐요. Artinya sama kayak 바쁜가 봐요, jadi dua-duanya aman.",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Ada bukti, terus kamu nebak: ",
-          i("‘Dia nguap terus. Kayaknya semalam begadang.’"),
-          " Ada 보다 di dalamnya, tapi artinya bukan ‘melihat’. Anggap aja satu paket.",
+          i("“Dia nguap terus. Kayaknya semalam begadang.”"),
+          " Ada 보다 di dalamnya, tapi artinya bukan “melihat”. Anggap aja satu paket.",
         ),
         h3("Contoh"),
         ex(
@@ -608,7 +602,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "-나 봐요 nggak dipakai buat pendapat kamu sendiri. Habis nonton film, jangan bilang ✗ 재미있나 봐요, kan kamu udah nonton! Bilang 재미있었어요. -나 봐요 cocok kalau kamu cuma lihat orang lain ketawa-ketawa nonton film itu.",
+          "Jebakan: -나 봐요 nggak dipakai buat pendapat kamu sendiri. Habis nonton film, jangan bilang ✗ 재미있나 봐요, kan kamu udah nonton! Bilang 재미있었어요. -나 봐요 cocok kalau kamu cuma lihat orang lain ketawa-ketawa nonton film itu.",
         ),
         callout(
           "tip",
@@ -629,7 +623,7 @@ export default defineBab({
           title: "-(으)ㄹ걸요",
           descriptionKo: "확실하지 않은 추측을 말할 때 써요.",
           descriptionTranslation:
-            "Nebak tapi kurang yakin: ‘kayaknya sih udah pulang deh’, ‘setahuku sih buka 24 jam’. Sering dipakai buat ngoreksi orang dengan halus. Versi 반말 -(으)ㄹ걸 yang diucapin ke diri sendiri juga bisa berarti nyesel: ‘tahu gitu ...’.",
+            "Nebak tapi kurang yakin: “kayaknya sih udah pulang deh”, “setahuku sih buka 24 jam”. Sering dipakai buat ngoreksi orang dengan halus. Versi 반말 -(으)ㄹ걸 yang diucapin ke diri sendiri juga bisa berarti nyesel: “tahu gitu ...”.",
           rules: [
             {
               condition: "Akhiran vokal",
@@ -658,14 +652,14 @@ export default defineBab({
             { before: "그 편의점은 24시간 ", emphasis: "할걸요", after: "." },
             { before: "그거 생각보다 ", emphasis: "비쌀걸요", after: "." },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Ini kayaknya yang paling nggak yakin. Rasanya kayak ",
-          i("‘setahuku sih...’"),
+          i("“setahuku sih...”"),
           " atau ",
-          i("‘kayaknya deh, tapi jangan pegang omonganku ya’"),
+          i("“kayaknya deh, tapi jangan pegang omonganku ya”"),
           ".",
         ),
         h3("Contoh"),
@@ -688,9 +682,9 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "-(으)ㄹ걸요 dan ",
+          "Jebakan: -(으)ㄹ걸요 dan ",
           ref("-(으)ㄹ게요", "ki-eulgeyo"),
-          " beda satu huruf, tapi artinya jauh. 할게요 = ‘aku kerjain ya’ (janji). 할걸요 = ‘kayaknya sih dikerjain...’ (nebak). Kalau 반장님 nyuruh sesuatu, jawab 네, 할게요!",
+          " beda satu huruf, tapi artinya jauh. 할게요 = “aku kerjain ya” (janji). 할걸요 = “kayaknya sih dikerjain...” (nebak). Kalau 반장님 nyuruh sesuatu, jawab 네, 할게요!",
         ),
         callout(
           "tip",
@@ -711,7 +705,7 @@ export default defineBab({
           title: "-겠어요 / -겠다",
           descriptionKo: "지금 상황을 보고 다른 사람의 마음을 짐작할 때 써요.",
           descriptionTranslation:
-            "Reaksi langsung dari situasi di depan mata, terutama buat ngerasain perasaan orang lain: ‘pasti capek ya’, ‘pasti kangen keluarga ya’. Juga dipakai waktu lihat makanan: ‘kelihatannya enak!’.",
+            "Reaksi langsung dari situasi di depan mata, terutama buat ngerasain perasaan orang lain: “pasti capek ya”, “pasti kangen keluarga ya”. Juga dipakai waktu lihat makanan: “kelihatannya enak!”.",
           rules: [
             {
               condition: "Kata kerja / sifat",
@@ -736,12 +730,12 @@ export default defineBab({
             { before: "와, ", emphasis: "맛있겠다", after: "!" },
             { before: "가족이 많이 보고 ", emphasis: "싶겠어요", after: "." },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Kayak bilang ",
-          i("‘pasti capek ya’"),
+          i("“pasti capek ya”"),
           " ke teman yang habis lembur. Kamu nggak benar-benar tahu dia capek, tapi dari situasinya kamu bisa ngerasain. Satu -겠어요 bikin kamu kedengeran ",
           b("peduli"),
           ".",
@@ -763,11 +757,11 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "Waktu 반장님 ngasih instruksi, jawab 네, 알겠습니다 (siap, saya ngerti). Jangan 알아요, yang artinya ‘aku udah tahu kok’ dan bisa kedengeran kayak instruksinya nggak perlu.",
+          "Jebakan: waktu 반장님 ngasih instruksi, jawab 네, 알겠습니다 (siap, saya ngerti). Jangan 알아요, yang artinya “aku udah tahu kok” dan bisa kedengeran kayak instruksinya nggak perlu.",
         ),
         callout(
           "tip",
-          "Mau praktik nebak dari arah Indonesia? Cek ",
+          "Mau praktik ngomong? Cek ",
           ref("kayaknya", "ik-kayaknya"),
           ". Bedanya sama ",
           ref("-것 같아요", "ki-geot-gatda"),
@@ -785,7 +779,7 @@ export default defineBab({
           descriptionKo:
             "전에 직접 보거나 느낀 것을 나중에 다른 사람에게 말할 때 써요.",
           descriptionTranslation:
-            "Buat cerita hal yang kamu lihat, dengar, atau rasain sendiri sebelumnya, dan waktu itu kamu agak kaget. ‘Kemarin aku ke sana, ternyata enak banget.’ Kamu jadi saksi mata yang lagi lapor.",
+            "Buat cerita hal yang kamu lihat, dengar, atau rasain sendiri sebelumnya, dan waktu itu kamu agak kaget. “Kemarin aku ke sana, ternyata enak banget.” Kamu jadi saksi mata yang lagi lapor.",
           rules: [
             {
               condition: "Kata kerja / sifat",
@@ -826,17 +820,17 @@ export default defineBab({
               after: ".",
             },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Bayangin kamu cerita: ",
           i(
-            "‘Kemarin aku coba restoran yang viral itu. Ternyata enak banget!’",
+            "“Kemarin aku coba restoran yang viral itu. Ternyata enak banget!”",
           ),
           " Bagian ",
           i("ternyata enak banget"),
-          " itu -더라고요. Bahannya tiga: udah lewat, kamu alami sendiri, dan ada rasa ‘oh, ternyata’.",
+          " itu -더라고요. Bahannya tiga: udah lewat, kamu alami sendiri, dan ada rasa “oh, ternyata”.",
         ),
         h3("Contoh"),
         ex(
@@ -863,7 +857,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "Jangan pakai -더라고요 buat hal yang cuma kamu dengar dari orang. Itu ‘katanya’, pakai ",
+          "Jebakan: jangan pakai -더라고요 buat hal yang cuma kamu dengar dari orang. Itu “katanya”, pakai ",
           ref("-대요", "ki-daeyo"),
           ". 맛있더라고요 = aku udah nyobain. 맛있대요 = katanya enak.",
         ),
@@ -888,27 +882,17 @@ export default defineBab({
           title: "-대요 / -래요 / -재요",
           descriptionKo: "다른 사람에게 들은 말을 짧게 전할 때 써요.",
           descriptionTranslation:
-            "Bentuk singkat buat nyampein omongan orang lain. -대요 = katanya. -(으)래요 = disuruh (dan ‘katanya dia ...’ buat kata benda). -재요 = diajak. Sering banget di tempat kerja, waktu kamu nyampein pesan 사장님 ke teman.",
+            "Bentuk singkat buat nyampein omongan orang lain. -대요 = katanya. -(으)래요 = disuruh (dan “katanya dia ...” buat kata benda). -재요 = diajak. Sering banget di tempat kerja, waktu kamu nyampein pesan 사장님 ke teman.",
           rules: [
             {
-              condition: "Katanya: kata kerja, akhiran vokal",
-              form: "-ㄴ대요",
-              example: "가다 → 간대요",
+              condition: "Katanya: kata kerja",
+              form: "-ㄴ대요 / -는대요",
+              example: "간대요, 먹는대요",
             },
             {
-              condition: "Katanya: kata kerja, akhiran konsonan",
-              form: "-는대요",
-              example: "먹다 → 먹는대요",
-            },
-            {
-              condition: "Katanya: kata sifat",
-              form: "-대요",
-              example: "바쁘대요, 좋대요",
-            },
-            {
-              condition: "Katanya: lampau",
-              form: "-았/었대요",
-              example: "갔대요",
+              condition: "Katanya: kata sifat / lampau",
+              form: "-대요 / -았/었대요",
+              example: "바쁘대요, 갔대요",
             },
             {
               condition: "Katanya: kata benda",
@@ -916,14 +900,9 @@ export default defineBab({
               example: "학생이래요, 친구래요",
             },
             {
-              condition: "Disuruh",
-              form: "-(으)래요",
-              example: "오래요, 먹으래요",
-            },
-            {
-              condition: "Disuruh jangan",
-              form: "-지 말래요",
-              example: "가지 말래요",
+              condition: "Disuruh (jangan)",
+              form: "-(으)래요 / -지 말래요",
+              example: "오래요, 가지 말래요",
             },
             { condition: "Diajak", form: "-재요", example: "가재요, 먹재요" },
             {
@@ -937,7 +916,7 @@ export default defineBab({
             { before: "사장님이 빨리 ", emphasis: "오래요", after: "." },
             { before: "반장님이 점심 같이 ", emphasis: "먹재요", after: "." },
           ],
-          theme: "rose",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -956,7 +935,7 @@ export default defineBab({
         ),
         ex(
           "민수 씨 오늘 못 온대요. 많이 아프대요.",
-          "Minsu katanya nggak bisa datang hari ini. Katanya sakit parah.",
+          "Minsu katanya nggak bisa datang hari ini. Lagi sakit banget katanya.",
         ),
         ex("일기예보에서 내일 비 온대요.", "Kata ramalan cuaca, besok hujan."),
         ex("반장님이 점심 같이 먹재요.", "반장님 ngajak makan siang bareng."),
@@ -967,13 +946,13 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "사장님이 오래요 artinya bos nyuruh kita datang, bukan ‘bos mau datang’ (itu 사장님이 온대요). Hati-hati juga sama ",
+          "Jebakan: 사장님이 오래요 artinya bos nyuruh kita datang, bukan “bos mau datang” (itu 사장님이 온대요). Hati-hati juga sama ",
           ref("-(으)ㄹ래요", "ki-eullaeyo"),
           ": 먹으래요 = disuruh makan, 먹을래요? = mau makan? Bedanya cuma ㄹ!",
         ),
         callout(
           "tip",
-          "Mau praktik nebak sendiri, bukan katanya? Cek ",
+          "Mau nebak sendiri, bukan nyampein omongan orang? Cek ",
           ref("kayaknya", "ik-kayaknya"),
           ". Bedanya sama ",
           ref("-나 봐요", "ki-na-bwa"),
@@ -1083,7 +1062,7 @@ export default defineBab({
       {
         key: "ki06-janayo-kan",
         prompt:
-          "Temanmu nanya jam ketemuan, padahal tadi udah kamu kasih tahu. ‘Jam tiga! Kan tadi udah aku bilang~’ → 세 시! 아까 말했(___)~",
+          "Temanmu nanya jam ketemuan, padahal tadi udah kamu kasih tahu. “Jam tiga! Kan tadi udah aku bilang~” → 세 시! 아까 말했(___)~",
         options: [
           { text: "잖아", correct: true },
           { text: "거든" },
@@ -1096,7 +1075,7 @@ export default defineBab({
       {
         key: "ki06-jiyo-mastiin",
         prompt:
-          "Kamu kira besok libur, tapi mau mastiin ke teman kerja: ‘Besok libur kan?’",
+          "Kamu kira besok libur, tapi mau mastiin ke teman kerja: “Besok libur kan?”",
         options: [
           { text: "내일 쉬는 날이죠?", correct: true },
           { text: "내일 쉬는 날이잖아요!" },
@@ -1109,7 +1088,7 @@ export default defineBab({
       {
         key: "ki06-geodeunyo-soalnya",
         prompt:
-          "Kenalan baru ngajak makan samgyeopsal. ‘Aku nggak makan babi. Soalnya aku Muslim.’ → 저는 돼지고기 안 먹어요. 무슬림이(___).",
+          "Kenalan baru ngajak makan samgyeopsal. “Aku nggak makan babi. Soalnya aku Muslim.” → 저는 돼지고기 안 먹어요. 무슬림이(___).",
         options: [
           { text: "거든요", correct: true },
           { text: "잖아요" },
@@ -1117,7 +1096,7 @@ export default defineBab({
           { text: "래요" },
         ],
         explanation:
-          "Dia belum tahu kamu Muslim, jadi ini info baru = -거든요 (soalnya). Kalau pakai -잖아요, kesannya ‘kan kamu udah tahu aku Muslim’.",
+          "Dia belum tahu kamu Muslim, jadi ini info baru = -거든요 (soalnya). Kalau pakai -잖아요, kesannya “kan kamu udah tahu aku Muslim”.",
       },
       {
         key: "ki06-neyo-reaksi",
@@ -1130,12 +1109,12 @@ export default defineBab({
           { text: "와, 진짜 맛있을걸요!" },
         ],
         explanation:
-          "Baru ngalamin saat itu juga dan kaget = -네요 (wah, ternyata). 맛있대요 artinya ‘katanya enak’, padahal kamu sendiri yang lagi makan.",
+          "Baru ngalamin saat itu juga dan kaget = -네요 (wah, ternyata). 맛있대요 artinya “katanya enak”, padahal kamu sendiri yang lagi makan.",
       },
       {
         key: "ki06-gunyo-nerima",
         prompt:
-          "사장님 bilang bulan depan pabrik pindah ke Incheon. Kamu nerima info itu dengan sopan: ‘Oh, gitu ya, Pak.’",
+          "사장님 bilang bulan depan pabrik pindah ke Incheon. Kamu nerima info itu dengan sopan: “Oh, gitu ya, Pak.”",
         options: [
           { text: "아, 그렇군요.", correct: true },
           { text: "아, 그렇잖아요." },
@@ -1148,7 +1127,7 @@ export default defineBab({
       {
         key: "ki06-geot-gatda-kekecilan",
         prompt:
-          "Lagi nyoba baju di toko, kamu mau nolak halus: ‘Kayaknya agak kekecilan.’",
+          "Lagi nyoba baju di toko, kamu mau nolak halus: “Kayaknya agak kekecilan.”",
         options: [
           { text: "좀 작은 것 같아요.", correct: true },
           { text: "좀 작는 것 같아요." },
@@ -1181,7 +1160,7 @@ export default defineBab({
           { text: "네, 하잖아요." },
         ],
         explanation:
-          "-(으)ㄹ게요 = janji ‘aku kerjain ya’. -(으)ㄹ걸요 = ‘kayaknya sih dikerjain...’, nebak dan nggak yakin. Beda satu huruf, artinya jauh!",
+          "-(으)ㄹ게요 = janji “aku kerjain ya”. -(으)ㄹ걸요 = “kayaknya sih dikerjain...”, nebak dan nggak yakin. Beda satu huruf, artinya jauh!",
       },
       {
         key: "ki06-getda-empati",
@@ -1194,12 +1173,12 @@ export default defineBab({
           { text: "와, 진짜 힘들었거든요." },
         ],
         explanation:
-          "Ngerasain perasaan orang dari ceritanya = -겠-: ‘pasti capek ya’. Satu kalimat ini bikin kamu kedengeran peduli.",
+          "Ngerasain perasaan orang dari ceritanya = -겠-: “pasti capek ya”. Satu kalimat ini bikin kamu kedengeran peduli.",
       },
       {
         key: "ki06-getda-algetseumnida",
         prompt:
-          "반장님 selesai ngasih instruksi kerja. Kamu mau bilang ‘siap, saya ngerti’. Yang pas?",
+          "반장님 selesai ngasih instruksi kerja. Kamu mau bilang “siap, saya ngerti”. Yang pas?",
         options: [
           { text: "네, 알겠습니다.", correct: true },
           { text: "네, 알아요." },
@@ -1207,7 +1186,7 @@ export default defineBab({
           { text: "네, 아네요." },
         ],
         explanation:
-          "알겠습니다 itu jawaban standar waktu dikasih instruksi. 알아요 bisa kedengeran ‘aku udah tahu kok’, kayak instruksinya nggak perlu.",
+          "알겠습니다 itu jawaban standar waktu dikasih instruksi. 알아요 bisa kedengeran “aku udah tahu kok”, kayak instruksinya nggak perlu.",
       },
       {
         key: "ki06-deora-saksi",
@@ -1220,11 +1199,11 @@ export default defineBab({
           { text: "어제 가 봤는데 진짜 맛있겠어요." },
         ],
         explanation:
-          "Udah lewat + kamu alami sendiri + ada rasa ‘ternyata’ = -더라고요. 맛있대요 artinya kamu cuma dengar dari orang.",
+          "Udah lewat + kamu alami sendiri + ada rasa “ternyata” = -더라고요. 맛있대요 artinya kamu cuma dengar dari orang.",
       },
       {
         key: "ki06-daeyo-disuruh",
-        prompt: "Teman bilang ‘사장님이 빨리 오래요.’ Artinya?",
+        prompt: "Teman bilang “사장님이 빨리 오래요.” Artinya?",
         options: [
           { text: "Bos nyuruh (kita) cepat datang.", correct: true },
           { text: "Bos mau cepat datang." },
@@ -1232,7 +1211,7 @@ export default defineBab({
           { text: "Bos nanya mau datang atau nggak." },
         ],
         explanation:
-          "-(으)래요 = disuruh. ‘Katanya bos mau datang’ itu 사장님이 온대요, dan ‘ngajak’ itu -재요.",
+          "-(으)래요 = disuruh. “Katanya bos mau datang” itu 사장님이 온대요, dan “ngajak” itu -재요.",
       },
     ],
   },

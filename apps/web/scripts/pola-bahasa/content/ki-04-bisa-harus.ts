@@ -78,9 +78,11 @@ export default defineBab({
         ),
         callout(
           "tip",
-          "Pengen sesuatu yang udah telat? Cek ",
+          "Mau praktik ngomong? Cek ",
+          ref("padahal tadinya mau", "ik-padahal-rencana"),
+          " dan ",
           ref("kalau aja", "ik-kalau-aja"),
-          ". Bedanya sama ",
+          " (pengen yang udah telat). Bedanya sama ",
           ref("-(으)ㄹ래요", "ki-eullaeyo"),
           ": 라면 먹고 싶어요 = lagi pengen ramyeon, 라면 먹을래요 = aku pilih ramyeon.",
         ),
@@ -126,14 +128,19 @@ export default defineBab({
           ],
           examples: [
             {
-              before: "내일 아침 일찍 오",
-              emphasis: "ㄹ 수 있어요",
+              before: "내일 아침 일찍 ",
+              emphasis: "올 수 있어요",
               after: "?",
             },
             {
-              before: "여기서 와이파이 쓸",
-              emphasis: " 수 있어요",
+              before: "여기서 와이파이 ",
+              emphasis: "쓸 수 있어요",
               after: "?",
+            },
+            {
+              before: "이 상자는 혼자 ",
+              emphasis: "들 수 없어요",
+              after: ".",
             },
           ],
         }),
@@ -224,7 +231,7 @@ export default defineBab({
             },
           ],
           examples: [
-            { before: "운전", emphasis: "할 줄 알아요", after: "?" },
+            { before: "지게차 운전", emphasis: "할 줄 알아요", after: "?" },
             { before: "수영", emphasis: "할 줄 몰라요", after: "." },
           ],
         }),
