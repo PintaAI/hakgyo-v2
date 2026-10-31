@@ -6,6 +6,7 @@ import {
   isHiddenHangeulDocument,
 } from "../lib/hangeul-visibility";
 import { SyncDataContext, type SyncLocalData } from "../sync/hooks";
+import { syncQueryKeys } from "../sync/query-keys";
 import type { LearnerIndex } from "../sync/types";
 import {
   courseBundleDocuments,
@@ -15,7 +16,7 @@ import {
 } from "./documents";
 import { prepareDocument, type PreparedDocument } from "./match";
 
-export const searchCorpusQueryKey = ["mobileSync", "search", "corpus"] as const;
+export const searchCorpusQueryKey = syncQueryKeys.searchCorpus();
 
 type CourseEntry = {
   revision: string;

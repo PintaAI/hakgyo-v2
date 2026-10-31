@@ -170,6 +170,11 @@ export function createBundleSync(options: BundleSyncOptions) {
         queryKey: syncQueryKeys.bundleContent(courseId),
       });
     }
+    if (courseIds.length) {
+      void queryClient.invalidateQueries({
+        queryKey: syncQueryKeys.searchCorpus(),
+      });
+    }
     publishItemCourseMap();
     publishProgress();
     settleIdle();
@@ -211,6 +216,9 @@ export function createBundleSync(options: BundleSyncOptions) {
     } else {
       void queryClient.invalidateQueries({ queryKey: contentKey });
     }
+    void queryClient.invalidateQueries({
+      queryKey: syncQueryKeys.searchCorpus(),
+    });
   }
 
   /** Applies a fetch result; returns the stored size (0 when nothing was stored). */
