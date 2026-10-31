@@ -15,8 +15,9 @@ Semua bahan ajar disimpan di menu **Bahan ajar**, jadi satu materi bisa dipakai 
 1. Buka **Kurikulum**, lalu klik **Kurikulum baru**.
 2. Isi **Nama kurikulum** dan, bila perlu, **Gambaran singkat**.
 3. Klik **Buat kurikulum**.
+4. Hakgyo langsung menawarkan **Buat kelas pertama**. Pilih **Berjadwal** atau **Mandiri**, atau klik **Lewati** untuk membuatnya nanti. Murid hanya bisa belajar lewat kelas. Lihat [Kelas dan Jadwal](/docs/pengajar/kelas-jadwal#kelas-berjadwal-dan-kelas-mandiri).
 
-Anda kembali ke daftar kurikulum. Kurikulum baru berstatus **Belum dipublikasikan**, gratis, dan belum terlihat oleh murid. Klik namanya untuk mulai mengisi.
+Kurikulum baru berstatus **Belum dipublikasikan**, gratis, dan belum terlihat oleh murid. Buka kurikulum dari daftar untuk mulai mengisi.
 
 Jika tombol **Kurikulum baru** tidak muncul, peran Anda belum boleh membuat kurikulum. Lihat [Peran dan Akses](/docs/pengajar/peran-akses).
 
@@ -25,8 +26,7 @@ Jika tombol **Kurikulum baru** tidak muncul, peran Anda belum boleh membuat kuri
 Halaman kurikulum punya beberapa tab:
 
 - **Ringkasan**: jumlah bab, kelas, murid, dan langkah berikutnya.
-- **Kelas**: daftar kelas untuk kurikulum ini.
-- **Murid**: murid belajar mandiri (tanpa kelas), serta tautan undangan untuk seluruh kurikulum.
+- **Kelas**: daftar kelas untuk kurikulum ini, termasuk **Kelas Mandiri**. Murid dan tautan undangan dikelola di halaman setiap kelas.
 - **Hasil & review tugas**: jawaban murid yang perlu dinilai.
 - **Latihan & tryout**: kuis bersama untuk beberapa kelas.
 - **Akses**: hanya muncul pada mode akses lanjutan.
@@ -103,7 +103,7 @@ Pada mode **Bertahap**, perhatikan:
 3. Jika ada item tampil yang belum siap, publikasi ditahan. Klik **Perbaiki** atau sembunyikan item itu.
 4. Klik **Publikasikan**.
 
-Murid hanya melihat item yang **tampil** di kurikulum yang **sudah dipublikasikan**. Kurikulum yang dipublikasikan juga muncul di katalog publik Hakgyo. Kurikulum privat tampil dengan label **Lewat undangan** dan tidak bisa diikuti tanpa undangan.
+Murid hanya melihat item yang **tampil** di kurikulum yang **sudah dipublikasikan**. Kurikulum yang dipublikasikan juga muncul di katalog publik Hakgyo. Kurikulum privat tampil dengan label **Lewat undangan** dan tidak bisa diikuti tanpa undangan. Murid bergabung dengan memilih salah satu kelasnya yang dibuka.
 
 Klik **Batalkan publikasi** untuk menyembunyikan semua item dari murid sementara. Pengaturan tampil setiap item tetap tersimpan.
 
@@ -275,7 +275,7 @@ Di tab **Pengaturan**:
 
 - **Nama kurikulum** dan **Deskripsi**.
 - **Harga**. Isi 0 untuk gratis. Harga kelas, jika diisi, menggantikan harga ini.
-- **Tipe kurikulum**: **Ikuti organisasi**, **Kurikulum publik** (murid bisa mendaftar sendiri), atau **Kurikulum privat** (hanya lewat undangan atau ditambahkan).
+- **Tipe kurikulum**: **Ikuti organisasi**, **Kurikulum publik** (murid bisa mendaftar sendiri ke kelasnya), atau **Kurikulum privat** (hanya lewat undangan atau ditambahkan).
 - **Alur belajar**: **Terbuka** atau **Bertahap**.
 
 Klik **Simpan perubahan**.

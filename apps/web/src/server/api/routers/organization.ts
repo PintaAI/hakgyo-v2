@@ -816,7 +816,7 @@ export const organizationRouter = createTRPCRouter({
         }),
         ctx.db.cohort.groupBy({
           by: ["status"],
-          where: { ...organizationScope, defaultForCourseId: null },
+          where: organizationScope,
           _count: { _all: true },
         }),
         ctx.db.cohortEnrollment.groupBy({

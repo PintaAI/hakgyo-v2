@@ -123,7 +123,7 @@ async function getManagerOverview(input: {
   const now = new Date();
   // Item counts for the listed modules only; a nested relation `_count`
   // would aggregate every course item in the database.
-  const [stats, itemCounts] = await Promise.all([
+  const [stats, itemCounts, kelasMandiri] = await Promise.all([
     fetchStats({
       itemCount: () =>
         db.courseItem.count({
@@ -134,7 +134,6 @@ async function getManagerOverview(input: {
           ? db.cohort.count({
               where: {
                 courseId: input.courseId,
-                defaultForCourseId: null,
                 ...(input.canViewAllCohorts
                   ? {}
                   : {
@@ -160,6 +159,7 @@ async function getManagerOverview(input: {
         db.enrollmentInvite.count({
           where: {
             courseId: input.courseId,
+            cohortId: { not: null },
             revokedAt: null,
             AND: [
               { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
@@ -180,6 +180,11 @@ async function getManagerOverview(input: {
           where: { moduleId: { in: input.modules.map((module) => module.id) } },
           _count: { _all: true },
         }),
+    // One per curriculum: the create-class dialog offers it only when absent.
+    db.cohort.findUnique({
+      where: { defaultForCourseId: input.courseId },
+      select: { id: true },
+    }),
   ]);
   const itemCountByModule = new Map(
     itemCounts.map((row) => [row.moduleId, row._count._all]),
@@ -187,6 +192,7 @@ async function getManagerOverview(input: {
 
   return {
     stats: { moduleCount: input.moduleCount, ...stats },
+    kelasMandiriId: kelasMandiri?.id ?? null,
     modules: input.modules.map((module) => ({
       id: module.id,
       title: module.title,

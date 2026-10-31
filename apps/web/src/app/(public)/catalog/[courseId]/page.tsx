@@ -7,13 +7,13 @@ import {
   ArrowRightIcon,
   CalendarDaysIcon,
   CheckCircle2Icon,
+  Clock3Icon,
   Layers3Icon,
   LockKeyholeIcon,
   UsersIcon,
 } from "lucide-react";
 
 import { CourseCover } from "~/components/course-cover";
-import { CatalogEnrollmentButton } from "~/components/catalog-enrollment-button";
 import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
 import { getSession } from "~/server/better-auth/server";
@@ -85,12 +85,10 @@ export default async function CatalogCoursePage({
   ]);
   const enrollmentMode =
     course.enrollmentMode ?? course.organization.defaultEnrollmentMode;
-  const canEnroll = enrollmentMode === "OPEN" && course.price === 0;
   const itemCount = course.modules.reduce(
     (total, module) => total + module.items.length,
     0,
   );
-  const signInPath = `/auth?redirectTo=${encodeURIComponent(`/catalog/${course.id}`)}`;
 
   return (
     <div className="space-y-8 pb-10">
@@ -138,28 +136,22 @@ export default async function CatalogCoursePage({
             </dl>
 
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-              {canEnroll ? (
-                session?.user ? (
-                  <CatalogEnrollmentButton courseId={course.id} />
-                ) : (
-                  <Link
-                    href={signInPath}
-                    className={buttonVariants({ size: "lg" })}
-                  >
-                    Masuk untuk mulai
-                  </Link>
-                )
+              {/* Learners join a class of the curriculum, never the curriculum itself. */}
+              {course.cohorts.length > 0 ? (
+                <Link
+                  href="#cohorts-heading"
+                  className={buttonVariants({ size: "lg" })}
+                >
+                  Pilih kelas
+                  <ArrowRightIcon data-icon="inline-end" />
+                </Link>
               ) : (
                 <p className="bg-muted text-muted-foreground flex items-center gap-2 rounded-lg px-4 py-3 text-sm">
                   <LockKeyholeIcon
                     className="size-4 shrink-0"
                     aria-hidden="true"
                   />
-                  {course.cohorts.length > 0
-                    ? "Pilih kelas di bawah untuk mendaftar."
-                    : course.price > 0
-                      ? "Belum ada kelas yang dibuka untuk kurikulum ini."
-                      : "Kurikulum ini hanya dapat diakses melalui undangan."}
+                  Belum ada kelas yang dibuka untuk kurikulum ini.
                 </p>
               )}
             </div>
@@ -186,7 +178,9 @@ export default async function CatalogCoursePage({
                 Kelas
               </h2>
               <p className="text-muted-foreground text-sm">
-                Belajar bersama pengajar dan teman sekelas.
+                {course.cohorts.some((cohort) => cohort.selfPaced)
+                  ? "Ikut kelas berjadwal, atau Kelas Mandiri untuk belajar kapan saja."
+                  : "Belajar bersama pengajar dan teman sekelas."}
               </p>
             </div>
           </div>
@@ -207,16 +201,27 @@ export default async function CatalogCoursePage({
                       </p>
                     ) : null}
                     <dl className="text-muted-foreground mt-3 space-y-1.5 text-sm">
-                      <div className="flex items-center gap-2">
-                        <CalendarDaysIcon
-                          className="size-4 shrink-0"
-                          aria-hidden="true"
-                        />
-                        <dt className="sr-only">Periode</dt>
-                        <dd>
-                          {formatCohortPeriod(cohort.startsAt, cohort.endsAt)}
-                        </dd>
-                      </div>
+                      {cohort.selfPaced ? (
+                        <div className="flex items-center gap-2">
+                          <Clock3Icon
+                            className="size-4 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <dt className="sr-only">Jadwal</dt>
+                          <dd>Kelas Mandiri · belajar kapan saja</dd>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <CalendarDaysIcon
+                            className="size-4 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <dt className="sr-only">Periode</dt>
+                          <dd>
+                            {formatCohortPeriod(cohort.startsAt, cohort.endsAt)}
+                          </dd>
+                        </div>
+                      )}
                       {cohort.seatsLeft !== null ? (
                         <div className="flex items-center gap-2">
                           <UsersIcon

@@ -134,11 +134,9 @@ export function PerformanceView({
             label="Performa per kelas"
             empty="Belum ada murid di kelas."
             rows={data.cohorts.map((cohort) => ({
-              key: cohort.cohortId ?? "self-paced",
-              title: cohort.selfPaced ? "Belajar mandiri" : cohort.cohortName,
-              subtitle: cohort.selfPaced
-                ? "Murid tanpa kelas, semua kurikulum"
-                : cohort.courseTitle,
+              key: cohort.cohortId,
+              title: cohort.cohortName,
+              subtitle: cohort.courseTitle,
               value:
                 cohort.averageScore === null
                   ? "—"
@@ -169,7 +167,7 @@ export function PerformanceView({
               subtitle: `${formatCount(course.finished)} dari ${formatCount(course.learners)} murid menuntaskan semua item`,
               value: formatPercent(course.completionRate),
               share: course.completionRate,
-              href: `${root}/courses/${course.courseId}?view=learners`,
+              href: `${root}/courses/${course.courseId}?view=cohorts`,
             }))}
           />
         </AnalyticsSection>

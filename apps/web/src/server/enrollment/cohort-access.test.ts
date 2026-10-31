@@ -257,19 +257,4 @@ describe("other running class", () => {
     });
     expect(lookups[0]?.where.cohortId).toEqual({ not: "class-2" });
   });
-
-  test("counts any running class when joining the Kelas Mandiri", async () => {
-    const { db, lookups } = createDatabase();
-    const otherClass = await findOtherRunningClass(db, {
-      courseId: "course-1",
-      userId: "user-1",
-      now,
-    });
-    expect(otherClass).toEqual({ id: "class-1", name: "Kelas Pagi" });
-    expect(lookups[0]?.where).not.toHaveProperty("cohortId");
-    expect(lookups[0]?.where.cohort).toEqual({
-      courseId: "course-1",
-      ...liveClassCohortWhere(now),
-    });
-  });
 });

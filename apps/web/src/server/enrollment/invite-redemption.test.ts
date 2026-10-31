@@ -19,22 +19,26 @@ async function rejectionCode(operation: Promise<unknown>) {
   }
 }
 
-function createTransaction() {
+/** A one-time invite to a free open class. */
+function createTransaction(cohortId = "cohort-1") {
   let useCount = 0;
   const invite = {
     id: "invite-1",
     courseId: "course-1",
     organizationId: "organization-1",
-    cohortId: null,
+    cohortId,
     createdByMembershipId: "membership-1",
     token: "one-time-token-that-is-long-enough",
     expiresAt: null,
     maxUses: 1,
     revokedAt: null,
     createdAt: now,
+    course: { price: 0 },
+    cohort: { status: "OPEN", endsAt: null, price: null },
   };
 
   const tx = {
+    $executeRaw: () => Promise.resolve(1),
     enrollmentInvite: {
       findUnique: () => Promise.resolve({ ...invite, useCount }),
       updateMany: () => {
@@ -111,21 +115,56 @@ describe("invite redemption", () => {
     expect(updateCount).toBe(0);
   });
 
+  test("rejects a retired course-level invite", async () => {
+    let updateCount = 0;
+    const tx = {
+      enrollmentInvite: {
+        findUnique: () =>
+          Promise.resolve({
+            id: "invite-1",
+            courseId: "course-1",
+            cohortId: null,
+            revokedAt: null,
+            expiresAt: null,
+            maxUses: null,
+            useCount: 0,
+            course: { price: 0 },
+            cohort: null,
+          }),
+        updateMany: () => {
+          updateCount += 1;
+          return Promise.resolve({ count: 1 });
+        },
+      },
+    } as unknown as Prisma.TransactionClient;
+
+    for (const operation of [
+      consumeEnrollmentInvite(tx, "course-invite-token-long-enough", now),
+      redeemEnrollmentInvite(tx, {
+        token: "course-invite-token-long-enough",
+        userId: "user-1",
+        now,
+      }),
+    ]) {
+      expect(await rejectionCode(operation)).toBe("BAD_REQUEST");
+    }
+    expect(updateCount).toBe(0);
+  });
+
   test("does not consume a use when the learner is already enrolled", async () => {
     const { tx, getUseCount } = createTransaction();
     const writes: unknown[] = [];
     Object.assign(tx, {
-      $executeRaw: () => Promise.resolve(1),
       cohortEnrollment: {
-        findFirst: () =>
+        findUnique: () =>
           Promise.resolve({
             id: "membership-1",
             status: "ACTIVE",
             expiresAt: null,
           }),
-        createMany: (args: unknown) => {
+        upsert: (args: unknown) => {
           writes.push(args);
-          return Promise.resolve({ count: 1 });
+          return Promise.resolve({});
         },
       },
     });
@@ -136,9 +175,9 @@ describe("invite redemption", () => {
       now,
     });
     expect(result).toEqual({
-      type: "COURSE",
+      type: "COHORT",
       courseId: "course-1",
-      cohortId: null,
+      cohortId: "cohort-1",
     });
     expect(getUseCount()).toBe(0);
     expect(writes).toHaveLength(0);
@@ -166,7 +205,7 @@ describe("invite redemption", () => {
           return Promise.resolve({ count: 1 });
         },
       },
-      cohortEnrollment: { findFirst: () => Promise.resolve(null) },
+      cohortEnrollment: { findUnique: () => Promise.resolve(null) },
     } as unknown as Prisma.TransactionClient;
 
     expect(
@@ -181,69 +220,51 @@ describe("invite redemption", () => {
     expect(updateCount).toBe(0);
   });
 
-  test("refuses a class invite while the learner takes another class of the course", async () => {
-    let updateCount = 0;
-    const lookups: unknown[] = [];
-    const tx = {
-      $executeRaw: () => Promise.resolve(1),
-      enrollmentInvite: {
-        findUnique: () =>
-          Promise.resolve({
-            id: "invite-1",
-            courseId: "course-1",
-            cohortId: "cohort-2",
-            revokedAt: null,
-            expiresAt: null,
-            maxUses: null,
-            useCount: 0,
-            course: { price: 0 },
-            cohort: { status: "OPEN", endsAt: null, price: null },
+  for (const target of [
+    { name: "another class", cohortId: "cohort-2" },
+    { name: "the Kelas Mandiri", cohortId: "course-1-mandiri" },
+  ]) {
+    test(`refuses an invite to ${target.name} while the learner takes a running class of the course`, async () => {
+      const { tx, getUseCount } = createTransaction(target.cohortId);
+      const lookups: Array<{ where: Record<string, unknown> }> = [];
+      Object.assign(tx, {
+        cohortEnrollment: {
+          // Not a member of the invited class, but active in a running one.
+          findUnique: () => Promise.resolve(null),
+          findFirst: (args: { where: Record<string, unknown> }) => {
+            lookups.push(args);
+            return Promise.resolve({
+              cohort: { id: "cohort-1", name: "Kelas Pagi" },
+            });
+          },
+        },
+      });
+
+      expect(
+        await rejectionCode(
+          redeemEnrollmentInvite(tx, {
+            token: "one-time-token-that-is-long-enough",
+            userId: "user-1",
+            now,
           }),
-        updateMany: () => {
-          updateCount += 1;
-          return Promise.resolve({ count: 1 });
-        },
-      },
-      cohortEnrollment: {
-        // Not a member of the invited class, but active in another one.
-        findFirst: (args: unknown) => {
-          lookups.push(args);
-          return Promise.resolve(
-            lookups.length === 1
-              ? null
-              : { cohort: { id: "cohort-1", name: "Kelas Pagi" } },
-          );
-        },
-      },
-    } as unknown as Prisma.TransactionClient;
+        ),
+      ).toBe("PRECONDITION_FAILED");
+      expect(lookups[0]?.where.cohortId).toEqual({ not: target.cohortId });
+      expect(getUseCount()).toBe(0);
+    });
+  }
 
-    expect(
-      await rejectionCode(
-        redeemEnrollmentInvite(tx, {
-          token: "class-invite-token-long-enough",
-          userId: "user-1",
-          now,
-        }),
-      ),
-    ).toBe("PRECONDITION_FAILED");
-    expect(updateCount).toBe(0);
-  });
-
-  test("consumes a use and joins the course's default cohort", async () => {
+  test("consumes a use and joins the invited class", async () => {
     const { tx, getUseCount } = createTransaction();
     const memberships: unknown[] = [];
     Object.assign(tx, {
-      $executeRaw: () => Promise.resolve(1),
-      cohort: {
-        findUnique: () => Promise.resolve({ id: "default-cohort" }),
-      },
       cohortEnrollment: {
+        findUnique: () => Promise.resolve(null),
         findFirst: () => Promise.resolve(null),
-        createMany: (args: { data: unknown }) => {
-          memberships.push(args.data);
-          return Promise.resolve({ count: 1 });
+        upsert: (args: { create: unknown }) => {
+          memberships.push(args.create);
+          return Promise.resolve({});
         },
-        findUniqueOrThrow: () => Promise.resolve({ id: "membership-1" }),
       },
     });
 
@@ -255,7 +276,7 @@ describe("invite redemption", () => {
     expect(getUseCount()).toBe(1);
     expect(memberships).toEqual([
       {
-        cohortId: "default-cohort",
+        cohortId: "cohort-1",
         userId: "user-1",
         status: "ACTIVE",
         source: "INVITE",
@@ -263,35 +284,5 @@ describe("invite redemption", () => {
         expiresAt: null,
       },
     ]);
-  });
-
-  test("refuses a course invite while the learner takes a running class of the course", async () => {
-    const { tx, getUseCount } = createTransaction();
-    const lookups: unknown[] = [];
-    Object.assign(tx, {
-      $executeRaw: () => Promise.resolve(1),
-      cohortEnrollment: {
-        // Not in the Kelas Mandiri, but active in a running class.
-        findFirst: (args: unknown) => {
-          lookups.push(args);
-          return Promise.resolve(
-            lookups.length === 1
-              ? null
-              : { cohort: { id: "cohort-1", name: "Kelas Pagi" } },
-          );
-        },
-      },
-    });
-
-    expect(
-      await rejectionCode(
-        redeemEnrollmentInvite(tx, {
-          token: "one-time-token-that-is-long-enough",
-          userId: "user-1",
-          now,
-        }),
-      ),
-    ).toBe("PRECONDITION_FAILED");
-    expect(getUseCount()).toBe(0);
   });
 });

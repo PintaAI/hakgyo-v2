@@ -341,7 +341,7 @@ export const mcpDomainTools = {
       name: "list_cohorts",
       title: "List cohorts",
       description:
-        "List a course's cohorts (study groups), optionally filtered by name or status. Results are paginated with cursor.",
+        "List a course's cohorts (classes), including its Kelas Mandiri (defaultForCourseId set), optionally filtered by name or status. Results are paginated with cursor.",
       effect: "read",
     },
     {
@@ -357,7 +357,7 @@ export const mcpDomainTools = {
       name: "create_cohort",
       title: "Create cohort",
       description:
-        "Create a cohort (study group) for a course. startsAt and endsAt are ISO 8601 date-times.",
+        'Create a cohort (class) for a course. kind SCHEDULED (default) is a class with its own dates; startsAt and endsAt are ISO 8601 date-times. kind SELF_PACED creates the course\'s Kelas Mandiri: open-ended, no dates, status OPEN by default, named "Kelas Mandiri" unless a name is given; a course has at most one.',
       effect: "add",
     },
     {
@@ -365,7 +365,7 @@ export const mcpDomainTools = {
       name: "update_cohort",
       title: "Update cohort",
       description:
-        "Change a cohort's name, schedule, status, price, capacity or enrollment mode. Only the fields you send are changed.",
+        "Change a cohort's name, schedule, status, price, capacity or enrollment mode. Only the fields you send are changed. A Kelas Mandiri (defaultForCourseId set) has no dates.",
       effect: "change",
     },
     {
@@ -413,19 +413,11 @@ export const mcpDomainTools = {
   ],
   enrollment: [
     {
-      action: "enrollOpenCourse",
-      name: "enroll_in_open_course",
-      title: "Enroll in open course",
-      description:
-        "Enroll the signed-in user in a free, published course that accepts open enrollment.",
-      effect: "add",
-    },
-    {
       action: "listInvites",
       name: "list_enrollment_invites",
       title: "List enrollment invites",
       description:
-        "List a course's or cohort's enrollment invite links and their usage. Invite secrets are not returned.",
+        "List a cohort's (class's) enrollment invite links and their usage. Learners join a course only through a cohort, so invites always belong to one. Invite secrets are not returned.",
       effect: "read",
     },
     {
@@ -433,15 +425,7 @@ export const mcpDomainTools = {
       name: "get_enrollment_invite",
       title: "Get enrollment invite",
       description:
-        "Read one enrollment invite's target, limits and usage. The invite secret is not returned.",
-      effect: "read",
-    },
-    {
-      action: "listCourseEnrollments",
-      name: "list_course_enrollments",
-      title: "List course enrollments",
-      description:
-        "List learners enrolled in a course, optionally filtered by name, email or status. Results are paginated with cursor.",
+        "Read one cohort enrollment invite's limits and usage. The invite secret is not returned.",
       effect: "read",
     },
     {
@@ -453,19 +437,11 @@ export const mcpDomainTools = {
       effect: "read",
     },
     {
-      action: "setCourseEnrollment",
-      name: "set_course_enrollment",
-      title: "Set course enrollment",
-      description:
-        "Enroll a learner in a course by email, or change their enrollment status (for example to CANCELLED) and expiry. Confirm with the user before cancelling access.",
-      effect: "change",
-    },
-    {
       action: "setCohortEnrollment",
       name: "set_cohort_enrollment",
       title: "Set cohort enrollment",
       description:
-        "Enroll a learner in a cohort by email, or change their enrollment status (for example to CANCELLED). Confirm with the user before cancelling access.",
+        "Enroll a learner in a cohort by email, or change their enrollment status (for example to CANCELLED) and access end (expiresAt, ISO 8601; null removes it). This is how learners get access to a course, including its Kelas Mandiri. Confirm with the user before cancelling access.",
       effect: "change",
     },
   ],

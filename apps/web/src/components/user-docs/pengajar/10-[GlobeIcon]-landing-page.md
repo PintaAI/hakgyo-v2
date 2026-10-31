@@ -86,7 +86,7 @@ Klik **Nonaktifkan**, lalu konfirmasi. Halaman publik langsung hilang, tetapi dr
 Daftar kurikulum di landing page diperbarui otomatis setiap kali halaman dibuka. Yang tampil hanya kurikulum yang:
 
 - sudah **dipublikasikan**, dan
-- **publik**, artinya murid bisa mendaftar sendiri tanpa undangan.
+- **publik**, artinya murid bisa mendaftar sendiri ke kelasnya tanpa undangan.
 
 Kurikulum yang hanya bisa diikuti lewat undangan tidak tampil di landing page. Setiap kurikulum menautkan ke halaman katalognya, tempat murid memilih kelas dan mendaftar.
 

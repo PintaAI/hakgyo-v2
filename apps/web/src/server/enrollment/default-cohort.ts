@@ -9,6 +9,25 @@ type DefaultCohortDb = Pick<
 
 export const DEFAULT_COHORT_NAME = "Kelas Mandiri";
 
+/**
+ * The row of a course's Kelas Mandiri: open from the start, no dates, join
+ * mode and price following the course and organization, and no staff. Both
+ * first use (`ensureDefaultCohort`) and staff creating it (`cohort.create`)
+ * start from this.
+ */
+export function kelasMandiriData(course: {
+  id: string;
+  organizationId: string;
+}) {
+  return {
+    courseId: course.id,
+    organizationId: course.organizationId,
+    name: DEFAULT_COHORT_NAME,
+    status: "OPEN",
+    defaultForCourseId: course.id,
+  } satisfies Prisma.CohortUncheckedCreateInput;
+}
+
 /** The course's Kelas Mandiri (its open-ended cohort), created on first use. */
 export async function ensureDefaultCohort(
   db: DefaultCohortDb,
@@ -26,13 +45,7 @@ export async function ensureDefaultCohort(
   });
   // skipDuplicates: a concurrent first use must not abort this one.
   await db.cohort.createMany({
-    data: {
-      courseId,
-      organizationId: course.organizationId,
-      name: DEFAULT_COHORT_NAME,
-      status: "OPEN",
-      defaultForCourseId: courseId,
-    },
+    data: kelasMandiriData({ id: courseId, ...course }),
     skipDuplicates: true,
   });
   return db.cohort.findUniqueOrThrow({

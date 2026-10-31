@@ -221,11 +221,7 @@ export async function requireCohortPermission(input: {
         },
       }),
   );
-  // Default self-paced cohorts are managed through the course's learners,
-  // not as cohorts.
-  if (!result || result.defaultForCourseId) {
-    throw new TRPCError({ code: "NOT_FOUND" });
-  }
+  if (!result) throw new TRPCError({ code: "NOT_FOUND" });
 
   const { course, staff, ...cohort } = result;
   const exactStaffAssignment = staff[0];

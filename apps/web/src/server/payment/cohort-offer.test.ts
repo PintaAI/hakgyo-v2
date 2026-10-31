@@ -55,22 +55,22 @@ describe("effective cohort settings", () => {
 });
 
 describe("isCohortJoinable", () => {
-  const cohort = { status: "OPEN", endsAt: null, defaultForCourseId: null };
+  const cohort = { status: "OPEN", endsAt: null };
 
-  test("accepts open and running class cohorts", () => {
+  test("accepts open and running classes, a Kelas Mandiri included", () => {
     expect(isCohortJoinable(cohort, now)).toBe(true);
     expect(isCohortJoinable({ ...cohort, status: "IN_PROGRESS" }, now)).toBe(
       true,
     );
   });
 
-  test("rejects drafts, ended and default cohorts", () => {
+  test("rejects drafts, cancelled and ended classes", () => {
     expect(isCohortJoinable({ ...cohort, status: "DRAFT" }, now)).toBe(false);
+    expect(isCohortJoinable({ ...cohort, status: "CANCELLED" }, now)).toBe(
+      false,
+    );
     expect(
       isCohortJoinable({ ...cohort, endsAt: new Date("2026-09-30") }, now),
-    ).toBe(false);
-    expect(
-      isCohortJoinable({ ...cohort, defaultForCourseId: "course_1" }, now),
     ).toBe(false);
   });
 });

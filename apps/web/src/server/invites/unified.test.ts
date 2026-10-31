@@ -73,7 +73,6 @@ function database(input: {
             : null,
         ),
     },
-    user: { count: () => Promise.resolve(12) },
   } as unknown as Prisma.DefaultPrismaClient;
 }
 
@@ -94,40 +93,28 @@ describe("resolveUnifiedInvite", () => {
     });
   });
 
-  test("distinguishes course and cohort invitations", async () => {
-    const course = await resolveUnifiedInvite(
-      database({ enrollment: {} }),
-      "course-token-long-enough",
-      now,
-    );
-    const cohort = await resolveUnifiedInvite(
-      database({
-        enrollment: {
-          cohort: {
-            id: "cohort-1",
-            name: "August Group",
-            status: "OPEN",
-            startsAt: null,
-            endsAt: null,
-            _count: { enrollments: 7 },
-          },
-        },
-      }),
+  const augustGroup = {
+    id: "cohort-1",
+    name: "August Group",
+    status: "OPEN" as const,
+    startsAt: null,
+    endsAt: null,
+    _count: { enrollments: 7 },
+  };
+
+  test("previews a class invitation with its curriculum", async () => {
+    const invite = await resolveUnifiedInvite(
+      database({ enrollment: { cohort: augustGroup } }),
       "cohort-token-long-enough",
       now,
     );
-    expect(course).toMatchObject({
-      type: "COURSE",
-      course: { id: "course-1" },
-    });
-    expect(cohort).toMatchObject({
+    expect(invite).toMatchObject({
       type: "COHORT",
+      status: "PENDING",
       cohort: { id: "cohort-1" },
       joinedCount: 7,
-    });
-    expect(course).toMatchObject({
-      joinedCount: 12,
       course: {
+        id: "course-1",
         moduleCount: 1,
         itemCount: 1,
         items: [{ title: "Hangul basics", moduleTitle: "Introduction" }],
@@ -135,9 +122,24 @@ describe("resolveUnifiedInvite", () => {
     });
   });
 
+  test("shows a retired course-level invitation as no longer valid", async () => {
+    const invite = await resolveUnifiedInvite(
+      database({ enrollment: {} }),
+      "course-token-long-enough",
+      now,
+    );
+    expect(invite).toEqual({
+      type: "RETIRED",
+      status: "REVOKED",
+      organization: { name: "Hakgyo", slug: "hakgyo" },
+    });
+  });
+
   test("reports exhausted reusable enrollment invitations", async () => {
     const invite = await resolveUnifiedInvite(
-      database({ enrollment: { maxUses: 2, useCount: 2 } }),
+      database({
+        enrollment: { cohort: augustGroup, maxUses: 2, useCount: 2 },
+      }),
       "exhausted-token-long-enough",
       now,
     );

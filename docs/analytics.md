@@ -12,12 +12,17 @@ dengan periode yang sama untuk ketiganya.
 
 ## Cakupan Data
 
-- **OWNER/ADMIN** melihat seluruh organisasi, termasuk murid "Belajar
-  mandiri" (cohort default dengan `defaultForCourseId`).
+- **OWNER/ADMIN** melihat seluruh organisasi, termasuk Kelas Mandiri setiap
+  kurikulum (cohort default dengan `defaultForCourseId`).
 - **TEACHER** hanya melihat kelas yang ia pegang, dengan aturan yang sama
   dengan daftar kelasnya (`getOrganizationCohortScope`): mode SIMPLE memakai
   kelas tempat ia menjadi staf, mode ADVANCED juga kelas dari kurikulum yang
-  ia miliki. Murid belajar mandiri dan pengerjaan tanpa kelas tidak masuk.
+  ia miliki. Kelas Mandiri ikut bila ia memegangnya, seperti kelas lain.
+  Attempt tanpa kelas (`cohortId` kosong, termasuk attempt lewat Kelas
+  Mandiri) tidak masuk ke cakupan pengajar.
+- Kelas Mandiri tampil sebagai baris kelas biasa di perbandingan per kelas.
+  Attempt-nya tetap tanpa `cohortId`, jadi rata-rata nilai baris Kelas
+  Mandiri dihitung dari attempt tanpa kelas pada item kurikulum tersebut.
 - Cakupan dihitung di `src/server/analytics/scope.ts` dan dipakai oleh
   semua query lewat `cohortFilter`.
 - Tab Pendapatan tidak ditampilkan untuk TEACHER. Halamannya mengalihkan ke

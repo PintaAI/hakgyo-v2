@@ -10,6 +10,10 @@ import {
   requireOrganizationPermission,
 } from "~/server/authorization";
 import { getOrganizationCohortScope } from "~/server/authorization/cohort-scope";
+import {
+  assertKelasMandiriFields,
+  createKelasMandiri,
+} from "~/server/cohort/kelas-mandiri";
 import { Prisma } from "../../../../generated/prisma/client";
 import { db } from "~/server/db";
 import { deleteR2Objects } from "~/server/r2";
@@ -206,10 +210,9 @@ async function listCohortPage(
   orderBy: Prisma.CohortOrderByWithRelationInput[],
   input: { limit: number; cursor?: string; includeTotal: boolean },
 ) {
-  const classWhere = { ...where, defaultForCourseId: null };
   const [items, total] = await Promise.all([
     db.cohort.findMany({
-      where: classWhere,
+      where,
       orderBy,
       ...pageArgs(input),
       include: {
@@ -217,7 +220,7 @@ async function listCohortPage(
       },
     }),
     input.includeTotal
-      ? db.cohort.count({ where: classWhere })
+      ? db.cohort.count({ where })
       : Promise.resolve(undefined),
   ]);
   return pageResult(await withCohortCounts(items), input.limit, total);
@@ -315,7 +318,6 @@ export const cohortRouter = createTRPCRouter({
       });
       const where = {
         courseId: input.courseId,
-        defaultForCourseId: null,
         status: input.status,
         ...(input.search
           ? {
@@ -392,7 +394,18 @@ export const cohortRouter = createTRPCRouter({
       return { ...cohort, access: cohortAccess.access };
     }),
   create: protectedProcedure
-    .input(cohortFields.extend({ courseId: id }))
+    .input(
+      cohortFields.extend({
+        courseId: id,
+        /**
+         * SCHEDULED: a class with its own dates. SELF_PACED: the curriculum's
+         * Kelas Mandiri (one per curriculum, no dates, open by default).
+         */
+        kind: z.enum(["SCHEDULED", "SELF_PACED"]).default("SCHEDULED"),
+        // Required for scheduled classes; a Kelas Mandiri defaults to its name.
+        name: cohortFields.shape.name.optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const course = await requireCoursePermission({
         courseId: input.courseId,
@@ -402,9 +415,26 @@ export const cohortRouter = createTRPCRouter({
       if (!course.access.canCreateCohort) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const created = await db.cohort.create({
-        data: { ...input, organizationId: course.organizationId },
-      });
+      const { kind, courseId, name, ...fields } = input;
+      const owner = { id: courseId, organizationId: course.organizationId };
+      let created;
+      if (kind === "SELF_PACED") {
+        created = await createKelasMandiri(db, owner, { ...fields, name });
+      } else if (name) {
+        created = await db.cohort.create({
+          data: {
+            ...fields,
+            courseId,
+            name,
+            organizationId: course.organizationId,
+          },
+        });
+      } else {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Nama kelas wajib diisi.",
+        });
+      }
       if (created.status === "OPEN") {
         await notifyInBackground("cohort opened (WhatsApp group)", () =>
           enqueueAutoCohortGroup(created.id),
@@ -415,12 +445,13 @@ export const cohortRouter = createTRPCRouter({
   update: protectedProcedure
     .input(cohortFields.partial().extend({ cohortId: id }))
     .mutation(async ({ ctx, input }) => {
-      await requireCohortPermission({
+      const cohort = await requireCohortPermission({
         cohortId: input.cohortId,
         permission: "update",
         userId: ctx.actorUserId,
       });
       const { cohortId, ...data } = input;
+      if (cohort.defaultForCourseId) assertKelasMandiriFields(data);
       if (data.whatsappGroupUrl !== undefined) {
         const current = await ctx.db.cohort.findUniqueOrThrow({
           where: { id: cohortId },

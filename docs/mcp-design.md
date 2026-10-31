@@ -29,7 +29,7 @@ harus mengikuti source dan contract tests, bukan hanya dokumentasi API.
 | Course       |      7 | Public catalog, managed course read, create/update/delete                              |
 | Content      |     26 | Modules, course items, materials, requirements, vocabulary sets dan entries            |
 | Cohort       |     12 | Cohort CRUD, staff assignment, Zoom meeting CRUD                                       |
-| Enrollment   |     10 | Open enrollment, manual enrollment, cohort enrollment, invite lifecycle                |
+| Enrollment   |      7 | Cohort (kelas) enrollment, invite lifecycle per kelas                                  |
 | Learning     |      5 | My courses, outline, item content, progress, progression mode                          |
 | Assessment   |     18 | Authoring, learner attempts, answer submission, review queue dan grading               |
 | Storage      |     12 | Profile image, organization logo, document upload/download/delete                      |
@@ -120,17 +120,20 @@ cohort.deleteMeeting
 ### Enrollment
 
 ```text
-enrollment.enrollOpenCourse
 enrollment.listInvites
 enrollment.getInvite
-enrollment.listCourseEnrollments
 enrollment.listCohortEnrollments
-enrollment.setCourseEnrollment
 enrollment.setCohortEnrollment
 enrollment.createInvite
 enrollment.revokeInvite
 enrollment.redeemInvite
 ```
+
+Learner hanya bergabung lewat kelas, termasuk Kelas Mandiri course. Procedure
+course-level `enrollOpenCourse`, `listCourseEnrollments`,
+`setCourseEnrollment` dan `removeCourseEnrollment`, beserta tool MCP
+`enroll_in_open_course`, `list_course_enrollments` dan `set_course_enrollment`,
+sudah dihapus. Invite selalu milik satu kelas (`cohortId` wajib).
 
 ### Learning
 

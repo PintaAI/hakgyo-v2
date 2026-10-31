@@ -12,16 +12,13 @@ import {
   ClipboardCheckIcon,
   CheckIcon,
   CircleHelpIcon,
-  ClipboardIcon,
   ClockIcon,
   CrownIcon,
   FilePenLineIcon,
   Layers3Icon,
   LayoutDashboardIcon,
-  LinkIcon,
   ListFilterIcon,
   LoaderCircleIcon,
-  MailPlusIcon,
   PlusIcon,
   SearchIcon,
   Settings2Icon,
@@ -29,8 +26,6 @@ import {
   Trash2Icon,
   TrophyIcon,
   UserPlusIcon,
-  UserRoundCheckIcon,
-  UsersIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,6 +47,7 @@ import {
   coursePublicationLabels,
 } from "~/components/course-readiness";
 import { CourseCoverEditor } from "~/components/course-cover-editor";
+import { CreateClassDialog } from "~/components/create-class-dialog";
 import { PageHeader } from "~/components/ui/page-header";
 import { CourseCover } from "~/components/course-cover";
 import { ReviewQueue } from "~/components/review-queue";
@@ -74,15 +70,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
-import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -94,16 +81,7 @@ import {
 } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
 import { StatStrip } from "~/components/ui/stat-strip";
-import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import { Textarea } from "~/components/ui/textarea";
 import {
   Tooltip,
@@ -112,24 +90,14 @@ import {
 } from "~/components/ui/tooltip";
 import { getErrorMessage } from "~/lib/error-message";
 import { TabRail } from "~/components/ui/tab-rail";
-import { enrollmentSourceLabels } from "~/lib/enrollment-labels";
 import { cn } from "~/lib/utils";
-import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 type CourseView =
-  | "overview"
-  | "cohorts"
-  | "learners"
-  | "tryouts"
-  | "reviews"
-  | "access"
-  | "settings";
+  "overview" | "cohorts" | "tryouts" | "reviews" | "access" | "settings";
 
 type CourseWorkspaceData = RouterOutputs["course"]["getWorkspaceOverview"];
 type Course = CourseWorkspaceData["course"];
-type Enrollment =
-  RouterOutputs["enrollment"]["listCourseEnrollments"]["items"][number];
 type Cohort = RouterOutputs["cohort"]["list"]["items"][number];
 type CohortStatus = Cohort["status"];
 type CohortSort = "updatedAt" | "createdAt" | "name";
@@ -151,13 +119,6 @@ const courseStatus = {
     variant: "default" as const,
   },
 };
-
-const enrollmentStatus = {
-  PENDING: "Menunggu",
-  ACTIVE: "Aktif",
-  COMPLETED: "Selesai",
-  CANCELLED: "Dibatalkan",
-} as const;
 
 const courseCurrencies = [
   { code: "IDR", symbol: "Rp", flag: "🇮🇩" },
@@ -182,7 +143,6 @@ const cohortStatus = {
 const views = [
   { value: "overview", label: "Ringkasan", icon: LayoutDashboardIcon },
   { value: "cohorts", label: "Kelas", icon: CalendarDaysIcon },
-  { value: "learners", label: "Murid", icon: UsersIcon },
   { value: "reviews", label: "Hasil & review tugas", icon: ClipboardCheckIcon },
   { value: "tryouts", label: "Latihan & tryout", icon: TrophyIcon },
   { value: "access", label: "Akses", icon: ShieldCheckIcon },
@@ -282,9 +242,11 @@ export function CourseWorkspace({
           value === "overview" || (canViewCohorts && value === "cohorts"),
       );
   const rawRequestedView = searchParams.get("view");
-  // Legacy `?view=invites` now lives inside the Murid tab.
+  // Learners and invites now live in each class; old links open the Kelas tab.
   const requestedView = (
-    rawRequestedView === "invites" ? "learners" : rawRequestedView
+    rawRequestedView === "learners" || rawRequestedView === "invites"
+      ? "cohorts"
+      : rawRequestedView
   ) as CourseView | null;
   const view =
     requestedView &&
@@ -294,12 +256,7 @@ export function CourseWorkspace({
       : "overview";
   const viewCounts: Partial<Record<CourseView, number>> = {
     cohorts: overview?.stats.cohortCount,
-    learners: overview?.stats.activeLearnerCount,
   };
-  const [learnerSearch, setLearnerSearch] = useState("");
-  const debouncedLearnerSearch = useDebouncedValue(
-    learnerSearch.trim().toLowerCase(),
-  );
   const [cohortSearch, setCohortSearch] = useState("");
   const [appliedCohortSearch, setAppliedCohortSearch] = useState("");
   const [cohortStatusFilter, setCohortStatusFilter] = useState<
@@ -328,29 +285,10 @@ export function CourseWorkspace({
     },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      enabled: canViewCohorts && (view === "cohorts" || view === "learners"),
-    },
-  );
-  const learners = api.enrollment.listCourseEnrollments.useInfiniteQuery(
-    {
-      courseId: course.id,
-      search: debouncedLearnerSearch || undefined,
-    },
-    {
-      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      enabled: canManageCourse && view === "learners",
-    },
-  );
-  const invites = api.enrollment.listInvites.useInfiniteQuery(
-    { courseId: course.id },
-    {
-      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      enabled: canManageCourse && view === "learners",
+      enabled: canViewCohorts && view === "cohorts",
     },
   );
   const cohortItems = cohorts.data?.pages.flatMap((page) => page.items);
-  const learnerItems = learners.data?.pages.flatMap((page) => page.items);
-  const inviteItems = invites.data?.pages.flatMap((page) => page.items);
   const access = api.course.getAccess.useQuery(
     { courseId: course.id },
     { enabled: canManageAccess && view === "access" },
@@ -511,6 +449,7 @@ export function CourseWorkspace({
           <CohortsSection
             canCreate={canManageCourse}
             courseId={course.id}
+            hasKelasMandiri={Boolean(overview?.kelasMandiriId)}
             data={cohortItems}
             error={cohorts.error}
             isPending={cohorts.isPending}
@@ -530,35 +469,6 @@ export function CourseWorkspace({
             onWorkspaceChange={refreshWorkspace}
             root={root}
           />
-        </TabsContent>
-        <TabsContent value="learners">
-          <div className="space-y-10">
-            <LearnersSection
-              courseId={course.id}
-              data={learnerItems}
-              error={learners.error}
-              isPending={learners.isPending}
-              search={learnerSearch}
-              onSearchChange={setLearnerSearch}
-              hasMore={learners.hasNextPage}
-              isLoadingMore={learners.isFetchingNextPage}
-              onLoadMore={() => void learners.fetchNextPage()}
-              onWorkspaceChange={refreshWorkspace}
-            />
-            <div className="border-t pt-8">
-              <InvitesSection
-                courseId={course.id}
-                cohorts={cohortItems}
-                data={inviteItems}
-                error={invites.error}
-                isPending={invites.isPending}
-                hasMore={invites.hasNextPage}
-                isLoadingMore={invites.isFetchingNextPage}
-                onLoadMore={() => void invites.fetchNextPage()}
-                onWorkspaceChange={refreshWorkspace}
-              />
-            </div>
-          </div>
         </TabsContent>
         <TabsContent value="tryouts">
           <AssessmentEventManager courseId={course.id} />
@@ -779,12 +689,7 @@ function OverviewSection({
                 {
                   view: "cohorts" as const,
                   icon: CalendarDaysIcon,
-                  label: "Buat dan kelola kelas",
-                },
-                {
-                  view: "learners" as const,
-                  icon: MailPlusIcon,
-                  label: "Undang murid",
+                  label: "Buat kelas dan undang murid",
                 },
                 {
                   view: "settings" as const,
@@ -833,6 +738,7 @@ function OverviewSection({
 function CohortsSection({
   canCreate,
   courseId,
+  hasKelasMandiri,
   data,
   error,
   isPending,
@@ -854,6 +760,7 @@ function CohortsSection({
 }: {
   canCreate: boolean;
   courseId: string;
+  hasKelasMandiri: boolean;
   data?: RouterOutputs["cohort"]["list"]["items"];
   error: { message: string } | null;
   isPending: boolean;
@@ -873,43 +780,8 @@ function CohortsSection({
   onWorkspaceChange: () => Promise<void>;
   root: string;
 }) {
-  const utils = api.useUtils();
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [capacity, setCapacity] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-  const createCohort = api.cohort.create.useMutation();
   const hasActiveFilters = Boolean(appliedSearch || statusFilter !== "ALL");
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!name.trim()) return;
-    try {
-      await createCohort.mutateAsync({
-        courseId,
-        name: name.trim(),
-        description: description.trim() || null,
-        capacity: capacity ? Number(capacity) : null,
-        startsAt: startsAt ? new Date(`${startsAt}T00:00:00`) : null,
-        endsAt: endsAt ? new Date(`${endsAt}T23:59:59`) : null,
-      });
-      await Promise.all([
-        utils.cohort.list.invalidate({ courseId }),
-        onWorkspaceChange(),
-      ]);
-      setOpen(false);
-      setName("");
-      setDescription("");
-      setCapacity("");
-      setStartsAt("");
-      setEndsAt("");
-      toast.success("Kelas berhasil dibuat.");
-    } catch (cause) {
-      toast.error(getErrorMessage(cause));
-    }
-  }
 
   return (
     <section className="space-y-5">
@@ -919,7 +791,8 @@ function CohortsSection({
             Kelas
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Kelola kelas, kapasitas, periode, dan staff kurikulum.
+            Murid bergabung lewat kelas: kelas berjadwal, atau Kelas Mandiri
+            untuk belajar kapan saja.
           </p>
         </div>
         {canCreate ? (
@@ -1056,7 +929,7 @@ function CohortsSection({
               description={
                 hasActiveFilters
                   ? "Coba kata kunci atau status yang berbeda."
-                  : "Kelas membantu mengatur periode belajar, pengajar, meeting, dan kelompok murid."
+                  : "Murid hanya bisa belajar lewat kelas. Buat kelas berjadwal dengan pengajar dan pertemuan, atau Kelas Mandiri untuk belajar kapan saja."
               }
               action={
                 canCreate && !hasActiveFilters ? (
@@ -1093,6 +966,9 @@ function CohortsSection({
                         <h3 className="font-heading truncate font-medium">
                           {cohort.name}
                         </h3>
+                        {cohort.defaultForCourseId ? (
+                          <Badge variant="secondary">Kelas Mandiri</Badge>
+                        ) : null}
                         <Badge variant="outline">
                           {cohortStatus[cohort.status]}
                         </Badge>
@@ -1152,873 +1028,18 @@ function CohortsSection({
       ) : null}
 
       {canCreate ? (
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="sm:max-w-lg">
-            <form onSubmit={submit}>
-              <DialogHeader>
-                <DialogTitle>Buat kelas</DialogTitle>
-                <DialogDescription>
-                  Buat kelas baru untuk kurikulum ini.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-5 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cohort-name">Nama kelas</Label>
-                  <Input
-                    id="cohort-name"
-                    autoFocus
-                    maxLength={200}
-                    placeholder="Contoh: Kelas September 2026"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cohort-description">Deskripsi</Label>
-                  <Textarea
-                    id="cohort-description"
-                    maxLength={10000}
-                    placeholder="Fokus dan konteks kelas ini"
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                  />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="cohort-capacity">Kapasitas</Label>
-                    <Input
-                      id="cohort-capacity"
-                      min={1}
-                      type="number"
-                      value={capacity}
-                      onChange={(event) => setCapacity(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cohort-start">Mulai</Label>
-                    <DatePicker
-                      id="cohort-start"
-                      value={startsAt}
-                      onChange={setStartsAt}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cohort-end">Selesai</Label>
-                    <DatePicker
-                      id="cohort-end"
-                      min={startsAt || undefined}
-                      value={endsAt}
-                      onChange={setEndsAt}
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter className="mt-5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={!name.trim() || createCohort.isPending}
-                >
-                  {createCohort.isPending ? (
-                    <LoaderCircleIcon className="animate-spin" />
-                  ) : (
-                    <PlusIcon />
-                  )}
-                  Buat kelas
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <CreateClassDialog
+          courseId={courseId}
+          open={open}
+          onOpenChange={setOpen}
+          hasKelasMandiri={hasKelasMandiri}
+          title={data?.length === 0 ? "Buat kelas pertama" : "Buat kelas"}
+          onCreated={async () => {
+            await onWorkspaceChange();
+            setOpen(false);
+          }}
+        />
       ) : null}
-    </section>
-  );
-}
-
-function LearnersSection({
-  courseId,
-  data,
-  error,
-  isPending,
-  search,
-  onSearchChange,
-  hasMore,
-  isLoadingMore,
-  onLoadMore,
-  onWorkspaceChange,
-}: {
-  courseId: string;
-  data?: RouterOutputs["enrollment"]["listCourseEnrollments"]["items"];
-  error: { message: string } | null;
-  isPending: boolean;
-  search: string;
-  onSearchChange: (value: string) => void;
-  hasMore: boolean;
-  isLoadingMore: boolean;
-  onLoadMore: () => void;
-  onWorkspaceChange: () => Promise<void>;
-}) {
-  const utils = api.useUtils();
-  const [addOpen, setAddOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<Enrollment["status"]>("ACTIVE");
-  const [expiresAt, setExpiresAt] = useState("");
-  const updateEnrollment = api.enrollment.setCourseEnrollment.useMutation();
-  const removeEnrollment = api.enrollment.removeCourseEnrollment.useMutation();
-  const [removing, setRemoving] = useState<Enrollment | null>(null);
-  const visible = data;
-
-  async function updateStatus(
-    enrollment: Enrollment,
-    status: Enrollment["status"],
-  ) {
-    try {
-      await updateEnrollment.mutateAsync({
-        courseId,
-        email: enrollment.user.email,
-        status,
-        expiresAt: enrollment.expiresAt,
-      });
-      await Promise.all([
-        utils.enrollment.listCourseEnrollments.invalidate({ courseId }),
-        onWorkspaceChange(),
-      ]);
-      toast.success(`Status ${enrollment.user.name} diperbarui.`);
-    } catch (cause) {
-      toast.error(getErrorMessage(cause));
-    }
-  }
-
-  async function addLearner(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    try {
-      await updateEnrollment.mutateAsync({
-        courseId,
-        email,
-        status,
-        expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59`) : null,
-      });
-      await Promise.all([
-        utils.enrollment.listCourseEnrollments.invalidate({ courseId }),
-        onWorkspaceChange(),
-      ]);
-      setAddOpen(false);
-      setEmail("");
-      setStatus("ACTIVE");
-      setExpiresAt("");
-      toast.success("Murid berhasil ditambahkan.");
-    } catch (cause) {
-      toast.error(getErrorMessage(cause));
-    }
-  }
-
-  async function removeLearner(enrollment: Enrollment) {
-    try {
-      await removeEnrollment.mutateAsync({
-        courseId,
-        userId: enrollment.user.id,
-      });
-      await Promise.all([
-        utils.enrollment.listCourseEnrollments.invalidate({ courseId }),
-        onWorkspaceChange(),
-      ]);
-      setRemoving(null);
-      toast.success(
-        `Murid ${enrollment.user.name} dihapus dari belajar mandiri.`,
-      );
-    } catch (cause) {
-      toast.error(getErrorMessage(cause));
-    }
-  }
-
-  return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="font-heading text-2xl font-medium tracking-tight">
-            Murid
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Murid yang belajar mandiri tanpa kelas. Murid kelas dikelola di
-            halaman group masing-masing.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setAddOpen(true)}>
-            <UserPlusIcon data-icon="inline-start" />
-            Tambah murid
-          </Button>
-        </div>
-      </div>
-
-      {isPending || error ? <QueryState error={error} /> : null}
-      {!isPending && !error && data?.length === 0 ? (
-        <Card>
-          <CardContent>
-            <EmptyState
-              size="sm"
-              icon={UserRoundCheckIcon}
-              title="Belum ada murid"
-              description="Tambahkan akun Hakgyo dengan email atau bagikan invite agar murid mendaftar sendiri."
-              action={
-                <Button
-                  className="mt-4"
-                  size="sm"
-                  onClick={() => setAddOpen(true)}
-                >
-                  <UserPlusIcon data-icon="inline-start" />
-                  Tambah murid
-                </Button>
-              }
-            />
-          </CardContent>
-        </Card>
-      ) : null}
-      {!isPending && !error && data && data.length > 0 ? (
-        <Card>
-          <CardHeader className="gap-4 border-b sm:grid-cols-[1fr_auto] sm:items-center">
-            <div>
-              <CardTitle>Belajar mandiri</CardTitle>
-              <CardDescription>{data.length} murid terdaftar</CardDescription>
-            </div>
-            <div className="relative w-full sm:w-64">
-              <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-              <Input
-                aria-label="Cari murid"
-                className="pl-8"
-                placeholder="Cari nama atau email"
-                value={search}
-                onChange={(event) => onSearchChange(event.target.value)}
-              />
-            </div>
-          </CardHeader>
-          {visible?.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-4">Murid</TableHead>
-                  <TableHead className="max-sm:hidden">Sumber</TableHead>
-                  <TableHead className="max-sm:hidden">Terdaftar</TableHead>
-                  <TableHead className="text-right">Status</TableHead>
-                  <TableHead className="pr-4 text-right">
-                    <span className="sr-only">Aksi</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((enrollment) => (
-                  <TableRow key={enrollment.id}>
-                    <TableCell className="max-w-48 pl-4 whitespace-normal sm:max-w-64">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="shrink-0">
-                          {enrollment.user.image ? (
-                            <AvatarImage
-                              src={enrollment.user.image}
-                              alt={enrollment.user.name}
-                            />
-                          ) : null}
-                          <AvatarFallback>
-                            {getInitials(enrollment.user.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="min-w-0">
-                          <span className="block font-medium">
-                            {enrollment.user.name}
-                          </span>
-                          <span className="text-muted-foreground block truncate text-xs">
-                            {enrollment.user.email}
-                          </span>
-                          <span className="text-muted-foreground mt-0.5 block text-xs sm:hidden">
-                            {enrollmentSourceLabels[enrollment.source] ??
-                              enrollment.source}{" "}
-                            · {dateFormatter.format(enrollment.enrolledAt)}
-                          </span>
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-sm:hidden">
-                      <Badge variant="outline">
-                        {enrollmentSourceLabels[enrollment.source] ??
-                          enrollment.source}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs max-sm:hidden">
-                      {dateFormatter.format(enrollment.enrolledAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Select
-                        value={enrollment.status}
-                        disabled={updateEnrollment.isPending}
-                        onValueChange={(value) => {
-                          if (value) void updateStatus(enrollment, value);
-                        }}
-                      >
-                        <SelectTrigger
-                          aria-label={`Status ${enrollment.user.name}`}
-                        >
-                          <span className="flex flex-1 text-left">
-                            {enrollmentStatus[enrollment.status]}
-                          </span>
-                        </SelectTrigger>
-                        <SelectContent align="end">
-                          {Object.entries(enrollmentStatus).map(
-                            ([value, label]) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
-                              </SelectItem>
-                            ),
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="pr-4 text-right">
-                      <Button
-                        aria-label={`Hapus ${enrollment.user.name}`}
-                        size="icon-sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-destructive"
-                        disabled={removeEnrollment.isPending}
-                        onClick={() => setRemoving(enrollment)}
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <CardContent>
-              <EmptyState
-                size="sm"
-                icon={SearchIcon}
-                title="Murid tidak ditemukan"
-                description="Coba nama atau alamat email yang berbeda."
-              />
-            </CardContent>
-          )}
-          {hasMore ? (
-            <div className="border-t p-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={isLoadingMore}
-                onClick={onLoadMore}
-              >
-                {isLoadingMore ? (
-                  <LoaderCircleIcon className="animate-spin" />
-                ) : null}
-                Muat murid berikutnya
-              </Button>
-            </div>
-          ) : null}
-        </Card>
-      ) : null}
-
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={addLearner}>
-            <DialogHeader>
-              <DialogTitle>Tambah murid</DialogTitle>
-              <DialogDescription>
-                Masukkan email akun Hakgyo yang akan diberi akses ke kurikulum
-                ini.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-5 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="learner-email">Email murid</Label>
-                <Input
-                  id="learner-email"
-                  autoComplete="email"
-                  autoFocus
-                  maxLength={320}
-                  placeholder="murid@example.com"
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Email harus sudah terdaftar sebagai akun Hakgyo.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="learner-status">Status awal</Label>
-                  <Select
-                    value={status}
-                    onValueChange={(value) => {
-                      if (value) setStatus(value);
-                    }}
-                  >
-                    <SelectTrigger id="learner-status" className="w-full">
-                      <span className="flex flex-1 text-left">
-                        {enrollmentStatus[status]}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(enrollmentStatus).map(
-                        ([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="learner-expiry">Akses hingga</Label>
-                  <DatePicker
-                    id="learner-expiry"
-                    value={expiresAt}
-                    onChange={setExpiresAt}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter className="mt-5">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAddOpen(false)}
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                disabled={!email.trim() || updateEnrollment.isPending}
-              >
-                {updateEnrollment.isPending ? (
-                  <LoaderCircleIcon className="animate-spin" />
-                ) : (
-                  <UserPlusIcon />
-                )}
-                Tambah murid
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog
-        open={Boolean(removing)}
-        onOpenChange={(value) => {
-          if (!value) setRemoving(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <Trash2Icon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              Hapus {removing?.user.name} dari belajar mandiri?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Akses belajar mandiri murid ke kurikulum ini dicabut. Jika murid
-              masih terdaftar di kelas kurikulum ini, aksesnya tetap berlaku
-              lewat group tersebut. Status lama tidak dapat dipulihkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={removeEnrollment.isPending}
-              onClick={() => removing && removeLearner(removing)}
-            >
-              {removeEnrollment.isPending ? (
-                <LoaderCircleIcon className="animate-spin" />
-              ) : (
-                <Trash2Icon />
-              )}
-              Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </section>
-  );
-}
-
-function InvitesSection({
-  courseId,
-  cohorts,
-  data,
-  error,
-  isPending,
-  hasMore,
-  isLoadingMore,
-  onLoadMore,
-  onWorkspaceChange,
-}: {
-  courseId: string;
-  cohorts?: RouterOutputs["cohort"]["list"]["items"];
-  data?: RouterOutputs["enrollment"]["listInvites"]["items"];
-  error: { message: string } | null;
-  isPending: boolean;
-  hasMore: boolean;
-  isLoadingMore: boolean;
-  onLoadMore: () => void;
-  onWorkspaceChange: () => Promise<void>;
-}) {
-  const utils = api.useUtils();
-  const [open, setOpen] = useState(false);
-  const [cohortId, setCohortId] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
-  const [maxUses, setMaxUses] = useState("");
-  const [oneTime, setOneTime] = useState(true);
-  const [newToken, setNewToken] = useState<string | null>(null);
-  const createInvite = api.enrollment.createInvite.useMutation();
-  const revokeInvite = api.enrollment.revokeInvite.useMutation();
-  const deleteInvite = api.enrollment.deleteInvite.useMutation();
-  const actionPending = revokeInvite.isPending || deleteInvite.isPending;
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    try {
-      const invite = await createInvite.mutateAsync({
-        courseId,
-        cohortId: cohortId || null,
-        expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59`) : null,
-        maxUses: oneTime ? 1 : maxUses ? Number(maxUses) : null,
-      });
-      await Promise.all([
-        utils.enrollment.listInvites.invalidate({ courseId }),
-        onWorkspaceChange(),
-      ]);
-      setNewToken(invite.token);
-      toast.success(
-        "Invite berhasil dibuat. Salin link sebelum menutup dialog.",
-      );
-    } catch (cause) {
-      toast.error(getErrorMessage(cause));
-    }
-  }
-
-  async function copyInvite() {
-    if (!newToken) return;
-    const url = `${window.location.origin}/invite/${newToken}`;
-    await navigator.clipboard.writeText(url);
-    toast.success("Link invite disalin.");
-  }
-
-  async function revoke(inviteId: string) {
-    try {
-      await revokeInvite.mutateAsync({ inviteId });
-      await Promise.all([
-        utils.enrollment.listInvites.invalidate({ courseId }),
-        onWorkspaceChange(),
-      ]);
-      toast.success("Invite dicabut.");
-    } catch (cause) {
-      toast.error(getErrorMessage(cause));
-    }
-  }
-
-  async function remove(inviteId: string) {
-    try {
-      await deleteInvite.mutateAsync({ inviteId });
-      await Promise.all([
-        utils.enrollment.listInvites.invalidate({ courseId }),
-        onWorkspaceChange(),
-      ]);
-      toast.success("Invite dihapus.");
-    } catch (cause) {
-      toast.error(getErrorMessage(cause));
-    }
-  }
-
-  function closeDialog() {
-    setOpen(false);
-    setNewToken(null);
-    setCohortId("");
-    setExpiresAt("");
-    setMaxUses("");
-    setOneTime(true);
-  }
-
-  return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="font-heading text-2xl font-medium tracking-tight">
-            Invites
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Buat link akses untuk kurikulum atau kelas tertentu.
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <LinkIcon data-icon="inline-start" />
-          Buat invite
-        </Button>
-      </div>
-
-      <div className="bg-muted/50 flex items-start gap-3 rounded-lg border px-4 py-3 text-xs leading-relaxed">
-        <MailPlusIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-        <p className="text-muted-foreground">
-          Demi keamanan, token hanya ditampilkan satu kali saat invite dibuat.
-          Metadata dan pemakaiannya tetap dapat dipantau di bawah.
-        </p>
-      </div>
-
-      {isPending || error ? <QueryState error={error} /> : null}
-      {!isPending && !error && data?.length === 0 ? (
-        <Card>
-          <CardContent>
-            <EmptyState
-              size="sm"
-              icon={MailPlusIcon}
-              title="Belum ada invite"
-              description="Buat link terbatas untuk mengundang murid ke kurikulum atau kelas."
-              action={
-                <Button
-                  className="mt-4"
-                  size="sm"
-                  onClick={() => setOpen(true)}
-                >
-                  Buat invite pertama
-                </Button>
-              }
-            />
-          </CardContent>
-        </Card>
-      ) : null}
-      {!isPending && !error && data && data.length > 0 ? (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-4">Target</TableHead>
-                <TableHead className="max-sm:hidden">Pemakaian</TableHead>
-                <TableHead className="max-sm:hidden">Berakhir</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="pr-4 text-right">
-                  <span className="sr-only">Aksi</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.map((invite) => {
-                const expired = Boolean(
-                  invite.expiresAt && invite.expiresAt <= new Date(),
-                );
-                const exhausted =
-                  invite.maxUses !== null && invite.useCount >= invite.maxUses;
-                const active = !invite.revokedAt && !expired && !exhausted;
-                const cohort = cohorts?.find(
-                  (item) => item.id === invite.cohortId,
-                );
-                return (
-                  <TableRow key={invite.id}>
-                    <TableCell className="pl-4">
-                      <span className="block font-medium">
-                        {cohort?.name ??
-                          (invite.cohortId ? "Kelas" : "Seluruh kurikulum")}
-                      </span>
-                      <span className="text-muted-foreground block text-xs">
-                        oleh {invite.createdBy.user.name}
-                      </span>
-                      <span className="text-muted-foreground mt-0.5 block text-xs tabular-nums sm:hidden">
-                        {invite.useCount} / {invite.maxUses ?? "∞"} dipakai ·{" "}
-                        {invite.expiresAt
-                          ? `s.d. ${dateFormatter.format(invite.expiresAt)}`
-                          : "tanpa batas"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="tabular-nums max-sm:hidden">
-                      {invite.useCount} / {invite.maxUses ?? "∞"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs max-sm:hidden">
-                      {invite.expiresAt
-                        ? dateFormatter.format(invite.expiresAt)
-                        : "Tidak dibatasi"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={active ? "default" : "outline"}>
-                        {invite.revokedAt
-                          ? "Dicabut"
-                          : expired
-                            ? "Expired"
-                            : exhausted
-                              ? "Habis"
-                              : "Aktif"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="pr-4 text-right">
-                      {active ? (
-                        <Button
-                          aria-label="Cabut invite"
-                          size="icon-sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive"
-                          disabled={actionPending}
-                          onClick={() => revoke(invite.id)}
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      ) : (
-                        <Button
-                          aria-label="Hapus invite"
-                          size="icon-sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive"
-                          disabled={actionPending}
-                          onClick={() => remove(invite.id)}
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-          {hasMore ? (
-            <div className="border-t p-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={isLoadingMore}
-                onClick={onLoadMore}
-              >
-                {isLoadingMore ? (
-                  <LoaderCircleIcon className="animate-spin" />
-                ) : null}
-                Muat invite berikutnya
-              </Button>
-            </div>
-          ) : null}
-        </Card>
-      ) : null}
-
-      <Dialog
-        open={open}
-        onOpenChange={(value) => (value ? setOpen(true) : closeDialog())}
-      >
-        <DialogContent className="sm:max-w-md">
-          {newToken ? (
-            <div>
-              <DialogHeader>
-                <DialogTitle>Invite siap dibagikan</DialogTitle>
-                <DialogDescription>
-                  Salin sekarang. Token ini tidak dapat ditampilkan kembali.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="bg-muted mt-5 rounded-lg border p-4">
-                <p className="text-muted-foreground font-mono text-xs leading-relaxed break-all">
-                  /invite/{newToken}
-                </p>
-              </div>
-              <DialogFooter className="mt-5">
-                <Button variant="outline" onClick={closeDialog}>
-                  Selesai
-                </Button>
-                <Button onClick={copyInvite}>
-                  <ClipboardIcon data-icon="inline-start" />
-                  Salin link
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <form onSubmit={submit}>
-              <DialogHeader>
-                <DialogTitle>Buat invite</DialogTitle>
-                <DialogDescription>
-                  Batasi target, masa berlaku, dan jumlah penggunaan bila perlu.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-5 space-y-4">
-                <div className="flex items-start justify-between gap-6 rounded-lg border p-4">
-                  <div className="grid gap-1">
-                    <Label htmlFor="invite-one-time">Link sekali pakai</Label>
-                    <p className="text-muted-foreground text-xs">
-                      Link otomatis tidak berlaku setelah berhasil digunakan.
-                    </p>
-                  </div>
-                  <Switch
-                    id="invite-one-time"
-                    checked={oneTime}
-                    onCheckedChange={setOneTime}
-                    aria-label="Link sekali pakai"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="invite-cohort">Target</Label>
-                  <Select
-                    value={cohortId || "ALL"}
-                    onValueChange={(value) => {
-                      if (value) setCohortId(value === "ALL" ? "" : value);
-                    }}
-                  >
-                    <SelectTrigger id="invite-cohort" className="w-full">
-                      <span className="flex flex-1 text-left">
-                        {cohorts?.find((cohort) => cohort.id === cohortId)
-                          ?.name ?? "Seluruh kurikulum"}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">Seluruh kurikulum</SelectItem>
-                      {cohorts?.map((cohort) => (
-                        <SelectItem key={cohort.id} value={cohort.id}>
-                          {cohort.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="invite-expiry">Berlaku hingga</Label>
-                    <DatePicker
-                      id="invite-expiry"
-                      value={expiresAt}
-                      onChange={setExpiresAt}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="invite-uses">Maksimal penggunaan</Label>
-                    <Input
-                      id="invite-uses"
-                      disabled={oneTime}
-                      min={1}
-                      placeholder={oneTime ? "1" : "Tanpa batas"}
-                      type="number"
-                      value={maxUses}
-                      onChange={(event) => setMaxUses(event.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter className="mt-5">
-                <Button type="button" variant="outline" onClick={closeDialog}>
-                  Batal
-                </Button>
-                <Button type="submit" disabled={createInvite.isPending}>
-                  {createInvite.isPending ? (
-                    <LoaderCircleIcon className="animate-spin" />
-                  ) : (
-                    <LinkIcon />
-                  )}
-                  Buat invite
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }

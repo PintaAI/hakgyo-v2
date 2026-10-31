@@ -25,10 +25,7 @@ export async function listMcpCatalog(input: {
       currency: true,
       organization: { select: { id: true, name: true, slug: true } },
       _count: {
-        select: {
-          modules: true,
-          cohorts: { where: { defaultForCourseId: null } },
-        },
+        select: { modules: true, cohorts: true },
       },
     },
   });

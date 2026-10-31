@@ -215,7 +215,7 @@ Student dapat membuka learning content jika seluruh kondisi berikut terpenuhi:
 
 1. Course berstatus `PUBLISHED`.
 2. Course item berstatus published.
-3. Memiliki keanggotaan cohort `ACTIVE` atau `COMPLETED` yang belum expired, di cohort berstatus `OPEN`, `IN_PROGRESS`, atau `COMPLETED` (termasuk cohort default belajar mandiri).
+3. Memiliki keanggotaan cohort `ACTIVE` atau `COMPLETED` yang belum expired, di cohort berstatus `OPEN`, `IN_PROGRESS`, atau `COMPLETED` (termasuk Kelas Mandiri, cohort default course). Learner hanya mendapat akses lewat kelas; tidak ada lagi pendaftaran langsung ke course.
 4. Untuk mode `SEQUENTIAL`, module item tersebut sudah unlocked.
 
 Mode progression:
@@ -583,6 +583,10 @@ query({ courseId: string }): PublishedCourseDetail
 
 - Auth: public.
 - Mengembalikan metadata course, module, dan metadata item published.
+- `cohorts`: kelas yang bisa diikuti siapa pun (status `OPEN`/`IN_PROGRESS`,
+  belum berakhir, mode efektif `OPEN`), urut tanggal mulai. Kelas Mandiri ikut
+  tercantum dengan `selfPaced: true`; katalog menampilkannya sebagai
+  "Kelas Mandiri · belajar kapan saja".
 - Content body, pertanyaan, dan jawaban benar tidak dikembalikan.
 
 ### `course.list`
@@ -1034,6 +1038,9 @@ query({ courseId: string }): CohortWithCounts[]
 
 - Scope: pengelola course.
 - Counts: staff, enrollments, meetings.
+- Termasuk Kelas Mandiri course (`defaultForCourseId` terisi), seperti kelas
+  lain. Daftar per organization, analytics dan hitungan kelas juga
+  menyertakannya.
 
 ### `cohort.listForCurrentMember`
 
@@ -1064,14 +1071,32 @@ query({ cohortId: string }): CohortWithStaffAndMeetings
 ### `cohort.create`
 
 ```ts
-mutation(CohortFields & { courseId: string }): Cohort
+mutation(Omit<CohortFields, "name"> & {
+  courseId: string;
+  kind?: "SCHEDULED" | "SELF_PACED"; // default SCHEDULED
+  name?: string; // wajib untuk SCHEDULED
+}): Cohort
 ```
+
+- `SCHEDULED`: kelas berjadwal biasa; status default `DRAFT`.
+- `SELF_PACED`: Kelas Mandiri course. `defaultForCourseId = courseId`, nama
+  default `"Kelas Mandiri"`, status default `OPEN`, `enrollmentMode` `null`
+  (mengikuti course/organization), tanpa staff otomatis. Baris yang sama
+  dengan yang dibuat `ensureDefaultCohort` saat pertama dipakai.
+- Satu course hanya punya satu Kelas Mandiri; yang kedua menghasilkan
+  `CONFLICT`.
+- Kelas Mandiri tidak punya tanggal: `startsAt`/`endsAt` menghasilkan
+  `BAD_REQUEST`. Selain itu Kelas Mandiri sama dengan kelas lain (status,
+  harga, kapasitas, staff, undangan, hapus).
 
 ### `cohort.update`
 
 ```ts
 mutation(Partial<CohortFields> & { cohortId: string }): Cohort
 ```
+
+- Untuk Kelas Mandiri, `startsAt`/`endsAt` selain `null` menghasilkan
+  `BAD_REQUEST`.
 
 ### `cohort.delete`
 
@@ -1169,34 +1194,11 @@ mutation({ cohortId: string; meetingId: string }): { deleted: true }
 
 ## Enrollment
 
-### `enrollment.enrollOpenCourse`
-
-```ts
-mutation({ courseId: string }): CohortEnrollment
-```
-
-- Auth: protected student/user.
-- Course wajib `PUBLISHED` dan mode efektif enrollment wajib `OPEN`.
-- Mode efektif memakai `course.enrollmentMode`, atau
-  `organization.defaultEnrollmentMode` bila override course bernilai `null`.
-- Hanya course gratis (`price === 0`) yang dapat didaftarkan langsung. Course
-  berbayar menghasilkan `PRECONDITION_FAILED`; learner bergabung lewat checkout
-  Group belajar (`payment.startCohortCheckout`, lihat `docs/payments.md`).
-- Learner masuk ke cohort default (belajar mandiri) course dengan status
-  `ACTIVE` dan source `OPEN`.
-- Idempotent untuk keanggotaan `ACTIVE`/`COMPLETED` yang masih berlaku.
-- Keanggotaan yang expired, pending, atau cancelled diaktifkan kembali sebagai
-  `ACTIVE`, source `OPEN`, tanpa expiry.
-
-### `enrollment.listCourseEnrollments`
-
-```ts
-query({ courseId: string }): CohortEnrollmentWithUser[]
-```
-
-- Scope: pengelola course.
-- Berisi anggota cohort default (belajar mandiri). Murid Group belajar ada di
-  `listCohortEnrollments`.
+Learner bergabung ke course hanya lewat kelas: checkout kelas
+(`payment.startCohortCheckout`, lihat `docs/payments.md`), undangan kelas, atau
+ditambahkan staf. Pendaftaran langsung ke course (`enrollOpenCourse`,
+`listCourseEnrollments`, `setCourseEnrollment`, `removeCourseEnrollment`) sudah
+dihapus; Kelas Mandiri dikelola seperti kelas lain.
 
 ### `enrollment.listCohortEnrollments`
 
@@ -1206,24 +1208,6 @@ query({ cohortId: string }): CohortEnrollmentWithUser[]
 
 - Scope: pengelola cohort.
 
-### `enrollment.setCourseEnrollment`
-
-```ts
-mutation({
-  courseId: string;
-  email: string;
-  status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
-  expiresAt?: Date | null;
-}): CohortEnrollment
-```
-
-- Scope: pengelola course.
-- Email dinormalisasi ke lowercase dan harus cocok dengan akun Hakgyo yang sudah ada.
-- Akun yang tidak ditemukan menghasilkan `NOT_FOUND`.
-- Menulis keanggotaan cohort default; keanggotaan baru memakai source `MANUAL`.
-- `completedAt` diisi saat status `COMPLETED`.
-- Keanggotaan expired tidak memberi akses learning content.
-
 ### `enrollment.setCohortEnrollment`
 
 ```ts
@@ -1231,10 +1215,15 @@ mutation({
   cohortId: string;
   email: string;
   status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+  expiresAt?: Date | null; // null menghapus batas akses, kosong = tidak diubah
 }): CohortEnrollment
 ```
 
 - Scope: pengelola cohort.
+- `expiresAt` ("Akses hingga"): keanggotaan expired tidak memberi akses.
+- Status `ACTIVE` ditolak (`CONFLICT`) bila learner masih aktif di kelas
+  berjadwal lain yang sedang berjalan pada course yang sama. Menambahkan ke
+  Kelas Mandiri tetap boleh: kartunya hanya dijeda selama kelas itu berjalan.
 - Email dinormalisasi ke lowercase dan harus cocok dengan akun Hakgyo yang sudah ada.
 - Akun yang tidak ditemukan menghasilkan `NOT_FOUND`.
 - Status aktif membuat entitlement course source `COHORT` bila diperlukan.
@@ -1246,10 +1235,10 @@ mutation({
 #### `enrollment.listInvites`
 
 ```ts
-query({ courseId: string; cohortId?: string }): InviteMetadata[]
+query({ courseId: string; cohortId: string }): InviteMetadata[]
 ```
 
-- Scope: pengelola course/cohort.
+- Scope: `invites.manage` pada cohort.
 - Token tidak dikembalikan oleh list.
 
 #### `enrollment.getInvite`
@@ -1258,7 +1247,8 @@ query({ courseId: string; cohortId?: string }): InviteMetadata[]
 query({ inviteId: string }): InviteMetadata
 ```
 
-- Scope: pengelola course.
+- Scope: `invites.manage` pada cohort undangan. Undangan lama tanpa cohort
+  menghasilkan `NOT_FOUND`.
 - Token tidak dikembalikan.
 
 #### `enrollment.createInvite`
@@ -1266,7 +1256,7 @@ query({ inviteId: string }): InviteMetadata
 ```ts
 mutation({
   courseId: string;
-  cohortId?: string | null;
+  cohortId: string;
   expiresAt?: Date | null;
   maxUses?: number | null; // integer > 0
 }): {
@@ -1280,7 +1270,11 @@ mutation({
 ```
 
 - Token hanya dikembalikan saat create; simpan/share dari response tersebut.
-- Cohort harus berasal dari course yang sama.
+- Setiap undangan milik satu kelas (termasuk Kelas Mandiri); cohort harus
+  berasal dari course yang sama. Undangan tingkat course sudah dihapus dan
+  dicabut oleh migration `20261030010000_revoke_course_invites`; link lamanya
+  tampil sebagai "Undangan tidak berlaku" (`invite.preview` mengembalikan
+  `type: "RETIRED"`).
 
 #### `enrollment.revokeInvite`
 
@@ -1292,9 +1286,9 @@ mutation({ inviteId: string }): { id: string; revokedAt: Date }
 
 ```ts
 mutation({ token: string }): {
-  type: "COURSE" | "COHORT";
+  type: "COHORT";
   courseId: string;
-  cohortId: string | null;
+  cohortId: string;
 }
 ```
 
@@ -1302,8 +1296,11 @@ mutation({ token: string }): {
 - Token panjang 20..200.
 - Memvalidasi expiry, revoked state, dan max uses.
 - Atomic/serializable; aman terhadap redeem bersamaan.
-- Invite cohort membuat keanggotaan aktif di cohort tersebut; invite course
-  membuat keanggotaan di cohort default (belajar mandiri).
+- Membuat keanggotaan aktif di cohort undangan. Undangan tanpa cohort
+  ditolak (`BAD_REQUEST`).
+- Ditolak (`PRECONDITION_FAILED`) bila learner masih aktif di kelas berjadwal
+  lain yang sedang berjalan pada course yang sama, termasuk saat undangannya
+  untuk Kelas Mandiri.
 
 ---
 
@@ -1823,16 +1820,16 @@ storage.createUploadUrl
 ### Enrollment Manual
 
 ```text
-course.listPublished
-→ enrollment.setCourseEnrollment (oleh manager)
+cohort.list (Kelas Mandiri atau kelas berjadwal)
+→ enrollment.setCohortEnrollment (oleh manager)
 → learning.listMyCourses (oleh student)
 ```
 
 ### Enrollment Open
 
 ```text
-course.listPublished
-→ enrollment.enrollOpenCourse (student)
+course.getPublished // daftar kelas terbuka, termasuk Kelas Mandiri
+→ payment.startCohortCheckout (student; kelas gratis langsung bergabung)
 → learning.listMyCourses
 → learning.getCourseOutline
 ```

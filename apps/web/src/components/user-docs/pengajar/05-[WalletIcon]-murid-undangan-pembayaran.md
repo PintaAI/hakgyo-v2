@@ -1,12 +1,12 @@
 # Murid, Undangan, dan Pembayaran
 
-Ada tiga cara murid masuk ke kelas Anda:
+Murid selalu belajar sebuah kurikulum lewat salah satu kelasnya, termasuk **Kelas Mandiri**. Ada tiga cara murid masuk ke kelas Anda:
 
 | Cara | Cocok untuk | Bayar? |
 |---|---|---|
 | **Tautan undangan** | Murid yang sudah Anda kenal, dibagikan lewat WhatsApp | Gratis, atau lewat pembayaran jika kelasnya berbayar |
 | **Ditambahkan manual** | Murid yang sudah punya akun Hakgyo | Tidak, langsung masuk |
-| **Daftar sendiri dari katalog** | Kelas yang terbuka untuk umum | Gratis, atau bayar lewat QRIS atau transfer bank |
+| **Daftar sendiri dari katalog** | Kelas yang terbuka untuk umum, juga Kelas Mandiri | Gratis, atau bayar lewat QRIS atau transfer bank |
 
 ## Menambahkan murid secara manual
 
@@ -14,7 +14,8 @@ Ada tiga cara murid masuk ke kelas Anda:
 2. Klik **Tambah murid**.
 3. Isi **Email** murid. Murid harus sudah membuat akun Hakgyo dengan email itu.
 4. Pilih **Status awal**. Pilih **Aktif** agar murid langsung bisa belajar. Pilih **Menunggu** jika murid belum boleh belajar, misalnya masih menunggu pembayaran di luar Hakgyo.
-5. Klik **Tambah murid**.
+5. Bila perlu, isi **Akses hingga** untuk membatasi lama akses murid. Kosongkan jika akses tidak berakhir. Tanggal ini terlihat di bawah nama murid.
+6. Klik **Tambah murid**.
 
 Status murid:
 
@@ -74,15 +75,14 @@ Jika tautan tidak berlaku, murid melihat **Undangan tidak berlaku** dengan kode 
 
 ## Kelas Mandiri
 
-Murid juga bisa belajar sebuah kurikulum **tanpa kelas berjadwal**, misalnya untuk kursus rekaman yang tidak punya jadwal. Hakgyo menyimpan mereka di kelas khusus bernama **Kelas Mandiri**, yang tidak punya pertemuan dan tidak berakhir. Di halaman **Belajar**, murid melihatnya sebagai kartu kelas.
+Murid juga bisa belajar sebuah kurikulum **tanpa kelas berjadwal**, misalnya untuk kursus rekaman yang tidak punya jadwal. Untuk itu buat **Kelas Mandiri** di tab **Kelas** kurikulum (lihat [Kelas dan Jadwal](/docs/pengajar/kelas-jadwal#kelas-berjadwal-dan-kelas-mandiri)). Kelas Mandiri adalah kelas biasa tanpa tanggal mulai dan selesai. Di halaman **Belajar**, murid melihatnya sebagai kartu kelas.
 
-- Lihat dan tambahkan mereka di halaman kurikulum, tab **Murid**, bagian **Belajar mandiri**. Di sini Anda juga bisa mengisi **Akses hingga** untuk membatasi lama akses.
-- Buat tautan untuk seluruh kurikulum di tab yang sama, bagian **Invites**, lalu klik **Buat invite** dan pilih **Target** **Seluruh kurikulum**.
+- Tambahkan murid, buat tautan undangan, dan periksa pembayarannya di halaman Kelas Mandiri, sama seperti kelas lain.
 - **Kelas Mandiri** juga muncul sebagai pilihan kelas saat membuat latihan atau tryout.
 
 Murid tetap bisa ikut kelas berjadwal untuk kurikulum yang sama. Selama kelas itu berjalan, kartu Kelas Mandiri disembunyikan dari halaman **Belajar** murid, tetapi aksesnya tidak dicabut. Setelah kelas selesai atau murid dikeluarkan dari kelas, kartu Kelas Mandiri muncul lagi. Progres belajar murid tetap terbawa. Selama murid masih di kelas berjadwal yang berjalan, ia tidak bisa bergabung sendiri ke Kelas Mandiri kurikulum itu, tetapi Anda tetap bisa menambahkannya.
 
-> Tautan untuk seluruh kurikulum selalu gratis, walaupun kurikulumnya punya harga. Untuk kurikulum berbayar, gunakan kelas berbayar.
+> Tautan undangan lama untuk **seluruh kurikulum** sudah tidak berlaku. Murid yang membukanya melihat **Undangan tidak berlaku**. Kirim tautan undangan kelas atau Kelas Mandiri sebagai gantinya.
 
 ## Pendaftaran tanpa undangan
 
@@ -92,7 +92,7 @@ Murid bisa mendaftar sendiri dari katalog Hakgyo jika kelas atau kurikulumnya **
 2. **Kurikulum**: tab **Pengaturan**, pilihan **Tipe kurikulum**.
 3. **Organisasi**: **Pengaturan**, tab **Umum**, tombol **Kurikulum publik secara default**.
 
-Kelas tampil di katalog dan bisa dipilih murid jika statusnya **Dibuka** atau **Berjalan**, belum lewat tanggal selesai, dan aturannya publik. Kurikulum gratis yang publik juga bisa langsung diikuti dengan tombol **Mulai belajar**.
+Kelas tampil di katalog dan bisa dipilih murid jika statusnya **Dibuka** atau **Berjalan**, belum lewat tanggal selesai, dan aturannya publik. Kelas Mandiri tampil sebagai **Kelas Mandiri · belajar kapan saja**. Murid selalu bergabung lewat kelas; jika kurikulum belum punya kelas yang dibuka, katalog menampilkan **Belum ada kelas yang dibuka untuk kurikulum ini**.
 
 ## Menerima pembayaran
 

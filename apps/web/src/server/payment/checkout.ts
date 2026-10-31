@@ -98,7 +98,7 @@ export async function loadCohortCheckout(
     },
   });
   // Drafts are not announced to learners yet.
-  if (!cohort || cohort.defaultForCourseId || cohort.status === "DRAFT") {
+  if (!cohort || cohort.status === "DRAFT") {
     throw new TRPCError({ code: "NOT_FOUND" });
   }
 
@@ -175,6 +175,8 @@ export async function loadCohortCheckout(
       description: cohort.description,
       startsAt: cohort.startsAt,
       endsAt: cohort.endsAt,
+      /** The curriculum's Kelas Mandiri: open-ended, no schedule. */
+      selfPaced: cohort.defaultForCourseId !== null,
       capacity: cohort.capacity,
       seatsLeft:
         cohort.capacity === null
@@ -303,8 +305,8 @@ export async function startCohortCheckout(
 }
 
 /**
- * Class cohorts of a published course that anyone can join, for the public
- * catalog. Invite-only cohorts are not advertised.
+ * Classes of a published course that anyone can join, for the public
+ * catalog, by start date. Invite-only classes are not advertised.
  */
 export async function listPublicCohorts(
   db: Database,
@@ -319,13 +321,13 @@ export async function listPublicCohorts(
   const cohorts = await db.cohort.findMany({
     where: {
       courseId: course.id,
-      defaultForCourseId: null,
       status: { in: ["OPEN", "IN_PROGRESS"] },
       OR: [{ endsAt: null }, { endsAt: { gt: now } }],
     },
     orderBy: [
       { startsAt: { sort: "asc", nulls: "last" } },
       { createdAt: "asc" },
+      { id: "asc" },
     ],
     select: {
       id: true,
@@ -337,6 +339,7 @@ export async function listPublicCohorts(
       capacity: true,
       price: true,
       enrollmentMode: true,
+      defaultForCourseId: true,
     },
   });
   const open = cohorts.filter(
@@ -357,12 +360,15 @@ export async function listPublicCohorts(
   const countFor = (cohortId: string) =>
     memberCounts.find((group) => group.cohortId === cohortId)?._count._all ?? 0;
 
-  return open.map(({ enrollmentMode: _mode, price, ...cohort }) => ({
-    ...cohort,
-    price: effectiveCohortPrice({ price }, course),
-    seatsLeft:
-      cohort.capacity === null
-        ? null
-        : Math.max(cohort.capacity - countFor(cohort.id), 0),
-  }));
+  return open.map(
+    ({ enrollmentMode: _mode, defaultForCourseId, price, ...cohort }) => ({
+      ...cohort,
+      selfPaced: defaultForCourseId !== null,
+      price: effectiveCohortPrice({ price }, course),
+      seatsLeft:
+        cohort.capacity === null
+          ? null
+          : Math.max(cohort.capacity - countFor(cohort.id), 0),
+    }),
+  );
 }
