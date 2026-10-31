@@ -2,10 +2,10 @@
 
 Two linked courses that teach everyday Korean patterns to Indonesian speakers. Hakgyo publishes both as system content:
 
-| Course                        | Id              | Slug              | Idea                                                                                                              |
-| ----------------------------- | --------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Pola Korea → Indo: Paham Pola | `pb-korea-indo` | `pola-korea-indo` | Start from a Korean pattern (-는데, -거든요, 좀) and explain it through Indonesian logic.                         |
-| Indo → Korea: Berani Ngomong  | `pb-indo-korea` | `pola-indo-korea` | Start from words Indonesians say every day (padahal, kok, soalnya, ketiduran) and find how to say them in Korean. |
+| Course            | Id              | Slug              | Idea                                                                                                              |
+| ----------------- | --------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Korea → Indonesia | `pb-korea-indo` | `korea-indonesia` | Start from a Korean pattern (-는데, -거든요, 좀) and explain it through Indonesian logic.                         |
+| Indonesia → Korea | `pb-indo-korea` | `indonesia-korea` | Start from words Indonesians say every day (padahal, kok, soalnya, ketiduran) and find how to say them in Korean. |
 
 Each course is a list of chapters (bab), and each chapter is a module holding one short material per pattern (2–3 minutes of reading), then one vocabulary set with the chapter's patterns, then one quiz. Materials link to each other across both courses, so a learner reading about _padahal_ can open the -는데 material, and the reverse. Links are ordinary BlockNote link nodes whose href is `hakgyo-material:<materialId>` (contract in `packages/shared/src/material-links.ts`); they point at whole materials, without anchors.
 

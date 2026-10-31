@@ -1063,7 +1063,7 @@ export function buildCourses(): DesiredCourse[] {
         id,
         key: courseKey,
         title: POLA_COURSES[courseKey].title,
-        slug: `pola-${courseKey}`,
+        slug: POLA_COURSES[courseKey].slug,
         description: POLA_COURSES[courseKey].description,
         status: "PUBLISHED",
         progressionMode: "OPEN",

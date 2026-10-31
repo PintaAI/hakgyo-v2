@@ -7,12 +7,14 @@
 
 export const POLA_COURSES = {
   "korea-indo": {
-    title: "Pola Korea → Indo: Paham Pola",
+    title: "Korea → Indonesia",
+    slug: "korea-indonesia",
     description:
       "Pola bahasa Korea yang kepake tiap hari, dijelasin pakai logika bahasa Indonesia. Satu pola, satu materi pendek.",
   },
   "indo-korea": {
-    title: "Indo → Korea: Berani Ngomong",
+    title: "Indonesia → Korea",
+    slug: "indonesia-korea",
     description:
       "Mulai dari kata yang biasa kamu pakai (padahal, kok, soalnya, ketiduran), terus belajar cara bilangnya dalam bahasa Korea.",
   },
