@@ -288,6 +288,27 @@ function RootNavigator() {
                   }}
                 />
                 <Stack.Screen
+                  name="sync-status"
+                  options={{
+                    headerShown: Platform.OS === "ios",
+                    headerBackVisible: false,
+                    headerShadowVisible: false,
+                    headerStyle: { backgroundColor: "transparent" },
+                    title: "Status sinkron",
+                    contentStyle: {
+                      backgroundColor:
+                        Platform.OS === "ios"
+                          ? "transparent"
+                          : colors.background,
+                    },
+                    ...formSheetOptions({
+                      detents: [0.6, 0.95],
+                      grabber: false,
+                      expandsWhenScrolledToEdge: true,
+                    }),
+                  }}
+                />
+                <Stack.Screen
                   name="events/[eventId]"
                   options={{ animation: transition }}
                 />

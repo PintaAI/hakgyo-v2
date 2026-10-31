@@ -17,6 +17,7 @@ import type { BundleNoticeInput, SyncNoticeUpdate } from "./notices";
 import { syncQueryKeys } from "./query-keys";
 import type { MobileSyncStore, StoredBundleMeta } from "./store";
 import type {
+  BundleChange,
   BundleFetchInput,
   BundleFetchResult,
   BundleSyncProgress,
@@ -39,6 +40,12 @@ export type BundlePriority = "requested" | "background";
 export type BundleSyncRequest = {
   courseId: string;
   priority?: BundlePriority;
+  /**
+   * Only a periodic re-check of a course already on the device (its age, or
+   * a bundle schema this app version replaces). It stays out of
+   * `changingCourseIds`, so the learner is not told about it.
+   */
+  revalidate?: boolean;
 };
 
 export type BundleSyncOptions = {
@@ -65,6 +72,12 @@ export type BundleSyncOptions = {
     bundle: BundleNoticeInput,
   ) => Promise<SyncNoticeUpdate | null>;
   onNoticesRecorded?: () => void;
+  /** A course was added, updated or gave up downloading. */
+  onChange?: (change: BundleChange) => void;
+  /** Every change since the queue was last idle, once it is idle again. */
+  onChangesSettled?: (changes: BundleChange[]) => void;
+  /** Title of a course without a stored bundle, for failed downloads. */
+  courseTitle?: (courseId: string) => string | null;
 };
 
 type Job = {
@@ -73,6 +86,8 @@ type Job = {
   readyAt: number;
   attempts: number;
   running: boolean;
+  /** A re-check of an unchanged course (see `BundleSyncRequest.revalidate`). */
+  quiet: boolean;
 };
 
 function bundleRecord<T>(
@@ -108,6 +123,8 @@ export function createBundleSync(options: BundleSyncOptions) {
   let running = 0;
   let completed = 0;
   let failed = 0;
+  let changingDone = 0;
+  let changes: BundleChange[] = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
   let disposed = false;
   let stopped = false;
@@ -120,7 +137,16 @@ export function createBundleSync(options: BundleSyncOptions) {
       activeCourseIds: [...jobs.values()]
         .filter((job) => job.running)
         .map((job) => job.courseId),
+      changingCourseIds: [...jobs.values()]
+        .filter((job) => !job.quiet)
+        .map((job) => job.courseId),
+      changingDone,
     };
+  }
+
+  function recordChange(change: BundleChange) {
+    changes.push(change);
+    options.onChange?.(change);
   }
 
   function publishProgress() {
@@ -184,6 +210,12 @@ export function createBundleSync(options: BundleSyncOptions) {
     if (jobs.size) return;
     completed = 0;
     failed = 0;
+    changingDone = 0;
+    if (changes.length) {
+      const settled = changes;
+      changes = [];
+      if (!disposed) options.onChangesSettled?.(settled);
+    }
     while (idleWaiters.length) idleWaiters.shift()?.();
   }
 
@@ -260,6 +292,7 @@ export function createBundleSync(options: BundleSyncOptions) {
     }
     const structure = JSON.stringify(bundle.structure);
     const content = JSON.stringify(bundle.content);
+    const previous = metaByCourse.get(job.courseId);
     const meta: StoredBundleMeta = {
       courseId: job.courseId,
       revision: result.revision,
@@ -299,6 +332,14 @@ export function createBundleSync(options: BundleSyncOptions) {
     publishBundle(meta, bundle);
     publishItemCourseMap();
     if (notices?.notices.length) options.onNoticesRecorded?.();
+    if (!previous || previous.revision !== result.revision) {
+      recordChange({
+        courseId: job.courseId,
+        kind: previous ? "updated" : "added",
+        title: bundle.structure.title,
+        at: checkedAt,
+      });
+    }
     return meta.bytes;
   }
 
@@ -320,6 +361,7 @@ export function createBundleSync(options: BundleSyncOptions) {
       const fetchedAt = now();
       const bytes = await applyResult(job, result);
       jobs.delete(job.courseId);
+      if (!job.quiet) changingDone += 1;
       if (result.status === "ok" || result.status === "not-modified") {
         completed += 1;
         options.onBundleTiming?.({
@@ -342,6 +384,15 @@ export function createBundleSync(options: BundleSyncOptions) {
       if (error instanceof BundleSchemaError || job.attempts >= maxAttempts) {
         jobs.delete(job.courseId);
         failed += 1;
+        if (!job.quiet) {
+          changingDone += 1;
+          recordChange({
+            courseId: job.courseId,
+            kind: "failed",
+            title: options.courseTitle?.(job.courseId) ?? null,
+            at: now(),
+          });
+        }
       } else {
         const backoff = Math.min(
           backoffBaseMs * 2 ** (job.attempts - 1),
@@ -388,8 +439,11 @@ export function createBundleSync(options: BundleSyncOptions) {
     const current = now();
     for (const request of requests) {
       const priority = request.priority === "requested" ? 0 : 1;
+      const quiet =
+        Boolean(request.revalidate) && metaByCourse.has(request.courseId);
       const existing = jobs.get(request.courseId);
       if (existing) {
+        if (!quiet) existing.quiet = false;
         if (priority < existing.priority) {
           existing.priority = priority;
           existing.readyAt = Math.min(existing.readyAt, current);
@@ -403,6 +457,7 @@ export function createBundleSync(options: BundleSyncOptions) {
           priority === 0 ? current : current + random() * backgroundJitterMs,
         attempts: 0,
         running: false,
+        quiet,
       });
     }
     publishProgress();

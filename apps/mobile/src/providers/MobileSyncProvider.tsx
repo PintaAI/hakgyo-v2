@@ -107,6 +107,13 @@ type MobileSyncStatusValue = {
    */
   maintenance: MaintenanceState | null;
   bundles: MobileSyncEngineState["bundles"] | null;
+  /** The latest change of each course in this session, by course id. */
+  bundleChanges: MobileSyncEngineState["bundleChanges"];
+  /** The changes of the latest run of downloads, once it settled. */
+  lastBundleBatch: MobileSyncEngineState["lastBundleBatch"];
+  /** Why queued progress is waiting (offline, maintenance...), if it is. */
+  outboxWaiting: MobileSyncEngineState["outboxWaiting"];
+  lastRefreshedAt: number | null;
 };
 
 type MobileSyncActionsValue = {
@@ -169,6 +176,8 @@ type MobileSyncActionsValue = {
 };
 
 type MobileSyncContextValue = MobileSyncStatusValue & MobileSyncActionsValue;
+
+const NO_BUNDLE_CHANGES: MobileSyncEngineState["bundleChanges"] = {};
 
 /** Progress operations are synced at most this often while a learner answers. */
 const PROGRESS_SYNC_INTERVAL_MS = 30_000;
@@ -762,6 +771,10 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       upgradeRequired: engineState?.upgradeRequired ?? transportUpgrade,
       maintenance: engineState?.maintenance ?? transportMaintenance,
       bundles: engineState?.bundles ?? null,
+      bundleChanges: engineState?.bundleChanges ?? NO_BUNDLE_CHANGES,
+      lastBundleBatch: engineState?.lastBundleBatch ?? null,
+      outboxWaiting: engineState?.outboxWaiting ?? null,
+      lastRefreshedAt: engineState?.lastRefreshedAt ?? null,
     }),
     [
       deadLetterCount,

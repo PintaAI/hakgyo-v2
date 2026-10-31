@@ -26,6 +26,7 @@ import {
 import { WeeklyStreak } from "../../src/components/weekly-streak";
 import { apiUrl } from "../../src/config";
 import { authClient } from "../../src/lib/auth-client";
+import { openSyncStatus } from "../../src/lib/navigation";
 import {
   APP_VERSION,
   installedReleaseNotes,
@@ -33,6 +34,7 @@ import {
 } from "../../src/lib/release-notes";
 import { api } from "../../src/lib/trpc";
 import { firstParam } from "../../src/lib/route-params";
+import { stepSyncActivityPreview } from "../../src/sync/activity-preview";
 import { useHangeulVisibility } from "../../src/lib/use-hangeul-visibility";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { useMobileSync } from "../../src/providers/MobileSyncProvider";
@@ -108,6 +110,7 @@ export default function ProfileScreen() {
   const [isResetting, setIsResetting] = useState(false);
   const [localStats, setLocalStats] = useState<LocalDataStats | null>(null);
   const [resyncReport, setResyncReport] = useState<ResyncReport | null>(null);
+  const [syncPreviewTitle, setSyncPreviewTitle] = useState<string | null>(null);
   const syncIndex = useSyncIndex(activeOrganizationId);
   const courseTitles = useMemo(
     () =>
@@ -392,6 +395,12 @@ export default function ProfileScreen() {
                 onPress={() => void syncNow(activeOrganizationId ?? undefined)}
               />
               <SettingsRow
+                label="Status sinkron"
+                subtitle="Apa yang sedang diunduh dan kursus mana yang sudah siap dipakai offline."
+                symbol="arrow.down.circle"
+                onPress={openSyncStatus}
+              />
+              <SettingsRow
                 label="Periksa pembaruan"
                 detail={
                   isCheckingUpdates
@@ -480,6 +489,13 @@ export default function ProfileScreen() {
                       ],
                     );
                   }}
+                />
+                <SettingsRow
+                  label="Pratinjau indikator sinkron"
+                  subtitle="Tampilkan contoh berikutnya: mengunduh, diperbarui, gagal, menunggu, lalu mati"
+                  detail={syncPreviewTitle ?? "Mati"}
+                  symbol="sparkles"
+                  onPress={() => setSyncPreviewTitle(stepSyncActivityPreview())}
                 />
                 <LocalDataReport
                   stats={localStats}

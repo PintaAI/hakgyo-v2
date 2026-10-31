@@ -1,12 +1,18 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { Platform } from "react-native";
 
+import {
+  supportsTabBarAccessory,
+  SyncAccessory,
+} from "../../../src/components/sync-activity/sync-accessory";
 import { useUpdatesBadgeCount } from "../../../src/lib/sidebar-indicators";
 import { useAppTheme } from "../../../src/providers/AppThemeProvider";
+import { useSyncActivity } from "../../../src/sync/use-sync-activity";
 
 export default function HomeTabsLayout() {
   const { colors } = useAppTheme();
   const unreadCount = useUpdatesBadgeCount();
+  const syncActivity = useSyncActivity();
 
   return (
     <NativeTabs
@@ -22,6 +28,13 @@ export default function HomeTabsLayout() {
       indicatorColor={Platform.OS === "android" ? colors.primary : undefined}
       rippleColor={Platform.OS === "android" ? colors.border : undefined}
     >
+      {/* Shown only while sync has something to tell (iOS 26+). Android
+          announces the same activity in a snackbar from `TabScreen`. */}
+      {supportsTabBarAccessory && syncActivity ? (
+        <NativeTabs.BottomAccessory>
+          <SyncAccessory activity={syncActivity} />
+        </NativeTabs.BottomAccessory>
+      ) : null}
       <NativeTabs.Trigger name="home">
         <NativeTabs.Trigger.Label>Hari Ini</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="house.fill" md="home" />

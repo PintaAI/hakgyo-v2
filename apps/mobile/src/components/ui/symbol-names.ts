@@ -37,6 +37,7 @@ export const materialSymbols = {
   "gamecontroller.fill": "sports_esports",
   "hand.point.up.left.fill": "touch_app",
   "hand.raised.fill": "back_hand",
+  "icloud.slash": "cloud_off",
   gearshape: "settings",
   "house.fill": "home",
   "keyboard.fill": "keyboard",

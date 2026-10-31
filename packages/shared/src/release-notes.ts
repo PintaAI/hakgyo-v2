@@ -31,6 +31,17 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    id: "2026-10-31",
+    version: "1.0.1",
+    date: "2026-10-31",
+    title: "Lihat apa yang sedang disinkronkan",
+    items: [
+      "Saat materi diunduh atau diperbarui, aplikasi memberi tahu kursus mana yang sedang diproses dan kapan sudah siap dipakai offline.",
+      "Kalau progresmu belum terkirim karena tidak ada internet, kamu langsung tahu bahwa progresnya aman tersimpan di HP.",
+      "Buka Pengaturan → Status sinkron untuk melihat keadaan setiap kursus dan menyinkronkan sendiri.",
+    ],
+  },
+  {
     id: "2026-10-22.2",
     version: "1.0.0",
     date: "2026-10-22",
