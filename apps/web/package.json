@@ -24,6 +24,8 @@
     "db:studio": "prisma studio",
     "hangeul:audio": "bun scripts/hangeul-mastery/generate-audio.ts",
     "hangeul:import": "bun scripts/hangeul-mastery/import.ts",
+    "pola:import": "bun scripts/pola-bahasa/import.ts",
+    "pola:validate": "bun scripts/pola-bahasa/validate.ts",
     "dev": "node scripts/copy-pdfjs-assets.mjs && next dev",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",

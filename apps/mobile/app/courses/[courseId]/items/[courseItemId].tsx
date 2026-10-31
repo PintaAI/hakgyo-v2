@@ -1,7 +1,9 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { HeaderHeightContext } from "expo-router/react-navigation";
 import { resolveAssessmentEntry, RUNTIME_VERSION } from "@hakgyo/shared";
+import type { MaterialLinkTarget } from "@hakgyo/shared/material-links";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import {
@@ -43,22 +45,30 @@ export default function CourseItemScreen() {
   const params = useLocalSearchParams<{
     courseId: string | string[];
     courseItemId: string | string[];
+    anchor?: string | string[];
   }>();
   const courseId = firstParam(params.courseId);
   const courseItemId = firstParam(params.courseItemId);
   return (
     <CourseItemContent
       key={courseItemId}
+      anchor={firstParam(params.anchor) || null}
       courseId={courseId}
       courseItemId={courseItemId}
     />
   );
 }
 
+/** How long layout changes (images loading above) keep re-aiming an anchor jump. */
+const ANCHOR_SETTLE_MS = 4000;
+
 function CourseItemContent({
+  anchor,
   courseId,
   courseItemId,
 }: {
+  /** Top-level block to scroll to once it is laid out (a linked section). */
+  anchor: string | null;
   courseId: string;
   courseItemId: string;
 }) {
@@ -93,6 +103,49 @@ function CourseItemContent({
     if (isAtBottom.current) openLearningSheetAtBottom();
     else openLearningSheetForShortContent();
   };
+  // Anchor jumps: block offsets within the rendered material, the material's
+  // offset within the scroll content, and the anchor still being aimed at.
+  const scrollRef = useRef<ScrollView>(null);
+  const blockOffsets = useRef(new Map<string, number>());
+  const materialTop = useRef(0);
+  const pendingAnchor = useRef<string | null>(anchor);
+  const anchorTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // iOS draws the header over the content (automatic insets); Android lays
+  // the scroll view out below it.
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
+  const topInset = Platform.OS === "ios" ? headerHeight : 0;
+  const scrollToBlock = (blockId: string | null, animated: boolean) => {
+    const blockY = blockId ? blockOffsets.current.get(blockId) : 0;
+    if (blockY === undefined) return false;
+    const target = blockId
+      ? materialTop.current + blockY - topInset - 12
+      : -topInset;
+    const maxY = Math.max(
+      -topInset,
+      materialContentHeight.current - materialViewportHeight.current,
+    );
+    const y = Math.min(Math.max(target, -topInset), maxY);
+    // A jump near the end is not the learner reaching it: treat it like an
+    // earlier visit to the bottom, so the completion sheet waits until they
+    // scroll away and back (see `onScroll`).
+    if (maxY - y <= 120) wasAtBottom.current = true;
+    scrollRef.current?.scrollTo({ y, animated });
+    return true;
+  };
+  const aimPendingAnchor = () => {
+    const blockId = pendingAnchor.current;
+    if (!blockId || !scrollToBlock(blockId, false)) return;
+    anchorTimer.current ??= setTimeout(() => {
+      pendingAnchor.current = null;
+    }, ANCHOR_SETTLE_MS);
+  };
+  useEffect(() => () => clearTimeout(anchorTimer.current), []);
+  const aimPendingAnchorRef = useRef(aimPendingAnchor);
+  aimPendingAnchorRef.current = aimPendingAnchor;
+  const onBlockLayout = useCallback((blockId: string, y: number) => {
+    blockOffsets.current.set(blockId, y);
+    aimPendingAnchorRef.current();
+  }, []);
   const onReadingProgress = useCallback((key: string, finished: boolean) => {
     if (!finished) {
       unreadPagedBlocks.current.add(key);
@@ -376,9 +429,15 @@ function CourseItemContent({
         />
       ) : (
         <ScrollView
+          ref={scrollRef}
           onContentSizeChange={(_width, height) => {
             materialContentHeight.current = height;
             openLearningSheetForShortContent();
+            aimPendingAnchor();
+          }}
+          onScrollBeginDrag={() => {
+            // The learner took over; stop re-aiming the anchor.
+            pendingAnchor.current = null;
           }}
           onLayout={(event) => {
             materialViewportHeight.current = event.nativeEvent.layout.height;
@@ -405,32 +464,56 @@ function CourseItemContent({
           contentContainerClassName="px-5 pb-14 pt-4"
           contentInsetAdjustmentBehavior="automatic"
         >
-          <NativeContentRenderer
-            content={material.content}
-            courseItemId={courseItemId}
-            resourceReferences={item.embeddedResources}
-            resolveAssetUrl={resolveAssetUrl}
-            onReadingProgress={onReadingProgress}
-            onOpenResource={(type, resourceId, targetCourseItemId) => {
-              if (type === "vocabulary") {
+          <View
+            onLayout={(event) => {
+              materialTop.current = event.nativeEvent.layout.y;
+              aimPendingAnchor();
+            }}
+          >
+            <NativeContentRenderer
+              content={material.content}
+              courseItemId={courseItemId}
+              resourceReferences={item.embeddedResources}
+              resolveAssetUrl={resolveAssetUrl}
+              onReadingProgress={onReadingProgress}
+              onBlockLayout={onBlockLayout}
+              onOpenMaterialLink={(target: MaterialLinkTarget) => {
+                // A section of this material: just scroll there.
+                if (target.materialId === material.id) {
+                  scrollToBlock(target.anchor, true);
+                  return;
+                }
                 router.push({
-                  pathname: "/vocabulary/[vocabularySetId]",
+                  pathname: "/material-link",
                   params: {
-                    vocabularySetId: resourceId,
+                    materialId: target.materialId,
+                    ...(target.anchor ? { anchor: target.anchor } : {}),
+                    courseId: courseId || item.module.courseId,
                     sourceCourseItemId: courseItemId,
-                    courseId,
                   },
                 });
-                return;
-              }
-              if (targetCourseItemId) {
-                router.push({
-                  pathname: "/courses/[courseId]/items/[courseItemId]",
-                  params: { courseId, courseItemId: targetCourseItemId },
-                });
-              }
-            }}
-          />
+              }}
+              onOpenResource={(type, resourceId, targetCourseItemId) => {
+                if (type === "vocabulary") {
+                  router.push({
+                    pathname: "/vocabulary/[vocabularySetId]",
+                    params: {
+                      vocabularySetId: resourceId,
+                      sourceCourseItemId: courseItemId,
+                      courseId,
+                    },
+                  });
+                  return;
+                }
+                if (targetCourseItemId) {
+                  router.push({
+                    pathname: "/courses/[courseId]/items/[courseItemId]",
+                    params: { courseId, courseItemId: targetCourseItemId },
+                  });
+                }
+              }}
+            />
+          </View>
           <View className="mt-8">
             <StudyAction onPress={openLearningSheet}>Lanjutkan</StudyAction>
           </View>

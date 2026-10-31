@@ -98,6 +98,7 @@ export function LearnerCourseItem({
           <DynamicLearnerBlockNoteDocument
             content={material.content as HakgyoPartialBlock[]}
             resources={item.embeddedResources}
+            materialLinks={{ links: item.materialLinks, courseItemId }}
             theme={resolvedTheme === "dark" ? "dark" : "light"}
           />
           <div className="border-border mt-6 border-t pt-8">{footer}</div>

@@ -8,6 +8,17 @@ Every v2 request announces its sync protocol. Clients older than `MIN_SYNC_PROTO
 
 During server maintenance the manifest carries a `maintenance` notice, and requests rejected with `SERVICE_UNAVAILABLE` (`data.maintenance`) pause network sync without failing any operation; see `docs/maintenance.md`.
 
+## Material links
+
+A material can link to another material (or to a section of it) with a `hakgyo-material:<materialId>#<blockId>` link (`@hakgyo/shared/material-links`). Course bundles are shared by every learner, so they carry the candidates and the device picks one:
+
+- `content.linkedMaterials` (bundle schema 3, `loadLinkedMaterials` in `apps/web/src/server/mobile/course-bundle.ts`) is keyed by target material id. Each entry has the title, description, the start of the material (`excerpt`), previews of the sections linked from this course (`materialLinkSections`) and one published placement per course: this course's first, then other PUBLISHED courses of the same organization. Targets that are not placed anywhere are left out, so a bundle never names an unpublished material. It costs two extra queries, and only for courses whose materials contain links.
+- `composeCourseItem` returns `materialLinks` like `learning.getCourseItem`: per target, the placement in this course unless its module is locked, else one in a course the learner is enrolled in (`learner.courseIds`). Locks of other courses are not known on the device.
+- The app opens a preview sheet (`app/material-link.tsx`). When the composed links have no placement for the target, it asks `learning.getCourseItem` online, which resolves the target against everything the viewer can open; offline it says the material is not in the learner's classes. "Baca lengkap" opens the item with an `anchor` param, and the material screen scrolls to that top-level block. A link to a section of the same material just scrolls.
+- A bundle only changes with its own course, so titles, excerpts and placements of targets in other courses can be stale until this course's revision changes. A stale placement fails like any removed item.
+
+Schema 3 bundles are rejected by clients built for schema 2 (`BundleSchemaError`); they keep their stored bundles and use the online procedures for courses they have not downloaded until they get the update. Bundles cached before schema 3 lack `linkedMaterials`, and compose then returns no links.
+
 ## Operation versions
 
 Outbox operations (`CONTENT_COMPLETED`, `VOCABULARY_SESSION_COMPLETED`, `ASSESSMENT_COMPLETED`, `ASSESSMENT_PROGRESS`) can sit on a device for a long time and are replayed by whatever JavaScript the app runs later, against the newest server. Each operation therefore carries a version `v`; an operation without `v` is version 1, which is what every client built before versioning sends. The current version is `OPERATION_VERSION` in `@hakgyo/shared/mobile-sync` (`packages/shared/src/mobile-sync/operations.ts`).

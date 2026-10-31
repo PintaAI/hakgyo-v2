@@ -81,6 +81,38 @@ describe("remapIds", () => {
     ]);
   });
 
+  test("remaps material link hrefs and keeps their section anchor", () => {
+    const linkIds = new Map([["material-old", "material-new"]]);
+    const link = (href: string) => ({
+      type: "link",
+      href,
+      content: [{ type: "text", text: "pola", styles: {} }],
+    });
+    const content = [
+      {
+        type: "paragraph",
+        content: [
+          link("hakgyo-material:material-old"),
+          link("hakgyo-material:material-old#heading-1"),
+          link("hakgyo-material:material-other#heading-1"),
+          link("https://example.com/material-old"),
+        ],
+      },
+    ];
+
+    expect(remapIds(content, linkIds)).toEqual([
+      {
+        type: "paragraph",
+        content: [
+          link("hakgyo-material:material-new"),
+          link("hakgyo-material:material-new#heading-1"),
+          link("hakgyo-material:material-other#heading-1"),
+          link("https://example.com/material-old"),
+        ],
+      },
+    ]);
+  });
+
   test("leaves numbers, nulls and unrelated strings untouched", () => {
     const value = { points: 2, note: null, text: "Halo dunia" };
     expect(remapIds(value, ids)).toEqual(value);

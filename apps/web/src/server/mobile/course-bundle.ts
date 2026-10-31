@@ -3,11 +3,17 @@ import {
   entryMeanings,
   readScoreBands,
 } from "@hakgyo/shared";
+import {
+  collectMaterialLinkTargets,
+  materialExcerpt,
+  materialLinkSections,
+} from "@hakgyo/shared/material-links";
 import { collectMaterialReferenceIds } from "~/lib/blocknote/resource-references";
 import {
   BUNDLE_SCHEMA,
   type BundleAsset,
   type BundleAssessment,
+  type BundleLinkedMaterial,
   type BundleMaterial,
   type BundlePdfBook,
   type BundlePlacement,
@@ -24,7 +30,11 @@ import { learnerAssessmentItemSelect } from "~/server/assessment/learner-view";
 import { getCourseRevisions } from "~/server/mobile/sync-log";
 import { getLearnerPdfBooksForSources } from "~/server/pdf-book/service";
 
-/** Only `course.findUnique`, `asset.findMany` and `pdfBookPage.findMany` are used. */
+/**
+ * Only `course.findUnique`, `asset.findMany` and `pdfBookPage.findMany` are
+ * used, plus `courseItem.findMany` and `material.findMany` when a material
+ * links to another material.
+ */
 export type CourseBundleDb =
   Prisma.TransactionClient | Prisma.DefaultPrismaClient;
 
@@ -226,12 +236,15 @@ export async function loadCourseBundle(
     }
   }
 
-  const assetRows = shaped.assetIds.size
-    ? await db.asset.findMany({
-        where: { id: { in: [...shaped.assetIds] }, ...publishedAssetWhere },
-        select: assetSelect,
-      })
-    : [];
+  const [assetRows, linkedMaterials] = await Promise.all([
+    shaped.assetIds.size
+      ? db.asset.findMany({
+          where: { id: { in: [...shaped.assetIds] }, ...publishedAssetWhere },
+          select: assetSelect,
+        })
+      : [],
+    loadLinkedMaterials(db, course, shaped),
+  ]);
   const assets: Record<string, BundleAsset> = {};
   for (const asset of assetRows) assets[asset.id] = asset;
   // Vocabulary, page and question assets were filtered by the asset query; material
@@ -253,8 +266,119 @@ export async function loadCourseBundle(
       assessments: shaped.assessments,
       pdfBooks,
       assets,
+      linkedMaterials,
     },
   };
+}
+
+/**
+ * Targets of the material links in the course's materials, with their
+ * published placements: this course's own (from the shaped structure) first,
+ * then one per other PUBLISHED course of the organization. The bundle is
+ * shared by every learner, so the device picks the placement it can open
+ * (see `composeMaterialLinks`). Unplaced targets are left out, so the bundle
+ * never names an unpublished material.
+ */
+async function loadLinkedMaterials(
+  db: CourseBundleDb,
+  course: Pick<CourseBundleSource, "id" | "organizationId">,
+  shaped: ReturnType<typeof shapeCourseBundle>,
+): Promise<Record<string, BundleLinkedMaterial>> {
+  const anchors = new Map<string, Set<string>>();
+  for (const material of Object.values(shaped.materials)) {
+    for (const target of collectMaterialLinkTargets(material.content)) {
+      const set = anchors.get(target.materialId) ?? new Set<string>();
+      if (target.anchor) set.add(target.anchor);
+      anchors.set(target.materialId, set);
+    }
+  }
+  if (!anchors.size) return {};
+
+  const targetIds = [...anchors.keys()];
+  const missingIds = targetIds.filter((id) => !shaped.materials[id]);
+  const [otherPlacements, loadedMaterials] = await Promise.all([
+    db.courseItem.findMany({
+      where: {
+        materialId: { in: targetIds },
+        isPublished: true,
+        organizationId: course.organizationId,
+        module: {
+          courseId: { not: course.id },
+          course: { status: "PUBLISHED" },
+        },
+      },
+      orderBy: [
+        { module: { courseId: "asc" } },
+        { module: { position: "asc" } },
+        { position: "asc" },
+      ],
+      select: {
+        id: true,
+        materialId: true,
+        module: { select: { courseId: true } },
+      },
+    }),
+    missingIds.length
+      ? db.material.findMany({
+          where: {
+            id: { in: missingIds },
+            organizationId: course.organizationId,
+          },
+          select: { id: true, title: true, description: true, content: true },
+        })
+      : [],
+  ]);
+
+  const placements = new Map<
+    string,
+    Array<{ courseId: string; courseItemId: string }>
+  >();
+  const place = (
+    materialId: string,
+    courseId: string,
+    courseItemId: string,
+  ) => {
+    const list = placements.get(materialId) ?? [];
+    if (list.some((entry) => entry.courseId === courseId)) return;
+    list.push({ courseId, courseItemId });
+    placements.set(materialId, list);
+  };
+  // Modules and items are already in position order.
+  for (const courseModule of shaped.structure.modules) {
+    for (const item of courseModule.items) {
+      if (item.materialId && anchors.has(item.materialId)) {
+        place(item.materialId, course.id, item.id);
+      }
+    }
+  }
+  for (const item of otherPlacements) {
+    if (item.materialId) place(item.materialId, item.module.courseId, item.id);
+  }
+
+  const sources = new Map<
+    string,
+    { title: string; description: string | null; content: unknown }
+  >();
+  for (const material of Object.values(shaped.materials)) {
+    sources.set(material.id, material);
+  }
+  for (const material of loadedMaterials) sources.set(material.id, material);
+
+  const linked: Record<string, BundleLinkedMaterial> = {};
+  for (const [materialId, materialAnchors] of anchors) {
+    const source = sources.get(materialId);
+    const materialPlacements = placements.get(materialId);
+    if (!source || !materialPlacements?.length) continue;
+    linked[materialId] = {
+      id: materialId,
+      title: source.title,
+      description: source.description,
+      excerpt: materialExcerpt(source.content),
+      sections: materialLinkSections(source.content, materialAnchors),
+      placements: materialPlacements,
+    };
+  }
+  return linked;
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   composeCourseItem,
   composeCourseOutline,
   composeLearnerAssessment,
+  composeMaterialLinks,
   composeVocabularyPractice,
   lessonAssetIds,
   materialRequirementsSatisfied,
@@ -493,6 +494,120 @@ describe("composeCourseItem", () => {
       _count: { questions: 1 },
     });
     expect(composeCourseItem(bundle(), emptyState, "missing")).toBeNull();
+  });
+});
+
+describe("composeMaterialLinks", () => {
+  const linkedBundle = (
+    progressionMode: "OPEN" | "SEQUENTIAL" = "OPEN",
+  ): CourseBundle => {
+    const value = bundle(progressionMode);
+    value.content.linkedMaterials = {
+      "material-2": {
+        id: "material-2",
+        title: "Lesson 2",
+        description: "Particles",
+        excerpt: "Start of lesson 2",
+        sections: {
+          "heading-a": { title: "Topic", excerpt: "은/는 marks the topic" },
+          "heading-b": { title: "Object", excerpt: "을/를" },
+        },
+        placements: [
+          { courseId: "course-0", courseItemId: "other-item" },
+          { courseId: "course-1", courseItemId: "item-material-2" },
+        ],
+      },
+      "material-9": {
+        id: "material-9",
+        title: "Elsewhere",
+        description: null,
+        excerpt: "Only in another course",
+        sections: {},
+        placements: [{ courseId: "course-9", courseItemId: "item-9" }],
+      },
+    };
+    return value;
+  };
+  const link = (href: string, text = "lihat") => ({
+    type: "paragraph",
+    content: [{ type: "link", href, content: [{ type: "text", text }] }],
+  });
+
+  test("prefers this course, keeps only the linked sections and drops unknown targets", () => {
+    const content = [
+      link("hakgyo-material:material-2#heading-a"),
+      link("hakgyo-material:material-2"),
+      link("hakgyo-material:material-9"),
+      link("hakgyo-material:missing"),
+      link("https://hakgyo.app"),
+    ];
+    expect(composeMaterialLinks(linkedBundle(), emptyState, content)).toEqual([
+      {
+        materialId: "material-2",
+        courseId: "course-1",
+        courseItemId: "item-material-2",
+        title: "Lesson 2",
+        description: "Particles",
+        sections: {
+          "heading-a": { title: "Topic", excerpt: "은/는 marks the topic" },
+        },
+      },
+    ]);
+  });
+
+  test("falls back to a placement in a course the learner is enrolled in", () => {
+    const links = composeMaterialLinks(
+      linkedBundle(),
+      { ...emptyState, courseIds: ["course-1", "course-9"] },
+      [link("hakgyo-material:material-9#gone")],
+    );
+    expect(links).toEqual([
+      {
+        materialId: "material-9",
+        courseId: "course-9",
+        courseItemId: "item-9",
+        title: "Elsewhere",
+        description: "Only in another course",
+        sections: {},
+      },
+    ]);
+  });
+
+  test("skips this course's placement while its module is locked", () => {
+    const value = linkedBundle("SEQUENTIAL");
+    // Sequential: module 2 stays locked until module 1 is completed.
+    expect(
+      composeMaterialLinks(value, emptyState, [
+        link("hakgyo-material:material-2"),
+      ]).map((entry) => entry.courseItemId),
+    ).toEqual([]);
+    expect(
+      composeMaterialLinks(value, { ...emptyState, courseIds: ["course-0"] }, [
+        link("hakgyo-material:material-2"),
+      ]).map((entry) => entry.courseItemId),
+    ).toEqual(["other-item"]);
+  });
+
+  test("returns no links for bundles cached before linked materials", () => {
+    const value = bundle();
+    value.content.materials["material-1"]!.content = [
+      link("hakgyo-material:material-2"),
+    ];
+    expect(
+      composeCourseItem(value, emptyState, "item-material")?.materialLinks,
+    ).toEqual([]);
+    const linked = linkedBundle();
+    linked.content.materials["material-1"]!.content = [
+      link("hakgyo-material:material-2"),
+    ];
+    expect(
+      composeCourseItem(linked, emptyState, "item-material")?.materialLinks.map(
+        (entry) => entry.courseItemId,
+      ),
+    ).toEqual(["item-material-2"]);
+    expect(
+      composeCourseItem(linked, emptyState, "item-vocab")?.materialLinks,
+    ).toEqual([]);
   });
 });
 

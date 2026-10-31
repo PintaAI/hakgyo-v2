@@ -333,6 +333,22 @@ function RootNavigator() {
                   }}
                 />
                 <Stack.Screen
+                  name="material-link"
+                  options={{
+                    headerShown: false,
+                    contentStyle: {
+                      backgroundColor:
+                        Platform.OS === "ios"
+                          ? "transparent"
+                          : colors.background,
+                    },
+                    ...formSheetOptions({
+                      detents: "fitToContents",
+                      systemCornerRadius: true,
+                    }),
+                  }}
+                />
+                <Stack.Screen
                   name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"
                   options={{ headerShown: true, animation: transition }}
                 />

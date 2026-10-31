@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Text, type StyleProp, type TextStyle } from "react-native";
 
+import { withOpacity } from "../../theme/colors";
 import { normalizeInlineContent } from "./normalize";
 import { useContentRenderer } from "./context";
 
@@ -30,8 +31,10 @@ export function InlineContent({
   content: unknown;
   style?: StyleProp<TextStyle>;
 }) {
-  const { colors, onOpenUrl } = useContentRenderer();
+  const { colors, onOpenMaterialLink, onOpenUrl } = useContentRenderer();
   const nodes = normalizeInlineContent(content);
+  // `withOpacity` returns non-hex colors unchanged; skip the tint then.
+  const materialTint = withOpacity(colors.primary, 0.12);
 
   return (
     <Text className={className} style={style}>
@@ -39,6 +42,31 @@ export function InlineContent({
         node.type === "text" ? (
           <Text key={nodeIndex} style={textStyle(node.styles)}>
             {node.text}
+          </Text>
+        ) : node.material ? (
+          // A link to another material: tinted so it reads as a study link,
+          // not a web link, and opened in the app.
+          <Text
+            accessibilityRole="link"
+            accessibilityHint="Membuka pratinjau materi"
+            key={nodeIndex}
+            onPress={
+              onOpenMaterialLink
+                ? () => onOpenMaterialLink(node.material!)
+                : undefined
+            }
+            style={{
+              color: colors.primary,
+              backgroundColor:
+                materialTint === colors.primary ? undefined : materialTint,
+              fontWeight: "600",
+            }}
+          >
+            {node.content.map((child, childIndex) => (
+              <Text key={childIndex} style={textStyle(child.styles)}>
+                {child.text}
+              </Text>
+            ))}
           </Text>
         ) : (
           <Text

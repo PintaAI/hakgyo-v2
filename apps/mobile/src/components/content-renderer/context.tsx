@@ -1,3 +1,4 @@
+import type { MaterialLinkTarget } from "@hakgyo/shared/material-links";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { Linking } from "react-native";
 
@@ -14,6 +15,8 @@ type ContentRendererContextValue = {
   colors: ThemeColors;
   courseItemId?: string;
   onOpenUrl: (url: string) => void | Promise<void>;
+  onOpenMaterialLink?: (target: MaterialLinkTarget) => void;
+  onBlockLayout?: (blockId: string, y: number) => void;
   onOpenResource?: (
     type: ResourceReferenceType,
     resourceId: string,
@@ -36,6 +39,8 @@ function openExternalUrl(url: string) {
 export function ContentRendererProvider({
   children,
   courseItemId,
+  onBlockLayout,
+  onOpenMaterialLink,
   onOpenUrl,
   onOpenResource,
   onReadingProgress,
@@ -45,6 +50,8 @@ export function ContentRendererProvider({
 }: {
   children: ReactNode;
   courseItemId?: string;
+  onBlockLayout?: (blockId: string, y: number) => void;
+  onOpenMaterialLink?: (target: MaterialLinkTarget) => void;
   onReadingProgress?: (key: string, finished: boolean) => void;
   onOpenUrl?: (url: string) => void | Promise<void>;
   onOpenResource?: (
@@ -61,6 +68,8 @@ export function ContentRendererProvider({
     () => ({
       colors,
       courseItemId,
+      onBlockLayout,
+      onOpenMaterialLink,
       onOpenUrl: onOpenUrl ?? openExternalUrl,
       onOpenResource,
       onReadingProgress,
@@ -71,6 +80,8 @@ export function ContentRendererProvider({
     [
       colors,
       courseItemId,
+      onBlockLayout,
+      onOpenMaterialLink,
       onOpenResource,
       onReadingProgress,
       onOpenUrl,

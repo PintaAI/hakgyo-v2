@@ -137,6 +137,25 @@ Untuk mengajar huruf Hangeul, ketik `/` lalu pilih salah satu blok ini:
 
 Klik **Audio** di kartu huruf, contoh kata, atau kata dalam pasangan bunyi untuk mengunggah rekaman suaranya. Audio tabel suku kata diunggah dari daftar **Audio suku kata** di bawah tabel. Murid mengetuk huruf, kata, atau suku kata itu untuk mendengarnya. Tombol **Tampilkan romanisasi** menampilkan atau menyembunyikan tulisan latin.
 
+### Menautkan materi lain
+
+Anda bisa menautkan sebuah kata atau kalimat ke materi lain, misalnya pola `-아서/어서` ke materi yang menjelaskan pola itu. Murid yang mengetuknya melihat cuplikan singkat tanpa meninggalkan halaman.
+
+1. Blok (sorot) teks yang ingin ditautkan.
+2. Di bilah format yang muncul, klik ikon buku **Tautkan materi**.
+3. Cari dan pilih materinya.
+4. Pilih **Seluruh materi**, atau pilih satu bagian (judul di dalam materi itu) agar murid langsung diarahkan ke bagian tersebut.
+
+Anda juga bisa mengetik `/` lalu memilih **Tautan materi**. Judul materi atau bagian yang dipilih akan ditulis sebagai teks tautan.
+
+Tautan materi tampil berwarna dengan garis bawah titik-titik dan ikon buku kecil. Arahkan kursor ke tautan untuk melihat materi tujuannya, mengganti tujuan dengan **Ubah tautan materi**, atau menghapus tautannya.
+
+Hal yang perlu diketahui:
+
+- Murid hanya bisa membuka materi tujuan jika materi itu ada di kurikulum yang ia ikuti. Jika belum, cuplikan menulis **Materi ini belum ada di kelasmu**.
+- Hanya materi dari organisasi yang sama yang bisa ditautkan. Pada mode akses lanjutan, pengajar hanya bisa memilih materi buatannya sendiri.
+- Jika judul bagian di materi tujuan dihapus, tautan tetap membuka materinya dari awal.
+
 ## Membuat kumpulan kosakata
 
 1. Buka **Bahan ajar**, lalu **Kosakata**, dan buat kumpulan baru.

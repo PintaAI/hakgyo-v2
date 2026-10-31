@@ -1,4 +1,5 @@
 import type { PdfBookResource } from "@hakgyo/shared";
+import type { MaterialLinkTarget } from "@hakgyo/shared/material-links";
 import type { ComponentType, ReactNode } from "react";
 
 export type ContentBlock = {
@@ -18,6 +19,8 @@ export type InlineTextNode = {
 export type InlineLinkNode = {
   content: InlineTextNode[];
   href: string;
+  /** Set for links to another material (`hakgyo-material:` hrefs). */
+  material?: MaterialLinkTarget;
   type: "link";
 };
 
@@ -79,6 +82,13 @@ export type NativeContentRendererProps = {
     resourceId: string,
     courseItemId: string | null,
   ) => void;
+  /**
+   * Opens a link to another material (or to a section of this one). Without
+   * it material links render as text that does nothing when pressed.
+   */
+  onOpenMaterialLink?: (target: MaterialLinkTarget) => void;
+  /** Reports the y offset of each top-level block with an id, for anchors. */
+  onBlockLayout?: (blockId: string, y: number) => void;
   renderers?: Readonly<Record<string, ContentBlockRenderer>>;
   resourceReferences?: ResourceReferenceData;
   resolveAssetUrl?: AssetUrlResolver;

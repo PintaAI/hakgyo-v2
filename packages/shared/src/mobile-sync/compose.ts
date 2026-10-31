@@ -20,6 +20,10 @@ import {
   passesAssessmentRequirement,
   passesRequirementPolicy,
 } from "../learning";
+import {
+  collectMaterialLinkTargets,
+  type ResolvedMaterialLink,
+} from "../material-links";
 import { collectPdfPageRanges } from "../pdf-book";
 import { entryMeanings } from "../vocabulary-meanings";
 import type {
@@ -350,6 +354,72 @@ function sectionsMinutes(sections: BundleAssessment["sections"]) {
   return seconds === null ? null : Math.ceil(seconds / 60);
 }
 
+/**
+ * The targets of the material links in `content` that the learner can open,
+ * like `resolveMaterialLinksForSources` on the server: the placement in this
+ * course unless its module is locked, else one in a course the learner is
+ * enrolled in (`state.courseIds`; their module locks are not known here).
+ * Sections are limited to the linked anchors, and the description falls back
+ * to the start of the material. Targets without such a placement are left
+ * out; the screen then asks the server (`learning.getCourseItem`).
+ */
+export function composeMaterialLinks(
+  bundle: CourseBundle,
+  state: LearnerState,
+  content: unknown,
+): ResolvedMaterialLink[] {
+  const linked = bundle.content.linkedMaterials;
+  if (!linked) return [];
+  const anchors = new Map<string, Set<string>>();
+  for (const target of collectMaterialLinkTargets(content)) {
+    const set = anchors.get(target.materialId) ?? new Set<string>();
+    if (target.anchor) set.add(target.anchor);
+    anchors.set(target.materialId, set);
+  }
+  const enrolled = new Set(state.courseIds);
+  let lockedItemIds: Set<string> | undefined;
+  const isLocked = (courseItemId: string) => {
+    if (bundle.structure.progressionMode !== "SEQUENTIAL") return false;
+    lockedItemIds ??= new Set(
+      composeCourseOutline(bundle, state).modules.flatMap((module) =>
+        module.access === "LOCKED" ? module.items.map((item) => item.id) : [],
+      ),
+    );
+    return lockedItemIds.has(courseItemId);
+  };
+  return [...anchors].flatMap(([materialId, materialAnchors]) => {
+    const material = linked[materialId];
+    if (!material) return [];
+    const placement =
+      material.placements.find(
+        (candidate) =>
+          candidate.courseId === bundle.courseId &&
+          !isLocked(candidate.courseItemId),
+      ) ??
+      material.placements.find(
+        (candidate) =>
+          candidate.courseId !== bundle.courseId &&
+          enrolled.has(candidate.courseId),
+      );
+    if (!placement) return [];
+    const sections: ResolvedMaterialLink["sections"] = {};
+    for (const anchor of materialAnchors) {
+      const section = material.sections[anchor];
+      if (section) sections[anchor] = section;
+    }
+    return [
+      {
+        materialId,
+        courseId: placement.courseId,
+        courseItemId: placement.courseItemId,
+        title: material.title,
+        description: material.description?.trim() || material.excerpt || null,
+        sections,
+      },
+    ];
+  });
+}
+
 /** Whether the material's completion requirements are met under its `requirementPolicy`. */
 export function materialRequirementsSatisfied(
   bundle: CourseBundle,
@@ -490,6 +560,9 @@ export function composeCourseItem(
       courseId: bundle.courseId,
       sourceCourseItemId: item.id,
     },
+    materialLinks: material
+      ? composeMaterialLinks(bundle, state, material.content)
+      : [],
   };
 }
 

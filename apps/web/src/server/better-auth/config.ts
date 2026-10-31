@@ -21,7 +21,7 @@ import {
   passwordResetEmail,
   verificationEmail,
 } from "~/server/email/templates";
-import { ensureHangeulMasteryEnrollment } from "~/server/foundation/hangeul-mastery";
+import { ensureFoundationEnrollments } from "~/server/foundation/enrollment";
 
 const mcpOAuthScopes = ["openid", "profile", "hakgyo:mcp", "offline_access"];
 const mcpResource = `${env.APP_URL}/api/mcp`;
@@ -64,7 +64,7 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          await ensureHangeulMasteryEnrollment(user.id);
+          await ensureFoundationEnrollments(user.id);
         },
       },
     },
