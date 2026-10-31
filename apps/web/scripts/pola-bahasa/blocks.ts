@@ -1,15 +1,15 @@
 // Builders for the curriculum content in ./content. They keep content files
 // readable and produce the BlockNote JSON the block catalog validates. Links
-// to other materials are written with `ref()` by material and section key;
-// the importer turns them into `hakgyo-material:<id>#<blockId>` hrefs and
-// fails when a key does not exist in ./manifest.ts.
+// to other materials are written with `ref()` by material key; the importer
+// turns them into `hakgyo-material:<id>` hrefs and fails when a key does not
+// exist in ./manifest.ts.
 import {
   conversationBlockDefaults,
   cultureBlockDefaults,
   lessonPageDefaults,
 } from "~/lib/blocknote/block-catalog";
 
-import type { PolaMaterialKey, PolaSectionKey } from "./manifest";
+import type { PolaBabKey, PolaMaterialKey } from "./manifest";
 
 export type BlockNoteBlock = {
   id?: string;
@@ -52,20 +52,9 @@ export const b = (text: string): Styled => ({ text, bold: true });
 /** Italic text, used for Indonesian glosses. */
 export const i = (text: string): Styled => ({ text, italic: true });
 
-/**
- * A link to another material, optionally to one of its sections:
- * `ref("-는데", "ki-alasan-urutan", "neunde")`.
- */
-export function ref<M extends PolaMaterialKey>(
-  text: string,
-  material: M,
-  section?: PolaSectionKey<M>,
-): RefPart {
-  return {
-    text,
-    bold: true,
-    ref: `${REF_PREFIX}${material}${section ? `#${section}` : ""}`,
-  };
+/** A link to another material, by key: `ref("-는데", "ki-neunde")`. */
+export function ref(text: string, material: PolaMaterialKey): RefPart {
+  return { text, bold: true, ref: `${REF_PREFIX}${material}` };
 }
 
 export const p = (...parts: Inline[]): BlockNoteBlock => ({
@@ -73,7 +62,7 @@ export const p = (...parts: Inline[]): BlockNoteBlock => ({
   content: inline(parts),
 });
 
-/** A sub-heading inside a section (sections get their level-2 heading automatically). */
+/** A sub-heading inside a material, for example `h3("Contoh")` (materials never use level 1 or 2). */
 export const h3 = (...parts: Inline[]): BlockNoteBlock => ({
   type: "heading",
   props: { level: 3 },
@@ -203,7 +192,7 @@ export type OpenerInput = {
 
 type OpenerFocus = { label: string; title: string; description: string };
 
-/** The lesson opener (lessonPage block); put it first in `intro`. */
+/** A lesson opener (lessonPage block). Not allowed in Pola materials (validation rejects it); kept for other uses. */
 export function opener(input: OpenerInput): BlockNoteBlock {
   const [grammarFocus, vocabularyFocus, cultureFocus] = input.focus;
   return {
@@ -279,15 +268,6 @@ export function culture(input: CultureInput): BlockNoteBlock {
   };
 }
 
-/** Placeholder the importer swaps for this material's quiz id. */
-export const QUIZ_REFERENCE = "pola-quiz:self";
-
-/** Embeds this material's quiz (see `quiz` on the material); put it in `outro`. */
-export const quizRef = (): BlockNoteBlock => ({
-  type: "assessmentReference",
-  props: { assessmentId: QUIZ_REFERENCE },
-});
-
 /** A table; the first row is the header. Cells may contain links. */
 export function table(rows: Inline[][]): BlockNoteBlock {
   return {
@@ -349,28 +329,6 @@ export function grammar(input: GrammarInput): BlockNoteBlock {
   };
 }
 
-export type SectionContent<M extends PolaMaterialKey> = {
-  key: PolaSectionKey<M>;
-  /** Heading of the section; links to this section open here. */
-  title: string;
-  blocks: BlockNoteBlock[];
-};
-
-export type MaterialContent<M extends PolaMaterialKey = PolaMaterialKey> = {
-  key: M;
-  title: string;
-  /** One or two sentences shown in course lists and link previews. */
-  description: string;
-  /** Blocks before the first section (hook + what you'll learn). */
-  intro: BlockNoteBlock[];
-  /** Exactly the sections listed for this material in ./manifest.ts, in order. */
-  sections: SectionContent<M>[];
-  /** Blocks after the last section (rangkuman, then `quizRef()`). */
-  outro?: BlockNoteBlock[];
-  /** The material's quiz, imported as an assessment item right after it. */
-  quiz?: QuizContent;
-};
-
 export type QuizQuestion = {
   /** Stable key within the quiz (learner answers hang on it). */
   key: string;
@@ -391,9 +349,42 @@ export type QuizContent = {
   questions: QuizQuestion[];
 };
 
-/** Declares one material; keeps section keys type-checked against the manifest. */
-export function defineMaterial<M extends PolaMaterialKey>(
-  material: MaterialContent<M>,
-): MaterialContent<M> {
-  return material;
+export type MaterialBody = {
+  /** One sentence shown in lists and link previews. */
+  description: string;
+  /** The short material (see STYLE.md for the fixed template). */
+  blocks: BlockNoteBlock[];
+};
+
+export type VocabularyEntryContent = {
+  /** The pattern or word in Korean, as in the material title (e.g. "-는데"). */
+  term: string;
+  /** Indonesian meaning(s), shortest first. */
+  meanings: string[];
+  /** One example sentence: Korean and its Indonesian translation. */
+  example: { ko: string; id: string };
+};
+
+export type VocabularyContent = {
+  title: string;
+  description: string;
+  /** One entry per material of the chapter, in the same order. */
+  entries: VocabularyEntryContent[];
+};
+
+export type BabContent<B extends PolaBabKey = PolaBabKey> = {
+  key: B;
+  /** One body per material of the chapter in ./manifest.ts, keyed by material key. */
+  materials: Partial<Record<PolaMaterialKey, MaterialBody>>;
+  /** The chapter's vocabulary set: its patterns with meaning and an example. */
+  vocabulary: VocabularyContent;
+  /** The chapter's quiz, the last item of the chapter. */
+  quiz: QuizContent;
+};
+
+/** Declares one chapter: its materials, vocabulary set and quiz. */
+export function defineBab<B extends PolaBabKey>(
+  bab: BabContent<B>,
+): BabContent<B> {
+  return bab;
 }

@@ -8,6 +8,7 @@ import {
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
+import { Fragment } from "react";
 
 import {
   grammarBlockDefaults,
@@ -338,59 +339,78 @@ export const grammarBlock = createReactBlockSpec(
 
                   <div className="divide-border divide-y">
                     {ruleRows.map((row, index) => (
-                      <div
-                        className={`grid min-w-0 ${editable ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)_2.5rem]" : "sm:grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)]"}`}
-                        key={index}
-                      >
-                        <RuleCell
-                          editable={editable}
-                          label={block.props.ruleColumnOne}
-                          onChange={(condition) => {
-                            const next = [...ruleRows];
-                            next[index] = { ...row, condition };
-                            updateRuleRows(next);
-                          }}
-                          value={row.condition}
-                        />
-                        <RuleCell
-                          editable={editable}
-                          label={block.props.ruleColumnTwo}
-                          onChange={(form) => {
-                            const next = [...ruleRows];
-                            next[index] = { ...row, form };
-                            updateRuleRows(next);
-                          }}
-                          value={row.form}
-                        />
-                        <RuleCell
-                          editable={editable}
-                          label={block.props.ruleColumnThree}
-                          onChange={(example) => {
-                            const next = [...ruleRows];
-                            next[index] = { ...row, example };
-                            updateRuleRows(next);
-                          }}
-                          value={row.example}
-                        />
-                        {editable ? (
-                          <div className="border-border flex items-center justify-end border-t px-2 py-2 sm:justify-center sm:border-t-0 sm:border-l">
-                            <button
-                              aria-label={`Hapus aturan ${index + 1}`}
-                              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive grid size-7 place-items-center rounded-md transition disabled:opacity-30"
-                              onClick={() =>
-                                updateRuleRows(
-                                  ruleRows.filter(
-                                    (_, rowIndex) => rowIndex !== index,
-                                  ),
-                                )
-                              }
-                              type="button"
-                            >
-                              <Trash2Icon className="size-3.5" />
-                            </button>
+                      <Fragment key={index}>
+                        {editable ? null : (
+                          // On phones a rule reads as one compact row
+                          // (condition, then the form, the example below)
+                          // instead of three stacked labelled cells.
+                          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 px-3 py-2.5 sm:hidden">
+                            <p className="text-muted-foreground min-w-0 text-xs leading-relaxed">
+                              {row.condition}
+                            </p>
+                            <p className="text-foreground text-right text-sm font-semibold break-keep">
+                              {row.form}
+                            </p>
+                            {row.example ? (
+                              <p className="text-foreground col-span-2 min-w-0 text-sm leading-relaxed">
+                                {row.example}
+                              </p>
+                            ) : null}
                           </div>
-                        ) : null}
-                      </div>
+                        )}
+                        <div
+                          className={`min-w-0 ${editable ? "grid sm:grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)_2.5rem]" : "hidden sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,.75fr)_minmax(0,1.2fr)]"}`}
+                        >
+                          <RuleCell
+                            editable={editable}
+                            label={block.props.ruleColumnOne}
+                            onChange={(condition) => {
+                              const next = [...ruleRows];
+                              next[index] = { ...row, condition };
+                              updateRuleRows(next);
+                            }}
+                            value={row.condition}
+                          />
+                          <RuleCell
+                            editable={editable}
+                            label={block.props.ruleColumnTwo}
+                            onChange={(form) => {
+                              const next = [...ruleRows];
+                              next[index] = { ...row, form };
+                              updateRuleRows(next);
+                            }}
+                            value={row.form}
+                          />
+                          <RuleCell
+                            editable={editable}
+                            label={block.props.ruleColumnThree}
+                            onChange={(example) => {
+                              const next = [...ruleRows];
+                              next[index] = { ...row, example };
+                              updateRuleRows(next);
+                            }}
+                            value={row.example}
+                          />
+                          {editable ? (
+                            <div className="border-border flex items-center justify-end border-t px-2 py-2 sm:justify-center sm:border-t-0 sm:border-l">
+                              <button
+                                aria-label={`Hapus aturan ${index + 1}`}
+                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive grid size-7 place-items-center rounded-md transition disabled:opacity-30"
+                                onClick={() =>
+                                  updateRuleRows(
+                                    ruleRows.filter(
+                                      (_, rowIndex) => rowIndex !== index,
+                                    ),
+                                  )
+                                }
+                                type="button"
+                              >
+                                <Trash2Icon className="size-3.5" />
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </Fragment>
                     ))}
                   </div>
                   {editable ? (
