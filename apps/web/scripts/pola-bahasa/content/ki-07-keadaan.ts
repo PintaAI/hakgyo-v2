@@ -12,7 +12,7 @@ export default defineBab({
           title: "-아/어 보다",
           descriptionKo: "어떤 일을 한번 시험 삼아 할 때 써요.",
           descriptionTranslation:
-            "Artinya ‘coba ...’. Dipakai buat nyaranin (‘coba deh’), nawarin diri (‘aku coba ya’), atau minta izin nyoba. Kalau bentuknya lampau, artinya jadi ‘pernah’: 가 봤어요 = aku pernah ke sana.",
+            "Artinya “coba ...”. Dipakai buat nyaranin (“coba deh”), nawarin diri (“aku coba ya”), atau minta izin nyoba. Kalau bentuknya lampau, artinya jadi “pernah”: 가 봤어요 = aku pernah ke sana.",
           rules: [
             {
               condition: "Vokal terakhir ㅏ / ㅗ",
@@ -22,9 +22,8 @@ export default defineBab({
             {
               condition: "Vokal lain",
               form: "-어 보다",
-              example: "먹다 → 먹어 보다, 입다 → 입어 보다",
+              example: "먹다 → 먹어 보다, 하다 → 해 보다",
             },
-            { condition: "하다", form: "해 보다", example: "운동해 보다" },
             {
               condition: "Nyaranin",
               form: "-아/어 보세요",
@@ -47,7 +46,7 @@ export default defineBab({
             { before: "이 신발 ", emphasis: "신어 봐도 돼요", after: "?" },
             { before: "저는 제주도에 ", emphasis: "가 봤어요", after: "." },
           ],
-          theme: "blue",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -56,7 +55,7 @@ export default defineBab({
           i("cobain deh"),
           ". Satu hal lagi: kalau lampau, artinya ",
           i("pernah"),
-          ", bukan ‘udah nyoba’.",
+          ", bukan “udah nyoba”.",
         ),
         h3("Contoh"),
         ex(
@@ -73,7 +72,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "‘Coba’ di bahasa Indonesia juga dipakai buat berandai-andai. ‘Coba kemarin kamu datang’ itu bukan nyoba, jadi jangan pakai ✗ 어제 와 보세요. Itu pakai ",
+          "Jebakan: “coba” di bahasa Indonesia juga dipakai buat berandai-andai. “Coba kemarin kamu datang” itu bukan nyoba, jadi jangan pakai ✗ 어제 와 보세요. Itu pakai ",
           ref("-았/었으면 좋았을 텐데", "ki-asseumyeon-teonde"),
           ".",
         ),
@@ -83,7 +82,7 @@ export default defineBab({
           ref("deh", "ik-deh"),
           ". Bedanya sama ",
           ref("-(으)ㄴ 적이 있다", "ki-eun-jeok"),
-          ": 가 봤어요 dan 간 적이 있어요 sama-sama ‘pernah ke sana’, yang pertama lebih santai.",
+          ": 가 봤어요 dan 간 적이 있어요 sama-sama “pernah ke sana”, yang pertama lebih santai.",
         ),
       ],
     },
@@ -96,12 +95,12 @@ export default defineBab({
           title: "-(으)ㄴ 적이 있다 / 없다",
           descriptionKo: "과거에 그런 경험이 있는지 없는지 말할 때 써요.",
           descriptionTranslation:
-            "Artinya ‘pernah’ (있다) dan ‘nggak pernah’ (없다). Biasanya buat pengalaman yang jarang atau spesial, bukan rutinitas. Sering digabung sama -아/어 보다 jadi -아/어 본 적이 있다.",
+            "Artinya “pernah” (있다) dan “nggak pernah” (없다). Biasanya buat pengalaman yang jarang atau spesial, bukan rutinitas. Sering digabung sama -아/어 보다 jadi -아/어 본 적이 있다.",
           rules: [
             {
               condition: "Akhiran vokal",
               form: "-ㄴ 적이 있다",
-              example: "가다 → 간 적이 있다",
+              example: "가다 → 간 적이 있다, 하다 → 한 적이 있다",
             },
             {
               condition: "Akhiran konsonan",
@@ -112,11 +111,6 @@ export default defineBab({
               condition: "Batang berakhiran ㄹ (ㄹ hilang)",
               form: "-ㄴ 적이 있다",
               example: "만들다 → 만든 적이 있다",
-            },
-            {
-              condition: "하다",
-              form: "한 적이 있다",
-              example: "지각한 적이 있다",
             },
             {
               condition: "Gabung -아/어 보다",
@@ -139,7 +133,7 @@ export default defineBab({
             { before: "저는 눈을 ", emphasis: "본 적이 없어요", after: "." },
             { before: "한 번도 ", emphasis: "지각한 적이 없어요", after: "." },
           ],
-          theme: "blue",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -148,7 +142,7 @@ export default defineBab({
           i("nggak pernah"),
           " nyambung satu-satu. ",
           b("적"),
-          " artinya kira-kira ‘waktu, momen’, jadi 간 적이 있어요 secara harfiah: ‘ada momen aku pergi’.",
+          " artinya kira-kira “waktu, momen”, jadi 간 적이 있어요 secara harfiah: “ada momen aku pergi”.",
         ),
         h3("Contoh"),
         ex("한국 음식 먹어 본 적 있어요?", "Pernah makan makanan Korea?"),
@@ -171,7 +165,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "‘Belum’ dan ‘belum pernah’ beda pola. ‘Belum makan’ (hari ini) = 아직 안 먹었어요. ‘Belum pernah makan’ (seumur hidup) = 먹어 본 적이 없어요. Jangan pakai 적이 없다 buat rutinitas kayak makan siang hari ini.",
+          "Jebakan: “belum” dan “belum pernah” beda pola. “Belum makan” (hari ini) = 아직 안 먹었어요. “Belum pernah makan” (seumur hidup) = 먹어 본 적이 없어요. Jangan pakai 적이 없다 buat rutinitas kayak makan siang hari ini.",
         ),
         callout(
           "tip",
@@ -192,7 +186,7 @@ export default defineBab({
           title: "-고 있다",
           descriptionKo: "어떤 행동을 지금 하고 있을 때 써요.",
           descriptionTranslation:
-            "Artinya ‘lagi / sedang’ ngelakuin sesuatu. Bisa buat detik ini (‘lagi makan’) atau buat periode yang lagi jalan (‘lagi belajar bahasa Korea akhir-akhir ini’). Juga dipakai buat ‘lagi pakai’ baju, topi, dan masker.",
+            "Artinya “lagi / sedang” ngelakuin sesuatu. Bisa buat detik ini (“lagi makan”) atau buat periode yang lagi jalan (“lagi belajar bahasa Korea akhir-akhir ini”). Juga dipakai buat “lagi pakai” baju, topi, dan masker.",
           rules: [
             {
               condition: "Semua kata kerja",
@@ -225,7 +219,7 @@ export default defineBab({
               after: ".",
             },
           ],
-          theme: "blue",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -256,15 +250,15 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "‘Lagi duduk’ dan ‘lagi berdiri’ itu keadaan, bukan aksi. Pakai ",
+          "Jebakan: “lagi duduk” dan “lagi berdiri” itu keadaan, bukan aksi. Pakai ",
           ref("-아/어 있다", "ki-a-itda"),
-          ": 앉아 있어요, bukan ✗ 앉고 있어요 (artinya malah ‘lagi proses duduk’).",
+          ": 앉아 있어요, bukan ✗ 앉고 있어요 (artinya malah “lagi proses duduk”).",
         ),
         callout(
           "tip",
           "Mau praktik ngomong? Cek ",
           ref("masih", "ik-masih"),
-          ": ‘masih kerja’ = 아직 일하고 있어요.",
+          ": “masih kerja” = 아직 일하고 있어요.",
         ),
       ],
     },
@@ -319,7 +313,7 @@ export default defineBab({
               after: ".",
             },
           ],
-          theme: "blue",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -351,13 +345,13 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "Pakaian itu pengecualian. ‘Lagi pakai masker’ = 마스크를 쓰고 있어요, bukan ✗ 마스크를 써 있어요. Kata kerja yang punya objek (먹다, 입다, 열다) nggak bisa pakai -아/어 있다.",
+          "Jebakan: kata kerja yang punya objek (먹다, 입다, 열다) nggak bisa pakai -아/어 있다, termasuk pakaian. “Lagi pakai masker” = 마스크를 쓰고 있어요, bukan ✗ 마스크를 써 있어요.",
         ),
         callout(
           "tip",
           "Mau praktik ngomong? Cek ",
           ref("masih", "ik-masih"),
-          ": ‘lampunya masih nyala’ = 불이 아직 켜져 있어요. Bedanya sama ",
+          ": “lampunya masih nyala” = 불이 아직 켜져 있어요. Bedanya sama ",
           ref("-고 있다", "ki-go-itda"),
           ": 앉아 있어요 (lagi duduk, keadaan) vs 먹고 있어요 (lagi makan, aksi).",
         ),
@@ -372,7 +366,7 @@ export default defineBab({
           title: "-아/어 버리다",
           descriptionKo: "어떤 일이 완전히 끝나서 되돌릴 수 없을 때 써요.",
           descriptionTranslation:
-            "Nambahin rasa ‘tuntas, nggak bisa dibalikin’. Bisa nyesel (‘yah, keburu habis’), bisa juga lega (‘udah, beresin aja sekalian’). Ini kunci buat rasa ke- dan ter- Indonesia: ketiduran, keceplosan.",
+            "Nambahin rasa “tuntas, nggak bisa dibalikin”. Bisa nyesel (“yah, keburu habis”), bisa juga lega (“udah, beresin aja sekalian”). Ini kunci buat rasa ke- dan ter- Indonesia: ketiduran, keceplosan.",
           rules: [
             {
               condition: "Vokal terakhir ㅏ / ㅗ",
@@ -413,11 +407,11 @@ export default defineBab({
               after: ".",
             },
           ],
-          theme: "blue",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
-          "버리다 sendiri artinya ‘buang’. Ditempel ke kata kerja lain, artinya jadi ‘sampai habis, tuntas’. Bahasa Indonesia punya banyak cara buat rasa ini: ",
+          "버리다 sendiri artinya “buang”. Ditempel ke kata kerja lain, artinya jadi “sampai habis, tuntas”. Bahasa Indonesia punya banyak cara buat rasa ini: ",
           i("keburu, terlanjur, ketiduran, keceplosan"),
           ".",
         ),
@@ -445,7 +439,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "Jangan tempel 버리다 ke semua kalimat lampau. 밥 먹었어요 itu netral. 밥 먹어 버렸어요 bikin orang nanya ‘loh, kenapa? harusnya nggak dimakan?’. Pakai cuma kalau ada rasa nyesel, kaget, atau lega.",
+          "Jebakan: jangan tempel 버리다 ke semua kalimat lampau. 밥 먹었어요 itu netral. 밥 먹어 버렸어요 bikin orang nanya “loh, kenapa? harusnya nggak dimakan?”. Pakai cuma kalau ada rasa nyesel, kaget, atau lega.",
         ),
         callout(
           "tip",
@@ -453,9 +447,11 @@ export default defineBab({
           ref("rumus ke-/ter-", "ik-ke-an-rumus"),
           ", ",
           ref("ketiduran", "ik-ketiduran"),
-          ", dan ",
+          ", ",
           ref("keceplosan", "ik-keceplosan"),
-          ". Buat rasa ‘tanpa sadar’, pasangin sama ",
+          ", dan ",
+          ref("keburu", "ik-keburu"),
+          ". Buat rasa “tanpa sadar”, pasangin sama ",
           ref("나도 모르게", "ki-kkamppak"),
           ".",
         ),
@@ -470,7 +466,7 @@ export default defineBab({
           title: "-게 되다",
           descriptionKo: "상황 때문에 어떤 결과가 생겼을 때 써요.",
           descriptionTranslation:
-            "Artinya ‘jadi ...’ atau ‘akhirnya ...’ karena keadaan, bukan murni keputusan sendiri. Juga dipakai buat ngomong rendah hati: daripada ‘aku memutuskan kerja di sini’, orang Korea bilang ‘aku jadi kerja di sini’.",
+            "Artinya “jadi ...” atau “akhirnya ...” karena keadaan, bukan murni keputusan sendiri. Juga dipakai buat ngomong rendah hati: daripada “aku memutuskan kerja di sini”, orang Korea bilang “aku jadi kerja di sini”.",
           rules: [
             {
               condition: "Kata kerja",
@@ -507,14 +503,14 @@ export default defineBab({
               after: " 리나입니다.",
             },
           ],
-          theme: "blue",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Bahasa Indonesia sering pakai ",
           i("jadi"),
           " buat rasa ini: ",
-          i("‘Aku jadi suka K-pop gara-gara teman.’ ‘Jadinya kita lembur.’"),
+          i("“Aku jadi suka K-pop gara-gara teman.” “Jadinya kita lembur.”"),
           " Hasilnya muncul karena keadaan, bukan karena kamu rencanain dari awal.",
         ),
         h3("Contoh"),
@@ -541,7 +537,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "‘Jadi’ buat kata sifat (jadi dingin, jadi sibuk) bukan -게 되다, tapi ",
+          "Jebakan: “jadi” buat kata sifat (jadi dingin, jadi sibuk) bukan -게 되다, tapi ",
           ref("-아/어지다", "ki-ajida"),
           ": 추워졌어요, bukan ✗ 춥게 됐어요. Gampangnya: kata kerja → -게 되다, kata sifat → -아/어지다.",
         ),
@@ -564,7 +560,7 @@ export default defineBab({
           title: "-아/어지다",
           descriptionKo: "형용사에 붙어서 상태가 바뀌는 것을 나타내요.",
           descriptionTranslation:
-            "Ditempel ke kata sifat buat bilang ‘jadi ...’: jadi dingin, jadi sibuk, jadi lebih baik. Tambahin 점점 biar rasanya ‘makin’: 점점 추워져요 = makin dingin.",
+            "Ditempel ke kata sifat buat bilang “jadi ...”: jadi dingin, jadi sibuk, jadi lebih baik. Tambahin 점점 biar rasanya “makin”: 점점 추워져요 = makin dingin.",
           rules: [
             {
               condition: "Vokal terakhir ㅏ / ㅗ",
@@ -592,11 +588,6 @@ export default defineBab({
               example: "바쁘다 → 바빠지다, 예쁘다 → 예뻐지다",
             },
             {
-              condition: "르 tidak beraturan",
-              form: "-ㄹ라지다 / -ㄹ러지다",
-              example: "빠르다 → 빨라지다",
-            },
-            {
               condition: "ㅎ tidak beraturan",
               form: "-애지다",
               example: "빨갛다 → 빨개지다",
@@ -611,13 +602,13 @@ export default defineBab({
             },
             { before: "요즘 일이 ", emphasis: "바빠졌어요", after: "." },
           ],
-          theme: "blue",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
           "Bayangin perubahan: tadinya A, sekarang B. ",
           i(
-            "‘Udah mulai dingin.’ ‘Kerjaan jadi sibuk.’ ‘Bahasa Koreamu makin jago!’",
+            "“Udah mulai dingin.” “Kerjaan jadi sibuk.” “Bahasa Koreamu makin jago!”",
           ),
           " Semua itu -아/어지다.",
         ),
@@ -641,7 +632,7 @@ export default defineBab({
         ex("날씨가 점점 따뜻해져요.", "Cuacanya makin hangat."),
         callout(
           "warning",
-          "좋아지다 dan 좋아하다 beda jauh. 좋아졌어요 = jadi lebih baik (cuaca, kondisi, skill). ‘Jadi suka’ itu dari kata kerja, jadi pakai ",
+          "Jebakan: 좋아지다 dan 좋아하다 beda jauh. 좋아졌어요 = jadi lebih baik (cuaca, kondisi, skill). “Jadi suka” itu dari kata kerja, jadi pakai ",
           ref("-게 되다", "ki-ge-doeda"),
           ": 좋아하게 됐어요, bukan ✗ 좋아해졌어요.",
         ),
@@ -651,7 +642,7 @@ export default defineBab({
           ref("makin ... makin", "ik-makin"),
           ". Bedanya sama ",
           ref("-(으)면 -(으)ㄹ수록", "ki-eulsurok"),
-          ": pola itu buat ‘makin A, makin B’, -아/어지다 cuma buat satu perubahan.",
+          ": pola itu buat “makin A, makin B”, -아/어지다 cuma buat satu perubahan.",
         ),
       ],
     },
@@ -665,7 +656,7 @@ export default defineBab({
           descriptionKo:
             "어떤 일이 일어날 것 같았지만 실제로는 일어나지 않았을 때 써요.",
           descriptionTranslation:
-            "Artinya ‘hampir aja ...’, dan kejadiannya nggak beneran terjadi: hampir jatuh, hampir telat, hampir ketinggalan bus. Hampir selalu dalam bentuk lampau, dan sering diikuti rasa lega.",
+            "Artinya “hampir aja ...”, dan kejadiannya nggak beneran terjadi: hampir jatuh, hampir telat, hampir ketinggalan bus. Hampir selalu dalam bentuk lampau, dan sering diikuti rasa lega.",
           rules: [
             {
               condition: "Akhiran vokal",
@@ -698,7 +689,7 @@ export default defineBab({
             { before: "늦잠 자서 ", emphasis: "지각할 뻔했어요", after: "." },
             { before: "버스를 ", emphasis: "놓칠 뻔했어요", after: "." },
           ],
-          theme: "blue",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -726,7 +717,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "‘Hampir jatuh’ bukan ✗ 거의 넘어졌어요. Kalimat itu bikin orang Korea bingung: jadi kamu jatuh atau nggak? Kalau kejadiannya nggak terjadi, pakai -(으)ㄹ 뻔했다.",
+          "Jebakan: “hampir jatuh” bukan ✗ 거의 넘어졌어요. Kalimat itu bikin orang Korea bingung: jadi kamu jatuh atau nggak? Kalau kejadiannya nggak terjadi, pakai -(으)ㄹ 뻔했다.",
         ),
         callout(
           "tip",
@@ -745,7 +736,7 @@ export default defineBab({
           title: "-(으)ㄴ/는 척하다",
           descriptionKo: "사실이 아닌데 그런 것처럼 행동할 때 써요.",
           descriptionTranslation:
-            "Artinya ‘pura-pura’. Ini juga pas banget buat ‘sok’: sok tahu, sok sibuk, sok kuat. Bentuk di depan 척 ikut jenis kata dan waktunya, mirip -(으)ㄴ/는 것 같다.",
+            "Artinya “pura-pura”. Ini juga pas banget buat “sok”: sok tahu, sok sibuk, sok kuat. Bentuk di depan 척 ikut jenis kata dan waktunya, mirip -(으)ㄴ/는 것 같다.",
           rules: [
             {
               condition: "Kata kerja, sekarang",
@@ -787,7 +778,7 @@ export default defineBab({
               after: ".",
             },
           ],
-          theme: "blue",
+          theme: "amber",
         }),
         p(
           b("Artinya apa sih? "),
@@ -827,7 +818,7 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "아는 척하다 punya dua arti. Bisa ‘sok tahu’, tapi juga ‘nyapa orang yang kamu kenal’. 왜 아까 아는 척 안 했어? = ‘Kok tadi nggak nyapa?’. Lihat konteksnya.",
+          "Jebakan: 아는 척하다 punya dua arti. Bisa “sok tahu”, tapi juga “nyapa orang yang kamu kenal”. 왜 아까 아는 척 안 했어? = “Kok tadi nggak nyapa?”. Lihat konteksnya.",
         ),
         callout(
           "tip",
@@ -927,7 +918,7 @@ export default defineBab({
     questions: [
       {
         key: "ki07-a-boda-lampau",
-        prompt: "Teman nanya, kamu jawab ‘제주도에 가 봤어요.’ Artinya?",
+        prompt: "Teman nanya, kamu jawab “제주도에 가 봤어요.” Artinya?",
         options: [
           { text: "Aku pernah ke Jeju.", correct: true },
           { text: "Aku lagi nyoba ke Jeju sekarang." },
@@ -935,11 +926,11 @@ export default defineBab({
           { text: "Aku jadi ke Jeju." },
         ],
         explanation:
-          "-아/어 보다 dalam bentuk lampau artinya ‘pernah’, bukan ‘udah nyoba’. Sama kayak 가 본 적이 있어요.",
+          "-아/어 보다 dalam bentuk lampau artinya “pernah”, bukan “udah nyoba”. Sama kayak 가 본 적이 있어요.",
       },
       {
         key: "ki07-eun-jeok-salju",
-        prompt: "‘Aku belum pernah lihat salju.’ Yang benar?",
+        prompt: "“Aku belum pernah lihat salju.” Yang benar?",
         options: [
           { text: "저는 눈을 본 적이 없어요.", correct: true },
           { text: "저는 눈을 보고 있지 않아요." },
@@ -947,11 +938,11 @@ export default defineBab({
           { text: "저는 눈을 본 척했어요." },
         ],
         explanation:
-          "‘Belum pernah’ (seumur hidup) = -(으)ㄴ 적이 없다. 보고 있지 않아요 artinya ‘lagi nggak lihat’, beda jauh.",
+          "“Belum pernah” (seumur hidup) = -(으)ㄴ 적이 없다. 보고 있지 않아요 artinya “lagi nggak lihat”, beda jauh.",
       },
       {
         key: "ki07-go-itda-makan",
-        prompt: "‘Lagi makan nih, nanti aku telepon ya.’ Bagian pertamanya?",
+        prompt: "“Lagi makan nih, nanti aku telepon ya.” Bagian pertamanya?",
         options: [
           { text: "지금 밥 먹고 있어요.", correct: true },
           { text: "지금 밥 먹어 있어요." },
@@ -963,7 +954,7 @@ export default defineBab({
       },
       {
         key: "ki07-a-itda-duduk",
-        prompt: "‘Minsu lagi duduk di sana.’ Yang benar?",
+        prompt: "“Minsu lagi duduk di sana.” Yang benar?",
         options: [
           { text: "민수 씨는 저기 앉아 있어요.", correct: true },
           { text: "민수 씨는 저기 앉고 있어요." },
@@ -971,7 +962,7 @@ export default defineBab({
           { text: "민수 씨는 저기 앉게 됐어요." },
         ],
         explanation:
-          "Duduk itu keadaan setelah aksinya selesai, jadi -아/어 있다. 앉고 있어요 malah kedengeran kayak ‘lagi dalam proses duduk’.",
+          "Duduk itu keadaan setelah aksinya selesai, jadi -아/어 있다. 앉고 있어요 malah kedengeran kayak “lagi dalam proses duduk”.",
       },
       {
         key: "ki07-a-itda-pintu",
@@ -983,22 +974,22 @@ export default defineBab({
           { text: "창고 문을 열고 있어요." },
         ],
         explanation:
-          "Pintu dalam keadaan terbuka = 열려 있다 (dari 열리다, ‘terbuka’). 열어 있다 salah karena 열다 punya objek, dan 문을 열고 있어요 artinya ada orang yang lagi ngebuka pintunya.",
+          "Pintu dalam keadaan terbuka = 열려 있다 (dari 열리다, “terbuka”). 열어 있다 salah karena 열다 punya objek, dan 문을 열고 있어요 artinya ada orang yang lagi ngebuka pintunya.",
       },
       {
         key: "ki07-go-itda-masker",
-        prompt: "‘Orang yang lagi pakai masker itu 반장님.’ Yang benar?",
+        prompt: "“Orang yang lagi pakai masker itu 반장님.” Yang benar?",
         options: [
           { text: "마스크를 쓰고 있는 사람이 반장님이에요.", correct: true },
           { text: "마스크를 써 있는 사람이 반장님이에요." },
           { text: "마스크를 쓰게 된 사람이 반장님이에요." },
         ],
         explanation:
-          "Pakaian itu pengecualian: ‘lagi pakai’ baju, topi, atau masker selalu -고 있다, bukan -아/어 있다.",
+          "Pakai baju, topi, atau masker itu kata kerja yang punya objek, jadi “lagi pakai” selalu -고 있다, bukan -아/어 있다.",
       },
       {
         key: "ki07-a-beorida-kue",
-        prompt: "‘Kueku keburu dihabisin adikku.’ Yang paling pas rasanya?",
+        prompt: "“Kueku keburu dihabisin adikku.” Yang paling pas rasanya?",
         options: [
           { text: "동생이 제 케이크를 다 먹어 버렸어요.", correct: true },
           { text: "동생이 제 케이크를 다 먹게 됐어요." },
@@ -1006,12 +997,12 @@ export default defineBab({
           { text: "동생이 제 케이크를 다 먹을 뻔했어요." },
         ],
         explanation:
-          "‘Keburu, habis deh, nggak bisa dibalikin’ = -아/어 버리다. 먹을 뻔했어요 malah artinya hampir dimakan tapi nggak jadi.",
+          "“Keburu, habis deh, nggak bisa dibalikin” = -아/어 버리다. 먹을 뻔했어요 malah artinya hampir dimakan tapi nggak jadi.",
       },
       {
         key: "ki07-ge-doeda-suka",
         prompt:
-          "‘Gara-gara drakor, aku jadi suka bahasa Korea.’ Bagian akhirnya?",
+          "“Gara-gara drakor, aku jadi suka bahasa Korea.” Bagian akhirnya?",
         options: [
           { text: "한국어를 좋아하게 됐어요.", correct: true },
           { text: "한국어를 좋아해졌어요." },
@@ -1019,7 +1010,7 @@ export default defineBab({
           { text: "한국어를 좋아해 버렸어요." },
         ],
         explanation:
-          "‘Jadi’ buat kata kerja (좋아하다) = -게 되다. 좋아졌어요 artinya ‘jadi lebih baik’ (kondisi, skill), bukan ‘jadi suka’.",
+          "“Jadi” buat kata kerja (좋아하다) = -게 되다. 좋아졌어요 artinya “jadi lebih baik” (kondisi, skill), bukan “jadi suka”.",
       },
       {
         key: "ki07-ge-doeda-perkenalan",
@@ -1034,11 +1025,11 @@ export default defineBab({
           { text: "이번에 같이 일해 버린 리나입니다. 잘 부탁드립니다." },
         ],
         explanation:
-          "-게 되다 bikin kesannya ‘aku jadi kerja di sini’ (karena keadaan), bukan ‘aku memutuskan’. Ini kalimat perkenalan standar di tempat kerja Korea.",
+          "-게 되다 bikin kesannya “aku jadi kerja di sini” (karena keadaan), bukan “aku memutuskan”. Ini kalimat perkenalan standar di tempat kerja Korea.",
       },
       {
         key: "ki07-ajida-dingin",
-        prompt: "‘Masuk November, udah jadi dingin banget.’ Bagian akhirnya?",
+        prompt: "“Masuk November, udah jadi dingin banget.” Bagian akhirnya?",
         options: [
           { text: "날씨가 많이 추워졌어요.", correct: true },
           { text: "날씨가 많이 춥게 됐어요." },
@@ -1046,12 +1037,12 @@ export default defineBab({
           { text: "날씨가 많이 춥고 있어요." },
         ],
         explanation:
-          "‘Jadi’ buat kata sifat = -아/어지다. 춥다 → 추워지다 (ㅂ jadi 워). Kata kerja → -게 되다, kata sifat → -아/어지다.",
+          "“Jadi” buat kata sifat = -아/어지다. 춥다 → 추워지다 (ㅂ jadi 워). Kata kerja → -게 되다, kata sifat → -아/어지다.",
       },
       {
         key: "ki07-ppeon-jatuh",
         prompt:
-          "‘Hampir jatuh di subway’ (tapi untungnya nggak jatuh). Yang benar?",
+          "“Hampir jatuh di subway” (tapi untungnya nggak jatuh). Yang benar?",
         options: [
           { text: "지하철에서 넘어질 뻔했어요.", correct: true },
           { text: "지하철에서 거의 넘어졌어요." },
@@ -1064,7 +1055,7 @@ export default defineBab({
       {
         key: "ki07-cheok-sibuk",
         prompt:
-          "‘Begitu bos datang, semua langsung sok sibuk.’ Bagian akhirnya?",
+          "“Begitu bos datang, semua langsung sok sibuk.” Bagian akhirnya?",
         options: [
           { text: "다들 바쁜 척했어요.", correct: true },
           { text: "다들 바쁘는 척했어요." },

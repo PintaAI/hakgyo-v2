@@ -1,4 +1,18 @@
-import { b, callout, defineBab, ex, h3, i, p, ref, table } from "../blocks";
+import { b, callout, defineBab, ex, grammar, h3, i, p, ref } from "../blocks";
+
+/** One rule row of a grammar card: situation, Korean form, short example. */
+const r = (condition: string, form: string, example: string) => ({
+  condition,
+  form,
+  example,
+});
+
+/** One grammar-card example; `emphasis` is the pattern part. */
+const e = (before: string, emphasis: string, after: string) => ({
+  before,
+  emphasis,
+  after,
+});
 
 export default defineBab({
   key: "ik-07-nggak-sengaja",
@@ -7,34 +21,46 @@ export default defineBab({
       description:
         "Bahasa Korea nggak punya imbuhan ke- atau ter-. Rumusnya: 나도 모르게 / 실수로 / 깜빡 + -아/어 버렸어.",
       blocks: [
+        grammar({
+          number: "01",
+          theme: "blue",
+          title: "ke-/ter- → 나도 모르게 + -아/어 버렸어",
+          descriptionKo:
+            "모르고 하거나 실수로 한 일은 나도 모르게, 실수로, 깜빡에 -아/어 버렸어를 붙여서 말해요.",
+          descriptionTranslation:
+            "Bahasa Korea nggak punya imbuhan ke- atau ter-. Gantinya, pakai kata keterangan (나도 모르게, 실수로, 깜빡, 잘못), plus akhiran -아/어 버렸어 yang ngasih rasa terlanjur.",
+          rules: [
+            r("Tanpa sadar", "나도 모르게", "나도 모르게 웃었어."),
+            r("Nggak sengaja, ceroboh", "실수로", "실수로 지웠어."),
+            r("Lupa sekejap", "깜빡", "깜빡 잊어버렸어."),
+            r("Salah pencet, salah pilih", "잘못", "잘못 눌렀어요."),
+            r("Rasa terlanjur", "-아/어 버렸어", "지워 버렸어."),
+          ],
+          examples: [
+            e("", "실수로", " 사진을 지워 버렸어."),
+            e("", "나도 모르게", " 웃어 버렸어."),
+            e("", "잘못", " 눌렀어요."),
+          ],
+        }),
         p(
           i('"Aduh, kehapus!" "Kepencet!" "Keketawa!"'),
           " Bahasa Indonesia cukup tempel ke- atau ter-. Bahasa Korea nggak punya imbuhan kayak gitu. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("나도 모르게", "ki-kkamppak"),
-            'Tanpa sadar, "aku sendiri nggak tahu". Buat gerakan atau perasaan.',
-          ],
-          [
-            ref("실수로", "ki-kkamppak"),
-            "Nggak sengaja, karena salah atau ceroboh.",
-          ],
-          [ref("깜빡", "ki-kkamppak"), "Sekejap lupa atau lengah."],
-          [
-            ref("-아/어 버렸어", "ki-a-beorida"),
-            "Akhiran yang ngasih rasa terlanjur, yah udah kejadian.",
-          ],
-        ]),
+        p(
+          "Pilih bahannya: ",
+          ref("나도 모르게 / 실수로 / 깜빡", "ki-kkamppak"),
+          " buat rasa nggak sengaja, lalu ",
+          ref("-아/어 버리다", "ki-a-beorida"),
+          " buat rasa terlanjur. Satu atau dua bahan biasanya udah cukup.",
+        ),
         h3("Contoh"),
-        ex("실수로 사진을 지워 버렸어.", "Fotonya kehapus."),
+        ex("실수로 메시지를 지워 버렸어요.", "Pesannya kehapus."),
         ex(
           "나도 모르게 웃어 버렸어.",
           "Aku keketawa.",
           "padahal nggak boleh ketawa",
         ),
-        ex("잘못 눌렀어요.", "Kepencet, Kak.", "잘못 = salah"),
+        ex("잘못 눌렀어요. 죄송해요.", "Kepencet, maaf."),
         ex("깜빡 잊어버렸어요.", "Kelupaan."),
         callout(
           "warning",
@@ -47,7 +73,19 @@ export default defineBab({
           b("나도 모르게"),
           " atau ",
           b("실수로"),
-          ". Satu atau dua bahan biasanya udah cukup.",
+          ".",
+        ),
+        callout(
+          "tip",
+          "Rumus ini dipakai satu per satu di ",
+          ref("ketiduran", "ik-ketiduran"),
+          ", ",
+          ref("kelupaan", "ik-kelupaan"),
+          ", ",
+          ref("keceplosan", "ik-keceplosan"),
+          ", dan ",
+          ref("kebawa", "ik-kebawa"),
+          ".",
         ),
       ],
     },
@@ -55,32 +93,50 @@ export default defineBab({
       description:
         "Ketiduran = 잠들어 버렸어 atau 나도 모르게 잠들었어. Kesiangan punya kata sendiri: 늦잠 자다.",
       blocks: [
+        grammar({
+          number: "02",
+          theme: "blue",
+          title: "ketiduran → 잠들어 버렸어",
+          descriptionKo:
+            "자려고 하지 않았는데 잠이 들었을 때 잠들어 버렸어요라고 해요.",
+          descriptionTranslation:
+            "Ketiduran = nggak niat tidur, eh tidur. Bilangnya 잠들어 버렸어 atau 깜빡 잠들었어. Kesiangan punya kata sendiri: 늦잠 자다.",
+          rules: [
+            r("Nggak niat tidur", "잠들어 버렸어", "버스에서 잠들어 버렸어."),
+            r("Ketiduran sebentar", "깜빡 잠들었어", "소파에서 깜빡 잠들었어."),
+            r("Kesiangan", "늦잠 자다", "오늘 늦잠 잤어요."),
+            r("Tidur-tidur ayam", "졸다", "수업 시간에 졸았어."),
+          ],
+          examples: [
+            e("미안, 버스에서 ", "잠들어 버렸어", "."),
+            e("소파에서 ", "깜빡 잠들었어요", "."),
+            e("오늘 ", "늦잠 잤어요", "."),
+          ],
+        }),
         p(
           i('"Sorry baru bales, tadi ketiduran."'),
           " Kalimat wajib anak chat jam dua pagi. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("잠들어 버렸어.", "ki-a-beorida"),
-            "Nggak niat tidur, eh tidur. Paling umum.",
-          ],
-          [
-            ref("나도 모르게 잠들었어.", "ki-kkamppak"),
-            "Tanpa sadar ketiduran.",
-          ],
-          [
-            ref("깜빡 잠들었어.", "ki-kkamppak"),
-            "Ketiduran sebentar, lengah sekejap.",
-          ],
-          [b("늦잠 잤어."), "Ketiduran sampai kesiangan."],
-          [
-            b("수업 시간에 졸았어."),
-            "Tidur-tidur ayam, kepala ngangguk-ngangguk.",
-          ],
-        ]),
+        p(
+          "Pakai ",
+          ref("-아/어 버리다", "ki-a-beorida"),
+          " buat rasa terlanjur: ",
+          b("잠들어 버렸어"),
+          ". Atau tambah ",
+          ref("깜빡 / 나도 모르게", "ki-kkamppak"),
+          " di depan 잠들었어. Kalau ketidurannya bikin telat, sambung pakai ",
+          ref("-는 바람에", "ki-neun-barame"),
+          ".",
+        ),
         h3("Contoh"),
-        ex("미안, 버스에서 잠들어 버렸어.", "Sorry, aku ketiduran di bus."),
+        ex(
+          "미안, 어제 너무 피곤해서 잠들어 버렸어.",
+          "Sorry, kemarin capek banget, jadi ketiduran.",
+        ),
+        ex(
+          "영화 보다가 나도 모르게 잠들었어요.",
+          "Lagi nonton film, eh aku ketiduran.",
+        ),
         ex(
           "죄송합니다. 깜빡 잠들었습니다.",
           "Maaf, saya ketiduran.",
@@ -103,40 +159,65 @@ export default defineBab({
           b("졸려"),
           ".",
         ),
+        callout(
+          "tip",
+          "Rumus umumnya ada di ",
+          ref("rumus ke-/ter-", "ik-ke-an-rumus"),
+          ". Lupa ngelakuin sesuatu: ",
+          ref("kelupaan", "ik-kelupaan"),
+          ".",
+        ),
       ],
     },
     "ik-kelupaan": {
       description:
         "Kelupaan ngelakuin sesuatu = 깜빡했어. Barang ketinggalan punya bentuk sendiri: 놓고 왔어 / 두고 왔어.",
       blocks: [
+        grammar({
+          number: "03",
+          theme: "blue",
+          title: "kelupaan → 깜빡했어",
+          descriptionKo: "할 일을 잠깐 잊었을 때 깜빡했어요라고 해요.",
+          descriptionTranslation:
+            "Lupa sebentar yang ringan = 깜빡했어. Lupa ngelakuin sesuatu: kata kerja + -는 걸 깜빡했어. Barang ketinggalan punya bentuk sendiri: 놓고 왔어 atau 두고 왔어.",
+          rules: [
+            r("Lupa sebentar", "깜빡했어", "아, 깜빡했다!"),
+            r("Lupa ngelakuin", "-는 걸 깜빡했어", "약 먹는 걸 깜빡했어."),
+            r(
+              "Barang ketinggalan",
+              "놓고 왔어 / 두고 왔어",
+              "지갑을 집에 놓고 왔어.",
+            ),
+            r(
+              "Nggak inget sama sekali",
+              "기억이 안 나",
+              "이름이 기억이 안 나요.",
+            ),
+          ],
+          examples: [
+            e("미안, 답장하는 걸 ", "깜빡했어", "."),
+            e("문 잠그는 거 ", "깜빡했어요", "."),
+            e("우산을 버스에 ", "두고 내렸어요", "."),
+          ],
+        }),
         p(
           i('"Eh, kelupaan!"'),
           " Lupa ngabarin, lupa bawa dompet, lupa nama orang. Bahasa Korea beda-beda tergantung lupanya. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("깜빡했어.", "ki-kkamppak"),
-            "Lupa sebentar. Ringan, pas buat minta maaf.",
-          ],
-          [
-            ref("약 먹는 걸 깜빡했어.", "ki-kkamppak"),
-            "Lupa ngelakuin sesuatu: kata kerja + -는 걸 깜빡했어.",
-          ],
-          [
-            b("지갑을 집에 놓고 왔어."),
-            "Barang ketinggalan (aku taruh, terus pergi).",
-          ],
-          [b("이름이 기억이 안 나요."), "Nggak inget sama sekali."],
-        ]),
+        p(
+          "Lupa yang ringan pakai ",
+          ref("깜빡", "ki-kkamppak"),
+          ". Buat barang ketinggalan, yang paling natural ",
+          b("놓고 왔어"),
+          " atau ",
+          b("두고 왔어"),
+          " (aku taruh, terus pergi).",
+        ),
         h3("Contoh"),
         ex("아, 깜빡했다!", "Ah, kelupaan!", "ngomong ke diri sendiri"),
-        ex(
-          "미안, 답장하는 걸 깜빡했어.",
-          "Sorry, aku kelupaan bales chat kamu.",
-        ),
-        ex("문 잠그는 거 깜빡했어요.", "Aku kelupaan ngunci pintu."),
-        ex("버스에 우산을 두고 내렸어요.", "Payungku ketinggalan di bus."),
+        ex("오늘 약 먹는 걸 깜빡했어요.", "Hari ini aku kelupaan minum obat."),
+        ex("휴대폰을 사무실에 두고 왔어요.", "HP-ku ketinggalan di kantor."),
+        ex("그 사람 이름이 기억이 안 나.", "Aku nggak inget nama orang itu."),
         callout(
           "warning",
           b("Jebakan: barang ketinggalan pakai 잊어버렸어."),
@@ -150,36 +231,70 @@ export default defineBab({
           b("두고 왔어"),
           ".",
         ),
+        callout(
+          "tip",
+          "Barangnya malah kebawa, bukan ketinggalan? Cek ",
+          ref("kebawa", "ik-kebawa"),
+          ". Rumus umumnya: ",
+          ref("rumus ke-/ter-", "ik-ke-an-rumus"),
+          ".",
+        ),
       ],
     },
     "ik-keceplosan": {
       description:
         "Keceplosan = 나도 모르게 말해 버렸어. Ke atasan, ganti 나 jadi 저: 저도 모르게.",
       blocks: [
+        grammar({
+          number: "04",
+          theme: "blue",
+          title: "keceplosan → 나도 모르게 말해 버렸어",
+          descriptionKo:
+            "말하면 안 되는 것을 모르고 말했을 때 나도 모르게 말해 버렸어요라고 해요.",
+          descriptionTranslation:
+            "Keceplosan = tanpa sadar ngomongin hal yang harusnya nggak diomongin. Bilangnya 나도 모르게 말해 버렸어. Ke atasan, ganti 나 jadi 저: 저도 모르게.",
+          rules: [
+            r(
+              "Santai",
+              "나도 모르게 말해 버렸어",
+              "나도 모르게 민호한테 말해 버렸어.",
+            ),
+            r("Ke atasan", "저도 모르게", "저도 모르게 반말이 나왔어요."),
+            r(
+              "Salah sebut, mau ngoreksi",
+              "잘못 말했어요",
+              "잘못 말했어요. 수요일이에요.",
+            ),
+          ],
+          examples: [
+            e("나도 모르게 ", "말해 버렸어", "."),
+            e("죄송해요, ", "저도 모르게", " 반말이 나왔어요."),
+            e("", "잘못", " 말했어요."),
+          ],
+        }),
         p(
           i('"Duh, aku keceplosan cerita ke dia."'),
           " Rahasia temen, kejutan ulang tahun, atau tiba-tiba ngomong 반말 ke 사장님. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("나도 모르게 말해 버렸어.", "ki-kkamppak"),
-            "Keceplosan cerita. Paling umum.",
-          ],
-          [
-            ref("비밀을 말해 버렸어.", "ki-a-beorida"),
-            "Rahasianya udah terlanjur keluar.",
-          ],
-          [
-            ref("저도 모르게 반말이 나왔어요.", "ki-kkamppak"),
-            "Keceplosan pakai 반말. Versi sopan buat minta maaf.",
-          ],
-          [b("잘못 말했어요."), "Salah ngomong, mau ngoreksi."],
-        ]),
+        p(
+          "Gabungin ",
+          ref("나도 모르게", "ki-kkamppak"),
+          " sama ",
+          ref("-아/어 버렸어", "ki-a-beorida"),
+          ": ",
+          b("나도 모르게 말해 버렸어"),
+          ". Kalau kamu cuma salah sebut, cukup ",
+          b("잘못 말했어요"),
+          ".",
+        ),
         h3("Contoh"),
         ex(
-          "나도 모르게 파티 얘기를 해 버렸어.",
-          "Aku keceplosan bilang soal pestanya.",
+          "나도 모르게 민호한테 비밀을 말해 버렸어.",
+          "Aku keceplosan cerita rahasianya ke Minho.",
+        ),
+        ex(
+          "미안, 나도 모르게 깜짝 파티 얘기를 해 버렸어.",
+          "Sorry, aku keceplosan soal pesta kejutannya.",
         ),
         ex(
           "죄송합니다. 저도 모르게 반말이 나왔어요.",
@@ -196,48 +311,83 @@ export default defineBab({
           b("저도 모르게"),
           ". Kalau nggak, kamu minta maaf karena 반말 sambil... pakai 반말 lagi.",
         ),
+        callout(
+          "tip",
+          "Rumus umumnya: ",
+          ref("rumus ke-/ter-", "ik-ke-an-rumus"),
+          ". Kebawa emosi sampai ngomong kasar? Cek ",
+          ref("kebawa", "ik-kebawa"),
+          ".",
+        ),
       ],
     },
     "ik-kebawa": {
       description:
         "Barang kebawa = 실수로 가져왔어 / 가져갔어. Kebawa suasana atau perasaan = 나도 모르게.",
       blocks: [
+        grammar({
+          number: "05",
+          theme: "blue",
+          title: "kebawa → 실수로 가져왔어",
+          descriptionKo:
+            "남의 물건을 실수로 가지고 왔을 때 실수로 가져왔어요라고 해요.",
+          descriptionTranslation:
+            "Barang kebawa = 실수로 가져왔어 atau 가져갔어, tergantung kamu lagi di mana. Kebawa suasana atau perasaan beda lagi: pakai 나도 모르게.",
+          rules: [
+            r(
+              "Kebawa ke sini",
+              "실수로 가져왔어",
+              "네 볼펜을 실수로 가져왔어.",
+            ),
+            r(
+              "Kebawa pergi dari sini",
+              "실수로 가져갔어",
+              "열쇠를 집에 가져갔어요.",
+            ),
+            r("Kebawa perasaan", "나도 모르게", "나도 모르게 따라 울었어."),
+            r(
+              "Kebawa emosi",
+              "나도 모르게 화를 냈어",
+              "미안, 나도 모르게 화냈어.",
+            ),
+          ],
+          examples: [
+            e("미안, 네 우산을 ", "실수로 가져왔어", "."),
+            e("가게 열쇠를 ", "실수로", " 집에 가져갔어요."),
+            e("", "나도 모르게", " 화를 냈어. 미안해."),
+          ],
+        }),
         p(
           i('"Eh, pulpen kamu kebawa aku."'),
           " Atau ",
           i('"Nonton drakor, aku ikut kebawa nangis."'),
           " Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("실수로 가져왔어.", "ki-kkamppak"),
-            "Barang kebawa ke tempat kamu sekarang.",
-          ],
-          [
-            ref("실수로 집에 가져갔어요.", "ki-kkamppak"),
-            "Barang kebawa pergi dari tempat kamu ngomong sekarang.",
-          ],
-          [
-            ref("나도 모르게 따라 울었어.", "ki-kkamppak"),
-            "Kebawa perasaan, ikut nangis.",
-          ],
-        ]),
+        p(
+          "Barang kebawa pakai ",
+          ref("실수로", "ki-kkamppak"),
+          " + 가져왔어 atau 가져갔어. Kebawa perasaan pakai ",
+          ref("나도 모르게", "ki-kkamppak"),
+          ".",
+        ),
         h3("Contoh"),
         ex(
           "네 볼펜을 실수로 가져왔어. 내일 줄게.",
           "Pulpenmu kebawa aku. Besok aku balikin.",
         ),
         ex(
-          "죄송해요, 가게 열쇠를 집에 가져갔어요.",
-          "Maaf, kunci toko kebawa pulang.",
+          "죄송해요, 어제 가게 열쇠를 집에 가져갔어요.",
+          "Maaf, kemarin kunci toko kebawa pulang.",
           "ngomong di toko",
         ),
         ex(
           "드라마 보다가 나도 모르게 따라 울었어.",
           "Nonton drakor, aku ikut kebawa nangis.",
         ),
-        ex("나도 모르게 화를 냈어. 미안해.", "Aku kebawa emosi. Maaf ya."),
+        ex(
+          "친구들이 다 웃어서 나도 따라 웃었어.",
+          "Temen-temen pada ketawa, aku jadi kebawa ketawa.",
+        ),
         callout(
           "warning",
           b("Jebakan: 가져오다 atau 가져가다?"),
@@ -251,51 +401,59 @@ export default defineBab({
           b("열쇠를 집에 가져갔어요"),
           ".",
         ),
+        callout(
+          "tip",
+          "Barangnya malah ketinggalan? Itu ",
+          ref("kelupaan", "ik-kelupaan"),
+          " (놓고 왔어). Rumus umumnya: ",
+          ref("rumus ke-/ter-", "ik-ke-an-rumus"),
+          ".",
+        ),
       ],
     },
     "ik-pura-pura": {
       description:
         "Pura-pura cuma punya satu pola utama, -(으)ㄴ/는 척하다. Yang perlu diperhatiin cara nempelnya.",
       blocks: [
+        grammar({
+          number: "06",
+          theme: "blue",
+          title: "pura-pura → -(으)ㄴ/는 척하다",
+          descriptionKo:
+            "사실이 아닌데 그런 것처럼 행동할 때 -(으)ㄴ/는 척하다를 써요.",
+          descriptionTranslation:
+            "Pura-pura cuma punya satu pola utama: -(으)ㄴ/는 척하다. Yang perlu diperhatiin cara nempelnya: kata kerja pakai -는 척, kata sifat dan hal yang udah kejadian pakai -(으)ㄴ 척. 척 juga bisa berarti sok.",
+          rules: [
+            r("Kata kerja", "-는 척", "자는 척했어."),
+            r("Udah kejadian", "-(으)ㄴ 척", "못 들은 척했어."),
+            r("Kata sifat", "-(으)ㄴ 척", "바쁜 척해."),
+            r("Sok", "-(으)ㄴ/는 척하지 마", "아는 척하지 마."),
+          ],
+          examples: [
+            e("엄마가 불렀는데 ", "자는 척했어", "."),
+            e("", "괜찮은 척했지만", " 사실 너무 힘들었어."),
+            e("", "아는 척하지", " 마."),
+          ],
+        }),
         p(
           i('"Dia pura-pura nggak denger."'),
           " Atau versi sindiran: ",
           i('"Sok sibuk banget sih."'),
           " Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("자는 척했어.", "ki-cheok"),
-            "Kata kerja: -는 척. Pura-pura tidur.",
-          ],
-          [
-            ref("못 들은 척했어.", "ki-cheok"),
-            "Hal yang udah kejadian: -(으)ㄴ 척. Pura-pura nggak denger.",
-          ],
-          [
-            ref("바쁜 척해.", "ki-cheok"),
-            "Kata sifat: -(으)ㄴ 척. Pura-pura atau sok sibuk.",
-          ],
-          [
-            ref("아는 척하지 마.", "ki-cheok"),
-            '"Jangan sok tahu." 척 juga bisa berarti sok.',
-          ],
-        ]),
+        p(
+          "Polanya satu: ",
+          ref("-(으)ㄴ/는 척하다", "ki-cheok"),
+          ". Lampaunya ditaruh di 척했어, bukan di kata kerja depannya.",
+        ),
         h3("Contoh"),
-        ex(
-          "엄마가 불렀는데 자는 척했어.",
-          "Mama manggil, aku pura-pura tidur.",
-        ),
-        ex("모르는 척하지 마.", "Jangan pura-pura nggak tahu."),
-        ex(
-          "괜찮은 척했지만 사실 너무 힘들었어.",
-          "Aku pura-pura baik-baik aja, padahal capek banget.",
-        ),
+        ex("못 들은 척하지 마.", "Jangan pura-pura nggak denger."),
+        ex("모르는 척했어요.", "Aku pura-pura nggak tahu."),
+        ex("걔는 맨날 바쁜 척해.", "Dia tiap hari sok sibuk."),
         ex("잘난 척 좀 하지 마.", "Nggak usah sok hebat deh."),
         callout(
           "warning",
-          b("Jebakan: lampau ditaruh di 척하다."),
+          b("Jebakan: lampau ditaruh di kata kerja depan."),
           " ",
           b("자는 척했어"),
           ", bukan ",
@@ -306,6 +464,12 @@ export default defineBab({
           b("못 들은 척"),
           " dan ",
           b("못 본 척"),
+          ".",
+        ),
+        callout(
+          "tip",
+          "Pura-pura itu sengaja. Yang beneran nggak sengaja ada di ",
+          ref("rumus ke-/ter-", "ik-ke-an-rumus"),
           ".",
         ),
       ],

@@ -88,6 +88,29 @@ function vocabularyContent(bab: (typeof POLA_BABS)[number]): VocabularyContent {
   };
 }
 
+/** A valid grammar card for `key`, in its course's color. */
+function card(
+  key: PolaMaterialKey,
+  overrides: Partial<Parameters<typeof grammar>[0]> = {},
+): BlockNoteBlock {
+  return grammar({
+    number: "01",
+    title: "-는데",
+    descriptionKo: "배경을 말해요.",
+    descriptionTranslation: "Kasih latar dulu.",
+    rules: [
+      { condition: "Kata kerja", form: "-는데", example: "가다 → 가는데" },
+      { condition: "Kata sifat", form: "-(으)ㄴ데", example: "싸다 → 싼데" },
+    ],
+    examples: [
+      { before: "비가 오", emphasis: "는데", after: " 우산이 없어요." },
+      { before: "배고픈", emphasis: "데", after: " 밥 먹을래요?" },
+    ],
+    theme: POLA_MATERIALS[key].course === "indo-korea" ? "blue" : "amber",
+    ...overrides,
+  });
+}
+
 /** Minimal valid content for every chapter; each material links to the next material. */
 function fixture(): Map<PolaBabKey, BabContent> {
   const babs = new Map<PolaBabKey, BabContent>();
@@ -103,6 +126,7 @@ function fixture(): Map<PolaBabKey, BabContent> {
             {
               description: `About ${material.key}`,
               blocks: [
+                card(material.key),
                 p("Lihat ", ref("pola berikutnya", next), "."),
                 { ...h3("Contoh"), children: [p("nested")] },
                 ex("비가 와요.", "Hujan."),
@@ -125,8 +149,18 @@ function withBab(key: PolaBabKey, change: (bab: BabContent) => BabContent) {
   return babs;
 }
 
-/** The fixture with one material's blocks replaced. */
-function withBlocks(key: PolaMaterialKey, blocks: BlockNoteBlock[]) {
+/**
+ * The fixture with one material's blocks replaced. A valid grammar card is
+ * put first unless the blocks already start with one (or `bare` is set).
+ */
+function withBlocks(
+  key: PolaMaterialKey,
+  given: BlockNoteBlock[],
+  { bare = false } = {},
+) {
+  const startsWithCard =
+    !Array.isArray(given[0]) && given[0]?.type === "grammar";
+  const blocks = bare || startsWithCard ? given : [card(key), ...given];
   const bab = POLA_MATERIALS[key].bab;
   return withBab(bab, (content) => ({
     ...content,
@@ -223,9 +257,11 @@ describe("buildCurricula", () => {
     expect(material.content.map((block) => block.id)).toEqual([
       "pb-ki-geurigo-b1",
       "pb-ki-geurigo-b2",
-      "pb-ki-geurigo-b4",
+      "pb-ki-geurigo-b3",
+      "pb-ki-geurigo-b5",
     ]);
-    expect(material.content[1]!.children![0]!.id).toBe("pb-ki-geurigo-b3");
+    expect(material.content[0]!.type).toBe("grammar");
+    expect(material.content[2]!.children![0]!.id).toBe("pb-ki-geurigo-b4");
     expect(JSON.stringify(material.content)).toContain(
       '"href":"hakgyo-material:pb-ki-geuraeseo-material"',
     );
@@ -587,11 +623,46 @@ describe("chapter validation", () => {
     );
   });
 
+  test("requires exactly one grammar card first, in the course color", () => {
+    expectError(
+      withBlocks("ki-geurigo", [p("Halo")], { bare: true }),
+      /ki-geurigo: must start with a grammar\(\) card/,
+    );
+    expectError(
+      withBlocks("ki-geurigo", [card("ki-geurigo"), card("ki-geurigo")]),
+      /2 grammar\(\) cards/,
+    );
+    expectError(
+      withBlocks("ki-geurigo", [card("ki-geurigo", { theme: "blue" })]),
+      /theme is "blue"; korea-indo uses "amber"/,
+    );
+    const ikKey = IK_BAB.materials[0].key as PolaMaterialKey;
+    expectError(
+      withBlocks(ikKey, [card(ikKey, { theme: "amber" })]),
+      /theme is "amber"; indo-korea uses "blue"/,
+    );
+    const rule = { condition: "a", form: "b", example: "c" };
+    expectError(
+      withBlocks("ki-geurigo", [
+        card("ki-geurigo", { rules: Array.from({ length: 7 }, () => rule) }),
+      ]),
+      /7 rule rows \(1 to 6\)/,
+    );
+    expectError(
+      withBlocks("ki-geurigo", [
+        card("ki-geurigo", {
+          examples: [{ before: "a", emphasis: "b", after: "c" }],
+        }),
+      ]),
+      /1 examples \(2 to 4\)/,
+    );
+  });
+
   test("warns about long materials and wide tables", () => {
     const long = buildCurricula(
       withBlocks(
         "ki-geurigo",
-        Array.from({ length: 19 }, (_, i) => p(`baris ${i}`)),
+        Array.from({ length: 18 }, (_, i) => p(`baris ${i}`)),
       ),
     );
     expect(long.errors).toEqual([]);
@@ -622,15 +693,7 @@ describe("chapter validation", () => {
 describe("BlockNote round trip", () => {
   test("an assembled material with the custom blocks loads unchanged", () => {
     const babs = withBlocks("ki-banmal-kapan", [
-      grammar({
-        number: "01",
-        title: "-는데",
-        descriptionKo: "배경을 말해요.",
-        descriptionTranslation: "Kasih latar.",
-        examples: [
-          { before: "비가 오", emphasis: "는데", after: " 우산이 없어요." },
-        ],
-      }),
+      card("ki-banmal-kapan"),
       p(b("Artinya apa sih? "), "Latar."),
       h3("Contoh"),
       ex("비가 오는데요.", "Hujan nih."),

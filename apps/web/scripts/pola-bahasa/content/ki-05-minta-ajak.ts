@@ -554,6 +554,9 @@ export default defineBab({
             { before: "뭐 먹", emphasis: "을래요", after: "?" },
             { before: "저는 라면 먹", emphasis: "을래요", after: "." },
           ],
+          tipKo: "윗사람에게는 “드실래요?”, “드시겠어요?”처럼 높여서 물어봐요.",
+          tipTranslation:
+            "Ke atasan, naikin sedikit jadi -(으)실래요? atau -(으)시겠어요?: 커피 드실래요?, 커피 드시겠어요?",
         }),
         p(
           b("Artinya apa sih? "),

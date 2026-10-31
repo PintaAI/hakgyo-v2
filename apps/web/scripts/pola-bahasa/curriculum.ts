@@ -740,6 +740,15 @@ function prepareBlocks(
   });
 }
 
+/** Grammar card color per course, so learners can tell the courses apart. */
+const GRAMMAR_THEME = {
+  "korea-indo": "amber",
+  "indo-korea": "blue",
+} as const;
+
+/** More rule rows than this make the card too long on a phone. */
+const GRAMMAR_CARD_MAX_RULES = 6;
+
 /** Per-material rules of STYLE.md and the custom block checks. */
 function checkBlocks(
   key: PolaMaterialKey,
@@ -795,6 +804,39 @@ function checkBlocks(
     }
   };
   visit(blocks);
+  // Every material opens with exactly one grammar card ("Tata bahasa"), in
+  // the course's color, so all 142 materials read the same way.
+  const first = blocks[0];
+  if (!isRecord(first) || first.type !== "grammar") {
+    errors.push(`${key}: must start with a grammar() card`);
+  }
+  const cards = blocks.filter(
+    (block) => isRecord(block) && block.type === "grammar",
+  );
+  if (cards.length > 1) {
+    errors.push(`${key}: has ${cards.length} grammar() cards (exactly one)`);
+  }
+  const card = cards[0];
+  if (card && isRecord(card)) {
+    const theme = card.props?.theme;
+    if (theme !== GRAMMAR_THEME[course]) {
+      errors.push(
+        `${key}: grammar card theme is "${String(theme)}"; ${course} uses "${GRAMMAR_THEME[course]}"`,
+      );
+    }
+    const rules = parseJsonArray(card.props?.ruleRows) ?? [];
+    if (rules.length === 0 || rules.length > GRAMMAR_CARD_MAX_RULES) {
+      errors.push(
+        `${key}: grammar card has ${rules.length} rule rows (1 to ${GRAMMAR_CARD_MAX_RULES})`,
+      );
+    }
+    const examples = parseJsonArray(card.props?.examples) ?? [];
+    if (examples.length < 2 || examples.length > 4) {
+      errors.push(
+        `${key}: grammar card has ${examples.length} examples (2 to 4)`,
+      );
+    }
+  }
   if (cultures > 1)
     errors.push(`${key}: has ${cultures} culture() blocks (at most one)`);
   const blockCount = (blocks as readonly unknown[]).flat(Infinity).length;

@@ -1,4 +1,18 @@
-import { b, callout, defineBab, ex, h3, i, p, ref, table } from "../blocks";
+import { b, callout, defineBab, ex, grammar, h3, i, p, ref } from "../blocks";
+
+/** One rule row of a grammar card: situation, Korean pattern, short example. */
+const r = (condition: string, form: string, example: string) => ({
+  condition,
+  form,
+  example,
+});
+
+/** One grammar-card example; `emphasis` is the pattern part. */
+const e = (before: string, emphasis: string, after: string) => ({
+  before,
+  emphasis,
+  after,
+});
 
 export default defineBab({
   key: "ik-01-padahal",
@@ -7,53 +21,75 @@ export default defineBab({
       description:
         "Padahal buat hasil yang nggak sesuai harapan: udah makan, kok masih laper.",
       blocks: [
+        grammar({
+          theme: "blue",
+          number: "01",
+          title: "padahal → -는데, -는데도",
+          descriptionKo: "기대와 다른 결과를 말할 때 써요.",
+          descriptionTranslation:
+            "Bagian yang ada setelah kata padahal ditempelin -는데, terus pindah ke depan kalimat. Hasil yang nggak sesuai harapan ditaruh di belakang. Mau lebih tegas (udah ... pun, tetep aja), pakai -는데도.",
+          rules: [
+            r("Ngobrol sehari-hari", "-는데", "밥 먹었는데 배고파."),
+            r("Lebih tegas, heran", "-는데도", "약 먹었는데도 아파."),
+            r("Kata sifat sekarang", "-(으)ㄴ데", "비싼데 맛없어."),
+            r("Tulisan, netral", "-지만", "먹었지만 배고파요."),
+          ],
+          examples: [
+            e("열심히 ", "공부했는데", " 시험에 떨어졌어요."),
+            e("약을 ", "먹었는데도", " 열이 안 내려요."),
+            e("이 옷 ", "비싼데", " 금방 찢어졌어."),
+          ],
+          tipKo: "형용사는 -는데가 아니라 -(으)ㄴ데를 써요.",
+          tipTranslation:
+            "Kata sifat pakai -(으)ㄴ데: 비싼데, 바쁜데, 좋은데. Jangan bilang 비싸는데.",
+        }),
         p(
           i('"Aku masih laper, padahal udah makan."'),
           " Kamu udah ngelakuin sesuatu, tapi hasilnya nggak sesuai harapan. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("밥 먹었는데 아직 배고파.", "ki-neunde"),
-            "Paling natural buat ngobrol. Ini pilihan pertama kamu.",
-          ],
-          [
-            ref("밥 먹었는데도 아직 배고파.", "ki-neundedo"),
-            "Lebih tegas: udah makan pun tetep aja laper. Ada rasa heran atau kesel.",
-          ],
-          [
-            ref("밥을 먹었지만 아직 배고파.", "ki-jiman"),
-            "Netral dan agak kaku. Lebih sering di tulisan.",
-          ],
-        ]),
+        p(
+          "Pilihan pertamamu ",
+          ref("-는데", "ki-neunde"),
+          ": ",
+          b("밥 먹었는데 아직 배고파."),
+          " Kalau mau nekanin rasa heran atau kesel, pakai ",
+          ref("-는데도", "ki-neundedo"),
+          ". ",
+          ref("-지만", "ki-jiman"),
+          " juga bisa, tapi rasanya kaku dan lebih sering dipakai di tulisan.",
+        ),
         h3("Contoh"),
         ex(
-          "열심히 공부했는데 시험에 떨어졌어요.",
-          "Aku nggak lulus ujian, padahal udah belajar mati-matian.",
-        ),
-        ex(
-          "이 옷 비싼데 금방 찢어졌어.",
-          "Bajunya cepet sobek, padahal mahal.",
-          "kata sifat: 비싼데, bukan 비싸는데",
-        ),
-        ex(
-          "약을 먹었는데도 열이 안 내려요.",
-          "Demamnya nggak turun, padahal udah minum obat.",
+          "일찍 나왔는데 또 지각했어요.",
+          "Padahal udah berangkat pagi, aku telat lagi.",
         ),
         ex(
           "야근까지 했는데 월급이 똑같아요.",
           "Gajinya sama aja, padahal udah lembur segala.",
         ),
+        ex(
+          "매일 연습했는데도 발음이 어려워요.",
+          "Padahal udah latihan tiap hari, pelafalannya tetep susah.",
+        ),
+        ex("밥 먹었는데 또 배고파.", "Padahal udah makan, laper lagi.", "반말"),
         callout(
           "warning",
           b("Urutannya kebalik."),
-          " Di bahasa Indonesia, padahal ditaruh di belakang: ",
+          " Di bahasa Indonesia, padahal ada di belakang: ",
           i('"Aku laper, padahal udah makan."'),
-          " Di bahasa Korea, bagian setelah kata padahal (udah makan) ditempelin -는데 dan pindah ke ",
+          " Di bahasa Korea, bagian setelah padahal (udah makan) pindah ke ",
           b("depan"),
-          ": ",
+          " dan ditempelin -는데: ",
           b("밥 먹었는데 배고파."),
-          ' Kalau kamu bilang 배고픈데 밥 먹었어, artinya malah jadi "aku laper, nah aku udah makan".',
+          ' Kalau kamu bilang 배고픈데 밥 먹었어, artinya malah "aku laper, terus aku udah makan".',
+        ),
+        callout(
+          "tip",
+          "Padahal yang nadanya nyalahin ada di ",
+          ref("padahal (nyalahin)", "ik-padahal-protes"),
+          ". Hasilnya malah kebalik dari harapan? Cek ",
+          ref("malah", "ik-malah"),
+          ".",
         ),
       ],
     },
@@ -61,35 +97,53 @@ export default defineBab({
       description:
         "Padahal yang nadanya nyalahin: udah janji, kok nggak dateng?",
       blocks: [
+        grammar({
+          theme: "blue",
+          number: "02",
+          title: "padahal (nyalahin) → -(으)면서, -잖아",
+          descriptionKo: "상대의 말과 행동이 다를 때 따지는 말이에요.",
+          descriptionTranslation:
+            "Padahal yang ini bukan cuma heran, tapi protes. Tempel -(으)면서 ke hal yang udah dia lakuin atau omongin, terus sambung pakai 왜. -잖아 lebih pendek: kamu ngingetin hal yang dia udah tahu.",
+          rules: [
+            r("Nyalahin, ke teman akrab", "-(으)면서", "알면서 왜 물어봐?"),
+            r("Udah kejadian", "-았/었으면서", "약속했으면서 왜 안 와?"),
+            r("Ngingetin, kesel", "-잖아", "약속했잖아!"),
+            r("Lebih lembut", "-는데", "약속했는데 왜 안 왔어?"),
+            r("Ke atasan", "-(으)셨는데요...", "그렇게 말씀하셨는데요..."),
+          ],
+          examples: [
+            e("", "알면서", " 왜 물어봐?"),
+            e("돈 없다고 ", "했으면서", " 새 폰 샀어?"),
+            e("어제 왜 안 왔어? 온다고 ", "했잖아", "."),
+          ],
+          tipKo: "-(으)면서와 왜는 친한 친구한테만 써요.",
+          tipTranslation:
+            "-(으)면서 + 왜 kedengeran tajam. Pakai cuma ke teman akrab, jangan ke orang yang lebih tua.",
+        }),
         p(
           i('"Padahal kamu udah janji, kok nggak dateng?"'),
           " Kamu nggak cuma heran, kamu juga protes. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("약속했으면서 왜 안 왔어?", "ki-myeonseo-padahal"),
-            "Nyalahin dengan jelas. Nadanya tajam, cuma buat teman akrab.",
-          ],
-          [
-            ref("약속했잖아!", "ki-janayo"),
-            '"Kan udah janji!" Pendek dan kesel, ngingetin hal yang dia udah tahu.',
-          ],
-          [
-            ref("약속했는데 왜 안 왔어?", "ki-neunde"),
-            "Lebih lembut. Masih protes, tapi nggak sepedes -(으)면서.",
-          ],
-        ]),
+        p(
+          "Yang paling jelas nyalahin itu ",
+          ref("-(으)면서", "ki-myeonseo-padahal"),
+          ": ",
+          b("약속했으면서 왜 안 왔어?"),
+          " Mau pendek dan kesel, pakai ",
+          ref("-잖아", "ki-janayo"),
+          ": ",
+          b("약속했잖아!"),
+          " Mau lebih lembut, balik ke ",
+          ref("-는데", "ki-neunde"),
+          ".",
+        ),
         h3("Contoh"),
-        ex("알면서 왜 물어봐?", "Udah tahu kok nanya?"),
+        ex("약속했으면서 왜 안 왔어?", "Padahal udah janji, kok nggak dateng?"),
         ex(
           "자기는 늦게 오면서 나한테만 뭐라고 해.",
           "Padahal dia sendiri telat, kok cuma aku yang diomelin.",
         ),
-        ex(
-          "돈 없다고 했으면서 새 폰 샀어?",
-          "Katanya nggak punya duit, kok beli HP baru?",
-        ),
+        ex("괜찮다고 했으면서 왜 화내?", "Katanya nggak apa-apa, kok marah?"),
         ex(
           "어제 왜 안 왔어? 온다고 했잖아.",
           "Kemarin kok nggak dateng? Kan katanya mau dateng.",
@@ -101,52 +155,78 @@ export default defineBab({
           b("사장님, 토요일은 쉬어도 된다고 하셨는데요..."),
           " Beliau udah ngerti maksudmu tanpa kamu nyalahin.",
         ),
+        callout(
+          "tip",
+          "Cuma mau ngingetin tanpa protes? Cek ",
+          ref("kan", "ik-kan"),
+          ". Kesel karena usahamu sia-sia? Cek ",
+          ref("padahal udah ... (kesel)", "ik-padahal-kesal"),
+          ".",
+        ),
       ],
     },
     "ik-padahal-rencana": {
       description:
         "Padahal tadinya mau, tapi rencananya batal: -(으)려고 했는데 dan teman-temannya.",
       blocks: [
+        grammar({
+          theme: "blue",
+          number: "03",
+          title: "padahal tadinya mau → -(으)려고 했는데",
+          descriptionKo: "하려고 했던 계획이 안 됐을 때 써요.",
+          descriptionTranslation:
+            "Buat rencana yang akhirnya batal, tempel -(으)려고 했는데 ke kata kerjanya. Habis itu sebut alasannya, atau biarin kalimatnya ngegantung. 했-nya wajib lampau, soalnya rencananya udah lewat.",
+          rules: [
+            r("Tadinya niat", "-(으)려고 했는데", "가려고 했는데..."),
+            r("Udah janjian", "-기로 했는데", "만나기로 했는데..."),
+            r("Pengen banget", "-고 싶었는데", "가고 싶었는데..."),
+            r(
+              "Dari awal udah niat",
+              "원래 -(으)려고 했는데",
+              "원래 쉬려고 했는데...",
+            ),
+          ],
+          examples: [
+            e("", "전화하려고 했는데", " 깜빡했어요."),
+            e("오늘 같이 밥 ", "먹기로 했는데", "..."),
+            e("고향에 ", "가고 싶었는데", " 표가 너무 비쌌어요."),
+          ],
+          tipKo: "뒤를 말하지 않고 끝내도 자연스러워요.",
+          tipTranslation:
+            "Kalimatnya nggak harus selesai. 가려고 했는데... dengan nada turun udah kerasa sayangnya.",
+        }),
         p(
           i('"Padahal tadinya aku mau dateng..."'),
-          " Rencananya udah ada, tapi akhirnya batal. Biasanya diikuti alasan, atau dibiarin ngegantung. Gimana bilangnya?",
+          " Rencananya udah ada, tapi akhirnya batal. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("가려고 했는데...", "ki-ryeogo-haenneunde"),
-            "Tadinya niat mau. Paling sering, boleh digantung dengan nada turun.",
-          ],
-          [
-            ref("가기로 했는데...", "ki-giro-hada"),
-            "Udah diputusin atau udah janjian sama orang lain.",
-          ],
-          [
-            ref("가고 싶었는데...", "ki-go-sipda"),
-            "Padahal pengen banget. Lebih ke perasaan.",
-          ],
-          [
-            ref("원래 가려고 했는데...", "ki-hagin"),
-            "원래 = aslinya, dari awal. Ada nada ngeluh.",
-          ],
-        ]),
+        p(
+          "Yang paling sering: ",
+          ref("-(으)려고 했는데", "ki-ryeogo-haenneunde"),
+          ". Kalau rencananya udah disepakati sama orang lain, pakai ",
+          ref("-기로 했는데", "ki-giro-hada"),
+          ". Kalau lebih ke perasaan pengen, pakai ",
+          ref("-고 싶었는데", "ki-go-sipda"),
+          ". Tambahin ",
+          ref("원래", "ki-hagin"),
+          " (aslinya) biar kedengeran ngeluh.",
+        ),
         h3("Contoh"),
         ex(
           "가려고 했는데 갑자기 야근이 생겼어.",
           "Padahal tadinya mau dateng, eh tiba-tiba ada lembur.",
+          "반말",
         ),
         ex(
-          "전화하려고 했는데 깜빡했어요.",
-          "Tadinya mau nelpon, tapi kelupaan.",
+          "주말에 쉬려고 했는데 특근이 생겼어요.",
+          "Tadinya weekend mau istirahat, eh ada kerja tambahan.",
         ),
         ex(
-          "오늘 같이 밥 먹기로 했는데...",
-          "Padahal hari ini kita udah janjian makan bareng...",
-          "digantung",
+          "친구랑 영화 보기로 했는데 친구가 아파서 취소됐어요.",
+          "Padahal udah janjian nonton sama temen, tapi dia sakit jadi batal.",
         ),
         ex(
-          "고향에 가고 싶었는데 비행기표가 너무 비쌌어요.",
-          "Padahal pengen banget pulang kampung, tapi tiket pesawatnya mahal banget.",
+          "원래 오늘 운동하려고 했는데 비가 와서 못 했어요.",
+          "Aslinya hari ini mau olahraga, tapi hujan jadi nggak jadi.",
         ),
         callout(
           "warning",
@@ -157,48 +237,68 @@ export default defineBab({
           b("가려고 하는데"),
           ', artinya malah "aku lagi mau pergi nih", rencananya masih jalan.',
         ),
+        callout(
+          "tip",
+          "Rencananya batal total? Cek ",
+          ref("nggak jadi", "ik-nggak-jadi"),
+          ". Nyesel karena nggak ngelakuin sesuatu? Cek ",
+          ref("harusnya", "ik-harusnya"),
+          ".",
+        ),
       ],
     },
     "ik-padahal-kesal": {
       description:
         "Padahal buat nambahin info yang bikin makin kesel: padahal udah nunggu dua jam.",
       blocks: [
+        grammar({
+          theme: "blue",
+          number: "04",
+          title: "padahal udah ... → -이나 ...-는데",
+          descriptionKo: "많이 애썼는데 서운한 마음을 말할 때 써요.",
+          descriptionTranslation:
+            "Padahal di sini nambahin usaha yang bikin kamu makin kesel. Tempel 이나 ke angkanya (sampai segitu), terus tutup pakai -는데 yang digantung. Hasilnya kerasa kecewa tanpa harus marah-marah.",
+          rules: [
+            r("Angka, akhiran konsonan", "-이나", "두 시간이나"),
+            r("Angka, akhiran vokal", "-나", "다섯 개나"),
+            r("Kecewa, digantung", "...-는데", "세 번이나 말했는데."),
+            r("Lebih emosional", "얼마나 -는데!", "얼마나 기다렸는데!"),
+            r("Nyalahin langsung", "-잖아", "두 시간이나 기다렸잖아!"),
+            r("Udah capek-capek", "힘들게 -는데", "힘들게 만들었는데..."),
+          ],
+          examples: [
+            e("두 ", "시간이나", " 기다렸는데."),
+            e("메시지를 다섯 ", "번이나", " 보냈는데 답장이 없어."),
+            e("", "얼마나", " 열심히 준비했는데!"),
+          ],
+        }),
         p(
           i('"Dia nggak dateng. Padahal aku udah nunggu dua jam."'),
-          " Di sini padahal nambahin info yang bikin kamu makin kesel. Biasanya ada angka atau usaha yang udah kamu keluarin. Gimana bilangnya?",
+          " Di sini padahal nambahin usaha yang udah kamu keluarin, biasanya pakai angka. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("두 시간이나 기다렸는데.", "ki-neunde"),
-            "Paling pas. 이나 = sampai segitu, dan -는데 yang digantung bikin kerasa kecewa.",
-          ],
-          [
-            ref("얼마나 기다렸는데!", "ki-neunde"),
-            '"Kamu tahu nggak aku nunggu selama apa!" Lebih emosional.',
-          ],
-          [
-            ref("두 시간이나 기다렸잖아!", "ki-janayo"),
-            'Nyalahin langsung ke orangnya: "kan aku udah nunggu dua jam!"',
-          ],
-          [
-            ref("힘들게 만들었는데...", "ki-neunde"),
-            '"Padahal udah capek-capek bikin..." Kecewa, bukan marah.',
-          ],
-        ]),
+        p(
+          "Tempel 이나 ke angkanya, terus tutup pakai ",
+          ref("-는데", "ki-neunde"),
+          " yang digantung: ",
+          b("두 시간이나 기다렸는데."),
+          " Mau langsung nyalahin orangnya, ganti akhirannya jadi ",
+          ref("-잖아", "ki-janayo"),
+          ": ",
+          b("두 시간이나 기다렸잖아!"),
+        ),
         h3("Contoh"),
         ex("세 번이나 말했는데.", "Padahal udah aku bilangin tiga kali."),
         ex(
-          "30분이나 줄 섰는데 다 팔렸대요.",
-          "Padahal udah antre setengah jam, katanya udah habis.",
+          "한 시간이나 걸려서 왔는데 문을 닫았어요.",
+          "Padahal udah jauh-jauh sejam ke sini, tokonya tutup.",
         ),
         ex(
           "엄마가 힘들게 만들었는데 하나도 안 먹었어?",
           "Padahal Mama udah capek-capek masak, kamu nggak makan sama sekali?",
         ),
         ex(
-          "메시지를 다섯 번이나 보냈는데 답장이 없어.",
-          "Padahal udah chat lima kali, nggak dibales juga.",
+          "30분이나 줄 섰는데 다 팔렸대요.",
+          "Padahal udah antre setengah jam, katanya udah habis.",
         ),
         callout(
           "warning",
@@ -212,6 +312,14 @@ export default defineBab({
           "), akhiran vokal pakai 나 (",
           b("다섯 개나"),
           ").",
+        ),
+        callout(
+          "tip",
+          "Mau nambahin info yang paling ekstrem? Cek ",
+          ref("bahkan", "ik-bahkan"),
+          ". Hasilnya cuma nggak sesuai harapan, tanpa kesel? Balik ke ",
+          ref("padahal (hasil nggak sesuai)", "ik-padahal-hasil"),
+          ".",
         ),
       ],
     },

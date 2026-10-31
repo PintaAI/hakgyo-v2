@@ -4,12 +4,26 @@ import {
   chat,
   defineBab,
   ex,
+  grammar,
   h3,
   i,
   p,
   ref,
-  table,
 } from "../blocks";
+
+/** One rule row of a grammar card: situation, Korean form, short example. */
+const r = (condition: string, form: string, example: string) => ({
+  condition,
+  form,
+  example,
+});
+
+/** One grammar-card example; `emphasis` is the pattern part. */
+const e = (before: string, emphasis: string, after: string) => ({
+  before,
+  emphasis,
+  after,
+});
 
 export default defineBab({
   key: "ik-08-nyesel",
@@ -18,33 +32,44 @@ export default defineBab({
       description:
         "Harusnya yang nyesel pakai -았/었어야 했는데, atau versi santainya -(으)ㄹ걸. Harusnya yang aturan pakai -아/어야 돼.",
       blocks: [
+        grammar({
+          number: "01",
+          theme: "blue",
+          title: "harusnya → -았/었어야 했는데",
+          descriptionKo: "하지 않은 일을 후회할 때 -았/었어야 했는데를 써요.",
+          descriptionTranslation:
+            "Harusnya yang nyesel soal hal yang udah lewat pakai -았/었어야 했는데. Versi santainya, kayak ngomong ke diri sendiri: -(으)ㄹ걸. Harusnya yang artinya aturan beda lagi: -아/어야 돼.",
+          rules: [
+            r("Nyesel, standar", "-았/었어야 했는데", "가져왔어야 했는데."),
+            r("Nyesel, santai", "-(으)ㄹ걸", "우산 가져올걸."),
+            r("Harusnya nggak", "-지 말걸", "많이 먹지 말걸."),
+            r("Aturan, wajib", "-아/어야 돼", "안전모를 써야 돼요."),
+          ],
+          examples: [
+            e("우산을 ", "가져왔어야 했는데", "."),
+            e("어제 일찍 ", "잘걸", "."),
+            e("그렇게 많이 ", "먹지 말걸", "."),
+          ],
+          tipKo: "후회하는 -(으)ㄹ걸은 혼잣말처럼 끝을 내려서 말해요.",
+          tipTranslation:
+            '-(으)ㄹ걸 yang nyesel diucapin dengan nada turun, kayak ngomong ke diri sendiri. Beda sama -(으)ㄹ걸요 yang artinya "kayaknya sih".',
+        }),
         p(
           i('"Harusnya tadi bawa payung."'),
           " Ujan deres, kamu basah kuyup, dan cuma bisa nyesel. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("우산을 가져왔어야 했는데.", "ki-asseoya"),
-            "Bentuk standar buat nyesel. Sopan: ...했는데요.",
-          ],
-          [
-            ref("우산 가져올걸.", "ki-asseoya"),
-            "Versi santai, kayak ngomong ke diri sendiri. -(으)ㄹ걸 di sini artinya nyesel, bukan kayaknya.",
-          ],
-          [
-            ref("그렇게 많이 먹지 말걸.", "ki-asseoya"),
-            "Harusnya nggak ...: pakai -지 말걸 atau -지 말았어야 했는데.",
-          ],
-          [
-            ref("안전모를 써야 돼요.", "ki-aya-hada"),
-            "Harusnya yang artinya aturan atau wajib. Bukan nyesel.",
-          ],
-        ]),
+        p(
+          "Nyesel pakai ",
+          ref("-았/었어야 했는데", "ki-asseoya"),
+          ", atau versi santainya -(으)ㄹ걸. Harusnya yang artinya aturan pakai ",
+          ref("-아/어야 하다", "ki-aya-hada"),
+          ".",
+        ),
         h3("Contoh"),
         ex("더 열심히 공부했어야 했는데.", "Harusnya aku belajar lebih giat."),
         ex("그 말은 하지 말았어야 했는데.", "Harusnya aku nggak ngomong gitu."),
-        ex("어제 일찍 잘걸.", "Harusnya kemarin tidur lebih awal."),
+        ex("미리 예약했어야 했는데요.", "Harusnya saya pesen dari awal."),
+        ex("아, 택시 탈걸.", "Duh, harusnya tadi naik taksi."),
         callout(
           "warning",
           b("Jebakan: jangan buang 었-nya."),
@@ -56,44 +81,65 @@ export default defineBab({
           i('"harus bawa"'),
           ", kayak ngomongin aturan, bukan nyesel.",
         ),
+        callout(
+          "tip",
+          "Berandai-andai soal yang udah lewat? Cek ",
+          ref("kalau aja", "ik-kalau-aja"),
+          ". Kecewa karena keadaan, bukan salahmu: ",
+          ref("sayangnya", "ik-sayangnya"),
+          ".",
+        ),
       ],
     },
     "ik-kalau-aja": {
       description:
         "Kalau aja buat hal yang udah lewat pakai -았/었으면 좋았을 텐데. Buat harapan yang masih mungkin, pakai -았/었으면 좋겠다.",
       blocks: [
+        grammar({
+          number: "02",
+          theme: "blue",
+          title: "kalau aja → -았/었으면 좋았을 텐데",
+          descriptionKo:
+            "지나간 일을 아쉬워하면서 상상할 때 -았/었으면 좋았을 텐데를 써요.",
+          descriptionTranslation:
+            "Kalau aja atau coba soal hal yang udah lewat pakai -았/었으면 좋았을 텐데. Boleh juga digantung: -았/었으면.... Buat harapan yang masih mungkin, ujungnya ganti jadi 좋겠다.",
+          rules: [
+            r(
+              "Udah lewat",
+              "-았/었으면 좋았을 텐데",
+              "너도 왔으면 좋았을 텐데.",
+            ),
+            r("Digantung, santai", "-았/었으면...", "너도 왔으면..."),
+            r("Masih berharap", "-았/었으면 좋겠다", "내일 쉬었으면 좋겠다."),
+          ],
+          examples: [
+            e("어제 너도 ", "왔으면 좋았을 텐데", "."),
+            e("아까 더 일찍 ", "왔으면 좋았을 텐데", "."),
+            e("빨리 고향에 ", "갔으면 좋겠어요", "."),
+          ],
+        }),
         p(
           i('"Coba kemarin kamu dateng, seru banget loh."'),
           " Kamu berandai-andai soal hal yang udah lewat. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("어제 너도 왔으면 좋았을 텐데.", "ki-asseumyeon-teonde"),
-            "Andai soal masa lalu. Udah lewat, nggak bisa diubah.",
-          ],
-          [
-            ref("어제 너도 왔으면...", "ki-asseumyeon-teonde"),
-            "Digantung. Lebih santai, rasa sayangnya kerasa dari nada.",
-          ],
-          [
-            ref("내일 쉬었으면 좋겠다.", "ki-asseumyeon-teonde"),
-            "Andai soal nanti, masih berharap. Ujungnya 좋겠다.",
-          ],
-        ]),
+        p(
+          "Pakai ",
+          ref("-았/었으면 좋았을 텐데", "ki-asseumyeon-teonde"),
+          ". Bagian kalau-nya dari ",
+          ref("-(으)면", "ki-myeon"),
+          ", tapi dikasih lampau karena kejadiannya udah lewat.",
+        ),
         h3("Contoh"),
         ex(
           "그때 한국어를 더 배웠으면 좋았을 텐데요.",
           "Coba dulu aku belajar bahasa Korea lebih banyak.",
         ),
+        ex("돈을 좀 모았으면 좋았을 텐데.", "Coba dulu aku nabung."),
         ex(
-          "아까 더 일찍 왔으면 좋았을 텐데.",
-          "Coba tadi aku dateng lebih awal.",
+          "어제 너도 왔으면... 진짜 재밌었어.",
+          "Coba kemarin kamu dateng... seru banget.",
         ),
-        ex(
-          "빨리 고향에 갔으면 좋겠어요.",
-          "Pengen banget cepet pulang kampung.",
-        ),
+        ex("주말에 비가 안 왔으면 좋겠다.", "Semoga akhir pekan nggak hujan."),
         callout(
           "warning",
           b('Jebakan: "coba" yang dua.'),
@@ -109,39 +155,56 @@ export default defineBab({
           b("-았/었으면 좋았을 텐데"),
           ".",
         ),
+        callout(
+          "tip",
+          "Nyesel karena kamu sendiri yang salah? Cek ",
+          ref("harusnya", "ik-harusnya"),
+          ". Kecewa karena keadaan: ",
+          ref("sayangnya", "ik-sayangnya"),
+          ".",
+        ),
       ],
     },
     "ik-terserah": {
       description:
         "Terserah punya banyak versi: 네가 정해, 편한 대로 해, 아무거나 괜찮아, sampai 마음대로 해 yang bisa kedengeran ketus.",
       blocks: [
+        grammar({
+          number: "03",
+          theme: "blue",
+          title: "terserah → 마음대로 해, 아무거나",
+          descriptionKo:
+            "상대에게 선택을 맡길 때 아무거나, 편한 대로, 마음대로 같은 말을 써요.",
+          descriptionTranslation:
+            "Terserah punya banyak versi, dan nadanya bisa beda jauh. Paling aman 아무거나 괜찮아 (apa aja boleh). Ke atasan pakai 편하신 대로 하세요, soalnya 마음대로 해 bisa kedengeran ketus.",
+          rules: [
+            r("Apa aja boleh", "아무거나 괜찮아", "저는 아무거나 괜찮아요."),
+            r("Tempat mana aja", "아무 데나", "아무 데나 괜찮아."),
+            r("Ke teman", "네가 정해", "난 몰라, 네가 정해."),
+            r("Ke atasan", "편하신 대로 하세요", "사장님 편하신 대로 하세요."),
+            r("Kesel, nyerah", "마음대로 해", "몰라, 마음대로 해!"),
+          ],
+          examples: [
+            e("저는 ", "아무거나", " 괜찮아요."),
+            e("사장님 ", "편하신 대로", " 하세요."),
+            e("", "마음대로", " 해!"),
+          ],
+        }),
         p(
           i('"Mau makan apa?" "Terserah."'),
           " Kata paling legendaris, dan nadanya bisa beda jauh. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("아무거나 괜찮아요.", "ki-maeumdaero"),
-            "Apa aja boleh. Paling aman, juga ke orang yang lebih tua.",
-          ],
-          [
-            b("네가 정해."),
-            "Kamu yang nentuin (정하다 = menentukan). Santai, ke teman.",
-          ],
-          [
-            b("편하신 대로 하세요."),
-            "Terserah Bapak/Ibu, senyamannya. Sopan banget.",
-          ],
-          [
-            ref("마음대로 해.", "ki-maeumdaero"),
-            "Terserah kamu. Bisa kedengeran ketus atau nyerah, tergantung nada.",
-          ],
-        ]),
+        p(
+          "Paling aman ",
+          ref("아무거나", "ki-maeumdaero"),
+          ". Kalau mau nyerahin keputusan, ",
+          ref("마음대로 해", "ki-maeumdaero"),
+          ", tapi hati-hati sama nadanya.",
+        ),
         h3("Contoh"),
         ex("아무 데나 괜찮아.", "Terserah, di mana aja oke."),
         ex("저는 다 좋아요.", "Aku sih semua oke."),
-        ex("마음대로 해!", "Terserah kamu deh!", "nada naik, kesel"),
+        ex("네가 골라.", "Kamu aja yang pilih."),
         ...chat([
           { who: "Jisu", ko: "뭐 먹을래?", id: "Mau makan apa?" },
           { who: "Rina", ko: "아무거나 괜찮아.", id: "Terserah, apa aja oke." },
@@ -163,36 +226,68 @@ export default defineBab({
           b("저는 아무거나 괜찮아요"),
           ".",
         ),
+        callout(
+          "tip",
+          "Mau nolak tawaran dengan halus, bukan nyerahin pilihan? Cek ",
+          ref("nggak usah", "ik-nggak-usah"),
+          ".",
+        ),
       ],
     },
     "ik-nggak-usah": {
       description:
         "Nggak usah = 안 -아도 돼 (nggak perlu). Buat nolak tawaran dengan halus, cukup 괜찮아요.",
       blocks: [
+        grammar({
+          number: "04",
+          theme: "blue",
+          title: "nggak usah → 안 -아도 돼, 괜찮아",
+          descriptionKo:
+            "할 필요가 없을 때는 안 -아도 돼요를 쓰고, 제안을 거절할 때는 괜찮아요를 써요.",
+          descriptionTranslation:
+            "Nggak usah yang artinya nggak perlu: 안 -아/어도 돼. Versi yang lebih rapi: -지 않아도 돼요. Buat nolak tawaran dengan halus, cukup 괜찮아요.",
+          rules: [
+            r("Nggak perlu, santai", "안 -아/어도 돼", "안 와도 돼."),
+            r("Lebih rapi", "-지 않아도 돼요", "오지 않아도 돼요."),
+            r("Nolak tawaran", "괜찮아요", "괜찮아요. 감사합니다."),
+            r(
+              "Nggak usah dipikirin",
+              "신경 쓰지 마",
+              "신경 쓰지 마. 별일 아니야.",
+            ),
+            r("Ketus", "됐어", "됐어, 안 해도 돼."),
+          ],
+          examples: [
+            e("돈 ", "안 내도 돼", ". 내가 살게."),
+            e("내일은 일찍 ", "안 와도 돼요", "."),
+            e("", "괜찮아요", ". 감사합니다."),
+          ],
+        }),
         p(
           i('"Nggak usah dateng, aku udah sembuh kok."'),
           " Nggak usah bisa berarti nggak perlu, atau nolak tawaran dengan halus. Gimana bilangnya?",
         ),
-        table([
-          ["Korea", "Nuansa"],
-          [
-            ref("안 와도 돼.", "ki-ji-anado-doeda"),
-            "Nggak perlu. Paling umum buat ngobrol.",
-          ],
-          [
-            ref("오지 않아도 돼요.", "ki-ji-anado-doeda"),
-            "Sama, sedikit lebih rapi dan formal.",
-          ],
-          [b("괜찮아요."), "Nolak tawaran dengan halus: nggak usah, makasih."],
-          [
-            ref("신경 쓰지 마.", "ki-ji-maseyo"),
-            '"Nggak usah dipikirin." Santai, ke teman.',
-          ],
-        ]),
+        p(
+          "Nggak perlu pakai ",
+          ref("-지 않아도 되다", "ki-ji-anado-doeda"),
+          ", yang versi ngobrolnya 안 -아/어도 돼. Nolak tawaran cukup 괜찮아요. Nggak usah dipikirin: ",
+          ref("신경 쓰지 마", "ki-ji-maseyo"),
+          ". Versi ketusnya: ",
+          ref("됐어", "ki-dwaesseo"),
+          ".",
+        ),
         h3("Contoh"),
-        ex("돈 안 내도 돼. 내가 살게.", "Nggak usah bayar. Aku traktir."),
-        ex("내일은 일찍 안 와도 돼요.", "Besok nggak usah dateng pagi."),
         ex("걱정하지 않아도 돼요.", "Nggak usah khawatir."),
+        ex("오늘은 야근 안 해도 돼요.", "Hari ini nggak usah lembur."),
+        ex(
+          "괜찮아요. 아까 마셨어요.",
+          "Nggak usah, tadi udah minum kok.",
+          "nolak kopi dari 반장님",
+        ),
+        ex(
+          "신경 쓰지 마. 별일 아니야.",
+          "Nggak usah dipikirin. Bukan apa-apa kok.",
+        ),
         callout(
           "warning",
           b("Jebakan terbesar: nggak usah bukan nggak boleh."),
@@ -201,6 +296,14 @@ export default defineBab({
           " = nggak usah dateng (boleh dateng kalau mau). ",
           ref("오면 안 돼", "ki-myeon-an-doeda"),
           " = nggak boleh dateng (dilarang). Salah pilih, maksud kamu jadi beda jauh.",
+        ),
+        callout(
+          "tip",
+          "Nyerahin pilihan ke orang lain? Cek ",
+          ref("terserah", "ik-terserah"),
+          ". Nyesel karena udah ngelakuin sesuatu: ",
+          ref("harusnya", "ik-harusnya"),
+          " (-지 말걸).",
         ),
       ],
     },

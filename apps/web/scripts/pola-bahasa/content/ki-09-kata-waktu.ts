@@ -1,4 +1,18 @@
-import { b, callout, defineBab, ex, h3, i, p, ref } from "../blocks";
+import { b, callout, defineBab, ex, grammar, h3, i, p, ref } from "../blocks";
+
+/** One rule row of a grammar card. */
+const r = (condition: string, form: string, example: string) => ({
+  condition,
+  form,
+  example,
+});
+
+/** One grammar-card example; `emphasis` is the word itself. */
+const e = (before: string, emphasis: string, after: string) => ({
+  before,
+  emphasis,
+  after,
+});
 
 export default defineBab({
   key: "ki-09-kata-waktu",
@@ -7,26 +21,36 @@ export default defineBab({
       description:
         "좀 asalnya ‘sedikit’, tapi di obrolan tugas utamanya ngalusin permintaan, persis kayak ‘dong’.",
       blocks: [
-        callout(
-          "info",
-          b("좀"),
-          " = ",
-          i("dong, sedikit, agak"),
-          ". Asalnya dari 조금 (sedikit). Taruh sebelum kata kerja atau setelah kata benda yang diminta: ",
-          b("좀 도와주세요"),
-          ", ",
-          b("소금 좀 주세요"),
-          ". Kalau ketemu kata sifat, artinya ",
-          i("agak"),
-          ": 좀 비싸요.",
-        ),
+        grammar({
+          number: "01",
+          title: "좀",
+          theme: "amber",
+          descriptionKo: "부탁을 부드럽게 하거나 ‘조금’이라는 뜻으로 써요.",
+          descriptionTranslation:
+            "좀 asalnya dari 조금 (sedikit). Di obrolan, tugas utamanya ngalusin permintaan, persis kayak “dong”. Kalau ketemu kata sifat, artinya “agak”.",
+          rules: [
+            r("Minta tolong", "좀 + kata kerja", "좀 도와주세요."),
+            r("Minta barang", "benda + 좀", "소금 좀 주세요."),
+            r("Minta izin", "좀 + -아도 될까요?", "좀 일찍 가도 될까요?"),
+            r("Kata sifat", "좀 = agak", "좀 비싸요."),
+            r("Nolak halus", "좀 그래요", "음... 좀 그래요."),
+          ],
+          examples: [
+            e("문 ", "좀", " 열어 주세요."),
+            e("물 ", "좀", " 주세요."),
+            e("오늘은 ", "좀", " 피곤해요."),
+          ],
+          tipKo: "좀이 없으면 부탁이 명령처럼 들릴 수 있어요.",
+          tipTranslation:
+            "Tanpa 좀, permintaan bisa kedengeran kayak perintah. Tambahin 좀, langsung lebih halus.",
+        }),
         p(
           b("Artinya apa sih? "),
           "Bandingin ",
-          i("‘Bantu!’"),
+          i("“Bantu!”"),
           " sama ",
-          i("‘Bantuin dong.’"),
-          " Isinya sama, rasanya beda jauh. 좀 itu ‘dong’-nya bahasa Korea: tanpa 좀, permintaan bisa kedengeran kayak perintah.",
+          i("“Bantuin dong.”"),
+          " Isinya sama, rasanya beda jauh. 좀 itu “dong”-nya bahasa Korea.",
         ),
         h3("Contoh"),
         ex("좀 도와주세요.", "Bantuin dong."),
@@ -39,9 +63,9 @@ export default defineBab({
         ex("야, 좀 조용히 해!", "Woy, diem dong!", "반말, kesel"),
         callout(
           "warning",
-          "Jebakan: 좀 nggak selalu ‘sedikit’. Kalau temen Korea jawab ajakanmu pakai ",
+          "Jebakan: 좀 nggak selalu “sedikit”. Kalau temen Korea jawab ajakanmu pakai ",
           b("음... 좀 그래"),
-          ", itu bukan ‘agak oke’, tapi ‘nggak deh’ versi halus.",
+          ", itu bukan “agak oke”, tapi “nggak deh” versi halus.",
         ),
         callout(
           "tip",
@@ -55,38 +79,48 @@ export default defineBab({
       description:
         "벌써 dan 이미 sama-sama ‘udah’: yang satu kaget karena kecepetan, yang satu fakta datar.",
       blocks: [
-        callout(
-          "info",
-          b("벌써"),
-          " = ",
-          i("udah (kok cepet?)"),
-          ", kamu kaget karena lebih cepet dari dugaan. ",
-          b("이미"),
-          " = ",
-          i("sudah"),
-          ", fakta datar, sering dengan rasa ‘udah telat’. Dua-duanya ditaruh sebelum kata kerja, biasanya bentuk lampau.",
-        ),
+        grammar({
+          number: "02",
+          title: "벌써 / 이미",
+          theme: "amber",
+          descriptionKo:
+            "벌써는 생각보다 빨라서 놀랄 때, 이미는 끝난 사실을 담담하게 말할 때 써요.",
+          descriptionTranslation:
+            "Dua-duanya “udah”. 벌써 dipakai kalau kamu kaget karena lebih cepet dari dugaan. 이미 itu fakta datar, sering dengan rasa “udah telat”.",
+          rules: [
+            r("Kaget, kecepetan", "벌써", "벌써 열 시예요?"),
+            r("Nggak kerasa", "벌써 + -네(요)", "벌써 일 년이 지났네."),
+            r("Fakta, udah telat", "이미", "기차가 이미 떠났어요."),
+            r("Udah tahu dari tadi", "이미", "이미 알고 있어요."),
+            r("“Udah” biasa", "cukup bentuk lampau", "밥 먹었어요."),
+          ],
+          examples: [
+            e("", "벌써", " 왔어요? 빠르네요!"),
+            e("버스가 ", "이미", " 떠났어요."),
+            e("", "벌써", " 금요일이네요!"),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "벌써 itu ",
-          i("‘hah, udah?!’"),
+          i("“hah, udah?!”"),
           ". 이미 itu ",
-          i("‘udah dari tadi, telat kamu’"),
+          i("“udah dari tadi, kamu telat”"),
           ". Kalau kamu nggak kaget dan nggak telat, nggak usah pakai dua-duanya.",
         ),
         h3("Contoh"),
         ex("벌써 열 시예요?", "Hah, udah jam sepuluh?"),
-        ex("벌써 다 먹었어요? 빠르다!", "Udah abis? Cepet amat!"),
+        ex("벌써 다 먹었어요? 빠르네요!", "Udah abis? Cepet amat!"),
         ex("기차가 이미 떠났어요.", "Keretanya udah berangkat.", "telat"),
         ex("그건 이미 알고 있어요.", "Itu aku udah tahu kok."),
         ex("벌써 일 년이 지났네.", "Nggak kerasa udah setahun ya.", "반말"),
         callout(
           "warning",
-          "Jebakan: ‘udah’ yang biasa (udah makan, udah sampai) cukup bentuk lampau: ",
+          "Jebakan: “udah” yang biasa (udah makan, udah sampai) cukup bentuk lampau: ",
           b("밥 먹었어요"),
           ". Kalau kamu bilang ",
           b("벌써 왔어요?"),
-          " ke temen yang baru dateng, artinya ‘kok udah dateng? cepet banget’.",
+          " ke temen yang baru dateng, artinya “kok udah dateng? cepet banget”.",
         ),
         callout(
           "tip",
@@ -104,34 +138,39 @@ export default defineBab({
       description:
         "아직 bisa ‘belum’ atau ‘masih’, tergantung kalimatnya. 아직도 itu ‘masih aja’.",
       blocks: [
-        callout(
-          "info",
-          b("아직"),
-          " + kalimat negatif = ",
-          i("belum"),
-          " (아직 안 먹었어요). ",
-          b("아직"),
-          " + kalimat positif = ",
-          i("masih"),
-          " (아직 일해요). ",
-          b("아직도"),
-          " = ",
-          i("masih aja"),
-          ", biasanya dengan nada heran atau kesel.",
-        ),
+        grammar({
+          number: "03",
+          title: "아직 / 아직도",
+          theme: "amber",
+          descriptionKo:
+            "아직은 일이 아직 끝나지 않았을 때, 아직도는 놀라거나 답답할 때 써요.",
+          descriptionTranslation:
+            "Bahasa Indonesia punya “belum” dan “masih”, bahasa Korea cukup 아직. Kalimat negatif bikin artinya “belum”, kalimat positif bikin artinya “masih”. 아직도 itu “masih aja”, biasanya heran atau kesel.",
+          rules: [
+            r("+ kalimat negatif", "아직 안/못 = belum", "아직 안 먹었어요."),
+            r("+ kalimat positif", "아직 = masih", "아직 일해요."),
+            r("Jawab “belum”", "아직이요 / 아직요", "아직이요."),
+            r("Heran, kesel", "아직도 = masih aja", "아직도 자?"),
+          ],
+          examples: [
+            e("", "아직", " 숙제 안 했어요."),
+            e("", "아직", " 회사에 있어요."),
+            e("", "아직도", " 안 왔어요?"),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
-          "Bahasa Indonesia punya dua kata, ",
+          "Satu kata, dua arti. Yang nentuin ",
           i("belum"),
-          " dan ",
+          " atau ",
           i("masih"),
-          ". Bahasa Korea cukup satu, 아직, lalu kalimat sesudahnya yang nentuin artinya.",
+          " itu kalimat sesudahnya: ada 안/못 berarti belum, nggak ada berarti masih.",
         ),
         h3("Contoh"),
         ex("아직 밥 안 먹었어요.", "Aku belum makan."),
         ex("A: 다 했어요? B: 아직이요.", "A: Udah selesai? B: Belum."),
         ex("아직 일하고 있어요.", "Masih kerja."),
-        ex("한국어 아직 잘 못해요.", "Bahasa Koreaku masih belum lancar."),
+        ex("한국어는 아직 잘 못해요.", "Bahasa Koreaku masih belum lancar."),
         ex(
           "아직도 자? 벌써 열두 시야!",
           "Masih aja tidur? Udah jam dua belas!",
@@ -139,9 +178,9 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "Jebakan: kalau ditanya ‘udah?’ dan jawabannya ‘belum’, bilang ",
+          "Jebakan: kalau ditanya “udah?” dan jawabannya “belum”, bilang ",
           b("아직이요"),
-          " (atau 아직요), bukan 아니요. 아니요 artinya ‘nggak’, kedengeran kayak kamu nggak bakal ngerjainnya sama sekali.",
+          " (atau 아직요), bukan 아니요. 아니요 artinya “nggak”, kedengeran kayak kamu nggak bakal ngerjainnya sama sekali.",
         ),
         callout(
           "tip",
@@ -149,6 +188,8 @@ export default defineBab({
           ref("belum", "ik-belum"),
           " dan ",
           ref("masih", "ik-masih"),
+          ". Lawan katanya: ",
+          ref("벌써", "ki-beolsseo"),
           ".",
         ),
       ],
@@ -157,26 +198,29 @@ export default defineBab({
       description:
         "‘Baru’ versi waktu: 방금 (barusan), 이제 막 (baru mulai), 이제야 (baru sekarang, telat).",
       blocks: [
-        callout(
-          "info",
-          b("방금"),
-          " = ",
-          i("baru aja, barusan"),
-          " (udah lewat). ",
-          b("이제 막"),
-          " = ",
-          i("baru mulai, baru banget"),
-          ". ",
-          b("이제야"),
-          " = ",
-          i("baru sekarang"),
-          " (akhirnya, tapi telat). Ketiganya ditaruh sebelum kata kerja.",
-        ),
+        grammar({
+          number: "04",
+          title: "방금 / 이제 막 / 이제야",
+          theme: "amber",
+          descriptionKo:
+            "방금은 조금 전, 이제 막은 막 시작한 때, 이제야는 늦게 이루어진 때를 말해요.",
+          descriptionTranslation:
+            "Kata “baru” di bahasa Indonesia artinya banyak, bahasa Korea misahin. 방금 itu barusan (udah lewat), 이제 막 itu baru mulai, dan 이제야 itu baru sekarang, setelah lama atau telat.",
+          rules: [
+            r("Barusan, udah lewat", "방금", "방금 도착했어요."),
+            r("Baru mulai", "이제 막", "이제 막 시작했어요."),
+            r("Baru sekarang, telat", "이제야", "이제야 이해했어요."),
+            r("Bentar lagi (nanti)", "금방, bukan 방금", "금방 갈게요."),
+          ],
+          examples: [
+            e("", "방금", " 전화했어요."),
+            e("", "이제 막", " 출발했어요."),
+            e("", "이제야", " 연락이 왔어요."),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
-          "Kata ",
-          i("baru"),
-          " di bahasa Indonesia artinya banyak. Bahasa Korea misahin: kejadian barusan, sesuatu yang baru mulai, dan sesuatu yang baru kejadian setelah lama ditunggu.",
+          "Tanya dulu ke diri sendiri: kejadiannya barusan lewat (방금), baru aja mulai (이제 막), atau baru kejadian setelah lama ditunggu (이제야)?",
         ),
         h3("Contoh"),
         ex("방금 도착했어요.", "Baru aja sampai."),
@@ -196,7 +240,7 @@ export default defineBab({
           b("방금"),
           " dan ",
           b("금방"),
-          " hurufnya kebalik, artinya juga kebalik. 방금 = barusan (udah lewat). 금방 = bentar lagi (nanti). 금방 갈게요 = ‘Bentar lagi aku dateng.’",
+          " hurufnya kebalik, artinya juga kebalik. 방금 = barusan (udah lewat). 금방 = bentar lagi (nanti). 금방 갈게요 = “Bentar lagi aku dateng.”",
         ),
         callout(
           "tip",
@@ -204,7 +248,7 @@ export default defineBab({
           ref("baru", "ik-baru"),
           ". Bedanya sama ",
           ref("-밖에 안", "ki-bakke"),
-          ": itu ‘baru’ yang soal jumlah (baru tiga orang).",
+          ": itu “baru” yang soal jumlah (baru tiga orang).",
         ),
       ],
     },
@@ -212,22 +256,31 @@ export default defineBab({
       description:
         "-밖에 = cuma, baru (jumlahnya dikit). Wajib diikuti kalimat negatif.",
       blocks: [
-        callout(
-          "info",
-          b("-밖에"),
-          " = ",
-          i("cuma, baru"),
-          ", dengan rasa ‘kurang dari harapan’. Nempel langsung ke kata benda, terus ",
-          b("wajib"),
-          " diikuti kalimat negatif: 안, 못, 없다, atau 모르다. Contoh: ",
-          b("만 원밖에 없어요"),
-          ".",
-        ),
+        grammar({
+          number: "05",
+          title: "-밖에 안/못",
+          theme: "amber",
+          descriptionKo: "생각보다 적을 때 ‘-밖에’ 뒤에 부정 표현을 써요.",
+          descriptionTranslation:
+            "-밖에 itu “cuma” atau “baru”, dengan rasa kurang dari harapan. Nempel langsung ke kata benda, dan wajib diikuti kalimat negatif: 안, 못, 없다, atau 모르다.",
+          rules: [
+            r("+ 안 (nggak)", "-밖에 안", "세 명밖에 안 왔어요."),
+            r("+ 못 (nggak bisa)", "-밖에 못", "조금밖에 못 해요."),
+            r("+ 없다 (nggak ada)", "-밖에 없다", "만 원밖에 없어요."),
+            r("+ 모르다", "-밖에 모르다", "그 사람은 일밖에 몰라요."),
+            r("Kalimat positif", "-만, bukan -밖에", "세 명만 왔어요."),
+          ],
+          examples: [
+            e("손님이 두 명", "밖에 안", " 왔어요."),
+            e("현금이 오천 원", "밖에 없어요", "."),
+            e("어제 네 시간", "밖에 못", " 잤어요."),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Strukturnya mirip ",
-          i("‘nggak ada selain ...’"),
-          ". 세 명밖에 안 왔어요 itu literally ‘selain tiga orang, nggak ada yang dateng’, alias baru tiga orang.",
+          i("“nggak ada selain …”"),
+          ". 세 명밖에 안 왔어요 harfiahnya “selain tiga orang, nggak ada yang dateng”, alias baru tiga orang.",
         ),
         h3("Contoh"),
         ex("세 명밖에 안 왔어요.", "Baru tiga orang yang dateng."),
@@ -243,7 +296,7 @@ export default defineBab({
           "warning",
           "Jebakan: jangan lupa negatifnya. ✗ 세 명밖에 왔어요 itu salah. Kalau mau kalimat positif, pakai ",
           b("-만"),
-          ": 세 명만 왔어요 (cuma tiga, netral). -밖에 안 lebih kerasa ‘dikit banget’.",
+          ": 세 명만 왔어요 (cuma tiga, netral). -밖에 안 lebih kerasa “dikit banget”.",
         ),
         callout(
           "tip",
@@ -251,7 +304,7 @@ export default defineBab({
           ref("baru", "ik-baru"),
           ". Bedanya sama ",
           ref("방금 / 이제야", "ki-bangeum"),
-          ": itu ‘baru’ yang soal waktu.",
+          ": itu “baru” yang soal waktu.",
         ),
       ],
     },
@@ -259,17 +312,34 @@ export default defineBab({
       description:
         "거의 = hampir, buat jumlah atau tingkat: hampir selesai, hampir tiap hari.",
       blocks: [
-        callout(
-          "info",
-          b("거의"),
-          " = ",
-          i("hampir"),
-          " buat jumlah atau tingkat. Sering bareng 다: ",
-          b("거의 다"),
-          " (hampir semua). Kalau diikuti kalimat negatif, artinya ",
-          i("hampir nggak, jarang banget"),
-          ": 거의 안 먹어요.",
-        ),
+        grammar({
+          number: "06",
+          title: "거의",
+          theme: "amber",
+          descriptionKo: "양이나 정도가 거의 다 찼을 때 써요.",
+          descriptionTranslation:
+            "거의 itu “hampir” buat jumlah atau tingkat. Sering bareng 다 jadi 거의 다 (hampir semua). Kalau diikuti kalimat negatif, artinya “hampir nggak pernah”.",
+          rules: [
+            r("Hampir selesai", "거의 다", "거의 다 했어요."),
+            r("Hampir sampai", "거의 다 왔다", "거의 다 왔어요!"),
+            r("Hampir tiap …", "거의 매일", "거의 매일 야근해요."),
+            r(
+              "+ kalimat negatif",
+              "거의 안 = jarang banget",
+              "거의 안 먹어요.",
+            ),
+            r(
+              "Nyaris kejadian",
+              "-(으)ㄹ 뻔했다, bukan 거의",
+              "넘어질 뻔했어요.",
+            ),
+          ],
+          examples: [
+            e("숙제 ", "거의", " 다 끝났어요."),
+            e("월급을 ", "거의", " 다 썼어요."),
+            e("요즘 커피는 ", "거의", " 안 마셔요."),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Bayangin progress bar. 거의 itu bar yang udah 90%: hampir selesai, hampir nyampe, hampir abis.",
@@ -288,7 +358,7 @@ export default defineBab({
         ex("고기는 거의 안 먹어요.", "Aku hampir nggak pernah makan daging."),
         callout(
           "warning",
-          "Jebakan: ‘hampir jatuh’, ‘hampir telat’ (nyaris kejadian, tapi nggak jadi) bukan 거의. Pakai ",
+          "Jebakan: “hampir jatuh”, “hampir telat” (nyaris kejadian, tapi nggak jadi) bukan 거의. Pakai ",
           ref("-(으)ㄹ 뻔했다", "ki-eul-ppeonhada"),
           ": 넘어질 뻔했어요.",
         ),
@@ -304,17 +374,34 @@ export default defineBab({
       description:
         "결국 = akhirnya, ujung-ujungnya: hasil setelah proses atau galau, sering nggak sesuai rencana.",
       blocks: [
-        callout(
-          "info",
-          b("결국"),
-          " = ",
-          i("akhirnya, ujung-ujungnya"),
-          ", setelah proses, galau, atau perjuangan. Hasilnya bisa baik atau buruk, tapi sering nggak sesuai rencana awal. Taruh di awal kalimat atau sebelum kata kerja.",
-        ),
+        grammar({
+          number: "07",
+          title: "결국",
+          theme: "amber",
+          descriptionKo:
+            "오래 고민하거나 노력한 뒤의 마지막 결과를 말할 때 써요.",
+          descriptionTranslation:
+            "결국 itu “akhirnya” atau “ujung-ujungnya”, hasil setelah proses, galau, atau perjuangan. Hasilnya bisa baik atau buruk, tapi sering nggak sesuai rencana awal.",
+          rules: [
+            r("Setelah galau", "-다가 결국", "고민하다가 결국 안 갔어요."),
+            r("Nahan, tetap kejadian", "결국 + lampau", "결국 울었어요."),
+            r(
+              "Pada akhirnya (nanti)",
+              "결국 + -(으)ㄹ 거예요",
+              "결국 잘될 거예요.",
+            ),
+            r("“Akhirnya!” (seneng)", "드디어, bukan 결국", "드디어 끝났다!"),
+          ],
+          examples: [
+            e("계속 참다가 ", "결국", " 화를 냈어요."),
+            e("늦게 일어나서 ", "결국", " 비행기를 놓쳤어요."),
+            e("비 때문에 ", "결국", " 소풍이 취소됐어요."),
+          ],
+        }),
         p(
           b("Artinya apa sih? "),
           "Pas banget sama ",
-          i("‘ujung-ujungnya’"),
+          i("“ujung-ujungnya”"),
           ": udah mikir lama, udah nahan-nahan, eh hasilnya begini juga.",
         ),
         h3("Contoh"),
@@ -330,9 +417,9 @@ export default defineBab({
         ),
         callout(
           "warning",
-          "Jebakan: ‘akhirnya!’ yang seneng karena udah lama ditunggu itu ",
+          "Jebakan: “akhirnya!” yang seneng karena udah lama ditunggu itu ",
           b("드디어"),
-          ", bukan 결국. 드디어 비자가 나왔어요! = ‘Akhirnya visaku keluar!’",
+          ", bukan 결국. 드디어 비자가 나왔어요! = “Akhirnya visaku keluar!”",
         ),
         callout(
           "tip",
@@ -340,7 +427,7 @@ export default defineBab({
           ref("nggak jadi", "ik-nggak-jadi"),
           ". Bedanya sama ",
           ref("-게 되다", "ki-ge-doeda"),
-          ": itu akhiran kata kerja (‘jadi ...’ karena keadaan), dan bisa dipakai bareng: 결국 한국에 가게 됐어요.",
+          ": itu akhiran kata kerja (“jadi …” karena keadaan), dan bisa dipakai bareng: 결국 한국에 가게 됐어요.",
         ),
       ],
     },
