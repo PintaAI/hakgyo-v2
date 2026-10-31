@@ -148,6 +148,33 @@ export type BundleSyncProgress = {
   /** Courses that gave up after repeated failures since the last idle state. */
   failed: number;
   activeCourseIds: string[];
+  /**
+   * Courses being downloaded because they are new on this device or changed
+   * on the server, queued or running. Periodic re-checks of an unchanged
+   * course are left out, so the learner only sees downloads that matter.
+   */
+  changingCourseIds: string[];
+  /** Of those, how many finished since the last idle state. */
+  changingDone: number;
+};
+
+/** What a bundle download did to a course on this device. */
+export type BundleChangeKind = "added" | "updated" | "failed";
+
+export type BundleChange = {
+  courseId: string;
+  kind: BundleChangeKind;
+  /** The course title from the bundle or the learner index, if known. */
+  title: string | null;
+  /** When the change happened (ms since epoch). */
+  at: number;
+};
+
+/** The bundle changes of one run of downloads, published once it settles. */
+export type BundleChangeBatch = {
+  id: number;
+  settledAt: number;
+  changes: BundleChange[];
 };
 
 export type MobileSyncEngineState = {
@@ -167,6 +194,15 @@ export type MobileSyncEngineState = {
   /** Server-suggested delay before the next manifest poll. */
   nextCheckAfterMs: number;
   lastRefreshedAt: number | null;
+  /** The latest change of each course in this session, by course id. */
+  bundleChanges: Record<string, BundleChange>;
+  /** The changes of the latest run of downloads, once it settled. */
+  lastBundleBatch: BundleChangeBatch | null;
+  /**
+   * Why the last checkpoint left operations in the outbox (offline,
+   * maintenance...), or null once a checkpoint reached the server.
+   */
+  outboxWaiting: SyncQueuedReason | null;
 };
 
 export type LearnerStatePatch = Partial<

@@ -78,3 +78,8 @@ export function openAssessmentEvent(
   if (replace) router.replace(href);
   else router.push(href);
 }
+
+/** Opens the sync status sheet (downloads, queued progress, courses on the device). */
+export function openSyncStatus() {
+  router.push("/sync-status" as Href);
+}

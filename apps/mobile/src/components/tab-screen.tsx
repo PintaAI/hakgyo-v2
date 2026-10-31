@@ -15,6 +15,7 @@ import {
   TabActionButton,
 } from "./sidebar/AndroidTabActions";
 import { SidebarToolbarButton } from "./sidebar/SidebarToolbarButton";
+import { SyncSnackbar } from "./sync-activity/sync-snackbar";
 
 const ios = Platform.OS === "ios";
 
@@ -190,6 +191,7 @@ export function TabScreen({
         {floating ? <MaintenanceBanner /> : null}
       </StudyScreen>
       {floating ? <TabActions right={right} floating /> : null}
+      <SyncSnackbar />
     </>
   );
 }

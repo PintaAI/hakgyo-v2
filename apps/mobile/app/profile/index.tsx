@@ -26,6 +26,7 @@ import {
 import { WeeklyStreak } from "../../src/components/weekly-streak";
 import { apiUrl } from "../../src/config";
 import { authClient } from "../../src/lib/auth-client";
+import { openSyncStatus } from "../../src/lib/navigation";
 import {
   APP_VERSION,
   installedReleaseNotes,
@@ -390,6 +391,12 @@ export default function ProfileScreen() {
                 }
                 symbol="arrow.triangle.2.circlepath"
                 onPress={() => void syncNow(activeOrganizationId ?? undefined)}
+              />
+              <SettingsRow
+                label="Status sinkron"
+                subtitle="Apa yang sedang diunduh dan kursus mana yang sudah siap dipakai offline."
+                symbol="arrow.down.circle"
+                onPress={openSyncStatus}
               />
               <SettingsRow
                 label="Periksa pembaruan"

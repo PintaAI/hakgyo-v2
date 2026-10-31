@@ -265,10 +265,30 @@ export function createMobileSyncEngine({
     maintenance: null,
     maintenanceRetryAt: null,
     isRefreshing: false,
-    bundles: { pending: 0, completed: 0, failed: 0, activeCourseIds: [] },
+    bundles: {
+      pending: 0,
+      completed: 0,
+      failed: 0,
+      activeCourseIds: [],
+      changingCourseIds: [],
+      changingDone: 0,
+    },
     nextCheckAfterMs: DEFAULT_CHECK_AFTER_MS,
     lastRefreshedAt: null,
+    bundleChanges: {},
+    lastBundleBatch: null,
+    outboxWaiting: null,
   };
+  let bundleBatchId = 0;
+
+  /** A course title from any loaded learner index. */
+  function indexedCourseTitle(courseId: string) {
+    for (const entry of indexes.values()) {
+      const course = entry.index.courses.find((item) => item.id === courseId);
+      if (course) return course.title;
+    }
+    return null;
+  }
 
   const stateListeners = new Set<(state: MobileSyncEngineState) => void>();
   const bundleTimingListeners = new Set<(timing: BundleTiming) => void>();
@@ -306,6 +326,17 @@ export function createMobileSyncEngine({
     },
     prepareNotices: prepareBundleNotices,
     onNoticesRecorded: () => void publishNotices(),
+    courseTitle: indexedCourseTitle,
+    onChange: (change) =>
+      publishState({
+        bundleChanges: { ...state.bundleChanges, [change.courseId]: change },
+      }),
+    onChangesSettled: (changes) => {
+      bundleBatchId += 1;
+      publishState({
+        lastBundleBatch: { id: bundleBatchId, settledAt: now(), changes },
+      });
+    },
   });
 
   function serialized<T>(work: () => Promise<T>) {
@@ -1066,6 +1097,13 @@ export function createMobileSyncEngine({
 
     const promise = checkpointTail
       .then(() => runCheckpoint(organizationId))
+      .then((result) => {
+        const outboxWaiting = result.state === "queued" ? result.reason : null;
+        if (outboxWaiting !== state.outboxWaiting) {
+          publishState({ outboxWaiting });
+        }
+        return result;
+      })
       .finally(() => {
         if (activeCheckpoints.get(scope)?.promise === promise)
           activeCheckpoints.delete(scope);
@@ -1157,18 +1195,20 @@ export function createMobileSyncEngine({
       const current = now();
       const requests = manifest.courses.flatMap((course) => {
         const meta = stored.get(course.courseId);
+        const changed = !meta || meta.revision !== course.revision;
         const outdated =
-          !meta ||
-          meta.revision !== course.revision ||
+          changed ||
           meta.schema !== manifest.bundleSchema ||
           meta.schema !== BUNDLE_SCHEMA ||
           current - meta.updatedAt >= bundleMaxAgeMs;
         if (!outdated) return [];
         // Immediate requests skip the background jitter (development resync).
         return [
-          immediateBundles
-            ? { courseId: course.courseId, priority: "requested" as const }
-            : { courseId: course.courseId },
+          {
+            courseId: course.courseId,
+            ...(immediateBundles ? { priority: "requested" as const } : {}),
+            ...(changed ? {} : { revalidate: true }),
+          },
         ];
       });
       if (requests.length) {

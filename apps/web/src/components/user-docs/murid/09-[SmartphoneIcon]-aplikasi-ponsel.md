@@ -49,6 +49,13 @@ Gambar dan suara hanya tersedia tanpa internet jika materinya sudah disimpan off
 
 Sinkronisasi artinya mengirim kemajuanmu dari ponsel ke Hakgyo dan mengambil materi terbaru. Biasanya ini berjalan otomatis saat kamu tersambung internet.
 
+Saat ada yang sedang terjadi, aplikasi memberi tahu kamu:
+
+- Di iPhone dengan iOS 26 atau lebih baru, muncul bar kecil di atas tab bawah. Isinya misalnya **Mengunduh Hangeul Mastery**, **Indonesia → Korea diperbarui**, atau **3 progres belum terkirim**. Bar ini hilang sendiri setelah selesai.
+- Di Android, muncul pesan singkat di bagian bawah layar. Ketuk **Lihat** untuk melihat detailnya.
+
+Ketuk bar atau **Lihat** untuk membuka **Status sinkron**. Di sana kamu bisa melihat apakah semua progres sudah terkirim, dan keadaan setiap kursus: **Mengunduh…**, **Diperbarui**, **Siap offline**, **Belum diunduh**, atau **Gagal, dicoba lagi**. Kamu juga bisa membukanya dari **Profil**, lalu **Pengaturan**, lalu **Status sinkron**.
+
 Untuk menjalankannya sendiri:
 
 1. Buka **Profil**, lalu **Pengaturan**.

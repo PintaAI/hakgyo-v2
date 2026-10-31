@@ -14,6 +14,7 @@ import {
 } from "@hakgyo/shared/mobile-sync";
 
 import {
+  BUNDLE_MAX_AGE_MS,
   createMobileSyncEngine,
   DEAD_LETTER_MIN_AGE_MS,
   DEAD_LETTER_MIN_FAILURES,
@@ -29,6 +30,7 @@ import { syncQueryKeys } from "./query-keys";
 import type {
   LearnerIndex,
   MobileSyncCommitResult,
+  MobileSyncEngineState,
   MobileSyncManifest,
   MobileSyncOperation,
   MobileSyncTransport,
@@ -1177,6 +1179,83 @@ describe("mobile sync engine index and bundles", () => {
     expect((await engine.refresh()).state).toBe("refreshed");
     expect(await store.loadBundleStructure("user-1", "course-1")).toBeNull();
     expect(engine.courseIdForItem("course-1-item")).toBeNull();
+    await engine.dispose();
+  });
+
+  test("reports added and updated courses but not re-checks of unchanged ones", async () => {
+    let courses = manifest().courses;
+    let revision = "3";
+    let clock = 1_000;
+    const states: MobileSyncEngineState[] = [];
+    const { engine } = engineFor({
+      now: () => clock,
+      onStateChange: (state) => states.push(state),
+      transport: {
+        getManifest: async () => manifest({ courses }),
+        fetchBundle: async ({ courseId }) => ({
+          status: "ok",
+          bundle: bundle(courseId, revision),
+          etag: null,
+          revision,
+        }),
+      },
+    });
+    await engine.initialize();
+    await engine.refresh();
+    await engine.whenBundlesIdle();
+
+    expect(
+      states.some((state) =>
+        state.bundles.changingCourseIds.includes("course-1"),
+      ),
+    ).toBe(true);
+    const added = engine.getState();
+    expect(added.lastBundleBatch?.changes).toEqual([
+      { courseId: "course-1", kind: "added", title: "course-1", at: 1_000 },
+    ]);
+    expect(added.bundleChanges["course-1"]?.kind).toBe("added");
+    expect(added.bundles.changingCourseIds).toEqual([]);
+
+    // A new revision on the server is an update.
+    courses = [
+      { courseId: "course-1", organizationId: "org-1", revision: "4" },
+    ];
+    revision = "4";
+    clock = 2_000;
+    await engine.refresh();
+    await engine.whenBundlesIdle();
+    const updated = engine.getState().lastBundleBatch;
+    expect(updated?.id).toBe((added.lastBundleBatch?.id ?? 0) + 1);
+    expect(updated?.changes.map((change) => change.kind)).toEqual(["updated"]);
+
+    // Only its age makes the course due again: a quiet re-check.
+    clock += BUNDLE_MAX_AGE_MS;
+    states.length = 0;
+    await engine.refresh(undefined, { force: true });
+    await engine.whenBundlesIdle();
+    expect(
+      states.some((state) => state.bundles.changingCourseIds.length > 0),
+    ).toBe(false);
+    expect(engine.getState().lastBundleBatch?.id).toBe(updated?.id);
+    await engine.dispose();
+  });
+
+  test("tells why operations wait in the outbox until a checkpoint lands", async () => {
+    let online = false;
+    const { engine } = engineFor({ isOnline: async () => online });
+    await engine.initialize();
+    await engine.putOperation({
+      id: "content:item-1",
+      kind: "CONTENT_COMPLETED",
+      courseItemId: "item-1",
+    });
+
+    await engine.checkpoint("organization-1");
+    expect(engine.getState().outboxWaiting).toBe("offline");
+
+    online = true;
+    expect((await engine.checkpoint("organization-1")).state).toBe("synced");
+    expect(engine.getState().outboxWaiting).toBeNull();
     await engine.dispose();
   });
 
