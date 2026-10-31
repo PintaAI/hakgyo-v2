@@ -44,6 +44,7 @@ import {
 import { isMissingFileProblem, loadPolaContent } from "./load-content";
 import {
   POLA_BABS,
+  POLA_COURSES,
   POLA_MATERIALS,
   type PolaBabKey,
   type PolaMaterialKey,
@@ -289,7 +290,7 @@ describe("buildCurricula", () => {
         progressionMode: "OPEN",
         enrollmentMode: "INVITE_ONLY",
         price: 0,
-        slug: `pola-${course.key}`,
+        slug: POLA_COURSES[course.key].slug,
       });
       const babs = POLA_BABS.filter((bab) => bab.course === course.key);
       expect(course.modules.map((row) => row.id)).toEqual(
@@ -1256,7 +1257,7 @@ describe("planImport", () => {
     snapshot.courses.push({
       ...snapshot.courses[0]!,
       id: "another-course",
-      slug: "pola-korea-indo",
+      slug: "korea-indonesia",
     });
     snapshot.assessments[0] = {
       ...snapshot.assessments[0]!,
@@ -1264,7 +1265,7 @@ describe("planImport", () => {
     };
     snapshot.modules[0] = { ...snapshot.modules[0]!, courseId: "elsewhere" };
     const text = plan(snapshot).errors.join("\n");
-    expect(text).toContain('already uses the slug "pola-korea-indo"');
+    expect(text).toContain('already uses the slug "korea-indonesia"');
     expect(text).toContain(
       `assessment ${built.assessments[0]!.id} exists in organization another-org`,
     );
