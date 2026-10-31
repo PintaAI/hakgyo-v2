@@ -31,9 +31,7 @@ export type SnapshotCourse = {
   description: string | null;
   status: string;
   progressionMode: string;
-  enrollmentMode: string | null;
-  price: number;
-  /** Course enrollments plus enrollments in the course's cohorts. */
+  /** Enrollments in the course's classes. */
   enrollmentCount: number;
 };
 export type SnapshotModule = {
@@ -253,8 +251,6 @@ const COURSE_FIELDS = [
   "description",
   "status",
   "progressionMode",
-  "enrollmentMode",
-  "price",
 ] as const;
 const MODULE_FIELDS = ["title", "description", "position"] as const;
 const MATERIAL_FIELDS = [

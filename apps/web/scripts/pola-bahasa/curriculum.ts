@@ -192,10 +192,8 @@ export type DesiredCourse = {
   slug: string;
   description: string;
   status: "PUBLISHED";
+  /** Learners join through a class, and none exists until one is set up. */
   progressionMode: "OPEN";
-  /** Invite only for now: learners cannot join on their own, so no cohort exists until one is set up. */
-  enrollmentMode: "INVITE_ONLY";
-  price: 0;
   modules: DesiredModule[];
 };
 
@@ -1067,8 +1065,6 @@ export function buildCourses(): DesiredCourse[] {
         description: POLA_COURSES[courseKey].description,
         status: "PUBLISHED",
         progressionMode: "OPEN",
-        enrollmentMode: "INVITE_ONLY",
-        price: 0,
         modules,
       };
     },

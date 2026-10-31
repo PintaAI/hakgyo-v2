@@ -96,9 +96,6 @@ async function loadSnapshot(
         description: true,
         status: true,
         progressionMode: true,
-        enrollmentMode: true,
-        price: true,
-        _count: { select: { enrollments: true } },
       },
     }),
     db.cohort.findMany({
@@ -299,10 +296,9 @@ async function loadSnapshot(
   }
   return {
     organizationId,
-    courses: courseRows.map(({ _count, ...row }) => ({
+    courses: courseRows.map((row) => ({
       ...row,
-      enrollmentCount:
-        _count.enrollments + (cohortEnrollments.get(row.id) ?? 0),
+      enrollmentCount: cohortEnrollments.get(row.id) ?? 0,
     })),
     modules: moduleRows.map(({ _count, ...row }) => ({
       ...row,
@@ -483,13 +479,9 @@ async function assertNoLearnerData(
     ],
   };
   const found = {
-    enrollments:
-      (await tx.courseEnrollment.count({
-        where: { courseId: { in: courseIds } },
-      })) +
-      (await tx.cohortEnrollment.count({
-        where: { cohort: { courseId: { in: courseIds } } },
-      })),
+    enrollments: await tx.cohortEnrollment.count({
+      where: { cohort: { courseId: { in: courseIds } } },
+    }),
     progress: await tx.contentProgress.count({
       where: { courseItemId: { in: itemIds } },
     }),
