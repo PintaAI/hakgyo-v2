@@ -396,6 +396,24 @@ html.dark:not(.bn-root) {
 
 @theme {
   --animate-scan-line: scan-line 2.4s ease-in-out infinite;
+  --animate-marquee: marquee 8s ease-in-out infinite;
+
+  /* One-line text that is wider than its box slides to its end and back,
+     pausing at both ends (see components/ui/marquee-text.tsx). */
+  @keyframes marquee {
+    0%,
+    15% {
+      translate: 0 0;
+    }
+    45%,
+    60% {
+      translate: calc(var(--marquee-distance, 0px) * -1) 0;
+    }
+    90%,
+    100% {
+      translate: 0 0;
+    }
+  }
 
   @keyframes scan-line {
     0%,

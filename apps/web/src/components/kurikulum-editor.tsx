@@ -72,6 +72,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { MarqueeText } from "~/components/ui/marquee-text";
 import {
   ResourcePicker,
   type ResourcePickerOption,
@@ -514,8 +515,8 @@ export function KurikulumEditor({
   const isReordering = reorderModules.isPending || reorderItems.isPending;
 
   return (
-    <div className="space-y-7">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-7 max-sm:space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 max-sm:flex-nowrap">
         <Link
           href={`/workspace/${organizationSlug}/courses/${course.id}`}
           className={cn(
@@ -528,7 +529,10 @@ export function KurikulumEditor({
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           {readinessQuery.data ? (
-            <ReadinessSummaryChip summary={readinessQuery.data.summary} />
+            <ReadinessSummaryChip
+              summary={readinessQuery.data.summary}
+              className="max-sm:hidden"
+            />
           ) : null}
           <Badge
             variant={course.status === "PUBLISHED" ? "default" : "outline"}
@@ -538,21 +542,31 @@ export function KurikulumEditor({
         </div>
       </div>
 
-      <header className="border-foreground/10 grid gap-6 border-b pb-7 lg:grid-cols-[1fr_auto] lg:items-end">
+      <header className="border-foreground/10 grid gap-6 border-b pb-7 max-sm:gap-4 max-sm:pb-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="max-w-3xl">
           <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.18em] uppercase">
             Pembuat kurikulum
           </p>
-          <h1 className="font-heading mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
+          <h1 className="font-heading mt-2 text-2xl font-medium tracking-tight sm:text-4xl">
             {course.title}
           </h1>
+          {/* Phones show the counts as one line instead of the summary card. */}
+          <p className="text-muted-foreground mt-1.5 text-xs tabular-nums sm:hidden">
+            {modules.length} bab · {itemCount} learning item
+            {readinessQuery.data ? (
+              <>
+                {" · "}
+                <CompactReadiness summary={readinessQuery.data.summary} />
+              </>
+            ) : null}
+          </p>
           <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed max-sm:hidden">
             Susun alur belajar menjadi bab, lalu buat atau hubungkan materi,
             tugas, dan kosakata tanpa perlu membuka library.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
-          <div className="col-span-2 flex flex-col gap-1.5">
+          <div className="col-span-2 flex flex-col gap-1.5 max-sm:flex-row max-sm:items-center max-sm:justify-between max-sm:gap-3">
             <Label
               htmlFor="kurikulum-progression"
               className="text-muted-foreground text-xs"
@@ -569,7 +583,7 @@ export function KurikulumEditor({
               <SelectTrigger
                 id="kurikulum-progression"
                 aria-label="Progression"
-                className="w-full sm:w-auto sm:min-w-48"
+                className="w-auto min-w-36 sm:min-w-48"
               >
                 <span className="flex flex-1 text-left">
                   {progressionMode === "OPEN" ? "Terbuka" : "Bertahap"}
@@ -597,7 +611,7 @@ export function KurikulumEditor({
 
       <section
         aria-label="Ringkasan materi kurikulum"
-        className="bg-card grid grid-cols-3 divide-x rounded-lg border py-4"
+        className="bg-card grid grid-cols-3 divide-x rounded-lg border py-4 max-sm:hidden"
       >
         <SummaryStat label="Bab" value={modules.length} />
         <SummaryStat label="Learning item" value={itemCount} />
@@ -655,6 +669,9 @@ export function KurikulumEditor({
         </div>
       ) : (
         <DndContext
+          // A fixed id keeps dnd-kit's generated aria ids equal on the server
+          // and the client, so hydration does not mismatch.
+          id="kurikulum-editor"
           sensors={sensors}
           collisionDetection={kurikulumCollisionDetection}
           measuring={{
@@ -874,30 +891,46 @@ function SortableModuleCard({
         isDragging && "z-10 shadow-lg sm:shadow-lg",
       )}
     >
-      <div className="flex items-start gap-3 px-4 py-4 sm:px-5">
+      <div className="flex items-start gap-3 px-4 py-4 max-sm:gap-2.5 max-sm:py-3 sm:px-5">
         <button
           type="button"
           aria-label="Seret bab untuk mengurutkan"
           disabled={isReordering}
-          className="text-muted-foreground hover:bg-muted hover:text-foreground mt-1 cursor-grab touch-none rounded-md p-1 disabled:cursor-not-allowed disabled:opacity-50"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground mt-1 cursor-grab touch-none rounded-md p-1 disabled:cursor-not-allowed disabled:opacity-50 max-sm:mt-0.5"
           {...attributes}
           {...listeners}
         >
           <GripVerticalIcon className="size-4" />
         </button>
-        <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold tabular-nums">
+        <span className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold tabular-nums max-sm:size-7 max-sm:rounded-md max-sm:text-[11px]">
           {String(moduleIndex + 1).padStart(2, "0")}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-heading text-lg font-medium">{module.title}</h2>
-            <Badge variant="secondary">{module.items.length} item</Badge>
+            <h2 className="font-heading text-lg font-medium max-sm:text-base max-sm:leading-snug">
+              {module.title}
+            </h2>
+            <Badge variant="secondary" className="max-sm:hidden">
+              {module.items.length} item
+            </Badge>
             {moduleReadiness.length ? (
               <ReadinessSummaryChip
                 summary={summarizeReadiness(moduleReadiness)}
+                className="max-sm:hidden"
               />
             ) : null}
           </div>
+          <p className="text-muted-foreground mt-0.5 text-xs tabular-nums sm:hidden">
+            {module.items.length} item
+            {moduleReadiness.length ? (
+              <>
+                {" · "}
+                <CompactReadiness
+                  summary={summarizeReadiness(moduleReadiness)}
+                />
+              </>
+            ) : null}
+          </p>
           {module.description ? (
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
               {module.description}
@@ -1030,7 +1063,7 @@ function SortableItemRow({
       style={style}
       className={cn(
         // Phones give the title the full row and drop the status badge below it.
-        "group target:bg-muted/60 grid scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 sm:flex sm:px-5",
+        "group target:bg-muted/60 grid scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-0.5 px-4 py-2.5 sm:flex sm:gap-x-3 sm:px-5 sm:py-3",
         isDragging && "bg-background z-10 shadow-lg",
       )}
     >
@@ -1056,20 +1089,18 @@ function SortableItemRow({
       >
         <span
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-full border",
+            "flex size-7 shrink-0 items-center justify-center rounded-full border sm:size-8",
             meta.borderClass,
             meta.softClass,
           )}
         >
-          <Icon className={cn("size-4", meta.textClass)} />
+          <Icon className={cn("size-3.5 sm:size-4", meta.textClass)} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium max-sm:line-clamp-2 sm:truncate">
-            {title}
-          </span>
+          <MarqueeText className="text-sm font-medium">{title}</MarqueeText>
           <span
             className={cn(
-              "mt-0.5 block text-[11px] font-semibold tracking-wide uppercase",
+              "mt-0.5 block text-[11px] font-semibold tracking-wide uppercase max-sm:hidden",
               meta.textClass,
             )}
           >
@@ -1077,13 +1108,29 @@ function SortableItemRow({
           </span>
         </span>
       </Link>
-      {readiness ? (
-        <ReadinessBadge
-          readiness={readiness}
-          itemHref={itemAnchorHref}
-          className="col-start-2 row-start-2 ml-12 max-w-56 justify-self-start sm:mr-1 sm:ml-0 sm:shrink-0"
-        />
-      ) : null}
+      {/* Phones put the item type and its status on one line under the
+          title, leaving out "Tayang" (the green check says it); from sm up
+          the badge sits in the row. */}
+      <div className="col-start-2 row-start-2 flex min-w-0 items-center gap-2 pl-11 sm:contents">
+        <span
+          className={cn(
+            "text-[11px] font-semibold tracking-wide uppercase sm:hidden",
+            meta.textClass,
+          )}
+        >
+          {pdfLabel ?? meta.label}
+        </span>
+        {readiness ? (
+          <ReadinessBadge
+            readiness={readiness}
+            itemHref={itemAnchorHref}
+            className={cn(
+              "max-w-56 min-w-0 sm:mr-1 sm:shrink-0",
+              readiness.state === "LIVE" && "max-sm:hidden",
+            )}
+          />
+        ) : null}
+      </div>
       <div className="col-start-3 row-start-1 flex shrink-0 items-center gap-1">
         <VisibilitySwitch
           item={item}
@@ -1136,7 +1183,11 @@ function VisibilitySwitch({
         className="sm:hidden"
         onClick={() => onTogglePublished(item, !item.isPublished)}
       >
-        {item.isPublished ? <CheckCircle2Icon /> : <CircleOffIcon />}
+        {item.isPublished ? (
+          <CheckCircle2Icon className="text-emerald-600 dark:text-emerald-400" />
+        ) : (
+          <CircleOffIcon />
+        )}
       </Button>
     </>
   );
@@ -1153,6 +1204,25 @@ function VisibilitySwitch({
       </TooltipTrigger>
       <TooltipContent>{blockedReason}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/** Readiness counts as plain text for phone summary lines; zero counts other than "tayang" are left out. */
+function CompactReadiness({
+  summary,
+}: {
+  summary: { live: number; hidden: number; notReady: number };
+}) {
+  return (
+    <>
+      {summary.live} tayang
+      {summary.hidden > 0 ? ` · ${summary.hidden} disembunyikan` : null}
+      {summary.notReady > 0 ? (
+        <span className="text-destructive font-medium">
+          {` · ${summary.notReady} belum siap`}
+        </span>
+      ) : null}
+    </>
   );
 }
 
