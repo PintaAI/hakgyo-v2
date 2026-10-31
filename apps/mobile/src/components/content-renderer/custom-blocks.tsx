@@ -33,6 +33,9 @@ function accentFor(theme: string, fallback: keyof typeof accentPalettes) {
     : accentPalettes[fallback];
 }
 
+/** Whether a text prop holds anything to show (blank optional parts are hidden). */
+const filled = (value: string) => value.trim().length > 0;
+
 function AccentDot({ accent, label }: { accent: string; label: string }) {
   return (
     <View className="flex-row items-center gap-2">
@@ -898,6 +901,46 @@ function Conversation({ block }: BlockRendererProps) {
   );
   const contextAssetId = stringProp(block.props, "assetId");
   const practiceAssetId = stringProp(block.props, "practiceAssetId");
+  const text = (name: string) => stringProp(block.props, name);
+  const audioTrack = text("audioTrack");
+  const number = text("number");
+  const visibleQuestions = questions.filter(
+    (question) => filled(question.korean) || filled(question.translation),
+  );
+  const visibleExpressions = expressions.filter(
+    (expression) => filled(expression.korean) || filled(expression.translation),
+  );
+  const visiblePracticeDialogue = practiceDialogue.filter((line) =>
+    filled(line.korean),
+  );
+  const visibleUsefulDialogue = usefulExpressionDialogue.filter(
+    (line) => filled(line.korean) || filled(line.translation),
+  );
+  const visiblePronunciationExamples = pronunciationExamples.filter(
+    (example) => filled(example.korean) || filled(example.pronunciation),
+  );
+  // Optional parts left blank by the author are hidden rather than shown as empty panels.
+  const showTip =
+    booleanProp(block.props, "showTip", true) &&
+    [text("tipTitle"), text("tipBody"), text("tipTranslation")].some(filled);
+  const showPractice =
+    Boolean(practiceAssetId) ||
+    filled(text("practicePromptKo")) ||
+    filled(text("practicePromptTranslation")) ||
+    visibleExpressions.length > 0 ||
+    visiblePracticeDialogue.length > 0;
+  const showUsefulExpressionPanel =
+    showUsefulExpression &&
+    (filled(text("usefulExpressionPhraseKo")) ||
+      filled(text("usefulExpressionPhraseTranslation")) ||
+      visibleUsefulDialogue.length > 0 ||
+      filled(text("usefulExpressionNote")));
+  const showPronunciationPanel =
+    showPronunciation &&
+    (filled(text("pronunciationSymbol")) ||
+      filled(text("pronunciationDescriptionKo")) ||
+      filled(text("pronunciationDescriptionTranslation")) ||
+      visiblePronunciationExamples.length > 0);
 
   return (
     <View className="gap-6">
@@ -915,13 +958,15 @@ function Conversation({ block }: BlockRendererProps) {
         </View>
         <View className="min-w-0 flex-1">
           <Eyebrow size="md">{stringProp(block.props, "eyebrow")}</Eyebrow>
-          <Text className="mt-1 text-xs text-muted-foreground">
-            Audio {stringProp(block.props, "audioTrack")}
-          </Text>
+          {filled(audioTrack) ? (
+            <Text className="mt-1 text-xs text-muted-foreground">
+              Audio {audioTrack}
+            </Text>
+          ) : null}
         </View>
-        <Text className="text-3xl font-black text-foreground">
-          {stringProp(block.props, "number")}
-        </Text>
+        {filled(number) ? (
+          <Text className="text-3xl font-black text-foreground">{number}</Text>
+        ) : null}
       </View>
 
       {contextAssetId ? (
@@ -953,37 +998,41 @@ function Conversation({ block }: BlockRendererProps) {
         ))}
       </View>
 
-      <View
-        className="gap-3 rounded-xl border p-4"
-        style={{ borderColor: accent }}
-      >
-        <Eyebrow size="md">{stringProp(block.props, "questionsLabel")}</Eyebrow>
-        {questions.map((question, index) => (
-          <View className="flex-row gap-3" key={index}>
-            <View
-              className="size-6 items-center justify-center rounded-md"
-              style={{ backgroundColor: accent }}
-            >
-              <Text
-                className="text-xs font-black"
-                style={{ color: accentForeground }}
+      {visibleQuestions.length ? (
+        <View
+          className="gap-3 rounded-xl border p-4"
+          style={{ borderColor: accent }}
+        >
+          {filled(text("questionsLabel")) ? (
+            <Eyebrow size="md">{text("questionsLabel")}</Eyebrow>
+          ) : null}
+          {visibleQuestions.map((question, index) => (
+            <View className="flex-row gap-3" key={index}>
+              <View
+                className="size-6 items-center justify-center rounded-md"
+                style={{ backgroundColor: accent }}
               >
-                {index + 1}
-              </Text>
+                <Text
+                  className="text-xs font-black"
+                  style={{ color: accentForeground }}
+                >
+                  {index + 1}
+                </Text>
+              </View>
+              <View className="min-w-0 flex-1 gap-1">
+                <Text className="text-sm font-bold leading-5 text-foreground">
+                  {question.korean}
+                </Text>
+                <Text className="text-xs leading-5 text-muted-foreground">
+                  {question.translation}
+                </Text>
+              </View>
             </View>
-            <View className="min-w-0 flex-1 gap-1">
-              <Text className="text-sm font-bold leading-5 text-foreground">
-                {question.korean}
-              </Text>
-              <Text className="text-xs leading-5 text-muted-foreground">
-                {question.translation}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      ) : null}
 
-      {booleanProp(block.props, "showTip", true) ? (
+      {showTip ? (
         <View className="gap-2 rounded-xl bg-muted p-4">
           <AccentDot
             accent={accent}
@@ -998,54 +1047,60 @@ function Conversation({ block }: BlockRendererProps) {
         </View>
       ) : null}
 
-      <View className="gap-4 border-t border-border pt-6">
-        <AccentDot accent={accent} label="Latihan berbicara" />
-        <View>
-          <Text className="text-base font-bold leading-6 text-foreground">
-            {stringProp(block.props, "practicePromptKo")}
-          </Text>
-          <Text className="mt-1 text-xs leading-5 text-muted-foreground">
-            {stringProp(block.props, "practicePromptTranslation")}
-          </Text>
-        </View>
-        {practiceAssetId ? (
-          <ContentImage
-            accessibilityLabel={stringProp(
-              block.props,
-              "practiceFileName",
-              "Latihan berbicara",
-            )}
-            source={assetSource(practiceAssetId)}
-          />
-        ) : null}
-        <View className="gap-3 rounded-xl bg-muted/55 p-4">
-          <Eyebrow size="md">Ungkapan yang disediakan</Eyebrow>
-          {expressions.map((expression, index) => (
-            <View key={index}>
-              <Text className="text-sm font-bold text-foreground">
-                {expression.korean}
-              </Text>
-              <Text className="mt-0.5 text-xs text-muted-foreground">
-                {expression.translation}
-              </Text>
+      {showPractice ? (
+        <View className="gap-4 border-t border-border pt-6">
+          <AccentDot accent={accent} label="Latihan berbicara" />
+          <View>
+            <Text className="text-base font-bold leading-6 text-foreground">
+              {stringProp(block.props, "practicePromptKo")}
+            </Text>
+            <Text className="mt-1 text-xs leading-5 text-muted-foreground">
+              {stringProp(block.props, "practicePromptTranslation")}
+            </Text>
+          </View>
+          {practiceAssetId ? (
+            <ContentImage
+              accessibilityLabel={stringProp(
+                block.props,
+                "practiceFileName",
+                "Latihan berbicara",
+              )}
+              source={assetSource(practiceAssetId)}
+            />
+          ) : null}
+          {visibleExpressions.length ? (
+            <View className="gap-3 rounded-xl bg-muted/55 p-4">
+              <Eyebrow size="md">Ungkapan yang disediakan</Eyebrow>
+              {visibleExpressions.map((expression, index) => (
+                <View key={index}>
+                  <Text className="text-sm font-bold text-foreground">
+                    {expression.korean}
+                  </Text>
+                  <Text className="mt-0.5 text-xs text-muted-foreground">
+                    {expression.translation}
+                  </Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-        <View className="gap-3 rounded-xl border border-border p-4">
-          {practiceDialogue.map((line, index) => (
-            <View className="flex-row gap-3" key={index}>
-              <Text className="w-6 font-black text-foreground">
-                {line.speaker}
-              </Text>
-              <Text className="min-w-0 flex-1 text-sm leading-6 text-foreground">
-                {line.korean}
-              </Text>
+          ) : null}
+          {visiblePracticeDialogue.length ? (
+            <View className="gap-3 rounded-xl border border-border p-4">
+              {visiblePracticeDialogue.map((line, index) => (
+                <View className="flex-row gap-3" key={index}>
+                  <Text className="w-6 font-black text-foreground">
+                    {line.speaker}
+                  </Text>
+                  <Text className="min-w-0 flex-1 text-sm leading-6 text-foreground">
+                    {line.korean}
+                  </Text>
+                </View>
+              ))}
             </View>
-          ))}
+          ) : null}
         </View>
-      </View>
+      ) : null}
 
-      {showUsefulExpression ? (
+      {showUsefulExpressionPanel ? (
         <View className="overflow-hidden rounded-xl bg-muted/55">
           <View
             className="flex-row items-center justify-between gap-3 p-4"
@@ -1057,12 +1112,14 @@ function Conversation({ block }: BlockRendererProps) {
             >
               {stringProp(block.props, "usefulExpressionEyebrow")}
             </Text>
-            <Text
-              className="text-xs font-bold"
-              style={{ color: accentForeground }}
-            >
-              Audio {stringProp(block.props, "usefulExpressionAudioTrack")}
-            </Text>
+            {filled(text("usefulExpressionAudioTrack")) ? (
+              <Text
+                className="text-xs font-bold"
+                style={{ color: accentForeground }}
+              >
+                Audio {text("usefulExpressionAudioTrack")}
+              </Text>
+            ) : null}
           </View>
           <View className="gap-4 p-4">
             <View className="items-center rounded-xl bg-background p-5">
@@ -1074,31 +1131,36 @@ function Conversation({ block }: BlockRendererProps) {
                 {stringProp(block.props, "usefulExpressionPhraseTranslation")}
               </Text>
             </View>
-            <View className="gap-3 rounded-xl bg-background p-4">
-              {usefulExpressionDialogue.map((line, index) => (
-                <View className="flex-row gap-3" key={index}>
-                  <Text className="w-6 font-black text-foreground">
-                    {line.speaker}
-                  </Text>
-                  <View className="min-w-0 flex-1 gap-1">
-                    <Text className="text-sm font-bold leading-6 text-foreground">
-                      {line.korean}
+            {visibleUsefulDialogue.length ? (
+              <View className="gap-3 rounded-xl bg-background p-4">
+                {visibleUsefulDialogue.map((line, index) => (
+                  <View className="flex-row gap-3" key={index}>
+                    <Text className="w-6 font-black text-foreground">
+                      {line.speaker}
                     </Text>
-                    <Text className="text-xs leading-5 text-muted-foreground">
-                      {line.translation}
-                    </Text>
+                    <View className="min-w-0 flex-1 gap-1">
+                      <Text className="text-sm font-bold leading-6 text-foreground">
+                        {line.korean}
+                      </Text>
+                      <Text className="text-xs leading-5 text-muted-foreground">
+                        {line.translation}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
-            <Text className="text-xs leading-5 text-muted-foreground">
-              {stringProp(block.props, "usefulExpressionNote")}
-            </Text>
+                ))}
+              </View>
+            ) : null}
+            {booleanProp(block.props, "showUsefulExpressionNote", true) &&
+            filled(text("usefulExpressionNote")) ? (
+              <Text className="text-xs leading-5 text-muted-foreground">
+                {text("usefulExpressionNote")}
+              </Text>
+            ) : null}
           </View>
         </View>
       ) : null}
 
-      {showPronunciation ? (
+      {showPronunciationPanel ? (
         <View className="overflow-hidden rounded-xl bg-muted/55">
           <View
             className="flex-row items-center justify-between gap-3 p-4"
@@ -1110,43 +1172,49 @@ function Conversation({ block }: BlockRendererProps) {
             >
               {stringProp(block.props, "pronunciationEyebrow")}
             </Text>
-            <Text
-              className="text-xs font-bold"
-              style={{ color: accentForeground }}
-            >
-              Audio {stringProp(block.props, "pronunciationAudioTrack")}
-            </Text>
+            {filled(text("pronunciationAudioTrack")) ? (
+              <Text
+                className="text-xs font-bold"
+                style={{ color: accentForeground }}
+              >
+                Audio {text("pronunciationAudioTrack")}
+              </Text>
+            ) : null}
           </View>
           <View className="gap-4 p-4">
-            <View className="size-24 self-center items-center justify-center rounded-full bg-background">
-              <Text className="text-5xl font-black text-foreground">
-                {stringProp(block.props, "pronunciationSymbol")}
-              </Text>
-            </View>
+            {filled(text("pronunciationSymbol")) ? (
+              <View className="size-24 self-center items-center justify-center rounded-full bg-background">
+                <Text className="text-5xl font-black text-foreground">
+                  {text("pronunciationSymbol")}
+                </Text>
+              </View>
+            ) : null}
             <Text className="text-sm leading-6 text-foreground">
               {stringProp(block.props, "pronunciationDescriptionKo")}
             </Text>
             <Text className="text-xs leading-5 text-muted-foreground">
               {stringProp(block.props, "pronunciationDescriptionTranslation")}
             </Text>
-            <View className="overflow-hidden rounded-xl bg-background">
-              {pronunciationExamples.map((example, index) => (
-                <View
-                  className={`flex-row items-center gap-3 px-4 py-3 ${index > 0 ? "border-t border-border" : ""}`}
-                  key={index}
-                >
-                  <Text className="text-xs text-muted-foreground">
-                    {index + 1}
-                  </Text>
-                  <Text className="min-w-0 flex-1 text-sm text-foreground">
-                    {example.korean}
-                  </Text>
-                  <Text className="text-sm font-black text-foreground">
-                    {example.pronunciation}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            {visiblePronunciationExamples.length ? (
+              <View className="overflow-hidden rounded-xl bg-background">
+                {visiblePronunciationExamples.map((example, index) => (
+                  <View
+                    className={`flex-row items-center gap-3 px-4 py-3 ${index > 0 ? "border-t border-border" : ""}`}
+                    key={index}
+                  >
+                    <Text className="text-xs text-muted-foreground">
+                      {index + 1}
+                    </Text>
+                    <Text className="min-w-0 flex-1 text-sm text-foreground">
+                      {example.korean}
+                    </Text>
+                    <Text className="text-sm font-black text-foreground">
+                      {example.pronunciation}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </View>
         </View>
       ) : null}

@@ -4,16 +4,19 @@ type AttemptRef = { id: string; status: string };
 
 /**
  * Where a course item opens: its in-progress attempt when it has one, the
- * item itself otherwise.
+ * item itself otherwise. `anchor` is the id of a top-level block of a
+ * material to scroll to (a section a material link points at).
  */
 export function courseItemHref({
   courseId,
   courseItemId,
   attempt,
+  anchor,
 }: {
   courseId: string;
   courseItemId: string;
   attempt?: AttemptRef | null;
+  anchor?: string | null;
 }): Href {
   if (attempt?.status === "IN_PROGRESS") {
     return {
@@ -23,7 +26,9 @@ export function courseItemHref({
   }
   return {
     pathname: "/courses/[courseId]/items/[courseItemId]",
-    params: { courseId, courseItemId },
+    params: anchor
+      ? { courseId, courseItemId, anchor }
+      : { courseId, courseItemId },
   };
 }
 

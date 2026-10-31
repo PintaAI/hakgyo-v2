@@ -61,6 +61,37 @@ describe("native content normalization", () => {
     ]);
   });
 
+  test("marks links to other materials with their target", () => {
+    expect(
+      normalizeInlineContent([
+        {
+          type: "link",
+          href: "hakgyo-material:material-2#heading-1",
+          content: [{ type: "text", text: "Partikel", styles: {} }],
+        },
+        {
+          type: "link",
+          href: "hakgyo-material:",
+          content: [{ type: "text", text: "Rusak", styles: {} }],
+        },
+        { type: "link", href: 42, content: [] },
+      ]),
+    ).toEqual([
+      {
+        type: "link",
+        href: "hakgyo-material:material-2#heading-1",
+        material: { materialId: "material-2", anchor: "heading-1" },
+        content: [{ type: "text", text: "Partikel", styles: {} }],
+      },
+      {
+        type: "link",
+        href: "hakgyo-material:",
+        content: [{ type: "text", text: "Rusak", styles: {} }],
+      },
+      { type: "link", href: "", content: [] },
+    ]);
+  });
+
   test("fails closed for malformed JSON props", () => {
     expect(parseJsonArray("not-json", (value) => value)).toEqual([]);
     expect(

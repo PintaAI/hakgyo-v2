@@ -1,6 +1,7 @@
 import type { Prisma } from "../../../generated/prisma/client";
 import { passesAssessmentRequirement } from "@hakgyo/shared/learning/material-completion";
 import { getLearnerMaterialReferencesForSources } from "~/server/content/material-references";
+import { resolveMaterialLinksForSources } from "~/server/learning/material-links";
 import { getVocabularyEvidenceForSets } from "~/server/vocabulary/evidence";
 
 type DatabaseClient = Prisma.TransactionClient | Prisma.DefaultPrismaClient;
@@ -143,6 +144,7 @@ export async function getCourseItemDetails(
       ? [
           {
             id: item.id,
+            courseId: item.module.courseId,
             source: {
               content: item.material.content,
               moduleId: item.moduleId,
@@ -155,37 +157,51 @@ export async function getCourseItemDetails(
   const assessmentIds = [
     ...new Set(items.flatMap((item) => item.assessment?.id ?? [])),
   ];
-  const [references, vocabularyEvidence, questionCounts] = await Promise.all([
-    getLearnerMaterialReferencesForSources(
-      db,
-      materialItems.map(({ source }) => source),
-    ),
-    getVocabularyEvidenceForSets(
-      db,
-      userId,
-      items.flatMap((item) =>
-        (item.material?.completionRequirements ?? []).flatMap((requirement) =>
-          requirement.type === "VOCABULARY_SET" && requirement.vocabularySet
-            ? [requirement.vocabularySet.id]
-            : [],
+  const [references, materialLinks, vocabularyEvidence, questionCounts] =
+    await Promise.all([
+      getLearnerMaterialReferencesForSources(
+        db,
+        materialItems.map(({ source }) => source),
+      ),
+      resolveMaterialLinksForSources(
+        db,
+        userId,
+        materialItems.map(({ source, courseId }) => ({
+          content: source.content,
+          courseId,
+          organizationId: source.organizationId,
+        })),
+      ),
+      getVocabularyEvidenceForSets(
+        db,
+        userId,
+        items.flatMap((item) =>
+          (item.material?.completionRequirements ?? []).flatMap(
+            (requirement) =>
+              requirement.type === "VOCABULARY_SET" && requirement.vocabularySet
+                ? [requirement.vocabularySet.id]
+                : [],
+          ),
         ),
       ),
-    ),
-    // Per assessment id rather than a nested relation `_count`, which Prisma
-    // compiles into an aggregate over every question in the database.
-    assessmentIds.length === 0
-      ? Promise.resolve([])
-      : db.assessmentQuestion.groupBy({
-          by: ["assessmentId"],
-          where: { assessmentId: { in: assessmentIds } },
-          _count: { _all: true },
-        }),
-  ]);
+      // Per assessment id rather than a nested relation `_count`, which Prisma
+      // compiles into an aggregate over every question in the database.
+      assessmentIds.length === 0
+        ? Promise.resolve([])
+        : db.assessmentQuestion.groupBy({
+            by: ["assessmentId"],
+            where: { assessmentId: { in: assessmentIds } },
+            _count: { _all: true },
+          }),
+    ]);
   const questionCountByAssessment = new Map(
     questionCounts.map((row) => [row.assessmentId, row._count._all]),
   );
   const referencesByItem = new Map(
     materialItems.map(({ id }, index) => [id, references[index]!]),
+  );
+  const materialLinksByItem = new Map(
+    materialItems.map(({ id }, index) => [id, materialLinks[index]!]),
   );
 
   const details = items.map((item) => {
@@ -250,6 +266,8 @@ export async function getCourseItemDetails(
         courseId: item.module.courseId,
         sourceCourseItemId: item.id,
       },
+      /** Material links in the item's material the viewer can open. */
+      materialLinks: materialLinksByItem.get(item.id) ?? [],
     };
   });
   return new Map(details.map((detail) => [detail.id, detail]));

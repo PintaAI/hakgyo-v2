@@ -360,7 +360,7 @@ const hangeulGameStageList = HANGEUL_GAME_STAGES.map(
 ).join(", ");
 
 export const hakgyoBlockCatalog = {
-  catalogVersion: 14,
+  catalogVersion: 15,
   editor: "BlockNote",
   format: {
     description:
@@ -380,6 +380,7 @@ export const hakgyoBlockCatalog = {
       "File props (assetId and practiceAssetId, plus images inside culture sections) take a file from the organization library. Get one with import_material_file (a public https URL, or a file the user shared in ChatGPT) or reuse one from list_organization_files, then copy its assetId, fileName and contentType into the props.",
       'Built-in image, audio, video and file blocks show a library file when props.url is "hakgyo-asset:<assetId>"; any other https URL is shown as is.',
       "Library files used in the content are attached to the material automatically when it is saved, so learners can load them.",
+      'To link to another material of the same organization, use a link inline node whose href is "hakgyo-material:<materialId>", or "hakgyo-material:<materialId>#<blockId>" to point at one section, where blockId is the id of a top-level block (usually a heading) in the target\'s content, read with get_material. Example: { "type": "link", "href": "hakgyo-material:cm123#h-sebab", "content": [{ "type": "text", "text": "-아서/어서", "styles": {} }] }. Learners tapping it see a preview of that section and can open the material. Links to materials outside the organization are saved as plain text. A section link needs the target heading to keep its id, so give headings an explicit id when writing content that other materials will link to.',
     ],
   },
   builtInBlocks: [

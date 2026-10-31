@@ -1,3 +1,5 @@
+import { parseMaterialLinkHref } from "@hakgyo/shared/material-links";
+
 import type {
   ContentBlock,
   InlineLinkNode,
@@ -48,10 +50,12 @@ function normalizeTextNode(value: unknown): InlineTextNode | null {
 
 function normalizeLinkNode(value: unknown): InlineLinkNode | null {
   if (!isRecord(value) || value.type !== "link") return null;
+  const material = parseMaterialLinkHref(value.href);
 
   return {
     type: "link",
     href: typeof value.href === "string" ? value.href : "",
+    ...(material ? { material } : {}),
     content: Array.isArray(value.content)
       ? value.content
           .map(normalizeTextNode)

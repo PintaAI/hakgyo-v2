@@ -13,6 +13,8 @@ export function NativeContentRenderer({
   content,
   courseItemId,
   emptyState,
+  onBlockLayout,
+  onOpenMaterialLink,
   onOpenUrl,
   onOpenResource,
   onReadingProgress,
@@ -33,6 +35,8 @@ export function NativeContentRenderer({
   return (
     <ContentRendererProvider
       courseItemId={courseItemId}
+      onBlockLayout={onBlockLayout}
+      onOpenMaterialLink={onOpenMaterialLink}
       onOpenUrl={onOpenUrl}
       onOpenResource={onOpenResource}
       onReadingProgress={onReadingProgress}

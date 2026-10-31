@@ -21,7 +21,7 @@ export function BlockTree({
   blocks: ContentBlock[];
   depth?: number;
 }) {
-  const { renderers } = useContentRenderer();
+  const { onBlockLayout, renderers } = useContentRenderer();
   let orderedIndex = 0;
 
   return (
@@ -29,9 +29,18 @@ export function BlockTree({
       {blocks.map((block, index) => {
         orderedIndex = block.type === "numberedListItem" ? orderedIndex + 1 : 0;
         const Renderer = renderers[block.type];
+        const blockId = block.id;
 
         return (
-          <View key={block.id ?? `${depth}-${index}-${block.type}`}>
+          <View
+            key={blockId ?? `${depth}-${index}-${block.type}`}
+            // Top-level offsets let a screen scroll to a linked section.
+            onLayout={
+              depth === 0 && blockId && onBlockLayout
+                ? (event) => onBlockLayout(blockId, event.nativeEvent.layout.y)
+                : undefined
+            }
+          >
             {Renderer ? (
               <Renderer
                 block={block}

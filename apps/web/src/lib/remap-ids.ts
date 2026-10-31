@@ -1,9 +1,12 @@
+import { MATERIAL_LINK_PREFIX } from "@hakgyo/shared/material-links";
+
 const assetUrlPrefix = "hakgyo-asset:";
 
 /**
  * Returns a copy of `value` in which references to the ids in `ids` point at
  * their new ids. Only whole reference values are rewritten: a string that is
- * exactly an id, a `hakgyo-asset:<id>` URL, and the same inside JSON that a
+ * exactly an id, a `hakgyo-asset:<id>` URL, a material link
+ * `hakgyo-material:<id>[#<blockId>]` (the block id is kept), and the same inside JSON that a
  * block keeps as a string (culture sections). Ids that merely appear inside
  * other text are left alone, since seeded ids can be readable words.
  */
@@ -16,6 +19,16 @@ export function remapIds<T>(value: T, ids: ReadonlyMap<string, string>): T {
     if (text.startsWith(assetUrlPrefix)) {
       const assetId = ids.get(text.slice(assetUrlPrefix.length));
       return assetId ? `${assetUrlPrefix}${assetId}` : text;
+    }
+    if (text.startsWith(MATERIAL_LINK_PREFIX)) {
+      const rest = text.slice(MATERIAL_LINK_PREFIX.length);
+      const hashIndex = rest.indexOf("#");
+      const materialId = ids.get(
+        hashIndex === -1 ? rest : rest.slice(0, hashIndex),
+      );
+      return materialId
+        ? `${MATERIAL_LINK_PREFIX}${materialId}${hashIndex === -1 ? "" : rest.slice(hashIndex)}`
+        : text;
     }
     if (text.startsWith("[") || text.startsWith("{")) {
       let parsed: unknown;

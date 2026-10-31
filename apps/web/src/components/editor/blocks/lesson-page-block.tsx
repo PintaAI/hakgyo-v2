@@ -133,6 +133,9 @@ function LessonHeroImage({
     }
   }
 
+  // The empty-state prompt is for authors; learners see nothing.
+  if (!assetId && !editable) return null;
+
   return (
     <div className="group bg-muted ring-foreground/10 relative aspect-[16/9] overflow-hidden rounded-xl ring-1">
       <input

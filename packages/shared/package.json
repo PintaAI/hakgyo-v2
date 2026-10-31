@@ -10,7 +10,8 @@
     "./hangeul": "./src/hangeul/index.ts",
     "./mobile-sync": "./src/mobile-sync/index.ts",
     "./release-notes": "./src/release-notes.ts",
-    "./eps-taxonomy": "./src/eps-taxonomy.ts"
+    "./eps-taxonomy": "./src/eps-taxonomy.ts",
+    "./material-links": "./src/material-links.ts"
   },
   "dependencies": {
     "zod": "4.4.3"

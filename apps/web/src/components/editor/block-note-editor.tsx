@@ -3,14 +3,18 @@
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/shadcn/style.css";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   filterSuggestionItems,
   insertOrUpdateBlockForSlashMenu,
 } from "@blocknote/core/extensions";
 import { en } from "@blocknote/core/locales";
 import {
+  FormattingToolbar,
+  FormattingToolbarController,
   getDefaultReactSlashMenuItems,
+  getFormattingToolbarItems,
+  LinkToolbarController,
   SuggestionMenuController,
   useCreateBlockNote,
 } from "@blocknote/react";
@@ -18,6 +22,7 @@ import { BlockNoteView } from "@blocknote/shadcn";
 import {
   AudioLinesIcon,
   BookOpenIcon,
+  BookMarkedIcon,
   Building2Icon,
   CaseSensitiveIcon,
   Gamepad2Icon,
@@ -52,6 +57,10 @@ import {
   collectMaterialAssetIds,
   getAssetIdFromUrl,
 } from "~/lib/blocknote/material-assets";
+import {
+  isValidEditorLink,
+  isMaterialLinkElement,
+} from "~/lib/blocknote/material-links";
 import { handleBlockNotePaste } from "~/lib/blocknote/paste";
 
 import {
@@ -66,6 +75,15 @@ import {
   type HakgyoPartialBlock,
 } from "./block-note-schema";
 import { DynamicLearnerBlockNoteDocument } from "./dynamic-learner-block-note-document";
+import {
+  applyMaterialLink,
+  currentMaterialLinkRequest,
+  HakgyoLinkToolbar,
+  MaterialLinkEditingProvider,
+  MaterialLinkPicker,
+  MaterialLinkToolbarButton,
+  type MaterialLinkRequest,
+} from "./material-link-editing";
 import { PdfBookProvider } from "./pdf-book-context";
 import { loadAssetDownloadUrl } from "~/components/asset-download-url";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
@@ -107,6 +125,8 @@ export function BlockNoteEditor({
   resourceLibrary,
 }: BlockNoteEditorProps) {
   const [previewBlock, setPreviewBlock] = useState<HakgyoBlock | null>(null);
+  const [materialLinkRequest, setMaterialLinkRequest] =
+    useState<MaterialLinkRequest | null>(null);
   const utils = api.useUtils();
   const createUpload = api.storage.createUploadUrl.useMutation();
   const confirmUpload = api.storage.confirmUpload.useMutation();
@@ -227,6 +247,19 @@ export function BlockNoteEditor({
         }
       : undefined,
     resolveFileUrl,
+    links: {
+      isValidLink: isValidEditorLink,
+      // Replaces BlockNote's open-on-click, which this keeps for web links.
+      // Material links have no URL to open while editing.
+      onClick: (event) => {
+        const link = (event.target as Element | null)?.closest?.("a");
+        if (!link?.getAttribute("href") || isMaterialLinkElement(link)) {
+          return true;
+        }
+        window.open(link.href, link.target || "_blank");
+        return true;
+      },
+    },
   });
   const assetIdsRef = useRef(collectMaterialAssetIds(editor.document));
 
@@ -332,6 +365,16 @@ export function BlockNoteEditor({
     ...(resourceLibrary
       ? [
           {
+            title: "Tautan materi",
+            subtext:
+              "Tautkan materi lain atau satu bagiannya; murid melihat cuplikannya.",
+            aliases: ["tautan", "link", "materi", "pola", "rujukan"],
+            group: "Blok Hakgyo",
+            icon: <BookMarkedIcon className="size-4" />,
+            onItemClick: () =>
+              setMaterialLinkRequest(currentMaterialLinkRequest(editor)),
+          },
+          {
             title: "Set kosakata",
             subtext:
               "Tampilkan kosakata live dari library dan tautkan latihan hafalan.",
@@ -412,69 +455,119 @@ export function BlockNoteEditor({
   ];
 
   const organizationId = resourceLibrary?.organizationId;
+  const materialLinkEditing = useMemo(
+    () =>
+      organizationId
+        ? { organizationId, openPicker: setMaterialLinkRequest }
+        : null,
+    [organizationId],
+  );
 
   return (
-    <PdfBookProvider
-      value={organizationId ? { mode: "editor", organizationId } : null}
-    >
-      <ResourceReferenceProvider editorLibrary={resourceLibrary}>
-        <BlockPreviewProvider
-          previewBlock={(block) => setPreviewBlock(block as HakgyoBlock)}
-        >
-          <AssetUploadProvider
-            value={
-              uploadAsset ? { upload: uploadAsset, remove: removeAsset } : null
-            }
+    <MaterialLinkEditingProvider value={materialLinkEditing}>
+      <PdfBookProvider
+        value={organizationId ? { mode: "editor", organizationId } : null}
+      >
+        <ResourceReferenceProvider editorLibrary={resourceLibrary}>
+          <BlockPreviewProvider
+            previewBlock={(block) => setPreviewBlock(block as HakgyoBlock)}
           >
-            <BlockNoteView
-              autoFocus={autoFocus}
-              editable={editable}
-              editor={editor}
-              onChange={() => {
-                const currentAssetIds = collectMaterialAssetIds(
-                  editor.document,
-                );
-                if (removeAsset) {
-                  for (const assetId of assetIdsRef.current) {
-                    if (!currentAssetIds.has(assetId)) {
-                      void removeAsset(assetId).catch(() =>
-                        toast.error("File gagal dihapus dari penyimpanan."),
-                      );
+            <AssetUploadProvider
+              value={
+                uploadAsset
+                  ? { upload: uploadAsset, remove: removeAsset }
+                  : null
+              }
+            >
+              <BlockNoteView
+                autoFocus={autoFocus}
+                editable={editable}
+                editor={editor}
+                onChange={() => {
+                  const currentAssetIds = collectMaterialAssetIds(
+                    editor.document,
+                  );
+                  if (removeAsset) {
+                    for (const assetId of assetIdsRef.current) {
+                      if (!currentAssetIds.has(assetId)) {
+                        void removeAsset(assetId).catch(() =>
+                          toast.error("File gagal dihapus dari penyimpanan."),
+                        );
+                      }
                     }
                   }
-                }
-                assetIdsRef.current = currentAssetIds;
-                onChange?.(editor.document);
-              }}
-              slashMenu={false}
-              theme={theme}
-            >
-              <SuggestionMenuController
-                getItems={async (query) =>
-                  filterSuggestionItems(slashMenuItems(editor), query)
-                }
-                triggerCharacter="/"
-              />
-            </BlockNoteView>
-          </AssetUploadProvider>
-
-          <Dialog
-            onOpenChange={(open) => {
-              if (!open) setPreviewBlock(null);
-            }}
-            open={previewBlock !== null}
-          >
-            <DialogContent className="bg-background h-[min(52rem,calc(100svh-2rem))] gap-0 overflow-y-auto p-0 sm:max-w-5xl">
-              {previewBlock ? (
-                <DynamicLearnerBlockNoteDocument
-                  content={[previewBlock]}
-                  theme={theme}
+                  assetIdsRef.current = currentAssetIds;
+                  onChange?.(editor.document);
+                }}
+                slashMenu={false}
+                formattingToolbar={false}
+                linkToolbar={false}
+                theme={theme}
+              >
+                <SuggestionMenuController
+                  getItems={async (query) =>
+                    filterSuggestionItems(slashMenuItems(editor), query)
+                  }
+                  triggerCharacter="/"
                 />
-              ) : null}
-            </DialogContent>
-          </Dialog>
-        </BlockPreviewProvider>
-      </ResourceReferenceProvider>
-    </PdfBookProvider>
+                <FormattingToolbarController
+                  formattingToolbar={HakgyoFormattingToolbar}
+                />
+                <LinkToolbarController linkToolbar={HakgyoLinkToolbar} />
+              </BlockNoteView>
+            </AssetUploadProvider>
+
+            <Dialog
+              onOpenChange={(open) => {
+                if (!open) setPreviewBlock(null);
+              }}
+              open={previewBlock !== null}
+            >
+              <DialogContent className="bg-background h-[min(52rem,calc(100svh-2rem))] gap-0 overflow-y-auto p-0 sm:max-w-5xl">
+                {previewBlock ? (
+                  <DynamicLearnerBlockNoteDocument
+                    content={[previewBlock]}
+                    theme={theme}
+                  />
+                ) : null}
+              </DialogContent>
+            </Dialog>
+            {organizationId ? (
+              <MaterialLinkPicker
+                organizationId={organizationId}
+                request={materialLinkRequest}
+                onOpenChange={(open) => {
+                  if (!open) setMaterialLinkRequest(null);
+                }}
+                onPick={(target, title) => {
+                  if (materialLinkRequest) {
+                    applyMaterialLink(
+                      editor,
+                      materialLinkRequest,
+                      target,
+                      title,
+                    );
+                  }
+                  setMaterialLinkRequest(null);
+                }}
+              />
+            ) : null}
+          </BlockPreviewProvider>
+        </ResourceReferenceProvider>
+      </PdfBookProvider>
+    </MaterialLinkEditingProvider>
   );
+}
+
+// BlockNote's toolbar with "Tautkan materi" after its link button. The button
+// hides itself outside the material editor.
+function HakgyoFormattingToolbar() {
+  const items = getFormattingToolbarItems();
+  const linkIndex = items.findIndex((item) => item.key === "createLinkButton");
+  items.splice(
+    linkIndex + 1,
+    0,
+    <MaterialLinkToolbarButton key="materialLinkButton" />,
+  );
+  return <FormattingToolbar>{items}</FormattingToolbar>;
 }

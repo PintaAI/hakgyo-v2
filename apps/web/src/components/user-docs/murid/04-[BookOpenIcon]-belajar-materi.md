@@ -38,6 +38,18 @@ Di item terakhir sebuah bab, tombolnya menjadi **Selesaikan bab**. Di item terak
 
 Item yang sudah selesai akan tetap selesai, walaupun kamu membukanya lagi.
 
+## Tautan ke materi lain
+
+Di dalam materi, kadang ada kata atau pola yang berwarna dengan garis bawah titik-titik dan ikon buku kecil, misalnya `-아서/어서`. Itu tautan ke materi lain yang menjelaskannya.
+
+1. Ketuk tautannya. Cuplikan singkat muncul: di ponsel dari bawah layar, di komputer di dekat tautan.
+2. Baca judul dan ringkasannya tanpa meninggalkan materi yang sedang kamu baca.
+3. Klik **Baca lengkap** untuk membuka materi itu. Jika tautannya menunjuk ke satu bagian, halaman langsung bergulir ke bagian tersebut dan bagian itu disorot sebentar.
+
+Untuk menutup cuplikan, ketuk di luar cuplikan atau tekan tanda silang.
+
+Jika cuplikan menulis **Materi ini belum ada di kelasmu**, materi tujuannya tidak ada di kurikulum yang kamu ikuti, atau babnya masih terkunci. Lanjutkan belajar seperti biasa, atau tanyakan ke pengajarmu.
+
 ## Materi dengan syarat
 
 Beberapa materi baru bisa diselesaikan setelah kamu berlatih kosakata atau mengerjakan tugas tertentu. Kotak di bawah materi akan berubah menjadi **Sebelum melanjutkan · Tinggal satu langkah lagi**, dengan tombol untuk membuka latihan atau tugas yang dibutuhkan. Selesaikan itu dulu, lalu kembali ke materinya.

@@ -1,5 +1,7 @@
 import type { Prisma } from "../../../generated/prisma/client";
+import { collectMaterialLinkIds } from "@hakgyo/shared/material-links";
 import { collectMaterialAssetIds } from "~/lib/blocknote/material-assets";
+import { unlinkInvalidMaterialLinks } from "~/lib/blocknote/material-links";
 import {
   collectMaterialReferenceIds,
   removeInvalidMaterialReferences,
@@ -19,7 +21,8 @@ export async function sanitizeMaterialContent(
   content: unknown,
 ): Promise<Prisma.InputJsonValue> {
   const references = collectMaterialReferenceIds(content);
-  const [assessments, vocabularySets] = await Promise.all([
+  const linkedMaterialIds = collectMaterialLinkIds(content);
+  const [assessments, vocabularySets, linkedMaterials] = await Promise.all([
     references.assessmentIds.length
       ? db.assessment.findMany({
           where: {
@@ -38,14 +41,28 @@ export async function sanitizeMaterialContent(
           select: { id: true },
         })
       : [],
+    // Material links to other organizations or deleted materials keep their
+    // text but stop being links.
+    linkedMaterialIds.length
+      ? db.material.findMany({
+          where: { id: { in: linkedMaterialIds }, organizationId },
+          select: { id: true },
+        })
+      : [],
   ]);
   const cleaned = await sanitizePdfPageBlocks(
     db,
     organizationId,
-    removeInvalidMaterialReferences(content, {
-      assessmentIds: new Set(assessments.map(({ id }) => id)),
-      vocabularySetIds: new Set(vocabularySets.map(({ id }) => id)),
-    }),
+    removeInvalidMaterialReferences(
+      unlinkInvalidMaterialLinks(
+        content,
+        new Set(linkedMaterials.map(({ id }) => id)),
+      ),
+      {
+        assessmentIds: new Set(assessments.map(({ id }) => id)),
+        vocabularySetIds: new Set(vocabularySets.map(({ id }) => id)),
+      },
+    ),
   );
   return (cleaned.length ? cleaned : emptyDocument) as Prisma.InputJsonValue;
 }

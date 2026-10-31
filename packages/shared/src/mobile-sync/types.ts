@@ -12,6 +12,7 @@
  */
 
 import type { ScoreBand } from "../assessment-score";
+import type { MaterialLinkSection } from "../material-links";
 import type { MaintenanceState } from "./maintenance";
 
 /** Bumped when the request/response contract changes incompatibly. */
@@ -19,7 +20,7 @@ export const SYNC_PROTOCOL = 2;
 /** Oldest protocol the server still accepts; older clients must update. */
 export const MIN_SYNC_PROTOCOL = 2;
 /** Bumped when the course bundle shape changes; clients refetch bundles. */
-export const BUNDLE_SCHEMA = 2;
+export const BUNDLE_SCHEMA = 3;
 /** Bumped when the learner index shape changes; clients refetch the index. */
 export const INDEX_SCHEMA = 1;
 
@@ -358,6 +359,23 @@ export type BundleAsset = {
   size: number;
 };
 
+/**
+ * A material that a material of the course links to (`hakgyo-material:`
+ * links), with where it is published. Only materials placed as a published
+ * item of a PUBLISHED course of the same organization are listed.
+ */
+export type BundleLinkedMaterial = {
+  id: string;
+  title: string;
+  description: string | null;
+  /** Start of the material, for links without a section. */
+  excerpt: string;
+  /** Previews of the sections linked from this course, keyed by block id. */
+  sections: Record<string, MaterialLinkSection>;
+  /** One published placement per course, this course's first. */
+  placements: Array<{ courseId: string; courseItemId: string }>;
+};
+
 export type BundleContent = {
   placements: Record<string, BundlePlacement>;
   materials: Record<string, BundleMaterial>;
@@ -365,6 +383,8 @@ export type BundleContent = {
   assessments: Record<string, BundleAssessment>;
   pdfBooks: Record<string, BundlePdfBook>;
   assets: Record<string, BundleAsset>;
+  /** Keyed by material id. Missing in bundles cached before schema 3. */
+  linkedMaterials?: Record<string, BundleLinkedMaterial>;
 };
 
 export type CourseBundle = {

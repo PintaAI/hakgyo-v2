@@ -68,6 +68,13 @@ props the same way.
   resolver (offline copies first). The grid keeps its consonant column fixed
   while the vowels scroll horizontally.
 
+## Material Links
+
+Links between materials are not a block: they are BlockNote `link` inline
+nodes with a `hakgyo-material:<materialId>[#<blockId>]` href. See
+`docs/material-links.md` for the format, saving rules, learner resolution and
+the editor and learner UI.
+
 ## Source Of Truth
 
 - `apps/web/src/lib/blocknote/block-catalog.ts` contains AI-facing metadata,

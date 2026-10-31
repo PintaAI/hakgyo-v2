@@ -1,5 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 
+import { BUNDLE_SCHEMA } from "@hakgyo/shared/mobile-sync";
+
 import type { Prisma } from "../../../generated/prisma/client";
 import {
   loadCourseBundle,
@@ -281,7 +283,7 @@ describe("loadCourseBundle", () => {
       { id: "assess-pub-q1-b", content: "B", position: 1 },
     ]);
     expect(bundle.revision).toBe("42");
-    expect(bundle.schema).toBe(2);
+    expect(bundle.schema).toBe(BUNDLE_SCHEMA);
   });
 
   test("only loads published items and confirmed assets", async () => {
@@ -396,6 +398,130 @@ describe("loadCourseBundle", () => {
       meanings: ["perut", "kapal"],
       definition: "perut; kapal",
     });
+  });
+
+  test("adds no linked materials (and no queries) without material links", async () => {
+    const { db } = fakeDb({ course });
+    const bundle = await loadCourseBundle(db, "course-1", "1");
+    expect(bundle.content.linkedMaterials).toEqual({});
+  });
+
+  test("resolves material link targets, this course's placement first", async () => {
+    const link = (href: string) => ({
+      type: "paragraph",
+      content: [{ type: "link", href, content: [{ type: "text", text: "x" }] }],
+    });
+    const linking: CourseBundleSource = {
+      ...course,
+      modules: [
+        {
+          ...course.modules[0]!,
+          items: [
+            item("item-a", 0, {
+              material: material("material-a", [
+                link("hakgyo-material:material-b#heading-b"),
+                link("hakgyo-material:material-x"),
+                link("hakgyo-material:material-unplaced"),
+              ]),
+            }),
+            item("item-b", 1, {
+              material: material("material-b", [
+                {
+                  id: "heading-b",
+                  type: "heading",
+                  props: { level: 2 },
+                  content: "Partikel",
+                },
+                { type: "paragraph", content: "은/는 menandai topik." },
+              ]),
+            }),
+          ],
+        },
+      ],
+    };
+    const { db: base } = fakeDb({ course: linking });
+    const findItems = mock((_args: unknown) =>
+      Promise.resolve([
+        {
+          id: "other-b",
+          materialId: "material-b",
+          module: { courseId: "course-2" },
+        },
+        {
+          id: "other-x",
+          materialId: "material-x",
+          module: { courseId: "course-2" },
+        },
+        {
+          id: "other-x-2",
+          materialId: "material-x",
+          module: { courseId: "course-2" },
+        },
+      ]),
+    );
+    const findMaterials = mock((_args: unknown) =>
+      Promise.resolve([
+        {
+          id: "material-x",
+          title: "X",
+          description: "Desc",
+          content: [{ type: "paragraph", content: "Awal X" }],
+        },
+        {
+          id: "material-unplaced",
+          title: "Hidden",
+          description: null,
+          content: [],
+        },
+      ]),
+    );
+    const db = {
+      ...(base as object),
+      courseItem: { findMany: findItems },
+      material: { findMany: findMaterials },
+    } as unknown as CourseBundleDb;
+
+    const bundle = await loadCourseBundle(db, "course-1", "1");
+    expect(bundle.content.linkedMaterials).toEqual({
+      "material-b": {
+        id: "material-b",
+        title: "Material material-b",
+        description: null,
+        excerpt: "Partikel 은/는 menandai topik.",
+        sections: {
+          "heading-b": { title: "Partikel", excerpt: "은/는 menandai topik." },
+        },
+        placements: [
+          { courseId: "course-1", courseItemId: "item-b" },
+          { courseId: "course-2", courseItemId: "other-b" },
+        ],
+      },
+      "material-x": {
+        id: "material-x",
+        title: "X",
+        description: "Desc",
+        excerpt: "Awal X",
+        sections: {},
+        placements: [{ courseId: "course-2", courseItemId: "other-x" }],
+      },
+    });
+    const itemWhere = (findItems.mock.calls[0]![0] as { where: unknown }).where;
+    expect(itemWhere).toMatchObject({
+      isPublished: true,
+      organizationId: ORG,
+      module: {
+        courseId: { not: "course-1" },
+        course: { status: "PUBLISHED" },
+      },
+    });
+    // Materials already in the bundle are not loaded again.
+    const materialWhere = (
+      findMaterials.mock.calls[0]![0] as { where: { id: { in: string[] } } }
+    ).where;
+    expect(materialWhere.id.in.sort()).toEqual([
+      "material-unplaced",
+      "material-x",
+    ]);
   });
 
   test("throws NOT_FOUND for a missing course", async () => {
