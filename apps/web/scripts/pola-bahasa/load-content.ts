@@ -1,35 +1,46 @@
-// Loads the material files of ./content one by one (not through content/index.ts), so a missing or broken file is
+// Loads the chapter files of ./content one by one (not through content/index.ts), so a missing or broken file is
 // reported by name while the others are still validated.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import type { MaterialContent } from "./blocks";
-import { POLA_MATERIALS, type PolaMaterialKey } from "./manifest";
+import type { BabContent } from "./blocks";
+import { POLA_BABS, type PolaBabKey } from "./manifest";
 
 export const CONTENT_DIR = join(import.meta.dir, "content");
 
 export type LoadedContent = {
-  /** Materials whose file loaded and default-exports a material, by file key. */
-  materials: Map<PolaMaterialKey, MaterialContent>;
+  /** Chapters whose file loaded and default-exports a chapter, by file key. */
+  babs: Map<PolaBabKey, BabContent>;
   /** Files that are missing, fail to load or export something else. */
   problems: string[];
 };
 
-const MANIFEST_KEYS = Object.keys(POLA_MATERIALS) as PolaMaterialKey[];
+const BAB_KEYS = POLA_BABS.map((bab) => bab.key);
 
-function isMaterialContent(value: unknown): value is MaterialContent {
+function isBabContent(value: unknown): value is BabContent {
   if (typeof value !== "object" || value === null) return false;
-  const material = value as Partial<MaterialContent>;
-  return typeof material.key === "string" && Array.isArray(material.sections);
+  const bab = value as Partial<BabContent>;
+  return (
+    typeof bab.key === "string" &&
+    typeof bab.materials === "object" &&
+    bab.materials !== null &&
+    typeof bab.vocabulary === "object" &&
+    bab.vocabulary !== null &&
+    typeof bab.quiz === "object" &&
+    bab.quiz !== null
+  );
 }
+
+export const isMissingFileProblem = (problem: string) =>
+  problem.endsWith(" is missing");
 
 export async function loadPolaContent(
   dir = CONTENT_DIR,
 ): Promise<LoadedContent> {
-  const materials = new Map<PolaMaterialKey, MaterialContent>();
+  const babs = new Map<PolaBabKey, BabContent>();
   const problems: string[] = [];
 
-  for (const key of MANIFEST_KEYS) {
+  for (const key of BAB_KEYS) {
     const file = `content/${key}.ts`;
     const path = join(dir, `${key}.ts`);
     if (!existsSync(path)) {
@@ -45,23 +56,23 @@ export async function loadPolaContent(
       );
       continue;
     }
-    if (!isMaterialContent(loaded.default)) {
+    if (!isBabContent(loaded.default)) {
       problems.push(
-        `${file} must \`export default defineMaterial({ key, title, description, intro, sections, outro })\``,
+        `${file} must \`export default defineBab({ key, materials, vocabulary, quiz })\``,
       );
       continue;
     }
-    materials.set(key, loaded.default);
+    babs.set(key, loaded.default);
   }
 
   if (existsSync(dir)) {
-    const known = new Set<string>(MANIFEST_KEYS);
+    const known = new Set<string>(BAB_KEYS);
     for (const name of readdirSync(dir)) {
       if (!name.endsWith(".ts") || name === "index.ts") continue;
       if (name.endsWith(".test.ts")) continue;
       if (!known.has(name.slice(0, -3))) {
         problems.push(
-          `content/${name} is not a material in manifest.ts (file names are material keys)`,
+          `content/${name} is not a chapter in manifest.ts (file names are chapter keys)`,
         );
       }
     }
@@ -70,13 +81,15 @@ export async function loadPolaContent(
       problems.push("content/index.ts is missing");
     } else {
       const index = readFileSync(indexPath, "utf8");
-      for (const key of MANIFEST_KEYS) {
+      for (const key of BAB_KEYS) {
         if (!index.includes(`from "./${key}"`)) {
           problems.push(`content/index.ts does not import ./${key}`);
         }
       }
     }
+  } else {
+    problems.push("content/ is missing");
   }
 
-  return { materials, problems };
+  return { babs, problems };
 }

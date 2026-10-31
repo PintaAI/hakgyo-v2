@@ -454,37 +454,33 @@ function Grammar({ block }: BlockRendererProps) {
       {rules.length ? (
         <View className="gap-2">
           <Eyebrow size="md">Aturan tata bahasa</Eyebrow>
-          {rules.map((rule, index) => (
-            <View className="rounded-xl border border-border p-4" key={index}>
-              <View className="flex-row gap-3">
-                <Text className="w-20 text-sm text-muted-foreground">
-                  {stringProp(block.props, "ruleColumnOne", "Kondisi")}
-                </Text>
-                <Text className="min-w-0 flex-1 text-sm font-bold text-foreground">
-                  {rule.condition}
-                </Text>
+          {/* One compact row per rule (condition and form on top, the
+              example below) inside a single bordered list. */}
+          <View className="overflow-hidden rounded-xl border border-border">
+            {rules.map((rule, index) => (
+              <View
+                className={`gap-0.5 px-4 py-3 ${index > 0 ? "border-t border-border" : ""}`}
+                key={index}
+              >
+                <View className="flex-row items-baseline gap-3">
+                  <Text className="min-w-0 flex-1 text-xs leading-5 text-muted-foreground">
+                    {rule.condition}
+                  </Text>
+                  <Text
+                    className="max-w-[60%] text-right text-sm font-black"
+                    style={{ color: accent }}
+                  >
+                    {rule.form}
+                  </Text>
+                </View>
+                {rule.example ? (
+                  <Text className="text-sm leading-6 text-foreground">
+                    {rule.example}
+                  </Text>
+                ) : null}
               </View>
-              <View className="mt-2 flex-row gap-3">
-                <Text className="w-20 text-sm text-muted-foreground">
-                  {stringProp(block.props, "ruleColumnTwo", "Bentuk")}
-                </Text>
-                <Text
-                  className="min-w-0 flex-1 text-sm font-black"
-                  style={{ color: accent }}
-                >
-                  {rule.form}
-                </Text>
-              </View>
-              <View className="mt-2 flex-row gap-3">
-                <Text className="w-20 text-sm text-muted-foreground">
-                  {stringProp(block.props, "ruleColumnThree", "Contoh")}
-                </Text>
-                <Text className="min-w-0 flex-1 text-sm text-foreground">
-                  {rule.example}
-                </Text>
-              </View>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
       ) : null}
 

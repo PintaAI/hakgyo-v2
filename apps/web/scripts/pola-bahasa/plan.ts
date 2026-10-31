@@ -1,17 +1,25 @@
-// The import plan: the desired courses, materials and quizzes (./curriculum.ts) against a snapshot of the
-// database, as creates, updates (only the fields that differ), unchanged counts and the quiz questions and options
-// the content no longer has. Pure, so the dry run and the tests share it with --execute.
+// The import plan: the desired courses, materials, vocabulary sets and quizzes (./curriculum.ts) against a snapshot
+// of the database, as creates, updates (only the fields that differ), unchanged counts, and deletions of the Pola
+// rows the content no longer has. Pure, so the dry run and the tests share it with --execute.
+//
+// Deletions only ever cover rows inside the two Pola courses (modules, items) and `pb-` resources of the system
+// organization (materials, vocabulary sets and entries, quizzes, questions, options). A row with learner data, a
+// resource placed outside the Pola courses, or any deletion while the courses have enrollments is an error: the
+// import refuses instead of deleting.
 import { canonicalJson } from "../hangeul-mastery/ids";
 
 import type {
   DesiredAssessment,
   DesiredCourse,
+  DesiredEntry,
   DesiredItem,
   DesiredMaterial,
   DesiredModule,
   DesiredOption,
   DesiredQuestion,
+  DesiredVocabularySet,
 } from "./curriculum";
+import { ID_PREFIX } from "./ids";
 
 // ---------------------------------------------------------------- snapshot
 
@@ -25,6 +33,8 @@ export type SnapshotCourse = {
   progressionMode: string;
   enrollmentMode: string | null;
   price: number;
+  /** Course enrollments plus enrollments in the course's cohorts. */
+  enrollmentCount: number;
 };
 export type SnapshotModule = {
   id: string;
@@ -32,6 +42,14 @@ export type SnapshotModule = {
   title: string;
   description: string | null;
   position: number;
+  /** Cohort meetings planned for the module. */
+  meetingCount: number;
+};
+export type ItemLearnerData = {
+  progress: number;
+  attempts: number;
+  events: number;
+  practiceAttempts: number;
 };
 export type SnapshotItem = {
   id: string;
@@ -41,8 +59,10 @@ export type SnapshotItem = {
   type: string;
   position: number;
   materialId: string | null;
+  vocabularySetId: string | null;
   assessmentId: string | null;
   isPublished: boolean;
+  learnerData: ItemLearnerData;
 };
 export type SnapshotMaterial = {
   id: string;
@@ -52,7 +72,26 @@ export type SnapshotMaterial = {
   content: unknown;
   editorSchemaVersion: number;
 };
-
+export type SnapshotVocabularySet = {
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string | null;
+  /** Material requirements that require the set. */
+  requirementCount: number;
+};
+export type SnapshotEntry = {
+  id: string;
+  vocabularySetId: string;
+  term: string;
+  meanings: string[];
+  definition: string;
+  examples: unknown;
+  createdAt: Date;
+  /** Learners' vocabulary progress and practice attempts on the entry. */
+  progressCount: number;
+  practiceCount: number;
+};
 export type SnapshotAssessment = {
   id: string;
   organizationId: string;
@@ -65,6 +104,10 @@ export type SnapshotAssessment = {
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
   editorSchemaVersion: number;
+  attemptCount: number;
+  /** Material requirements that require the quiz, and whether it is published as a public quiz. */
+  requirementCount: number;
+  publicQuiz: boolean;
 };
 export type SnapshotQuestion = {
   id: string;
@@ -86,6 +129,14 @@ export type SnapshotOption = {
   /** Learner selections of the option (deleting it would lose them). */
   selectionCount: number;
 };
+/** A course item anywhere that places one of the snapshot's resources. */
+export type SnapshotPlacement = {
+  itemId: string;
+  courseId: string;
+  materialId: string | null;
+  vocabularySetId: string | null;
+  assessmentId: string | null;
+};
 
 export type Snapshot = {
   organizationId: string;
@@ -95,14 +146,20 @@ export type Snapshot = {
   modules: SnapshotModule[];
   /** Items of the desired courses, plus items elsewhere holding a desired id. */
   items: SnapshotItem[];
-  /** Materials holding a desired id. */
+  /** Materials holding a desired id or placed in the desired courses, plus every `pb-` material of the organization. */
   materials: SnapshotMaterial[];
-  /** Assessments holding a desired id. */
+  /** Vocabulary sets, likewise. */
+  vocabularySets: SnapshotVocabularySet[];
+  /** Entries of those sets, plus entries elsewhere holding a desired id. */
+  entries: SnapshotEntry[];
+  /** Assessments, likewise. */
   assessments: SnapshotAssessment[];
   /** Questions of those assessments, plus questions elsewhere holding a desired id. */
   questions: SnapshotQuestion[];
   /** Options of those questions, plus options elsewhere holding a desired id. */
   options: SnapshotOption[];
+  /** Every course item that places one of the snapshot's materials, vocabulary sets or assessments. */
+  placements: SnapshotPlacement[];
 };
 
 // ---------------------------------------------------------------- plan
@@ -110,12 +167,14 @@ export type Snapshot = {
 export type CourseRow = Omit<DesiredCourse, "modules" | "key">;
 export type ModuleRow = Omit<DesiredModule, "items" | "key">;
 export type ItemRow = Omit<DesiredItem, "key">;
-export type MaterialRow = DesiredMaterial;
+export type MaterialRow = Omit<DesiredMaterial, "key">;
+export type VocabularySetRow = Omit<DesiredVocabularySet, "entries" | "key">;
+export type EntryRow = DesiredEntry;
 export type AssessmentRow = Omit<DesiredAssessment, "questions" | "key">;
 export type QuestionRow = Omit<DesiredQuestion, "options">;
 export type OptionRow = DesiredOption;
-/** A quiz question or option the content no longer has; deleted by the import, listed in every run. */
-export type Removal = { id: string; parentId: string };
+/** A row the content no longer has; deleted by --execute, listed in every run. */
+export type Removal = { id: string; parentId: string; title?: string };
 
 export type Update<T> = { id: string; data: Partial<T>; fields: string[] };
 export type ModelPlan<T> = {
@@ -123,16 +182,19 @@ export type ModelPlan<T> = {
   update: Update<T>[];
   unchanged: number;
 };
+type WithRemovals<T> = ModelPlan<T> & { remove: Removal[] };
 
 export type ImportPlan = {
   courses: ModelPlan<CourseRow>;
-  modules: ModelPlan<ModuleRow>;
-  materials: ModelPlan<MaterialRow>;
-  items: ModelPlan<ItemRow>;
-  assessments: ModelPlan<AssessmentRow>;
-  questions: ModelPlan<QuestionRow> & { remove: Removal[] };
-  options: ModelPlan<OptionRow> & { remove: Removal[] };
-  /** Problems that stop the import (id collisions, rows the content no longer has, removals with learner work). */
+  modules: WithRemovals<ModuleRow>;
+  materials: WithRemovals<MaterialRow>;
+  vocabularySets: WithRemovals<VocabularySetRow>;
+  entries: WithRemovals<EntryRow>;
+  items: WithRemovals<ItemRow>;
+  assessments: WithRemovals<AssessmentRow>;
+  questions: WithRemovals<QuestionRow>;
+  options: WithRemovals<OptionRow>;
+  /** Problems that stop the import (id collisions, deletions that would lose learner data). */
   errors: string[];
 };
 
@@ -201,11 +263,20 @@ const MATERIAL_FIELDS = [
   "content",
   "editorSchemaVersion",
 ] as const;
+const VOCABULARY_SET_FIELDS = ["title", "description"] as const;
+const ENTRY_FIELDS = [
+  "term",
+  "meanings",
+  "definition",
+  "examples",
+  "createdAt",
+] as const;
 const ITEM_FIELDS = [
   "moduleId",
   "type",
   "position",
   "materialId",
+  "vocabularySetId",
   "assessmentId",
   "isPublished",
 ] as const;
@@ -229,17 +300,27 @@ const QUESTION_FIELDS = [
 ] as const;
 const OPTION_FIELDS = ["content", "isCorrect", "position"] as const;
 
+const counts = (data: Record<string, number>) =>
+  Object.entries(data)
+    .filter(([, count]) => count > 0)
+    .map(([name, count]) => `${count} ${name}`)
+    .join(", ");
+
 export function planImport(
   courses: DesiredCourse[],
   materials: DesiredMaterial[],
+  vocabularySets: DesiredVocabularySet[],
   assessments: DesiredAssessment[],
   snapshot: Snapshot,
 ): ImportPlan {
   const errors: string[] = [];
+  const org = snapshot.organizationId;
   const byId = <T extends { id: string }>(rows: T[]) =>
     new Map(
       rows.map((row) => [row.id, row as unknown as Record<string, unknown>]),
     );
+  const ownedPola = (row: { id: string; organizationId: string }) =>
+    row.organizationId === org && row.id.startsWith(ID_PREFIX);
 
   const courseIds = new Set(courses.map((row) => row.id));
   const desiredModules = courses.flatMap((course) => course.modules);
@@ -251,9 +332,10 @@ export function planImport(
     desiredItems.map((row) => [row.id, moduleCourse.get(row.moduleId)!]),
   );
 
+  // ---- courses, modules and items: collisions, and rows of the Pola courses the manifest no longer has.
   for (const course of snapshot.courses) {
     if (courseIds.has(course.id)) {
-      if (course.organizationId !== snapshot.organizationId) {
+      if (course.organizationId !== org) {
         errors.push(
           `course ${course.id} exists in organization ${course.organizationId}`,
         );
@@ -261,12 +343,13 @@ export function planImport(
       continue;
     }
     const clash = courses.find((row) => row.slug === course.slug);
-    if (clash && course.organizationId === snapshot.organizationId) {
+    if (clash && course.organizationId === org) {
       errors.push(
         `course ${course.id} already uses the slug "${course.slug}" wanted by ${clash.id}`,
       );
     }
   }
+  const removeModules: Removal[] = [];
   for (const row of snapshot.modules) {
     const wanted = moduleCourse.get(row.id);
     if (wanted && wanted !== row.courseId) {
@@ -274,11 +357,19 @@ export function planImport(
         `module ${row.id} exists in course ${row.courseId}, not ${wanted}`,
       );
     } else if (!wanted && courseIds.has(row.courseId)) {
-      errors.push(
-        `module ${row.id} "${row.title}" of ${row.courseId} is not in the manifest; keys never change, so remove or restore it by hand`,
-      );
+      if (row.meetingCount) {
+        errors.push(
+          `module ${row.id} "${row.title}" is no longer in the manifest but has ${row.meetingCount} cohort meetings; remove them by hand first`,
+        );
+      }
+      removeModules.push({
+        id: row.id,
+        parentId: row.courseId,
+        title: row.title,
+      });
     }
   }
+  const removeItems: Removal[] = [];
   for (const row of snapshot.items) {
     const wanted = itemCourse.get(row.id);
     if (wanted && wanted !== row.courseId) {
@@ -286,29 +377,156 @@ export function planImport(
         `item ${row.id} exists in course ${row.courseId}, not ${wanted}`,
       );
     } else if (!wanted && courseIds.has(row.courseId)) {
-      errors.push(
-        `item ${row.id} of ${row.courseId} is not in the manifest; keys never change, so remove or restore it by hand`,
-      );
+      const learner = counts(row.learnerData);
+      if (learner) {
+        errors.push(
+          `item ${row.id} is no longer in the manifest but has learner data (${learner}); the import never deletes learner work, remove it by hand`,
+        );
+      }
+      removeItems.push({ id: row.id, parentId: row.moduleId });
     }
   }
+  const removedItemIds = new Set(removeItems.map((row) => row.id));
+  const desiredItemIds = new Set(desiredItems.map((row) => row.id));
+  /** Items that place a resource and survive the import (neither desired nor removed). */
+  const otherPlacements = (
+    field: "materialId" | "vocabularySetId" | "assessmentId",
+    id: string,
+  ) =>
+    snapshot.placements.filter(
+      (row) =>
+        row[field] === id &&
+        !removedItemIds.has(row.itemId) &&
+        !desiredItemIds.has(row.itemId),
+    );
+  const placementError = (
+    kind: string,
+    id: string,
+    rows: SnapshotPlacement[],
+  ) =>
+    `${kind} ${id} is no longer in the content but is placed by ${rows.map((row) => `item ${row.itemId} of ${row.courseId}`).join(", ")}; remove those items by hand first`;
+
+  // ---- materials
+  const materialIds = new Set(materials.map((row) => row.id));
+  const removeMaterials: Removal[] = [];
   for (const row of snapshot.materials) {
-    if (row.organizationId !== snapshot.organizationId) {
+    if (materialIds.has(row.id)) {
+      if (row.organizationId !== org) {
+        errors.push(
+          `material ${row.id} exists in organization ${row.organizationId}`,
+        );
+      }
+      continue;
+    }
+    if (!ownedPola(row)) continue;
+    const placed = otherPlacements("materialId", row.id);
+    if (placed.length) errors.push(placementError("material", row.id, placed));
+    removeMaterials.push({
+      id: row.id,
+      parentId: row.organizationId,
+      title: row.title,
+    });
+  }
+
+  // ---- vocabulary sets and entries
+  const setIds = new Set(vocabularySets.map((row) => row.id));
+  const desiredEntries = vocabularySets.flatMap((row) => row.entries);
+  const entrySet = new Map(
+    desiredEntries.map((row) => [row.id, row.vocabularySetId]),
+  );
+  const removeSets: Removal[] = [];
+  for (const row of snapshot.vocabularySets) {
+    if (setIds.has(row.id)) {
+      if (row.organizationId !== org) {
+        errors.push(
+          `vocabulary set ${row.id} exists in organization ${row.organizationId}`,
+        );
+      }
+      continue;
+    }
+    if (!ownedPola(row)) continue;
+    const placed = otherPlacements("vocabularySetId", row.id);
+    if (placed.length)
+      errors.push(placementError("vocabulary set", row.id, placed));
+    if (row.requirementCount) {
       errors.push(
-        `material ${row.id} exists in organization ${row.organizationId}`,
+        `vocabulary set ${row.id} is no longer in the content but ${row.requirementCount} material requirements need it; remove them by hand first`,
       );
+    }
+    const learner = snapshot.entries
+      .filter((entry) => entry.vocabularySetId === row.id)
+      .reduce(
+        (sum, entry) => sum + entry.progressCount + entry.practiceCount,
+        0,
+      );
+    if (learner) {
+      errors.push(
+        `vocabulary set ${row.id} is no longer in the content but learners have ${learner} progress or practice rows on its entries; remove it by hand`,
+      );
+    }
+    removeSets.push({
+      id: row.id,
+      parentId: row.organizationId,
+      title: row.title,
+    });
+  }
+  const removeEntries: Removal[] = [];
+  for (const row of snapshot.entries) {
+    const wanted = entrySet.get(row.id);
+    if (wanted && wanted !== row.vocabularySetId) {
+      errors.push(
+        `vocabulary entry ${row.id} exists in set ${row.vocabularySetId}, not ${wanted}`,
+      );
+    } else if (!wanted && setIds.has(row.vocabularySetId)) {
+      const learner = counts({
+        progress: row.progressCount,
+        "practice attempts": row.practiceCount,
+      });
+      if (learner) {
+        errors.push(
+          `vocabulary entry ${row.id} "${row.term}" is no longer in the set but has learner data (${learner}); restore its material or remove it by hand`,
+        );
+      }
+      removeEntries.push({
+        id: row.id,
+        parentId: row.vocabularySetId,
+        title: row.term,
+      });
     }
   }
 
-  // Quizzes: the assessment rows, then their questions and options. A question or option of a quiz that the content
-  // no longer has is deleted, unless learners answered it: then the import refuses, and it has to go by hand.
+  // ---- quizzes, then their questions and options
+  const assessmentIds = new Set(assessments.map((row) => row.id));
+  const removeAssessments: Removal[] = [];
   for (const row of snapshot.assessments) {
-    if (row.organizationId !== snapshot.organizationId) {
+    if (assessmentIds.has(row.id)) {
+      if (row.organizationId !== org) {
+        errors.push(
+          `assessment ${row.id} exists in organization ${row.organizationId}`,
+        );
+      }
+      continue;
+    }
+    if (!ownedPola(row)) continue;
+    const placed = otherPlacements("assessmentId", row.id);
+    if (placed.length)
+      errors.push(placementError("assessment", row.id, placed));
+    const blockers = counts({
+      "learner attempts": row.attemptCount,
+      "material requirements": row.requirementCount,
+      "public quiz": row.publicQuiz ? 1 : 0,
+    });
+    if (blockers) {
       errors.push(
-        `assessment ${row.id} exists in organization ${row.organizationId}`,
+        `assessment ${row.id} is no longer in the content but has ${blockers}; remove it by hand`,
       );
     }
+    removeAssessments.push({
+      id: row.id,
+      parentId: row.organizationId,
+      title: row.title,
+    });
   }
-  const assessmentIds = new Set(assessments.map((row) => row.id));
   const desiredQuestions = assessments.flatMap((row) => row.questions);
   const questionAssessment = new Map(
     desiredQuestions.map((row) => [row.id, row.assessmentId]),
@@ -329,12 +547,11 @@ export function planImport(
         errors.push(
           `question ${row.id} is no longer in the quiz but has ${row.answerCount} learner answers; restore its key or remove it by hand`,
         );
-      } else {
-        removeQuestions.push({ id: row.id, parentId: row.assessmentId });
       }
+      removeQuestions.push({ id: row.id, parentId: row.assessmentId });
     }
   }
-  const snapshotQuestionIds = new Set(
+  const keptQuestionIds = new Set(
     snapshot.questions
       .filter((row) => assessmentIds.has(row.assessmentId))
       .map((row) => row.id),
@@ -346,13 +563,32 @@ export function planImport(
       errors.push(
         `option ${row.id} exists in question ${row.questionId}, not ${wanted}`,
       );
-    } else if (!wanted && snapshotQuestionIds.has(row.questionId)) {
+    } else if (!wanted && keptQuestionIds.has(row.questionId)) {
       if (row.selectionCount) {
         errors.push(
           `option ${row.id} is no longer in the quiz (its text changed or it was removed) but learners chose it ${row.selectionCount} times; restore its text or remove it by hand`,
         );
-      } else {
-        removeOptions.push({ id: row.id, parentId: row.questionId });
+      }
+      removeOptions.push({ id: row.id, parentId: row.questionId });
+    }
+  }
+
+  // ---- no deletions at all while learners are enrolled in a Pola course.
+  const deletions =
+    removeModules.length +
+    removeItems.length +
+    removeMaterials.length +
+    removeSets.length +
+    removeEntries.length +
+    removeAssessments.length +
+    removeQuestions.length +
+    removeOptions.length;
+  if (deletions) {
+    for (const course of snapshot.courses) {
+      if (courseIds.has(course.id) && course.enrollmentCount) {
+        errors.push(
+          `course ${course.id} has ${course.enrollmentCount} enrollments, so the import deletes nothing (${deletions} rows are no longer in the content); remove them by hand`,
+        );
       }
     }
   }
@@ -363,22 +599,58 @@ export function planImport(
       byId(snapshot.courses.filter((row) => courseIds.has(row.id))),
       COURSE_FIELDS,
     ),
-    modules: planModel(
-      desiredModules.map(({ items: _items, key: _key, ...row }) => row),
-      byId(snapshot.modules),
-      MODULE_FIELDS,
-    ),
-    materials: planModel(materials, byId(snapshot.materials), MATERIAL_FIELDS),
-    items: planModel(
-      desiredItems.map(({ key: _key, ...row }) => row),
-      byId(snapshot.items),
-      ITEM_FIELDS,
-    ),
-    assessments: planModel(
-      assessments.map(({ questions: _questions, key: _key, ...row }) => row),
-      byId(snapshot.assessments),
-      ASSESSMENT_FIELDS,
-    ),
+    modules: {
+      ...planModel(
+        desiredModules.map(({ items: _items, key: _key, ...row }) => row),
+        byId(snapshot.modules),
+        MODULE_FIELDS,
+      ),
+      remove: removeModules,
+    },
+    materials: {
+      ...planModel(
+        materials.map(({ key: _key, ...row }) => row),
+        byId(snapshot.materials),
+        MATERIAL_FIELDS,
+      ),
+      remove: removeMaterials,
+    },
+    vocabularySets: {
+      ...planModel(
+        vocabularySets.map(({ entries: _entries, key: _key, ...row }) => row),
+        byId(snapshot.vocabularySets),
+        VOCABULARY_SET_FIELDS,
+      ),
+      remove: removeSets,
+    },
+    entries: {
+      ...planModel(
+        desiredEntries,
+        byId(
+          snapshot.entries.filter(
+            (row) => entrySet.get(row.id) === row.vocabularySetId,
+          ),
+        ),
+        ENTRY_FIELDS,
+      ),
+      remove: removeEntries,
+    },
+    items: {
+      ...planModel(
+        desiredItems.map(({ key: _key, ...row }) => row),
+        byId(snapshot.items),
+        ITEM_FIELDS,
+      ),
+      remove: removeItems,
+    },
+    assessments: {
+      ...planModel(
+        assessments.map(({ questions: _questions, key: _key, ...row }) => row),
+        byId(snapshot.assessments),
+        ASSESSMENT_FIELDS,
+      ),
+      remove: removeAssessments,
+    },
     questions: {
       ...planModel(
         desiredQuestions.map(({ options: _options, ...row }) => row),
@@ -407,18 +679,39 @@ export function planImport(
   };
 }
 
+const MODELS = [
+  "courses",
+  "modules",
+  "materials",
+  "vocabularySets",
+  "entries",
+  "items",
+  "assessments",
+  "questions",
+  "options",
+] as const;
+
 export function planHasChanges(plan: ImportPlan) {
-  return (
-    [
-      plan.courses,
-      plan.modules,
-      plan.materials,
-      plan.items,
-      plan.assessments,
-      plan.questions,
-      plan.options,
-    ].some((model) => model.create.length > 0 || model.update.length > 0) ||
-    plan.questions.remove.length > 0 ||
-    plan.options.remove.length > 0
-  );
+  return MODELS.some((name) => {
+    const model = plan[name] as ModelPlan<unknown> & { remove?: Removal[] };
+    return (
+      model.create.length > 0 ||
+      model.update.length > 0 ||
+      (model.remove?.length ?? 0) > 0
+    );
+  });
+}
+
+/** Every row the plan deletes, by kind, in the order --execute deletes them. */
+export function planRemovals(plan: ImportPlan) {
+  return {
+    items: plan.items.remove,
+    modules: plan.modules.remove,
+    options: plan.options.remove,
+    questions: plan.questions.remove,
+    entries: plan.entries.remove,
+    materials: plan.materials.remove,
+    vocabularySets: plan.vocabularySets.remove,
+    assessments: plan.assessments.remove,
+  };
 }

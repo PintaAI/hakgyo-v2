@@ -1,13 +1,14 @@
 // Imports the two Pola Bahasa courses from ./content into the database in apps/web/.env (DIRECT_URL), in the
-// Hakgyo system organization: courses, modules, materials, and each material's quiz (an assessment placed as a
-// published ASSESSMENT item right after the material's item).
+// Hakgyo system organization. Each chapter (bab) is a module: one material per pattern, then the chapter's
+// vocabulary set, then its quiz, all published.
 //
-//   bun run --cwd apps/web pola:import [--execute] [--enroll-existing] [--verbose]
+//   bun run --cwd apps/web pola:import [--execute] [--verbose] [--enroll-existing]
 //
 // Without --execute it validates the content, reads the database and prints what would change, writing nothing.
 // Rows have stable ids derived from the manifest keys (./ids.ts) and only differing fields are written, so a second
-// run reports everything unchanged. --enroll-existing also gives every existing user a FOUNDATION enrollment in
-// both courses (new users get one at sign-up, see src/server/foundation/enrollment.ts).
+// run reports everything unchanged. Pola rows the content no longer has (modules and items of the two courses, `pb-`
+// resources of the system organization) are listed in every run and deleted by --execute; the plan refuses when any
+// of them carries learner data (./plan.ts). No cohort or enrollment is ever created unless --enroll-existing is given.
 import { parseArgs } from "node:util";
 
 import { Prisma, type PrismaClient } from "../../generated/prisma/client";
@@ -19,12 +20,16 @@ import type {
   DesiredAssessment,
   DesiredCourse,
   DesiredMaterial,
+  DesiredVocabularySet,
 } from "./curriculum";
+import { ID_PREFIX } from "./ids";
 import {
   planHasChanges,
   planImport,
+  planRemovals,
   type ImportPlan,
   type ModelPlan,
+  type Removal,
   type Snapshot,
 } from "./plan";
 import { printValidation, validatePolaContent } from "./validate";
@@ -38,33 +43,44 @@ function usage() {
 
 Usage: bun run --cwd apps/web pola:import [options]
 
-  --execute          write the changes (default: dry run)
-  --enroll-existing  also give every existing user a FOUNDATION enrollment in both courses
-  --verbose          list every created and updated row, and the sections nothing links to`);
+  --execute          write the changes, including the listed deletions (default: dry run)
+  --verbose          list every created, updated and deleted row, and the materials nothing links to
+  --enroll-existing  rollout only, never needed for the import: also enroll every existing user in both
+                     courses (creates each course's default cohort)`);
 }
+
+type Desired = {
+  courses: DesiredCourse[];
+  materials: DesiredMaterial[];
+  vocabularySets: DesiredVocabularySet[];
+  assessments: DesiredAssessment[];
+};
 
 // ---------------------------------------------------------------- snapshot
 
+const pbOrDesired = (
+  organizationId: string,
+  ids: string[],
+  placed: (string | null)[],
+) => ({
+  OR: [
+    { id: { in: ids } },
+    { id: { in: placed.filter((id): id is string => !!id) } },
+    { organizationId, id: { startsWith: ID_PREFIX } },
+  ],
+});
+
 async function loadSnapshot(
   db: PrismaClient,
-  courses: DesiredCourse[],
-  materials: DesiredMaterial[],
-  assessments: DesiredAssessment[],
+  desired: Desired,
 ): Promise<Snapshot> {
   const organizationId = HAKGYO_SYSTEM_ORGANIZATION_ID;
+  const { courses, materials, vocabularySets, assessments } = desired;
   const courseIds = courses.map((row) => row.id);
   const modules = courses.flatMap((row) => row.modules);
   const items = modules.flatMap((row) => row.items);
-  const questions = assessments.flatMap((row) => row.questions);
-  const assessmentIds = assessments.map((row) => row.id);
-  const [
-    courseRows,
-    moduleRows,
-    itemRows,
-    materialRows,
-    assessmentRows,
-    questionRows,
-  ] = await Promise.all([
+
+  const [courseRows, cohortRows, moduleRows, itemRows] = await Promise.all([
     db.course.findMany({
       where: {
         OR: [
@@ -82,7 +98,12 @@ async function loadSnapshot(
         progressionMode: true,
         enrollmentMode: true,
         price: true,
+        _count: { select: { enrollments: true } },
       },
+    }),
+    db.cohort.findMany({
+      where: { courseId: { in: courseIds } },
+      select: { courseId: true, _count: { select: { enrollments: true } } },
     }),
     db.courseModule.findMany({
       where: {
@@ -97,6 +118,7 @@ async function loadSnapshot(
         title: true,
         description: true,
         position: true,
+        _count: { select: { cohortMeetings: true } },
       },
     }),
     db.courseItem.findMany({
@@ -112,13 +134,29 @@ async function loadSnapshot(
         type: true,
         position: true,
         materialId: true,
+        vocabularySetId: true,
         assessmentId: true,
         isPublished: true,
         module: { select: { courseId: true } },
+        _count: {
+          select: {
+            progress: true,
+            attempts: true,
+            assessmentEvents: true,
+            practiceAttempts: true,
+          },
+        },
       },
     }),
+  ]);
+
+  const [materialRows, setRows, assessmentRows] = await Promise.all([
     db.material.findMany({
-      where: { id: { in: materials.map((row) => row.id) } },
+      where: pbOrDesired(
+        organizationId,
+        materials.map((row) => row.id),
+        itemRows.map((row) => row.materialId),
+      ),
       select: {
         id: true,
         organizationId: true,
@@ -128,8 +166,26 @@ async function loadSnapshot(
         editorSchemaVersion: true,
       },
     }),
+    db.vocabularySet.findMany({
+      where: pbOrDesired(
+        organizationId,
+        vocabularySets.map((row) => row.id),
+        itemRows.map((row) => row.vocabularySetId),
+      ),
+      select: {
+        id: true,
+        organizationId: true,
+        title: true,
+        description: true,
+        _count: { select: { materialRequirements: true } },
+      },
+    }),
     db.assessment.findMany({
-      where: { id: { in: assessmentIds } },
+      where: pbOrDesired(
+        organizationId,
+        assessments.map((row) => row.id),
+        itemRows.map((row) => row.assessmentId),
+      ),
       select: {
         id: true,
         organizationId: true,
@@ -142,13 +198,45 @@ async function loadSnapshot(
         shuffleQuestions: true,
         shuffleOptions: true,
         editorSchemaVersion: true,
+        publicQuiz: { select: { id: true } },
+        _count: { select: { attempts: true, materialRequirements: true } },
+      },
+    }),
+  ]);
+
+  const setIds = setRows.map((row) => row.id);
+  const assessmentIds = assessmentRows.map((row) => row.id);
+  const desiredQuestions = assessments.flatMap((row) => row.questions);
+  const [entryRows, questionRows, placementRows] = await Promise.all([
+    db.vocabularyEntry.findMany({
+      where: {
+        OR: [
+          { vocabularySetId: { in: setIds } },
+          {
+            id: {
+              in: vocabularySets.flatMap((row) =>
+                row.entries.map((entry) => entry.id),
+              ),
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        vocabularySetId: true,
+        term: true,
+        meanings: true,
+        definition: true,
+        examples: true,
+        createdAt: true,
+        _count: { select: { progress: true, practiceAttempts: true } },
       },
     }),
     db.assessmentQuestion.findMany({
       where: {
         OR: [
           { assessmentId: { in: assessmentIds } },
-          { id: { in: questions.map((row) => row.id) } },
+          { id: { in: desiredQuestions.map((row) => row.id) } },
         ],
       },
       select: {
@@ -162,6 +250,22 @@ async function loadSnapshot(
         _count: { select: { answers: true } },
       },
     }),
+    db.courseItem.findMany({
+      where: {
+        OR: [
+          { materialId: { in: materialRows.map((row) => row.id) } },
+          { vocabularySetId: { in: setIds } },
+          { assessmentId: { in: assessmentIds } },
+        ],
+      },
+      select: {
+        id: true,
+        materialId: true,
+        vocabularySetId: true,
+        assessmentId: true,
+        module: { select: { courseId: true } },
+      },
+    }),
   ]);
   const optionRows = await db.assessmentOption.findMany({
     where: {
@@ -169,7 +273,7 @@ async function loadSnapshot(
         { questionId: { in: questionRows.map((row) => row.id) } },
         {
           id: {
-            in: questions.flatMap((row) =>
+            in: desiredQuestions.flatMap((row) =>
               row.options.map((option) => option.id),
             ),
           },
@@ -185,16 +289,51 @@ async function loadSnapshot(
       _count: { select: { selections: true } },
     },
   });
+
+  const cohortEnrollments = new Map<string, number>();
+  for (const row of cohortRows) {
+    cohortEnrollments.set(
+      row.courseId,
+      (cohortEnrollments.get(row.courseId) ?? 0) + row._count.enrollments,
+    );
+  }
   return {
     organizationId,
-    courses: courseRows,
-    modules: moduleRows,
-    items: itemRows.map(({ module, ...row }) => ({
+    courses: courseRows.map(({ _count, ...row }) => ({
+      ...row,
+      enrollmentCount:
+        _count.enrollments + (cohortEnrollments.get(row.id) ?? 0),
+    })),
+    modules: moduleRows.map(({ _count, ...row }) => ({
+      ...row,
+      meetingCount: _count.cohortMeetings,
+    })),
+    items: itemRows.map(({ module, _count, ...row }) => ({
       ...row,
       courseId: module.courseId,
+      learnerData: {
+        progress: _count.progress,
+        attempts: _count.attempts,
+        events: _count.assessmentEvents,
+        practiceAttempts: _count.practiceAttempts,
+      },
     })),
     materials: materialRows,
-    assessments: assessmentRows,
+    vocabularySets: setRows.map(({ _count, ...row }) => ({
+      ...row,
+      requirementCount: _count.materialRequirements,
+    })),
+    entries: entryRows.map(({ _count, ...row }) => ({
+      ...row,
+      progressCount: _count.progress,
+      practiceCount: _count.practiceAttempts,
+    })),
+    assessments: assessmentRows.map(({ _count, publicQuiz, ...row }) => ({
+      ...row,
+      attemptCount: _count.attempts,
+      requirementCount: _count.materialRequirements,
+      publicQuiz: publicQuiz !== null,
+    })),
     questions: questionRows.map(({ _count, ...row }) => ({
       ...row,
       answerCount: _count.answers,
@@ -203,13 +342,43 @@ async function loadSnapshot(
       ...row,
       selectionCount: _count.selections,
     })),
+    placements: placementRows.map((row) => ({
+      itemId: row.id,
+      courseId: row.module.courseId,
+      materialId: row.materialId,
+      vocabularySetId: row.vocabularySetId,
+      assessmentId: row.assessmentId,
+    })),
   };
 }
 
+const planFor = async (db: PrismaClient, desired: Desired) =>
+  planImport(
+    desired.courses,
+    desired.materials,
+    desired.vocabularySets,
+    desired.assessments,
+    await loadSnapshot(db, desired),
+  );
+
 // ---------------------------------------------------------------- report
 
+const REMOVAL_LABELS: Record<keyof ReturnType<typeof planRemovals>, string> = {
+  items: "item",
+  modules: "module",
+  options: "option",
+  questions: "question",
+  entries: "vocabulary entry",
+  materials: "material",
+  vocabularySets: "vocabulary set",
+  assessments: "quiz",
+};
+
 function printPlan(plan: ImportPlan, verbose: boolean) {
-  const line = <T>(name: string, model: ModelPlan<T>) => {
+  const line = <T>(
+    name: string,
+    model: ModelPlan<T> & { remove?: Removal[] },
+  ) => {
     const fields = new Map<string, number>();
     for (const update of model.update) {
       for (const field of update.fields)
@@ -219,7 +388,7 @@ function printPlan(plan: ImportPlan, verbose: boolean) {
       ? ` (${[...fields].map(([field, count]) => `${field} ${count}`).join(", ")})`
       : "";
     console.log(
-      `  ${name.padEnd(10)} ${String(model.create.length).padStart(4)} create  ${String(model.update.length).padStart(4)} update  ${String(model.unchanged).padStart(4)} unchanged${fieldList}`,
+      `  ${name.padEnd(12)} ${String(model.create.length).padStart(4)} create  ${String(model.update.length).padStart(4)} update  ${String(model.remove?.length ?? 0).padStart(4)} delete  ${String(model.unchanged).padStart(4)} unchanged${fieldList}`,
     );
     if (verbose) {
       for (const row of model.create)
@@ -232,20 +401,39 @@ function printPlan(plan: ImportPlan, verbose: boolean) {
   line("courses", plan.courses);
   line("modules", plan.modules);
   line("materials", plan.materials);
+  line("vocab sets", plan.vocabularySets);
+  line("vocab entries", plan.entries);
   line("items", plan.items);
   line("quizzes", plan.assessments);
   line("questions", plan.questions);
   line("options", plan.options);
-  // Removals are always listed: the import deletes these rows.
-  const removals = [
-    ...plan.questions.remove.map((row) => `question ${row.id}`),
-    ...plan.options.remove.map((row) => `option ${row.id} of ${row.parentId}`),
-  ];
-  if (removals.length) {
-    console.log(
-      `\n  ${removals.length} quiz row(s) no longer in the content (no learner answers), deleted by the import:`,
-    );
-    for (const removal of removals) console.log(`      - ${removal}`);
+
+  // Deletions are always listed (options and entries only counted unless --verbose).
+  const removals = Object.entries(planRemovals(plan)) as [
+    keyof typeof REMOVAL_LABELS,
+    Removal[],
+  ][];
+  const total = removals.reduce((sum, [, rows]) => sum + rows.length, 0);
+  if (!total) return;
+  console.log(
+    `\n  ${total} Pola row(s) are no longer in the content and are deleted by --execute:`,
+  );
+  for (const [kind, rows] of removals) {
+    if (!rows.length) continue;
+    if (
+      !verbose &&
+      (kind === "options" || kind === "questions" || kind === "entries")
+    ) {
+      console.log(
+        `      - ${rows.length} ${REMOVAL_LABELS[kind]}(s) (--verbose lists them)`,
+      );
+      continue;
+    }
+    for (const row of rows) {
+      console.log(
+        `      - ${REMOVAL_LABELS[kind]} ${row.id}${row.title ? ` "${row.title}"` : ""}`,
+      );
+    }
   }
 }
 
@@ -261,12 +449,93 @@ const nullableJson = (value: unknown) =>
 let tempCounter = 1_000_000_000 + (Date.now() % 100_000_000) * 10;
 const tempPosition = () => tempCounter++;
 
+const idsOf = (rows: Removal[]) => rows.map((row) => row.id);
+
+/** Fails the transaction when a delete did not hit exactly the planned rows. */
+function expectDeleted(
+  kind: string,
+  planned: Removal[],
+  result: { count: number },
+) {
+  if (result.count !== planned.length) {
+    throw new Error(
+      `planned to delete ${planned.length} ${kind} rows but ${result.count} matched; nothing was written`,
+    );
+  }
+}
+
+/**
+ * Re-checks inside the transaction that nothing about to be deleted carries learner data (the plan was made from a
+ * snapshot read before it). Vocabulary progress cascades with its entry, so it must be checked before deleting.
+ */
+async function assertNoLearnerData(
+  tx: Prisma.TransactionClient,
+  plan: ImportPlan,
+  courseIds: string[],
+) {
+  const removals = planRemovals(plan);
+  if (!Object.values(removals).some((rows) => rows.length)) return;
+  const itemIds = idsOf(removals.items);
+  const entryWhere = {
+    OR: [
+      { id: { in: idsOf(removals.entries) } },
+      { vocabularySetId: { in: idsOf(removals.vocabularySets) } },
+    ],
+  };
+  const found = {
+    enrollments:
+      (await tx.courseEnrollment.count({
+        where: { courseId: { in: courseIds } },
+      })) +
+      (await tx.cohortEnrollment.count({
+        where: { cohort: { courseId: { in: courseIds } } },
+      })),
+    progress: await tx.contentProgress.count({
+      where: { courseItemId: { in: itemIds } },
+    }),
+    attempts: await tx.assessmentAttempt.count({
+      where: {
+        OR: [
+          { courseItemId: { in: itemIds } },
+          { assessmentId: { in: idsOf(removals.assessments) } },
+        ],
+      },
+    }),
+    events: await tx.assessmentEvent.count({
+      where: { courseItemId: { in: itemIds } },
+    }),
+    answers: await tx.assessmentAnswer.count({
+      where: { questionId: { in: idsOf(removals.questions) } },
+    }),
+    selections: await tx.assessmentAnswerSelection.count({
+      where: { optionId: { in: idsOf(removals.options) } },
+    }),
+    vocabularyProgress: await tx.vocabularyProgress.count({
+      where: { entry: entryWhere },
+    }),
+    practiceAttempts: await tx.vocabularyPracticeAttempt.count({
+      where: {
+        OR: [{ entry: entryWhere }, { sourceCourseItemId: { in: itemIds } }],
+      },
+    }),
+  };
+  const blocking = Object.entries(found).filter(([, count]) => count > 0);
+  if (blocking.length) {
+    throw new Error(
+      `learner data appeared since the plan was made (${blocking.map(([name, count]) => `${count} ${name}`).join(", ")}); nothing was written`,
+    );
+  }
+}
+
 async function writePlan(
   tx: Prisma.TransactionClient,
   plan: ImportPlan,
+  courseIds: string[],
   ownerMembershipId: string,
 ) {
   const organizationId = HAKGYO_SYSTEM_ORGANIZATION_ID;
+  const removals = planRemovals(plan);
+  await assertNoLearnerData(tx, plan, courseIds);
 
   for (const row of plan.courses.create) {
     await tx.course.create({
@@ -277,6 +546,33 @@ async function writePlan(
     await tx.course.update({ where: { id: row.id }, data: row.data });
   }
 
+  // 1. Stale items and modules of the Pola courses first: they free module and item positions.
+  if (removals.items.length) {
+    expectDeleted(
+      "item",
+      removals.items,
+      await tx.courseItem.deleteMany({
+        where: {
+          id: { in: idsOf(removals.items) },
+          module: { courseId: { in: courseIds } },
+        },
+      }),
+    );
+  }
+  if (removals.modules.length) {
+    expectDeleted(
+      "module",
+      removals.modules,
+      await tx.courseModule.deleteMany({
+        where: {
+          id: { in: idsOf(removals.modules) },
+          courseId: { in: courseIds },
+        },
+      }),
+    );
+  }
+
+  // 2. Modules
   const movingModules = plan.modules.update.filter((row) =>
     row.fields.includes("position"),
   );
@@ -295,6 +591,7 @@ async function writePlan(
     });
   }
 
+  // 3. Materials
   for (const row of plan.materials.create) {
     await tx.material.create({
       data: {
@@ -316,7 +613,49 @@ async function writePlan(
     });
   }
 
-  // Quizzes before the items that place them.
+  // 4. Vocabulary sets and their entries
+  for (const row of plan.vocabularySets.create) {
+    await tx.vocabularySet.create({
+      data: {
+        ...row,
+        organizationId,
+        createdByMembershipId: ownerMembershipId,
+      },
+    });
+  }
+  for (const row of plan.vocabularySets.update) {
+    await tx.vocabularySet.update({ where: { id: row.id }, data: row.data });
+  }
+  if (removals.entries.length) {
+    expectDeleted(
+      "vocabulary entry",
+      removals.entries,
+      await tx.vocabularyEntry.deleteMany({
+        where: { id: { in: idsOf(removals.entries) }, organizationId },
+      }),
+    );
+  }
+  for (const row of plan.entries.update) {
+    const { examples, ...data } = row.data;
+    await tx.vocabularyEntry.update({
+      where: { id: row.id },
+      data: {
+        ...data,
+        ...(examples !== undefined ? { examples: json(examples) } : {}),
+      },
+    });
+  }
+  if (plan.entries.create.length) {
+    await tx.vocabularyEntry.createMany({
+      data: plan.entries.create.map((row) => ({
+        ...row,
+        organizationId,
+        examples: json(row.examples),
+      })),
+    });
+  }
+
+  // 5. Quizzes, questions and options
   for (const row of plan.assessments.create) {
     await tx.assessment.create({
       data: {
@@ -339,16 +678,23 @@ async function writePlan(
       },
     });
   }
-  // Rows the content no longer has (planImport refuses when any carries learner answers).
-  if (plan.options.remove.length) {
-    await tx.assessmentOption.deleteMany({
-      where: { id: { in: plan.options.remove.map((row) => row.id) } },
-    });
+  if (removals.options.length) {
+    expectDeleted(
+      "option",
+      removals.options,
+      await tx.assessmentOption.deleteMany({
+        where: { id: { in: idsOf(removals.options) } },
+      }),
+    );
   }
-  if (plan.questions.remove.length) {
-    await tx.assessmentQuestion.deleteMany({
-      where: { id: { in: plan.questions.remove.map((row) => row.id) } },
-    });
+  if (removals.questions.length) {
+    expectDeleted(
+      "question",
+      removals.questions,
+      await tx.assessmentQuestion.deleteMany({
+        where: { id: { in: idsOf(removals.questions) } },
+      }),
+    );
   }
   // Positions are unique per assessment and per question: park the rows that move, then write.
   for (const row of plan.questions.update.filter((row) =>
@@ -408,6 +754,7 @@ async function writePlan(
     });
   }
 
+  // 6. Items
   const movingItems = plan.items.update.filter(
     (row) => row.fields.includes("position") || row.fields.includes("moduleId"),
   );
@@ -425,6 +772,45 @@ async function writePlan(
     await tx.courseItem.createMany({
       data: plan.items.create.map((row) => ({ ...row, organizationId })),
     });
+  }
+
+  // 7. Stale `pb-` resources, now that no item places them (questions, options and entries cascade).
+  const ownedPola = { organizationId, id: { startsWith: ID_PREFIX } };
+  if (removals.materials.length) {
+    expectDeleted(
+      "material",
+      removals.materials,
+      await tx.material.deleteMany({
+        where: {
+          ...ownedPola,
+          id: { ...ownedPola.id, in: idsOf(removals.materials) },
+        },
+      }),
+    );
+  }
+  if (removals.vocabularySets.length) {
+    expectDeleted(
+      "vocabulary set",
+      removals.vocabularySets,
+      await tx.vocabularySet.deleteMany({
+        where: {
+          ...ownedPola,
+          id: { ...ownedPola.id, in: idsOf(removals.vocabularySets) },
+        },
+      }),
+    );
+  }
+  if (removals.assessments.length) {
+    expectDeleted(
+      "quiz",
+      removals.assessments,
+      await tx.assessment.deleteMany({
+        where: {
+          ...ownedPola,
+          id: { ...ownedPola.id, in: idsOf(removals.assessments) },
+        },
+      }),
+    );
   }
 }
 
@@ -456,11 +842,11 @@ function withParkedPositions(
   };
 }
 
-// ---------------------------------------------------------------- enrollment
+// ---------------------------------------------------------------- enrollment (rollout only, opt-in)
 
 /**
  * Gives every user who is not deleted a FOUNDATION enrollment in the default cohort of each course, in batches.
- * Existing enrollments (any source or status) are left as they are.
+ * Existing enrollments (any source or status) are left as they are. Only runs with --enroll-existing.
  */
 async function enrollExisting(
   db: PrismaClient,
@@ -538,17 +924,10 @@ export async function runImport(input: {
     console.error("\nFix the content errors above before importing.");
     return 1;
   }
-  const { courses, materials, assessments } = validation.result;
+  const desired: Desired = validation.result;
+  const courseIds = desired.courses.map((row) => row.id);
 
-  const plan = withParkedPositions(
-    planImport(
-      courses,
-      materials,
-      assessments,
-      await loadSnapshot(db, courses, materials, assessments),
-    ),
-    courses,
-  );
+  const plan = withParkedPositions(await planFor(db, desired), desired.courses);
   printPlan(plan, input.verbose);
   if (plan.errors.length) {
     console.error("\nCannot import:");
@@ -558,7 +937,7 @@ export async function runImport(input: {
   const changes = planHasChanges(plan);
 
   if (!input.execute) {
-    if (input.enrollExisting) await enrollExisting(db, courses, false);
+    if (input.enrollExisting) await enrollExisting(db, desired.courses, false);
     console.log(
       changes || input.enrollExisting
         ? "\nDry run: nothing written. Add --execute to apply."
@@ -578,13 +957,11 @@ export async function runImport(input: {
         "The system organization has no owner membership (run db:seed).",
       );
     }
-    await db.$transaction((tx) => writePlan(tx, plan, owner.id), TX_OPTIONS);
-    const after = planImport(
-      courses,
-      materials,
-      assessments,
-      await loadSnapshot(db, courses, materials, assessments),
+    await db.$transaction(
+      (tx) => writePlan(tx, plan, courseIds, owner.id),
+      TX_OPTIONS,
     );
+    const after = await planFor(db, desired);
     if (planHasChanges(after) || after.errors.length) {
       console.error(
         "\nThe database still differs from the content after the import:",
@@ -598,7 +975,7 @@ export async function runImport(input: {
     console.log("\nCourses and materials are unchanged.");
   }
 
-  if (input.enrollExisting) await enrollExisting(db, courses, true);
+  if (input.enrollExisting) await enrollExisting(db, desired.courses, true);
   return 0;
 }
 

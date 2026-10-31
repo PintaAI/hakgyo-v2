@@ -7,7 +7,7 @@ Two linked courses that teach everyday Korean patterns to Indonesian speakers. H
 | Pola Korea → Indo: Paham Pola | `pb-korea-indo` | `pola-korea-indo` | Start from a Korean pattern (-는데, -거든요, 좀) and explain it through Indonesian logic.                         |
 | Indo → Korea: Berani Ngomong  | `pb-indo-korea` | `pola-indo-korea` | Start from words Indonesians say every day (padahal, kok, soalnya, ketiduran) and find how to say them in Korean. |
 
-Every material in one course links to the matching sections of the other, so a learner reading about _padahal_ can open the -는데 section, and the reverse. Links are ordinary BlockNote link nodes whose href is `hakgyo-material:<materialId>#<blockId>` (contract in `packages/shared/src/material-links.ts`).
+Each course is a list of chapters (bab), and each chapter is a module holding one short material per pattern (2–3 minutes of reading), then one vocabulary set with the chapter's patterns, then one quiz. Materials link to each other across both courses, so a learner reading about _padahal_ can open the -는데 material, and the reverse. Links are ordinary BlockNote link nodes whose href is `hakgyo-material:<materialId>` (contract in `packages/shared/src/material-links.ts`); they point at whole materials, without anchors.
 
 Both courses belong to the hidden Hakgyo system organization (`hakgyo-system-organization`), and the importer creates them with the organization's OWNER membership. They are published and free (price 0), with OPEN progression so links can jump to any material without module locks.
 
@@ -17,96 +17,88 @@ To roll out later: switch `enrollmentMode` in `curriculum.ts` to OPEN if learner
 
 ## Where things live
 
-| Part                                                                                                   | Location                                                                                   |
-| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| Outline: courses, modules, materials and their section keys                                            | `apps/web/scripts/pola-bahasa/manifest.ts`                                                 |
-| Writing guide (Indonesian)                                                                             | `apps/web/scripts/pola-bahasa/STYLE.md`                                                    |
-| Block builders (`defineMaterial`, `ref`, `grammar`, `ex`, `chat`, `opener`, `culture`, `quizRef`, ...) | `apps/web/scripts/pola-bahasa/blocks.ts`                                                   |
-| Content, one file per material, default-exporting `defineMaterial(...)`                                | `apps/web/scripts/pola-bahasa/content/<material-key>.ts`, registered in `content/index.ts` |
-| Stable ids                                                                                             | `apps/web/scripts/pola-bahasa/ids.ts`                                                      |
-| Assembly and checks (pure)                                                                             | `apps/web/scripts/pola-bahasa/curriculum.ts`                                               |
-| Plan (pure) and importer                                                                               | `apps/web/scripts/pola-bahasa/plan.ts`, `import.ts`                                        |
-| Offline validation, and the BlockNote round trip                                                       | `apps/web/scripts/pola-bahasa/validate.ts`, `roundtrip.ts`                                 |
-| Course id constants                                                                                    | `apps/web/src/server/foundation/constants.ts`                                              |
+| Part                                                                                  | Location                                                                              |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Outline: courses, chapters (`POLA_BABS`) and their materials, titles, stars           | `apps/web/scripts/pola-bahasa/manifest.ts`                                            |
+| Writing guide (Indonesian)                                                            | `apps/web/scripts/pola-bahasa/STYLE.md`                                               |
+| Block builders (`defineBab`, `ref`, `grammar`, `ex`, `chat`, `table`, `callout`, ...) | `apps/web/scripts/pola-bahasa/blocks.ts`                                              |
+| Content, one file per chapter, default-exporting `defineBab(...)`                     | `apps/web/scripts/pola-bahasa/content/<bab-key>.ts`, registered in `content/index.ts` |
+| Stable ids                                                                            | `apps/web/scripts/pola-bahasa/ids.ts`                                                 |
+| Assembly and checks (pure)                                                            | `apps/web/scripts/pola-bahasa/curriculum.ts`                                          |
+| Plan (pure) and importer                                                              | `apps/web/scripts/pola-bahasa/plan.ts`, `import.ts`                                   |
+| Offline validation, and the BlockNote round trip                                      | `apps/web/scripts/pola-bahasa/validate.ts`, `roundtrip.ts`                            |
+| Course id constants                                                                   | `apps/web/src/server/foundation/constants.ts`                                         |
+
+A chapter file is `defineBab({ key, materials: { [materialKey]: { description, blocks } }, vocabulary: { title, description, entries }, quiz })`. The material title comes from the manifest (`materialTitle()` appends " · ★" for `star`), never from the content.
 
 ## Keys never change
 
 Every id comes from a manifest key:
 
-| Row or block                           | Id                                                                                                                                              |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Course                                 | `pb-<courseKey>`                                                                                                                                |
-| Module                                 | `pb-<moduleKey>`                                                                                                                                |
-| Material                               | `pb-<materialKey>-material`                                                                                                                     |
-| Course item                            | `pb-<materialKey>-item`                                                                                                                         |
-| Quiz (assessment)                      | `pb-<materialKey>-quiz`                                                                                                                         |
-| Quiz course item                       | `pb-<materialKey>-quiz-item`                                                                                                                    |
-| Quiz question                          | `pb-<materialKey>-quiz-q-<questionKey>`                                                                                                         |
-| Quiz option                            | `<questionId>-o-<hash of the option text>`                                                                                                      |
-| Section heading (level 2, link anchor) | `pb-<materialKey>--<sectionKey>`                                                                                                                |
-| Any other block                        | `pb-<materialKey>--<part>-b<n>`, where `<part>` is `intro`, `outro` or the section key and `n` counts blocks in document order within that part |
+| Row or block                | Id                                                                    |
+| --------------------------- | --------------------------------------------------------------------- |
+| Course                      | `pb-<courseKey>`                                                      |
+| Module (chapter)            | `pb-<babKey>`                                                         |
+| Material                    | `pb-<materialKey>-material`                                           |
+| Material course item        | `pb-<materialKey>-item`                                               |
+| Material block              | `pb-<materialKey>-b<n>`, `n` counting blocks in document order from 1 |
+| Vocabulary set and its item | `pb-<babKey>-vocab`, `pb-<babKey>-vocab-item`                         |
+| Vocabulary entry            | `pb-<babKey>-v-<materialKey>` (one per material)                      |
+| Quiz (assessment) and item  | `pb-<babKey>-quiz`, `pb-<babKey>-quiz-item`                           |
+| Quiz question               | `pb-<babKey>-quiz-q-<questionKey>`                                    |
+| Quiz option                 | `<questionId>-o-<hash of the option text>`                            |
 
-Learner progress hangs on the item ids, and links from other materials point at the material and section ids. Renaming a key therefore breaks progress and links. Never rename or reuse a course, module, material or section key once the courses are imported. Adding new materials, modules or sections is fine. If something really must go away, remove it by hand in the workspace: the importer refuses to run while the courses hold modules or items the manifest does not list.
-
-Block numbering restarts in every section. Editing one section only renumbers the blocks of that section, and section anchors never move.
-
-Learner answers hang on the question ids, so never rename a question key either. Options are keyed by a hash of their text (as in Hangeul Mastery): reordering keeps them, editing an option's text makes a new option.
+Learner progress hangs on the item, entry and question ids, and links point at the material ids. Never rename or reuse a course, chapter, material or question key once the courses are imported; adding is fine. Entries are keyed by material, so editing a term keeps its progress. Options are keyed by a hash of their text (as in Hangeul Mastery): reordering keeps them, editing an option's text makes a new option.
 
 ## Assembly
 
-For each material the importer builds one BlockNote document: the `intro` blocks, then for each section a level-2 heading (the section title) followed by the section's blocks, then the `outro` blocks. Content files never add level-2 headings themselves; use `h3()` inside sections.
+Per chapter, the module's items are, in order and all published: the materials in manifest order, the vocabulary set, the quiz. A material's document is its `blocks` with derived ids. `ref(text, materialKey)` writes a `pola-ref:<materialKey>` href, and assembly turns it into `hakgyo-material:pb-<materialKey>-material`.
 
-`ref(text, materialKey, sectionKey?)` writes a `pola-ref:<materialKey>[#<sectionKey>]` href, and assembly turns it into `hakgyo-material:pb-<materialKey>-material[#pb-<materialKey>--<sectionKey>]`.
+The vocabulary set has one entry per material, in the same order: `term`, `meanings`, `definition` (the meanings joined with "; "), and `examples` as one string `"<Korean> = <Indonesian>"`, the shape Hangeul Mastery and the vocabulary editor use. Entry order is fixed through `createdAt` (a fixed base plus the entry's index in milliseconds).
 
-Besides paragraphs, lists, tables, callouts and grammar cards, content uses three more custom blocks: `opener()` (a `lessonPage` lesson opener without an image, first in every `intro`), `chat()` (one `conversation` block) and `culture()` (a text-only `culture` block). The builders blank every sample text of the block defaults and empty the image, audio-track, practice, useful-expression and pronunciation parts; the learner renderers on web and mobile hide such blank optional parts.
-
-### Quizzes
-
-A material may have a `quiz` (title, description, optional `passingScore` defaulting to 70, and 5 to 15 questions with 3 or 4 options and an explanation each). The importer creates it as the assessment `pb-<materialKey>-quiz` (options shuffled, questions in order, no attempt or time limit) and places it as a published ASSESSMENT item `pb-<materialKey>-quiz-item` right after the material's item in the same module; later items of the module move one position down. The material embeds it with `quizRef()`, whose `pola-quiz:self` placeholder assembly replaces with the quiz id. An embedded assessment only resolves to an item of the material's own module (`getLearnerMaterialReferencesForSources` and the mobile course bundle), which is why the quiz item sits in that module.
+The quiz is an assessment with 8 to 12 SINGLE_CHOICE questions (options shuffled, questions in order, no attempt or time limit, `passingScore` defaulting to 70).
 
 ## Validate (offline)
 
 ```bash
-bun run --cwd apps/web pola:validate            # summary
-bun run --cwd apps/web pola:validate --verbose  # also lists the sections nothing links to
+bun run --cwd apps/web pola:validate            # summary per chapter
+bun run --cwd apps/web pola:validate --verbose  # also blocks and links per material, and materials nothing links to
 ```
 
-It needs no database. It loads each content file separately, so a missing or broken file is named without hiding the others, and it checks:
+It needs no database. It loads each chapter file separately, so a missing or broken file is named without hiding the others, and it checks:
 
-- every manifest material has `content/<key>.ts`, `content/index.ts` imports it, and no other material files exist;
-- each file's `key` matches its file name, and the title and description are not empty;
-- the sections match the manifest exactly and in order, each has a title and at least one block;
-- every `ref()` resolves to a manifest material and section, every link has text, and no hand-written `hakgyo-material:` hrefs exist;
-- the assembled document passes the app's own `findBlockNoteDocumentIssues`, block ids are unique, and it loads into a headless BlockNote editor with the app schema (`hakgyoBlockNoteSchema`) with the same blocks, ids, types, props, text and links;
-- no embedded vocabulary sets, and no embedded assessments but the material's own `quizRef()`; a material has a quiz exactly when it has one `quizRef()`;
-- quizzes: 5 to 15 questions with unique kebab-case keys, a prompt and an explanation, 3 or 4 distinct non-empty options, exactly one correct option for SINGLE_CHOICE (at least one correct and one wrong for MULTIPLE_CHOICE), and the workspace's course readiness rules pass;
-- grammar cards have a title, Korean and Indonesian descriptions, at most 12 rules and 12 examples, and well-formed rows;
-- conversations have 1 to 16 complete lines and at most 8 questions, culture blocks have titles and non-empty Korean and Indonesian paragraphs, and openers have their title, subtitle, focus titles and objectives;
-- every intro starts with `opener()` (an error once `OPENER_REQUIRED` in `curriculum.ts` is true, a warning before);
-- no level-1 or level-2 headings inside the content, no nested block lists (spread `...chat([...])`), and no draft markers (TODO, TBD, FIXME, XXX, lorem ipsum).
+- every manifest chapter has `content/<bab-key>.ts`, `content/index.ts` imports it, and no other files exist; each file's `key` matches its name;
+- every manifest material of the chapter has a body with a description and blocks, and the chapter has no other materials;
+- the vocabulary set has exactly one entry per material, in order, each with a term, at least one meaning and an example (Korean and Indonesian); a term used twice is a warning;
+- the quiz has 8 to 12 SINGLE_CHOICE questions with unique kebab-case keys, a prompt and an explanation, and 3 or 4 distinct options with exactly one correct;
+- every `ref()` names a manifest material (no `#anchors`), every link has text, and no hand-written `hakgyo-material:` hrefs exist;
+- STYLE.md rules: no `opener()` (lessonPage), level-1 or level-2 headings, embedded assessments or vocabulary sets, and no `culture()` outside `ki-banmal-kapan` (one at most there) are errors; more than 18 blocks, or a table wider than 2 columns in `ik-*` (3 in `ki-*`), are warnings;
+- grammar cards, conversations and culture blocks are well formed, there are no nested block lists and no draft markers (TODO, TBD, FIXME, XXX, lorem ipsum);
+- each document passes the app's `findBlockNoteDocumentIssues`, has unique block ids, and loads into a headless BlockNote editor with the app schema unchanged; the workspace's course readiness rules pass.
 
-It then prints sections, blocks and links in and out per material, the number of quizzes and questions, the number of links between the two courses, and warns about sections nothing links to. It exits non-zero on any error. `bun test scripts/pola-bahasa/import.test.ts` (from `apps/web`) runs the same checks over the content files that exist, plus the id, assembly and plan tests.
-
-`bun run --cwd apps/web typecheck` also checks the content: `content/index.ts` requires every material, and `ref()` only accepts keys from the manifest.
+`bun test scripts/pola-bahasa/import.test.ts` (from `apps/web`) runs the id, assembly, validation and plan tests on fixtures, plus the same checks over the chapter files that exist. `bun run --cwd apps/web typecheck` also checks the content: `content/index.ts` requires every chapter, and `ref()` only accepts manifest keys.
 
 ## Import
 
 `pola:import` uses `DIRECT_URL` (or `DATABASE_URL`) from `apps/web/.env`. It validates the content first and refuses to run with any error. Make sure the system organization exists with an OWNER membership (`db:seed` creates it).
 
 ```bash
-# Dry run: reads the database, prints what would be created or updated, writes nothing.
+# Dry run: reads the database, prints what would be created, updated and deleted, writes nothing.
 bun run --cwd apps/web pola:import
 bun run --cwd apps/web pola:import --verbose
 
-# Write the courses, modules, materials, quizzes and items in one transaction.
+# Write everything, deletions included, in one transaction; then read back and verify.
 bun run --cwd apps/web pola:import --execute
-
-# Rollout only (not yet): enroll every existing (not deleted) user in both courses, in batches of 500.
-# This creates each course's default "Belajar mandiri" cohort.
-bun run --cwd apps/web pola:import --enroll-existing             # dry run: counts who would be enrolled
-bun run --cwd apps/web pola:import --execute --enroll-existing
 ```
 
-The import is idempotent: only fields that differ are written, and after writing it reads the database back and fails if anything still differs, so a second run reports everything unchanged. Materials are stored with `editorSchemaVersion` 1. `--enroll-existing` leaves existing enrollments as they are and only adds missing ones, so it is safe to run again.
+The import is idempotent: only fields that differ are written, and after writing it reads the database back and fails if anything still differs, so a second run reports everything unchanged. Materials are stored with `editorSchemaVersion` 1. It never creates cohorts or enrollments.
 
-Quiz questions and options the content no longer has (a removed question key, an option whose text changed) are listed in every run and deleted by `--execute` when no learner answered or chose them. When learners did, the import refuses: restore the key or text, or remove the row by hand. Nothing else is ever deleted.
+### Deletions (and the move from the old structure)
+
+Rows the content no longer has are listed in every run and deleted by `--execute`: modules and items of the two Pola courses that the manifest does not list, `pb-` materials, vocabulary sets and quizzes of the system organization that no desired item places, and vocabulary entries, quiz questions and options that dropped out of a set or quiz. This is how the first import of the chapter structure replaces the old one (modules `pb-ki-sambung`, `pb-ik-mulai`, ...; long materials like `pb-ki-kata-sambung-material` with their `-item` and `-quiz-item` items and `pb-<oldKey>-quiz` quizzes). Nothing outside the two courses or without the `pb-` prefix is ever deleted.
+
+The plan refuses, and nothing is written, when a row to delete has learner data (progress, attempts, assessment events, answers, option selections, vocabulary progress or practice), when a resource to delete is still placed by an item outside the Pola courses or required by a material, when a module to delete has cohort meetings, or when either course has any enrollment. `--execute` checks the same learner data again inside the transaction before deleting, and every delete must hit exactly the planned rows. Remove such rows by hand if they really must go.
+
+### Rollout (not yet)
+
+`--enroll-existing` is opt-in and never part of an import: it enrolls every existing (not deleted) user in both courses in batches of 500 and creates each course's default "Belajar mandiri" cohort (`--enroll-existing` alone is a dry run that counts them; add `--execute` to write). After that, deletions are refused because the courses have enrollments.
