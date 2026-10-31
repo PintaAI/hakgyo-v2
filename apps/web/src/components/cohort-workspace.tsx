@@ -1049,8 +1049,10 @@ function Learners({
             </AlertDialogTitle>
             <AlertDialogDescription>
               Murid akan dikeluarkan dari kelas ini dan kehilangan akses
-              kurikulum yang berasal dari kelas ini. Akses lewat kelas lain atau
-              belajar mandiri pada kurikulum yang sama tetap berlaku.
+              kurikulum yang berasal dari kelas ini. Jika murid juga terdaftar
+              di kelas lain atau di Kelas Mandiri pada kurikulum yang sama,
+              akses itu tetap berlaku, dan kartu Kelas Mandiri muncul lagi di
+              halaman Belajar murid.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

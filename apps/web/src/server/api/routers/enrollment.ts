@@ -16,6 +16,7 @@ import { withTransactionRetry } from "~/server/db-retry";
 import { redeemEnrollmentInvite } from "~/server/enrollment/invite-redemption";
 import { upsertDefaultCohortEnrollment } from "~/server/enrollment/default-cohort";
 import { findOtherRunningClass } from "~/server/enrollment/cohort-access";
+import { assertNoRunningClassForKelasMandiri } from "~/server/enrollment/kelas-mandiri";
 import { pageArgs, pageInput, pageResult } from "~/server/api/pagination";
 import {
   notifyEnrollmentAdded,
@@ -139,8 +140,14 @@ export const enrollmentRouter = createTRPCRouter({
             cohort: { defaultForCourseId: input.courseId },
           },
         });
-        const update = getOpenEnrollmentUpdate(existing, new Date());
+        const now = new Date();
+        const update = getOpenEnrollmentUpdate(existing, now);
         if (!update && existing) return existing;
+        await assertNoRunningClassForKelasMandiri(tx, {
+          courseId: input.courseId,
+          userId: ctx.actorUserId,
+          now,
+        });
 
         const joined = {
           status: "ACTIVE",

@@ -83,7 +83,7 @@ export const cohortJoinBlockerMessages: Record<CohortJoinBlocker, string> = {
   INVITE_REQUIRED: "Kelas ini hanya bisa diikuti melalui undangan.",
   ALREADY_ENROLLED: "Kamu sudah terdaftar di kelas ini.",
   IN_OTHER_CLASS:
-    "Kamu masih terdaftar di kelas lain untuk course ini. Satu course hanya bisa diikuti di satu kelas pada saat yang sama.",
+    "Kamu masih terdaftar di kelas lain untuk kurikulum ini. Satu kurikulum hanya bisa diikuti di satu kelas pada saat yang sama.",
   FULL: "Kuota kelas ini sudah penuh.",
   PAYMENT_NOT_CONFIGURED:
     "Penyelenggara belum mengatur metode pembayaran. Hubungi penyelenggara.",

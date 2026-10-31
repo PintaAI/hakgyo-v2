@@ -389,16 +389,38 @@ cohort `DRAFT` dan `CANCELLED` tidak memberi akses. Filter ini ada di
 `courseAccessWhere`). Tampilan yang hanya berlaku selama kelas berjalan, seperti
 jadwal, meeting, dan atribusi attempt, memakai `liveClassCohortWhere`.
 
-### Cohort default (belajar mandiri)
+### Kelas Mandiri (cohort default)
 
 Setiap course dapat memiliki satu cohort sistem dengan `defaultForCourseId`
-berisi `courseId`. Cohort ini dibuat saat pertama dipakai
-(`ensureDefaultCohort`) dan menampung murid yang belajar tanpa kelas: join dari
-katalog, invite course, murid yang ditambahkan manual dari halaman course, dan
-course Hangeul Mastery saat pendaftaran akun. Semua jalur ini menulis lewat
+berisi `courseId`, bernama **Kelas Mandiri** (`DEFAULT_COHORT_NAME`). Ini kelas
+tanpa jadwal dan tanpa akhir untuk murid yang belajar sendiri. Cohort ini dibuat
+saat pertama dipakai (`ensureDefaultCohort`) dan menampung join dari katalog,
+invite course, murid yang ditambahkan manual dari halaman course, dan course
+Hangeul Mastery saat pendaftaran akun. Semua jalur ini menulis lewat
 `upsertDefaultCohortEnrollment`.
 
-Cohort default tidak muncul di daftar dan hitungan cohort, dan
+Di layar Belajar murid (`learning.listMyCohorts` dan
+`listMyCohortMilestones`, filter `learnerClassCohortWhere`), Kelas Mandiri
+tampil sebagai kartu kelas (`selfPaced: true`) setelah kelas berjadwal, urut
+judul course, selama keanggotaannya `ACTIVE` atau `COMPLETED` dan belum
+kedaluwarsa. Kelas Mandiri Hangeul Mastery disembunyikan bila murid
+menyembunyikan Hangeul setelah menguasainya. Jumlah anggota Kelas Mandiri tidak
+dihitung (`_count.enrollments` selalu 0).
+
+Satu kurikulum, satu kartu: selama murid punya keanggotaan akses (`ACTIVE` atau
+`COMPLETED`, belum kedaluwarsa) di kelas berjadwal yang sedang berjalan
+(`liveClassCohortWhere`) pada course yang sama, Kelas Mandiri-nya **dijeda**:
+keanggotaan dan aksesnya tetap, hanya kartunya yang tidak tampil. Aturan ini
+dihitung saat membaca, bukan saat menulis, jadi kartunya kembali dengan sendirinya
+begitu kelas berakhir atau murid keluar. Bergabung ke kelas tidak mengubah
+keanggotaan Kelas Mandiri. Progress disimpan per murid dan item, jadi tidak ada
+yang hilang. Murid tidak bisa bergabung sendiri ke Kelas Mandiri (join katalog
+atau invite course) selama masih di kelas berjadwal yang berjalan
+(`assertNoRunningClassForKelasMandiri` di
+`src/server/enrollment/kelas-mandiri.ts`), karena kartunya tidak akan tampil;
+staf tetap boleh menambahkannya.
+
+Kelas Mandiri tidak muncul di daftar dan hitungan cohort staf, dan
 `requireCohortPermission` menolaknya; muridnya dikelola dari halaman Murid pada
 course.
 

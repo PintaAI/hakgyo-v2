@@ -72,13 +72,15 @@ Ingat, semua tautan kelas dicabut permanen jika status kelas berubah dari **Dibu
 
 Jika tautan tidak berlaku, murid melihat **Undangan tidak berlaku** dengan kode status dalam bahasa Inggris, misalnya `REVOKED` (dicabut) atau `EXPIRED` (kedaluwarsa). Kirimkan tautan baru.
 
-## Murid belajar mandiri
+## Kelas Mandiri
 
-Murid juga bisa belajar sebuah kurikulum **tanpa kelas**, misalnya untuk kursus rekaman yang tidak punya jadwal. Hakgyo menyimpan mereka di kelompok khusus bernama **Belajar mandiri**.
+Murid juga bisa belajar sebuah kurikulum **tanpa kelas berjadwal**, misalnya untuk kursus rekaman yang tidak punya jadwal. Hakgyo menyimpan mereka di kelas khusus bernama **Kelas Mandiri**, yang tidak punya pertemuan dan tidak berakhir. Di halaman **Belajar**, murid melihatnya sebagai kartu kelas.
 
 - Lihat dan tambahkan mereka di halaman kurikulum, tab **Murid**, bagian **Belajar mandiri**. Di sini Anda juga bisa mengisi **Akses hingga** untuk membatasi lama akses.
 - Buat tautan untuk seluruh kurikulum di tab yang sama, bagian **Invites**, lalu klik **Buat invite** dan pilih **Target** **Seluruh kurikulum**.
-- **Belajar mandiri** juga muncul sebagai pilihan kelas saat membuat latihan atau tryout.
+- **Kelas Mandiri** juga muncul sebagai pilihan kelas saat membuat latihan atau tryout.
+
+Murid tetap bisa ikut kelas berjadwal untuk kurikulum yang sama. Selama kelas itu berjalan, kartu Kelas Mandiri disembunyikan dari halaman **Belajar** murid, tetapi aksesnya tidak dicabut. Setelah kelas selesai atau murid dikeluarkan dari kelas, kartu Kelas Mandiri muncul lagi. Progres belajar murid tetap terbawa. Selama murid masih di kelas berjadwal yang berjalan, ia tidak bisa bergabung sendiri ke Kelas Mandiri kurikulum itu, tetapi Anda tetap bisa menambahkannya.
 
 > Tautan untuk seluruh kurikulum selalu gratis, walaupun kurikulumnya punya harga. Untuk kurikulum berbayar, gunakan kelas berbayar.
 

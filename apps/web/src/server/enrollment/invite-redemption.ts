@@ -95,7 +95,7 @@ export async function redeemEnrollmentInvite(
   await tx.$executeRaw`
     SELECT pg_advisory_xact_lock(hashtextextended(${`invite-redeem:${invite.cohortId ?? invite.courseId}:${input.userId}`}, 0))
   `;
-  // Course invites join the course's default self-paced cohort.
+  // Course invites join the course's Kelas Mandiri.
   const existing = await tx.cohortEnrollment.findFirst({
     where: {
       userId: input.userId,
@@ -126,19 +126,19 @@ export async function redeemEnrollmentInvite(
     });
   }
 
-  if (invite.cohortId) {
-    const otherClass = await findOtherRunningClass(tx, {
-      cohortId: invite.cohortId,
-      courseId: invite.courseId,
-      userId: input.userId,
-      now: input.now,
+  // Course invites join the Kelas Mandiri, which a running class rules out
+  // just like another class does: it would stay paused and show nothing.
+  const otherClass = await findOtherRunningClass(tx, {
+    cohortId: invite.cohortId ?? undefined,
+    courseId: invite.courseId,
+    userId: input.userId,
+    now: input.now,
+  });
+  if (otherClass) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: otherRunningClassMessage(otherClass.name),
     });
-    if (otherClass) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: otherRunningClassMessage(otherClass.name),
-      });
-    }
   }
 
   await claimEnrollmentInviteUse(tx, invite, input.now);

@@ -1,5 +1,21 @@
 # Domain glossary
 
+## Kurikulum
+
+A course: the content (modules and items) learners study. `Course` in code. Students, staff and schedules belong to its classes, not to the curriculum.
+
+## Kelas
+
+A class: a group of students, with staff and an optional schedule, studying one curriculum. `Cohort` in code. A scheduled class has start and end dates and meetings.
+
+## Kelas Mandiri
+
+A curriculum's open-ended class for students who study on their own, without a schedule or end date. It is the course's default cohort (`Cohort.defaultForCourseId`), created on first use. New accounts join the Hangeul Mastery Kelas Mandiri.
+
+## One class per curriculum
+
+A student takes at most one running scheduled class of a curriculum at a time. While they have access in a running scheduled class, their Kelas Mandiri of that curriculum is paused: the membership and its access stay, only its card is hidden. The card returns when the class ends or they leave it. Progress belongs to the student and the item, so nothing is lost. A student cannot join the Kelas Mandiri themselves while in a running class of that curriculum; staff can still add them.
+
 ## Assessment
 
 A published set of questions that can be assigned as a course activity or used by an assessment event.

@@ -48,6 +48,10 @@ function createDatabase(input: {
 }
 
 describe("default cohort membership", () => {
+  test("names the default cohort Kelas Mandiri", () => {
+    expect(DEFAULT_COHORT_NAME).toBe("Kelas Mandiri");
+  });
+
   test("creates the default cohort and joins a new learner", async () => {
     const { db, calls } = createDatabase({
       defaultCohort: null,

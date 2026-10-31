@@ -264,4 +264,34 @@ describe("invite redemption", () => {
       },
     ]);
   });
+
+  test("refuses a course invite while the learner takes a running class of the course", async () => {
+    const { tx, getUseCount } = createTransaction();
+    const lookups: unknown[] = [];
+    Object.assign(tx, {
+      $executeRaw: () => Promise.resolve(1),
+      cohortEnrollment: {
+        // Not in the Kelas Mandiri, but active in a running class.
+        findFirst: (args: unknown) => {
+          lookups.push(args);
+          return Promise.resolve(
+            lookups.length === 1
+              ? null
+              : { cohort: { id: "cohort-1", name: "Kelas Pagi" } },
+          );
+        },
+      },
+    });
+
+    expect(
+      await rejectionCode(
+        redeemEnrollmentInvite(tx, {
+          token: "one-time-token-that-is-long-enough",
+          userId: "user-1",
+          now,
+        }),
+      ),
+    ).toBe("PRECONDITION_FAILED");
+    expect(getUseCount()).toBe(0);
+  });
 });

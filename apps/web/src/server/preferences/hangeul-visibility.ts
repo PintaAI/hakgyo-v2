@@ -1,6 +1,7 @@
 import { HANGEUL_MASTERY_ACHIEVEMENT_CODE } from "@hakgyo/shared/hangeul";
 
 import type { Prisma } from "../../../generated/prisma/client";
+import { memoizeForRequest } from "~/server/request-cache";
 
 type PreferenceDb = Pick<Prisma.TransactionClient, "user" | "userPreference">;
 
@@ -40,6 +41,13 @@ export async function getHangeulVisibility(
     showHangeulAfterMastery,
     hangeulHidden: hangeulMastered && !showHangeulAfterMastery,
   };
+}
+
+/** `getHangeulVisibility`, read once per request (see `~/server/request-cache`). */
+export function getRequestHangeulVisibility(db: PreferenceDb, userId: string) {
+  return memoizeForRequest(`hangeulVisibility:${userId}`, () =>
+    getHangeulVisibility(db, userId),
+  );
 }
 
 export async function setShowHangeulAfterMastery(
