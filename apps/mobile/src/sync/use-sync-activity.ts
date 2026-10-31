@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { useMobileSync } from "../providers/MobileSyncProvider";
 import { selectSyncActivity, type SyncActivity } from "./activity";
+import { useSyncActivityPreview } from "./activity-preview";
 import { useSyncIndex } from "./hooks";
 
 /** Course titles of the active organization's learner index, by id. */
@@ -45,5 +46,6 @@ export function useSyncActivity(): SyncActivity | null {
     return () => clearTimeout(timer);
   }, [expiresAt]);
 
-  return activity;
+  const preview = useSyncActivityPreview();
+  return __DEV__ && preview ? preview : activity;
 }
