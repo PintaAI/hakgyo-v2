@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "node scripts/copy-pdfjs-assets.mjs && next build",
-    "check": "eslint . && tsc --noEmit",
+    "check": "eslint . && bun run typecheck",
     "content:extract-hrdk": "bun scripts/hrdk/extract.ts",
     "content:import-hrdk": "bun scripts/hrdk/import.ts",
     "content:validate-hrdk": "bun scripts/hrdk/validate.ts",
@@ -35,7 +35,7 @@
     "preview": "bun run build && next start",
     "start": "next start",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "node_modules/typescript-7/bin/tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.57",
@@ -117,6 +117,7 @@
     "tailwindcss": "4.1.16",
     "tesseract.js": "^7.0.0",
     "typescript": "^5.8.2",
+    "typescript-7": "npm:typescript@7.1.0-beta",
     "typescript-eslint": "^8.27.0"
   },
   "ct3aMetadata": {

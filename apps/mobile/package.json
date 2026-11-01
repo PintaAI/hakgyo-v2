@@ -56,7 +56,7 @@
     "postcss": "^8.5.26",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "4.1.16",
-    "typescript": "~6.0.3"
+    "typescript": "7.1.0-beta"
   },
   "scripts": {
     "dev": "tailscale serve --bg --https=8082 127.0.0.1:8083 && EXPO_UNSTABLE_HEADLESS=1 EXPO_PACKAGER_PROXY_URL=https://jennie-linux.tail2268a1.ts.net:8082 expo start --dev-client --localhost --port 8083",
