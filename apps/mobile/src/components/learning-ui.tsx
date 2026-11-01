@@ -43,6 +43,7 @@ export { FullScreenState } from "./ui/full-screen-state";
 export { GlassInput } from "./ui/glass-input";
 export { HeroHeader } from "./ui/hero-header";
 export { IconCircle } from "./ui/icon-circle";
+export { PageDots } from "./ui/page-dots";
 export { PageTitle } from "./ui/page-title";
 export { ProgressBar } from "./ui/progress-bar";
 export { SectionHeader } from "./ui/section-header";
