@@ -142,7 +142,7 @@ export function QuizSession({
     <QuestionNavigator
       open={navigatorOpen}
       onOpenChange={setNavigatorOpen}
-      title="Tugas hari ini"
+      title="Tantangan Soal hari ini"
       current={index}
       statuses={statuses}
       onSelect={(position) => {

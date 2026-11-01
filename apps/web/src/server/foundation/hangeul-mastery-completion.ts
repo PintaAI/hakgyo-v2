@@ -1,8 +1,12 @@
 import { HANGEUL_MASTERY_ACHIEVEMENT_CODE } from "@hakgyo/shared/hangeul";
-import { hasPassedAssessment } from "@hakgyo/shared/learning/sequential-access";
+import { isAssessmentItemCompleted } from "@hakgyo/shared/learning/sequential-access";
 
 import type { Prisma } from "../../../generated/prisma/client";
 import { lockLearnerProgress } from "../vocabulary/evidence";
+import {
+  enrollInFoundationCohorts,
+  hangeulMasteryNextCohortIds,
+} from "./cohorts";
 import { HANGEUL_MASTERY_COURSE_ID } from "./constants";
 
 type PassEvidence = {
@@ -18,10 +22,10 @@ export type CourseCompletionItem = {
 };
 
 /**
- * Whether every given (published) item is completed, with the semantics of
- * the course outline: an assessment counts once a standalone attempt passed,
- * anything else once its progress is COMPLETED. An empty course is never
- * complete.
+ * Whether every given (published) item of Hangeul Mastery is completed, with
+ * the semantics of the course outline: an assessment counts once a standalone
+ * attempt passed or the onboarding Hangeul test marked it COMPLETED, anything
+ * else once its progress is COMPLETED. An empty course is never complete.
  */
 export function isCourseComplete(
   items: CourseCompletionItem[],
@@ -35,10 +39,13 @@ export function isCourseComplete(
     items.every((item) =>
       item.type === "ASSESSMENT"
         ? !!item.assessment &&
-          hasPassedAssessment(
-            evidence.attemptsByAssessment.get(item.assessment.id) ?? [],
-            item.assessment.passingScore,
-          )
+          isAssessmentItemCompleted({
+            courseId: HANGEUL_MASTERY_COURSE_ID,
+            attempts:
+              evidence.attemptsByAssessment.get(item.assessment.id) ?? [],
+            passingScore: item.assessment.passingScore,
+            progressCompleted: evidence.completedItemIds.has(item.id),
+          })
         : evidence.completedItemIds.has(item.id),
     )
   );
@@ -162,13 +169,92 @@ export async function awardHangeulMasteryIfComplete(
   });
   if (!complete) return { awarded: false as const };
 
+  await grantHangeulMastery(tx, {
+    userId: input.userId,
+    now: input.now ?? new Date(),
+    source: "course",
+  });
+  return { awarded: true as const };
+}
+
+/**
+ * Awards the HANGEUL_MASTERY achievement to a learner who passed the reading
+ * test in mobile onboarding, and marks every published item of the course
+ * completed (assessments included, without attempts) so the course reads as
+ * finished if the learner shows it again. The device grades the test and the
+ * server trusts it: passing only skips a free course. No XP is awarded.
+ */
+export async function awardHangeulMasteryFromPlacement(
+  db: Prisma.TransactionClient,
+  input: { userId: string; now?: Date },
+) {
+  // Serializes with completions from lessons, vocabulary and attempts.
+  await lockLearnerProgress(db, input.userId);
+  const [earned, course] = await Promise.all([
+    db.userAchievement.findUnique({
+      where: {
+        userId_code: {
+          userId: input.userId,
+          code: HANGEUL_MASTERY_ACHIEVEMENT_CODE,
+        },
+      },
+      select: { id: true },
+    }),
+    db.course.findUnique({
+      where: { id: HANGEUL_MASTERY_COURSE_ID },
+      select: { status: true },
+    }),
+  ]);
+  if (course?.status !== "PUBLISHED") return { awarded: false as const };
+  // Marks the items even when the badge is already there: a learner who
+  // earned it before items were marked, or passes again, still gets them.
   const now = input.now ?? new Date();
+  const items = await db.courseItem.findMany({
+    where: {
+      isPublished: true,
+      module: { courseId: HANGEUL_MASTERY_COURSE_ID },
+    },
+    select: { id: true },
+  });
+  const courseItemIds = items.map((item) => item.id);
+  // Missing rows are created completed; started ones are completed now.
+  await db.contentProgress.createMany({
+    data: courseItemIds.map((courseItemId) => ({
+      courseItemId,
+      userId: input.userId,
+      status: "COMPLETED" as const,
+      startedAt: now,
+      completedAt: now,
+    })),
+    skipDuplicates: true,
+  });
+  await db.contentProgress.updateMany({
+    where: {
+      userId: input.userId,
+      courseItemId: { in: courseItemIds },
+      status: { not: "COMPLETED" },
+    },
+    data: { status: "COMPLETED", completedAt: now },
+  });
+  if (earned) return { awarded: false as const };
+  await grantHangeulMastery(db, {
+    userId: input.userId,
+    now,
+    source: "placement",
+  });
+  return { awarded: true as const };
+}
+
+async function grantHangeulMastery(
+  tx: Prisma.TransactionClient,
+  input: { userId: string; now: Date; source: "course" | "placement" },
+) {
   await tx.userAchievement.createMany({
     data: {
       userId: input.userId,
       code: HANGEUL_MASTERY_ACHIEVEMENT_CODE,
-      earnedAt: now,
-      metadata: { courseId: HANGEUL_MASTERY_COURSE_ID },
+      earnedAt: input.now,
+      metadata: { courseId: HANGEUL_MASTERY_COURSE_ID, source: input.source },
     },
     skipDuplicates: true,
   });
@@ -180,7 +266,12 @@ export async function awardHangeulMasteryIfComplete(
       status: "ACTIVE",
       cohort: { defaultForCourseId: HANGEUL_MASTERY_COURSE_ID },
     },
-    data: { status: "COMPLETED", completedAt: now },
+    data: { status: "COMPLETED", completedAt: input.now },
   });
-  return { awarded: true as const };
+  // The curricula that follow Hangeul (Pola Bahasa) open with the badge.
+  await enrollInFoundationCohorts(
+    tx,
+    input.userId,
+    hangeulMasteryNextCohortIds(),
+  );
 }

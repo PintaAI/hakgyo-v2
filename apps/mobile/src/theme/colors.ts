@@ -13,6 +13,9 @@ export type ThemeColors = {
   [Name in keyof (typeof themeColors)["light"]]: string;
 };
 
+/** The blue of the app icon's tassel, Hakgyo's one accent outside themes. */
+export const BRAND_BLUE = "#1A73FF";
+
 export function withOpacity(color: string, opacity: number) {
   const hex = color.match(/^#([0-9a-f]{6})$/i)?.[1];
   if (!hex) return color;

@@ -1,5 +1,6 @@
 import type { RouterOutputs } from "@hakgyo/api";
-import { entryMeanings, joinMeanings } from "@hakgyo/shared";
+import { displayMeanings, entryMeanings, joinMeanings } from "@hakgyo/shared";
+import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Text, TextInput, View } from "react-native";
 import type { NativeGesture } from "react-native-gesture-handler";
@@ -12,10 +13,16 @@ import {
   matchSpeechAlternative,
   type VocabularySpeechMode,
 } from "../lib/vocabulary-speech";
+import { useDeckTutorial } from "../lib/use-deck-tutorial";
 import { useHandsFreeSpeech } from "../lib/use-hands-free-speech";
 import { HandsFreeAnswerField } from "./hands-free-answer-field";
+import {
+  DeckTutorialCoach,
+  DeckTutorialOverlay,
+} from "./onboarding-deck-tutorial";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
 import { Action, Empty, Eyebrow } from "./learning-ui";
+import { MarqueeText } from "./ui/marquee-text";
 import {
   VocabularyPracticeDeck,
   type VocabularyPracticeDeckHandle,
@@ -53,6 +60,7 @@ export function TodayVocabularyPractice({
   const [moving, setMoving] = useState(false);
   const submitted = useRef(false);
   const deckRef = useRef<VocabularyPracticeDeckHandle>(null);
+  const tutorial = useDeckTutorial();
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<{
@@ -99,8 +107,10 @@ export function TodayVocabularyPractice({
       round.map((item) => ({
         id: `${item.entryId}:${item.setVersion}`,
         // KR mode answers in Korean (productive); ID mode answers in Indonesian (receptive).
-        prompt: mode === "KR" ? joinMeanings(entryMeanings(item)) : item.term,
-        answer: mode === "KR" ? item.term : joinMeanings(entryMeanings(item)),
+        prompt:
+          mode === "KR" ? displayMeanings(entryMeanings(item)) : item.term,
+        answer:
+          mode === "KR" ? item.term : displayMeanings(entryMeanings(item)),
         imageAssetId: item.imageAssetId,
         imageAccessibilityLabel: `${item.term} illustration`,
       })),
@@ -213,6 +223,21 @@ export function TodayVocabularyPractice({
     void saveReveal();
   }
 
+  /** Touch and hold the card to open the vocabulary set it comes from. */
+  function openCardSet() {
+    if (!card) return;
+    Keyboard.dismiss();
+    speech.interrupt();
+    router.push({
+      pathname: "/vocabulary/[vocabularySetId]",
+      params: {
+        vocabularySetId: card.vocabularySetId,
+        sourceCourseItemId: card.sourceCourseItemId,
+        courseId: card.courseId,
+      },
+    });
+  }
+
   function handleInteractionChange(busy: boolean) {
     if (busy) {
       if (speech.handsFree) {
@@ -319,21 +344,13 @@ export function TodayVocabularyPractice({
     setSeed(randomSeed());
   }
 
-  const hint = moving
-    ? "Menyiapkan kartu berikutnya…"
-    : listening
-      ? mode === "KR"
-        ? "Mendengarkan bahasa Korea… ketuk mikrofon untuk berhenti."
-        : "Mendengarkan bahasa Indonesia… ketuk mikrofon untuk berhenti."
-      : revealed
-        ? "Hanya belajar · XP dan streak tidak berubah. Geser ke atas atau samping atau ketuk Lanjut."
-        : feedback
-          ? feedback.saved
-            ? "Geser ke atas atau samping atau ketuk Lanjut jika sudah siap."
-            : "Menyimpan jawaban kamu…"
-          : mode === "KR"
-            ? "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."
-            : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati.";
+  // How to answer is taught once by the deck tutorial and the input's
+  // placeholder; this line only says what the learner cannot see elsewhere.
+  const status = revealed
+    ? "Hanya belajar · XP dan streak tidak berubah."
+    : feedback && !feedback.saved
+      ? "Menyimpan jawaban kamu…"
+      : null;
   const placeholder = revealed
     ? "Siap untuk kata berikutnya?"
     : listening
@@ -351,40 +368,59 @@ export function TodayVocabularyPractice({
         <Empty>Belum ada kata untuk dilatih.</Empty>
       ) : round.length > 0 ? (
         <>
-          <Eyebrow size="md" className="text-center">
-            {card
-              ? `${card.vocabularySetTitle} · ${card.courseTitle}`
-              : "Siap untuk campuran berikutnya?"}
-          </Eyebrow>
-          <View className="items-center">
-            <VocabularyModeSwitch
-              mode={mode}
-              onChange={handleModeChange}
-              disabled={moving || speech.speechBusy}
+          {/* Long set and curriculum names slide instead of wrapping. */}
+          <MarqueeText align="center">
+            <Eyebrow size="md">
+              {card
+                ? `${card.vocabularySetTitle} · ${card.courseTitle}`
+                : "Siap untuk campuran berikutnya?"}
+            </Eyebrow>
+          </MarqueeText>
+          <View>
+            <VocabularyPracticeDeck
+              key={roundKey}
+              ref={deckRef}
+              scrollGesture={scrollGesture}
+              cards={deckCards}
+              index={index}
+              correct={feedback?.correct}
+              disabled={
+                recordPending ||
+                (feedback ? !feedback.saved : false) ||
+                (revealed && !revealSaved)
+              }
+              revealed={revealed}
+              onReveal={() => {
+                tutorial.onReveal();
+                revealAnswer();
+              }}
+              onInteractionChange={(busy) => {
+                tutorial.onInteractionChange(busy);
+                handleInteractionChange(busy);
+              }}
+              onAdvanceComplete={() => {
+                tutorial.onAdvance();
+                finishAdvance();
+              }}
+              onLongPress={openCardSet}
             />
+            {tutorial.showHand && card && !moving ? (
+              <DeckTutorialOverlay step={tutorial.step} />
+            ) : null}
           </View>
-          <VocabularyPracticeDeck
-            key={roundKey}
-            ref={deckRef}
-            scrollGesture={scrollGesture}
-            cards={deckCards}
-            index={index}
-            correct={feedback?.correct}
-            disabled={
-              recordPending ||
-              (feedback ? !feedback.saved : false) ||
-              (revealed && !revealSaved)
-            }
-            revealed={revealed}
-            onReveal={revealAnswer}
-            onInteractionChange={handleInteractionChange}
-            onAdvanceComplete={finishAdvance}
-          />
           {card ? (
             <View className="gap-3">
-              <Text className="text-center text-xs text-muted-foreground">
-                {hint}
-              </Text>
+              {tutorial.visible ? (
+                <DeckTutorialCoach
+                  doneDetail="Petunjuk ini tidak muncul lagi."
+                  step={tutorial.step}
+                  steps={tutorial.steps}
+                />
+              ) : status ? (
+                <Text className="text-center text-xs text-muted-foreground">
+                  {status}
+                </Text>
+              ) : null}
               {speech.speechError && !answered ? (
                 <Text
                   accessibilityRole="alert"
@@ -467,6 +503,15 @@ export function TodayVocabularyPractice({
                           onPress: () => void checkAnswer(),
                         }
                   }
+                />
+                <VocabularyModeSwitch
+                  mode={mode}
+                  onChange={(next) => {
+                    tutorial.onLanguageChange();
+                    handleModeChange(next);
+                  }}
+                  disabled={moving || speech.speechBusy}
+                  highlight={tutorial.highlightLanguage}
                 />
               </View>
             </View>

@@ -8,7 +8,7 @@ import { memoizeForRequest } from "~/server/request-cache";
 import {
   evaluateOpenModules,
   evaluateSequentialModules,
-  hasPassedAssessment,
+  isAssessmentItemCompleted,
 } from "@hakgyo/shared/learning/sequential-access";
 
 type OutlineOptions = { managementAccess?: boolean };
@@ -198,10 +198,14 @@ function buildCourseOutline(
         attempt: item.assessment?.attempts[0] ?? null,
         isCompleted:
           item.type === "ASSESSMENT"
-            ? hasPassedAssessment(
-                (item.assessment && passEvidence.get(item.assessment.id)) ?? [],
-                item.assessment?.passingScore ?? null,
-              )
+            ? isAssessmentItemCompleted({
+                courseId: course.id,
+                attempts:
+                  (item.assessment && passEvidence.get(item.assessment.id)) ??
+                  [],
+                passingScore: item.assessment?.passingScore ?? null,
+                progressCompleted: item.progress.length > 0,
+              })
             : item.progress.length > 0,
       })),
   }));

@@ -1,4 +1,5 @@
 import { reachesPercent } from "../assessment-score";
+import { HANGEUL_MASTERY_COURSE_ID } from "../hangeul";
 
 export type ModuleAccess = "LOCKED" | "AVAILABLE" | "COMPLETED";
 
@@ -27,6 +28,25 @@ export function hasPassedAssessment(
       reachesPercent(attempt.score, attempt.maxScore, passingScore)
     );
   });
+}
+
+/**
+ * Whether an assessment placed in a course counts as completed: a passing
+ * standalone attempt, or, in Hangeul Mastery only, COMPLETED progress. The
+ * onboarding Hangeul test marks every item of that course completed without
+ * attempts. Elsewhere progress alone never counts, so an attempt a teacher
+ * regrades below the passing score stops counting.
+ */
+export function isAssessmentItemCompleted(input: {
+  courseId: string;
+  attempts: AssessmentAttempt[];
+  passingScore: number | null;
+  progressCompleted: boolean;
+}) {
+  return (
+    hasPassedAssessment(input.attempts, input.passingScore) ||
+    (input.courseId === HANGEUL_MASTERY_COURSE_ID && input.progressCompleted)
+  );
 }
 
 export function evaluateSequentialModules<

@@ -16,7 +16,7 @@ import { assessmentContentAssetIds } from "../content-assets";
 import {
   evaluateOpenModules,
   evaluateSequentialModules,
-  hasPassedAssessment,
+  isAssessmentItemCompleted,
   passesAssessmentRequirement,
   passesRequirementPolicy,
 } from "../learning";
@@ -133,12 +133,18 @@ function standaloneAttemptsFor(state: LearnerState, item: BundleItem) {
   );
 }
 
-function isItemCompleted(state: LearnerState, item: BundleItem) {
+function isItemCompleted(
+  state: LearnerState,
+  item: BundleItem,
+  courseId: string,
+) {
   if (item.type === "ASSESSMENT") {
-    return hasPassedAssessment(
-      passEvidenceFor(state, item.assessmentId),
-      item.assessmentPassingScore,
-    );
+    return isAssessmentItemCompleted({
+      courseId,
+      attempts: passEvidenceFor(state, item.assessmentId),
+      passingScore: item.assessmentPassingScore,
+      progressCompleted: isContentCompleted(state, item.id),
+    });
   }
   return isContentCompleted(state, item.id);
 }
@@ -220,7 +226,7 @@ export function composeCourseOutline(
       position: item.position,
       title: item.title,
       attempt: attemptSummary(standaloneAttemptsFor(state, item)?.latest),
-      isCompleted: isItemCompleted(state, item),
+      isCompleted: isItemCompleted(state, item, bundle.courseId),
     })),
   }));
   const modules =

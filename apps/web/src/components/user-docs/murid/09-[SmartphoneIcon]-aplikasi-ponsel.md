@@ -56,13 +56,13 @@ Saat ada yang sedang terjadi, aplikasi memberi tahu kamu:
 - Di iPhone dengan iOS 26 atau lebih baru, muncul bar kecil di atas tab bawah. Isinya misalnya **Mengunduh Hangeul Mastery**, **Indonesia → Korea diperbarui**, atau **3 progres belum terkirim**. Bar ini hilang sendiri setelah selesai.
 - Di Android, muncul pesan singkat di bagian bawah layar. Ketuk **Lihat** untuk melihat detailnya.
 
-Ketuk bar atau **Lihat** untuk membuka **Status sinkron**. Di sana kamu bisa melihat apakah semua progres sudah terkirim, dan keadaan setiap kursus: **Mengunduh…**, **Diperbarui**, **Siap offline**, **Belum diunduh**, atau **Gagal, dicoba lagi**. Kamu juga bisa membukanya dari **Profil**, lalu **Pengaturan**, lalu **Status sinkron**.
+Ketuk bar atau **Lihat** untuk membuka **Status sinkron**. Di sana kamu bisa melihat apakah semua progres sudah terkirim, dan keadaan setiap kursus: **Mengunduh…**, **Diperbarui**, **Siap offline**, **Belum diunduh**, atau **Gagal, dicoba lagi**. Kamu juga bisa membukanya dari **Profil**, lalu **Pengaturan**, lalu **Sinkronisasi**.
 
 Untuk menjalankannya sendiri:
 
 1. Buka **Profil**, lalu **Pengaturan**.
-2. Ketuk **Sinkronkan materi dan progres**.
-3. Tunggu sampai muncul **Sudah terbaru**. Jika ada tulisan seperti "3 perubahan menunggu sinkronisasi", artinya masih ada kemajuan yang belum terkirim.
+2. Ketuk **Sinkronisasi**, lalu **Sinkronkan sekarang**. Bisa juga dengan menarik halaman Pengaturan ke bawah.
+3. Tunggu sampai di baris **Sinkronisasi** muncul **Sudah terbaru**. Jika ada tulisan seperti "3 perubahan menunggu sinkronisasi", artinya masih ada kemajuan yang belum terkirim.
 
 Jika muncul **Pembaruan diperlukan**, ikuti petunjuk di layar. Biasanya aplikasi mengunduh pembaruan sendiri lalu dibuka ulang. Jika pembaruan harus dipasang dari toko aplikasi, ketuk **Buka App Store** atau **Buka Google Play**; layar itu juga menampilkan apa saja yang baru di versi tersebut.
 
@@ -73,15 +73,6 @@ Aplikasi Hakgyo sering mendapat pembaruan kecil yang terpasang otomatis saat apl
 Untuk membaca lagi semua catatan pembaruan, buka **Profil**, lalu **Pengaturan**, lalu ketuk **Yang baru**.
 
 > **Sebelum keluar dari akun**, pastikan semua kemajuan sudah tersinkron. Keluar akan menghapus materi yang diunduh dan kemajuan yang belum terkirim dari ponsel ini. Akun dan kemajuan yang sudah terkirim tetap aman. Aplikasi akan memperingatkanmu jika masih ada yang belum terkirim.
-
-## Reset aplikasi
-
-Jika aplikasi terasa bermasalah, misalnya materi tidak muncul padahal sudah tersinkron, kamu bisa memulainya lagi dari awal:
-
-1. Buka **Profil**, lalu **Pengaturan**.
-2. Di bagian **Akun**, ketuk **Reset aplikasi**, lalu **Reset**.
-
-Aplikasi menghapus semua datanya di ponsel ini: materi offline, gambar, info masuk, dan pengaturan. Setelah itu aplikasi dibuka ulang seperti baru dipasang, mulai dari layar perkenalan, dan kamu perlu masuk lagi. Akun dan kemajuan yang sudah terkirim tetap aman. Jika masih ada kemajuan yang belum terkirim, aplikasi mencoba mengirimnya dulu dan bertanya sebelum menghapusnya.
 
 ## Tugas berwaktu di aplikasi
 

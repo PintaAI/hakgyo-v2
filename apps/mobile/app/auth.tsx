@@ -1,20 +1,19 @@
 import * as AppleAuthentication from "expo-apple-authentication";
 import { router, Stack, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useState } from "react";
-import { Linking, Platform, ScrollView, View } from "react-native";
+import { Linking, Platform, ScrollView, Text, View } from "react-native";
 
-import {
-  Action,
-  Callout,
-  Card,
-  HeroHeader,
-  TextField,
-} from "../src/components/learning-ui";
+import { Action, Callout, TextField } from "../src/components/learning-ui";
+import { AppIcon } from "../src/components/ui/app-icon";
 import { apiUrl } from "../src/config";
 import { authClient } from "../src/lib/auth-client";
 import { userErrorMessage as errorMessage } from "../src/lib/error-message";
 import { useAppTheme } from "../src/providers/AppThemeProvider";
 import { firstParam } from "../src/lib/route-params";
+import { BRAND_BLUE, withOpacity } from "../src/theme/colors";
+
+// Google's official "G", unmodified (see assets/brands/README.md).
+const googleLogo = require("../assets/brands/google.png");
 
 type SignInMethod = "email" | "google" | "apple";
 type AuthMode = "sign-in" | "sign-up";
@@ -193,84 +192,36 @@ export default function AuthScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: isSignUp ? "Daftar" : "Masuk" }} />
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="gap-5 px-5 pb-10 pt-5"
+        contentContainerClassName="gap-6 px-5 pb-10 pt-12"
         keyboardShouldPersistTaps="handled"
       >
-        <HeroHeader
-          eyebrow="Akun Hakgyo"
-          title={isSignUp ? "Buat akun gratis" : "Masuk untuk melanjutkan"}
-          description={
-            isSignUp
-              ? "Akun baru langsung mendapat kurikulum Hangeul Mastery."
-              : "Akses kurikulum, kelas, dan tugas kamu dari satu tempat."
-          }
+        {/* A soft wash of the icon's blue tassel behind the mark. */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 260,
+            experimental_backgroundImage: `linear-gradient(to bottom, ${withOpacity(BRAND_BLUE, colorScheme === "dark" ? 0.24 : 0.12)}, ${withOpacity(BRAND_BLUE, 0)})`,
+          }}
         />
 
-        <Card>
-          {isSignUp ? (
-            <TextField
-              autoCapitalize="words"
-              autoComplete="name"
-              editable={!isPending}
-              onChangeText={setName}
-              placeholder="Nama"
-              returnKeyType="next"
-              textContentType="name"
-              value={name}
-            />
-          ) : null}
-          <TextField
-            autoCapitalize="none"
-            autoComplete="email"
-            editable={!isPending}
-            keyboardType="email-address"
-            onChangeText={setEmail}
-            placeholder="Alamat email"
-            returnKeyType="next"
-            textContentType="emailAddress"
-            value={email}
-          />
-          <TextField
-            autoCapitalize="none"
-            autoComplete={isSignUp ? "new-password" : "current-password"}
-            editable={!isPending}
-            onChangeText={setPassword}
-            onSubmitEditing={() => void handleEmailSubmit()}
-            placeholder={
-              isSignUp ? "Kata sandi (min. 8 karakter)" : "Kata sandi"
-            }
-            returnKeyType="go"
-            secureTextEntry
-            textContentType={isSignUp ? "newPassword" : "password"}
-            value={password}
-          />
-
-          {notice ? <Callout>{notice}</Callout> : null}
-          {error ? <Callout tone="destructive">{error}</Callout> : null}
-
-          <Action
-            disabled={isPending}
-            loading={pendingMethod === "email"}
-            onPress={() => void handleEmailSubmit()}
+        <View className="items-center gap-4">
+          <AppIcon />
+          <Text
+            accessibilityRole="header"
+            className="text-center text-2xl font-bold tracking-tight text-foreground"
           >
-            {isSignUp ? "Daftar" : "Masuk"}
-          </Action>
-          {!isSignUp ? (
-            <Action
-              accessibilityRole="link"
-              disabled={isPending}
-              size="inline"
-              variant="ghost"
-              onPress={() =>
-                void Linking.openURL(`${apiUrl}/auth/forgot-password`)
-              }
-            >
-              Lupa kata sandi?
-            </Action>
-          ) : null}
+            {isSignUp ? "Buat akun Hakgyo" : "Masuk ke Hakgyo"}
+          </Text>
+        </View>
+
+        <View className="gap-3">
           {isAppleAvailable ? (
             <View
               pointerEvents={isPending ? "none" : "auto"}
@@ -295,13 +246,89 @@ export default function AuthScreen() {
           ) : null}
           <Action
             disabled={isPending}
+            leadingImage={googleLogo}
             loading={pendingMethod === "google"}
-            variant="secondary"
+            variant="outline"
             onPress={() => void handleGoogleSignIn()}
           >
             Lanjutkan dengan Google
           </Action>
-        </Card>
+        </View>
+
+        <View className="flex-row items-center gap-3">
+          <View className="h-px flex-1 bg-border" />
+          <Text className="text-xs font-semibold text-muted-foreground">
+            atau
+          </Text>
+          <View className="h-px flex-1 bg-border" />
+        </View>
+
+        <View className="gap-3">
+          {isSignUp ? (
+            <TextField
+              autoCapitalize="words"
+              autoComplete="name"
+              editable={!isPending}
+              onChangeText={setName}
+              placeholder="Nama"
+              returnKeyType="next"
+              textContentType="name"
+              value={name}
+            />
+          ) : null}
+          <TextField
+            autoCapitalize="none"
+            autoComplete="email"
+            editable={!isPending}
+            keyboardType="email-address"
+            onChangeText={setEmail}
+            placeholder="Email"
+            returnKeyType="next"
+            textContentType="emailAddress"
+            value={email}
+          />
+          <TextField
+            autoCapitalize="none"
+            autoComplete={isSignUp ? "new-password" : "current-password"}
+            editable={!isPending}
+            onChangeText={setPassword}
+            onSubmitEditing={() => void handleEmailSubmit()}
+            placeholder={
+              isSignUp ? "Kata sandi (min. 8 karakter)" : "Kata sandi"
+            }
+            returnKeyType="go"
+            secureTextEntry
+            textContentType={isSignUp ? "newPassword" : "password"}
+            value={password}
+          />
+          {!isSignUp ? (
+            <View className="flex-row justify-end">
+              <Action
+                accessibilityRole="link"
+                align="start"
+                disabled={isPending}
+                size="inline"
+                variant="ghost"
+                onPress={() =>
+                  void Linking.openURL(`${apiUrl}/auth/forgot-password`)
+                }
+              >
+                Lupa kata sandi?
+              </Action>
+            </View>
+          ) : null}
+
+          {notice ? <Callout>{notice}</Callout> : null}
+          {error ? <Callout tone="destructive">{error}</Callout> : null}
+
+          <Action
+            disabled={isPending}
+            loading={pendingMethod === "email"}
+            onPress={() => void handleEmailSubmit()}
+          >
+            {isSignUp ? "Daftar" : "Masuk"}
+          </Action>
+        </View>
 
         <View className="items-center gap-2">
           <Action
@@ -310,9 +337,7 @@ export default function AuthScreen() {
             variant="link"
             onPress={() => switchMode(isSignUp ? "sign-in" : "sign-up")}
           >
-            {isSignUp
-              ? "Sudah punya akun? Masuk"
-              : "Baru di Hakgyo? Daftar gratis"}
+            {isSignUp ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar"}
           </Action>
           {Platform.OS === "android" ? (
             <Action size="inline" variant="ghost" onPress={() => router.back()}>

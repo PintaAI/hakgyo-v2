@@ -1,4 +1,4 @@
-import { entryMeanings, joinMeanings } from "@hakgyo/shared";
+import { displayMeanings, entryMeanings } from "@hakgyo/shared";
 import { router } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { Image } from "expo-image";
@@ -106,7 +106,7 @@ function WordGridCard({
           {entry.term}
         </Text>
         <Text className="text-xs leading-4 text-muted-foreground">
-          {joinMeanings(entryMeanings(entry))}
+          {displayMeanings(entryMeanings(entry))}
         </Text>
       </Pressable>
       {entry.audioAsset ? (
@@ -202,7 +202,7 @@ export function VocabularySetDetail({
                 {entry.term}
               </Text>
               <Text className="text-xs leading-4 text-muted-foreground">
-                {joinMeanings(entryMeanings(entry))}
+                {displayMeanings(entryMeanings(entry))}
               </Text>
             </View>
             {entry.imageAsset ? (

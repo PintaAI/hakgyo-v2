@@ -1,7 +1,13 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { router } from "expo-router";
 import { Image } from "expo-image";
-import { useState, type ComponentProps, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import {
   Alert,
   Linking,
@@ -48,6 +54,9 @@ import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { openAssessmentEvent, openCourseItem } from "../../lib/navigation";
 import { SymbolIcon } from "../ui/symbol-icon";
 import type { SymbolName } from "../ui/symbol-names";
+
+type CourseOutline = RouterOutputs["learning"]["getCourseOutline"];
+type OutlineModule = CourseOutline["modules"][number];
 
 // Official brand assets (see apps/mobile/assets/brands/README.md for sources).
 // Used unmodified for Zoom meetings and WhatsApp invitations.
@@ -439,7 +448,7 @@ export function CohortCard({
   onRetryEvents: () => void;
   now: number;
   milestoneGroup?: CohortMilestoneGroup;
-  outline?: RouterOutputs["learning"]["getCourseOutline"];
+  outline?: CourseOutline;
   isFirst?: boolean;
 }) {
   const [curriculumSegment, setCurriculumSegment] = useState(0);
@@ -478,19 +487,33 @@ export function CohortCard({
     markEntitySeen("ASSESSMENT", featured.id);
     openAssessmentEvent(featured);
   };
-  const outlineItems = outline?.modules.flatMap((module) => module.items) ?? [];
-  const completedCount = outlineItems.filter((item) => item.isCompleted).length;
-  const hasProgress = outlineItems.length > 0;
-  const nextOutlineItem = outline?.modules
-    .flatMap((module) =>
-      module.items.map((item) => ({
-        ...item,
-        available: canOpenModule(module.access),
-        moduleId: module.id,
-        moduleTitle: module.title,
-      })),
-    )
-    .find((item) => item.available && !item.isCompleted);
+  // Derived once per outline, not on every clock tick.
+  const { totalCount, completedCount, nextOutlineItem } = useMemo(() => {
+    let total = 0;
+    let completed = 0;
+    let nextItem:
+      | (OutlineModule["items"][number] & {
+          moduleId: string;
+          moduleTitle: string;
+        })
+      | undefined;
+    for (const module of outline?.modules ?? []) {
+      const available = canOpenModule(module.access);
+      for (const item of module.items) {
+        total += 1;
+        if (item.isCompleted) completed += 1;
+        else if (available && !nextItem) {
+          nextItem = { ...item, moduleId: module.id, moduleTitle: module.title };
+        }
+      }
+    }
+    return {
+      totalCount: total,
+      completedCount: completed,
+      nextOutlineItem: nextItem,
+    };
+  }, [outline]);
+  const hasProgress = totalCount > 0;
   const nextTypeLabel = nextOutlineItem
     ? getLearningItemTypeMeta(nextOutlineItem.type).label
     : null;
@@ -502,15 +525,16 @@ export function CohortCard({
   // room. ~56pt native bar; swap for useHeaderHeight() if this drifts.
   const headerTopPadding = isFirst ? insets.top + 64 : 16;
 
-  const openOutlineItem: ComponentProps<
-    typeof CourseOutlineList
-  >["onOpenItem"] = (item, attempt) => {
-    openCourseItem({
-      courseId: cohort.course.id,
-      courseItemId: item.id,
-      attempt,
-    });
-  };
+  // Stable, so the memoized outline skips the card's clock re-renders.
+  const courseId = cohort.course.id;
+  const openOutlineItem = useCallback<
+    ComponentProps<typeof CourseOutlineList>["onOpenItem"]
+  >(
+    (item, attempt) => {
+      openCourseItem({ courseId, courseItemId: item.id, attempt });
+    },
+    [courseId],
+  );
   const openNextItem =
     nextOutlineItem && nextTypeLabel
       ? () => {
@@ -684,7 +708,7 @@ export function CohortCard({
               )}
               {hasProgress ? (
                 <Text className="text-xs font-semibold text-muted-foreground">
-                  {completedCount}/{outlineItems.length}
+                  {completedCount}/{totalCount}
                 </Text>
               ) : null}
             </View>
@@ -732,7 +756,7 @@ export function CohortCard({
             square
             className="absolute bottom-0 left-0 right-0 z-30"
             value={completedCount}
-            max={outlineItems.length}
+            max={totalCount}
           />
         ) : null}
       </View>
@@ -773,6 +797,8 @@ export function CohortCard({
             {curriculumSegment === 0 ? (
               <CourseOutlineList
                 courseId={cohort.course.id}
+                outline={outline}
+                collapsible
                 showActiveState={false}
                 showHeader={false}
                 onOpenItem={openOutlineItem}

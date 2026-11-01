@@ -1,9 +1,10 @@
 import { Children, Fragment, type ReactNode } from "react";
-import { Pressable, Switch, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { Eyebrow } from "./learning-ui";
+import { SettingsSwitch } from "./ui/settings-switch";
 import { SymbolIcon } from "./ui/symbol-icon";
 import type { SymbolName } from "./ui/symbol-names";
 
@@ -163,12 +164,11 @@ export function SettingsToggleRow({
           ) : null}
         </View>
       </View>
-      <Switch
-        accessibilityState={{ disabled }}
+      <SettingsSwitch
         disabled={disabled}
+        label={label}
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ true: colors.primary }}
       />
     </View>
   );

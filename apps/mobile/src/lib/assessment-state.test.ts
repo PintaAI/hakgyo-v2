@@ -7,6 +7,7 @@ import {
   canReattemptAssessment,
   isStaleClosedOnDemandAssessment,
   latestStandaloneAttemptForItem,
+  latestStandaloneAttemptsByItem,
 } from "./assessment-state";
 
 describe("learner assessment state", () => {
@@ -65,6 +66,17 @@ describe("learner assessment state", () => {
       latestStandaloneAttemptForItem([older, eventAttempt, newer], "item-1")
         ?.id,
     ).toBe("attempt-newer");
+
+    const otherItem = { ...older, id: "attempt-other", courseItemId: "item-2" };
+    const byItem = latestStandaloneAttemptsByItem([
+      older,
+      eventAttempt,
+      newer,
+      otherItem,
+    ]);
+    expect(byItem.get("item-1")?.id).toBe("attempt-newer");
+    expect(byItem.get("item-2")?.id).toBe("attempt-other");
+    expect(byItem.size).toBe(2);
   });
 
   test("shows answer review by assessment context without exposing tryout answers", () => {

@@ -84,6 +84,6 @@ Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**,
 
 > **Penting:** untuk **tryout**, jawaban yang dikerjakan tanpa internet masih diterima sampai **24 jam** setelah tryout ditutup. Untuk **latihan**, jawaban harus terkirim sebelum latihan ditutup, karena pembahasannya langsung terbuka. Sambungkan ponsel ke internet secepatnya supaya nilaimu masuk ke peringkat. Jangan mengubah jam ponsel: jawaban dengan waktu yang tidak masuk akal ditolak.
 
-## Soal harian di Tugas hari ini
+## Soal harian di Tantangan Soal hari ini
 
-Di halaman **Hari ini**, bagian **Tugas hari ini** berisi soal untuk mengulang pelajaran. Hasilnya tidak mengubah nilai, percobaan, progres kurikulum, maupun XP-mu.
+Di halaman **Hari ini**, bagian **Tantangan Soal hari ini** berisi soal untuk mengulang pelajaran. Hasilnya tidak mengubah nilai, percobaan, progres kurikulum, maupun XP-mu.

@@ -77,7 +77,7 @@ export function TodayAssessmentPractice({
     (answer) => answer.correct,
   ).length;
   const openQuestions = useQuestionNavigator({
-    title: "Tugas hari ini",
+    title: "Tantangan Soal hari ini",
     current: index,
     statuses,
     onSelect: (next) => {
@@ -160,7 +160,7 @@ export function TodayAssessmentPractice({
       ) : question ? (
         <>
           <Text className="text-lg font-bold tracking-tight text-foreground">
-            Tugas hari ini
+            Tantangan Soal hari ini
           </Text>
           <Eyebrow size="md" numberOfLines={2}>
             {question.assessmentTitle} · {question.courseTitle}

@@ -7,3 +7,4 @@ export * from "./romanize";
 export const HANGEUL_MASTERY_COURSE_ID = "hakgyo-foundation-hangeul-mastery";
 /** The achievement learners earn by completing every item of that course. */
 export const HANGEUL_MASTERY_ACHIEVEMENT_CODE = "HANGEUL_MASTERY";
+export * from "./placement";

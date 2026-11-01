@@ -30,6 +30,7 @@ import Animated, {
   useFrameCallback,
   useReducedMotion,
   useSharedValue,
+  withDelay,
   withSequence,
   withSpring,
   withTiming,
@@ -87,6 +88,8 @@ type VocabularyPracticeDeckProps = {
   disabled?: boolean;
   onInteractionChange: (busy: boolean) => void;
   onAdvanceComplete: () => void;
+  /** Touch and hold the card, for example to open its vocabulary set. */
+  onLongPress?: () => void;
 };
 
 // Parents own keyboard input and may render on every keystroke. Forward their
@@ -104,12 +107,14 @@ export function VocabularyPracticeDeck(props: VocabularyPracticeDeckProps) {
     () => callbacks.current.onAdvanceComplete(),
     [],
   );
+  const onLongPress = useCallback(() => callbacks.current.onLongPress?.(), []);
   return (
     <VocabularyDeckScene
       {...props}
       onReveal={onReveal}
       onInteractionChange={onInteractionChange}
       onAdvanceComplete={onAdvanceComplete}
+      onLongPress={props.onLongPress ? onLongPress : undefined}
     />
   );
 }
@@ -125,6 +130,7 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
   disabled = false,
   onInteractionChange,
   onAdvanceComplete,
+  onLongPress,
 }: VocabularyPracticeDeckProps) {
   // Capture only a scalar in worklets, never the full vocabulary payload.
   const count = cards.length;
@@ -652,12 +658,44 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
     ],
   );
 
+  // Holding still on the card; any movement first becomes a peel or swipe.
+  // The deck sinks while the finger rests, after a short delay so a swipe
+  // starts without it, and springs back as the hold opens the set.
+  const holdProgress = useSharedValue(0);
+  const longPress = useMemo(
+    () =>
+      Gesture.LongPress()
+        .enabled(Boolean(onLongPress) && index < count)
+        .minDuration(450)
+        .maxDistance(10)
+        .onBegin(() => {
+          holdProgress.value = withDelay(
+            150,
+            withTiming(1, { duration: 300, easing: Easing.out(Easing.quad) }),
+          );
+        })
+        .onStart(() => {
+          holdProgress.value = withSpring(0, { damping: 14, stiffness: 260 });
+          if (onLongPress) scheduleOnRN(onLongPress);
+        })
+        .onFinalize((_event, success) => {
+          if (!success) holdProgress.value = withTiming(0, { duration: 160 });
+        }),
+    [count, holdProgress, index, onLongPress],
+  );
+  const holdStyle = useAnimatedStyle(() =>
+    reducedMotion
+      ? { opacity: 1 - 0.15 * holdProgress.value }
+      : { transform: [{ scale: 1 - 0.04 * holdProgress.value }] },
+  );
+
   const gesture = useMemo(
     // A peel begins in the same corner and can initially travel upward, so
     // `Race` allowed the full-card swipe to win on timing. Give the corner
     // gesture first refusal; its hitSlop makes it fail immediately elsewhere.
-    () => Gesture.Exclusive(peelGesture, swipe),
-    [peelGesture, swipe],
+    // The long press races both: it wins only if the finger stays put.
+    () => Gesture.Race(Gesture.Exclusive(peelGesture, swipe), longPress),
+    [longPress, peelGesture, swipe],
   );
 
   const completionStyle = useAnimatedStyle(() => {
@@ -682,12 +720,12 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
       }}
     >
       <GestureDetector gesture={gesture}>
-        <View
+        <Animated.View
           collapsable={false}
           onLayout={(event) => {
             width.value = event.nativeEvent.layout.width;
           }}
-          style={[styles.stage, { height: cardHeight }]}
+          style={[styles.stage, { height: cardHeight }, holdStyle]}
         >
           {renderedOrdinals.map((ordinal) => (
             <DeckCard
@@ -760,7 +798,7 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
               Kamu sudah sampai di akhir campuran ini.
             </Text>
           </Animated.View>
-        </View>
+        </Animated.View>
       </GestureDetector>
     </View>
   );

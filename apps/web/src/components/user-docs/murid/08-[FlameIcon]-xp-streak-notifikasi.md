@@ -18,7 +18,7 @@ Hal yang perlu diketahui:
 
 - **Lihat jawaban** dan **Lewati** di latihan kartu tidak memberi XP.
 - Mengerjakan tugas, latihan, dan tryout saat ini belum memberi XP, jadi tidak menjaga streak. Selesaikan satu materi atau latih beberapa kosakata setiap hari.
-- Latihan soal di **Tugas hari ini** tidak memberi XP.
+- Latihan soal di **Tantangan Soal hari ini** tidak memberi XP.
 - Streak tetap aman selama kamu mendapat XP hari ini atau kemarin. Jika sehari penuh terlewat, streak dimulai lagi dari awal.
 - Minggu dihitung mulai hari Senin.
 

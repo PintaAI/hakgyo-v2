@@ -9,7 +9,6 @@ import {
 
 import { getOrganizationSwitcherOptions } from "../lib/organization-switcher";
 import { useAppTheme } from "../providers/AppThemeProvider";
-import { withOpacity } from "../theme/colors";
 import { GlassBox } from "./GlassBox";
 import { Avatar, SectionHeader } from "./learning-ui";
 import { SymbolIcon } from "./ui/symbol-icon";
@@ -43,7 +42,7 @@ export function OrganizationSwitcherTrigger({
   align?: "start" | "end";
   onPress: () => void;
 }) {
-  const { activeBrand, colorScheme, colors } = useAppTheme();
+  const { activeBrand, colors } = useAppTheme();
 
   const trigger = (
     <Pressable
@@ -66,18 +65,8 @@ export function OrganizationSwitcherTrigger({
         size={compact ? 32 : 36}
       />
       <Text
-        className={`min-w-0 shrink text-sm font-bold ${compact ? "" : "text-foreground"}`}
+        className="min-w-0 shrink text-sm font-bold text-foreground"
         numberOfLines={1}
-        style={
-          compact
-            ? {
-                color:
-                  colorScheme === "dark"
-                    ? colors.foreground
-                    : colors.background,
-              }
-            : undefined
-        }
       >
         {activeBrand.name}
       </Text>
@@ -98,15 +87,15 @@ export function OrganizationSwitcherTrigger({
       className={`min-w-0 shrink flex-row ${align === "start" ? "justify-start" : "justify-end"}`}
     >
       {compact ? (
+        // Plain glass with a hairline, like an untinted StudyGlass, rather
+        // than a solid primary pill.
         <GlassBox
           isInteractive
-          tintColor={withOpacity(
-            colors.primary,
-            colorScheme === "dark" ? 1 : 0.72,
-          )}
           glassEffectStyle="clear"
           style={{
             borderRadius: 9999,
+            borderWidth: 1,
+            borderColor: colors.border,
             maxWidth: 176,
           }}
         >

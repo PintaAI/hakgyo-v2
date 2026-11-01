@@ -5,6 +5,9 @@ See the mobile asset README for source and trademark notes.
 
 - `zoom.png` — Zoom brand icon.
 - `whatsapp.svg` — WhatsApp standalone logomark.
+- `google.png` — Google "G" icon for the sign-in button. Unmodified from
+  `https://www.gstatic.com/images/branding/googleg/1x/googleg_standard_color_128dp.png`
+  (Google sign-in branding guidelines, retrieved 2026-11-01).
 - `android-head.svg` — Android robot head (flat), from
   `https://developer.android.com/static/images/brand/android-head_flat.svg`
   (Android brand guidelines, retrieved 2026-10-30). Pages that show it must

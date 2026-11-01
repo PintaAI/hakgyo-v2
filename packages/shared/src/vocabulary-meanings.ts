@@ -28,6 +28,15 @@ export function joinMeanings(meanings: readonly string[]) {
   return normalizeMeanings(meanings).join(MEANING_SEPARATOR);
 }
 
+/**
+ * Meanings as learners read them: separated by a middle dot rather than the
+ * stored "; ", which looks like data. Display only; keep `joinMeanings` for
+ * `definition`, search and progress hashes.
+ */
+export function displayMeanings(meanings: readonly string[]) {
+  return normalizeMeanings(meanings).join(" · ");
+}
+
 /** Reads meanings typed into one field, separated by semicolons. */
 export function splitMeanings(text: string) {
   return normalizeMeanings(text.split(";"));
@@ -56,14 +65,39 @@ export function vocabularyMeaningFields(meanings: readonly string[]) {
   };
 }
 
-/** Whether an answer matches one of the meanings, ignoring case and spacing. */
+/**
+ * The answers one meaning accepts: the meaning as written, without notes in
+ * brackets ("Itu (benda yang jauh)" → "itu"), and each side of a slash
+ * ("Sdr / Sdr.i" → "sdr", "sdr.i"). Commas are kept: in a gloss such as
+ * "begitu …, langsung" they belong to the one meaning.
+ */
+function acceptedAnswers(meaning: string) {
+  const full = normalizeMeaningAnswer(meaning);
+  const withoutNotes = normalizeMeaningAnswer(
+    meaning.replace(/\([^()]*\)/gu, " "),
+  );
+  const accepted = new Set([full, withoutNotes]);
+  for (const base of [full, withoutNotes]) {
+    if (!base.includes("/")) continue;
+    for (const side of base.split("/")) {
+      const alternative = normalizeMeaningAnswer(side);
+      if (alternative) accepted.add(alternative);
+    }
+  }
+  accepted.delete("");
+  return accepted;
+}
+
+/**
+ * Whether an answer matches one of the meanings, ignoring case, spacing,
+ * notes in brackets and the other side of a slash.
+ */
 export function matchesMeaning(answer: string, meanings: readonly string[]) {
   const normalized = normalizeMeaningAnswer(answer);
   if (!normalized) return false;
   return (
-    meanings.some(
-      (meaning) => normalizeMeaningAnswer(meaning) === normalized,
-    ) || normalizeMeaningAnswer(joinMeanings(meanings)) === normalized
+    meanings.some((meaning) => acceptedAnswers(meaning).has(normalized)) ||
+    normalizeMeaningAnswer(joinMeanings(meanings)) === normalized
   );
 }
 

@@ -53,12 +53,11 @@ describe("isCourseComplete", () => {
     ).toBe(true);
   });
 
-  test("assessments count only through a passing graded attempt", () => {
+  test("assessments count through a passing graded attempt", () => {
     const items = [material("m1"), quiz("q1", "a1")];
-    const completedItemIds = new Set(["m1", "q1"]);
     expect(
       isCourseComplete(items, {
-        completedItemIds,
+        completedItemIds: new Set(["m1"]),
         attemptsByAssessment: new Map([["a1", [graded(5)]]]),
       }),
     ).toBe(false);
@@ -66,6 +65,15 @@ describe("isCourseComplete", () => {
       isCourseComplete(items, {
         completedItemIds: new Set(["m1"]),
         attemptsByAssessment: new Map([["a1", [graded(5), graded(8)]]]),
+      }),
+    ).toBe(true);
+  });
+
+  test("assessments the onboarding test marked completed count too", () => {
+    expect(
+      isCourseComplete([material("m1"), quiz("q1", "a1")], {
+        completedItemIds: new Set(["m1", "q1"]),
+        attemptsByAssessment: new Map([["a1", [graded(5)]]]),
       }),
     ).toBe(true);
   });
@@ -133,11 +141,14 @@ function createTx(input: {
       },
     },
     assessmentAttempt: { findMany: () => Promise.resolve([]) },
+    // The HANGEUL_MASTERY_NEXT_COHORT_IDS lookup; none are open here.
+    cohort: { findMany: () => Promise.resolve([]) },
     cohortEnrollment: {
       updateMany: (args: unknown) => {
         calls.enrollmentUpdates.push(args);
         return Promise.resolve({ count: 1 });
       },
+      createMany: () => Promise.resolve({ count: 0 }),
     },
   };
   return { tx: tx as unknown as Prisma.TransactionClient, calls };
@@ -243,7 +254,10 @@ describe("awardHangeulMasteryIfComplete", () => {
           userId: "u1",
           code: "HANGEUL_MASTERY",
           earnedAt: now,
-          metadata: { courseId: "hakgyo-foundation-hangeul-mastery" },
+          metadata: {
+            courseId: "hakgyo-foundation-hangeul-mastery",
+            source: "course",
+          },
         },
         skipDuplicates: true,
       },
