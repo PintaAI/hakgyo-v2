@@ -15,10 +15,8 @@ authorization server, dan deployment dibahas di [MCP Server](./mcp-server.md).
 - Role, ownership, assignment, enrollment, dan lifecycle checks menentukan
   capability efektif.
 
-`docs/api.md` masih berguna sebagai contract reference, tetapi source saat ini
-memiliki capability tambahan yang belum tercatat lengkap di sana, terutama
-`account.deletionBlockers` dan profile-image storage procedures. Implementasi MCP
-harus mengikuti source dan contract tests, bukan hanya dokumentasi API.
+Contract reference-nya adalah router di `apps/web/src/server/api/routers/`.
+Implementasi MCP harus mengikuti source dan contract tests.
 
 ## API Inventory
 
