@@ -6,32 +6,40 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import {
+  Platform,
+  Pressable,
+  Text,
+  View,
+  useWindowDimensions,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import {
   Gesture,
   GestureDetector,
   type NativeGesture,
 } from "react-native-gesture-handler";
 import Animated, {
+  Easing,
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  LinearTransition,
   interpolate,
   runOnJS,
   useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
+  withDelay,
+  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import {
-  Action,
-  Badge,
-  Card,
-  Eyebrow,
-  HeroHeader,
-  PageDots,
-} from "../../src/components/learning-ui";
-import { LearningItemRow } from "../../src/components/learn/learning-item-row";
+import { Action, HeroHeader, PageDots } from "../../src/components/learning-ui";
 import {
   DeckTutorialCoach,
   DeckTutorialOverlay,
@@ -42,11 +50,11 @@ import {
   type VocabularyPracticeDeckCard,
   type VocabularyPracticeDeckHandle,
 } from "../../src/components/vocabulary-practice-deck";
-import type { LearningItemType } from "../../src/lib/learning-item-type";
 import { markDeckTutorialSeen } from "../../src/lib/deck-tutorial";
 import { hasPassedHangeulPlacement } from "../../src/lib/hangeul-placement";
 import {
   hasSeenOnboarding,
+  hasSignedInBefore,
   markOnboardingSeen,
 } from "../../src/lib/onboarding";
 import { getStreakProgressDays } from "../../src/lib/streak";
@@ -56,33 +64,30 @@ import { AppIcon } from "../../src/components/ui/app-icon";
 import { SymbolIcon } from "../../src/components/ui/symbol-icon";
 
 type Slide = {
-  key: "course" | "vocabulary" | "streak" | "level";
-  eyebrow: string;
+  key: "features" | "vocabulary" | "progress" | "level";
+  eyebrow?: string;
   title: string;
   description: string;
 };
 
 const SLIDES: Slide[] = [
   {
-    key: "course",
-    eyebrow: "MULAI DARI NOL",
-    title: "Kuasai Hangeul lebih dulu",
+    key: "features",
+    title: "Tempat terbaik belajar bahasa Korea",
     description:
-      "Setiap akun baru langsung mendapat kurikulum Hangeul Mastery. Belajar membaca dan menulis huruf Korea langkah demi langkah.",
+      "Pelajari materi tiap bab, latih kosakata lewat game, kerjakan tugas dan tryout, sampai ikut kelas online. Semua di satu aplikasi.",
   },
   {
     key: "vocabulary",
-    eyebrow: "KOSAKATA",
-    title: "Hafalkan kata dengan kartu",
+    title: "Hafalan rasa main game",
     description:
-      "Coba sekarang: begini cara berlatih kosakata sampai benar-benar hafal.",
+      "Kosakata dilatih lewat game. Kartu salah satunya, coba main di bawah ini.",
   },
   {
-    key: "streak",
-    eyebrow: "SETIAP HARI",
+    key: "progress",
     title: "Belajar sedikit, tapi rutin",
     description:
-      "Kumpulkan XP dan jaga streak harianmu. Materi tetap bisa dibuka saat offline.",
+      "Tiap materi dan kosakata memberi XP. Belajar setiap hari menjaga streak dan membuka lencana.",
   },
   {
     key: "level",
@@ -91,6 +96,17 @@ const SLIDES: Slide[] = [
     description: "10 soal, 2 menit. Lulus? Hangeul dasar langsung beres.",
   },
 ];
+
+/**
+ * The last step for someone who has signed in on this device before: their
+ * account already knows their Hangeul, so it offers sign-in, not the test.
+ */
+const RETURNING_LAST_SLIDE: Omit<Slide, "key"> = {
+  eyebrow: "SELAMAT DATANG KEMBALI",
+  title: "Lanjut dari terakhir kali",
+  description:
+    "Masuk lagi untuk melanjutkan kelas, streak, dan kosakatamu. Semua progres tersimpan di akunmu.",
+};
 
 // What passing marks completed in Hangeul Mastery, rounded down so the copy
 // survives small course edits (31 materials, 169 words, 10 quizzes when
@@ -102,41 +118,9 @@ const LEVEL_UNLOCKS = [
   { value: "1", label: "lencana" },
 ];
 
-const SAMPLE_COURSE_ITEMS: {
-  title: string;
-  type: LearningItemType;
-  statusText: string;
-  completed: boolean;
-  highlighted?: boolean;
-  locked?: boolean;
-}[] = [
-  {
-    title: "Mengenal Hangeul",
-    type: "MATERIAL",
-    statusText: "Selesai",
-    completed: true,
-  },
-  {
-    title: "Vokal dasar ㅏ ㅓ ㅗ ㅜ",
-    type: "MATERIAL",
-    statusText: "Lanjutkan",
-    completed: false,
-    highlighted: true,
-  },
-  {
-    title: "Kata pertama",
-    type: "VOCABULARY_SET",
-    statusText: "12 kata",
-    completed: false,
-  },
-  {
-    title: "Kuis membaca Hangeul",
-    type: "ASSESSMENT",
-    statusText: "10 soal",
-    completed: false,
-    locked: true,
-  },
-];
+/** The Latihan tab's vocabulary games, as `practice-hub.tsx` names them. */
+/** The Latihan tab's vocabulary games, as `practice-hub.tsx` names them. */
+const GAMES = ["Kartu", "Hujan Kata", "Susun makna", "Cocokkan"];
 
 const SAMPLE_DECK_CARDS: VocabularyPracticeDeckCard[] = [
   { id: "onboarding-annyeong", prompt: "안녕하세요", answer: "Halo" },
@@ -167,42 +151,268 @@ function sampleStreakDays() {
   });
 }
 
-function PreviewCard({ children }: { children: ReactNode }) {
+/** 학교, the word the app is named after, and how each block reads. */
+const HAKGYO_SYLLABLES = [
+  { block: "학", romanization: "hak" },
+  { block: "교", romanization: "gyo" },
+];
+
+/** One square of the Hangeul practice sheet each block is written in. */
+const PRACTICE_CELL = 84;
+
+/**
+ * A dashed guide through the middle of a practice square, drawn as dashes
+ * because iOS does not dash a single border side.
+ */
+function GuideLine({ vertical = false }: { vertical?: boolean }) {
   return (
-    <View pointerEvents="none">
-      <Card className="gap-4 p-5">{children}</Card>
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        flexDirection: vertical ? "column" : "row",
+        justifyContent: "space-between",
+        ...(vertical
+          ? { top: 6, bottom: 6, left: PRACTICE_CELL / 2 - 0.5, width: 1 }
+          : { left: 6, right: 6, top: PRACTICE_CELL / 2 - 0.5, height: 1 }),
+      }}
+    >
+      {Array.from({ length: 9 }, (_, index) => (
+        <View
+          className="bg-border opacity-70"
+          key={index}
+          style={vertical ? { width: 1, height: 4 } : { width: 4, height: 1 }}
+        />
+      ))}
     </View>
   );
 }
 
-function CoursePreview() {
+/**
+ * Fades its children in (and up from `fromY`) once, on mount. Drives its own
+ * shared value instead of a layout `entering` animation: those can stop
+ * partway inside FlatList cells, leaving the content offset.
+ */
+function Entrance({
+  delay = 0,
+  duration = 400,
+  fromY = 0,
+  play = true,
+  className,
+  style,
+  children,
+}: {
+  delay?: number;
+  duration?: number;
+  /** Where the content starts, in points below (positive) its place. */
+  fromY?: number;
+  /** Holds the entrance (content hidden) until true. */
+  play?: boolean;
+  className?: string;
+  style?: StyleProp<ViewStyle>;
+  children: ReactNode;
+}) {
+  const reducedMotion = useReducedMotion();
+  const progress = useSharedValue(reducedMotion ? 1 : 0);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      progress.value = 1;
+      return;
+    }
+    if (!play) return;
+    progress.value = withDelay(
+      delay,
+      withTiming(1, { duration, easing: Easing.out(Easing.cubic) }),
+    );
+  }, [delay, duration, play, progress, reducedMotion]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ translateY: (1 - progress.value) * fromY }],
+  }));
+
   return (
-    <PreviewCard>
-      <View className="gap-1">
-        <Eyebrow tone="primary" size="md">
-          Kurikulum gratis
-        </Eyebrow>
-        <Text className="text-xl font-black text-foreground">
-          Hangeul Mastery
-        </Text>
-      </View>
-      <View>
-        {SAMPLE_COURSE_ITEMS.map((item, index) => (
-          <LearningItemRow
-            completed={item.completed}
-            highlighted={item.highlighted}
-            isLast={index === SAMPLE_COURSE_ITEMS.length - 1}
-            key={item.title}
-            locked={item.locked}
-            onPress={() => {}}
-            showChevron={false}
-            statusText={item.statusText}
-            title={item.title}
-            type={item.type}
-          />
+    <Animated.View className={className} style={[style, animatedStyle]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+/**
+ * 학교 written into the squares of a Hangeul practice sheet: the sheet comes
+ * first, then the blocks, then how they read.
+ */
+function HakgyoWordmark() {
+  return (
+    <View
+      accessibilityLabel="학교, dibaca hakgyo, artinya sekolah"
+      accessible
+      className="items-center"
+      pointerEvents="none"
+    >
+      <Entrance
+        className="flex-row overflow-hidden rounded-xl border border-border bg-card"
+        duration={300}
+        style={{ borderCurve: "continuous" }}
+      >
+        {HAKGYO_SYLLABLES.map((syllable, index) => (
+          <View
+            className={index > 0 ? "border-l border-border" : ""}
+            key={syllable.block}
+            style={{ width: PRACTICE_CELL, height: PRACTICE_CELL }}
+          >
+            <GuideLine />
+            <GuideLine vertical />
+            <Entrance
+              className="flex-1 items-center justify-center"
+              delay={200 + index * 140}
+              duration={500}
+              fromY={-12}
+            >
+              <Text
+                className="font-black text-foreground"
+                style={{
+                  fontSize: 56,
+                  lineHeight: 68,
+                  includeFontPadding: false,
+                }}
+              >
+                {syllable.block}
+              </Text>
+            </Entrance>
+          </View>
         ))}
-      </View>
-    </PreviewCard>
+      </Entrance>
+      <Entrance className="mt-2 flex-row" delay={620}>
+        {HAKGYO_SYLLABLES.map((syllable) => (
+          <Text
+            className="text-center text-sm font-bold tracking-wide"
+            key={syllable.block}
+            style={{ width: PRACTICE_CELL, color: BRAND_BLUE }}
+          >
+            {syllable.romanization}
+          </Text>
+        ))}
+      </Entrance>
+    </View>
+  );
+}
+
+/**
+ * The system serif (New York on iOS, Noto Serif on Android), so the app name
+ * stands apart from the sans tagline without bundling a font.
+ */
+const BRAND_NAME_FONT = Platform.select({
+  ios: "ui-serif",
+  default: "serif",
+});
+
+/** The app name, set apart from the first slide's tagline. */
+function BrandName() {
+  return (
+    <Text
+      accessibilityRole="header"
+      className="text-center text-foreground"
+      style={{
+        fontFamily: BRAND_NAME_FONT,
+        fontSize: 44,
+        fontWeight: "700",
+        lineHeight: 52,
+        letterSpacing: -0.5,
+      }}
+    >
+      Hakgyo
+    </Text>
+  );
+}
+
+/**
+ * The first slide's tagline and description, a step below `BrandName`:
+ * bold rather than black, at normal tracking, with balanced line breaks so no
+ * word is left alone on the last line.
+ */
+function IntroCopy({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <View className="items-center gap-2">
+      <Text
+        className="text-center text-2xl font-bold leading-8 text-foreground"
+        lineBreakStrategyIOS="push-out"
+        textBreakStrategy="balanced"
+      >
+        {title}
+      </Text>
+      <Text
+        className="max-w-[320px] text-center text-sm leading-5 text-muted-foreground"
+        lineBreakStrategyIOS="push-out"
+        textBreakStrategy="balanced"
+      >
+        {description}
+      </Text>
+    </View>
+  );
+}
+
+/** Plain facts under the first slide's pitch, each true of every account. */
+const INTRO_FACTS = ["Mulai gratis", "Bisa offline", "iPhone & Android"];
+
+function IntroFacts() {
+  return (
+    <View className="flex-row flex-wrap justify-center gap-x-4 gap-y-1.5">
+      {INTRO_FACTS.map((fact) => (
+        <View className="flex-row items-center gap-1.5" key={fact}>
+          <SymbolIcon
+            name="checkmark.circle.fill"
+            size={14}
+            tintColor={BRAND_BLUE}
+            weight="semibold"
+          />
+          <Text className="text-xs font-semibold text-muted-foreground">
+            {fact}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * The vocabulary games as a line of names, with Kartu, the one the deck below
+ * plays, underlined in blue.
+ */
+function GameList() {
+  return (
+    <View
+      accessibilityLabel="Game kosakata: Kartu, Hujan Kata, Susun makna, dan Cocokkan. Kartu bisa dicoba di bawah."
+      accessible
+      className="flex-row flex-wrap gap-x-4 gap-y-1"
+      pointerEvents="none"
+    >
+      {GAMES.map((game, index) => {
+        const playing = index === 0;
+        return (
+          <View className="gap-1" key={game}>
+            <Text
+              className={`text-base ${playing ? "font-black text-foreground" : "font-semibold text-muted-foreground"}`}
+            >
+              {game}
+            </Text>
+            <View
+              className="h-0.5 rounded-full"
+              style={{
+                backgroundColor: playing ? BRAND_BLUE : "transparent",
+              }}
+            />
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -239,6 +449,7 @@ function VocabularyPreview({
 
   return (
     <View className="gap-3">
+      <GameList />
       <View>
         <VocabularyPracticeDeck
           cards={SAMPLE_DECK_CARDS}
@@ -267,44 +478,137 @@ function VocabularyPreview({
   );
 }
 
-function StreakPreview() {
+/** A sample day, at the real rates in `DEFAULT_REWARD_RULES`. */
+const SAMPLE_XP_LEDGER = [
+  { label: "Materi selesai", detail: "Perkenalan diri", xp: 20 },
+  { label: "Jawaban kosakata benar", detail: "12 × 5 XP", xp: 60 },
+];
+const SAMPLE_STREAK = 4;
+/** The next streak badge, `STREAK_7`. */
+const NEXT_STREAK_BADGE = 7;
+
+function StreakWeek() {
   const { colors } = useAppTheme();
   const [days] = useState(sampleStreakDays);
 
   return (
-    <PreviewCard>
-      <View className="flex-row items-center justify-between gap-3">
-        <Text className="text-sm font-bold text-foreground">Streak 4 hari</Text>
-        <Badge>320 XP minggu ini</Badge>
-      </View>
-      <View className="flex-row">
-        {days.map((day) => (
-          <View className="flex-1 items-center gap-1.5" key={day.dateKey}>
-            <Text className="text-[10px] font-bold uppercase text-muted-foreground">
-              {day.weekday}
-            </Text>
-            <View
-              className={`h-9 w-9 items-center justify-center rounded-full border ${day.today ? "border-foreground" : "border-transparent"} ${day.active ? "bg-primary/10" : "bg-muted"}`}
-            >
-              {day.active ? (
-                <SymbolIcon
-                  name="flame.fill"
-                  size={18}
-                  tintColor={colors.primary}
-                  weight="semibold"
-                />
-              ) : (
-                <Text
-                  className={`text-xs font-bold text-muted-foreground ${day.future ? "opacity-40" : ""}`}
-                >
-                  {day.dateNumber}
-                </Text>
-              )}
-            </View>
+    <View className="flex-row">
+      {days.map((day) => (
+        <View className="flex-1 items-center gap-1.5" key={day.dateKey}>
+          <Text className="text-[11px] font-bold uppercase text-muted-foreground">
+            {day.weekday}
+          </Text>
+          <View
+            className={`size-9 items-center justify-center rounded-full border ${day.today ? "border-foreground" : "border-transparent"} ${day.active ? "bg-primary/10" : "bg-muted"}`}
+          >
+            {day.active ? (
+              <SymbolIcon
+                name="flame.fill"
+                size={18}
+                tintColor={colors.primary}
+                weight="semibold"
+              />
+            ) : (
+              <Text
+                className={`text-xs font-bold text-muted-foreground ${day.future ? "opacity-40" : ""}`}
+              >
+                {day.dateNumber}
+              </Text>
+            )}
           </View>
-        ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * The streak up top, the day's XP as a ledger, and how far the next badge
+ * is. The ledger writes itself in once the slide is first reached.
+ */
+function ProgressPreview({ play }: { play: boolean }) {
+  const { colors } = useAppTheme();
+  const total = SAMPLE_XP_LEDGER.reduce((sum, row) => sum + row.xp, 0);
+
+  return (
+    <View
+      accessibilityLabel={`Contoh: streak ${SAMPLE_STREAK} hari, ${total} XP hari ini dari satu materi dan 12 jawaban kosakata, dan lencana Streak ${NEXT_STREAK_BADGE} hari tinggal ${NEXT_STREAK_BADGE - SAMPLE_STREAK} hari lagi.`}
+      accessible
+      className="gap-5"
+      pointerEvents="none"
+    >
+      <View className="gap-3">
+        <View className="flex-row items-end gap-3">
+          <Text
+            className="font-black text-foreground"
+            style={{ fontSize: 72, lineHeight: 76 }}
+          >
+            {SAMPLE_STREAK}
+          </Text>
+          <Text className="pb-3 text-lg font-bold text-foreground">
+            hari streak
+          </Text>
+        </View>
+        <StreakWeek />
       </View>
-    </PreviewCard>
+
+      <View className="border-t border-border">
+        {SAMPLE_XP_LEDGER.map((row, index) => (
+          <Entrance
+            className="flex-row items-center gap-3 border-b border-border py-3"
+            delay={index * 180}
+            fromY={8}
+            key={row.label}
+            play={play}
+          >
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-foreground">
+                {row.label}
+              </Text>
+              <Text className="text-xs text-muted-foreground">
+                {row.detail}
+              </Text>
+            </View>
+            <Text
+              className="text-sm font-black"
+              style={{ color: colors.primary }}
+            >
+              +{row.xp} XP
+            </Text>
+          </Entrance>
+        ))}
+        <Entrance
+          className="flex-row items-baseline justify-between pt-3"
+          delay={SAMPLE_XP_LEDGER.length * 180}
+          play={play}
+        >
+          <Text className="text-sm font-semibold text-muted-foreground">
+            Hari ini
+          </Text>
+          <Text className="text-xl font-black text-foreground">{total} XP</Text>
+        </Entrance>
+      </View>
+
+      <View className="flex-row items-center gap-4">
+        <View className="flex-1">
+          <Text className="text-xs font-semibold text-muted-foreground">
+            Lencana berikutnya
+          </Text>
+          <Text className="text-sm font-bold text-foreground">
+            Streak {NEXT_STREAK_BADGE} hari ·{" "}
+            {NEXT_STREAK_BADGE - SAMPLE_STREAK} hari lagi
+          </Text>
+        </View>
+        <View className="flex-row gap-1">
+          {Array.from({ length: NEXT_STREAK_BADGE }, (_, index) => (
+            <View
+              className={`h-2 w-3 rounded-full ${index < SAMPLE_STREAK ? "bg-primary" : "bg-muted"}`}
+              key={index}
+            />
+          ))}
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -355,7 +659,7 @@ function LevelTestPreview({ passed }: { passed: boolean }) {
         <Text className="text-sm font-semibold text-muted-foreground">
           Bisa baca ini tanpa nyontek?
         </Text>
-        <Text className="text-6xl font-black text-foreground">학교</Text>
+        <Text className="text-6xl font-black text-foreground">한국어</Text>
         <View className="flex-row items-center gap-1.5">
           <SymbolIcon
             name="lock.fill"
@@ -374,6 +678,50 @@ function LevelTestPreview({ passed }: { passed: boolean }) {
         <LevelUnlocks />
       </View>
     </View>
+  );
+}
+
+/**
+ * Warm morning tones for the opening slide, against the test slide's cool
+ * blue: coral into peach, a little stronger in dark mode so it still shows.
+ */
+const INTRO_WASH = {
+  light: {
+    top: "#FF7A59",
+    middle: "#FFB547",
+    topAlpha: 0.2,
+    middleAlpha: 0.08,
+  },
+  dark: {
+    top: "#FF7A59",
+    middle: "#FFB547",
+    topAlpha: 0.26,
+    middleAlpha: 0.1,
+  },
+};
+
+/** The first slide's warm wash, fading out as the deck moves on. */
+function IntroWash({ position }: { position: SharedValue<number> }) {
+  const { colorScheme } = useAppTheme();
+  const wash = INTRO_WASH[colorScheme === "dark" ? "dark" : "light"];
+  const style = useAnimatedStyle(() => ({
+    opacity: interpolate(position.value, [0, 1], [1, 0], "clamp"),
+  }));
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "60%",
+          experimental_backgroundImage: `linear-gradient(to bottom, ${withOpacity(wash.top, wash.topAlpha)}, ${withOpacity(wash.middle, wash.middleAlpha)} 55%, ${withOpacity(wash.middle, 0)})`,
+        },
+        style,
+      ]}
+    />
   );
 }
 
@@ -413,21 +761,28 @@ function LevelWash({
   );
 }
 
+/** How long the footer takes to turn from "Lanjut" into the sign-up stack. */
+const FOOTER_MS = 260;
+
 const HEADER_ICON_SIZE = 32;
 const LEVEL_ICON_SIZE = 64;
+/** The icon's size on the first slide, its largest, so it is drawn at it. */
+const INTRO_ICON_SIZE = 112;
 /** The test slide's top padding, above the app icon that settles there. */
 const LEVEL_SLIDE_PADDING = 24;
 
 /**
- * The app icon, which leaves the header corner for the centre of the test
- * slide on the same keyframes as `LevelWash`. Drawn at its final size and
- * scaled down in the header, so it stays sharp.
+ * The app icon. It opens large and centred above 학교 on the first slide,
+ * tucks into the header corner as that slide leaves, and comes back out to
+ * the centre of the test slide on the same keyframes as `LevelWash`. Drawn at
+ * its largest size and scaled down, so it stays sharp.
  */
 function MovingAppIcon({
   position,
   pageWidth,
   lastPage,
   headerTop,
+  introCenterY,
 }: {
   /** The pager's scroll offset in pages. */
   position: SharedValue<number>;
@@ -435,31 +790,39 @@ function MovingAppIcon({
   lastPage: number;
   /** Where the 40pt header row starts. */
   headerTop: number;
+  /** The centre of the first slide's icon slot, measured from the screen top. */
+  introCenterY: number;
 }) {
   // px-5 gutter, vertically centred in the header row.
-  const start = { x: 20 + HEADER_ICON_SIZE / 2, y: headerTop + 20 };
-  const end = {
-    x: pageWidth / 2,
-    y: headerTop + 40 + LEVEL_SLIDE_PADDING + LEVEL_ICON_SIZE / 2,
-  };
+  const corner = { x: 20 + HEADER_ICON_SIZE / 2, y: headerTop + 20 };
+  const centreX = pageWidth / 2;
+  const levelY = headerTop + 40 + LEVEL_SLIDE_PADDING + LEVEL_ICON_SIZE / 2;
   const style = useAnimatedStyle(() => {
-    const progress = interpolate(
+    // Centred on the first and last slide, in the header corner between.
+    const input = [0, 1, lastPage - 1, lastPage];
+    const x = interpolate(
       position.value,
-      [lastPage - 1, lastPage],
-      [0, 1],
+      input,
+      [centreX, corner.x, corner.x, centreX],
+      "clamp",
+    );
+    const y = interpolate(
+      position.value,
+      input,
+      [introCenterY, corner.y, corner.y, levelY],
+      "clamp",
+    );
+    const size = interpolate(
+      position.value,
+      input,
+      [INTRO_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE, LEVEL_ICON_SIZE],
       "clamp",
     );
     return {
       transform: [
-        { translateX: progress * (end.x - start.x) },
-        { translateY: progress * (end.y - start.y) },
-        {
-          scale: interpolate(
-            progress,
-            [0, 1],
-            [HEADER_ICON_SIZE / LEVEL_ICON_SIZE, 1],
-          ),
-        },
+        { translateX: x - INTRO_ICON_SIZE / 2 },
+        { translateY: y - INTRO_ICON_SIZE / 2 },
+        { scale: size / INTRO_ICON_SIZE },
       ],
     };
   });
@@ -468,16 +831,9 @@ function MovingAppIcon({
       accessibilityLabel="Hakgyo"
       accessible
       pointerEvents="none"
-      style={[
-        {
-          position: "absolute",
-          left: start.x - LEVEL_ICON_SIZE / 2,
-          top: start.y - LEVEL_ICON_SIZE / 2,
-        },
-        style,
-      ]}
+      style={[{ position: "absolute", left: 0, top: 0 }, style]}
     >
-      <AppIcon size={LEVEL_ICON_SIZE} />
+      <AppIcon size={INTRO_ICON_SIZE} />
     </Animated.View>
   );
 }
@@ -511,17 +867,21 @@ function SlidePreview({
   slide,
   scrollGesture,
   placementPassed,
+  returning,
+  progressReached,
 }: {
   slide: Slide;
   scrollGesture: NativeGesture;
   placementPassed: boolean;
+  returning: boolean;
+  progressReached: boolean;
 }) {
-  if (slide.key === "course") return <CoursePreview />;
+  if (slide.key === "features") return <HakgyoWordmark />;
   if (slide.key === "vocabulary")
     return <VocabularyPreview scrollGesture={scrollGesture} />;
   if (slide.key === "level")
-    return <LevelTestPreview passed={placementPassed} />;
-  return <StreakPreview />;
+    return returning ? null : <LevelTestPreview passed={placementPassed} />;
+  return <ProgressPreview play={progressReached} />;
 }
 
 export default function OnboardingScreen() {
@@ -542,6 +902,12 @@ export default function OnboardingScreen() {
   const [placementPassed, setPlacementPassed] = useState(
     hasPassedHangeulPlacement,
   );
+  // Fixed for the visit: only the signed-in app sets it.
+  const [returning] = useState(hasSignedInBefore);
+  // Where the first slide's icon slot sits, for MovingAppIcon: the pager's
+  // top in this screen plus the slot's centre within the slide.
+  const [listTop, setListTop] = useState<number | null>(null);
+  const [introSlotCenter, setIntroSlotCenter] = useState<number | null>(null);
   // The test runs on its own screen; read its result on the way back.
   useFocusEffect(
     useCallback(() => {
@@ -553,18 +919,34 @@ export default function OnboardingScreen() {
     if (isLastPage) markOnboardingSeen();
   }, [isLastPage]);
 
+  // The progress slide's ledger plays the first time the slide comes in.
+  const progressPage = SLIDES.findIndex((slide) => slide.key === "progress");
+  const [progressReached, setProgressReached] = useState(
+    initialPage >= progressPage,
+  );
+  useEffect(() => {
+    if (page === progressPage) setProgressReached(true);
+  }, [page, progressPage]);
+
   const goToPage = (nextPage: number) => {
     pagerRef.current?.scrollToIndex({ index: nextPage, animated: true });
   };
 
+  // The page nearest the scroll offset. Following it mid-swipe, rather than
+  // waiting for the momentum to end, lets the footer start changing while the
+  // next slide slides in instead of popping in after it lands.
+  const nearestPage = useSharedValue(initialPage);
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       pagePosition.value = event.contentOffset.x / width;
-    },
-    onMomentumEnd: (event) => {
-      runOnJS(setPage)(
-        Math.round(event.contentOffset.x / event.layoutMeasurement.width),
+      const nearest = Math.min(
+        Math.max(Math.round(event.contentOffset.x / width), 0),
+        lastPage,
       );
+      if (nearest !== nearestPage.value) {
+        nearestPage.value = nearest;
+        runOnJS(setPage)(nearest);
+      }
     },
   });
 
@@ -578,6 +960,7 @@ export default function OnboardingScreen() {
       className="flex-1 bg-background"
       style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }}
     >
+      <IntroWash position={pagePosition} />
       <LevelWash lastPage={lastPage} position={pagePosition} />
       <View className="h-10 flex-row items-center px-5">
         {/* MovingAppIcon draws the icon over this slot. */}
@@ -607,8 +990,9 @@ export default function OnboardingScreen() {
       <GestureDetector gesture={scrollGesture}>
         <Animated.FlatList
           className="flex-1"
+          onLayout={(event) => setListTop(event.nativeEvent.layout.y)}
           data={SLIDES}
-          extraData={placementPassed}
+          extraData={{ placementPassed, progressReached }}
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
@@ -620,48 +1004,115 @@ export default function OnboardingScreen() {
           onScroll={scrollHandler}
           pagingEnabled
           ref={pagerRef}
-          renderItem={({ item: slide }) => (
-            <View
-              className={`flex-1 px-5 ${slide.key === "level" ? "gap-6" : "gap-8 pt-8"}`}
-              style={
-                slide.key === "level"
-                  ? {
-                      width,
-                      // Room for the app icon, which settles above the title.
-                      paddingTop: LEVEL_SLIDE_PADDING + LEVEL_ICON_SIZE + 12,
-                    }
-                  : { width }
-              }
-            >
+          renderItem={({ item: slide }) => {
+            const copy =
+              returning && slide.key === "level" ? RETURNING_LAST_SLIDE : slide;
+            const header = (
               <HeroHeader
-                align={slide.key === "level" ? "center" : "start"}
-                description={slide.description}
-                eyebrow={slide.eyebrow}
-                size="lg"
-                title={slide.title}
+                align={
+                  slide.key === "level" || slide.key === "features"
+                    ? "center"
+                    : "start"
+                }
+                description={copy.description}
+                eyebrow={copy.eyebrow}
+                // Under the app name on the first slide, so one step smaller.
+                size={slide.key === "features" ? "md" : "lg"}
+                title={copy.title}
               />
+            );
+            const preview = (
               <SlidePreview
                 placementPassed={placementPassed}
+                progressReached={progressReached}
+                returning={returning}
                 scrollGesture={scrollGesture}
                 slide={slide}
               />
-            </View>
-          )}
+            );
+            if (slide.key === "features") {
+              // Centred: the app icon (drawn by MovingAppIcon over the empty
+              // slot), the wordmark, then the title.
+              return (
+                <View
+                  className="flex-1 justify-center gap-6 px-5"
+                  style={{ width }}
+                >
+                  <View
+                    className="self-center"
+                    onLayout={(event) => {
+                      const { y, height } = event.nativeEvent.layout;
+                      setIntroSlotCenter(y + height / 2);
+                    }}
+                    style={{ width: INTRO_ICON_SIZE, height: INTRO_ICON_SIZE }}
+                  />
+                  {preview}
+                  <View className="gap-1">
+                    <BrandName />
+                    <IntroCopy
+                      description={slide.description}
+                      title={slide.title}
+                    />
+                  </View>
+                  <Entrance delay={900}>
+                    <IntroFacts />
+                  </Entrance>
+                </View>
+              );
+            }
+            return (
+              <View
+                className={`flex-1 px-5 ${slide.key === "level" ? "gap-6" : slide.key === "vocabulary" ? "gap-5 pt-4" : "gap-6 pt-4"}`}
+                style={
+                  slide.key === "level"
+                    ? {
+                        width,
+                        // Room for the app icon, which settles above the title.
+                        paddingTop: LEVEL_SLIDE_PADDING + LEVEL_ICON_SIZE + 12,
+                      }
+                    : { width }
+                }
+              >
+                {header}
+                {preview}
+              </View>
+            );
+          }}
           showsHorizontalScrollIndicator={false}
         />
       </GestureDetector>
 
-      <MovingAppIcon
-        headerTop={insets.top + 12}
-        lastPage={lastPage}
-        pageWidth={width}
-        position={pagePosition}
-      />
+      {listTop !== null && introSlotCenter !== null ? (
+        <MovingAppIcon
+          headerTop={insets.top + 12}
+          introCenterY={listTop + introSlotCenter}
+          lastPage={lastPage}
+          pageWidth={width}
+          position={pagePosition}
+        />
+      ) : null}
 
-      <View className="gap-2 px-5">
+      {/* The footer grows into the sign-up stack instead of jumping to it. */}
+      <Animated.View
+        className="px-5"
+        layout={LinearTransition.duration(FOOTER_MS)}
+      >
         {isLastPage ? (
-          <>
-            {placementPassed ? null : (
+          <Animated.View
+            className="gap-2"
+            entering={FadeInDown.duration(FOOTER_MS).delay(60)}
+            exiting={FadeOut.duration(FOOTER_MS / 2)}
+            key="sign-up"
+          >
+            {returning ? (
+              <>
+                <Action onPress={() => openAuth("sign-in")}>Masuk</Action>
+                <Action variant="link" onPress={() => openAuth("sign-up")}>
+                  Belum punya akun? Daftar
+                </Action>
+              </>
+            ) : null}
+            {returning || placementPassed ? null : (
               <>
                 <LevelTestButton />
                 <View className="flex-row items-center gap-3 py-1">
@@ -673,15 +1124,27 @@ export default function OnboardingScreen() {
                 </View>
               </>
             )}
-            <Action onPress={() => openAuth("sign-up")}>Daftar gratis</Action>
-            <Action variant="link" onPress={() => openAuth("sign-in")}>
-              Sudah punya akun? Masuk
-            </Action>
-          </>
+            {returning ? null : (
+              <>
+                <Action onPress={() => openAuth("sign-up")}>
+                  Daftar gratis
+                </Action>
+                <Action variant="link" onPress={() => openAuth("sign-in")}>
+                  Sudah punya akun? Masuk
+                </Action>
+              </>
+            )}
+          </Animated.View>
         ) : (
-          <Action onPress={() => goToPage(page + 1)}>Lanjut</Action>
+          <Animated.View
+            entering={FadeIn.duration(FOOTER_MS)}
+            exiting={FadeOut.duration(FOOTER_MS / 2)}
+            key="next"
+          >
+            <Action onPress={() => goToPage(page + 1)}>Lanjut</Action>
+          </Animated.View>
         )}
-      </View>
+      </Animated.View>
     </View>
   );
 }

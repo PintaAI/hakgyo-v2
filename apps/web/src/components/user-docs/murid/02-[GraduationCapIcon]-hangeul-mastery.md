@@ -49,7 +49,7 @@ Kamu bisa melewati kurikulum ini dengan tes singkat di layar perkenalan aplikasi
 2. Jawab 10 soal membaca. Kamu lulus jika minimal 8 jawaban benar. Belum lulus? Ketuk **Coba lagi**.
 3. Setelah lulus, daftar atau masuk. Semua materi, kosakata, dan kuis Hangeul Mastery ditandai selesai, lalu kamu mendapat lencana **Hangeul Mastery**.
 
-Tes ini hanya ada di aplikasi dan tidak memberi XP.
+Tes ini hanya ada di aplikasi dan tidak memberi XP. Tes juga tidak muncul lagi setelah kamu pernah masuk di ponsel itu, karena status Hangeul-mu sudah tersimpan di akun. Lanjutkan saja kurikulum Hangeul Mastery setelah masuk.
 
 ## Lencana Hangeul Mastery
 
