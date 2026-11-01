@@ -27,3 +27,6 @@ generated/
 
 # Local production tooling (promo videos), kept out of the repository
 tools/
+
+# Tesseract language data, downloaded on demand by scripts/hrdk/extract.ts
+*.traineddata

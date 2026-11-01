@@ -9,8 +9,9 @@ Next.js application dan backend tRPC untuk Hakgyo.
 - Zoom: General App OAuth di `/api/integrations/zoom/connect`, token terenkripsi
   server-side, dan CRUD cohort meeting disinkronkan melalui Zoom REST API.
 
-Lihat [`../../docs/api.md`](../../docs/api.md) dan
-[`../../docs/database.md`](../../docs/database.md) untuk kontrak dan model data.
+Kontrak API ada di router `src/server/api/routers/` (didaftarkan di
+`src/server/api/root.ts`). Lihat
+[`../../docs/database.md`](../../docs/database.md) untuk model data.
 
 ## What's next? How do I make an app with this?
 
