@@ -7,13 +7,10 @@ import {
   type NativeGesture,
 } from "react-native-gesture-handler";
 import Animated, {
-  interpolate,
   runOnJS,
   useAnimatedRef,
   useAnimatedScrollHandler,
-  useAnimatedStyle,
   useSharedValue,
-  type SharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -23,6 +20,7 @@ import {
   Card,
   Eyebrow,
   HeroHeader,
+  PageDots,
 } from "../../src/components/learning-ui";
 import { LearningItemRow } from "../../src/components/learn/learning-item-row";
 import {
@@ -289,30 +287,6 @@ function SlidePreview({
   return <StreakPreview />;
 }
 
-function ProgressDot({
-  scrollX,
-  index,
-  pageWidth,
-}: {
-  scrollX: SharedValue<number>;
-  index: number;
-  pageWidth: number;
-}) {
-  const style = useAnimatedStyle(() => {
-    const active = interpolate(
-      scrollX.value / pageWidth - index,
-      [-1, 0, 1],
-      [0, 1, 0],
-      "clamp",
-    );
-    return { width: 8 + active * 20, opacity: 0.25 + active * 0.75 };
-  });
-
-  return (
-    <Animated.View className="h-1.5 rounded-full bg-primary" style={style} />
-  );
-}
-
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -322,7 +296,8 @@ export default function OnboardingScreen() {
   // step so the sign-in and sign-up actions are one tap away.
   const initialPage = useRef(hasSeenOnboarding() ? lastPage : 0).current;
   const [page, setPage] = useState(initialPage);
-  const scrollX = useSharedValue(initialPage * width);
+  // The pager's scroll offset in pages, for the progress dots.
+  const pagePosition = useSharedValue(initialPage);
   // The deck slide claims upward swipes and the peel corner; horizontal
   // touches fail there and fall through to the pager.
   const [scrollGesture] = useState(() => Gesture.Native());
@@ -338,7 +313,7 @@ export default function OnboardingScreen() {
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
-      scrollX.value = event.contentOffset.x;
+      pagePosition.value = event.contentOffset.x / width;
     },
     onMomentumEnd: (event) => {
       runOnJS(setPage)(
@@ -361,20 +336,13 @@ export default function OnboardingScreen() {
         <Text className="w-16 text-xs font-black tracking-[3px] text-primary">
           HAKGYO
         </Text>
-        <View
+        <PageDots
           accessibilityRole="progressbar"
           accessibilityValue={{ min: 1, max: SLIDES.length, now: page + 1 }}
-          className="flex-1 flex-row items-center justify-center gap-2"
-        >
-          {SLIDES.map((slide, index) => (
-            <ProgressDot
-              index={index}
-              key={slide.key}
-              pageWidth={width}
-              scrollX={scrollX}
-            />
-          ))}
-        </View>
+          className="flex-1 justify-center"
+          count={SLIDES.length}
+          position={pagePosition}
+        />
         <View className="w-16 items-end">
           {!isLastPage ? (
             <Pressable

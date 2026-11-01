@@ -158,6 +158,7 @@ export function TabScreen({
   titleIcon,
   right = "organization",
   doodle = false,
+  overlay,
   children,
   ...screenProps
 }: Omit<ComponentProps<typeof StudyScreen>, "title" | "headerShown"> & {
@@ -173,6 +174,8 @@ export function TabScreen({
   right?: "organization" | "updates";
   /** Draw the doodle pattern behind the content (only Hari Ini does). */
   doodle?: boolean;
+  /** Stays in place over the content while it scrolls, below the actions. */
+  overlay?: ReactNode;
   children: ReactNode;
 }) {
   // Full-bleed screens run under the status bar, so Android's actions float.
@@ -190,6 +193,7 @@ export function TabScreen({
         {children}
         {floating ? <MaintenanceBanner /> : null}
       </StudyScreen>
+      {overlay}
       {floating ? <TabActions right={right} floating /> : null}
       <SyncSnackbar />
     </>

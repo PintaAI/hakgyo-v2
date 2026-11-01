@@ -20,6 +20,8 @@ Gunakan akun yang sama dengan di situs web supaya kelasmu muncul.
 | **Latihan** | Kartu kosakata, permainan Hangeul, serta latihan dan tryout |
 | **Profil** | XP, pencapaian, pengaturan, dan bantuan |
 
+Jika kamu ikut lebih dari satu kelas, geser kartu kelas di tab **Belajar** ke kiri atau kanan. Titik-titik di atas menu bawah menunjukkan kelas yang sedang tampil.
+
 Jika kamu belajar di lebih dari satu lembaga, pilih lembaganya dengan tombol di pojok kanan atas. Tarik layar ke bawah untuk memperbarui.
 
 Pendaftaran kelas, pembayaran, dan katalog hanya ada di situs web. Kelas yang kamu ikuti di situs web otomatis muncul di aplikasi.

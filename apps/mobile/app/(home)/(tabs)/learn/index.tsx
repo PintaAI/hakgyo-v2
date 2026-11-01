@@ -2,23 +2,32 @@ import { useFocusEffect } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  FlatList,
+  StyleSheet,
   View,
+  type FlatList,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
+import Animated, {
+  useAnimatedScrollHandler,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
+import { SafeAreaView } from "react-native-screens/experimental";
 
 import {
   CohortCard,
   type CohortEvent,
   type LearnCohort,
 } from "../../../../src/components/learn/cohort-card";
+import { GlassBox } from "../../../../src/components/GlassBox";
 import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
 import type { CohortMilestoneGroup } from "../../../../src/components/learn/milestone-section";
 import {
   Empty,
   FullBleed,
+  PageDots,
   QueryState,
 } from "../../../../src/components/learning-ui";
 import { TabScreen } from "../../../../src/components/tab-screen";
@@ -29,6 +38,7 @@ import {
   useLearnCohortFocus,
 } from "../../../../src/lib/learn-cohort-focus";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+import { withOpacity } from "../../../../src/theme/colors";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 import {
   useCourseOutlines,
@@ -38,6 +48,42 @@ import {
 
 // Lets the sidebar drawer finish closing so the slide to the cohort is seen.
 const FOCUS_SLIDE_DELAY_MS = 380;
+
+/**
+ * Which cohort is showing, and that the others are a swipe away. Floats just
+ * above the native tab bar and stays in view while the page scrolls.
+ */
+function CohortPageDots({
+  count,
+  position,
+}: {
+  count: number;
+  position: SharedValue<number>;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    // This tab draws under the tab bar (disableAutomaticContentInsets); the
+    // screens SafeAreaView insets by the tab bar's height on both platforms,
+    // as expo-router does for the other tabs.
+    <SafeAreaView
+      accessibilityElementsHidden
+      edges={{ bottom: true }}
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      style={styles.dotsDock}
+    >
+      {/* Card-tinted so the dots stay legible over the content where glass
+          is unavailable (Android, older iOS). */}
+      <GlassBox
+        glassEffectStyle="regular"
+        style={[styles.dotsPill, { borderColor: colors.border }]}
+        tintColor={withOpacity(colors.card, 0.7)}
+      >
+        <PageDots count={count} position={position} />
+      </GlassBox>
+    </SafeAreaView>
+  );
+}
 
 function CohortCarousel({
   cohorts,
@@ -49,6 +95,7 @@ function CohortCarousel({
   onRetryEvents,
   organizationId,
   outlines,
+  pagePosition,
   userId,
 }: {
   cohorts: LearnCohort[];
@@ -60,6 +107,8 @@ function CohortCarousel({
   onRetryEvents: () => void;
   organizationId: string;
   outlines: Record<string, CourseOutline>;
+  /** Receives the scroll offset in cards, for the page dots. */
+  pagePosition: SharedValue<number>;
   userId: string;
 }) {
   const [pageWidth, setPageWidth] = useState(0);
@@ -109,6 +158,13 @@ function CohortCarousel({
     [storageKey],
   );
 
+  const trackPosition = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const width = event.layoutMeasurement.width;
+      if (width > 0) pagePosition.value = event.contentOffset.x / width;
+    },
+  });
+
   function savePosition(event: NativeSyntheticEvent<NativeScrollEvent>) {
     if (pageWidth <= 0) return;
     const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
@@ -140,7 +196,7 @@ function CohortCarousel({
   return (
     <View className="w-full" onLayout={measurePage}>
       {pageWidth > 0 ? (
-        <FlatList
+        <Animated.FlatList
           ref={listRef}
           accessibilityRole="list"
           data={cohorts}
@@ -154,6 +210,7 @@ function CohortCarousel({
           horizontal
           keyExtractor={(cohort) => cohort.id}
           onMomentumScrollEnd={savePosition}
+          onScroll={trackPosition}
           renderItem={({ item: cohort }) => (
             <View style={{ width: pageWidth }}>
               <CohortCard
@@ -193,6 +250,13 @@ export default function LearnTab() {
   const { outlines } = useCourseOutlines(cohortCourseIds);
   const { isSyncing, syncNow } = useMobileSync();
   const [now, setNow] = useState(Date.now);
+  const pagePosition = useSharedValue(0);
+
+  // Another organization's carousel starts again from its first card (or the
+  // saved one, which scrolls the dots along).
+  useEffect(() => {
+    pagePosition.value = 0;
+  }, [activeOrganizationId, pagePosition]);
 
   useFocusEffect(
     useCallback(() => {
@@ -244,6 +308,11 @@ export default function LearnTab() {
       right="updates"
       bleedTop
       contentInsetAdjustmentBehavior="never"
+      overlay={
+        cohorts.length > 1 ? (
+          <CohortPageDots count={cohorts.length} position={pagePosition} />
+        ) : null
+      }
       refreshing={dashboard.isRefetching || isSyncing}
       onRefresh={() => {
         void syncNow(activeOrganizationId ?? undefined);
@@ -267,6 +336,7 @@ export default function LearnTab() {
             onRetryEvents={() => void dashboard.refetch()}
             organizationId={activeOrganizationId!}
             outlines={outlines}
+            pagePosition={pagePosition}
             userId={session!.user.id}
           />
         </FullBleed>
@@ -280,3 +350,21 @@ export default function LearnTab() {
     </TabScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  dotsDock: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    left: 0,
+    flex: 0,
+    alignItems: "center",
+  },
+  dotsPill: {
+    marginBottom: 12,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+});
