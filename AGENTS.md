@@ -59,14 +59,14 @@ bun run --cwd apps/web db:migrate:dev   # create and apply a migration in develo
 bun run --cwd apps/web db:migrate       # prisma migrate deploy
 bun run --cwd apps/web db:seed
 bun run --cwd apps/web db:studio
-bun run --cwd apps/mobile start
+bun run --cwd apps/mobile dev
 bun run --cwd apps/mobile android
 bun run --cwd apps/mobile ios
 bun run --cwd apps/mobile typecheck
 bun run --cwd apps/mobile ota:publish --channel production --message "…"  # guarded EAS Update
 ```
 
-`bun run dev` starts both workspace apps through Turbo. The mobile app can also be started independently with Expo.
+`bun run dev` starts both workspace apps through Turbo. The mobile `dev`, `ios` and `android` scripts (`apps/mobile/scripts/dev-server.ts`) serve Metro to the development client at `https://<this machine's tailnet name>:8082` through `tailscale serve`, so they work on any machine in the tailnet. `next dev` allows the host of `APP_URL` as a dev origin, so set `APP_URL` in `apps/web/.env` to the URL the app is opened at.
 
 Typecheck runs on TypeScript 7.1 (beta, the native compiler): `apps/mobile` depends on it as `typescript`, and `apps/web` as `typescript-7`, whose `tsc` its `typecheck` script calls by path. `apps/web` keeps TypeScript 5.9 as `typescript` because typescript-eslint (type-aware ESLint) supports only TypeScript below 6.1; `next build` also uses that one. Move `apps/web` to `typescript@7` once typescript-eslint supports it.
 

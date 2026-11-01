@@ -59,9 +59,9 @@
     "typescript": "7.1.0-beta"
   },
   "scripts": {
-    "dev": "tailscale serve --bg --https=8082 127.0.0.1:8083 && EXPO_UNSTABLE_HEADLESS=1 EXPO_PACKAGER_PROXY_URL=https://jennie-linux.tail2268a1.ts.net:8082 expo start --dev-client --localhost --port 8083",
-    "android": "tailscale serve --bg --https=8082 127.0.0.1:8083 && EXPO_UNSTABLE_HEADLESS=1 EXPO_PACKAGER_PROXY_URL=https://jennie-linux.tail2268a1.ts.net:8082 expo start --dev-client --localhost --port 8083 --android",
-    "ios": "tailscale serve --bg --https=8082 127.0.0.1:8083 && EXPO_UNSTABLE_HEADLESS=1 EXPO_PACKAGER_PROXY_URL=https://jennie-linux.tail2268a1.ts.net:8082 expo start --dev-client --localhost --port 8083 --ios",
+    "dev": "bun scripts/dev-server.ts",
+    "android": "bun scripts/dev-server.ts --android",
+    "ios": "bun scripts/dev-server.ts --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "ota:check": "bun scripts/ota-publish.ts --check",
