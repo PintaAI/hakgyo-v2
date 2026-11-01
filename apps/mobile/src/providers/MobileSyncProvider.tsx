@@ -172,6 +172,11 @@ type MobileSyncActionsValue = {
   /** Background download of an open event's media from the local bundle (Wi-Fi only). */
   prefetchEventMedia: (courseId: string, courseItemId: string) => void;
   clearLocalDataAndResync: (organizationId?: string) => Promise<ResyncReport>;
+  /**
+   * Stops sync and deletes everything a sign-out deletes, queued progress
+   * included, without signing out. For resetting the app before a reload.
+   */
+  clearDeviceData: () => Promise<void>;
   getLocalDataStats: () => Promise<LocalDataStats>;
 };
 
@@ -502,6 +507,13 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     [applyCheckpointResults],
   );
 
+  const clearDeviceData = useCallback(async () => {
+    const current = engineRef.current;
+    engineRef.current = null;
+    await current?.dispose().catch(() => undefined);
+    await clearSignedOutDeviceData(queryClient);
+  }, [queryClient]);
+
   const clearLocalDataAndResync = useCallback(
     async (organizationId?: string): Promise<ResyncReport> => {
       const current = engineRef.current;
@@ -746,11 +758,13 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       prefetchAssessmentMedia,
       prefetchEventMedia,
       clearLocalDataAndResync,
+      clearDeviceData,
       getLocalDataStats,
     }),
     [
       applyCheckpointResults,
       checkpoint,
+      clearDeviceData,
       clearLocalDataAndResync,
       getLocalDataStats,
       localData,

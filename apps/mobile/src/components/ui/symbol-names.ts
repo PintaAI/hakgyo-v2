@@ -69,6 +69,7 @@ export const materialSymbols = {
   "textformat.abc": "abc",
   timer: "timer",
   "tray.full": "inbox",
+  trash: "delete",
   "video.fill": "videocam",
   "video.slash.fill": "videocam_off",
   xmark: "close",

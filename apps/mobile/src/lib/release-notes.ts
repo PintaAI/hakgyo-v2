@@ -11,7 +11,7 @@ export const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 
 // SecureStore rather than kv-store, like onboarding: a sign-out clears
 // kv-store, and signing back in should not replay notes already shown.
-const SEEN_KEY = "hakgyo.releaseNotes.seen";
+export const RELEASE_NOTES_SEEN_KEY = "hakgyo.releaseNotes.seen";
 
 /** "Yang baru" entries this bundle ships, newest first. */
 export const installedReleaseNotes = releaseNotesUpTo(APP_VERSION);
@@ -22,7 +22,7 @@ export const installedReleaseNotes = releaseNotesUpTo(APP_VERSION);
  * just installed the app has nothing to catch up on.
  */
 export function unseenReleaseNotes(): ReleaseNote[] {
-  const lastSeen = SecureStore.getItem(SEEN_KEY);
+  const lastSeen = SecureStore.getItem(RELEASE_NOTES_SEEN_KEY);
   if (lastSeen === null) {
     markReleaseNotesSeen();
     return [];
@@ -32,7 +32,7 @@ export function unseenReleaseNotes(): ReleaseNote[] {
 
 export function markReleaseNotesSeen() {
   const newest = installedReleaseNotes[0];
-  if (newest) SecureStore.setItem(SEEN_KEY, newest.id);
+  if (newest) SecureStore.setItem(RELEASE_NOTES_SEEN_KEY, newest.id);
 }
 
 /** `2026-10-21` → "21 Okt 2026", read as a calendar date in any time zone. */

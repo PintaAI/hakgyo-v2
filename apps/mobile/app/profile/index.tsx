@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { supportEmail } from "@hakgyo/shared";
+import { reloadAppAsync } from "expo";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import * as Updates from "expo-updates";
 import * as WebBrowser from "expo-web-browser";
@@ -27,6 +28,7 @@ import { WeeklyStreak } from "../../src/components/weekly-streak";
 import { apiUrl } from "../../src/config";
 import { authClient } from "../../src/lib/auth-client";
 import { openSyncStatus } from "../../src/lib/navigation";
+import { forgetSecureStorage } from "../../src/lib/reset-app";
 import {
   APP_VERSION,
   installedReleaseNotes,
@@ -81,6 +83,7 @@ export default function ProfileScreen() {
   const queryClient = useQueryClient();
   const { data: session, refetch: refetchSession } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isResettingApp, setIsResettingApp] = useState(false);
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const { isUpdatePending } = useUpdates();
   const params = useLocalSearchParams<{ segment?: string | string[] }>();
@@ -103,6 +106,7 @@ export default function ProfileScreen() {
     syncNow,
     checkpoint,
     clearLocalDataAndResync,
+    clearDeviceData,
     getLocalDataStats,
   } = useMobileSync();
   const push = usePushNotifications();
@@ -260,6 +264,55 @@ export default function ProfileScreen() {
     }
   };
 
+  // Everything on the device goes, including what a sign-out keeps (the
+  // onboarding and "Yang baru" markers), then the app restarts as if newly
+  // installed.
+  const resetApp = async () => {
+    setError(null);
+    setIsResettingApp(true);
+
+    try {
+      if (pendingCount > 0) {
+        const flushed = await checkpoint(activeOrganizationId ?? undefined)
+          .then((sync) => sync.state === "synced")
+          .catch(() => false);
+        if (!flushed && !(await confirmDiscardPending())) return;
+      }
+
+      // Both need the session. Offline, the server session simply expires;
+      // the device forgets it either way.
+      await push.unregisterDevice().catch(() => undefined);
+      await authClient.signOut().catch(() => undefined);
+      await clearDeviceData();
+      await forgetSecureStorage();
+      await reloadAppAsync("Reset aplikasi");
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Tidak dapat mereset aplikasi.",
+      );
+    } finally {
+      setIsResettingApp(false);
+    }
+  };
+
+  const confirmResetApp = () => {
+    if (isResettingApp || isSigningOut) return;
+    Alert.alert(
+      "Reset aplikasi?",
+      "Semua data aplikasi di HP ini dihapus: materi offline, gambar, info masuk, dan pengaturan. Aplikasi lalu dibuka ulang seperti baru dipasang. Akun dan progres yang sudah terkirim tetap aman.",
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: () => void resetApp(),
+        },
+      ],
+    );
+  };
+
   return (
     <>
       <Stack.Toolbar placement="right">
@@ -320,6 +373,14 @@ export default function ProfileScreen() {
                 symbol="arrow.right"
                 destructive
                 onPress={() => void handleSignOut()}
+              />
+              <SettingsRow
+                label="Reset aplikasi"
+                subtitle="Hapus semua data di HP ini dan mulai lagi seperti baru dipasang."
+                detail={isResettingApp ? "Memproses…" : undefined}
+                symbol="trash"
+                destructive
+                onPress={confirmResetApp}
               />
             </SettingsSection>
 
@@ -530,12 +591,13 @@ export default function ProfileScreen() {
               />
             </SettingsSection>
 
-            {(error ?? isSigningOut) ? (
+            {(error ?? (isSigningOut || isResettingApp)) ? (
               <Text
                 accessibilityLiveRegion="polite"
                 className="text-center text-sm font-semibold text-muted-foreground"
               >
-                {error ?? "Sedang keluar…"}
+                {error ??
+                  (isResettingApp ? "Mereset aplikasi…" : "Sedang keluar…")}
               </Text>
             ) : null}
           </>

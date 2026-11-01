@@ -31,6 +31,15 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    id: "2026-11-01",
+    version: "1.0.1",
+    date: "2026-11-01",
+    title: "Reset aplikasi",
+    items: [
+      "Kalau aplikasi terasa bermasalah, buka Pengaturan → Reset aplikasi untuk menghapus semua data di HP ini dan memulai lagi seperti baru dipasang.",
+    ],
+  },
+  {
     id: "2026-10-31",
     version: "1.0.1",
     date: "2026-10-31",
