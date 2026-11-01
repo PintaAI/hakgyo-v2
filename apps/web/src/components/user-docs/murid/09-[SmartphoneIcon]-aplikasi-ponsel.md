@@ -72,6 +72,15 @@ Untuk membaca lagi semua catatan pembaruan, buka **Profil**, lalu **Pengaturan**
 
 > **Sebelum keluar dari akun**, pastikan semua kemajuan sudah tersinkron. Keluar akan menghapus materi yang diunduh dan kemajuan yang belum terkirim dari ponsel ini. Akun dan kemajuan yang sudah terkirim tetap aman. Aplikasi akan memperingatkanmu jika masih ada yang belum terkirim.
 
+## Reset aplikasi
+
+Jika aplikasi terasa bermasalah, misalnya materi tidak muncul padahal sudah tersinkron, kamu bisa memulainya lagi dari awal:
+
+1. Buka **Profil**, lalu **Pengaturan**.
+2. Di bagian **Akun**, ketuk **Reset aplikasi**, lalu **Reset**.
+
+Aplikasi menghapus semua datanya di ponsel ini: materi offline, gambar, info masuk, dan pengaturan. Setelah itu aplikasi dibuka ulang seperti baru dipasang, mulai dari layar perkenalan, dan kamu perlu masuk lagi. Akun dan kemajuan yang sudah terkirim tetap aman. Jika masih ada kemajuan yang belum terkirim, aplikasi mencoba mengirimnya dulu dan bertanya sebelum menghapusnya.
+
 ## Tugas berwaktu di aplikasi
 
 Di aplikasi, jawabanmu disimpan di ponsel bersama waktu kamu menjawab, dan ikut terkirim saat ada internet. Tugas berwaktu terkirim otomatis ketika waktu habis. Tanpa internet, tugas menunggu di ponsel dan jawaban yang kamu isi sebelum waktu habis tetap dinilai saat terkirim: untuk tryout sampai 24 jam setelah ditutup, untuk latihan sebelum ditutup. Lihat [Mengerjakan Tugas](/docs/murid/mengerjakan-tugas).

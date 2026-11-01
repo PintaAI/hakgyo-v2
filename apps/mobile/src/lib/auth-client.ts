@@ -20,6 +20,30 @@ const nativePlugin = expoClient({
 const cookieStorage = storageAdapter(SecureStore);
 const COOKIE_STORAGE_KEY = `${STORAGE_PREFIX}_cookie`;
 
+// What the Expo plugin keeps in SecureStore. Long values are split into
+// `${key}.0`, `${key}.1`, … with "ba-chunks:<count>" stored under the key.
+const AUTH_STORAGE_KEYS = [
+  COOKIE_STORAGE_KEY,
+  `${STORAGE_PREFIX}_session_data`,
+  `${STORAGE_PREFIX}_last_login_method`,
+];
+const CHUNK_MARKER = "ba-chunks:";
+
+/** Deletes the stored session, as on a fresh install. */
+export async function forgetAuthStorage() {
+  for (const key of AUTH_STORAGE_KEYS) {
+    const stored = await SecureStore.getItemAsync(key);
+    // NaN for a malformed marker, which deletes no chunks.
+    const chunks = stored?.startsWith(CHUNK_MARKER)
+      ? Number(stored.slice(CHUNK_MARKER.length))
+      : 0;
+    for (let index = 0; index < chunks; index++) {
+      await SecureStore.deleteItemAsync(`${key}.${index}`);
+    }
+    await SecureStore.deleteItemAsync(key);
+  }
+}
+
 /**
  * Stores session cookies the API refreshed on a non-auth response (tRPC
  * re-issues the 5-minute session cache and extends the session). The Expo
