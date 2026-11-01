@@ -8,7 +8,11 @@ import { withSerwist } from "@serwist/turbopack";
 
 /** @type {import("next").NextConfig} */
 const config = {
-  allowedDevOrigins: ["jennie-linux.tail2268a1.ts.net"],
+  // `next dev` blocks dev resources requested from other hosts, so allow the host of APP_URL
+  // (the Tailscale name the app is opened at).
+  allowedDevOrigins: process.env.APP_URL
+    ? [new URL(process.env.APP_URL).hostname]
+    : [],
   poweredByHeader: false,
   outputFileTracingExcludes: {
     // `next/og` uses sharp when it can import it (sharp is an optional
