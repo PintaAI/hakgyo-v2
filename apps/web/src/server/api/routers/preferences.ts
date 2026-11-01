@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { awardHangeulMasteryFromPlacement } from "~/server/foundation/hangeul-mastery-completion";
 import {
   getHangeulVisibility,
   setShowHangeulAfterMastery,
@@ -16,4 +17,11 @@ export const preferencesRouter = createTRPCRouter({
     .mutation(({ ctx, input }) =>
       setShowHangeulAfterMastery(ctx.db, ctx.actorUserId, input.show),
     ),
+  /** The learner passed the Hangeul reading test in mobile onboarding. */
+  passHangeulPlacement: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db.$transaction((tx) =>
+      awardHangeulMasteryFromPlacement(tx, { userId: ctx.actorUserId }),
+    );
+    return getHangeulVisibility(ctx.db, ctx.actorUserId);
+  }),
 });

@@ -1,5 +1,11 @@
-import { router } from "expo-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { router, useFocusEffect } from "expo-router";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import {
   Gesture,
@@ -7,10 +13,13 @@ import {
   type NativeGesture,
 } from "react-native-gesture-handler";
 import Animated, {
+  interpolate,
   runOnJS,
   useAnimatedRef,
   useAnimatedScrollHandler,
+  useAnimatedStyle,
   useSharedValue,
+  type SharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -34,16 +43,20 @@ import {
   type VocabularyPracticeDeckHandle,
 } from "../../src/components/vocabulary-practice-deck";
 import type { LearningItemType } from "../../src/lib/learning-item-type";
+import { markDeckTutorialSeen } from "../../src/lib/deck-tutorial";
+import { hasPassedHangeulPlacement } from "../../src/lib/hangeul-placement";
 import {
   hasSeenOnboarding,
   markOnboardingSeen,
 } from "../../src/lib/onboarding";
 import { getStreakProgressDays } from "../../src/lib/streak";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
+import { BRAND_BLUE, withOpacity } from "../../src/theme/colors";
+import { AppIcon } from "../../src/components/ui/app-icon";
 import { SymbolIcon } from "../../src/components/ui/symbol-icon";
 
 type Slide = {
-  key: "course" | "vocabulary" | "streak";
+  key: "course" | "vocabulary" | "streak" | "level";
   eyebrow: string;
   title: string;
   description: string;
@@ -71,6 +84,22 @@ const SLIDES: Slide[] = [
     description:
       "Kumpulkan XP dan jaga streak harianmu. Materi tetap bisa dibuka saat offline.",
   },
+  {
+    key: "level",
+    eyebrow: "SKIP YANG BASIC",
+    title: "Udah bisa baca Hangeul?",
+    description: "10 soal, 2 menit. Lulus? Hangeul dasar langsung beres.",
+  },
+];
+
+// What passing marks completed in Hangeul Mastery, rounded down so the copy
+// survives small course edits (31 materials, 169 words, 10 quizzes when
+// written).
+const LEVEL_UNLOCKS = [
+  { value: "30+", label: "materi" },
+  { value: "160+", label: "kosakata" },
+  { value: "10", label: "kuis" },
+  { value: "1", label: "lencana" },
 ];
 
 const SAMPLE_COURSE_ITEMS: {
@@ -193,6 +222,11 @@ function VocabularyPreview({
   const step: DeckTutorialStep = !peeled ? "peel" : !swiped ? "swipe" : "done";
   const finished = index >= SAMPLE_DECK_CARDS.length;
 
+  // Learned here, so the first real deck skips its own tutorial.
+  useEffect(() => {
+    if (step === "done") markDeckTutorialSeen();
+  }, [step]);
+
   useEffect(() => {
     if (!finished) return;
     // Deal the sample deck again after the real "round complete" card shows.
@@ -274,16 +308,219 @@ function StreakPreview() {
   );
 }
 
+function LevelUnlocks() {
+  return (
+    <View className="flex-row">
+      {LEVEL_UNLOCKS.map((unlock) => (
+        <View className="flex-1 items-center gap-0.5" key={unlock.label}>
+          <Text className="text-xl font-black text-foreground">
+            {unlock.value}
+          </Text>
+          <Text className="text-xs font-semibold text-muted-foreground">
+            {unlock.label}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function LevelTestPreview({ passed }: { passed: boolean }) {
+  const { colors } = useAppTheme();
+
+  if (passed) {
+    return (
+      <View className="items-center gap-5 pt-2">
+        <SymbolIcon
+          name="checkmark.seal.fill"
+          size={44}
+          tintColor={BRAND_BLUE}
+        />
+        <View className="items-center gap-1.5">
+          <Text className="text-center text-xl font-black tracking-tight text-foreground">
+            Lulus! Hangeul dasar: skip
+          </Text>
+          <Text className="text-center text-sm leading-6 text-muted-foreground">
+            Daftar atau masuk biar semua ini langsung nyangkut di akunmu.
+          </Text>
+        </View>
+        <LevelUnlocks />
+      </View>
+    );
+  }
+
+  return (
+    <View className="gap-6">
+      <View className="items-center gap-1">
+        <Text className="text-sm font-semibold text-muted-foreground">
+          Bisa baca ini tanpa nyontek?
+        </Text>
+        <Text className="text-6xl font-black text-foreground">학교</Text>
+        <View className="flex-row items-center gap-1.5">
+          <SymbolIcon
+            name="lock.fill"
+            size={11}
+            tintColor={colors.mutedForeground}
+          />
+          <Text className="text-xs font-semibold text-muted-foreground">
+            Jawabannya ada di dalam tes
+          </Text>
+        </View>
+      </View>
+      <View className="gap-3">
+        <Text className="text-center text-xs font-bold uppercase tracking-[2px] text-muted-foreground">
+          Lulus = langsung kebuka
+        </Text>
+        <LevelUnlocks />
+      </View>
+    </View>
+  );
+}
+
+/** The sign-in sheet's blue wash, fading in as the test slide comes in. */
+function LevelWash({
+  position,
+  lastPage,
+}: {
+  /** The pager's scroll offset in pages. */
+  position: SharedValue<number>;
+  lastPage: number;
+}) {
+  const { colorScheme } = useAppTheme();
+  const style = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      position.value,
+      [lastPage - 1, lastPage],
+      [0, 1],
+      "clamp",
+    ),
+  }));
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "60%",
+          experimental_backgroundImage: `linear-gradient(to bottom, ${withOpacity(BRAND_BLUE, colorScheme === "dark" ? 0.28 : 0.16)}, ${withOpacity(BRAND_BLUE, 0)})`,
+        },
+        style,
+      ]}
+    />
+  );
+}
+
+const HEADER_ICON_SIZE = 32;
+const LEVEL_ICON_SIZE = 64;
+/** The test slide's top padding, above the app icon that settles there. */
+const LEVEL_SLIDE_PADDING = 24;
+
+/**
+ * The app icon, which leaves the header corner for the centre of the test
+ * slide on the same keyframes as `LevelWash`. Drawn at its final size and
+ * scaled down in the header, so it stays sharp.
+ */
+function MovingAppIcon({
+  position,
+  pageWidth,
+  lastPage,
+  headerTop,
+}: {
+  /** The pager's scroll offset in pages. */
+  position: SharedValue<number>;
+  pageWidth: number;
+  lastPage: number;
+  /** Where the 40pt header row starts. */
+  headerTop: number;
+}) {
+  // px-5 gutter, vertically centred in the header row.
+  const start = { x: 20 + HEADER_ICON_SIZE / 2, y: headerTop + 20 };
+  const end = {
+    x: pageWidth / 2,
+    y: headerTop + 40 + LEVEL_SLIDE_PADDING + LEVEL_ICON_SIZE / 2,
+  };
+  const style = useAnimatedStyle(() => {
+    const progress = interpolate(
+      position.value,
+      [lastPage - 1, lastPage],
+      [0, 1],
+      "clamp",
+    );
+    return {
+      transform: [
+        { translateX: progress * (end.x - start.x) },
+        { translateY: progress * (end.y - start.y) },
+        {
+          scale: interpolate(
+            progress,
+            [0, 1],
+            [HEADER_ICON_SIZE / LEVEL_ICON_SIZE, 1],
+          ),
+        },
+      ],
+    };
+  });
+  return (
+    <Animated.View
+      accessibilityLabel="Hakgyo"
+      accessible
+      pointerEvents="none"
+      style={[
+        {
+          position: "absolute",
+          left: start.x - LEVEL_ICON_SIZE / 2,
+          top: start.y - LEVEL_ICON_SIZE / 2,
+        },
+        style,
+      ]}
+    >
+      <AppIcon size={LEVEL_ICON_SIZE} />
+    </Animated.View>
+  );
+}
+
+/** The onboarding's loudest button: the blue of the app icon. */
+function LevelTestButton() {
+  return (
+    <Pressable
+      accessibilityHint="Tes membaca Hangeul, 10 soal"
+      accessibilityRole="button"
+      className="min-h-12 flex-row items-center justify-center gap-2 rounded-2xl px-5 py-3 active:opacity-80"
+      onPress={() => router.push("/(onboarding)/hangeul-test")}
+      style={{
+        borderCurve: "continuous",
+        backgroundColor: BRAND_BLUE,
+        experimental_backgroundImage: `linear-gradient(135deg, #4A93FF, ${BRAND_BLUE})`,
+      }}
+    >
+      <Text className="text-base font-bold text-white">Gas, tes sekarang</Text>
+      <SymbolIcon
+        name="arrow.right"
+        size={16}
+        tintColor="#FFFFFF"
+        weight="bold"
+      />
+    </Pressable>
+  );
+}
+
 function SlidePreview({
   slide,
   scrollGesture,
+  placementPassed,
 }: {
   slide: Slide;
   scrollGesture: NativeGesture;
+  placementPassed: boolean;
 }) {
   if (slide.key === "course") return <CoursePreview />;
   if (slide.key === "vocabulary")
     return <VocabularyPreview scrollGesture={scrollGesture} />;
+  if (slide.key === "level")
+    return <LevelTestPreview passed={placementPassed} />;
   return <StreakPreview />;
 }
 
@@ -302,6 +539,15 @@ export default function OnboardingScreen() {
   // touches fail there and fall through to the pager.
   const [scrollGesture] = useState(() => Gesture.Native());
   const isLastPage = page === lastPage;
+  const [placementPassed, setPlacementPassed] = useState(
+    hasPassedHangeulPlacement,
+  );
+  // The test runs on its own screen; read its result on the way back.
+  useFocusEffect(
+    useCallback(() => {
+      setPlacementPassed(hasPassedHangeulPlacement());
+    }, []),
+  );
 
   useEffect(() => {
     if (isLastPage) markOnboardingSeen();
@@ -332,10 +578,10 @@ export default function OnboardingScreen() {
       className="flex-1 bg-background"
       style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }}
     >
+      <LevelWash lastPage={lastPage} position={pagePosition} />
       <View className="h-10 flex-row items-center px-5">
-        <Text className="w-16 text-xs font-black tracking-[3px] text-primary">
-          HAKGYO
-        </Text>
+        {/* MovingAppIcon draws the icon over this slot. */}
+        <View className="w-16" />
         <PageDots
           accessibilityRole="progressbar"
           accessibilityValue={{ min: 1, max: SLIDES.length, now: page + 1 }}
@@ -362,6 +608,7 @@ export default function OnboardingScreen() {
         <Animated.FlatList
           className="flex-1"
           data={SLIDES}
+          extraData={placementPassed}
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
@@ -374,23 +621,58 @@ export default function OnboardingScreen() {
           pagingEnabled
           ref={pagerRef}
           renderItem={({ item: slide }) => (
-            <View className="flex-1 gap-8 px-5 pt-8" style={{ width }}>
+            <View
+              className={`flex-1 px-5 ${slide.key === "level" ? "gap-6" : "gap-8 pt-8"}`}
+              style={
+                slide.key === "level"
+                  ? {
+                      width,
+                      // Room for the app icon, which settles above the title.
+                      paddingTop: LEVEL_SLIDE_PADDING + LEVEL_ICON_SIZE + 12,
+                    }
+                  : { width }
+              }
+            >
               <HeroHeader
+                align={slide.key === "level" ? "center" : "start"}
                 description={slide.description}
                 eyebrow={slide.eyebrow}
                 size="lg"
                 title={slide.title}
               />
-              <SlidePreview scrollGesture={scrollGesture} slide={slide} />
+              <SlidePreview
+                placementPassed={placementPassed}
+                scrollGesture={scrollGesture}
+                slide={slide}
+              />
             </View>
           )}
           showsHorizontalScrollIndicator={false}
         />
       </GestureDetector>
 
+      <MovingAppIcon
+        headerTop={insets.top + 12}
+        lastPage={lastPage}
+        pageWidth={width}
+        position={pagePosition}
+      />
+
       <View className="gap-2 px-5">
         {isLastPage ? (
           <>
+            {placementPassed ? null : (
+              <>
+                <LevelTestButton />
+                <View className="flex-row items-center gap-3 py-1">
+                  <View className="h-px flex-1 bg-border" />
+                  <Text className="text-xs font-semibold text-muted-foreground">
+                    Belum bisa? Lanjut di bawah ini
+                  </Text>
+                  <View className="h-px flex-1 bg-border" />
+                </View>
+              </>
+            )}
             <Action onPress={() => openAuth("sign-up")}>Daftar gratis</Action>
             <Action variant="link" onPress={() => openAuth("sign-in")}>
               Sudah punya akun? Masuk

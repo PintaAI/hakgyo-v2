@@ -41,9 +41,21 @@ Beberapa materi punya kartu **Permainan Hangeul**. Permainannya ada di aplikasi 
 
 Permainan adalah latihan tambahan. Bab tetap bisa selesai tanpa memainkannya. Kamu juga bisa membuka permainan kapan saja dari bagian **Penguasaan Hangeul** di tab **Latihan**.
 
+## Sudah bisa membaca Hangeul?
+
+Kamu bisa melewati kurikulum ini dengan tes singkat di layar perkenalan aplikasi, sebelum daftar atau masuk:
+
+1. Geser layar perkenalan sampai **Udah bisa baca Hangeul?**, lalu ketuk **Gas, tes sekarang**.
+2. Jawab 10 soal membaca. Kamu lulus jika minimal 8 jawaban benar. Belum lulus? Ketuk **Coba lagi**.
+3. Setelah lulus, daftar atau masuk. Semua materi, kosakata, dan kuis Hangeul Mastery ditandai selesai, lalu kamu mendapat lencana **Hangeul Mastery**.
+
+Tes ini hanya ada di aplikasi dan tidak memberi XP.
+
 ## Lencana Hangeul Mastery
 
-Setelah semua materi, kosakata, dan kuis selesai, termasuk ujian akhir, kamu mendapat lencana **Hangeul Mastery**. Lencananya tampil di halaman **Profil** di aplikasi.
+Setelah semua materi, kosakata, dan kuis selesai, termasuk ujian akhir, atau setelah lulus tes di layar perkenalan, kamu mendapat lencana **Hangeul Mastery**. Lencananya tampil di halaman **Profil** di aplikasi.
+
+Bersamaan dengan lencana, kamu otomatis masuk ke kelas lanjutan **Pola Bahasa**: kurikulum **Indonesia → Korea** dan **Korea → Indonesia**. Keduanya muncul di **Kurikulum saya** dan di tab **Belajar** di aplikasi.
 
 Setelah kamu mendapat lencana, Hangeul Mastery dan bagian **Penguasaan Hangeul** di tab **Latihan** disembunyikan supaya menu belajarmu lebih rapi. Di **Cari**, materi, kuis, dan permainan Hangeul juga tidak muncul lagi. Kosakatanya tetap muncul di latihan harian dan tetap bisa kamu cari.
 

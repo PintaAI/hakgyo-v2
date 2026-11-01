@@ -1,9 +1,11 @@
 import { Stack } from "expo-router";
 
+import { useSubmitHangeulPlacement } from "../../src/lib/use-hangeul-placement";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 
 export default function HomeLayout() {
   const { colors } = useAppTheme();
+  useSubmitHangeulPlacement();
 
   return (
     <>

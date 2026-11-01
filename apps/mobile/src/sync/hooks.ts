@@ -335,12 +335,14 @@ export function useCourseOutline(
   const { activeOrganizationId } = useAppTheme();
   const index = useSyncIndex(activeOrganizationId);
   const structure = useBundleStructure(courseId, enabled);
+  // The structure query is shared with `useCourseOutlines`, so it can hold
+  // data even while this hook is disabled: compose only when enabled.
   const local = useMemo(
     () =>
-      structure.data && index.data
+      enabled && structure.data && index.data
         ? composeOutline(structure.data, index.data)
         : undefined,
-    [index.data, structure.data],
+    [enabled, index.data, structure.data],
   );
   const localResolved = !index.isPending && !structure.isPending;
   const needsOnline = enabled && localResolved && local === undefined;

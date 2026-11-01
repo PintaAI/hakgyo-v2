@@ -113,14 +113,18 @@ function CohortCarousel({
 }) {
   const [pageWidth, setPageWidth] = useState(0);
   const listRef = useRef<FlatList<LearnCohort>>(null);
-  const restoredPosition = useRef(false);
   const storageKey = `hakgyo:learn-cohort:v1:${userId}:${organizationId}`;
-  const [savedCohortId, setSavedCohortId] = useState<string | null>(() => {
+  // The saved card opens first: the list renders it straight away and then
+  // scrolls there, which moves the page dots along. Read once, on mount.
+  const [initialIndex] = useState(() => {
+    let savedCohortId: string | null = null;
     try {
-      return Storage.getItemSync(storageKey);
+      savedCohortId = Storage.getItemSync(storageKey);
     } catch {
-      return null;
+      // No saved card: start from the first one.
     }
+    const index = cohorts.findIndex(({ id }) => id === savedCohortId);
+    return index > 0 ? index : undefined;
   });
 
   const measurePage = (event: LayoutChangeEvent) => {
@@ -128,27 +132,8 @@ function CohortCarousel({
     if (nextWidth > 0 && nextWidth !== pageWidth) setPageWidth(nextWidth);
   };
 
-  const savedIndex = cohorts.findIndex(({ id }) => id === savedCohortId);
-
-  useEffect(() => {
-    if (pageWidth <= 0 || cohorts.length === 0 || restoredPosition.current) {
-      return;
-    }
-    restoredPosition.current = true;
-    if (savedIndex < 0) return;
-
-    const frame = requestAnimationFrame(() => {
-      listRef.current?.scrollToOffset({
-        offset: pageWidth * savedIndex,
-        animated: false,
-      });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [cohorts.length, pageWidth, savedIndex]);
-
   const persistCohort = useCallback(
     (cohortId: string) => {
-      setSavedCohortId(cohortId);
       try {
         Storage.setItemSync(storageKey, cohortId);
       } catch {
@@ -208,6 +193,16 @@ function CohortCarousel({
             offset: pageWidth * index,
           })}
           horizontal
+          // Each card holds a whole curriculum: mount only the visible card
+          // and its neighbours instead of every cohort at once.
+          initialNumToRender={1}
+          initialScrollIndex={
+            initialIndex !== undefined && initialIndex < cohorts.length
+              ? initialIndex
+              : undefined
+          }
+          maxToRenderPerBatch={1}
+          windowSize={3}
           keyExtractor={(cohort) => cohort.id}
           onMomentumScrollEnd={savePosition}
           onScroll={trackPosition}

@@ -51,6 +51,9 @@ import type { ResyncReport } from "../../src/sync/types";
 
 const latestReleaseNote = installedReleaseNotes[0];
 const UPDATE_CHANNEL = Updates.channel ?? "unpublished";
+// Pengembangan shows in dev clients and in development and preview builds
+// (TestFlight, preview APKs), where testers need to start over too.
+const SHOW_DEVELOPER_TOOLS = __DEV__ || UPDATE_CHANNEL !== "production";
 const CURRENT_UPDATE_ID = Updates.updateId ?? null;
 
 const PUSH_STATUS_DETAIL: Record<PushStatus, string | undefined> = {
@@ -374,14 +377,6 @@ export default function ProfileScreen() {
                 destructive
                 onPress={() => void handleSignOut()}
               />
-              <SettingsRow
-                label="Reset aplikasi"
-                subtitle="Hapus semua data di HP ini dan mulai lagi seperti baru dipasang."
-                detail={isResettingApp ? "Memproses…" : undefined}
-                symbol="trash"
-                destructive
-                onPress={confirmResetApp}
-              />
             </SettingsSection>
 
             <SettingsSection title="Tampilan">
@@ -397,7 +392,7 @@ export default function ProfileScreen() {
               <SettingsSection title="Pembelajaran">
                 <SettingsToggleRow
                   label="Tampilkan Hangeul Mastery"
-                  detail="Tampilkan lagi kurikulum dan game Hangeul di daftar belajar"
+                  detail="Munculkan lagi di daftar belajar"
                   symbol="character.book.closed.fill"
                   value={hangeul.showAfterMastery}
                   onValueChange={hangeul.setShowAfterMastery}
@@ -441,8 +436,9 @@ export default function ProfileScreen() {
                   onPress={() => void handleCheckForUpdates()}
                 />
               ) : null}
+              {/* Its screen shows each course and has "Sinkronkan sekarang". */}
               <SettingsRow
-                label="Sinkronkan materi dan progres"
+                label="Sinkronisasi"
                 detail={
                   isSyncing
                     ? "Menyinkronkan…"
@@ -453,12 +449,6 @@ export default function ProfileScreen() {
                         : "Sudah terbaru"
                 }
                 symbol="arrow.triangle.2.circlepath"
-                onPress={() => void syncNow(activeOrganizationId ?? undefined)}
-              />
-              <SettingsRow
-                label="Status sinkron"
-                subtitle="Apa yang sedang diunduh dan kursus mana yang sudah siap dipakai offline."
-                symbol="arrow.down.circle"
                 onPress={openSyncStatus}
               />
               <SettingsRow
@@ -502,8 +492,16 @@ export default function ProfileScreen() {
               />
             </SettingsSection>
 
-            {__DEV__ ? (
+            {SHOW_DEVELOPER_TOOLS ? (
               <SettingsSection title="Pengembangan">
+                <SettingsRow
+                  label="Reset aplikasi"
+                  subtitle="Mulai lagi seperti baru dipasang"
+                  detail={isResettingApp ? "Memproses…" : undefined}
+                  symbol="trash"
+                  destructive
+                  onPress={confirmResetApp}
+                />
                 <SettingsRow
                   label="Sinkronkan ulang"
                   subtitle="Hapus data lokal, lalu unduh ulang materi dan gambar"

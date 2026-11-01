@@ -1,5 +1,5 @@
 import type { RouterOutputs } from "@hakgyo/api";
-import { joinMeanings } from "@hakgyo/shared";
+import { displayMeanings, joinMeanings } from "@hakgyo/shared";
 import { Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -20,7 +20,12 @@ import {
   matchSpeechAlternative,
   type VocabularySpeechMode,
 } from "../lib/vocabulary-speech";
+import { useDeckTutorial } from "../lib/use-deck-tutorial";
 import { useHandsFreeSpeech } from "../lib/use-hands-free-speech";
+import {
+  DeckTutorialCoach,
+  DeckTutorialOverlay,
+} from "./onboarding-deck-tutorial";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
 import { api } from "../lib/trpc";
 import {
@@ -56,8 +61,8 @@ function toDeckCards(
 ): VocabularyPracticeDeckCard[] {
   return words.map((word) => ({
     id: word.id,
-    prompt: mode === "KR" ? joinMeanings(word.meanings) : word.term,
-    answer: mode === "KR" ? word.term : joinMeanings(word.meanings),
+    prompt: mode === "KR" ? displayMeanings(word.meanings) : word.term,
+    answer: mode === "KR" ? word.term : displayMeanings(word.meanings),
     imageAssetId: word.imageAssetId,
     imageAccessibilityLabel: `Ilustrasi ${word.term}`,
   }));
@@ -111,6 +116,7 @@ export function VocabularySession({
   const [mode, setMode] = useState<VocabularySpeechMode>("KR");
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const deckRef = useRef<VocabularyPracticeDeckHandle>(null);
+  const tutorial = useDeckTutorial();
   const answerInputRef = useRef<TextInput>(null);
   const usableWords = useMemo(
     () =>
@@ -172,7 +178,8 @@ export function VocabularySession({
     [mode, readyWords],
   );
   // Reserve room for mic + submit/next and the native toolbar's item spacing.
-  const toolbarInputWidth = Math.max(120, Math.min(screenWidth - 160, 520));
+  // Room for the mic, the language flag and the submit button.
+  const toolbarInputWidth = Math.max(120, Math.min(screenWidth - 212, 520));
 
   // Hoisted alongside the other hooks: exitGame is a hoisted function
   // declaration, so referencing it here (above the early returns) is safe.
@@ -451,11 +458,23 @@ export function VocabularySession({
   const visibleCards = roundActive ? deckCards : previewCards;
   const visibleCount = roundActive ? queue.length : readyWords.length;
   const visibleIndex = roundActive ? index : 0;
-  const idleHint = showFinish
-    ? "Jawaban kamu tersimpan. Muat ulang untuk memuat kata yang tersisa."
-    : isStudyMode
-      ? "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."
-      : "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati.";
+  // How to answer is taught once by the deck tutorial and the input's
+  // placeholder; this line only reports what happened to an answer.
+  const status = !roundActive
+    ? showFinish
+      ? "Jawaban kamu tersimpan. Muat ulang untuk memuat kata yang tersisa."
+      : null
+    : !feedback
+      ? null
+      : !feedback.saved && !isStudyMode
+        ? feedback.correct
+          ? "Benar — menyimpan…"
+          : "Kita ulang kata ini nanti — menyimpan…"
+        : feedback.correct
+          ? "Benar dan tersimpan."
+          : isStudyMode
+            ? "Disimpan untuk diulang."
+            : "Disimpan untuk diulang lebih cepat.";
 
   return (
     <View className="min-h-0 flex-1">
@@ -566,6 +585,18 @@ export function VocabularySession({
             value={speech.misheard ?? answer}
           />
         </Stack.Toolbar.View>
+        <Stack.Toolbar.View>
+          <VocabularyModeSwitch
+            bare
+            mode={mode}
+            onChange={(next) => {
+              tutorial.onLanguageChange();
+              handleModeChange(next);
+            }}
+            disabled={!roundActive || busy}
+            highlight={tutorial.highlightLanguage && roundActive}
+          />
+        </Stack.Toolbar.View>
         <Stack.Toolbar.Button
           accessibilityLabel={
             feedback || revealed
@@ -588,37 +619,17 @@ export function VocabularySession({
       </Stack.Toolbar>
 
       <View className="min-h-0 flex-1 justify-center gap-2">
-        <Text className="text-center text-xs leading-5 text-muted-foreground">
-          {!roundActive
-            ? idleHint
-            : isStudyMode
-              ? moving
-                ? "Menyiapkan kartu berikutnya…"
-                : listening
-                  ? "Mendengarkan bahasa Indonesia… ketuk mikrofon untuk berhenti."
-                  : revealed
-                    ? "Jawaban ditampilkan. Geser ke atas atau samping atau ketuk Lanjut."
-                    : feedback
-                      ? feedback.correct
-                        ? "Benar dan tersimpan. Geser ke atas atau samping atau ketuk Lanjut."
-                        : "Disimpan untuk diulang. Geser ke atas atau samping atau ketuk Lanjut."
-                      : "Ucapkan atau ketik artinya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."
-              : moving
-                ? "Menyiapkan kartu berikutnya…"
-                : listening
-                  ? "Mendengarkan bahasa Korea… ketuk mikrofon untuk berhenti."
-                  : revealed
-                    ? "Jawaban ditampilkan. Geser ke atas atau samping atau ketuk Lanjut."
-                    : feedback
-                      ? !feedback.saved
-                        ? feedback.correct
-                          ? "Benar — menyimpan…"
-                          : "Kita ulang kata ini nanti — menyimpan…"
-                        : feedback.correct
-                          ? "Benar dan tersimpan. Geser ke atas atau samping atau ketuk Lanjut."
-                          : "Disimpan untuk diulang lebih cepat. Geser ke atas atau samping atau ketuk Lanjut."
-                      : "Ucapkan atau ketik kata Koreanya, kelupas sudut kartu untuk melihat jawaban, atau geser ke atas atau samping untuk melewati."}
-        </Text>
+        {tutorial.visible && roundActive ? (
+          <DeckTutorialCoach
+            doneDetail="Petunjuk ini tidak muncul lagi."
+            step={tutorial.step}
+            steps={tutorial.steps}
+          />
+        ) : status ? (
+          <Text className="text-center text-xs leading-5 text-muted-foreground">
+            {status}
+          </Text>
+        ) : null}
         {speech.speechError && !feedback && !revealed ? (
           <Text
             accessibilityRole="alert"
@@ -627,13 +638,6 @@ export function VocabularySession({
             {speech.speechError}
           </Text>
         ) : null}
-        <View className="items-center">
-          <VocabularyModeSwitch
-            mode={mode}
-            onChange={handleModeChange}
-            disabled={!roundActive || busy}
-          />
-        </View>
         {visibleCards.length === 0 ? (
           <Card className="items-center gap-4 p-6">
             <Text className="text-3xl">🌱</Text>
@@ -654,19 +658,35 @@ export function VocabularySession({
             </Action>
           </Card>
         ) : (
-          <VocabularyPracticeDeck
-            key={roundActive ? roundKey : "preview"}
-            ref={deckRef}
-            cards={visibleCards}
-            index={visibleIndex}
-            correct={feedback?.correct}
-            revealed={roundActive && revealed}
-            onReveal={revealAnswer}
-            scrollGesture={scrollGesture}
-            disabled={!roundActive || requestBusy || (revealed && !revealSaved)}
-            onInteractionChange={handleInteractionChange}
-            onAdvanceComplete={finishAdvance}
-          />
+          <View>
+            <VocabularyPracticeDeck
+              key={roundActive ? roundKey : "preview"}
+              ref={deckRef}
+              cards={visibleCards}
+              index={visibleIndex}
+              correct={feedback?.correct}
+              revealed={roundActive && revealed}
+              onReveal={() => {
+                tutorial.onReveal();
+                revealAnswer();
+              }}
+              scrollGesture={scrollGesture}
+              disabled={
+                !roundActive || requestBusy || (revealed && !revealSaved)
+              }
+              onInteractionChange={(busy) => {
+                tutorial.onInteractionChange(busy);
+                handleInteractionChange(busy);
+              }}
+              onAdvanceComplete={() => {
+                tutorial.onAdvance();
+                finishAdvance();
+              }}
+            />
+            {tutorial.showHand && roundActive && !moving ? (
+              <DeckTutorialOverlay step={tutorial.step} />
+            ) : null}
+          </View>
         )}
       </View>
 

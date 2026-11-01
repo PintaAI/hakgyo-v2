@@ -40,6 +40,12 @@ export const env = createEnv({
     APPLE_KEY_ID: z.string().min(1).optional(),
     APPLE_PRIVATE_KEY: z.string().min(1).optional(),
     SUPERADMIN_EMAILS: z.string().default(""),
+    // Comma-separated cohort ids every learner joins on sign-in, such as
+    // Hangeul Mastery's Kelas Mandiri (src/server/foundation/enrollment.ts).
+    AUTO_ENROLL_COHORT_IDS: z.string().default(""),
+    // Comma-separated cohort ids a learner joins on earning the Hangeul
+    // Mastery badge, such as the Pola Bahasa classes.
+    HANGEUL_MASTERY_NEXT_COHORT_IDS: z.string().default(""),
     // Token from the OpenAI plugin dashboard, served at /.well-known/openai-apps-challenge to
     // verify that we own the MCP server domain. The route returns 404 until set.
     OPENAI_APPS_CHALLENGE_TOKEN: z.string().min(1).optional(),
@@ -125,6 +131,9 @@ export const env = createEnv({
     APPLE_KEY_ID: process.env.APPLE_KEY_ID,
     APPLE_PRIVATE_KEY: process.env.APPLE_PRIVATE_KEY,
     SUPERADMIN_EMAILS: process.env.SUPERADMIN_EMAILS,
+    AUTO_ENROLL_COHORT_IDS: process.env.AUTO_ENROLL_COHORT_IDS,
+    HANGEUL_MASTERY_NEXT_COHORT_IDS:
+      process.env.HANGEUL_MASTERY_NEXT_COHORT_IDS,
     OPENAI_APPS_CHALLENGE_TOKEN: process.env.OPENAI_APPS_CHALLENGE_TOKEN,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,

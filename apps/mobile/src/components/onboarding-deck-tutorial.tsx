@@ -16,7 +16,8 @@ import { useAppTheme } from "../providers/AppThemeProvider";
 import { Card, IconCircle } from "./learning-ui";
 import { SymbolIcon } from "./ui/symbol-icon";
 
-export type DeckTutorialStep = "peel" | "swipe" | "done";
+/** `language` only in the app's decks; onboarding teaches peel and swipe. */
+export type DeckTutorialStep = "peel" | "swipe" | "language" | "done";
 
 // Matches the deck stage: inset 16 from each side, below the stack runway.
 const CARD_FRAME = {
@@ -57,6 +58,7 @@ function Hand() {
 
 /** A looping hand that acts out the current step on top of the deck card. */
 export function DeckTutorialOverlay({ step }: { step: DeckTutorialStep }) {
+  // The language step pulses the flag button instead (VocabularyModeSwitch).
   const { colors } = useAppTheme();
   const reducedMotion = useReducedMotion();
   const progress = useSharedValue(0);
@@ -64,7 +66,7 @@ export function DeckTutorialOverlay({ step }: { step: DeckTutorialStep }) {
   useEffect(() => {
     cancelAnimation(progress);
     progress.value = 0;
-    if (reducedMotion || step === "done") return;
+    if (reducedMotion || step === "done" || step === "language") return;
     const loops = step === "swipe" ? SWIPE_PATHS.length : 1;
     progress.value = withRepeat(
       withTiming(loops, {
@@ -117,7 +119,7 @@ export function DeckTutorialOverlay({ step }: { step: DeckTutorialStep }) {
     };
   });
 
-  if (step === "done") return null;
+  if (step === "done" || step === "language") return null;
 
   return (
     <View
@@ -179,12 +181,17 @@ const COACH_COPY: Record<
   peel: {
     badge: "1",
     title: "Kelupas sudut kartu",
-    detail: "Tarik sudut kanan bawah untuk melihat artinya.",
+    detail: "Tarik sudut kanan bawah untuk melihat jawabannya.",
   },
   swipe: {
     badge: "2",
     title: "Geser ke atas, kiri, atau kanan",
     detail: "Kartu berikutnya langsung muncul.",
+  },
+  language: {
+    badge: "3",
+    title: "Ganti bahasa jawaban",
+    detail: "Ketuk bendera di samping kolom jawaban.",
   },
   done: {
     badge: "",
@@ -194,9 +201,22 @@ const COACH_COPY: Record<
 };
 
 /** The current tutorial step, shown under the deck. */
-export function DeckTutorialCoach({ step }: { step: DeckTutorialStep }) {
+export function DeckTutorialCoach({
+  step,
+  steps = 2,
+  doneDetail,
+}: {
+  step: DeckTutorialStep;
+  /** How many steps the tutorial has: 2 in onboarding, 3 with `language`. */
+  steps?: number;
+  /** Replaces the onboarding's "done" line, for decks outside it. */
+  doneDetail?: string;
+}) {
   const { colors } = useAppTheme();
-  const copy = COACH_COPY[step];
+  const copy =
+    step === "done" && doneDetail
+      ? { ...COACH_COPY.done, detail: doneDetail }
+      : COACH_COPY[step];
   return (
     <View accessibilityLiveRegion="polite">
       <Card className="flex-row items-center gap-3 px-4 py-3" tone="primary">
@@ -224,7 +244,7 @@ export function DeckTutorialCoach({ step }: { step: DeckTutorialStep }) {
         </View>
         {step !== "done" ? (
           <Text className="text-xs font-bold text-muted-foreground">
-            {copy.badge}/2
+            {copy.badge}/{steps}
           </Text>
         ) : null}
       </Card>

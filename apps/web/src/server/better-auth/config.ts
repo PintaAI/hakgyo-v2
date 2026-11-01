@@ -61,13 +61,6 @@ export const auth = betterAuth({
     cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
   databaseHooks: {
-    user: {
-      create: {
-        after: async (user) => {
-          await ensureFoundationEnrollments(user.id);
-        },
-      },
-    },
     session: {
       create: {
         before: async (session) => {
@@ -78,6 +71,19 @@ export const auth = betterAuth({
           if (user?.suspendedAt || user?.deletedAt) {
             throw new APIError("FORBIDDEN", {
               message: "Akun ini tidak aktif.",
+            });
+          }
+        },
+        // On every sign-in rather than at sign-up: an email sign-up has no
+        // session until it is verified, and a failed run catches up on the
+        // next sign-in. Never fails the sign-in itself.
+        after: async (session) => {
+          try {
+            await ensureFoundationEnrollments(session.userId);
+          } catch (error) {
+            console.error("Failed to auto-enroll a learner on sign-in", {
+              userId: session.userId,
+              error,
             });
           }
         },

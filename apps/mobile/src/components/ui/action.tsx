@@ -1,3 +1,4 @@
+import { Image, type ImageSource } from "expo-image";
 import { ActivityIndicator, Pressable, Text } from "react-native";
 
 import type { ThemeColors } from "../../theme/colors";
@@ -67,6 +68,7 @@ export function Action({
   size = "default",
   align = "stretch",
   leadingIcon,
+  leadingImage,
   trailingIcon,
   accessibilityRole = "button",
   accessibilityLabel,
@@ -83,6 +85,8 @@ export function Action({
   align?: "stretch" | "start";
   /** Icon before the label, such as a back arrow. */
   leadingIcon?: SymbolName;
+  /** Full-colour brand mark before the label, shown unmodified (not tinted). */
+  leadingImage?: ImageSource;
   /** Icon after the label, such as a forward arrow. */
   trailingIcon?: SymbolName;
   accessibilityRole?: "button" | "link";
@@ -119,6 +123,15 @@ export function Action({
       }}
     >
       {loading ? <ActivityIndicator size="small" color={spinnerColor} /> : null}
+      {leadingImage ? (
+        <Image
+          accessible={false}
+          contentFit="contain"
+          source={leadingImage}
+          style={{ width: 20, height: 20 }}
+          transition={0}
+        />
+      ) : null}
       {leadingIcon ? (
         <SymbolIcon
           name={leadingIcon}

@@ -117,3 +117,24 @@ export function latestStandaloneAttemptForItem<T extends AttemptIdentity>(
       return latest;
     }, undefined);
 }
+
+/**
+ * `latestStandaloneAttemptForItem` for every item at once, keyed by course
+ * item id: one pass over the attempts instead of one per item.
+ */
+export function latestStandaloneAttemptsByItem<T extends AttemptIdentity>(
+  attempts: readonly T[] | undefined,
+) {
+  const latest = new Map<string, T>();
+  for (const attempt of attempts ?? []) {
+    if (attempt.assessmentEvent) continue;
+    const current = latest.get(attempt.courseItemId);
+    if (
+      !current ||
+      attempt.startedAt.getTime() > current.startedAt.getTime()
+    ) {
+      latest.set(attempt.courseItemId, attempt);
+    }
+  }
+  return latest;
+}
