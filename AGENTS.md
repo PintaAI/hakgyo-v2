@@ -68,6 +68,8 @@ bun run --cwd apps/mobile ota:publish --channel production --message "…"  # gu
 
 `bun run dev` starts both workspace apps through Turbo. The mobile app can also be started independently with Expo.
 
+Typecheck runs on TypeScript 7.1 (beta, the native compiler): `apps/mobile` depends on it as `typescript`, and `apps/web` as `typescript-7`, whose `tsc` its `typecheck` script calls by path. `apps/web` keeps TypeScript 5.9 as `typescript` because typescript-eslint (type-aware ESLint) supports only TypeScript below 6.1; `next build` also uses that one. Move `apps/web` to `typescript@7` once typescript-eslint supports it.
+
 ## Testing
 
 - Tests use `bun test` and live next to the code as `*.test.ts`. Run them per workspace (`cd apps/web && bun test`, likewise `apps/mobile` and `packages/shared`) or pass specific files.
