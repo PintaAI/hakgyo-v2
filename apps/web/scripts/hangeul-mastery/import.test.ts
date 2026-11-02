@@ -243,6 +243,23 @@ describe("audio texts", () => {
 });
 
 describe("desired course", () => {
+  test("splits meanings written in one definition", () => {
+    const content = structuredClone(fixtureContent);
+    const vocab = content.modules[0]!.items.find(
+      (item) => item.type === "vocabulary",
+    );
+    if (vocab?.type !== "vocabulary") throw new Error("fixture has no set");
+    vocab.entries[0]!.definition = "anak; anak kecil";
+
+    const { course, errors } = build(content);
+    expect(errors).toEqual([]);
+    const entry = course.modules[0]!.items.find((item) => item.vocabularySet)!
+      .vocabularySet!.entries[0]!;
+    expect(entry.meanings).toEqual(["anak", "anak kecil"]);
+    // The mirror stays as written, so learners' progress on it keeps.
+    expect(entry.definition).toBe("anak; anak kecil");
+  });
+
   test("resolves references, audio and documents", () => {
     const { course, errors, missingAudio } = build();
     expect(errors).toEqual([]);

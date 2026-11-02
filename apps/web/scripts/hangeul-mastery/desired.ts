@@ -4,6 +4,7 @@
 import {
   assessmentContentAssetIds,
   collectContentAssetIds,
+  splitMeanings,
   vocabularyMeaningFields,
 } from "@hakgyo/shared";
 
@@ -432,7 +433,10 @@ function buildVocabularySet(
       id: entryId(item.key, term),
       vocabularySetId: id,
       term,
-      ...vocabularyMeaningFields([entry.definition]),
+      // Several meanings are written in one string, "anak; anak kecil": split
+      // them, or the app shows one meaning with the semicolons in it. The
+      // `definition` mirror joins them back unchanged, so progress keeps.
+      ...vocabularyMeaningFields(splitMeanings(entry.definition)),
       examples: (entry.examples ?? [])
         .map((example) => example.trim())
         .filter(Boolean),
