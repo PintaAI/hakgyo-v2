@@ -1,14 +1,22 @@
+import type { ComponentProps } from "react";
 import {
-  attemptFlowSummary,
   formatScore,
   formatScoreOutOf,
   reachesPercent,
   type SectionNavigation,
+  usesPictureGrid,
 } from "@hakgyo/shared";
 import { Text, View } from "react-native";
 
 import type { LearnerAttemptStatus } from "../../lib/assessment-state";
+import { useAppTheme } from "../../providers/AppThemeProvider";
+import { withOpacity } from "../../theme/colors";
+import { AssessmentOption, AssessmentOptions } from "../assessment-ui";
+import { NativeContentRenderer } from "../content-renderer";
+import type { AssetUrlResolver } from "../content-renderer/types";
 import { Action, Badge, Eyebrow } from "../learning-ui";
+import { SymbolIcon } from "../ui/symbol-icon";
+import type { SymbolName } from "../ui/symbol-names";
 
 type LatestAttempt = {
   status: LearnerAttemptStatus;
@@ -17,8 +25,170 @@ type LatestAttempt = {
 };
 
 /**
- * The rules and latest result of a course tugas, shown on its intro screen
- * between the description and the start action.
+ * A tugas's rules as small chips with icons: its time, passing score and
+ * attempts. Sits under the title in the intro hero.
+ */
+export function AssessmentFacts({
+  timeLimitMinutes,
+  passingScore,
+  maxAttempts,
+  attemptsUsed,
+}: {
+  timeLimitMinutes: number | null;
+  passingScore: number | null;
+  maxAttempts: number | null;
+  attemptsUsed: number;
+}) {
+  const { colors } = useAppTheme();
+  const facts: { icon: SymbolName; label: string; text: string }[] = [
+    {
+      icon: "timer",
+      label: "Waktu",
+      text: timeLimitMinutes != null ? `${timeLimitMinutes} menit` : "Bebas",
+    },
+    ...(passingScore != null
+      ? [
+          {
+            icon: "checkmark.seal.fill" as const,
+            label: "Nilai lulus",
+            text: `Lulus ${passingScore}%`,
+          },
+        ]
+      : []),
+    {
+      icon: "arrow.clockwise",
+      label: "Percobaan",
+      text:
+        maxAttempts == null
+          ? "Tanpa batas"
+          : `${Math.min(attemptsUsed, maxAttempts)} dari ${maxAttempts}`,
+    },
+  ];
+  return (
+    <View className="flex-row flex-wrap justify-center gap-2">
+      {facts.map((fact) => (
+        <View
+          accessible
+          accessibilityLabel={`${fact.label}: ${fact.text}`}
+          className="flex-row items-center gap-1.5 rounded-full bg-muted px-3 py-1.5"
+          key={fact.label}
+        >
+          <SymbolIcon
+            name={fact.icon}
+            size={13}
+            tintColor={colors.mutedForeground}
+            weight="semibold"
+          />
+          <Text className="text-sm font-semibold text-foreground">
+            {fact.text}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+type RendererContent = ComponentProps<typeof NativeContentRenderer>["content"];
+
+type PreviewQuestion = {
+  id: string;
+  prompt: RendererContent;
+  type: string;
+  options: ReadonlyArray<{ id: string; content: RendererContent }>;
+};
+
+/**
+ * The tugas's first question as it will look, so the learner knows what to
+ * expect: its prompt and options in the same cards as the attempt, without
+ * a way to answer them here.
+ */
+export function QuestionPreview({
+  question,
+  total,
+  resolveAssetUrl,
+}: {
+  question: PreviewQuestion;
+  total: number;
+  resolveAssetUrl: AssetUrlResolver;
+}) {
+  const grid = usesPictureGrid(question.options);
+  const { colors } = useAppTheme();
+  return (
+    <View className="gap-3">
+      <View className="flex-row items-center justify-between gap-3">
+        <Eyebrow>Contoh soal</Eyebrow>
+        <Text className="text-xs font-semibold text-muted-foreground">
+          1 dari {total}
+        </Text>
+      </View>
+      {/* A sample, not the attempt: the bottom fades into the page under a
+          "Pratinjau" pill, and the whole preview takes taps for nothing so
+          its options do not look or feel answerable. */}
+      <View
+        accessible
+        accessibilityLabel="Pratinjau soal pertama. Mulai tugas untuk menjawab."
+        className="gap-3"
+        onStartShouldSetResponder={() => true}
+      >
+        <View className="gap-4 rounded-2xl border border-border bg-card p-5">
+          <NativeContentRenderer
+            content={question.prompt}
+            resolveAssetUrl={resolveAssetUrl}
+          />
+        </View>
+        {question.options.length > 0 ? (
+          <AssessmentOptions grid={grid}>
+            {question.options.map((option, index) => (
+              <AssessmentOption
+                key={option.id}
+                index={index}
+                selected={false}
+                multiple={question.type === "MULTIPLE_CHOICE"}
+                tile={grid}
+                surface="card"
+              >
+                <NativeContentRenderer
+                  content={option.content}
+                  resolveAssetUrl={resolveAssetUrl}
+                />
+              </AssessmentOption>
+            ))}
+          </AssessmentOptions>
+        ) : null}
+        <View
+          pointerEvents="none"
+          className="absolute inset-x-0 bottom-0 items-center justify-end pb-3"
+          style={{
+            top: "45%",
+            experimental_backgroundImage: `linear-gradient(to bottom, ${withOpacity(colors.background, 0)}, ${withOpacity(colors.background, 0.92)} 70%, ${colors.background})`,
+          }}
+        >
+          <View
+            className="flex-row items-center gap-1.5 rounded-full border px-3.5 py-2"
+            style={{
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            }}
+          >
+            <SymbolIcon
+              name="eye"
+              size={14}
+              tintColor={colors.mutedForeground}
+              weight="semibold"
+            />
+            <Text className="text-xs font-semibold text-muted-foreground">
+              Pratinjau · mulai tugas untuk menjawab
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The latest attempt of a course tugas on its intro screen: unsent, waiting
+ * for a grade, or graded. Nothing before a first attempt.
  */
 export function AssessmentOverview({
   timeLimitMinutes,
@@ -49,51 +219,14 @@ export function AssessmentOverview({
   }>;
   onOpenAttempt: () => void;
 }) {
-  const facts = [
-    {
-      label: "Waktu",
-      value: timeLimitMinutes != null ? `${timeLimitMinutes} menit` : "Bebas",
-    },
-    passingScore != null
-      ? { label: "Nilai lulus", value: `${passingScore}%` }
-      : null,
-    {
-      label: "Percobaan",
-      value:
-        maxAttempts == null
-          ? "Tanpa batas"
-          : `${Math.min(attemptsUsed, maxAttempts)} dari ${maxAttempts}`,
-    },
-  ].filter((fact) => fact !== null);
   const showGate = gatesProgress && itemCompleted === false;
 
+  // Before a first attempt the hero says it all (facts and caption).
+  if (!latestAttempt) return null;
   return (
     <>
-      <View className="flex-row gap-4 border-t border-border pt-4">
-        {facts.map((fact) => (
-          <View key={fact.label} className="min-w-0 flex-1 gap-1">
-            <Eyebrow size="xs" numberOfLines={1}>
-              {fact.label}
-            </Eyebrow>
-            <Text
-              className="text-base font-bold text-foreground"
-              numberOfLines={1}
-            >
-              {fact.value}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {!latestAttempt ? (
-        <Text className="text-sm leading-5 text-muted-foreground">
-          {attemptFlowSummary(sections)}
-          {showGate && passingScore != null
-            ? ` Raih minimal ${passingScore}% untuk membuka aktivitas berikutnya.`
-            : ""}
-        </Text>
-      ) : latestAttempt.status === "IN_PROGRESS" ? (
-        <View className="gap-1 border-t border-border pt-4">
+      {latestAttempt.status === "IN_PROGRESS" ? (
+        <View className="gap-1 rounded-2xl border border-border bg-card p-4">
           <Eyebrow size="xs">Percobaan terakhir</Eyebrow>
           <Text className="text-base font-bold text-foreground">
             Belum dikirim
@@ -103,7 +236,7 @@ export function AssessmentOverview({
           </Text>
         </View>
       ) : (
-        <View className="gap-3 border-t border-border pt-4">
+        <View className="gap-3 rounded-2xl border border-border bg-card p-4">
           <View className="flex-row items-center justify-between gap-3">
             <Eyebrow size="xs">Hasil terakhir</Eyebrow>
             <Action

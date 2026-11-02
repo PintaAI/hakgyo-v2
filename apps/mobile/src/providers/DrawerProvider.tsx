@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useSegments } from "expo-router";
 import {
   createContext,
   useCallback,
@@ -52,6 +52,18 @@ export function DrawerProvider({
   const { colorScheme, colors } = useAppTheme();
   const { fadeNextTransition } = useTransitionOverride();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Swiping from the left edge opens the sidebar only on a tab root. A
+  // pushed screen (a material, a vocabulary set) uses that edge for the
+  // native swipe back: with both, a swipe back could start opening the
+  // drawer while the screen pops, and leave the drawer stuck half open with
+  // its gesture cancelled. The sidebar button still opens it there.
+  // Read as plain strings: typed routes narrow this to known tuples.
+  const segments: string[] = useSegments();
+  const atTabRoot =
+    segments[0] === "(home)" &&
+    segments[1] === "(tabs)" &&
+    segments.length <= 3;
+  const routeKey = segments.join("/");
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const drawerOpenRef = useRef(drawerOpen);
   const updatesOpenRef = useRef(updatesOpen);
@@ -116,6 +128,13 @@ export function DrawerProvider({
       closeUpdates();
     }
   }, [close, closeUpdates, enabled]);
+
+  // A new screen never keeps a drawer open over it, however it was reached
+  // (a toolbar button, a notification, a gesture).
+  useEffect(() => {
+    setDrawerOpen(false);
+    setUpdatesOpen(false);
+  }, [routeKey]);
 
   const contextValue = useMemo(
     () => ({ open, close, openUpdates, closeUpdates, navigate }),
@@ -235,7 +254,7 @@ export function DrawerProvider({
               overlayStyle={{ backgroundColor: "transparent" }}
               renderDrawerContent={renderDrawerContent}
               style={{ backgroundColor: colors.background }}
-              swipeEnabled={enabled && !updatesOpen}
+              swipeEnabled={enabled && !updatesOpen && atTabRoot}
             >
               <View style={screenStyle}>
                 <View

@@ -145,7 +145,6 @@ export function TodayVocabularyPractice({
     if (spokenDisplay) setAnswer(matched);
     const correct = isAnswerCorrect(matched);
     setFeedback({ correct, saved: false });
-    if (!speech.handsFree) inputRef.current?.focus();
 
     await saveAnswer(correct);
   }
@@ -204,8 +203,9 @@ export function TodayVocabularyPractice({
 
   function nextCard() {
     speech.interrupt();
+    // The field keeps the focus it had: an open keyboard stays open for
+    // the next word, a closed one stays closed (see `restoreInputFocus`).
     deckRef.current?.advance();
-    if (!speech.handsFree) inputRef.current?.focus();
   }
 
   function revealAnswer() {
@@ -217,9 +217,8 @@ export function TodayVocabularyPractice({
     setRevealed(true);
     setRevealSaved(false);
     setAnswer("");
-    // Keep the keyboard open: the input becomes "Siap untuk kata berikutnya?"
-    // with a Next return key, so the learner can advance without re-tapping.
-    if (!speech.handsFree) inputRef.current?.focus();
+    // Peeling the card is a touch on the card, not the field: never open the
+    // keyboard for it. One already open stays open, its return key now "Next".
     void saveReveal();
   }
 
@@ -345,12 +344,10 @@ export function TodayVocabularyPractice({
   }
 
   // How to answer is taught once by the deck tutorial and the input's
-  // placeholder; this line only says what the learner cannot see elsewhere.
-  const status = revealed
-    ? "Hanya belajar · XP dan streak tidak berubah."
-    : feedback && !feedback.saved
-      ? "Menyimpan jawaban kamu…"
-      : null;
+  // placeholder; this line only says what the learner cannot see elsewhere:
+  // an answer still saving. A peeled card says nothing (it simply earns no
+  // credit).
+  const status = feedback && !feedback.saved ? "Menyimpan jawaban kamu…" : null;
   const placeholder = revealed
     ? "Siap untuk kata berikutnya?"
     : listening

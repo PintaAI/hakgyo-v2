@@ -16,6 +16,7 @@ import {
 } from "./sidebar/AndroidTabActions";
 import { SidebarToolbarButton } from "./sidebar/SidebarToolbarButton";
 import { SyncSnackbar } from "./sync-activity/sync-snackbar";
+import { TourTarget } from "../tour/tour-target";
 
 const ios = Platform.OS === "ios";
 
@@ -112,11 +113,13 @@ function TabToolbar({ right }: { right: "organization" | "updates" }) {
     <>
       <SidebarToolbarButton
         trailing={
-          <OrganizationSwitcherTrigger
-            compact
-            align="start"
-            onPress={openOrganizationSwitcher}
-          />
+          <TourTarget id="header.organization">
+            <OrganizationSwitcherTrigger
+              compact
+              align="start"
+              onPress={openOrganizationSwitcher}
+            />
+          </TourTarget>
         }
       />
       <SettingsToolbarButton />
@@ -139,10 +142,12 @@ function TabActions({
       floating={floating}
       right={<SettingsActionButton />}
       left={
-        <OrganizationSwitcherTrigger
-          align="start"
-          onPress={openOrganizationSwitcher}
-        />
+        <TourTarget id="header.organization" className="min-w-0 flex-1">
+          <OrganizationSwitcherTrigger
+            align="start"
+            onPress={openOrganizationSwitcher}
+          />
+        </TourTarget>
       }
     />
   );

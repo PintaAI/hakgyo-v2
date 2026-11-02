@@ -9,10 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Text } from "react-native";
 
 import { AppSegmentedControl } from "../../src/components/app-segmented-control";
-import {
-  formatDuration,
-  LocalDataReport,
-} from "../../src/components/local-data-report";
+import { LocalDataReport } from "../../src/components/local-data-report";
 import { StudyScreen } from "../../src/components/learning-ui";
 import {
   MilestoneTrail,
@@ -25,6 +22,8 @@ import {
   SettingsToggleRow,
 } from "../../src/components/settings-ui";
 import { WeeklyStreak } from "../../src/components/weekly-streak";
+import { useAutoTour, useTourReplay } from "../../src/tour/tour-provider";
+import { TourTarget } from "../../src/tour/tour-target";
 import { apiUrl } from "../../src/config";
 import { authClient } from "../../src/lib/auth-client";
 import { openSyncStatus } from "../../src/lib/navigation";
@@ -139,6 +138,9 @@ export default function ProfileScreen() {
     if (!isSyncing) refreshLocalStats();
   }, [isSyncing, refreshLocalStats]);
   const progress = api.gamification.getMySummary.useQuery();
+  // Opened on Pengaturan from the gear, the profile tour waits for Profil.
+  useAutoTour("profile", segment === 0 && !progress.isPending);
+  const replayTours = useTourReplay();
   const displayName = session?.user.name || "Pelajar Hakgyo";
   const initials = displayName
     .trim()
@@ -334,29 +336,35 @@ export default function ProfileScreen() {
         }}
         refreshing={isSyncing || isRefreshingOrganizations}
       >
-        <AppSegmentedControl
-          values={["Profil", "Pengaturan"]}
-          selectedIndex={segment}
-          onIndexChange={setSegment}
-        />
+        <TourTarget id="profile.segments">
+          <AppSegmentedControl
+            values={["Profil", "Pengaturan"]}
+            selectedIndex={segment}
+            onIndexChange={setSegment}
+          />
+        </TourTarget>
 
         {segment === 0 ? (
           <>
-            <ProfileHero
-              displayName={displayName}
-              initials={initials}
-              image={session?.user.image}
-              email={session?.user.email ?? "Belum masuk"}
-              stats={progress.data?.profileStats}
-              isPending={progress.isPending}
-            />
+            <TourTarget id="profile.stats">
+              <ProfileHero
+                displayName={displayName}
+                initials={initials}
+                image={session?.user.image}
+                email={session?.user.email ?? "Belum masuk"}
+                stats={progress.data?.profileStats}
+                isPending={progress.isPending}
+              />
+            </TourTarget>
             <WeeklyStreak />
-            <MilestoneTrail
-              achievements={progress.data?.achievements}
-              isPending={progress.isPending}
-              error={progress.error}
-              onRetry={() => void progress.refetch()}
-            />
+            <TourTarget id="profile.milestones">
+              <MilestoneTrail
+                achievements={progress.data?.achievements}
+                isPending={progress.isPending}
+                error={progress.error}
+                onRetry={() => void progress.refetch()}
+              />
+            </TourTarget>
             <RecentActivity
               activities={progress.data?.recentActivity ?? []}
               weekXp={progress.data?.weeklyActivity.xp ?? 0}
@@ -529,10 +537,6 @@ export default function ProfileScreen() {
                                   progress.refetch(),
                                   refetchSession(),
                                 ]);
-                                Alert.alert(
-                                  "Sinkronisasi ulang selesai",
-                                  `Data dimuat ulang dalam ${formatDuration(report.totalMs)}. Lihat rinciannya di bawah.`,
-                                );
                               })
                               .catch((cause: unknown) => {
                                 Alert.alert(
@@ -566,6 +570,18 @@ export default function ProfileScreen() {
             ) : null}
 
             <SettingsSection title="Bantuan">
+              <SettingsRow
+                label="Lihat tur aplikasi"
+                subtitle="Kenali lagi menu dan fitur Hakgyo"
+                symbol="sparkles"
+                onPress={() => {
+                  // Every screen shows its tour again; Hari Ini starts now.
+                  void replayTours().then(() => {
+                    router.back();
+                    router.navigate("/(home)/(tabs)/home");
+                  });
+                }}
+              />
               <SettingsRow
                 label="Pusat bantuan"
                 symbol="questionmark.circle"

@@ -34,6 +34,8 @@ Jika bab tidak kunjung terbuka, periksa:
 3. Gulir ke bawah sampai kotak **Siap lanjut?**.
 4. Klik **Selesai & lanjutkan** untuk menandai materi selesai dan membuka item berikutnya.
 
+Di aplikasi ponsel, tidak ada tombol **Selesai & lanjutkan**. Setelah sampai di bawah materi, panah kecil dengan tulisan **Tarik untuk lanjut** muncul di bagian bawah layar. Tarik layar ke atas sekali lagi dan tahan sampai lingkaran di sekitar panah penuh dan tulisannya menjadi **Lepas untuk lanjut**, lalu lepaskan. Materi langsung ditandai selesai dan item berikutnya terbuka. Jika materinya berisi halaman buku PDF, baca semua halamannya dulu. Jika VoiceOver atau TalkBack aktif, tombol **Selesai & lanjutkan** tetap muncul di bawah materi.
+
 Di item terakhir sebuah bab, tombolnya menjadi **Selesaikan bab**. Di item terakhir kurikulum, tombolnya **Selesaikan kurikulum**. Kamu akan melihat layar perayaan setiap menyelesaikan bab atau kurikulum.
 
 Item yang sudah selesai akan tetap selesai, walaupun kamu membukanya lagi.

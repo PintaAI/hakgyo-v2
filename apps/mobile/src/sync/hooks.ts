@@ -201,6 +201,11 @@ export function resolveLocalFirst<T, E>(input: {
 export type SyncDataContextValue = {
   localData: SyncLocalData;
   isSyncing: boolean;
+  /**
+   * An automatic sync is running and no sync indicator can announce it
+   * (Android, iOS before 26), so screens without data show a spinner.
+   */
+  isPreparing: boolean;
   /** Last sync failure, surfaced while no index exists yet. */
   syncError: Error | null;
   syncNow: (organizationId?: string) => Promise<unknown>;
@@ -224,6 +229,7 @@ function useLocalData() {
 export function useSyncIndex(organizationId?: string | null) {
   const sync = useContext(SyncDataContext);
   const isSyncing = sync?.isSyncing ?? false;
+  const isPreparing = sync?.isPreparing ?? false;
   const syncNow = sync?.syncNow;
   const scope = indexScope(organizationId);
   const query = useQuery({
@@ -239,14 +245,18 @@ export function useSyncIndex(organizationId?: string | null) {
     async () => syncNow?.(organizationId ?? undefined),
     [organizationId, syncNow],
   );
+  // A retry in progress shows the spinner, not the previous failure.
   const error = (query.error ??
-    (data === undefined ? (sync?.syncError ?? null) : null)) as Error | null;
+    (data === undefined && !isSyncing && !isPreparing
+      ? (sync?.syncError ?? null)
+      : null)) as Error | null;
   return {
     data,
     stale: record?.stale ?? false,
     /** True while loading from SQLite, or while the first sync runs. */
     isPending:
-      Boolean(sync) && (query.isPending || (data === undefined && isSyncing)),
+      Boolean(sync) &&
+      (query.isPending || (data === undefined && (isSyncing || isPreparing))),
     isRefetching: isSyncing,
     isError: error !== null,
     error,

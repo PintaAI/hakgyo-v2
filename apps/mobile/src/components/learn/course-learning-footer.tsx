@@ -2,7 +2,7 @@ import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { AccessibilityInfo, Text, View } from "react-native";
 
 import {
   getLearningMilestone,
@@ -29,6 +29,26 @@ import { StudyAction } from "../study-glass";
 import { SymbolIcon } from "../ui/symbol-icon";
 
 type Milestone = NonNullable<ReturnType<typeof getLearningMilestone>>;
+
+/** Whether VoiceOver or TalkBack is on, following changes. */
+function useScreenReaderEnabled() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void AccessibilityInfo.isScreenReaderEnabled().then((value) => {
+      if (active) setEnabled(value);
+    });
+    const subscription = AccessibilityInfo.addEventListener(
+      "screenReaderChanged",
+      setEnabled,
+    );
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
+  return enabled;
+}
 type FooterIssue =
   { kind: "requirements" } | { kind: "error"; message: string };
 
@@ -60,26 +80,53 @@ export type LearningRequirementAction = {
   onPress: () => void;
 };
 
-export function CourseLearningFooter({
-  courseId,
-  courseItemId,
-  onReadAgain,
-  completionMode = "manual",
-  initialOutline,
-  requirementActions = [],
-  assessmentState,
-}: {
+type FooterProps = {
   courseId: string;
   courseItemId: string;
+  /**
+   * `screenReader` shows the continue button only to VoiceOver and TalkBack
+   * users, where another way to continue covers everyone else (pulling past
+   * the end of a material).
+   */
+  continueButton?: "always" | "screenReader";
+  /**
+   * While an unfinished tugas holds the learner here, show only a one-line
+   * "next" row: the screen above already says what to do.
+   */
+  compact?: boolean;
   onReadAgain?: () => void;
   completionMode?: "manual" | "assessment";
   initialOutline?: LearningPathCourse;
   requirementActions?: LearningRequirementAction[];
   assessmentState?: LearningAssessmentState;
+};
+
+/**
+ * Completing a course item and moving on: marks it done (through the sync
+ * outbox), then opens the next item, or holds for a chapter milestone, a
+ * required activity or an error. Shared by the footer and by gestures that
+ * continue without it, such as pulling past the end of a material.
+ */
+export function useLearningContinuation({
+  courseId,
+  courseItemId,
+  completionMode = "manual",
+  initialOutline,
+  pendingRequirements,
+}: Pick<
+  FooterProps,
+  "courseId" | "courseItemId" | "completionMode" | "initialOutline"
+> & {
+  /**
+   * Required activities not done yet, from the local course item, read when
+   * the learner continues. The server would refuse the completion; with any
+   * left, the footer asks for them instead of saving.
+   */
+  pendingRequirements?: () => number;
 }) {
   const queryClient = useQueryClient();
   const outline = useCourseOutline(courseId);
-  const { activeOrganizationId, colors } = useAppTheme();
+  const { activeOrganizationId } = useAppTheme();
   const index = useSyncIndex(activeOrganizationId);
   const { completeContent } = useMobileSyncActions();
   const baseline = useRef(initialOutline);
@@ -153,12 +200,22 @@ export function CourseLearningFooter({
           setIssue({ kind: "requirements" });
           return;
         }
+        // With the item's requirements known locally, completing is
+        // optimistic: checked here, saved on the device and queued, and the
+        // server catches up in the background, so the next item opens at
+        // once, offline too. Otherwise the server decides, as it may refuse.
+        const optimistic = pendingRequirements !== undefined;
+        if (optimistic && pendingRequirements() > 0) {
+          setIssue({ kind: "requirements" });
+          return;
+        }
         const sync = await completeContent({
           courseItemId,
           organizationId: activeOrganizationId ?? undefined,
+          background: optimistic,
         });
         saved.current = true;
-        if (sync.state === "queued") {
+        if (sync?.state === "queued") {
           setIssue({
             kind: "error",
             message:
@@ -166,9 +223,8 @@ export function CourseLearningFooter({
           });
           return;
         }
-        // The checkpoint applied the server's learner patch to the local
-        // index, so the outline recomposes from the bundle with the new
-        // progress (and unlocks) already in place.
+        // The local learner state now has the item done, so the outline
+        // recomposes with the new progress (and unlocks) in place.
         const after = readCourseOutline(
           queryClient,
           courseId,
@@ -176,7 +232,7 @@ export function CourseLearningFooter({
         );
         if (!after) {
           throw new Error(
-            "Penyelesaian sudah disinkronkan, tetapi kurikulum terbaru gagal dimuat.",
+            "Progres kamu tersimpan, tetapi kurikulum terbaru gagal dimuat.",
           );
         }
         if (!mounted.current) return;
@@ -226,6 +282,178 @@ export function CourseLearningFooter({
       inFlight.current = false;
       if (mounted.current) setBusy(false);
     }
+  }
+
+  return {
+    path,
+    busy,
+    issue,
+    setIssue,
+    milestone,
+    navigate,
+    continueLearning,
+    finishingModule,
+    assessmentIncomplete,
+    outlineFailed: outline.isError,
+    /** The learner index, for the Hangeul Mastery badge. */
+    index: index.data,
+  };
+}
+
+export type LearningContinuation = ReturnType<typeof useLearningContinuation>;
+
+/** Icon and tint for each kind of next item, matching its type colour. */
+const nextTypeIcons = {
+  MATERIAL: { icon: "book.closed.fill", color: null },
+  VOCABULARY_SET: { icon: "character.book.closed.fill", color: "#10b981" },
+  ASSESSMENT: { icon: "doc.text", color: "#f59e0b" },
+} as const;
+
+/**
+ * Where the chapter goes next, in one row: the next item's type and title
+ * and how far along the chapter is. Locked while the current item still
+ * holds the learner (an unfinished tugas).
+ */
+function NextUpRow({
+  path,
+  locked,
+}: {
+  path: NonNullable<ReturnType<typeof getLearningPath>>;
+  locked: boolean;
+}) {
+  const { colors } = useAppTheme();
+  const next = path.nextItem;
+  const meta = next ? getLearningItemTypeMeta(next.type) : null;
+  const look = next ? nextTypeIcons[next.type ?? "MATERIAL"] : null;
+  const total = path.module.items.length;
+  const label = next
+    ? `Berikutnya: ${meta!.label}, ${next.title}${locked ? ", terkunci" : ""}.`
+    : `${path.module.title}.`;
+  return (
+    <View
+      accessible
+      accessibilityLabel={`${label} ${path.completedCount} dari ${total} aktivitas di bab ini selesai.`}
+      className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4"
+    >
+      <View
+        className={`size-10 items-center justify-center rounded-full ${locked || !meta ? "bg-muted" : meta.softClass}`}
+      >
+        <SymbolIcon
+          name={locked ? "lock.fill" : (look?.icon ?? "checkmark.seal.fill")}
+          size={locked ? 14 : 17}
+          tintColor={
+            locked ? colors.mutedForeground : (look?.color ?? colors.primary)
+          }
+        />
+      </View>
+      <View className="min-w-0 flex-1 gap-0.5">
+        <Text className="text-xs font-semibold text-muted-foreground">
+          {next ? (
+            <>
+              Berikutnya ·{" "}
+              <Text className={locked ? "" : meta!.textClass}>
+                {meta!.label}
+              </Text>
+            </>
+          ) : (
+            `Bab ${path.moduleIndex + 1}`
+          )}
+        </Text>
+        <Text
+          className="text-[15px] font-bold text-foreground"
+          numberOfLines={1}
+        >
+          {next ? next.title : path.module.title}
+        </Text>
+      </View>
+      <View className="rounded-full bg-muted px-2.5 py-1">
+        <Text className="text-xs font-bold tabular-nums text-muted-foreground">
+          {path.completedCount}/{total}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** The progress, next item and continue button after a course item. */
+export function CourseLearningFooter(props: FooterProps) {
+  const learning = useLearningContinuation(props);
+  return <LearningFooterView {...props} learning={learning} />;
+}
+
+/** `CourseLearningFooter` for a caller that runs the continuation itself. */
+export function LearningFooterView({
+  courseId,
+  continueButton = "always",
+  compact = false,
+  onReadAgain,
+  completionMode = "manual",
+  requirementActions = [],
+  assessmentState,
+  learning,
+}: FooterProps & { learning: LearningContinuation }) {
+  const { colors } = useAppTheme();
+  const screenReader = useScreenReaderEnabled();
+  const showContinue = continueButton === "always" || screenReader;
+  const {
+    path,
+    busy,
+    issue,
+    setIssue,
+    milestone,
+    navigate,
+    continueLearning,
+    finishingModule,
+    assessmentIncomplete,
+    outlineFailed,
+    index,
+  } = learning;
+
+  const continueAction = (
+    <StudyAction
+      disabled={busy}
+      loading={busy}
+      onPress={() => void continueLearning()}
+      trailingIcon={
+        busy || (path?.courseCompleted && !path.nextItem)
+          ? undefined
+          : "arrow.right"
+      }
+    >
+      {busy
+        ? "Menyimpan progres kamu…"
+        : path?.courseCompleted && !path.nextItem
+          ? "Selesaikan kurikulum"
+          : path?.item.isCompleted || completionMode === "assessment"
+            ? "Lanjutkan belajar"
+            : finishingModule
+              ? "Selesaikan bab"
+              : "Selesai & lanjutkan"}
+    </StudyAction>
+  );
+  const errorText =
+    issue?.kind === "error" || outlineFailed ? (
+      <Text
+        accessibilityRole="alert"
+        className="text-sm leading-5 text-destructive"
+      >
+        {issue?.kind === "error"
+          ? issue.message
+          : "Jalur belajar kamu gagal dimuat. Ketuk lanjutkan untuk mencoba lagi."}
+      </Text>
+    ) : null;
+
+  // Compact: one "next" row instead of the full footer, where the screen
+  // already shows how to go on (a tugas's start button, a material's pull
+  // to continue). Milestones and required activities keep the full footer.
+  if (compact && path && !milestone && issue?.kind !== "requirements") {
+    return (
+      <View className="gap-3">
+        <NextUpRow path={path} locked={Boolean(assessmentIncomplete)} />
+        {showContinue && !assessmentIncomplete ? continueAction : null}
+        {errorText}
+      </View>
+    );
   }
 
   const content = (
@@ -336,44 +564,16 @@ export function CourseLearningFooter({
         </View>
       ) : null}
       <View className="gap-2">
-        {issue?.kind !== "requirements" && !assessmentIncomplete ? (
-          <StudyAction
-            disabled={busy}
-            loading={busy}
-            onPress={() => void continueLearning()}
-            trailingIcon={
-              busy || (path?.courseCompleted && !path.nextItem)
-                ? undefined
-                : "arrow.right"
-            }
-          >
-            {busy
-              ? "Menyimpan progres kamu…"
-              : path?.courseCompleted && !path.nextItem
-                ? "Selesaikan kurikulum"
-                : path?.item.isCompleted || completionMode === "assessment"
-                  ? "Lanjutkan belajar"
-                  : finishingModule
-                    ? "Selesaikan bab"
-                    : "Selesai & lanjutkan"}
-          </StudyAction>
-        ) : null}
+        {showContinue && issue?.kind !== "requirements" && !assessmentIncomplete
+          ? continueAction
+          : null}
         {onReadAgain ? (
           <Action variant="ghost" onPress={onReadAgain} disabled={busy}>
             ↑ Baca lagi
           </Action>
         ) : null}
       </View>
-      {issue?.kind === "error" || outline.isError ? (
-        <Text
-          accessibilityRole="alert"
-          className="text-sm leading-5 text-destructive"
-        >
-          {issue?.kind === "error"
-            ? issue.message
-            : "Jalur belajar kamu gagal dimuat. Ketuk lanjutkan untuk mencoba lagi."}
-        </Text>
-      ) : null}
+      {errorText}
     </View>
   );
 
@@ -400,7 +600,7 @@ export function CourseLearningFooter({
 
       {milestone.courseCompleted && courseId === HANGEUL_MASTERY_COURSE_ID ? (
         <HangeulMasteryBadge
-          {...hangeulCompletionBadgeCopy(isHangeulShownAgain(index.data))}
+          {...hangeulCompletionBadgeCopy(isHangeulShownAgain(index))}
         />
       ) : null}
 

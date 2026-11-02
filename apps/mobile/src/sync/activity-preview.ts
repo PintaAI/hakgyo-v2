@@ -9,6 +9,11 @@ import type { SyncActivity } from "./activity";
  */
 const samples: Omit<SyncActivity, "key">[] = [
   {
+    kind: "preparing",
+    title: "Menyiapkan akunmu",
+    detail: "Mengambil kelas dan kursusmu…",
+  },
+  {
     kind: "downloading",
     title: "Mengunduh Hangeul Mastery",
     detail: "Kursus 1 dari 2, supaya bisa dipakai offline.",

@@ -15,14 +15,26 @@ Gunakan akun yang sama dengan di situs web supaya kelasmu muncul.
 
 | Tab | Isinya |
 |---|---|
-| **Hari Ini** | Latihan harian dan streak |
+| **Hari Ini** | Streak, kosakata hari ini, dan tantangan soal |
 | **Belajar** | Kelas, materi, dan pembaruan terbaru |
 | **Latihan** | Kartu kosakata, permainan Hangeul, serta latihan dan tryout |
-| **Profil** | XP, pencapaian, pengaturan, dan bantuan |
+| **Cari** | Pencarian materi, kosakata, dan soal dari semua kurikulummu |
+
+**Profil** berisi XP, pencapaian, pengaturan, dan bantuan. Bukalah dari tombol menu di kiri atas, dari namamu di tab **Hari Ini**, atau dari tombol pengaturan di kanan atas.
+
+Di tab **Hari Ini**, tantangan soal berisi lima soal acak dari kurikulummu. Geser ke kiri atau kanan untuk pindah soal. Jawabanmu dinilai, tapi nilai, percobaan, dan XP tidak berubah.
 
 Jika kamu ikut lebih dari satu kelas, geser kartu kelas di tab **Belajar** ke kiri atau kanan. Titik-titik di atas menu bawah menunjukkan kelas yang sedang tampil.
 
-Jika kamu belajar di lebih dari satu lembaga, pilih lembaganya dengan tombol di pojok kanan atas. Tarik layar ke bawah untuk memperbarui.
+Jika kamu belajar di lebih dari satu lembaga, pilih lembaganya dengan tombol di kiri atas, di samping tombol menu. Tarik layar ke bawah untuk memperbarui.
+
+## Tur aplikasi
+
+Saat pertama kali membuka aplikasi, Hakgyo menunjukkan bagian-bagian pentingnya satu per satu. Layar menjadi gelap, bagian yang dijelaskan tetap terang, dan kartu kecil di dekatnya menjelaskan kegunaannya. Ketuk **Lanjut** untuk melihat bagian berikutnya, atau **Lewati** untuk menutup tur.
+
+Tab **Belajar**, **Latihan**, **Cari**, dan halaman **Profil** juga punya tur singkat sendiri yang muncul saat pertama kali kamu membukanya.
+
+Untuk melihat semua tur lagi, buka **Profil**, lalu **Pengaturan**, lalu ketuk **Lihat tur aplikasi** di bagian **Bantuan**.
 
 Pendaftaran kelas, pembayaran, dan katalog hanya ada di situs web. Kelas yang kamu ikuti di situs web otomatis muncul di aplikasi.
 
@@ -50,6 +62,8 @@ Gambar dan suara hanya tersedia tanpa internet jika materinya sudah disimpan off
 ## Sinkronisasi
 
 Sinkronisasi artinya mengirim kemajuanmu dari ponsel ke Hakgyo dan mengambil materi terbaru. Biasanya ini berjalan otomatis saat kamu tersambung internet.
+
+Saat pertama kali masuk di ponsel, aplikasi mengambil kelas dan kursusmu dulu. Selama itu muncul **Menyiapkan akunmu** dan tab **Hari Ini** menampilkan kerangka abu-abu. Jika gagal karena tidak ada internet atau server sedang sibuk, ketuk **Coba lagi**.
 
 Saat ada yang sedang terjadi, aplikasi memberi tahu kamu:
 

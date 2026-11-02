@@ -24,6 +24,8 @@ import { searchDocuments } from "../../../../src/search/match";
 import { openSearchTarget } from "../../../../src/search/open-result";
 import { useSearchCorpus } from "../../../../src/search/use-search-corpus";
 import { SymbolIcon } from "../../../../src/components/ui/symbol-icon";
+import { useAutoTour } from "../../../../src/tour/tour-provider";
+import { TourTarget } from "../../../../src/tour/tour-target";
 
 const ios = Platform.OS === "ios";
 const PLACEHOLDER = "Cari kosakata, materi, kelas…";
@@ -92,6 +94,7 @@ export default function SearchTab() {
   const { activeOrganizationId, selectOrganization } = useAppTheme();
   const { isSyncing } = useMobileSync();
   const corpus = useSearchCorpus();
+  useAutoTour("search", true);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
@@ -151,7 +154,9 @@ export default function SearchTab() {
         automaticallyAdjustKeyboardInsets
       >
         {ios ? null : (
-          <AndroidSearchField value={query} onChangeText={setQuery} />
+          <TourTarget id="search.field">
+            <AndroidSearchField value={query} onChangeText={setQuery} />
+          </TourTarget>
         )}
 
         {trimmed && outcome.total > 0 ? (

@@ -177,6 +177,8 @@ export type BundleChangeBatch = {
   changes: BundleChange[];
 };
 
+export type SyncRefreshPhase = "manifest" | "index";
+
 export type MobileSyncEngineState = {
   upgradeRequired: UpgradeRequired | null;
   /**
@@ -190,6 +192,8 @@ export type MobileSyncEngineState = {
    */
   maintenanceRetryAt: number | null;
   isRefreshing: boolean;
+  /** What a running refresh waits for from the server, or null. */
+  refreshPhase: SyncRefreshPhase | null;
   bundles: BundleSyncProgress;
   /** Server-suggested delay before the next manifest poll. */
   nextCheckAfterMs: number;

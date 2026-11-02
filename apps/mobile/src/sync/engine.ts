@@ -265,6 +265,7 @@ export function createMobileSyncEngine({
     maintenance: null,
     maintenanceRetryAt: null,
     isRefreshing: false,
+    refreshPhase: null,
     bundles: {
       pending: 0,
       completed: 0,
@@ -1134,7 +1135,7 @@ export function createMobileSyncEngine({
       return { state: "queued", reason: "unavailable" };
     }
     const scope = indexScope(organizationId);
-    publishState({ isRefreshing: true });
+    publishState({ isRefreshing: true, refreshPhase: "manifest" });
     try {
       const manifest = await transport.getManifest({
         protocol: SYNC_PROTOCOL,
@@ -1168,6 +1169,7 @@ export function createMobileSyncEngine({
         local.validUntil <= now() ||
         local.index.indexSchema !== manifest.indexSchema;
       if (needsIndex) {
+        publishState({ refreshPhase: "index" });
         const result = await transport.getIndex({
           protocol: SYNC_PROTOCOL,
           organizationId,
@@ -1235,7 +1237,7 @@ export function createMobileSyncEngine({
         return { state: "queued", reason: "maintenance" };
       return { state: "queued", reason: "unavailable" };
     } finally {
-      publishState({ isRefreshing: false });
+      publishState({ isRefreshing: false, refreshPhase: null });
     }
   }
 

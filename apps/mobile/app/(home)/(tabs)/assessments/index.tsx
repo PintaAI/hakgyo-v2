@@ -8,6 +8,7 @@ import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 import { usePushNotifications } from "../../../../src/providers/PushNotificationsProvider";
 import { useCourseOutlines, useSyncIndex } from "../../../../src/sync/hooks";
+import { useAutoTour } from "../../../../src/tour/tour-provider";
 import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
 import { firstParam } from "../../../../src/lib/route-params";
 import { isHangeulHidden } from "../../../../src/lib/hangeul-visibility";
@@ -32,6 +33,7 @@ export default function PracticeTab() {
         }
       : undefined;
   const dashboard = useSyncIndex(activeOrganizationId);
+  useAutoTour("practice", Boolean(dashboard.data));
   const courseIds = useMemo(
     () => (dashboard.data?.courses ?? []).map((course) => course.id),
     [dashboard.data?.courses],

@@ -105,13 +105,24 @@ export async function requestPushPermission(): Promise<PushPermission> {
 /** Push only works on physical devices in a development or store build. */
 export const isPushSupported = Device.isDevice && Platform.OS !== "web";
 
-export async function getExpoPushToken(): Promise<string> {
+/**
+ * Returns the native token too: fetching it fires `addPushTokenListener`
+ * on iOS, so the listener compares against it to ignore its own echo.
+ */
+export async function getExpoPushToken(): Promise<{
+  expoPushToken: string;
+  devicePushToken: string;
+}> {
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ??
     Constants.easConfig?.projectId;
   if (!projectId) throw new Error("EAS projectId is missing");
-  const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
-  return data;
+  const devicePushToken = await Notifications.getDevicePushTokenAsync();
+  const { data } = await Notifications.getExpoPushTokenAsync({
+    projectId,
+    devicePushToken,
+  });
+  return { expoPushToken: data, devicePushToken: String(devicePushToken.data) };
 }
 
 export function getDeviceDetails() {

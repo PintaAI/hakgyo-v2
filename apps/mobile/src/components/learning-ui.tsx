@@ -21,6 +21,7 @@ import {
   type NativeGesture,
 } from "react-native-gesture-handler";
 import { userErrorMessage } from "../lib/error-message";
+import { TourScrollContext } from "../tour/tour-provider";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { Chevron } from "./ui/chevron";
 import { Eyebrow } from "./ui/eyebrow";
@@ -99,6 +100,9 @@ export function StudyScreen({
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const viewportRef = useRef<View>(null);
+  // Tours scroll a target into view through this ref.
+  const ownScrollRef = useRef<ScrollView>(null);
+  const scrollRef = scrollViewRef ?? ownScrollRef;
   const [keyboardVerticalOffset, setKeyboardVerticalOffset] = useState(0);
   const behavior = bleedTop ? "never" : contentInsetAdjustmentBehavior;
   // ~44pt native navigation bar on iOS; Android tab roots have no header.
@@ -128,7 +132,7 @@ export function StudyScreen({
   );
   const viewport = (
     <ScrollView
-      ref={scrollViewRef}
+      ref={scrollRef}
       className="flex-1"
       contentInsetAdjustmentBehavior={behavior}
       automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
@@ -161,7 +165,7 @@ export function StudyScreen({
     viewport
   );
   return (
-    <>
+    <TourScrollContext.Provider value={scrollRef}>
       <Stack.Screen
         options={
           gameHeader
@@ -193,7 +197,7 @@ export function StudyScreen({
       ) : (
         gestureViewport
       )}
-    </>
+    </TourScrollContext.Provider>
   );
 }
 

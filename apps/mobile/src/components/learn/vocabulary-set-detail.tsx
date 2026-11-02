@@ -3,16 +3,19 @@ import { router } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { Image } from "expo-image";
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Platform, Pressable, Text, View } from "react-native";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useApiAssetResolver } from "../content-renderer";
-import { Eyebrow } from "../learning-ui";
-import { StudyAction, StudyGlass } from "../study-glass";
+import { withOpacity } from "../../theme/colors";
+import { Action, Eyebrow } from "../learning-ui";
+import { CardFan, HakgyoHero, HERO_TITLE } from "./hakgyo-hero";
+import { StudyAction } from "../study-glass";
 import { VocabularyAudioButton } from "../vocabulary-audio-button";
 import { SymbolIcon } from "../ui/symbol-icon";
 
 const VIEW_MODE_KEY = "hakgyo:vocab-view-mode:v1";
+const ios = Platform.OS === "ios";
 
 export type VocabularySetEntry = {
   id: string;
@@ -80,6 +83,54 @@ export function EntryImage({
   );
 }
 
+/** The first Hangul syllable of a term ("-(으)ㄴ 적이 있다" → "으"). */
+function leadSyllable(term: string) {
+  for (const char of term) {
+    const code = char.charCodeAt(0);
+    if (code >= 0xac00 && code <= 0xd7a3) return char;
+  }
+  return [...term.trim()][0] ?? "";
+}
+
+/**
+ * A square tile with a term's first Hangul syllable, in place of a row
+ * number: the list reads as Korean at a glance.
+ */
+function SyllableTile({ term }: { term: string }) {
+  const { colors } = useAppTheme();
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      className="size-11 items-center justify-center rounded-xl"
+      style={{ backgroundColor: withOpacity(colors.primary, 0.1) }}
+    >
+      <Text className="text-lg font-black" style={{ color: colors.primary }}>
+        {leadSyllable(term)}
+      </Text>
+    </View>
+  );
+}
+
+/** The set's first words on a fan of cards: what is inside, at a glance. */
+function DeckPreview({ terms }: { terms: string[] }) {
+  return (
+    <CardFan
+      faces={terms.slice(0, 3).map((term) => (
+        <Text
+          key={term}
+          adjustsFontSizeToFit
+          className="text-center text-2xl font-black text-foreground"
+          minimumFontScale={0.6}
+          numberOfLines={1}
+        >
+          {term}
+        </Text>
+      ))}
+    />
+  );
+}
+
 function WordGridCard({
   entry,
   speakingId,
@@ -91,26 +142,49 @@ function WordGridCard({
   onSpeak: (entryId: string | null) => void;
   onOpen: () => void;
 }) {
+  const { colors } = useAppTheme();
   return (
-    <View className="gap-2 rounded-[20px] border border-border bg-card p-4">
+    <View className="overflow-hidden rounded-[20px] border border-border bg-card">
       <Pressable
         accessibilityLabel={`Lihat detail ${entry.term}`}
         accessibilityRole="button"
-        className="gap-2 active:opacity-60"
+        className="active:opacity-60"
         onPress={onOpen}
       >
         {entry.imageAsset ? (
           <EntryImage assetId={entry.imageAsset.id} variant="grid" />
-        ) : null}
-        <Text className="text-[15px] font-bold leading-5 text-foreground">
-          {entry.term}
-        </Text>
-        <Text className="text-xs leading-4 text-muted-foreground">
-          {displayMeanings(entryMeanings(entry))}
-        </Text>
+        ) : (
+          // A flashcard face: the word, large, on a wash of the brand colour.
+          <View
+            className="h-24 items-center justify-center px-3"
+            style={{ backgroundColor: withOpacity(colors.primary, 0.08) }}
+          >
+            <Text
+              adjustsFontSizeToFit
+              className="text-center text-2xl font-black text-foreground"
+              minimumFontScale={0.6}
+              numberOfLines={2}
+            >
+              {entry.term}
+            </Text>
+          </View>
+        )}
+        <View className="gap-1 p-3">
+          {entry.imageAsset ? (
+            <Text className="text-[15px] font-bold leading-5 text-foreground">
+              {entry.term}
+            </Text>
+          ) : null}
+          <Text
+            className="text-xs leading-4 text-muted-foreground"
+            numberOfLines={2}
+          >
+            {displayMeanings(entryMeanings(entry))}
+          </Text>
+        </View>
       </Pressable>
       {entry.audioAsset ? (
-        <View className="flex-row justify-end pt-1">
+        <View className="flex-row justify-end px-3 pb-3">
           <VocabularyAudioButton
             assetId={entry.audioAsset.id}
             entryId={entry.id}
@@ -194,14 +268,15 @@ export function VocabularySetDetail({
             className="min-w-0 flex-1 flex-row items-center gap-3 active:opacity-60"
             onPress={() => openEntry(entry)}
           >
-            <Text className="w-6 text-xs font-bold tabular-nums text-muted-foreground">
-              {index + 1}
-            </Text>
+            <SyllableTile term={entry.term} />
             <View className="min-w-0 flex-1 gap-0.5">
-              <Text className="text-[15px] font-semibold text-foreground">
+              <Text className="text-[17px] font-bold leading-6 text-foreground">
                 {entry.term}
               </Text>
-              <Text className="text-xs leading-4 text-muted-foreground">
+              <Text
+                className="text-[13px] leading-5 text-muted-foreground"
+                numberOfLines={1}
+              >
                 {displayMeanings(entryMeanings(entry))}
               </Text>
             </View>
@@ -231,7 +306,9 @@ export function VocabularySetDetail({
         paddingHorizontal: 20,
         paddingTop: 16,
       }}
-      contentInsetAdjustmentBehavior="automatic"
+      // iOS: the hero runs up under the transparent header and status bar,
+      // like the cohort cards on Belajar, and pads itself below them.
+      contentInsetAdjustmentBehavior={ios ? "never" : "automatic"}
       data={vocabulary.entries}
       initialNumToRender={12}
       keyExtractor={(entry) => entry.id}
@@ -258,26 +335,31 @@ export function VocabularySetDetail({
         ) : null
       }
       ListHeaderComponent={
-        <View className="mb-2 gap-5">
-          <StudyGlass>
-            <View className="gap-2">
-              <Eyebrow size="md">Kosakata · {total} kata</Eyebrow>
+        <View className="mb-2 gap-6">
+          <HakgyoHero className="-mt-4">
+            <DeckPreview
+              terms={vocabulary.entries.map((entry) => entry.term)}
+            />
+            <View className="items-center gap-2">
+              <Eyebrow size="md" tone="primary">
+                {`${total} kata`}
+              </Eyebrow>
               <Text
-                adjustsFontSizeToFit
-                className="text-3xl font-black leading-10 tracking-tight text-foreground"
-                minimumFontScale={0.7}
-                numberOfLines={1}
+                accessibilityRole="header"
+                className="text-center font-black tracking-tight text-foreground"
+                numberOfLines={2}
+                style={HERO_TITLE}
               >
                 {vocabulary.title}
               </Text>
               {vocabulary.description ? (
-                <Text className="text-sm leading-6 text-muted-foreground">
+                <Text className="text-center text-sm leading-6 text-muted-foreground">
                   {vocabulary.description}
                 </Text>
               ) : null}
             </View>
-
-            <StudyAction
+            <Action
+              trailingIcon="arrow.right"
               onPress={() => {
                 if (courseId && courseItemId) {
                   router.push({
@@ -295,16 +377,17 @@ export function VocabularySetDetail({
               }}
             >
               Mulai latihan
-            </StudyAction>
-          </StudyGlass>
+            </Action>
+          </HakgyoHero>
 
           {total > 0 ? (
             <View className="flex-row items-center justify-between gap-3">
-              <Eyebrow>{`Kata (${total})`}</Eyebrow>
+              <Eyebrow>Daftar kata</Eyebrow>
               <View className="flex-row items-center rounded-full bg-muted p-1">
                 <Pressable
                   accessibilityLabel="Tampilan daftar"
                   accessibilityRole="button"
+                  accessibilityState={{ selected: viewMode === "list" }}
                   className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "list" ? "bg-background" : ""}`}
                   onPress={() => setViewMode("list")}
                 >
@@ -322,6 +405,7 @@ export function VocabularySetDetail({
                 <Pressable
                   accessibilityLabel="Tampilan kisi"
                   accessibilityRole="button"
+                  accessibilityState={{ selected: viewMode === "grid" }}
                   className={`size-7 items-center justify-center rounded-full active:opacity-60 ${viewMode === "grid" ? "bg-background" : ""}`}
                   onPress={() => setViewMode("grid")}
                 >

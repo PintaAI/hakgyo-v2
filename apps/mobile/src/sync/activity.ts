@@ -3,12 +3,14 @@ import type {
   BundleChangeBatch,
   BundleSyncProgress,
   SyncQueuedReason,
+  SyncRefreshPhase,
 } from "./types";
 
 /** How long the summary of finished downloads stays visible. */
 export const SYNC_SUMMARY_MS = 5_000;
 
-export type SyncActivityKind = "downloading" | "changed" | "failed" | "waiting";
+export type SyncActivityKind =
+  "preparing" | "downloading" | "changed" | "failed" | "waiting";
 
 /**
  * What sync is doing that the learner should know about, in the copy every
@@ -34,9 +36,21 @@ export type SyncActivityInput = {
   lastBundleBatch: BundleChangeBatch | null;
   outboxWaiting: SyncQueuedReason | null;
   pendingCount: number;
+  /** What a running refresh waits for, or null. */
+  refreshPhase: SyncRefreshPhase | null;
+  /** False until the first sync wrote a learner index to this device. */
+  hasIndex: boolean;
   /** Course titles by id, from the learner index. */
   courseTitles: Record<string, string>;
   now: number;
+};
+
+export const PREPARING_TITLE = "Menyiapkan akunmu";
+
+/** What the first sync waits for from the server, by refresh phase. */
+export const PREPARING_DETAIL: Record<SyncRefreshPhase, string> = {
+  manifest: "Menghubungi server Hakgyo…",
+  index: "Mengambil kelas dan kursusmu…",
 };
 
 /** Where queued progress stands, by why it waits. */
@@ -91,13 +105,22 @@ export function summarizeBundleChanges(
 }
 
 /**
- * The activity to show right now, most useful first: downloads in progress,
- * then the summary of the downloads that just finished, then progress waiting
+ * The activity to show right now, most useful first: the first sync of a
+ * device with nothing to show yet, downloads in progress, then the summary of the downloads that just finished, then progress waiting
  * to be sent. Null when there is nothing worth interrupting the learner for.
  */
 export function selectSyncActivity(
   input: SyncActivityInput,
 ): SyncActivity | null {
+  if (!input.hasIndex && input.refreshPhase) {
+    return {
+      kind: "preparing",
+      key: "preparing",
+      title: PREPARING_TITLE,
+      detail: PREPARING_DETAIL[input.refreshPhase],
+    };
+  }
+
   const batchId = input.lastBundleBatch?.id ?? 0;
   const changing = input.bundles?.changingCourseIds ?? [];
   if (changing.length) {

@@ -8,28 +8,41 @@ import { useSyncIndex } from "./hooks";
 
 /** Course titles of the active organization's learner index, by id. */
 export function useIndexedCourseTitles() {
+  return useIndexedCourses().courseTitles;
+}
+
+function useIndexedCourses() {
   const { activeOrganizationId } = useAppTheme();
   const index = useSyncIndex(activeOrganizationId);
-  return useMemo(
+  const hasIndex = Boolean(index.data);
+  const courseTitles = useMemo(
     () =>
       Object.fromEntries(
         (index.data?.courses ?? []).map((course) => [course.id, course.title]),
       ),
     [index.data],
   );
+  return { hasIndex, courseTitles };
 }
 
 /** What sync is doing right now that the learner should know about. */
 export function useSyncActivity(): SyncActivity | null {
-  const { bundles, lastBundleBatch, outboxWaiting, pendingCount } =
-    useMobileSync();
-  const courseTitles = useIndexedCourseTitles();
+  const {
+    bundles,
+    lastBundleBatch,
+    outboxWaiting,
+    pendingCount,
+    refreshPhase,
+  } = useMobileSync();
+  const { hasIndex, courseTitles } = useIndexedCourses();
   const [now, setNow] = useState(Date.now);
   const activity = selectSyncActivity({
     bundles,
     lastBundleBatch,
     outboxWaiting,
     pendingCount,
+    refreshPhase,
+    hasIndex,
     courseTitles,
     now,
   });

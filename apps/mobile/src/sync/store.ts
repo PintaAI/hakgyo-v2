@@ -271,6 +271,13 @@ function queryRecord(row: QueryRow): StoredQuery {
   };
 }
 
+/**
+ * How long a statement waits for a lock instead of failing at once. This
+ * store keeps a single connection, so the waits left are the WAL edge cases
+ * SQLite documents (another connection checkpointing or recovering).
+ */
+const BUSY_TIMEOUT_MS = 5_000;
+
 export function createMobileSyncStore(
   openDatabase: () => Promise<SQLiteDatabase> = () =>
     openDatabaseAsync(DATABASE_NAME),
@@ -283,10 +290,58 @@ export function createMobileSyncStore(
     return databasePromise;
   }
 
+  /*
+   * One connection, one writer. expo-sqlite's `withExclusiveTransactionAsync`
+   * opens a second connection with a deferred `BEGIN`, and while it writes,
+   * writes on the shared connection fail with "database is locked" (Expo
+   * docs). A write that must upgrade a read snapshot another connection has
+   * since changed fails at once, without waiting for the busy timeout
+   * (SQLITE_BUSY_SNAPSHOT). So every write here queues behind the previous one
+   * on the shared connection, and transactions start with `BEGIN IMMEDIATE`,
+   * after which SQLite guarantees no SQLITE_BUSY until COMMIT.
+   *
+   * Reads stay concurrent. On a shared connection a query that runs while a
+   * transaction is open joins it (Expo docs), so a read may see a write before
+   * it commits. That is harmless only because no write bypasses the queue:
+   * write through `serializedWrite` or `writeTransaction`, never on
+   * `database()` directly.
+   */
+  let writeTail: Promise<unknown> = Promise.resolve();
+
+  function serializedWrite<T>(
+    task: (db: SQLiteDatabase) => Promise<T>,
+  ): Promise<T> {
+    const run = writeTail.then(async () => task(await database()));
+    writeTail = run.catch(() => undefined);
+    return run;
+  }
+
+  /** Runs `task` atomically. It must not call other store methods. */
+  function writeTransaction(task: (db: SQLiteDatabase) => Promise<void>) {
+    return serializedWrite(async (db) => {
+      await db.execAsync("BEGIN IMMEDIATE");
+      try {
+        await task(db);
+        await db.execAsync("COMMIT");
+      } catch (error) {
+        await db.execAsync("ROLLBACK").catch(() => undefined);
+        throw error;
+      }
+    });
+  }
+
   async function migrate(db: SQLiteDatabase) {
+    // expo-sqlite keeps native connections across JS reloads (Fast Refresh,
+    // an OTA update's reload) and hands this one back. A reload in the middle
+    // of a transaction leaves it open, holding the write lock: end it, or
+    // every later write fails.
+    if (await db.isInTransactionAsync()) {
+      await db.execAsync("ROLLBACK").catch(() => undefined);
+    }
     await db.execAsync(`
       PRAGMA journal_mode = WAL;
       PRAGMA foreign_keys = ON;
+      PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS};
       DROP TABLE IF EXISTS mobile_sync_cache;
       CREATE TABLE IF NOT EXISTS mobile_sync_operation (
         id TEXT NOT NULL,
@@ -399,7 +454,7 @@ export function createMobileSyncStore(
       `);
     }
     if (migrations.length) {
-      await db.withExclusiveTransactionAsync((transaction) =>
+      await writeTransaction((transaction) =>
         transaction.execAsync(migrations.join("\n")),
       );
     }
@@ -486,14 +541,14 @@ export function createMobileSyncStore(
 
     async setMeta(userId, key, value) {
       await initialize();
-      await (
-        await database()
-      ).runAsync(
-        `INSERT INTO mobile_sync_meta (user_id, key, value) VALUES (?, ?, ?)
+      await serializedWrite((db) =>
+        db.runAsync(
+          `INSERT INTO mobile_sync_meta (user_id, key, value) VALUES (?, ?, ?)
          ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value`,
-        userId,
-        key,
-        value,
+          userId,
+          key,
+          value,
+        ),
       );
     },
 
@@ -532,10 +587,9 @@ export function createMobileSyncStore(
 
     async saveIndex(userId, index) {
       await initialize();
-      await (
-        await database()
-      ).runAsync(
-        `INSERT INTO mobile_sync_index
+      await serializedWrite((db) =>
+        db.runAsync(
+          `INSERT INTO mobile_sync_index
            (user_id, scope, token, payload, valid_until, stale, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(user_id, scope) DO UPDATE SET
@@ -544,31 +598,31 @@ export function createMobileSyncStore(
            valid_until = excluded.valid_until,
            stale = excluded.stale,
            updated_at = excluded.updated_at`,
-        userId,
-        index.scope,
-        index.token,
-        index.payload,
-        index.validUntil,
-        index.stale ? 1 : 0,
-        index.updatedAt ?? Date.now(),
+          userId,
+          index.scope,
+          index.token,
+          index.payload,
+          index.validUntil,
+          index.stale ? 1 : 0,
+          index.updatedAt ?? Date.now(),
+        ),
       );
     },
 
     async markIndexStale(userId, scope) {
       await initialize();
-      const db = await database();
-      if (scope === undefined) {
-        await db.runAsync(
-          "UPDATE mobile_sync_index SET stale = 1 WHERE user_id = ?",
-          userId,
-        );
-      } else {
-        await db.runAsync(
-          "UPDATE mobile_sync_index SET stale = 1 WHERE user_id = ? AND scope = ?",
-          userId,
-          scope,
-        );
-      }
+      await serializedWrite((db) =>
+        scope === undefined
+          ? db.runAsync(
+              "UPDATE mobile_sync_index SET stale = 1 WHERE user_id = ?",
+              userId,
+            )
+          : db.runAsync(
+              "UPDATE mobile_sync_index SET stale = 1 WHERE user_id = ? AND scope = ?",
+              userId,
+              scope,
+            ),
+      );
     },
 
     async listBundleRevisions(userId) {
@@ -663,12 +717,11 @@ export function createMobileSyncStore(
           bundle.bytes ?? structure.length + content.length,
           updatedAt,
         );
-      const db = await database();
       if (!notices) {
-        await write(db);
+        await serializedWrite(write);
         return;
       }
-      await db.withExclusiveTransactionAsync(async (transaction) => {
+      await writeTransaction(async (transaction) => {
         await write(transaction);
         await writeNotices(transaction, userId, notices, updatedAt);
       });
@@ -676,27 +729,27 @@ export function createMobileSyncStore(
 
     async touchBundleChecked(userId, courseId, checkedAt = Date.now()) {
       await initialize();
-      await (
-        await database()
-      ).runAsync(
-        `UPDATE mobile_sync_course_bundle SET updated_at = ?
+      await serializedWrite((db) =>
+        db.runAsync(
+          `UPDATE mobile_sync_course_bundle SET updated_at = ?
          WHERE user_id = ? AND course_id = ?`,
-        checkedAt,
-        userId,
-        courseId,
+          checkedAt,
+          userId,
+          courseId,
+        ),
       );
     },
 
     async touchBundleOpened(userId, courseId, openedAt = Date.now()) {
       await initialize();
-      await (
-        await database()
-      ).runAsync(
-        `UPDATE mobile_sync_course_bundle SET opened_at = ?
+      await serializedWrite((db) =>
+        db.runAsync(
+          `UPDATE mobile_sync_course_bundle SET opened_at = ?
          WHERE user_id = ? AND course_id = ?`,
-        openedAt,
-        userId,
-        courseId,
+          openedAt,
+          userId,
+          courseId,
+        ),
       );
     },
 
@@ -712,7 +765,7 @@ export function createMobileSyncStore(
         .map((row) => row.course_id)
         .filter((courseId) => !keep.has(courseId));
       if (!removed.length) return [];
-      await db.withExclusiveTransactionAsync(async (transaction) => {
+      await writeTransaction(async (transaction) => {
         for (const courseId of removed) {
           await transaction.runAsync(
             `DELETE FROM mobile_sync_course_bundle
@@ -752,43 +805,42 @@ export function createMobileSyncStore(
 
     async saveQuery(userId, queryKey, payload, updatedAt = Date.now()) {
       await initialize();
-      await (
-        await database()
-      ).runAsync(
-        `INSERT INTO mobile_sync_query (user_id, query_key, payload, updated_at)
+      await serializedWrite((db) =>
+        db.runAsync(
+          `INSERT INTO mobile_sync_query (user_id, query_key, payload, updated_at)
          VALUES (?, ?, ?, ?)
          ON CONFLICT(user_id, query_key) DO UPDATE SET
            payload = excluded.payload,
            updated_at = excluded.updated_at`,
-        userId,
-        queryKey,
-        payload,
-        updatedAt,
+          userId,
+          queryKey,
+          payload,
+          updatedAt,
+        ),
       );
     },
 
     async deleteQuery(userId, queryKey) {
       await initialize();
-      await (
-        await database()
-      ).runAsync(
-        "DELETE FROM mobile_sync_query WHERE user_id = ? AND query_key = ?",
-        userId,
-        queryKey,
+      await serializedWrite((db) =>
+        db.runAsync(
+          "DELETE FROM mobile_sync_query WHERE user_id = ? AND query_key = ?",
+          userId,
+          queryKey,
+        ),
       );
     },
 
     async clearQueries(userId) {
       await initialize();
-      await (
-        await database()
-      ).runAsync("DELETE FROM mobile_sync_query WHERE user_id = ?", userId);
+      await serializedWrite((db) =>
+        db.runAsync("DELETE FROM mobile_sync_query WHERE user_id = ?", userId),
+      );
     },
 
     async clearLocalData(userId) {
       await initialize();
-      const db = await database();
-      await db.withExclusiveTransactionAsync(async (transaction) => {
+      await writeTransaction(async (transaction) => {
         for (const table of [
           "mobile_sync_index",
           "mobile_sync_course_bundle",
@@ -805,8 +857,7 @@ export function createMobileSyncStore(
 
     async clearAllData() {
       await initialize();
-      const db = await database();
-      await db.withExclusiveTransactionAsync(async (transaction) => {
+      await writeTransaction(async (transaction) => {
         for (const table of [
           "mobile_sync_operation",
           "mobile_sync_dead_letter_entry",
@@ -837,10 +888,9 @@ export function createMobileSyncStore(
     async putOperation(userId, operation) {
       await initialize();
       const now = Date.now();
-      await (
-        await database()
-      ).runAsync(
-        `INSERT INTO mobile_sync_operation
+      await serializedWrite((db) =>
+        db.runAsync(
+          `INSERT INTO mobile_sync_operation
            (id, user_id, kind, payload, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT(user_id, id) DO UPDATE SET
@@ -857,12 +907,13 @@ export function createMobileSyncStore(
                THEN mobile_sync_operation.first_failed_at
              ELSE NULL
            END`,
-        operation.id,
-        userId,
-        operation.kind,
-        JSON.stringify(operation),
-        now,
-        now,
+          operation.id,
+          userId,
+          operation.kind,
+          JSON.stringify(operation),
+          now,
+          now,
+        ),
       );
     },
 
@@ -870,9 +921,8 @@ export function createMobileSyncStore(
       const [first, ...rest] = chunks;
       if (!first) return;
       await initialize();
-      const db = await database();
       const now = Date.now();
-      await db.withExclusiveTransactionAsync(async (transaction) => {
+      await writeTransaction(async (transaction) => {
         const original = await transaction.getFirstAsync<{
           created_at: number;
         }>(
@@ -954,9 +1004,8 @@ export function createMobileSyncStore(
     async recordOperationFailures(userId, ids, failedAt) {
       if (!ids.length) return [];
       await initialize();
-      const db = await database();
       const failures: MobileSyncOperationFailure[] = [];
-      await db.withExclusiveTransactionAsync(async (transaction) => {
+      await writeTransaction(async (transaction) => {
         for (const id of ids) {
           await transaction.runAsync(
             `UPDATE mobile_sync_operation SET
@@ -988,8 +1037,7 @@ export function createMobileSyncStore(
     async removeOperations(userId, ids) {
       if (!ids.length) return;
       await initialize();
-      const db = await database();
-      await db.withExclusiveTransactionAsync(async (transaction) => {
+      await writeTransaction(async (transaction) => {
         for (const id of ids) {
           await transaction.runAsync(
             "DELETE FROM mobile_sync_operation WHERE user_id = ? AND id = ?",
@@ -1015,8 +1063,7 @@ export function createMobileSyncStore(
     async deadLetterOperations(userId, entries) {
       if (!entries.length) return;
       await initialize();
-      const db = await database();
-      await db.withExclusiveTransactionAsync(async (transaction) => {
+      await writeTransaction(async (transaction) => {
         for (const entry of entries) {
           await transaction.runAsync(
             "DELETE FROM mobile_sync_operation WHERE user_id = ? AND id = ?",
@@ -1128,8 +1175,7 @@ export function createMobileSyncStore(
     async recordNotices(userId, update, recordedAt = Date.now()) {
       if (!update.notices.length && !update.baselines.length) return;
       await initialize();
-      const db = await database();
-      await db.withExclusiveTransactionAsync((transaction) =>
+      await writeTransaction((transaction) =>
         writeNotices(transaction, userId, update, recordedAt),
       );
     },
@@ -1155,8 +1201,7 @@ export function createMobileSyncStore(
     async markNoticesRead(userId, ids, dismissedAt = Date.now()) {
       if (!ids.length) return;
       await initialize();
-      const db = await database();
-      await db.withExclusiveTransactionAsync(async (transaction) => {
+      await writeTransaction(async (transaction) => {
         for (const id of ids) {
           await transaction.runAsync(
             `UPDATE mobile_sync_notice SET dismissed_at = ?

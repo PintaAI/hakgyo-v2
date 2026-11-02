@@ -22,6 +22,8 @@ import {
   type LearnCohort,
 } from "../../../../src/components/learn/cohort-card";
 import { GlassBox } from "../../../../src/components/GlassBox";
+import { useAutoTour } from "../../../../src/tour/tour-provider";
+import { TourTarget } from "../../../../src/tour/tour-target";
 import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
 import type { CohortMilestoneGroup } from "../../../../src/components/learn/milestone-section";
 import {
@@ -74,13 +76,15 @@ function CohortPageDots({
     >
       {/* Card-tinted so the dots stay legible over the content where glass
           is unavailable (Android, older iOS). */}
-      <GlassBox
-        glassEffectStyle="regular"
-        style={[styles.dotsPill, { borderColor: colors.border }]}
-        tintColor={withOpacity(colors.card, 0.7)}
-      >
-        <PageDots count={count} position={position} />
-      </GlassBox>
+      <TourTarget id="learn.dots">
+        <GlassBox
+          glassEffectStyle="regular"
+          style={[styles.dotsPill, { borderColor: colors.border }]}
+          tintColor={withOpacity(colors.card, 0.7)}
+        >
+          <PageDots count={count} position={position} />
+        </GlassBox>
+      </TourTarget>
     </SafeAreaView>
   );
 }
@@ -206,9 +210,12 @@ function CohortCarousel({
           keyExtractor={(cohort) => cohort.id}
           onMomentumScrollEnd={savePosition}
           onScroll={trackPosition}
-          renderItem={({ item: cohort }) => (
+          renderItem={({ item: cohort, index }) => (
             <View style={{ width: pageWidth }}>
               <CohortCard
+                // The card in view when the tour starts; its neighbours
+                // are mounted too but off screen.
+                tourTarget={index === (initialIndex ?? 0)}
                 cohort={cohort}
                 thumbnailUrl={cohort.course.thumbnailUrl}
                 events={eventsByCohort.get(cohort.id) ?? []}
@@ -298,6 +305,7 @@ export default function LearnTab() {
       ),
     [dashboard.data?.milestones],
   );
+  useAutoTour("learn", cohorts.length > 0);
   return (
     <TabScreen
       right="updates"

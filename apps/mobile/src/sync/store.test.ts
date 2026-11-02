@@ -15,8 +15,11 @@ function fakeDatabase({
 }) {
   const executed: string[] = [];
   const statements: string[] = [];
+  /** `execAsync` and `runAsync` sources in the order they ran. */
+  const log: string[] = [];
   type FakeDatabase = {
     execAsync: (source: string) => Promise<void>;
+    isInTransactionAsync: () => Promise<boolean>;
     getAllAsync: (source: string) => Promise<Array<{ name: string }>>;
     getFirstAsync: (source: string) => Promise<{ name: string } | null>;
     runAsync: (source: string) => Promise<void>;
@@ -27,7 +30,9 @@ function fakeDatabase({
   const database: FakeDatabase = {
     execAsync: async (source: string) => {
       executed.push(source);
+      log.push(source);
     },
+    isInTransactionAsync: async () => false,
     getAllAsync: async (source: string) =>
       source.startsWith("PRAGMA table_info")
         ? operationColumns.map((name) => ({ name }))
@@ -38,10 +43,11 @@ function fakeDatabase({
         : null,
     runAsync: async (source: string) => {
       statements.push(source);
+      log.push(source);
     },
     withExclusiveTransactionAsync: async (task) => task(database),
   };
-  return { database, executed, statements };
+  return { database, executed, statements, log };
 }
 
 const CURRENT_COLUMNS = [
@@ -74,6 +80,21 @@ describe("mobile sync SQLite store", () => {
     expect(executed[0]).toContain("DROP TABLE IF EXISTS mobile_sync_cache;");
   });
 
+  test("ends a transaction a JS reload left open on the reused connection", async () => {
+    const { createMobileSyncStore } = await import("./store");
+    const { database, executed } = fakeDatabase({
+      operationColumns: CURRENT_COLUMNS,
+      legacyDeadLetters: false,
+    });
+    const reused = { ...database, isInTransactionAsync: async () => true };
+    const store = createMobileSyncStore(async () => reused as never);
+
+    await store.initialize();
+
+    expect(executed[0]).toBe("ROLLBACK");
+    expect(executed[1]).toContain("CREATE TABLE IF NOT EXISTS");
+  });
+
   test("migrates an existing install to failure counts and keyed dead letters", async () => {
     const { createMobileSyncStore } = await import("./store");
     const { database, executed } = fakeDatabase({
@@ -84,8 +105,12 @@ describe("mobile sync SQLite store", () => {
 
     await store.initialize();
 
-    expect(executed).toHaveLength(2);
-    const migration = executed[1]!;
+    // Schema, then the migration in its own transaction.
+    expect(executed).toHaveLength(4);
+    expect(executed[0]).toContain("PRAGMA busy_timeout");
+    expect(executed[1]).toBe("BEGIN IMMEDIATE");
+    expect(executed[3]).toBe("COMMIT");
+    const migration = executed[2]!;
     expect(migration).toContain("ADD COLUMN failure_count");
     expect(migration).toContain("ADD COLUMN first_failed_at");
     expect(migration).toContain("INSERT INTO mobile_sync_dead_letter_entry");
@@ -146,25 +171,13 @@ describe("mobile sync SQLite store", () => {
 
   test("saves a bundle with its notices and baseline in one transaction", async () => {
     const { createMobileSyncStore } = await import("./store");
-    const { database, statements } = fakeDatabase({
+    const { database, log } = fakeDatabase({
       operationColumns: CURRENT_COLUMNS,
       legacyDeadLetters: false,
     });
-    let transactions = 0;
-    const transactional = {
-      ...database,
-      withExclusiveTransactionAsync: async (
-        task: (transaction: typeof database) => Promise<void>,
-      ) => {
-        transactions += 1;
-        const before = statements.length;
-        await task(database);
-        // Everything below ran inside the transaction.
-        statements.splice(before, 0, "BEGIN");
-        statements.push("COMMIT");
-      },
-    };
-    const store = createMobileSyncStore(async () => transactional as never);
+    const store = createMobileSyncStore(async () => database as never);
+    await store.initialize();
+    log.length = 0;
 
     await store.saveBundle(
       "user-1",
@@ -193,18 +206,96 @@ describe("mobile sync SQLite store", () => {
       },
     );
 
-    expect(transactions).toBe(1);
-    const summary = statements.map((statement) =>
+    const summary = log.map((statement) =>
       statement.trim().split(/\s+/).slice(0, 3).join(" "),
     );
     expect(summary).toEqual([
-      "BEGIN",
+      "BEGIN IMMEDIATE",
       "INSERT INTO mobile_sync_course_bundle",
       "DELETE FROM mobile_sync_notice",
       "INSERT INTO mobile_sync_notice",
       "INSERT INTO mobile_sync_notice_baseline",
       "DELETE FROM mobile_sync_notice",
       "COMMIT",
+    ]);
+  });
+
+  test("never runs two writes at once, and a failed write does not block the next", async () => {
+    const { createMobileSyncStore } = await import("./store");
+    const { database, log } = fakeDatabase({
+      operationColumns: CURRENT_COLUMNS,
+      legacyDeadLetters: false,
+    });
+    let active = 0;
+    let maxActive = 0;
+    const slow = {
+      ...database,
+      runAsync: async (source: string) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active -= 1;
+        if (source.includes("mobile_sync_query")) throw new Error("disk full");
+        await database.runAsync(source);
+      },
+    };
+    const store = createMobileSyncStore(async () => slow as never);
+    await store.initialize();
+    log.length = 0;
+
+    const results = await Promise.allSettled([
+      store.setMeta("user-1", "a", "1"),
+      store.saveQuery("user-1", "query-1", "{}"),
+      store.removeOperations("user-1", ["op-1", "op-2"]),
+      store.setMeta("user-1", "b", "2"),
+    ]);
+
+    expect(maxActive).toBe(1);
+    expect(results.map((result) => result.status)).toEqual([
+      "fulfilled",
+      "rejected",
+      "fulfilled",
+      "fulfilled",
+    ]);
+    const summary = log.map((statement) =>
+      statement.trim().split(/\s+/).slice(0, 3).join(" "),
+    );
+    // In call order. The failed write is left out of the log; the queue
+    // carried on with the transaction after it, which committed whole.
+    expect(summary).toEqual([
+      "INSERT INTO mobile_sync_meta",
+      "BEGIN IMMEDIATE",
+      "DELETE FROM mobile_sync_operation",
+      "DELETE FROM mobile_sync_operation",
+      "COMMIT",
+      "INSERT INTO mobile_sync_meta",
+    ]);
+  });
+
+  test("rolls a failed transaction back", async () => {
+    const { createMobileSyncStore } = await import("./store");
+    const { database, log } = fakeDatabase({
+      operationColumns: CURRENT_COLUMNS,
+      legacyDeadLetters: false,
+    });
+    const failing = {
+      ...database,
+      runAsync: async (source: string) => {
+        await database.runAsync(source);
+        throw new Error("constraint failed");
+      },
+    };
+    const store = createMobileSyncStore(async () => failing as never);
+    await store.initialize();
+    log.length = 0;
+
+    await expect(store.removeOperations("user-1", ["op-1"])).rejects.toThrow(
+      "constraint failed",
+    );
+    expect(log.map((statement) => statement.trim().split(/\s+/)[0])).toEqual([
+      "BEGIN",
+      "DELETE",
+      "ROLLBACK",
     ]);
   });
 

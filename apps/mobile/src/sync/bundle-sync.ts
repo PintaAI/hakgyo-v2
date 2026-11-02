@@ -373,6 +373,14 @@ export function createBundleSync(options: BundleSyncOptions) {
         });
       }
     } catch (error) {
+      // The server log shows only the request; a failed save or parse is
+      // visible here alone.
+      if (typeof __DEV__ !== "undefined" && __DEV__) {
+        console.warn(
+          `[sync] bundle ${job.courseId} failed (attempt ${job.attempts + 1}/${maxAttempts})`,
+          error,
+        );
+      }
       options.onBundleTiming?.({
         courseId: job.courseId,
         status: "failed",

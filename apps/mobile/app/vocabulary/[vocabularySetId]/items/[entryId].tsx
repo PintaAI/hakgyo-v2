@@ -1,21 +1,46 @@
 import { entryMeanings } from "@hakgyo/shared";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
 import {
   Empty,
   Eyebrow,
-  ProgressBar,
   QueryState,
 } from "../../../../src/components/learning-ui";
 import { EntryImage } from "../../../../src/components/learn/vocabulary-set-detail";
-import { StudyAction } from "../../../../src/components/study-glass";
 import { VocabularyAudioButton } from "../../../../src/components/vocabulary-audio-button";
-import { VocabularyMeanings } from "../../../../src/components/vocabulary-meanings";
 import { authClient } from "../../../../src/lib/auth-client";
+import { highlightTerm } from "../../../../src/lib/highlight-term";
+import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
+import { withOpacity } from "../../../../src/theme/colors";
 import { useVocabularyPractice } from "../../../../src/sync/hooks";
 import { firstParam } from "../../../../src/lib/route-params";
+
+/**
+ * Examples are written "Korean sentence = translation". Split on the first
+ * " = " to show the translation under the sentence; anything else shows as
+ * written.
+ */
+function splitExample(example: string) {
+  const text = example.trim().replace(/^["“]|["”]$/g, "");
+  const at = text.indexOf(" = ");
+  if (at < 0) return { sentence: text, translation: null };
+  return {
+    sentence: text.slice(0, at).trim(),
+    translation: text.slice(at + 3).trim() || null,
+  };
+}
+
+/**
+ * Large for a short word, smaller for a phrase, so the word always fills
+ * the spotlight without wrapping awkwardly.
+ */
+function termStyle(term: string) {
+  const length = [...term.trim()].length;
+  const fontSize = length <= 3 ? 64 : length <= 6 ? 52 : length <= 12 ? 40 : 30;
+  return { fontSize, lineHeight: Math.round(fontSize * 1.2) };
+}
 
 function exampleLines(value: unknown) {
   if (Array.isArray(value))
@@ -41,6 +66,7 @@ export default function VocabularyItemSheet() {
   const courseId = firstParam(params.courseId);
   const { data: session } = authClient.useSession();
   const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const { colors } = useAppTheme();
   const query = useVocabularyPractice(vocabularySetId, sourceCourseItemId, {
     courseId: courseId || undefined,
     enabled: Boolean(session),
@@ -67,73 +93,100 @@ export default function VocabularyItemSheet() {
     );
   }
 
+  const meanings = entryMeanings(entry);
+
   return (
     <ScrollView
-      className="flex-1"
-      contentContainerClassName="gap-6 px-5 pb-6 pt-6"
+      className="flex-1 bg-background"
+      contentContainerClassName="gap-8 px-6 pb-10 pt-10"
       contentInsetAdjustmentBehavior="automatic"
     >
-      <View className="gap-3">
-        <View className="gap-1.5">
-          <Eyebrow tone="primary" className="text-center">
-            Word {index + 1} of {vocabulary.entries.length}
-          </Eyebrow>
-          <View className="flex-row items-center gap-3">
-            <Text
-              accessibilityRole="header"
-              className="min-w-0 flex-1 text-[28px] font-black leading-8 tracking-tight text-foreground"
+      {/* The word in the spotlight: large and centred, its meanings and
+          audio right under it. The sheet sizes to its content and closes
+          with a swipe down, so it needs no back button. */}
+      <View className="items-center gap-5">
+        <Text
+          accessibilityRole="header"
+          adjustsFontSizeToFit
+          className="text-center font-black tracking-tight text-foreground"
+          minimumFontScale={0.5}
+          numberOfLines={2}
+          style={termStyle(entry.term)}
+        >
+          {entry.term}
+        </Text>
+        <View className="flex-row flex-wrap justify-center gap-2">
+          {meanings.map((meaning, meaningIndex) => (
+            <View
+              className="rounded-full bg-muted px-4 py-2"
+              key={`${meaningIndex}:${meaning}`}
             >
-              {entry.term}
-            </Text>
-            {entry.audioAssetId ? (
-              <VocabularyAudioButton
-                assetId={entry.audioAssetId}
-                entryId={entry.id}
-                onSpeak={setSpeakingId}
-                speakingId={speakingId}
-              />
-            ) : null}
-          </View>
-          <Text className="text-sm leading-5 text-muted-foreground">
-            {vocabulary.title}
-          </Text>
+              <Text className="text-base font-semibold text-foreground">
+                {meaning}
+              </Text>
+            </View>
+          ))}
         </View>
-        <ProgressBar
-          max={vocabulary.entries.length}
-          size="sm"
-          value={index + 1}
-        />
+        {entry.audioAssetId ? (
+          <VocabularyAudioButton
+            assetId={entry.audioAssetId}
+            entryId={entry.id}
+            onSpeak={setSpeakingId}
+            size="large"
+            speakingId={speakingId}
+          />
+        ) : null}
       </View>
 
       {entry.imageAssetId ? (
         <EntryImage assetId={entry.imageAssetId} variant="detail" />
       ) : null}
 
-      <View className="gap-1.5 border-t border-border pt-5">
-        <Eyebrow tone="primary">Arti</Eyebrow>
-        <VocabularyMeanings
-          className="text-base font-bold leading-6 text-foreground"
-          meanings={entryMeanings(entry)}
-        />
-      </View>
-
       {examples.length > 0 ? (
-        <View className="gap-2 border-t border-border pt-5">
-          <Eyebrow tone="primary">Contoh</Eyebrow>
-          {examples.map((example, exampleIndex) => (
-            <Text
-              className="text-sm leading-5 text-muted-foreground"
-              key={`${exampleIndex}:${example}`}
-            >
-              “{example}”
-            </Text>
-          ))}
+        <View className="gap-4">
+          <Eyebrow>Contoh</Eyebrow>
+          {examples.map((example, exampleIndex) => {
+            const { sentence, translation } = splitExample(example);
+            return (
+              // A quotation with an accent rule, rather than another card.
+              <View
+                accessible
+                className="gap-1 pl-4"
+                key={`${exampleIndex}:${example}`}
+                style={{
+                  borderLeftWidth: 3,
+                  borderLeftColor: withOpacity(colors.primary, 0.35),
+                }}
+              >
+                <Text className="text-lg font-medium leading-7 text-foreground">
+                  {highlightTerm(sentence, entry.term).map((part, partIndex) =>
+                    part.hit ? (
+                      <Text
+                        key={partIndex}
+                        className="font-black"
+                        style={{
+                          color: colors.primary,
+                          textDecorationLine: "underline",
+                          textDecorationColor: colors.primary,
+                        }}
+                      >
+                        {part.text}
+                      </Text>
+                    ) : (
+                      part.text
+                    ),
+                  )}
+                </Text>
+                {translation ? (
+                  <Text className="text-sm leading-5 text-muted-foreground">
+                    {translation}
+                  </Text>
+                ) : null}
+              </View>
+            );
+          })}
         </View>
       ) : null}
-
-      <StudyAction onPress={() => router.back()} secondary>
-        Kembali ke daftar kata
-      </StudyAction>
     </ScrollView>
   );
 }

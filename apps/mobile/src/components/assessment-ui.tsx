@@ -2,8 +2,10 @@ import { Children, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Eyebrow, ProgressBar } from "./learning-ui";
 import { StudyGlass } from "./study-glass";
+import { Card } from "./ui/card";
 import { SymbolIcon } from "./ui/symbol-icon";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { withOpacity } from "../theme/colors";
 
 export function AssessmentQuestion({
   children,
@@ -13,6 +15,7 @@ export function AssessmentQuestion({
   answered,
   onOpen,
   disabled = false,
+  surface = "glass",
 }: {
   children: ReactNode;
   detail?: string;
@@ -21,15 +24,40 @@ export function AssessmentQuestion({
   answered?: number;
   onOpen?: () => void;
   disabled?: boolean;
+  /**
+   * `card` is a plain card without the glass effect, with the counts on the
+   * title line (Home's daily challenge).
+   */
+  surface?: "glass" | "card";
 }) {
   const showHeader =
     current !== undefined &&
     total !== undefined &&
     answered !== undefined &&
     onOpen;
+  const isCard = surface === "card";
   const content = (
     <>
-      {showHeader ? (
+      {showHeader && isCard ? (
+        // Compact header: the counts share the title line, no separator.
+        <View className="gap-2">
+          <View className="flex-row items-center justify-between gap-3">
+            <Text
+              className="min-w-0 flex-1 font-bold text-foreground"
+              numberOfLines={1}
+            >
+              Soal {(current as number) + 1} dari {total}
+              <Text className="text-sm font-normal text-muted-foreground">
+                {" · "}
+                {answered} dijawab · {(total as number) - (answered as number)}{" "}
+                tersisa
+              </Text>
+            </Text>
+            <Text className="text-sm font-bold text-primary">Soal ▦</Text>
+          </View>
+          <ProgressBar value={answered} max={total} />
+        </View>
+      ) : showHeader ? (
         <View className="gap-2 border-b border-border/70 pb-4">
           <View className="flex-row items-center justify-between gap-3">
             <Text className="font-bold text-foreground">
@@ -49,22 +77,29 @@ export function AssessmentQuestion({
     </>
   );
   if (!showHeader) {
-    return <StudyGlass>{content}</StudyGlass>;
+    return isCard ? (
+      <Card className="gap-4 p-5">{content}</Card>
+    ) : (
+      <StudyGlass>{content}</StudyGlass>
+    );
   }
-  return (
-    <StudyGlass isInteractive={!disabled}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Soal. ${answered} dari ${total} dijawab. Soal saat ini ${(current as number) + 1}.`}
-        accessibilityHint="Buka daftar soal untuk berpindah ke soal mana pun"
-        accessibilityState={{ disabled }}
-        disabled={disabled}
-        onPress={onOpen}
-        className="gap-4 active:opacity-75"
-      >
-        {content}
-      </Pressable>
-    </StudyGlass>
+  const question = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Soal. ${answered} dari ${total} dijawab. Soal saat ini ${(current as number) + 1}.`}
+      accessibilityHint="Buka daftar soal untuk berpindah ke soal mana pun"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onOpen}
+      className="gap-4 active:opacity-75"
+    >
+      {content}
+    </Pressable>
+  );
+  return isCard ? (
+    <Card className="p-5">{question}</Card>
+  ) : (
+    <StudyGlass isInteractive={!disabled}>{question}</StudyGlass>
   );
 }
 
@@ -98,6 +133,7 @@ export function AssessmentOption({
   disabled = false,
   correct,
   tile = false,
+  surface = "glass",
   onPress,
 }: {
   children: ReactNode;
@@ -108,6 +144,8 @@ export function AssessmentOption({
   correct?: boolean;
   /** A picture option in the 2×2 grid (`usesPictureGrid`): badge on top, numbered ①–④. */
   tile?: boolean;
+  /** `card`: a plain bordered card without the glass effect (Home). */
+  surface?: "glass" | "card";
   onPress?: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -120,49 +158,65 @@ export function AssessmentOption({
       : wrong
         ? "Jawaban kamu · Salah"
         : undefined;
-  const content = (
-    <StudyGlass
-      tone={wrong ? "destructive" : "primary"}
-      emphasized={selected || correct === true}
-      isInteractive={!!onPress}
-      contentClassName={tile ? "gap-2 p-3" : undefined}
-    >
-      <View className={tile ? "gap-2" : "flex-row items-center gap-4"}>
-        <View
-          className={`size-8 items-center justify-center rounded-xl border ${wrong ? "border-destructive bg-destructive" : selected || correct === true ? "border-primary bg-primary" : "border-border bg-muted"}`}
-        >
-          {correct === true || wrong ? (
-            <SymbolIcon
-              name={wrong ? "xmark" : "checkmark"}
-              size={16}
-              weight="bold"
-              tintColor={
-                wrong ? colors.destructiveForeground : colors.primaryForeground
-              }
-            />
-          ) : (
-            <Text
-              className={`text-sm font-black ${selected ? "text-primary-foreground" : "text-muted-foreground"}`}
-            >
-              {tile
-                ? (circledNumbers[index] ?? String(index + 1))
-                : String.fromCharCode(65 + index)}
-            </Text>
-          )}
-        </View>
-        <View className={tile ? "gap-2" : "min-w-0 flex-1 gap-2"}>
-          {label ? (
-            <Text
-              className={`text-xs font-bold ${wrong ? "text-destructive" : "text-primary"}`}
-            >
-              {label}
-            </Text>
-          ) : null}
-          {children}
-        </View>
+  const emphasized = selected || correct === true;
+  const tone = wrong ? colors.destructive : colors.primary;
+  const body = (
+    <View className={tile ? "gap-2" : "flex-row items-center gap-4"}>
+      <View
+        className={`size-8 items-center justify-center rounded-xl border ${wrong ? "border-destructive bg-destructive" : selected || correct === true ? "border-primary bg-primary" : "border-border bg-muted"}`}
+      >
+        {correct === true || wrong ? (
+          <SymbolIcon
+            name={wrong ? "xmark" : "checkmark"}
+            size={16}
+            weight="bold"
+            tintColor={
+              wrong ? colors.destructiveForeground : colors.primaryForeground
+            }
+          />
+        ) : (
+          <Text
+            className={`text-sm font-black ${selected ? "text-primary-foreground" : "text-muted-foreground"}`}
+          >
+            {tile
+              ? (circledNumbers[index] ?? String(index + 1))
+              : String.fromCharCode(65 + index)}
+          </Text>
+        )}
       </View>
-    </StudyGlass>
+      <View className={tile ? "gap-2" : "min-w-0 flex-1 gap-2"}>
+        {label ? (
+          <Text
+            className={`text-xs font-bold ${wrong ? "text-destructive" : "text-primary"}`}
+          >
+            {label}
+          </Text>
+        ) : null}
+        {children}
+      </View>
+    </View>
   );
+  const content =
+    surface === "card" ? (
+      <View
+        className={`rounded-2xl border ${tile ? "gap-2 p-3" : "gap-4 p-5"}`}
+        style={{
+          backgroundColor: emphasized ? withOpacity(tone, 0.08) : colors.card,
+          borderColor: emphasized ? tone : colors.border,
+        }}
+      >
+        {body}
+      </View>
+    ) : (
+      <StudyGlass
+        tone={wrong ? "destructive" : "primary"}
+        emphasized={emphasized}
+        isInteractive={!!onPress}
+        contentClassName={tile ? "gap-2 p-3" : undefined}
+      >
+        {body}
+      </StudyGlass>
+    );
   if (!onPress) return <View>{content}</View>;
   return (
     <Pressable

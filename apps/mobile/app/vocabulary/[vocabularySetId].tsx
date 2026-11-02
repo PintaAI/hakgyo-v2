@@ -1,10 +1,11 @@
 import { entryMeanings } from "@hakgyo/shared";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 
 import { Empty, QueryState } from "../../src/components/learning-ui";
 import { VocabularySetDetail } from "../../src/components/learn/vocabulary-set-detail";
 import { authClient } from "../../src/lib/auth-client";
+import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { useVocabularyPractice } from "../../src/sync/hooks";
 import { firstParam } from "../../src/lib/route-params";
 
@@ -18,6 +19,7 @@ export default function VocabularySetScreen() {
   const sourceCourseItemId = firstParam(params.sourceCourseItemId);
   const courseId = firstParam(params.courseId);
   const { data: session } = authClient.useSession();
+  const { colors } = useAppTheme();
   // Composed from the local course bundle; online only when it is missing.
   const query = useVocabularyPractice(vocabularySetId, sourceCourseItemId, {
     courseId: courseId || undefined,
@@ -31,7 +33,16 @@ export default function VocabularySetScreen() {
         options={{
           headerBackButtonDisplayMode: "minimal",
           headerShown: true,
-          title: vocabulary?.title ?? "Kosakata",
+          // The title is in the hero; the header carries only the back button
+          // over the content, as the material screen does.
+          title: "",
+          headerShadowVisible: false,
+          headerTransparent: Platform.OS === "ios",
+          headerStyle: {
+            backgroundColor:
+              Platform.OS === "ios" ? "transparent" : colors.background,
+          },
+          scrollEdgeEffects: { top: "soft" },
         }}
       />
       {vocabulary ? (
