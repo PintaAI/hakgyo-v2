@@ -5,14 +5,34 @@ import type { MaterialLinkTarget } from "@hakgyo/shared/material-links";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { GestureDetector } from "react-native-gesture-handler";
+import Animated from "react-native-reanimated";
 
 import {
   NativeContentRenderer,
   useApiAssetResolver,
 } from "../../../../src/components/content-renderer";
 import { VocabularySetDetail } from "../../../../src/components/learn/vocabulary-set-detail";
-import { CourseLearningFooter } from "../../../../src/components/learn/course-learning-footer";
-import { AssessmentOverview } from "../../../../src/components/learn/assessment-overview";
+import {
+  CardFan,
+  HakgyoHero,
+  HERO_TITLE,
+} from "../../../../src/components/learn/hakgyo-hero";
+import {
+  CourseLearningFooter,
+  LearningFooterView,
+  useLearningContinuation,
+} from "../../../../src/components/learn/course-learning-footer";
+import {
+  PullToContinueIndicator,
+  usePullToContinue,
+} from "../../../../src/components/learn/pull-to-continue";
+import { requirementActionsFor } from "../../../../src/components/learn/requirement-actions";
+import {
+  AssessmentFacts,
+  AssessmentOverview,
+  QuestionPreview,
+} from "../../../../src/components/learn/assessment-overview";
 import { authClient } from "../../../../src/lib/auth-client";
 import { userErrorMessage } from "../../../../src/lib/error-message";
 import { api } from "../../../../src/lib/trpc";
@@ -24,6 +44,7 @@ import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
 import {
+  type CourseItemDetail,
   useCourseItem,
   useCourseOutline,
   useItemAssessment,
@@ -31,14 +52,11 @@ import {
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import {
+  Action,
   Eyebrow,
   FullScreenState,
   StudyScreen,
 } from "../../../../src/components/learning-ui";
-import {
-  StudyAction,
-  StudyGlass,
-} from "../../../../src/components/study-glass";
 import { firstParam } from "../../../../src/lib/route-params";
 
 export default function CourseItemScreen() {
@@ -72,36 +90,59 @@ function CourseItemContent({
   courseId: string;
   courseItemId: string;
 }) {
-  const wasAtBottom = useRef(false);
-  const isAtBottom = useRef(false);
   const materialContentHeight = useRef(0);
   const materialViewportHeight = useRef(0);
+  // Whether the content was already taller than the screen.
+  const wasLong = useRef(false);
   // Paged blocks (PDF book pages) that the learner hasn't finished yet.
   const unreadPagedBlocks = useRef(new Set<string>());
-  const openLearningSheet = () => {
-    router.push({
-      pathname: "/courses/[courseId]/items/[courseItemId]/learning-progress",
-      params: { courseId, courseItemId },
-    });
+  // The end of a material: the progress footer sits there, and pulling past
+  // it completes the material and opens the next item.
+  // The course item, for the required activities completing needs.
+  const itemRef = useRef<CourseItemDetail | undefined>(undefined);
+  const learning = useLearningContinuation({
+    courseId,
+    courseItemId,
+    pendingRequirements: () =>
+      itemRef.current?.material?.requiredActivities.length ?? 0,
+  });
+  const continueFromEnd = useCallback(async () => {
+    await learning.continueLearning();
+    // Still here: a milestone, a required activity or an error now shows
+    // in the footer, at the end of the content.
+    requestAnimationFrame(() => scrollRef.current?.scrollToEnd());
+  }, [learning]);
+  const pullToContinue = usePullToContinue({ onRelease: continueFromEnd });
+  // Not before every PDF page has been read, nor while the footer shows a
+  // milestone or a required activity instead.
+  const updatePullEnabled = () => {
+    pullToContinue.enabled.value =
+      unreadPagedBlocks.current.size === 0 &&
+      !learning.busy &&
+      !learning.milestone &&
+      learning.issue?.kind !== "requirements";
   };
-  const openLearningSheetAtBottom = () => {
-    if (wasAtBottom.current || unreadPagedBlocks.current.size > 0) return;
-    wasAtBottom.current = true;
-    openLearningSheet();
-  };
-  const openLearningSheetForShortContent = () => {
+  const updatePullEnabledRef = useRef(updatePullEnabled);
+  updatePullEnabledRef.current = updatePullEnabled;
+  useEffect(() => {
+    updatePullEnabledRef.current();
+  }, [learning.busy, learning.milestone, learning.issue]);
+  // Content that fits on screen is at its end without scrolling. Content
+  // that grew past the screen (images loaded) is not, until a scroll says so.
+  const markShortContentAtEnd = () => {
     if (
-      materialContentHeight.current > 0 &&
-      materialViewportHeight.current > 0 &&
-      materialContentHeight.current <= materialViewportHeight.current + 32
+      materialContentHeight.current <= 0 ||
+      materialViewportHeight.current <= 0
     ) {
-      openLearningSheetAtBottom();
+      return;
     }
-  };
-  const openLearningSheetRef = useRef(() => {});
-  openLearningSheetRef.current = () => {
-    if (isAtBottom.current) openLearningSheetAtBottom();
-    else openLearningSheetForShortContent();
+    const fits =
+      materialContentHeight.current <= materialViewportHeight.current + 32;
+    if (fits) pullToContinue.atEnd.value = true;
+    else if (pullToContinue.atEnd.value && !wasLong.current) {
+      pullToContinue.atEnd.value = false;
+    }
+    wasLong.current = !fits;
   };
   // Anchor jumps: block offsets within the rendered material, the material's
   // offset within the scroll content, and the anchor still being aimed at.
@@ -125,10 +166,6 @@ function CourseItemContent({
       materialContentHeight.current - materialViewportHeight.current,
     );
     const y = Math.min(Math.max(target, -topInset), maxY);
-    // A jump near the end is not the learner reaching it: treat it like an
-    // earlier visit to the bottom, so the completion sheet waits until they
-    // scroll away and back (see `onScroll`).
-    if (maxY - y <= 120) wasAtBottom.current = true;
     scrollRef.current?.scrollTo({ y, animated });
     return true;
   };
@@ -147,12 +184,9 @@ function CourseItemContent({
     aimPendingAnchorRef.current();
   }, []);
   const onReadingProgress = useCallback((key: string, finished: boolean) => {
-    if (!finished) {
-      unreadPagedBlocks.current.add(key);
-      return;
-    }
-    if (!unreadPagedBlocks.current.delete(key)) return;
-    if (unreadPagedBlocks.current.size === 0) openLearningSheetRef.current();
+    if (finished) unreadPagedBlocks.current.delete(key);
+    else unreadPagedBlocks.current.add(key);
+    updatePullEnabledRef.current();
   }, []);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
@@ -178,6 +212,7 @@ function CourseItemContent({
   const startAssessment = api.mobileSyncV2.startAssessment.useMutation();
   const [selectedCohortId, setSelectedCohortId] = useState<string>();
   const item = itemQuery.data;
+  itemRef.current = item;
   const currentModuleId = outline.data?.modules.find((module) =>
     module.items.some((entry) => entry.id === courseItemId),
   )?.id;
@@ -265,7 +300,9 @@ function CourseItemContent({
         <Stack.Toolbar.Button
           icon={toolbarIcons.home}
           accessibilityLabel="Buka Hari Ini"
-          onPress={() => router.replace("/(home)/(tabs)/home")}
+          // Back to the tabs already below, rather than stacking a second
+          // copy of them (with its own drawer trigger) on top.
+          onPress={() => router.dismissTo("/(home)/(tabs)/home")}
         />
       </Stack.Toolbar>
       <Stack.Screen
@@ -296,51 +333,47 @@ function CourseItemContent({
         />
       ) : item.assessment ? (
         assessment ? (
-          <StudyScreen title="">
-            <StudyGlass>
-              <View className="gap-2">
-                <Eyebrow size="md">
-                  Tugas · {assessment.questions.length} soal
+          <StudyScreen title="" bleedTop>
+            <HakgyoHero>
+              <CardFan
+                faces={[
+                  <View className="items-center" key="count">
+                    <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
+                      {assessment.questions.length}
+                    </Text>
+                    <Eyebrow>soal</Eyebrow>
+                  </View>,
+                  <View key="second" />,
+                  <View key="third" />,
+                ]}
+              />
+              <View className="items-center gap-2">
+                <Eyebrow size="md" tone="primary">
+                  Tugas
                 </Eyebrow>
                 <Text
                   accessibilityRole="header"
-                  className="text-3xl font-black leading-9 tracking-tight text-foreground"
+                  className="text-center font-black tracking-tight text-foreground"
                   numberOfLines={2}
+                  style={HERO_TITLE}
                 >
                   {assessment.title}
                 </Text>
                 {assessment.description ? (
-                  <Text className="text-sm leading-6 text-muted-foreground">
+                  <Text className="text-center text-sm leading-6 text-muted-foreground">
                     {assessment.description}
                   </Text>
                 ) : null}
               </View>
-              <AssessmentOverview
+              <AssessmentFacts
                 timeLimitMinutes={assessment.timeLimitMinutes}
                 passingScore={assessment.passingScore}
                 maxAttempts={assessment.maxAttempts}
                 attemptsUsed={assessment.standaloneAttemptCount}
-                latestAttempt={latestAttempt}
-                itemCompleted={itemCompleted}
-                canReattempt={assessmentEntry.canReattempt}
-                gatesProgress={!assessment.event}
-                sections={assessment.sections}
-                onOpenAttempt={() => {
-                  if (!latestAttempt) return;
-                  router.push({
-                    pathname:
-                      "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                    params: {
-                      courseId,
-                      courseItemId,
-                      attemptId: latestAttempt.id,
-                    },
-                  });
-                }}
               />
               {(assessmentEntry.canStart || assessmentEntry.canReattempt) &&
               assessment.eligibleCohorts.length > 1 ? (
-                <View className="gap-2 border-t border-border pt-4">
+                <View className="gap-2">
                   <Text className="text-sm font-bold text-foreground">
                     Pilih kelas
                   </Text>
@@ -360,12 +393,17 @@ function CourseItemContent({
               {assessmentEntry.canStart ||
               assessmentEntry.canReattempt ||
               assessmentEntry.destination === "ATTEMPT" ? (
-                <StudyAction
+                <Action
                   // Once the tugas is done, retrying is optional: the footer's
                   // "Lanjutkan belajar" becomes the main action.
-                  secondary={
+                  variant={
                     assessmentEntry.canReattempt &&
                     (itemCompleted === true || Boolean(assessment.event))
+                      ? "secondary"
+                      : "primary"
+                  }
+                  trailingIcon={
+                    startAssessment.isPending ? undefined : "arrow.right"
                   }
                   disabled={
                     startAssessment.isPending ||
@@ -384,7 +422,7 @@ function CourseItemContent({
                       : assessmentEntry.canReattempt
                         ? "Kerjakan ulang tugas"
                         : "Mulai tugas"}
-                </StudyAction>
+                </Action>
               ) : null}
               {startAssessment.isError ? (
                 <Text className="text-center text-sm text-destructive">
@@ -394,13 +432,46 @@ function CourseItemContent({
                   )}
                 </Text>
               ) : null}
-            </StudyGlass>
+            </HakgyoHero>
+            {/* What the task is like before starting: its first question,
+                as it will look, but not answerable here. */}
+            {!latestAttempt && assessment.questions[0] ? (
+              <QuestionPreview
+                question={assessment.questions[0]}
+                total={assessment.questions.length}
+                resolveAssetUrl={resolveAssetUrl}
+              />
+            ) : null}
+            <AssessmentOverview
+              timeLimitMinutes={assessment.timeLimitMinutes}
+              passingScore={assessment.passingScore}
+              maxAttempts={assessment.maxAttempts}
+              attemptsUsed={assessment.standaloneAttemptCount}
+              latestAttempt={latestAttempt}
+              itemCompleted={itemCompleted}
+              canReattempt={assessmentEntry.canReattempt}
+              gatesProgress={!assessment.event}
+              sections={assessment.sections}
+              onOpenAttempt={() => {
+                if (!latestAttempt) return;
+                router.push({
+                  pathname:
+                    "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+                  params: {
+                    courseId,
+                    courseItemId,
+                    attemptId: latestAttempt.id,
+                  },
+                });
+              }}
+            />
             {!assessment.event ? (
               <CourseLearningFooter
                 key={courseItemId}
                 courseId={courseId}
                 courseItemId={courseItemId}
                 completionMode="assessment"
+                compact
                 assessmentState={{
                   status: latestAttempt?.status ?? null,
                   canReattempt: assessmentEntry.canReattempt,
@@ -428,96 +499,111 @@ function CourseItemContent({
           message="Materi ini belum tersimpan di perangkat. Sambungkan ke internet, lalu sinkronkan dari Profil > Pengaturan."
         />
       ) : (
-        <ScrollView
-          ref={scrollRef}
-          onContentSizeChange={(_width, height) => {
-            materialContentHeight.current = height;
-            openLearningSheetForShortContent();
-            aimPendingAnchor();
-          }}
-          onScrollBeginDrag={() => {
-            // The learner took over; stop re-aiming the anchor.
-            pendingAnchor.current = null;
-          }}
-          onLayout={(event) => {
-            materialViewportHeight.current = event.nativeEvent.layout.height;
-            openLearningSheetForShortContent();
-          }}
-          onScroll={(event) => {
-            const {
-              contentInset,
-              contentOffset,
-              contentSize,
-              layoutMeasurement,
-            } = event.nativeEvent;
-            const distanceFromBottom =
-              contentSize.height +
-              contentInset.bottom -
-              (contentOffset.y + layoutMeasurement.height);
-            const atBottom = distanceFromBottom <= 32;
-            isAtBottom.current = atBottom;
-            if (atBottom) openLearningSheetAtBottom();
-            else if (distanceFromBottom > 120) wasAtBottom.current = false;
-          }}
-          scrollEventThrottle={32}
-          className="flex-1 bg-background"
-          contentContainerClassName="px-5 pb-14 pt-4"
-          contentInsetAdjustmentBehavior="automatic"
-        >
-          <View
-            onLayout={(event) => {
-              materialTop.current = event.nativeEvent.layout.y;
-              aimPendingAnchor();
-            }}
-          >
-            <NativeContentRenderer
-              content={material.content}
-              courseItemId={courseItemId}
-              resourceReferences={item.embeddedResources}
-              resolveAssetUrl={resolveAssetUrl}
-              onReadingProgress={onReadingProgress}
-              onBlockLayout={onBlockLayout}
-              onOpenMaterialLink={(target: MaterialLinkTarget) => {
-                // A section of this material: just scroll there.
-                if (target.materialId === material.id) {
-                  scrollToBlock(target.anchor, true);
-                  return;
-                }
-                router.push({
-                  pathname: "/material-link",
-                  params: {
-                    materialId: target.materialId,
-                    ...(target.anchor ? { anchor: target.anchor } : {}),
-                    courseId: courseId || item.module.courseId,
-                    sourceCourseItemId: courseItemId,
-                  },
-                });
+        <View className="flex-1">
+          <GestureDetector gesture={pullToContinue.gesture}>
+            <Animated.ScrollView
+              ref={scrollRef}
+              onContentSizeChange={(_width, height) => {
+                materialContentHeight.current = height;
+                markShortContentAtEnd();
+                aimPendingAnchor();
               }}
-              onOpenResource={(type, resourceId, targetCourseItemId) => {
-                if (type === "vocabulary") {
-                  router.push({
-                    pathname: "/vocabulary/[vocabularySetId]",
-                    params: {
-                      vocabularySetId: resourceId,
-                      sourceCourseItemId: courseItemId,
-                      courseId,
-                    },
-                  });
-                  return;
-                }
-                if (targetCourseItemId) {
-                  router.push({
-                    pathname: "/courses/[courseId]/items/[courseItemId]",
-                    params: { courseId, courseItemId: targetCourseItemId },
-                  });
-                }
+              onScrollBeginDrag={() => {
+                // The learner took over; stop re-aiming the anchor.
+                pendingAnchor.current = null;
               }}
+              onLayout={(event) => {
+                materialViewportHeight.current =
+                  event.nativeEvent.layout.height;
+                markShortContentAtEnd();
+              }}
+              onScroll={pullToContinue.onScroll}
+              scrollEventThrottle={16}
+              className="flex-1 bg-background"
+              contentContainerClassName="px-5 pb-32 pt-4"
+              contentInsetAdjustmentBehavior="automatic"
+            >
+              <View
+                onLayout={(event) => {
+                  materialTop.current = event.nativeEvent.layout.y;
+                  aimPendingAnchor();
+                }}
+              >
+                <NativeContentRenderer
+                  content={material.content}
+                  courseItemId={courseItemId}
+                  resourceReferences={item.embeddedResources}
+                  resolveAssetUrl={resolveAssetUrl}
+                  onReadingProgress={onReadingProgress}
+                  onBlockLayout={onBlockLayout}
+                  onOpenMaterialLink={(target: MaterialLinkTarget) => {
+                    // A section of this material: just scroll there.
+                    if (target.materialId === material.id) {
+                      scrollToBlock(target.anchor, true);
+                      return;
+                    }
+                    router.push({
+                      pathname: "/material-link",
+                      params: {
+                        materialId: target.materialId,
+                        ...(target.anchor ? { anchor: target.anchor } : {}),
+                        courseId: courseId || item.module.courseId,
+                        sourceCourseItemId: courseItemId,
+                      },
+                    });
+                  }}
+                  onOpenResource={(type, resourceId, targetCourseItemId) => {
+                    if (type === "vocabulary") {
+                      router.push({
+                        pathname: "/vocabulary/[vocabularySetId]",
+                        params: {
+                          vocabularySetId: resourceId,
+                          sourceCourseItemId: courseItemId,
+                          courseId,
+                        },
+                      });
+                      return;
+                    }
+                    if (targetCourseItemId) {
+                      router.push({
+                        pathname: "/courses/[courseId]/items/[courseItemId]",
+                        params: { courseId, courseItemId: targetCourseItemId },
+                      });
+                    }
+                  }}
+                />
+              </View>
+              <View className="mt-10">
+                <LearningFooterView
+                  courseId={courseId}
+                  courseItemId={courseItemId}
+                  learning={learning}
+                  // One "next" row: pulling past the end is how to go on.
+                  compact
+                  // Pulling past the end continues; the button stays for
+                  // screen readers, which cannot pull.
+                  continueButton="screenReader"
+                  requirementActions={requirementActionsFor(
+                    item,
+                    { courseId, courseItemId },
+                    "push",
+                  )}
+                />
+              </View>
+            </Animated.ScrollView>
+          </GestureDetector>
+          {learning.milestone ? null : (
+            <PullToContinueIndicator
+              pull={pullToContinue.pull}
+              locked={pullToContinue.locked}
+              releasing={pullToContinue.releasing}
+              drop={pullToContinue.drop}
+              atEnd={pullToContinue.atEnd}
+              enabled={pullToContinue.enabled}
+              busy={learning.busy}
             />
-          </View>
-          <View className="mt-8">
-            <StudyAction onPress={openLearningSheet}>Lanjutkan</StudyAction>
-          </View>
-        </ScrollView>
+          )}
+        </View>
       )}
     </>
   );

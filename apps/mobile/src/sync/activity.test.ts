@@ -20,6 +20,8 @@ const idle: SyncActivityInput = {
   lastBundleBatch: null,
   outboxWaiting: null,
   pendingCount: 0,
+  refreshPhase: null,
+  hasIndex: true,
   courseTitles: { hm: "Hangeul Mastery", ik: "Indonesia → Korea" },
   now: 10_000,
 };
@@ -72,6 +74,22 @@ describe("summarizeBundleChanges", () => {
 describe("selectSyncActivity", () => {
   test("shows nothing while idle", () => {
     expect(selectSyncActivity(idle)).toBeNull();
+  });
+
+  test("tells a device without an index what the first sync waits for", () => {
+    const first = { ...idle, hasIndex: false };
+    expect(selectSyncActivity({ ...first, refreshPhase: "manifest" })).toEqual({
+      kind: "preparing",
+      key: "preparing",
+      title: "Menyiapkan akunmu",
+      detail: "Menghubungi server Hakgyo…",
+    });
+    expect(
+      selectSyncActivity({ ...first, refreshPhase: "index" })?.detail,
+    ).toBe("Mengambil kelas dan kursusmu…");
+    expect(selectSyncActivity(first)).toBeNull();
+    // Later refreshes run quietly once the device has an index.
+    expect(selectSyncActivity({ ...idle, refreshPhase: "index" })).toBeNull();
   });
 
   test("names the running download and counts the run", () => {

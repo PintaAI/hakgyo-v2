@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
+import { HomeSkeleton } from "../../../../src/components/home-skeleton";
 import { Avatar, QueryState } from "../../../../src/components/learning-ui";
 import { TabScreen } from "../../../../src/components/tab-screen";
 import { WeeklyStreak } from "../../../../src/components/weekly-streak";
@@ -11,6 +12,8 @@ import { TodayAssessmentPractice } from "../../../../src/components/today-assess
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
 import { useSyncIndex } from "../../../../src/sync/hooks";
+import { useAutoTour } from "../../../../src/tour/tour-provider";
+import { TourTarget } from "../../../../src/tour/tour-target";
 
 export default function HomeTab() {
   const { data: session } = authClient.useSession();
@@ -19,6 +22,7 @@ export default function HomeTab() {
   // Local learner index (streak, today's practice pools); synced by the engine.
   const dashboard = useSyncIndex(session ? activeOrganizationId : undefined);
   const [refreshing, setRefreshing] = useState(false);
+  useAutoTour("home", Boolean(dashboard.data));
   const [scrollGesture] = useState(() => Gesture.Native());
 
   const displayName = session?.user.name || "Pelajar Hakgyo";
@@ -64,28 +68,38 @@ export default function HomeTab() {
           </Text>
         </Pressable>
       </View>
-      <QueryState
-        pending={dashboard.isPending}
-        error={dashboard.error}
-        retry={() => void dashboard.refetch()}
-      />
+      {dashboard.data ? null : dashboard.error ? (
+        <QueryState
+          pending={false}
+          error={dashboard.error}
+          retry={() => void dashboard.refetch()}
+        />
+      ) : (
+        <HomeSkeleton pending={dashboard.isPending} />
+      )}
       {dashboard.data ? (
         <>
-          <WeeklyStreak summary={dashboard.data.gamification} />
+          <TourTarget id="home.streak">
+            <WeeklyStreak summary={dashboard.data.gamification} />
+          </TourTarget>
           {session && activeOrganizationId ? (
-            <TodayVocabularyPractice
-              key={`${session.user.id}:${activeOrganizationId}`}
-              organizationId={activeOrganizationId}
-              pool={dashboard.data.practice.vocabulary}
-              scrollGesture={scrollGesture}
-            />
+            <TourTarget id="home.vocabulary">
+              <TodayVocabularyPractice
+                key={`${session.user.id}:${activeOrganizationId}`}
+                organizationId={activeOrganizationId}
+                pool={dashboard.data.practice.vocabulary}
+                scrollGesture={scrollGesture}
+              />
+            </TourTarget>
           ) : null}
           {activeOrganizationId ? (
-            <TodayAssessmentPractice
-              key={activeOrganizationId}
-              organizationId={activeOrganizationId}
-              pool={dashboard.data.practice.assessment}
-            />
+            <TourTarget id="home.challenge">
+              <TodayAssessmentPractice
+                key={activeOrganizationId}
+                organizationId={activeOrganizationId}
+                pool={dashboard.data.practice.assessment}
+              />
+            </TourTarget>
           ) : null}
         </>
       ) : null}

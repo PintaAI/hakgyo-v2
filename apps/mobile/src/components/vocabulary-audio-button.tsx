@@ -6,18 +6,43 @@ import { useAppTheme } from "../providers/AppThemeProvider";
 import { useApiAssetResolver } from "./content-renderer/use-api-asset-resolver";
 import { SymbolIcon } from "./ui/symbol-icon";
 
+type AudioButtonSize = "default" | "large";
+
+/**
+ * `large` is a filled primary circle, the main control of a screen (the
+ * word sheet); `default` an outlined one beside a list row.
+ */
+const buttonLooks = {
+  default: {
+    className:
+      "size-11 items-center justify-center rounded-full border border-border bg-background active:opacity-60",
+    icon: 13,
+    filled: false,
+  },
+  large: {
+    className:
+      "size-14 items-center justify-center rounded-full bg-primary active:opacity-80",
+    icon: 20,
+    filled: true,
+  },
+} as const;
+
 function PlayableButton({
   url,
   entryId,
   speakingId,
   onSpeak,
+  size,
 }: {
   url: string;
   entryId: string;
   speakingId: string | null;
   onSpeak: (entryId: string | null) => void;
+  size: AudioButtonSize;
 }) {
   const { colors } = useAppTheme();
+  const look = buttonLooks[size];
+  const iconColor = look.filled ? colors.primaryForeground : colors.primary;
   const player = useAudioPlayer(url);
   const status = useAudioPlayerStatus(player);
 
@@ -36,7 +61,7 @@ function PlayableButton({
     <Pressable
       accessibilityLabel={status.playing ? "Jeda pelafalan" : "Putar pelafalan"}
       accessibilityRole="button"
-      className="size-11 items-center justify-center rounded-full border border-border bg-background active:opacity-60"
+      className={look.className}
       onPress={() => {
         if (status.playing) {
           player.pause();
@@ -50,8 +75,8 @@ function PlayableButton({
     >
       <SymbolIcon
         name={status.playing ? "pause.fill" : "play.fill"}
-        size={13}
-        tintColor={colors.primary}
+        size={look.icon}
+        tintColor={iconColor}
         weight="semibold"
       />
     </Pressable>
@@ -63,13 +88,17 @@ export function VocabularyAudioButton({
   entryId,
   speakingId,
   onSpeak,
+  size = "default",
 }: {
   assetId: string;
   entryId: string;
   speakingId: string | null;
   onSpeak: (entryId: string | null) => void;
+  size?: AudioButtonSize;
 }) {
   const { colors } = useAppTheme();
+  const look = buttonLooks[size];
+  const iconColor = look.filled ? colors.primaryForeground : colors.primary;
   const resolveAssetUrl = useApiAssetResolver();
   const [url, setUrl] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
@@ -89,6 +118,7 @@ export function VocabularyAudioButton({
         onSpeak={onSpeak}
         speakingId={speakingId}
         url={url}
+        size={size}
       />
     );
   }
@@ -98,7 +128,7 @@ export function VocabularyAudioButton({
       accessibilityLabel="Putar pelafalan"
       accessibilityRole="button"
       accessibilityState={{ busy: resolving }}
-      className="size-11 items-center justify-center rounded-full border border-border bg-background active:opacity-60"
+      className={look.className}
       disabled={resolving}
       onPress={() => {
         setResolving(true);
@@ -115,12 +145,12 @@ export function VocabularyAudioButton({
       }}
     >
       {resolving ? (
-        <ActivityIndicator color={colors.primary} size="small" />
+        <ActivityIndicator color={iconColor} size="small" />
       ) : (
         <SymbolIcon
           name="play.fill"
-          size={13}
-          tintColor={colors.primary}
+          size={look.icon}
+          tintColor={iconColor}
           weight="semibold"
         />
       )}

@@ -38,6 +38,7 @@ import {
 import { StudyGlass } from "./study-glass";
 import { SymbolIcon } from "./ui/symbol-icon";
 import type { SymbolName } from "./ui/symbol-names";
+import { TourTarget } from "../tour/tour-target";
 
 export type Course = RouterOutputs["learning"]["listMyCourses"][number];
 type Event = RouterOutputs["assessmentEvent"]["listForLearner"][number];
@@ -785,7 +786,7 @@ export function PracticeHub(props: HubProps) {
   return (
     <>
       {props.hangeulHidden ? null : (
-        <View className="gap-3 pt-1">
+        <TourTarget id="practice.hangeul" className="gap-3 pt-1">
           <Eyebrow>Penguasaan Hangeul</Eyebrow>
           <GamePicker
             tools={hangeulTools}
@@ -798,7 +799,7 @@ export function PracticeHub(props: HubProps) {
             }}
             selectedKey={null}
           />
-        </View>
+        </TourTarget>
       )}
       <QueryState
         error={props.coursesError}
@@ -857,7 +858,7 @@ export function PracticeHub(props: HubProps) {
               </Pressable>
             </StudyGlass>
           ) : null}
-          <View className="gap-3 pt-1">
+          <TourTarget id="practice.games" className="gap-3 pt-1">
             <Eyebrow>Pilih game</Eyebrow>
             <GamePicker
               tools={displayTools}
@@ -870,7 +871,7 @@ export function PracticeHub(props: HubProps) {
                 untuk melihat semua set dan quiz.
               </Text>
             ) : null}
-          </View>
+          </TourTarget>
           {tool ? (
             <View
               className="gap-3"

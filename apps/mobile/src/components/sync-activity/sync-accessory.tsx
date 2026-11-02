@@ -1,14 +1,12 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { openSyncStatus } from "../../lib/navigation";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import type { SyncActivity } from "../../sync/activity";
 import { SyncActivityIcon } from "./sync-activity-icon";
 
-/** The tab bar bottom accessory exists from iOS 26 (Liquid Glass) on. */
-export const supportsTabBarAccessory =
-  Platform.OS === "ios" && Number.parseInt(String(Platform.Version), 10) >= 26;
+export { supportsTabBarAccessory } from "./supports-accessory";
 
 /**
  * Sync activity in the iOS 26 tab bar accessory: a full line above the tab

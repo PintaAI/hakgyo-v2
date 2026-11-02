@@ -6,6 +6,7 @@ import { HANGEUL_PLACEMENT_PASSED_KEY } from "./hangeul-placement";
 import { ONBOARDING_SEEN_KEY, SIGNED_IN_BEFORE_KEY } from "./onboarding";
 import { PUSH_STORAGE_KEYS } from "./push-notifications";
 import { RELEASE_NOTES_SEEN_KEY } from "./release-notes";
+import { TOUR_SEEN_KEYS } from "../tour/tour-storage";
 
 /**
  * Deletes what this app keeps in SecureStore, which survives a sign-out on
@@ -21,6 +22,7 @@ export async function forgetSecureStorage() {
     HANGEUL_PLACEMENT_PASSED_KEY,
     DECK_TUTORIAL_SEEN_KEY,
     RELEASE_NOTES_SEEN_KEY,
+    ...TOUR_SEEN_KEYS,
     ...PUSH_STORAGE_KEYS,
   ]) {
     await SecureStore.deleteItemAsync(key);

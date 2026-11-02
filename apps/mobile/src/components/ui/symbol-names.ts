@@ -33,6 +33,7 @@ export const materialSymbols = {
   "doc.text.fill": "description",
   "envelope.fill": "mail",
   "exclamationmark.triangle.fill": "warning",
+  eye: "visibility",
   "flame.fill": "local_fire_department",
   "gamecontroller.fill": "sports_esports",
   "hand.point.up.left.fill": "touch_app",

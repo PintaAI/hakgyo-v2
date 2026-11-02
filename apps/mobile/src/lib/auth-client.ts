@@ -6,6 +6,7 @@ import {
 } from "@better-auth/expo/client";
 import { createAuthClient } from "better-auth/react";
 import * as SecureStore from "expo-secure-store";
+import { AppState } from "react-native";
 
 import { apiUrl } from "../config";
 
@@ -62,6 +63,28 @@ export async function rememberAuthCookies(setCookie: string | null) {
 export const authClient = createAuthClient({
   baseURL: apiUrl,
   plugins: [nativePlugin],
+  // While signed out, every session fetch reports `isPending` again, and the
+  // root layout and providers render nothing while pending. Face ID for a
+  // saved password briefly backgrounds the app, so the built-in refetch on
+  // focus closed the sign-in sheet before the credentials were filled in.
+  // Refetch on foreground only for a signed-in user (below).
+  sessionOptions: { refetchOnWindowFocus: false },
+});
+
+/** Same rate limit as Better Auth's own refetch on focus. */
+const FOREGROUND_REFETCH_INTERVAL_MS = 5_000;
+let lastForegroundRefetch = 0;
+
+// Picks up a session revoked elsewhere when the app comes back. A signed-in
+// refetch keeps its data, so nothing unmounts.
+AppState.addEventListener("change", (state) => {
+  if (state !== "active") return;
+  const session = authClient.$store.atoms.session.get();
+  if (!session.data) return;
+  const now = Date.now();
+  if (now - lastForegroundRefetch < FOREGROUND_REFETCH_INTERVAL_MS) return;
+  lastForegroundRefetch = now;
+  void session.refetch();
 });
 
 export const getAuthCookie = () => authClient.getCookie();

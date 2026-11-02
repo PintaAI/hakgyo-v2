@@ -21,6 +21,7 @@ import {
 
 import type { AttemptLogEntry } from "@hakgyo/shared";
 
+import { supportsTabBarAccessory } from "../components/sync-activity/supports-accessory";
 import { apiUrl } from "../config";
 import { saveAttemptClock } from "../lib/attempt-log";
 import { authClient, getAuthCookie } from "../lib/auth-client";
@@ -113,6 +114,8 @@ type MobileSyncStatusValue = {
   lastBundleBatch: MobileSyncEngineState["lastBundleBatch"];
   /** Why queued progress is waiting (offline, maintenance...), if it is. */
   outboxWaiting: MobileSyncEngineState["outboxWaiting"];
+  /** What a running refresh waits for from the server, or null. */
+  refreshPhase: MobileSyncEngineState["refreshPhase"];
   lastRefreshedAt: number | null;
 };
 
@@ -123,10 +126,18 @@ type MobileSyncActionsValue = {
   finishVocabularySession: (
     organizationId?: string,
   ) => Promise<SyncCheckpointResult>;
+  /**
+   * Marks a course item done on the device (the local outline shows it done
+   * at once) and queues it for the server. Resolves with the server's sync,
+   * or, with `background`, right away while that sync runs on its own: for
+   * callers that checked the item's requirements locally, so a refusal is
+   * not expected (it dead-letters and the next index restores the truth).
+   */
   completeContent: (input: {
     courseItemId: string;
     organizationId?: string;
-  }) => Promise<SyncCheckpointResult>;
+    background?: boolean;
+  }) => Promise<SyncCheckpointResult | null>;
   completeAssessment: (input: {
     attemptId: string;
     answers: AssessmentSyncAnswer[];
@@ -209,6 +220,25 @@ const OfflineMediaContext = createContext<OfflineMediaValue | null>(null);
 const MobileAssetResolverContext = createContext<
   ((assetId: string) => Promise<string>) | null
 >(null);
+
+/**
+ * The error screens without a local index show when sync could not reach
+ * the server. Maintenance and outdated clients have their own screens.
+ */
+function queuedSyncError(result: SyncUpdateResult): Error | null {
+  if (result.state !== "queued") return null;
+  if (result.reason === "offline") {
+    return new Error(
+      "Tidak ada koneksi internet. Sambungkan HP ke internet untuk menyiapkan akunmu.",
+    );
+  }
+  if (result.reason === "unavailable") {
+    return new Error(
+      "Server Hakgyo belum bisa dihubungi. Coba lagi sebentar lagi.",
+    );
+  }
+  return null;
+}
 
 export function MobileSyncProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -495,7 +525,7 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
           manual: true,
         });
         if ("result" in result) await applyCheckpointResults(result);
-        if (result.state !== "queued") setSyncError(null);
+        setSyncError(queuedSyncError(result));
         return result;
       } catch (error) {
         setSyncError(error instanceof Error ? error : new Error(String(error)));
@@ -653,9 +683,18 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         }
         return checkpoint(organizationId);
       },
-      completeContent: async ({ courseItemId, organizationId }) => {
+      completeContent: async ({
+        courseItemId,
+        organizationId,
+        background = false,
+      }) => {
         const current = engineRef.current;
-        if (!current) return { state: "queued", reason: "unavailable" };
+        if (!current) {
+          // Nothing saved: an optimistic caller must not move on.
+          if (background)
+            throw new Error("Sinkronisasi belum siap. Coba lagi.");
+          return { state: "queued", reason: "unavailable" };
+        }
         await current.putOperation({
           id: `content:${courseItemId}`,
           kind: "CONTENT_COMPLETED",
@@ -675,7 +714,10 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
             },
           })
           .catch(() => undefined);
-        return checkpoint(organizationId);
+        if (!background) return checkpoint(organizationId);
+        // Not awaited: the learner moves on while it syncs.
+        void checkpoint(organizationId).catch(() => undefined);
+        return null;
       },
       completeAssessment: async ({
         attemptId,
@@ -720,7 +762,7 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         try {
           const result = await current.checkForUpdates(organizationId);
           if ("result" in result) await applyCheckpointResults(result);
-          if (result.state !== "queued") setSyncError(null);
+          setSyncError(queuedSyncError(result));
           return result;
         } catch (error) {
           setSyncError(
@@ -776,6 +818,11 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       utils.assessment,
     ],
   );
+  // `isSyncing` covers syncs the learner started (pull-to-refresh spinners).
+  // Automatic checks run in the engine; the sync indicator announces the
+  // first one, and screens show their own spinner only where it cannot.
+  const isPreparing =
+    !supportsTabBarAccessory && (engineState?.isRefreshing ?? false);
   const status = useMemo<MobileSyncStatusValue>(
     () => ({
       isHydrated: !isSessionPending && hydratedUserId === (userId ?? null),
@@ -788,6 +835,7 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
       bundleChanges: engineState?.bundleChanges ?? NO_BUNDLE_CHANGES,
       lastBundleBatch: engineState?.lastBundleBatch ?? null,
       outboxWaiting: engineState?.outboxWaiting ?? null,
+      refreshPhase: engineState?.refreshPhase ?? null,
       lastRefreshedAt: engineState?.lastRefreshedAt ?? null,
     }),
     [
@@ -803,8 +851,11 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
     ],
   );
   const syncData = useMemo<SyncDataContextValue | null>(
-    () => (localData ? { localData, isSyncing, syncError, syncNow } : null),
-    [isSyncing, localData, syncError, syncNow],
+    () =>
+      localData
+        ? { localData, isSyncing, isPreparing, syncError, syncNow }
+        : null,
+    [isPreparing, isSyncing, localData, syncError, syncNow],
   );
 
   if (!status.isHydrated) return null;

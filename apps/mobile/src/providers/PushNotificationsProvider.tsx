@@ -105,6 +105,10 @@ export function PushNotificationsProvider({
   const { mutate: markRead } = api.notification.markRead.useMutation();
   const utils = api.useUtils();
   const registeredRef = useRef<string | null>(null);
+  // Native token of the last successful registration, and the registration
+  // in flight, so foregrounds and token events never stack up calls.
+  const deviceTokenRef = useRef<string | null>(null);
+  const registeringRef = useRef<Promise<void> | null>(null);
   const promptingRef = useRef(false);
   const queryClient = useQueryClient();
   const { activeOrganizationId } = useAppTheme();
@@ -157,27 +161,35 @@ export function PushNotificationsProvider({
       setStatus("enabled");
       return;
     }
-    let token: string;
-    try {
-      token = await getExpoPushToken();
-    } catch {
-      // No FCM/APNs credentials in this build (e.g. Android without
-      // google-services.json).
-      setStatus("unsupported");
-      return;
-    }
-    try {
-      await registerDevice({
-        deviceId: await getPushDeviceId(),
-        expoPushToken: token,
-        ...getDeviceDetails(),
-      });
-      registeredRef.current = userId;
-      setStatus("enabled");
-    } catch {
-      // Offline or server error: retried on the next foreground.
-      setStatus("unregistered");
-    }
+    if (registeringRef.current) return registeringRef.current;
+    const run = async () => {
+      let tokens: Awaited<ReturnType<typeof getExpoPushToken>>;
+      try {
+        tokens = await getExpoPushToken();
+      } catch {
+        // No FCM/APNs credentials in this build (e.g. Android without
+        // google-services.json).
+        setStatus("unsupported");
+        return;
+      }
+      try {
+        await registerDevice({
+          deviceId: await getPushDeviceId(),
+          expoPushToken: tokens.expoPushToken,
+          ...getDeviceDetails(),
+        });
+        registeredRef.current = userId;
+        deviceTokenRef.current = tokens.devicePushToken;
+        setStatus("enabled");
+      } catch {
+        // Offline or server error: retried on the next foreground.
+        setStatus("unregistered");
+      }
+    };
+    registeringRef.current = run().finally(() => {
+      registeringRef.current = null;
+    });
+    return registeringRef.current;
   }, [registerDevice, userId]);
 
   const refresh = useCallback(async () => {
@@ -200,6 +212,7 @@ export function PushNotificationsProvider({
   useEffect(() => {
     if (!userId) {
       registeredRef.current = null;
+      deviceTokenRef.current = null;
       setStatus("loading");
       return;
     }
@@ -207,7 +220,11 @@ export function PushNotificationsProvider({
     const appState = AppState.addEventListener("change", (next) => {
       if (next === "active") void refresh();
     });
-    const tokenSubscription = Notifications.addPushTokenListener(() => {
+    // iOS also fires this for every token fetch, including register()'s own,
+    // so only an actually new token re-registers.
+    const tokenSubscription = Notifications.addPushTokenListener((token) => {
+      if (registeringRef.current) return;
+      if (String(token.data) === deviceTokenRef.current) return;
       registeredRef.current = null;
       void refresh();
     });
@@ -271,6 +288,7 @@ export function PushNotificationsProvider({
         await setPushOptedOut(true);
         setStatus("off");
         registeredRef.current = null;
+        deviceTokenRef.current = null;
         await disableDevice({ deviceId: await getPushDeviceId() }).catch(
           () => undefined,
         );
@@ -332,6 +350,7 @@ export function PushNotificationsProvider({
 
   const unregisterDevice = useCallback(async () => {
     registeredRef.current = null;
+    deviceTokenRef.current = null;
     if (!isPushSupported) return;
     await disableDevice({ deviceId: await getPushDeviceId() }).catch(
       () => undefined,

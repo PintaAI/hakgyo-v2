@@ -1,10 +1,8 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 
-import {
-  CourseLearningFooter,
-  type LearningRequirementAction,
-} from "../../../../../src/components/learn/course-learning-footer";
+import { CourseLearningFooter } from "../../../../../src/components/learn/course-learning-footer";
+import { requirementActionsFor } from "../../../../../src/components/learn/requirement-actions";
 import { useCourseItem } from "../../../../../src/sync/hooks";
 import { firstParam } from "../../../../../src/lib/route-params";
 
@@ -21,53 +19,12 @@ export default function LearningProgressSheet() {
       ? "assessment"
       : "manual";
   const item = useCourseItem(courseId || undefined, courseItemId);
-  const vocabularySet = item.data?.vocabularySet;
-  const materialRequirementActions: LearningRequirementAction[] =
-    item.data?.material?.requiredActivities.map((activity) => ({
-      id: activity.id,
-      type: activity.type,
-      title: activity.title,
-      onPress: () => {
-        if (activity.type === "VOCABULARY_SET") {
-          router.replace({
-            pathname: "/vocabulary/[vocabularySetId]",
-            params: {
-              vocabularySetId: activity.resourceId,
-              sourceCourseItemId: courseItemId,
-              courseId,
-            },
-          });
-          return;
-        }
-        router.replace({
-          pathname: "/courses/[courseId]/items/[courseItemId]",
-          params: { courseId, courseItemId: activity.courseItemId },
-        });
-      },
-    })) ?? [];
-  const vocabularyRequirementActions: LearningRequirementAction[] =
-    vocabularySet
-      ? [
-          {
-            id: vocabularySet.id,
-            type: "VOCABULARY_SET",
-            title: vocabularySet.title,
-            onPress: () =>
-              router.replace({
-                pathname: "/vocabulary/[vocabularySetId]",
-                params: {
-                  vocabularySetId: vocabularySet.id,
-                  sourceCourseItemId: courseItemId,
-                  courseId,
-                },
-              }),
-          },
-        ]
-      : [];
-  const requirementActions = [
-    ...materialRequirementActions,
-    ...vocabularyRequirementActions,
-  ];
+  // Opened over the item: an activity replaces this sheet.
+  const requirementActions = requirementActionsFor(
+    item.data,
+    { courseId, courseItemId },
+    "replace",
+  );
 
   return (
     <View className="gap-4 px-5 pb-6 pt-6">

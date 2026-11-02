@@ -54,6 +54,7 @@ import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { openAssessmentEvent, openCourseItem } from "../../lib/navigation";
 import { SymbolIcon } from "../ui/symbol-icon";
 import type { SymbolName } from "../ui/symbol-names";
+import { TourTarget } from "../../tour/tour-target";
 
 type CourseOutline = RouterOutputs["learning"]["getCourseOutline"];
 type OutlineModule = CourseOutline["modules"][number];
@@ -439,6 +440,7 @@ export function CohortCard({
   milestoneGroup,
   outline,
   isFirst = false,
+  tourTarget = false,
 }: {
   cohort: LearnCohort;
   thumbnailUrl?: string | null;
@@ -450,6 +452,8 @@ export function CohortCard({
   milestoneGroup?: CohortMilestoneGroup;
   outline?: CourseOutline;
   isFirst?: boolean;
+  /** This card is the one the Belajar tour points at. */
+  tourTarget?: boolean;
 }) {
   const [curriculumSegment, setCurriculumSegment] = useState(0);
   const { markEntitySeen } = useSidebarIndicators();
@@ -503,7 +507,11 @@ export function CohortCard({
         total += 1;
         if (item.isCompleted) completed += 1;
         else if (available && !nextItem) {
-          nextItem = { ...item, moduleId: module.id, moduleTitle: module.title };
+          nextItem = {
+            ...item,
+            moduleId: module.id,
+            moduleTitle: module.title,
+          };
         }
       }
     }
@@ -669,7 +677,11 @@ export function CohortCard({
 
   return (
     <View style={styles.card}>
-      <View className="relative justify-end bg-muted">
+      <TourTarget
+        id="learn.cohort"
+        enabled={tourTarget}
+        className="relative justify-end bg-muted"
+      >
         {thumbnailUrl ? (
           <>
             <Image
@@ -759,10 +771,14 @@ export function CohortCard({
             max={totalCount}
           />
         ) : null}
-      </View>
+      </TourTarget>
 
       <View className="gap-4 p-4">
-        {hero ? <HeroBlock hero={hero} /> : null}
+        {hero ? (
+          <TourTarget id="learn.next" enabled={tourTarget}>
+            <HeroBlock hero={hero} />
+          </TourTarget>
+        ) : null}
 
         <QueryState
           pending={eventsPending}
