@@ -1,0 +1,6819 @@
+{
+  "format": "hakgyo.assessment-set@1",
+  "key": "eps-demo-set-1",
+  "version": "2026-11-02.1",
+  "generatedAt": "2026-11-02T09:09:31.073Z",
+  "blueprint": {
+    "key": "eps-topik",
+    "version": "eps-topik@2025.1"
+  },
+  "mediaPlaceholderPrefix": "eps-media:",
+  "assessment": {
+    "title": "Contoh Set EPS-TOPIK 1",
+    "description": "Set contoh 40 soal format EPS-TOPIK (20 membaca, 20 mendengar) buatan Hakgyo, lengkap dengan kunci jawaban dan penjelasan. Audio dibuat dengan suara AI.",
+    "shuffleQuestions": false,
+    "shuffleOptions": false,
+    "scoreBands": [
+      {
+        "label": "Manufaktur",
+        "minPercent": 60
+      },
+      {
+        "label": "Sektor lain",
+        "minPercent": 45
+      }
+    ],
+    "totalPoints": 100
+  },
+  "sections": [
+    {
+      "key": "reading",
+      "position": 0,
+      "title": "Membaca",
+      "instructions": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "20 soal membaca, 25 menit. Kamu bisa berpindah antarsoal dan mengubah jawaban sampai waktu bagian ini habis.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "timeLimitSeconds": 1500,
+      "navigation": "FREE",
+      "lockAnswers": false,
+      "allowEarlyFinish": true,
+      "shuffleQuestions": false,
+      "audioMaxPlays": null,
+      "audioAutoplay": false,
+      "audioRepeatGapSeconds": 2,
+      "pacedAnswerSeconds": null,
+      "pacedQuestionSeconds": null
+    },
+    {
+      "key": "listening",
+      "position": 1,
+      "title": "Mendengar",
+      "instructions": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "20 soal mendengar, 25 menit. Audio setiap soal diputar otomatis dua kali, lalu ada waktu menjawab sebelum soal berganti sendiri.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Audio dibuat dengan suara AI.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "timeLimitSeconds": 1500,
+      "navigation": "PACED",
+      "lockAnswers": false,
+      "allowEarlyFinish": false,
+      "shuffleQuestions": false,
+      "audioMaxPlays": 2,
+      "audioAutoplay": true,
+      "audioRepeatGapSeconds": 2,
+      "pacedAnswerSeconds": 7,
+      "pacedQuestionSeconds": null
+    }
+  ],
+  "groups": [
+    {
+      "key": "g39",
+      "section": "listening",
+      "questionNumbers": [
+        39,
+        40
+      ],
+      "instructions": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "대화를 듣고 물음에 답하십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "stimulus": [
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:g39-audio",
+            "fileName": "Audio dialog soal 39–40",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "script": [
+        {
+          "speaker": "F",
+          "text": "부디 씨, 오늘은 왜 이렇게 일찍 퇴근해요?"
+        },
+        {
+          "speaker": "M",
+          "text": "병원에 가려고요. 며칠 전부터 손목이 계속 아파서요."
+        },
+        {
+          "speaker": "F",
+          "text": "혹시 일하다가 다쳤어요?"
+        },
+        {
+          "speaker": "M",
+          "text": "네, 무거운 부품을 계속 옮겨서 그런 것 같아요."
+        },
+        {
+          "speaker": "F",
+          "text": "그럼 반장님께 꼭 말씀드리세요. 일하다가 다치면 산재 보험으로 치료받을 수 있어요."
+        },
+        {
+          "speaker": "M",
+          "text": "아, 그래요? 몰랐어요. 내일 아침에 말씀드릴게요."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "number": 1,
+      "section": "reading",
+      "position": 0,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R1",
+        "level:mudah",
+        "topik:benda"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 그림을 보고 맞는 단어나 문장을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetImage",
+          "props": {
+            "assetId": "eps-media:q01-prompt",
+            "fileName": "Gambar soal 1",
+            "contentType": "image/webp",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Gambar menunjukkan lemari es, dalam bahasa Korea '냉장고'. '세탁기' adalah mesin cuci, '전자레인지' microwave, dan '선풍기' kipas angin.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "세탁기입니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "전자레인지입니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "냉장고입니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "선풍기입니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": null
+    },
+    {
+      "number": 2,
+      "section": "reading",
+      "position": 1,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R1",
+        "level:mudah",
+        "topik:alat-kerja"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 그림을 보고 맞는 단어나 문장을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetImage",
+          "props": {
+            "assetId": "eps-media:q02-prompt",
+            "fileName": "Gambar soal 2",
+            "contentType": "image/webp",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Kendaraan pengangkat palet di gudang ini adalah forklift, '지게차'. '굴착기' adalah ekskavator, '트럭' truk, dan '손수레' gerobak dorong.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "지게차입니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "굴착기입니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "트럭입니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "손수레입니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": null
+    },
+    {
+      "number": 3,
+      "section": "reading",
+      "position": 2,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R1",
+        "level:mudah",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 그림을 보고 맞는 단어나 문장을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetImage",
+          "props": {
+            "assetId": "eps-media:q03-prompt",
+            "fileName": "Gambar soal 3",
+            "contentType": "image/webp",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pria di gambar sedang menyapu lantai dengan sapu. '쓸다' berarti menyapu, dan '-고 있습니다' menyatakan kegiatan yang sedang berlangsung.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "창문을 닦고 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "상자를 나르고 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "의자를 고치고 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "바닥을 쓸고 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": null
+    },
+    {
+      "number": 4,
+      "section": "reading",
+      "position": 3,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R2",
+        "level:mudah",
+        "topik:k3"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 그림이 나타내는 의미로 알맞은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetImage",
+          "props": {
+            "assetId": "eps-media:q04-prompt",
+            "fileName": "Gambar soal 4",
+            "contentType": "image/png",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Segitiga kuning adalah rambu peringatan, dan gambar petir berarti bahaya listrik. '감전되다' berarti tersengat listrik.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "미끄러질 수 있으니까 조심하십시오.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "감전될 수 있으니까 조심하십시오.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "물건이 떨어질 수 있으니까 조심하십시오.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "불이 날 수 있으니까 조심하십시오.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": null
+    },
+    {
+      "number": 5,
+      "section": "reading",
+      "position": 4,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R4",
+        "level:mudah",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "밑줄 친 부분이 맞는 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'시장에서' benar karena tempat terjadinya kegiatan memakai '에서'. Yang lain seharusnya '버스를 타요', '도서관에서 공부해요', dan '음식을 좋아해요'.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "저는 매일 아침 ",
+                  "styles": {}
+                },
+                {
+                  "type": "text",
+                  "text": "버스가",
+                  "styles": {
+                    "underline": true
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": " 타요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "어제 ",
+                  "styles": {}
+                },
+                {
+                  "type": "text",
+                  "text": "시장에서",
+                  "styles": {
+                    "underline": true
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": " 과일을 샀어요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "동생은 ",
+                  "styles": {}
+                },
+                {
+                  "type": "text",
+                  "text": "도서관을",
+                  "styles": {
+                    "underline": true
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": " 공부해요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "저는 한국 ",
+                  "styles": {}
+                },
+                {
+                  "type": "text",
+                  "text": "음식이",
+                  "styles": {
+                    "underline": true
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": " 좋아해요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": null
+    },
+    {
+      "number": 6,
+      "section": "reading",
+      "position": 5,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R4",
+        "level:sedang",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "밑줄 친 부분이 맞는 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'덥다' adalah kata sifat tak beraturan 'ㅂ', jadi 'ㅂ' berubah menjadi '우': '덥 + 어서 → 더워서'. Bentuk yang benar untuk kalimat lain adalah '들어요', '무거워요', dan '몰랐어요'.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "저는 쉬는 시간에 음악을 ",
+                  "styles": {}
+                },
+                {
+                  "type": "text",
+                  "text": "듣어요",
+                  "styles": {
+                    "underline": true
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": ".",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "이 상자는 너무 ",
+                  "styles": {}
+                },
+                {
+                  "type": "text",
+                  "text": "무겁어요",
+                  "styles": {
+                    "underline": true
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": ".",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "처음에는 한국어를 잘 ",
+                  "styles": {}
+                },
+                {
+                  "type": "text",
+                  "text": "모랐어요",
+                  "styles": {
+                    "underline": true
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": ".",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "작업장이 ",
+                  "styles": {}
+                },
+                {
+                  "type": "text",
+                  "text": "더워서",
+                  "styles": {
+                    "underline": true
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": " 창문을 열었어요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": null
+    },
+    {
+      "number": 7,
+      "section": "reading",
+      "position": 6,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R5",
+        "level:mudah",
+        "topik:lembaga"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음을 보고 물음에 답하십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "일요일에 상담할 수 있는 시간은 언제입니까?",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetImage",
+          "props": {
+            "assetId": "eps-media:q07-prompt",
+            "fileName": "Gambar soal 7",
+            "contentType": "image/png",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pada papan tertulis hari Minggu (일요일) pukul 13.00–17.00, yaitu '오후 1시부터 오후 5시까지'. Pukul 10.00–18.00 adalah jam hari kerja (평일).",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "오후 1시부터 오후 5시까지",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "오전 10시부터 오후 6시까지",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "오전 10시부터 오후 5시까지",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "오후 1시부터 오후 6시까지",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": null
+    },
+    {
+      "number": 8,
+      "section": "reading",
+      "position": 7,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R6",
+        "level:mudah",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 단어와 관계있는 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "병원",
+              "styles": {
+                "bold": true
+              }
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'병원' (rumah sakit) berhubungan dengan '의사' (dokter). '요리사' adalah juru masak, '운전기사' sopir, dan '미용사' penata rambut.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "요리사",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "운전기사",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "의사",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "미용사",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": null
+    },
+    {
+      "number": 9,
+      "section": "reading",
+      "position": 8,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R6",
+        "level:sedang",
+        "topik:tindakan-kerja"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 단어와 관계있는 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "퇴근",
+              "styles": {
+                "bold": true
+              }
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'퇴근' berarti pulang kerja setelah jam kerja selesai. Berangkat kerja adalah '출근', berhenti dari perusahaan '퇴사', dan istirahat sejenak '휴식'.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "일을 하러 아침에 회사에 가는 것",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "회사를 그만두고 다른 일을 찾는 것",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "일하는 중간에 잠깐 쉬는 것",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "일을 마치고 회사에서 나오는 것",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": null
+    },
+    {
+      "number": 10,
+      "section": "reading",
+      "position": 9,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R7",
+        "level:sedang",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 그래프의 내용과 같은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetImage",
+          "props": {
+            "assetId": "eps-media:q10-prompt",
+            "fileName": "Gambar soal 10",
+            "contentType": "image/png",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pada grafik, bertemu teman (25%) lebih banyak daripada olahraga (12%). Belajar bahasa Korea (20%) lebih sedikit daripada istirahat di rumah (35%), dan belanja (8%) lebih sedikit daripada olahraga.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "한국어를 공부하는 사람이 집에서 쉬는 사람보다 많습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "친구를 만나는 사람이 운동하는 사람보다 많습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "쇼핑하는 사람이 운동하는 사람보다 많습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "집에서 쉬는 사람이 친구를 만나는 사람보다 적습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": null
+    },
+    {
+      "number": 11,
+      "section": "reading",
+      "position": 10,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R8",
+        "level:mudah",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "빈칸에 들어갈 가장 알맞은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "신청서의 (          ) 칸에는 태어난 날을 씁니다.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Tanggal lahir di formulir ditulis pada kolom '생년월일'. '국적' adalah kewarganegaraan, '주소' alamat, dan '성별' jenis kelamin.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "생년월일",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "국적",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "주소",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "성별",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": null
+    },
+    {
+      "number": 12,
+      "section": "reading",
+      "position": 11,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R8",
+        "level:sedang",
+        "topik:alat-kerja"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "빈칸에 들어갈 가장 알맞은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "공장 기계가 갑자기 고장 났습니다. (          ) 오늘은 일을 일찍 끝냈습니다.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Kalimat kedua adalah akibat dari kalimat pertama (mesin rusak, jadi pekerjaan selesai lebih awal), maka penghubungnya '그래서' (karena itu).",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "그렇지만",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "그러면",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "그래서",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "그래도",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": null
+    },
+    {
+      "number": 13,
+      "section": "reading",
+      "position": 12,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R8",
+        "level:sedang",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "빈칸에 들어갈 가장 알맞은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 달부터 한국 공장에서 (          ) 지금 한국어를 공부하고 있습니다.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'-(으)려고' menyatakan tujuan: ia belajar bahasa Korea sekarang supaya bisa bekerja di pabrik Korea mulai bulan depan.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "일하면서",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "일하려고",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "일하지만",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "일하거나",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": null
+    },
+    {
+      "number": 14,
+      "section": "reading",
+      "position": 13,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R8",
+        "level:sedang",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "빈칸에 들어갈 가장 알맞은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "기숙사 문은 밤 11시에 닫힙니다. 그러니까 11시 전에는 기숙사에 (          ).",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pintu asrama ditutup pukul 23.00, jadi penghuni wajib kembali sebelum jam itu. Kewajiban dinyatakan dengan '-아야/어야 합니다'.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "돌아오면 안 됩니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "돌아올 필요가 없습니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "돌아오지 못합니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "돌아와야 합니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": null
+    },
+    {
+      "number": 15,
+      "section": "reading",
+      "position": 14,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R8",
+        "level:sulit",
+        "topik:k3"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "빈칸에 들어갈 가장 알맞은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "크레인으로 무거운 물건을 옮길 때는 줄이 끊어지는 일도 생깁니다. 그래서 크레인 아래에 서 있으면 (          ).",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Tali crane bisa putus, jadi berdiri di bawahnya berbahaya. Kemungkinan seperti ini dinyatakan dengan '-(으)ㄹ 수도 있다': bisa saja terluka parah.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "크게 다쳐도 됩니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "크게 다치지 않을 것입니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "크게 다칠 수도 있습니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "크게 다칠 뻔했습니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": null
+    },
+    {
+      "number": 16,
+      "section": "reading",
+      "position": 15,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R8",
+        "level:sulit",
+        "topik:k3"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "빈칸에 들어갈 가장 알맞은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "화학 물질이 눈에 들어갔을 때 손으로 눈을 비비면 더 위험해집니다. 그러니까 이때는 눈을 (          ). 바로 깨끗한 물로 씻어 내십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mengucek mata yang terkena bahan kimia justru makin berbahaya, jadi yang tepat adalah larangan '-(으)면 안 됩니다'. Pilihan lain menyatakan kewajiban, izin, atau keterpaksaan.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "비비면 안 됩니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "비벼야 합니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "비벼도 됩니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "비빌 수밖에 없습니다",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": null
+    },
+    {
+      "number": 17,
+      "section": "reading",
+      "position": 16,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R9",
+        "level:sedang",
+        "topik:alat-kerja"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 설명에 알맞은 어휘를 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "나무나 쇠를 자를 때 사용합니다. 날을 앞뒤로 움직이면서 씁니다.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Alat untuk memotong kayu atau besi dengan mata yang digerakkan maju-mundur adalah gergaji, '톱'. '망치' adalah palu, '드라이버' obeng, dan '가위' gunting (untuk kertas atau kain).",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "망치",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "드라이버",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "가위",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "톱",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": null
+    },
+    {
+      "number": 18,
+      "section": "reading",
+      "position": 17,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R10",
+        "level:sedang",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음은 무엇에 대한 글입니까?",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "한국에서는 쓰레기를 일반 쓰레기, 음식물 쓰레기, 재활용 쓰레기로 나누어서 버려야 합니다. 일반 쓰레기는 동네 가게에서 파는 종량제 봉투에 넣어서 버립니다. 정해진 요일과 장소에 버리지 않으면 벌금을 낼 수도 있습니다.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Seluruh teks menjelaskan cara membuang sampah di Korea: memilah jenisnya, memakai kantong khusus, serta membuang pada hari dan tempat yang ditentukan.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "봉투를 파는 장소",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "쓰레기를 버리는 방법",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "벌금을 내는 방법",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "동네를 청소하는 시간",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": null
+    },
+    {
+      "number": 19,
+      "section": "reading",
+      "position": 18,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R11",
+        "level:sulit",
+        "topik:lembaga"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 글의 내용과 같은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetImage",
+          "props": {
+            "assetId": "eps-media:q19-prompt",
+            "fileName": "Gambar soal 19",
+            "contentType": "image/png",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pengumuman meminta karyawan membawa tanda pengenal (외국인등록증). Air putih tetap boleh diminum, pemeriksaan hanya pukul 08.00–11.00, dan biayanya ditanggung perusahaan.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "검진 전날 밤 9시부터는 물도 마시면 안 됩니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "검진은 이틀 동안 오후에도 받을 수 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "검진 때 외국인등록증을 가져가야 합니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "직원들은 검진 비용을 각자 내야 합니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": null
+    },
+    {
+      "number": 20,
+      "section": "reading",
+      "position": 19,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:R11",
+        "level:sulit",
+        "topik:lembaga"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "다음 글의 내용과 같은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "출국만기보험은 외국인 근로자가 일을 마치고 한국을 떠날 때 받을 돈을 준비하는 보험입니다. 보험료는 모두 회사가 매달 냅니다. 같은 회사에서 1년 이상 일한 근로자가 받을 수 있고, 보험금은 출국한 후에 받습니다.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Teks menyebut premi asuransi seluruhnya dibayar perusahaan, jadi pekerja tidak membayar. Uangnya bisa diterima setelah bekerja minimal 1 tahun dan dibayarkan setelah pekerja meninggalkan Korea.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "근로자는 보험료를 내지 않습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "보험료는 근로자와 회사가 함께 냅니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "일한 지 6개월이 지나면 받을 수 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "한국을 떠나기 전에 보험금을 받습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": null
+    },
+    {
+      "number": 21,
+      "section": "listening",
+      "position": 20,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L1",
+        "level:mudah",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "들은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q21-audio",
+            "fileName": "Audio soal 21",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Yang dibacakan adalah '서점' (toko buku), dengan vokal 'ㅓ' pada suku kata pertama.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "소점",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "서점",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "수점",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "시점",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "서점"
+        }
+      ]
+    },
+    {
+      "number": 22,
+      "section": "listening",
+      "position": 21,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L1",
+        "level:mudah",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "들은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q22-audio",
+            "fileName": "Audio soal 22",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Yang dibacakan adalah '공항' (bandara): konsonan awal 'ㄱ' tanpa aspirasi dan akhiran 'ㅇ' pada kedua suku kata.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "공학",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "고향",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "콩항",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "공항",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "공항"
+        }
+      ]
+    },
+    {
+      "number": 23,
+      "section": "listening",
+      "position": 22,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L2",
+        "level:mudah",
+        "topik:benda"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "들은 내용과 관계있는 그림을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q23-audio",
+            "fileName": "Audio soal 23",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'냄비' adalah panci, jadi gambar yang tepat adalah panci bertutup dengan dua pegangan.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q23-option-0",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q23-option-1",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q23-option-2",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q23-option-3",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "냄비입니다."
+        }
+      ]
+    },
+    {
+      "number": 24,
+      "section": "listening",
+      "position": 23,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L2",
+        "level:mudah",
+        "topik:alat-kerja"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "들은 내용과 관계있는 그림을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q24-audio",
+            "fileName": "Audio soal 24",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'사다리' adalah tangga yang dipakai untuk naik ke tempat tinggi.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q24-option-1",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q24-option-2",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q24-option-0",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q24-option-3",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "사다리입니다."
+        }
+      ]
+    },
+    {
+      "number": 25,
+      "section": "listening",
+      "position": 24,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L2",
+        "level:mudah",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "들은 내용과 관계있는 그림을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q25-audio",
+            "fileName": "Audio soal 25",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'자전거를 타다' berarti mengendarai sepeda, jadi gambarnya pria yang sedang bersepeda.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q25-option-1",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q25-option-2",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q25-option-0",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q25-option-3",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "남자가 자전거를 타고 있습니다."
+        }
+      ]
+    },
+    {
+      "number": 26,
+      "section": "listening",
+      "position": 25,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L2",
+        "level:mudah",
+        "topik:tindakan-kerja"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "들은 내용과 관계있는 그림을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q26-audio",
+            "fileName": "Audio soal 26",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'테이프를 붙이다' berarti merekatkan lakban, jadi gambarnya wanita yang sedang melakban kardus.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q26-option-0",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q26-option-1",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q26-option-2",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q26-option-3",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "여자가 상자에 테이프를 붙이고 있습니다."
+        }
+      ]
+    },
+    {
+      "number": 27,
+      "section": "listening",
+      "position": 26,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L3",
+        "level:sedang",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "대화를 듣고 알맞은 그림을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q27-audio",
+            "fileName": "Audio soal 27",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pria minta difoto, lalu wanita memotretnya. Jadi gambarnya wanita yang sedang memotret pria.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q27-option-1",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q27-option-2",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q27-option-3",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q27-option-0",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": [
+        {
+          "speaker": "M",
+          "text": "저기요, 죄송한데 사진 좀 찍어 주시겠어요?"
+        },
+        {
+          "speaker": "F",
+          "text": "네, 그럴게요. 자, 웃으세요. 하나, 둘, 셋!"
+        }
+      ]
+    },
+    {
+      "number": 28,
+      "section": "listening",
+      "position": 27,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L3",
+        "level:sedang",
+        "topik:k3"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "대화를 듣고 알맞은 그림을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q28-audio",
+            "fileName": "Audio soal 28",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Wanita meminta pria mencoba helm (안전모), dan pria menjawab helmnya agak besar. Jadi gambarnya pria yang sedang mencoba helm.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q28-option-1",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q28-option-0",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q28-option-2",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q28-option-3",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/webp",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "투안 씨, 이 안전모 한번 써 보세요. 크기가 맞아요?"
+        },
+        {
+          "speaker": "M",
+          "text": "조금 커요. 더 작은 건 없어요?"
+        }
+      ]
+    },
+    {
+      "number": 29,
+      "section": "listening",
+      "position": 28,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L4",
+        "level:sedang",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "질문에 알맞은 대답을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q29-audio",
+            "fileName": "Audio soal 29",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pertanyaannya menanyakan menu makan siang ('메뉴가 뭐예요?'), jadi jawabannya nama makanan: bulgogi. Jawaban lain menyebut waktu, tempat, dan teman makan.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "오늘은 불고기예요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q29-option-0-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "열두 시 반에 먹어요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q29-option-1-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "2층 식당에서 먹어요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q29-option-2-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "동료하고 같이 가요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q29-option-3-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": [
+        {
+          "speaker": "M",
+          "text": "오늘 점심 메뉴가 뭐예요?"
+        }
+      ]
+    },
+    {
+      "number": 30,
+      "section": "listening",
+      "position": 29,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L4",
+        "level:sedang",
+        "topik:lembaga"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "질문에 알맞은 대답을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q30-audio",
+            "fileName": "Audio soal 30",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pertanyaannya memakai '어디에서' (di mana), jadi jawabannya tempat: kantor imigrasi (출입국 사무소).",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "입국하고 90일 안에 신청해요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q30-option-1-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "여권하고 사진이 필요해요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q30-option-2-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "회사 직원이 도와줄 거예요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q30-option-3-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "출입국 사무소에서 신청해요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q30-option-0-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "외국인등록증은 어디에서 신청해요?"
+        }
+      ]
+    },
+    {
+      "number": 31,
+      "section": "listening",
+      "position": 30,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L4",
+        "level:sedang",
+        "topik:kehidupan"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "질문에 알맞은 대답을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q31-audio",
+            "fileName": "Audio soal 31",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pertanyaannya memakai '언제' (kapan), jadi jawabannya waktu: Jumat minggu depan.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "은행 통장으로 받아요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q31-option-1-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "다음 주 금요일에 받아요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q31-option-0-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "이백만 원쯤 받아요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q31-option-2-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "사무실에서 받아요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q31-option-3-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": [
+        {
+          "speaker": "M",
+          "text": "이번 달 월급은 언제 받아요?"
+        }
+      ]
+    },
+    {
+      "number": 32,
+      "section": "listening",
+      "position": 31,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L4",
+        "level:sedang",
+        "topik:tindakan-kerja"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "질문에 알맞은 대답을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q32-audio",
+            "fileName": "Audio soal 32",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pertanyaan ya/tidak harus dijawab dengan isi yang sesuai: '네' lalu menyatakan besok juga kerja malam. Dua jawaban lain isinya bertentangan dengan '네' atau '아니요' di depannya, dan satu lagi tidak menjawab pertanyaan.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "네, 내일은 쉬는 날이에요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q32-option-1-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "아니요, 내일도 야간이에요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q32-option-2-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "네, 내일도 밤에 일해요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q32-option-0-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "야간 근무는 수당이 많아요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q32-option-3-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "내일도 야간 근무를 해요?"
+        }
+      ]
+    },
+    {
+      "number": 33,
+      "section": "listening",
+      "position": 32,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L5",
+        "level:sedang",
+        "topik:k3"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "이어지는 말로 알맞은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q33-audio",
+            "fileName": "Audio soal 33",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pria memperingatkan bahwa kotaknya terlalu berat untuk diangkat sendiri, jadi tanggapan yang wajar adalah mengangkatnya bersama orang lain.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "그럼 다른 사람하고 같이 들게요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q33-option-0-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "네, 상자가 아주 가볍네요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q33-option-1-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "어제 허리가 아파서 병원에 갔어요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q33-option-2-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "상자 안에 서류를 넣었어요.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q33-option-3-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": [
+        {
+          "speaker": "M",
+          "text": "이 상자는 너무 무거워서 혼자 들면 허리를 다칠 수 있어요."
+        }
+      ]
+    },
+    {
+      "number": 34,
+      "section": "listening",
+      "position": 33,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L6",
+        "level:sedang",
+        "topik:angka"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "대화를 듣고 알맞은 그림을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q34-audio",
+            "fileName": "Audio soal 34",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'시월 이십육 일' adalah 26 Oktober. Perhatikan bahwa bulan 10 dibaca '시월', bukan '십월'.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q34-option-1",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q34-option-2",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q34-option-0",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q34-option-3",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": [
+        {
+          "speaker": "M",
+          "text": "한국어 시험이 언제예요?"
+        },
+        {
+          "speaker": "F",
+          "text": "시월 이십육 일이에요. 아직 한 달쯤 남았어요."
+        }
+      ]
+    },
+    {
+      "number": 35,
+      "section": "listening",
+      "position": 34,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L6",
+        "level:sedang",
+        "topik:angka"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "대화를 듣고 알맞은 그림을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q35-audio",
+            "fileName": "Audio soal 35",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "'만 오천 원' adalah 15.000 won: '만' = 10.000 dan '오천' = 5.000.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q35-option-1",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q35-option-2",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q35-option-3",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q35-option-0",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "이 모자 얼마예요?"
+        },
+        {
+          "speaker": "M",
+          "text": "만 오천 원이에요."
+        }
+      ]
+    },
+    {
+      "number": 36,
+      "section": "listening",
+      "position": 35,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L6",
+        "level:sedang",
+        "topik:k3"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "대화를 듣고 알맞은 그림을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "남자가 낼 돈은 모두 얼마입니까?",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q36-audio",
+            "fileName": "Audio soal 36",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pria membeli dua kacamata pelindung dengan harga paket '만 삼천 원', yaitu 13.000 won, bukan 2 × 7.000 won.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q36-option-1",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q36-option-0",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q36-option-2",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "assetImage",
+              "props": {
+                "assetId": "eps-media:q36-option-3",
+                "fileName": "Gambar pilihan",
+                "contentType": "image/png",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": [
+        {
+          "speaker": "M",
+          "text": "보안경 하나에 얼마예요?"
+        },
+        {
+          "speaker": "F",
+          "text": "하나에 칠천 원이에요. 두 개 사시면 만 삼천 원에 드릴게요."
+        },
+        {
+          "speaker": "M",
+          "text": "그럼 두 개 주세요."
+        }
+      ]
+    },
+    {
+      "number": 37,
+      "section": "listening",
+      "position": 36,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L7",
+        "level:sedang",
+        "topik:benda"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "그림을 보고 질문에 알맞은 대답을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetImage",
+          "props": {
+            "assetId": "eps-media:q37-prompt",
+            "fileName": "Gambar soal 37",
+            "contentType": "image/webp",
+            "caption": ""
+          },
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q37-audio",
+            "fileName": "Audio soal 37",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Kotak P3K (구급상자) ada di atas rak buku. Di samping pintu ada alat pemadam api, di bawah meja ada kardus, dan di depan jendela ada tanaman.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "책장 위에 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q37-option-0-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "문 옆에 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q37-option-1-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "책상 아래에 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q37-option-2-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "창문 앞에 있습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "assetAudio",
+              "props": {
+                "assetId": "eps-media:q37-option-3-audio",
+                "fileName": "Audio pilihan",
+                "contentType": "audio/mpeg",
+                "caption": ""
+              },
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 0,
+        "label": "①"
+      },
+      "script": [
+        {
+          "speaker": "F",
+          "text": "구급상자는 어디에 있습니까?"
+        }
+      ]
+    },
+    {
+      "number": 38,
+      "section": "listening",
+      "position": 37,
+      "group": null,
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L8",
+        "level:sulit",
+        "topik:lembaga"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "대화를 듣고 물음에 답하십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "남자는 왜 전화했습니까?",
+              "styles": {}
+            }
+          ],
+          "children": []
+        },
+        {
+          "type": "assetAudio",
+          "props": {
+            "assetId": "eps-media:q38-audio",
+            "fileName": "Audio soal 38",
+            "contentType": "audio/mpeg",
+            "caption": ""
+          },
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Perusahaan pria akan tutup bulan depan sehingga ia harus pindah, dan ia menelepon Pusat Ketenagakerjaan (고용센터) untuk menanyakan dokumen yang perlu disiapkan.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "신청서를 보내 달라고 하려고",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "회사가 문을 닫는 이유를 물어보려고",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "외국인등록증을 찾으려고",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "필요한 서류를 물어보려고",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 3,
+        "label": "④"
+      },
+      "script": [
+        {
+          "speaker": "M",
+          "text": "여보세요, 고용센터지요?"
+        },
+        {
+          "speaker": "F",
+          "text": "네, 무엇을 도와드릴까요?"
+        },
+        {
+          "speaker": "M",
+          "text": "지금 다니는 회사가 다음 달에 문을 닫아서 다른 회사로 옮겨야 하는데요, 어떤 서류를 준비해야 하는지 궁금해서요."
+        },
+        {
+          "speaker": "F",
+          "text": "사업장 변경 신청서를 쓰시고, 외국인등록증하고 여권을 가지고 오시면 됩니다."
+        },
+        {
+          "speaker": "M",
+          "text": "네, 알겠습니다. 감사합니다."
+        }
+      ]
+    },
+    {
+      "number": 39,
+      "section": "listening",
+      "position": 38,
+      "group": "g39",
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L8",
+        "level:sulit",
+        "topik:k3"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "남자는 손목이 왜 아프다고 생각합니까?",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pria mengira pergelangan tangannya sakit karena terus memindahkan komponen yang berat. Ia tidak menyebut kecelakaan mesin, dan rumah sakit serta mandor disebut untuk hal lain.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "기계에 손을 다쳐서",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "무거운 물건을 많이 들어서",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "병원에 늦게 가서",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "반장님께 말하지 않아서",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 1,
+        "label": "②"
+      },
+      "script": null
+    },
+    {
+      "number": 40,
+      "section": "listening",
+      "position": 39,
+      "group": "g39",
+      "type": "SINGLE_CHOICE",
+      "points": 2.5,
+      "tags": [
+        "eps:L9",
+        "level:sulit",
+        "topik:lembaga"
+      ],
+      "prompt": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "들은 내용과 같은 것을 고르십시오.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "explanation": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Pria berjanji melapor ke mandor besok pagi, jadi ia belum melapor. Yang belum tahu soal asuransi kecelakaan kerja adalah pria, dan hari ini ia pulang lebih awal.",
+              "styles": {}
+            }
+          ],
+          "children": []
+        }
+      ],
+      "options": [
+        {
+          "position": 0,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "남자는 이미 반장님께 말씀드렸습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 1,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "여자는 산재 보험에 대해 몰랐습니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 2,
+          "isCorrect": true,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "남자는 내일 반장님께 이야기할 것입니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "position": 3,
+          "isCorrect": false,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "남자는 오늘 평소보다 늦게 퇴근합니다.",
+                  "styles": {}
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ],
+      "answer": {
+        "position": 2,
+        "label": "③"
+      },
+      "script": null
+    }
+  ],
+  "answerKey": [
+    {
+      "number": 1,
+      "answer": "③"
+    },
+    {
+      "number": 2,
+      "answer": "①"
+    },
+    {
+      "number": 3,
+      "answer": "④"
+    },
+    {
+      "number": 4,
+      "answer": "②"
+    },
+    {
+      "number": 5,
+      "answer": "②"
+    },
+    {
+      "number": 6,
+      "answer": "④"
+    },
+    {
+      "number": 7,
+      "answer": "①"
+    },
+    {
+      "number": 8,
+      "answer": "③"
+    },
+    {
+      "number": 9,
+      "answer": "④"
+    },
+    {
+      "number": 10,
+      "answer": "②"
+    },
+    {
+      "number": 11,
+      "answer": "①"
+    },
+    {
+      "number": 12,
+      "answer": "③"
+    },
+    {
+      "number": 13,
+      "answer": "②"
+    },
+    {
+      "number": 14,
+      "answer": "④"
+    },
+    {
+      "number": 15,
+      "answer": "③"
+    },
+    {
+      "number": 16,
+      "answer": "①"
+    },
+    {
+      "number": 17,
+      "answer": "④"
+    },
+    {
+      "number": 18,
+      "answer": "②"
+    },
+    {
+      "number": 19,
+      "answer": "③"
+    },
+    {
+      "number": 20,
+      "answer": "①"
+    },
+    {
+      "number": 21,
+      "answer": "②"
+    },
+    {
+      "number": 22,
+      "answer": "④"
+    },
+    {
+      "number": 23,
+      "answer": "①"
+    },
+    {
+      "number": 24,
+      "answer": "③"
+    },
+    {
+      "number": 25,
+      "answer": "③"
+    },
+    {
+      "number": 26,
+      "answer": "①"
+    },
+    {
+      "number": 27,
+      "answer": "④"
+    },
+    {
+      "number": 28,
+      "answer": "②"
+    },
+    {
+      "number": 29,
+      "answer": "①"
+    },
+    {
+      "number": 30,
+      "answer": "④"
+    },
+    {
+      "number": 31,
+      "answer": "②"
+    },
+    {
+      "number": 32,
+      "answer": "③"
+    },
+    {
+      "number": 33,
+      "answer": "①"
+    },
+    {
+      "number": 34,
+      "answer": "③"
+    },
+    {
+      "number": 35,
+      "answer": "④"
+    },
+    {
+      "number": 36,
+      "answer": "②"
+    },
+    {
+      "number": 37,
+      "answer": "①"
+    },
+    {
+      "number": 38,
+      "answer": "④"
+    },
+    {
+      "number": 39,
+      "answer": "②"
+    },
+    {
+      "number": 40,
+      "answer": "③"
+    }
+  ],
+  "media": [
+    {
+      "key": "g39-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/g39-audio-519d1b99615d.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/g39-audio-519d1b99615d.mp3",
+      "fileName": "g39-audio-519d1b99615d.mp3",
+      "contentType": "audio/mpeg",
+      "size": 431468,
+      "sha256": "519d1b99615d4c9f4436de37cba372b6cd9024e1284155c3b557d58c3bd4485c",
+      "source": "openai-tts gpt-4o-mini-tts (coral, ash)",
+      "script": "F: 부디 씨, 오늘은 왜 이렇게 일찍 퇴근해요?\nM: 병원에 가려고요. 며칠 전부터 손목이 계속 아파서요.\nF: 혹시 일하다가 다쳤어요?\nM: 네, 무거운 부품을 계속 옮겨서 그런 것 같아요.\nF: 그럼 반장님께 꼭 말씀드리세요. 일하다가 다치면 산재 보험으로 치료받을 수 있어요.\nM: 아, 그래요? 몰랐어요. 내일 아침에 말씀드릴게요.",
+      "durationSeconds": 35.9
+    },
+    {
+      "key": "q01-prompt",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q01-prompt-b49c2e7e3bc8.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q01-prompt-b49c2e7e3bc8.webp",
+      "fileName": "q01-prompt-b49c2e7e3bc8.webp",
+      "contentType": "image/webp",
+      "size": 256086,
+      "sha256": "2e3dfa8d4ba660401c5eda3df743533261496100ca7c5de2a2d2dd4b2f0c4566",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A tall two-door refrigerator standing alone against a plain kitchen wall, doors closed, simple handles. Nothing else in the picture."
+    },
+    {
+      "key": "q02-prompt",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q02-prompt-3d23a1ea90b4.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q02-prompt-3d23a1ea90b4.webp",
+      "fileName": "q02-prompt-3d23a1ea90b4.webp",
+      "contentType": "image/webp",
+      "size": 447456,
+      "sha256": "3d23a1ea90b412e3040647db2a33f644d10bf8ddf2abd656e52ecc53e8b0f460",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A forklift in a warehouse lifting a wooden pallet stacked with cardboard boxes on its two forks, seen from the side, with the driver seated. Nothing else in the picture."
+    },
+    {
+      "key": "q03-prompt",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q03-prompt-9a09df470672.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q03-prompt-9a09df470672.webp",
+      "fileName": "q03-prompt-9a09df470672.webp",
+      "contentType": "image/webp",
+      "size": 466724,
+      "sha256": "9a09df470672a0639cc8cbcbf86bbb7baae0e5235f4dcc846bec6ad1667175e6",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket, sweeping the floor with a long broom held in both hands, in an empty room with bare walls and a plain floor."
+    },
+    {
+      "key": "q04-prompt",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q04-prompt-d11ab7867004.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q04-prompt-d11ab7867004.png",
+      "fileName": "q04-prompt-d11ab7867004.png",
+      "contentType": "image/png",
+      "size": 34935,
+      "sha256": "d11ab7867004ed5cb615547e200c5ebf97dc7b9a59ce60349c98fc85f5e70002",
+      "source": "template (Chromium)",
+      "description": "노란 삼각형 경고 표지판 안에 검은 번개 그림 (글자 없음)"
+    },
+    {
+      "key": "q07-prompt",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q07-prompt-051117914f73.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q07-prompt-051117914f73.png",
+      "fileName": "q07-prompt-051117914f73.png",
+      "contentType": "image/png",
+      "size": 80592,
+      "sha256": "051117914f73d15ffdd2218c00a88c13a3df347056078253ec0898592e1fa1fa",
+      "source": "template (Chromium)",
+      "description": "다솜 외국인근로자 상담소 / 상담 시간: 평일(월~금) 오전 10:00 ~ 오후 6:00, 일요일 오후 1:00 ~ 오후 5:00 / ※ 토요일, 공휴일은 쉽니다. / 상담 언어: 인도네시아어, 베트남어, 네팔어 / 전화: 031-555-0147"
+    },
+    {
+      "key": "q10-prompt",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q10-prompt-233050c21f20.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q10-prompt-233050c21f20.png",
+      "fileName": "q10-prompt-233050c21f20.png",
+      "contentType": "image/png",
+      "size": 55184,
+      "sha256": "233050c21f20f8d61d786b25aa39cd421f69e603cf80db0834efe9336b6b12cd",
+      "source": "template (Chromium)",
+      "description": "외국인 근로자가 주말에 가장 많이 하는 일 (단위: %, 응답자 200명): 집에서 쉬기 35, 친구 만나기 25, 한국어 공부 20, 운동 12, 쇼핑 8"
+    },
+    {
+      "key": "q19-prompt",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q19-prompt-771bcce9b55f.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q19-prompt-771bcce9b55f.png",
+      "fileName": "q19-prompt-771bcce9b55f.png",
+      "contentType": "image/png",
+      "size": 100606,
+      "sha256": "771bcce9b55fcbdd91f1d2584d23273ec3f4cc0ce7143381ac54ccd648969424",
+      "source": "template (Chromium)",
+      "description": "[공지] 건강 검진 안내 / 날짜: 11월 19일(목) ~ 11월 20일(금) / 시간: 오전 8시 ~ 오전 11시 / 장소: 본관 1층 회의실 / 검진 전날 밤 9시부터 아무것도 드시지 마십시오. (물은 마셔도 됩니다.) / 신분증(외국인등록증)을 꼭 가지고 오십시오. / 검진 비용은 회사에서 냅니다. / 총무팀"
+    },
+    {
+      "key": "q21-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q21-audio-9230d77f5d8d.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q21-audio-9230d77f5d8d.mp3",
+      "fileName": "q21-audio-9230d77f5d8d.mp3",
+      "contentType": "audio/mpeg",
+      "size": 22220,
+      "sha256": "b5e0256e2bf6652303b5d9ef664deef461c07a451c383b67dc69b2c11cc3c9f9",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 서점",
+      "durationSeconds": 1.8
+    },
+    {
+      "key": "q22-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q22-audio-89a1c2cef0e5.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q22-audio-89a1c2cef0e5.mp3",
+      "fileName": "q22-audio-89a1c2cef0e5.mp3",
+      "contentType": "audio/mpeg",
+      "size": 27116,
+      "sha256": "89a1c2cef0e5add4dfa61d0055454605c73e007bad85b4ddb22d3d7e1b477010",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 공항",
+      "durationSeconds": 2.2
+    },
+    {
+      "key": "q23-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q23-audio-fe6af8f4afe5.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q23-audio-fe6af8f4afe5.mp3",
+      "fileName": "q23-audio-fe6af8f4afe5.mp3",
+      "contentType": "audio/mpeg",
+      "size": 22220,
+      "sha256": "8db7d7012b1eed5cd68b5daa650d4098ae8dc15172d9b3d9848f43404b554bad",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 냄비입니다.",
+      "durationSeconds": 1.8
+    },
+    {
+      "key": "q23-option-0",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q23-option-0-1c9fd482b476.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q23-option-0-1c9fd482b476.webp",
+      "fileName": "q23-option-0-1c9fd482b476.webp",
+      "contentType": "image/webp",
+      "size": 293536,
+      "sha256": "162be08ba39e4f2ac3f30b68494bd3fd8f8672b5560022a52fd3e8a79082ea11",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A cooking pot with a lid and two small side handles, alone on a plain background."
+    },
+    {
+      "key": "q23-option-1",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q23-option-1-a5728a8f44e7.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q23-option-1-a5728a8f44e7.webp",
+      "fileName": "q23-option-1-a5728a8f44e7.webp",
+      "contentType": "image/webp",
+      "size": 278538,
+      "sha256": "a5728a8f44e76d39a4994158a53eb5160280b0d79fc3396a0bac2380f4f1d756",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A shallow, flat frying pan with one long handle, alone on a plain background."
+    },
+    {
+      "key": "q23-option-2",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q23-option-2-fc92af2b47a8.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q23-option-2-fc92af2b47a8.webp",
+      "fileName": "q23-option-2-fc92af2b47a8.webp",
+      "contentType": "image/webp",
+      "size": 300532,
+      "sha256": "04e611f804e3058a9be2b71eb7c1338b2a393a6ba566a16817c25c6632b169b1",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A kettle with a spout and a handle on top, alone on a plain background."
+    },
+    {
+      "key": "q23-option-3",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q23-option-3-987ff85cbc14.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q23-option-3-987ff85cbc14.webp",
+      "fileName": "q23-option-3-987ff85cbc14.webp",
+      "contentType": "image/webp",
+      "size": 288868,
+      "sha256": "36f7369109b5f9a8daacb2045e7cef3fa7ff6a06061be156e7f4ca0c1873fe80",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A flat round dinner plate, alone on a plain background."
+    },
+    {
+      "key": "q24-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q24-audio-9117f143edb1.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q24-audio-9117f143edb1.mp3",
+      "fileName": "q24-audio-9117f143edb1.mp3",
+      "contentType": "audio/mpeg",
+      "size": 31436,
+      "sha256": "b3d0a6c7881fa9d345ff4fdc39b635131ef0632e0af5ec00a1ab980848dcdcad",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 사다리입니다.",
+      "durationSeconds": 2.6
+    },
+    {
+      "key": "q24-option-0",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q24-option-0-196c1c0a0dbc.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q24-option-0-196c1c0a0dbc.webp",
+      "fileName": "q24-option-0-196c1c0a0dbc.webp",
+      "contentType": "image/webp",
+      "size": 427796,
+      "sha256": "a4640b86501aad48ab6ec7ee74e17c206af3fafb7e17ab558ebdd16e584c8e79",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "An A-frame step ladder standing open, alone on a plain background."
+    },
+    {
+      "key": "q24-option-1",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q24-option-1-9eb1ff0d8d68.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q24-option-1-9eb1ff0d8d68.webp",
+      "fileName": "q24-option-1-9eb1ff0d8d68.webp",
+      "contentType": "image/webp",
+      "size": 341098,
+      "sha256": "e87afb54fa304ab79ac706400270fc1096864807db3af87a3b5b504f76914d60",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A two-wheeled hand cart (hand truck) standing upright, alone on a plain background."
+    },
+    {
+      "key": "q24-option-2",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q24-option-2-0193bdc16713.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q24-option-2-0193bdc16713.webp",
+      "fileName": "q24-option-2-0193bdc16713.webp",
+      "contentType": "image/webp",
+      "size": 237366,
+      "sha256": "1ee0bca76a33ca42f453b55c09d9ce8ea23b6ff4f8170e0aa193ef234695a494",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A shovel with a long wooden handle, alone on a plain background."
+    },
+    {
+      "key": "q24-option-3",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q24-option-3-b54cfcb7c78c.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q24-option-3-b54cfcb7c78c.webp",
+      "fileName": "q24-option-3-b54cfcb7c78c.webp",
+      "contentType": "image/webp",
+      "size": 342858,
+      "sha256": "da3ae854facf50c141c52bab6ae82ed1c7e3e77ec2049668c3f571d6bd29a133",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A metal bucket with a handle, alone on a plain background."
+    },
+    {
+      "key": "q25-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q25-audio-eafec7e27e15.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q25-audio-eafec7e27e15.mp3",
+      "fileName": "q25-audio-eafec7e27e15.mp3",
+      "contentType": "audio/mpeg",
+      "size": 45836,
+      "sha256": "fd5280e836ff75ee42b92739707a5cdc3f506478defcd32f23e57cd2f34a54dc",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 남자가 자전거를 타고 있습니다.",
+      "durationSeconds": 3.8
+    },
+    {
+      "key": "q25-option-0",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q25-option-0-cc6d2208a21b.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q25-option-0-cc6d2208a21b.webp",
+      "fileName": "q25-option-0-cc6d2208a21b.webp",
+      "contentType": "image/webp",
+      "size": 666348,
+      "sha256": "cc6d2208a21be60416522fdf0f4fda9930dc07ba3ceb407fcf07ad96fa2047ed",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket, riding a bicycle along a street."
+    },
+    {
+      "key": "q25-option-1",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q25-option-1-9ed9a4b011fd.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q25-option-1-9ed9a4b011fd.webp",
+      "fileName": "q25-option-1-9ed9a4b011fd.webp",
+      "contentType": "image/webp",
+      "size": 675786,
+      "sha256": "9ed9a4b011fdcebf8fb660a0632fa8c74ddf3e78ba097c15714ba8a642800555",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket, crouching next to a bicycle and repairing its wheel with a wrench. He is not on the bicycle."
+    },
+    {
+      "key": "q25-option-2",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q25-option-2-dfbfa64e3709.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q25-option-2-dfbfa64e3709.webp",
+      "fileName": "q25-option-2-dfbfa64e3709.webp",
+      "contentType": "image/webp",
+      "size": 539080,
+      "sha256": "dfbfa64e37097e42ca6745e240ea4a635199849ad29551ab81027505ce35b9ad",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket, walking on foot and pushing a bicycle by its handlebars beside him."
+    },
+    {
+      "key": "q25-option-3",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q25-option-3-1f57bdf55c07.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q25-option-3-1f57bdf55c07.webp",
+      "fileName": "q25-option-3-1f57bdf55c07.webp",
+      "contentType": "image/webp",
+      "size": 708278,
+      "sha256": "1f57bdf55c070de61e57cf4a834ee5148e5263fa6d5aa4d98cdfe20957dfaa8a",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket, washing a parked bicycle with a sponge and a bucket of water."
+    },
+    {
+      "key": "q26-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q26-audio-9e3921223f98.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q26-audio-9e3921223f98.mp3",
+      "fileName": "q26-audio-9e3921223f98.mp3",
+      "contentType": "audio/mpeg",
+      "size": 55916,
+      "sha256": "461389a2190b19c05b96791aee81342b119fe4a10c384b75d11c231733c1094b",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 여자가 상자에 테이프를 붙이고 있습니다.",
+      "durationSeconds": 4.6
+    },
+    {
+      "key": "q26-option-0",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q26-option-0-717558dc8e2a.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q26-option-0-717558dc8e2a.webp",
+      "fileName": "q26-option-0-717558dc8e2a.webp",
+      "contentType": "image/webp",
+      "size": 428262,
+      "sha256": "717558dc8e2ab4be730ef01442c7db8618a99ec8fce49d58722a4d90704385e8",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt, sealing a closed cardboard box on a table with a tape dispenser."
+    },
+    {
+      "key": "q26-option-1",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q26-option-1-6d22a555e64b.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q26-option-1-6d22a555e64b.webp",
+      "fileName": "q26-option-1-6d22a555e64b.webp",
+      "contentType": "image/webp",
+      "size": 323712,
+      "sha256": "6d22a555e64b874ee862cefb2d466344d949cba62aa052509817aaa860e26b7e",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt, carrying a closed cardboard box in both arms while walking."
+    },
+    {
+      "key": "q26-option-2",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q26-option-2-4efe383f561a.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q26-option-2-4efe383f561a.webp",
+      "fileName": "q26-option-2-4efe383f561a.webp",
+      "contentType": "image/webp",
+      "size": 424780,
+      "sha256": "4efe383f561ae0de9b76a06b99390f400000d7baea84f9d0bb0f6c76096fd947",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt, standing at a table with the flaps of an open cardboard box folded back, lifting a folded shirt out of it. No tape and no tools in sight."
+    },
+    {
+      "key": "q26-option-3",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q26-option-3-74ffc68731d8.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q26-option-3-74ffc68731d8.webp",
+      "fileName": "q26-option-3-74ffc68731d8.webp",
+      "contentType": "image/webp",
+      "size": 514836,
+      "sha256": "74ffc68731d8b2468b9fa650dcc10b0b400081d84d0c551eb1abc761ada9200a",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt, writing on the side of a cardboard box with a marker pen."
+    },
+    {
+      "key": "q27-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q27-audio-0307e2892763.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q27-audio-0307e2892763.mp3",
+      "fileName": "q27-audio-0307e2892763.mp3",
+      "contentType": "audio/mpeg",
+      "size": 125036,
+      "sha256": "0307e28927639c92c7365da675dc86d61b1344c944137ea47c595fb084f52b28",
+      "source": "openai-tts gpt-4o-mini-tts (ash, coral)",
+      "script": "M: 저기요, 죄송한데 사진 좀 찍어 주시겠어요?\nF: 네, 그럴게요. 자, 웃으세요. 하나, 둘, 셋!",
+      "durationSeconds": 10.4
+    },
+    {
+      "key": "q27-option-0",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q27-option-0-ec296baa002c.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q27-option-0-ec296baa002c.webp",
+      "fileName": "q27-option-0-ec296baa002c.webp",
+      "contentType": "image/webp",
+      "size": 678742,
+      "sha256": "ec296baa002cf7ded7c5a76d21d84eec8899995472b2a03ed682841d3dd29529",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "In a park, a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt holds a smartphone up and takes a photo of a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket, who stands alone a few steps away, smiling and posing."
+    },
+    {
+      "key": "q27-option-1",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q27-option-1-734799e10a0f.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q27-option-1-734799e10a0f.webp",
+      "fileName": "q27-option-1-734799e10a0f.webp",
+      "contentType": "image/webp",
+      "size": 650974,
+      "sha256": "734799e10a0f5aa1fdd110757f75e2175348b5e87c478c1f7028a603e7314d81",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "In a park, a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket holds a smartphone up and takes a photo of a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt, who stands alone a few steps away, smiling and posing."
+    },
+    {
+      "key": "q27-option-2",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q27-option-2-d552223fba70.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q27-option-2-d552223fba70.webp",
+      "fileName": "q27-option-2-d552223fba70.webp",
+      "contentType": "image/webp",
+      "size": 724624,
+      "sha256": "d552223fba703aa9dd309cf5a04219045c194fd843fade751289a1306480c422",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "In a park, a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket and a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt sit side by side on a bench looking at photos on one smartphone together."
+    },
+    {
+      "key": "q27-option-3",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q27-option-3-ae4c689c8392.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q27-option-3-ae4c689c8392.webp",
+      "fileName": "q27-option-3-ae4c689c8392.webp",
+      "contentType": "image/webp",
+      "size": 669570,
+      "sha256": "ae4c689c83920650dd4831e695527bc7899cabbe2741642ed55cb79b59ff8987",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "In a small electronics shop, a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt stands behind a counter and hands a camera to a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket, a customer."
+    },
+    {
+      "key": "q28-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q28-audio-d62f9b7fee48.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q28-audio-d62f9b7fee48.mp3",
+      "fileName": "q28-audio-d62f9b7fee48.mp3",
+      "contentType": "audio/mpeg",
+      "size": 128492,
+      "sha256": "d62f9b7fee484abb5bd591f9aa68bc03bc8bd297ba19d8e94491ee9e4f9c1986",
+      "source": "openai-tts gpt-4o-mini-tts (coral, ash)",
+      "script": "F: 투안 씨, 이 안전모 한번 써 보세요. 크기가 맞아요?\nM: 조금 커요. 더 작은 건 없어요?",
+      "durationSeconds": 10.7
+    },
+    {
+      "key": "q28-option-0",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q28-option-0-6cc39116f820.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q28-option-0-6cc39116f820.webp",
+      "fileName": "q28-option-0-6cc39116f820.webp",
+      "contentType": "image/webp",
+      "size": 703220,
+      "sha256": "6cc39116f820d4e2e6b706075b316a6c0ddf98649d14ff49a54a25e6f1c9d3c9",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "In a factory storeroom, a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket is putting a hard hat on his head with both hands while a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt stands next to him watching."
+    },
+    {
+      "key": "q28-option-1",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q28-option-1-9ee5b89f51dc.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q28-option-1-9ee5b89f51dc.webp",
+      "fileName": "q28-option-1-9ee5b89f51dc.webp",
+      "contentType": "image/webp",
+      "size": 732020,
+      "sha256": "9ee5b89f51dc1f580f575d233c817e5c64513c7cfb5221cc61c525a218c75ff3",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "In a factory storeroom, a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket sits on a bench trying on a pair of safety boots while a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt stands next to him watching."
+    },
+    {
+      "key": "q28-option-2",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q28-option-2-4fdf931c49a5.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q28-option-2-4fdf931c49a5.webp",
+      "fileName": "q28-option-2-4fdf931c49a5.webp",
+      "contentType": "image/webp",
+      "size": 753530,
+      "sha256": "4fdf931c49a5ad0c8be497add230a5b95d8cbd157ab15408ecbec74098e236d0",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "In a factory storeroom, a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket is pulling on a pair of work gloves while a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt stands next to him watching."
+    },
+    {
+      "key": "q28-option-3",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q28-option-3-22abb8f72ff5.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q28-option-3-22abb8f72ff5.webp",
+      "fileName": "q28-option-3-22abb8f72ff5.webp",
+      "contentType": "image/webp",
+      "size": 694472,
+      "sha256": "22abb8f72ff56d37660a176f8cfc7044e4431f78f678b0430503fb4d90a86c41",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "In a factory storeroom, a Korean woman in her thirties with shoulder-length hair tied back, wearing a navy work vest over a white shirt is putting a hard hat on her own head while a Southeast Asian man in his late twenties with short black hair, wearing a plain grey work jacket stands next to her watching."
+    },
+    {
+      "key": "q29-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q29-audio-1e73070ba17e.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q29-audio-1e73070ba17e.mp3",
+      "fileName": "q29-audio-1e73070ba17e.mp3",
+      "contentType": "audio/mpeg",
+      "size": 49868,
+      "sha256": "1e73070ba17e3ae7ab9c0686db7bb14da8f6954f7e6655e0e0cffad060316743",
+      "source": "openai-tts gpt-4o-mini-tts (ash)",
+      "script": "M: 오늘 점심 메뉴가 뭐예요?",
+      "durationSeconds": 4.1
+    },
+    {
+      "key": "q29-option-0-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q29-option-0-audio-e16f9081a682.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q29-option-0-audio-e16f9081a682.mp3",
+      "fileName": "q29-option-0-audio-e16f9081a682.mp3",
+      "contentType": "audio/mpeg",
+      "size": 38060,
+      "sha256": "e16f9081a6825d26daf3ed9571d6904de3cd653018ab24427b2b126a14efbf0c",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 오늘은 불고기예요.",
+      "durationSeconds": 3.1
+    },
+    {
+      "key": "q29-option-1-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q29-option-1-audio-8e5b5f43ff8a.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q29-option-1-audio-8e5b5f43ff8a.mp3",
+      "fileName": "q29-option-1-audio-8e5b5f43ff8a.mp3",
+      "contentType": "audio/mpeg",
+      "size": 42092,
+      "sha256": "8e5b5f43ff8ac5aceaa9923eb095ac9173465e01dfa0f353379e99a08fa2f69f",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 열두 시 반에 먹어요.",
+      "durationSeconds": 3.5
+    },
+    {
+      "key": "q29-option-2-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q29-option-2-audio-bbd10be8005f.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q29-option-2-audio-bbd10be8005f.mp3",
+      "fileName": "q29-option-2-audio-bbd10be8005f.mp3",
+      "contentType": "audio/mpeg",
+      "size": 41516,
+      "sha256": "bbd10be8005f443242946b315b2f0cb9293c9498def106ccc99e070ecc746d4a",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 2층 식당에서 먹어요.",
+      "durationSeconds": 3.4
+    },
+    {
+      "key": "q29-option-3-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q29-option-3-audio-edb220571c82.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q29-option-3-audio-edb220571c82.mp3",
+      "fileName": "q29-option-3-audio-edb220571c82.mp3",
+      "contentType": "audio/mpeg",
+      "size": 37484,
+      "sha256": "edb220571c8279856446c377fd05c2005e49cf14ca52bcd06bfadf99d35dae6c",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 동료하고 같이 가요.",
+      "durationSeconds": 3.1
+    },
+    {
+      "key": "q30-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q30-audio-43447cb2a373.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q30-audio-43447cb2a373.mp3",
+      "fileName": "q30-audio-43447cb2a373.mp3",
+      "contentType": "audio/mpeg",
+      "size": 44684,
+      "sha256": "43447cb2a373453d728c6db1e1f9775a34fd3af7a8915620394bfd044ef45307",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 외국인등록증은 어디에서 신청해요?",
+      "durationSeconds": 3.7
+    },
+    {
+      "key": "q30-option-0-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q30-option-0-audio-0be4390e0ef0.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q30-option-0-audio-0be4390e0ef0.mp3",
+      "fileName": "q30-option-0-audio-0be4390e0ef0.mp3",
+      "contentType": "audio/mpeg",
+      "size": 42668,
+      "sha256": "0be4390e0ef086bd36173fe4d4be6bcbdc840de4bf21324f47fc49b2413d6944",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 출입국 사무소에서 신청해요.",
+      "durationSeconds": 3.5
+    },
+    {
+      "key": "q30-option-1-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q30-option-1-audio-ba079b788c48.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q30-option-1-audio-ba079b788c48.mp3",
+      "fileName": "q30-option-1-audio-ba079b788c48.mp3",
+      "contentType": "audio/mpeg",
+      "size": 49868,
+      "sha256": "ba079b788c48211486ee508567bb0b9eaf035511688f009cb3ea782a79f0e8be",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 입국하고 90일 안에 신청해요.",
+      "durationSeconds": 4.1
+    },
+    {
+      "key": "q30-option-2-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q30-option-2-audio-93d081d19ca4.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q30-option-2-audio-93d081d19ca4.mp3",
+      "fileName": "q30-option-2-audio-93d081d19ca4.mp3",
+      "contentType": "audio/mpeg",
+      "size": 42092,
+      "sha256": "93d081d19ca4a88d1e2aea48f4dc12489b080b9d92cdfb0a7bbf45e068f12d04",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 여권하고 사진이 필요해요.",
+      "durationSeconds": 3.5
+    },
+    {
+      "key": "q30-option-3-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q30-option-3-audio-4b948245b1ee.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q30-option-3-audio-4b948245b1ee.mp3",
+      "fileName": "q30-option-3-audio-4b948245b1ee.mp3",
+      "contentType": "audio/mpeg",
+      "size": 42092,
+      "sha256": "4b948245b1eec93fe190d1cac17e1bc69d1bdea8b28a9c1a4edbd84a873f5bf7",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 회사 직원이 도와줄 거예요.",
+      "durationSeconds": 3.5
+    },
+    {
+      "key": "q31-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q31-audio-ab9f4569acdc.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q31-audio-ab9f4569acdc.mp3",
+      "fileName": "q31-audio-ab9f4569acdc.mp3",
+      "contentType": "audio/mpeg",
+      "size": 45836,
+      "sha256": "ab9f4569acdc2ba9d1d55c38fe8049cf7aba047ab6c5e5cd1f43a53d93bd639a",
+      "source": "openai-tts gpt-4o-mini-tts (ash)",
+      "script": "M: 이번 달 월급은 언제 받아요?",
+      "durationSeconds": 3.8
+    },
+    {
+      "key": "q31-option-0-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q31-option-0-audio-5157326d07ed.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q31-option-0-audio-5157326d07ed.mp3",
+      "fileName": "q31-option-0-audio-5157326d07ed.mp3",
+      "contentType": "audio/mpeg",
+      "size": 37484,
+      "sha256": "5157326d07edceb3b686341885f0af849271be1f5eebec8b5531a4649c5fe468",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 다음 주 금요일에 받아요.",
+      "durationSeconds": 3.1
+    },
+    {
+      "key": "q31-option-1-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q31-option-1-audio-5812064311a1.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q31-option-1-audio-5812064311a1.mp3",
+      "fileName": "q31-option-1-audio-5812064311a1.mp3",
+      "contentType": "audio/mpeg",
+      "size": 39788,
+      "sha256": "5812064311a1988e81fcf9e36bcd06404f2aedede5d6888f4e7691bc0a7c04fa",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 은행 통장으로 받아요.",
+      "durationSeconds": 3.3
+    },
+    {
+      "key": "q31-option-2-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q31-option-2-audio-7d41a6cdff00.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q31-option-2-audio-7d41a6cdff00.mp3",
+      "fileName": "q31-option-2-audio-7d41a6cdff00.mp3",
+      "contentType": "audio/mpeg",
+      "size": 42668,
+      "sha256": "7d41a6cdff00af9602ed7d1f25d0ea15a630e32f34fcca8e086508a4a7412134",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 이백만 원쯤 받아요.",
+      "durationSeconds": 3.5
+    },
+    {
+      "key": "q31-option-3-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q31-option-3-audio-303de472feb9.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q31-option-3-audio-303de472feb9.mp3",
+      "fileName": "q31-option-3-audio-303de472feb9.mp3",
+      "contentType": "audio/mpeg",
+      "size": 41516,
+      "sha256": "303de472feb957dbff5f23783eb8b2459c43f337bf603ffccbac1d0cdebe9224",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 사무실에서 받아요.",
+      "durationSeconds": 3.4
+    },
+    {
+      "key": "q32-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q32-audio-f58b51fbb30c.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q32-audio-f58b51fbb30c.mp3",
+      "fileName": "q32-audio-f58b51fbb30c.mp3",
+      "contentType": "audio/mpeg",
+      "size": 45260,
+      "sha256": "f58b51fbb30c60af74f3b51191e29a61b9f6578fe067fc107f2abf753f6341ec",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 내일도 야간 근무를 해요?",
+      "durationSeconds": 3.7
+    },
+    {
+      "key": "q32-option-0-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q32-option-0-audio-33c80dc84dff.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q32-option-0-audio-33c80dc84dff.mp3",
+      "fileName": "q32-option-0-audio-33c80dc84dff.mp3",
+      "contentType": "audio/mpeg",
+      "size": 42668,
+      "sha256": "33c80dc84dffc2c8b7500c18e9bb2c26dddb62455209a970bed36d2c360a2d86",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 네, 내일도 밤에 일해요.",
+      "durationSeconds": 3.5
+    },
+    {
+      "key": "q32-option-1-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q32-option-1-audio-6f8547650489.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q32-option-1-audio-6f8547650489.mp3",
+      "fileName": "q32-option-1-audio-6f8547650489.mp3",
+      "contentType": "audio/mpeg",
+      "size": 40364,
+      "sha256": "6f8547650489489e0e81e8e1dc436f22a7e0593c66ba059114a5f1a87b7bbc16",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 네, 내일은 쉬는 날이에요.",
+      "durationSeconds": 3.3
+    },
+    {
+      "key": "q32-option-2-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q32-option-2-audio-3f72c4c91ad1.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q32-option-2-audio-3f72c4c91ad1.mp3",
+      "fileName": "q32-option-2-audio-3f72c4c91ad1.mp3",
+      "contentType": "audio/mpeg",
+      "size": 45836,
+      "sha256": "3f72c4c91ad182651d2c2da9fece7848acec43aa39aafc06784d18e11026ec1e",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 아니요, 내일도 야간이에요.",
+      "durationSeconds": 3.8
+    },
+    {
+      "key": "q32-option-3-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q32-option-3-audio-3320d4423dd5.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q32-option-3-audio-3320d4423dd5.mp3",
+      "fileName": "q32-option-3-audio-3320d4423dd5.mp3",
+      "contentType": "audio/mpeg",
+      "size": 41516,
+      "sha256": "3320d4423dd5dc4e410dc04b424d587ef9470328667a9d933f1aac8c364c52fc",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 야간 근무는 수당이 많아요.",
+      "durationSeconds": 3.4
+    },
+    {
+      "key": "q33-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q33-audio-44b6aca3e320.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q33-audio-44b6aca3e320.mp3",
+      "fileName": "q33-audio-44b6aca3e320.mp3",
+      "contentType": "audio/mpeg",
+      "size": 77516,
+      "sha256": "44b6aca3e320c7b9fc6527bc9f2a7689d39d51e7e9c470197fd0c8d5d83a39a9",
+      "source": "openai-tts gpt-4o-mini-tts (ash)",
+      "script": "M: 이 상자는 너무 무거워서 혼자 들면 허리를 다칠 수 있어요.",
+      "durationSeconds": 6.4
+    },
+    {
+      "key": "q33-option-0-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q33-option-0-audio-f15eb4ea71ed.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q33-option-0-audio-f15eb4ea71ed.mp3",
+      "fileName": "q33-option-0-audio-f15eb4ea71ed.mp3",
+      "contentType": "audio/mpeg",
+      "size": 45836,
+      "sha256": "f15eb4ea71edde89a756c261e702599ad0998b41e8e4ba180badc2ebe6606817",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 그럼 다른 사람하고 같이 들게요.",
+      "durationSeconds": 3.8
+    },
+    {
+      "key": "q33-option-1-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q33-option-1-audio-f5b16201fb41.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q33-option-1-audio-f5b16201fb41.mp3",
+      "fileName": "q33-option-1-audio-f5b16201fb41.mp3",
+      "contentType": "audio/mpeg",
+      "size": 49292,
+      "sha256": "f5b16201fb41c947234ab15a62fd561db9d8a53357f0b48a053fbe8587e28f59",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 네, 상자가 아주 가볍네요.",
+      "durationSeconds": 4.1
+    },
+    {
+      "key": "q33-option-2-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q33-option-2-audio-cdd968a10cb2.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q33-option-2-audio-cdd968a10cb2.mp3",
+      "fileName": "q33-option-2-audio-cdd968a10cb2.mp3",
+      "contentType": "audio/mpeg",
+      "size": 51020,
+      "sha256": "cdd968a10cb28ec19f1f5af8371adcb8e813bde15cf4c455f765b6b9b9390c92",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 어제 허리가 아파서 병원에 갔어요.",
+      "durationSeconds": 4.2
+    },
+    {
+      "key": "q33-option-3-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q33-option-3-audio-eb3fd0607ee6.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q33-option-3-audio-eb3fd0607ee6.mp3",
+      "fileName": "q33-option-3-audio-eb3fd0607ee6.mp3",
+      "contentType": "audio/mpeg",
+      "size": 50444,
+      "sha256": "eb3fd0607ee6bf3778fd417d605b057adf1aa1d259a0ccfd3895a9d28739e684",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 상자 안에 서류를 넣었어요.",
+      "durationSeconds": 4.2
+    },
+    {
+      "key": "q34-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q34-audio-c3647c2ed8b3.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q34-audio-c3647c2ed8b3.mp3",
+      "fileName": "q34-audio-c3647c2ed8b3.mp3",
+      "contentType": "audio/mpeg",
+      "size": 111788,
+      "sha256": "c3647c2ed8b3fd6fd7e9a32cb3346c4ab65cd0aba2501297cdd3b69c58552d80",
+      "source": "openai-tts gpt-4o-mini-tts (ash, coral)",
+      "script": "M: 한국어 시험이 언제예요?\nF: 시월 이십육 일이에요. 아직 한 달쯤 남았어요.",
+      "durationSeconds": 9.3
+    },
+    {
+      "key": "q34-option-0",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q34-option-0-3d1e4ca79e10.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q34-option-0-3d1e4ca79e10.png",
+      "fileName": "q34-option-0-3d1e4ca79e10.png",
+      "contentType": "image/png",
+      "size": 26919,
+      "sha256": "3d1e4ca79e1095c5df040cfeb5db9bc9c17d3c7068335f905d51b6979b287cc6",
+      "source": "template (Chromium)",
+      "description": "달력: 10월 26일"
+    },
+    {
+      "key": "q34-option-1",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q34-option-1-081e72051616.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q34-option-1-081e72051616.png",
+      "fileName": "q34-option-1-081e72051616.png",
+      "contentType": "image/png",
+      "size": 22885,
+      "sha256": "081e72051616e03023b76d6f99cb8dad61df7be83255b648b87f0b304efb3a75",
+      "source": "template (Chromium)",
+      "description": "달력: 10월 16일"
+    },
+    {
+      "key": "q34-option-2",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q34-option-2-369199470d1c.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q34-option-2-369199470d1c.png",
+      "fileName": "q34-option-2-369199470d1c.png",
+      "contentType": "image/png",
+      "size": 24616,
+      "sha256": "369199470d1cacd68fc86c77e9adfc57a31c26f05cf903c08529a88219da22ba",
+      "source": "template (Chromium)",
+      "description": "달력: 11월 26일"
+    },
+    {
+      "key": "q34-option-3",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q34-option-3-fc9beaa13b47.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q34-option-3-fc9beaa13b47.png",
+      "fileName": "q34-option-3-fc9beaa13b47.png",
+      "contentType": "image/png",
+      "size": 20458,
+      "sha256": "fc9beaa13b47dfe5c057e1b475317953eb1abca8c7c72d28393dd01735968a90",
+      "source": "template (Chromium)",
+      "description": "달력: 11월 16일"
+    },
+    {
+      "key": "q35-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q35-audio-7553a2929ccd.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q35-audio-7553a2929ccd.mp3",
+      "fileName": "q35-audio-7553a2929ccd.mp3",
+      "contentType": "audio/mpeg",
+      "size": 70316,
+      "sha256": "7553a2929ccddc4c70749916ef06c66a82f3fd953a669ca5c0e4c6fb3578ace6",
+      "source": "openai-tts gpt-4o-mini-tts (coral, ash)",
+      "script": "F: 이 모자 얼마예요?\nM: 만 오천 원이에요.",
+      "durationSeconds": 5.8
+    },
+    {
+      "key": "q35-option-0",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q35-option-0-3f8ccb86de2e.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q35-option-0-3f8ccb86de2e.png",
+      "fileName": "q35-option-0-3f8ccb86de2e.png",
+      "contentType": "image/png",
+      "size": 21653,
+      "sha256": "3f8ccb86de2e252fb44abcb873d8684c0e50385f878aa6d822fd92dd153b10a8",
+      "source": "template (Chromium)",
+      "description": "가격표: 15,000원"
+    },
+    {
+      "key": "q35-option-1",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q35-option-1-4ae02ccf8c27.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q35-option-1-4ae02ccf8c27.png",
+      "fileName": "q35-option-1-4ae02ccf8c27.png",
+      "contentType": "image/png",
+      "size": 24299,
+      "sha256": "4ae02ccf8c272ff8f0cc4356e351d108cde19ccb3ce3fe0c56d1d37926a5d52e",
+      "source": "template (Chromium)",
+      "description": "가격표: 50,000원"
+    },
+    {
+      "key": "q35-option-2",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q35-option-2-89a5ee92926b.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q35-option-2-89a5ee92926b.png",
+      "fileName": "q35-option-2-89a5ee92926b.png",
+      "contentType": "image/png",
+      "size": 23893,
+      "sha256": "89a5ee92926bdbe356a1bf6a2875cbfcd71ff799dcad14a10ad66d06eb552a4c",
+      "source": "template (Chromium)",
+      "description": "가격표: 5,000원"
+    },
+    {
+      "key": "q35-option-3",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q35-option-3-874912aad517.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q35-option-3-874912aad517.png",
+      "fileName": "q35-option-3-874912aad517.png",
+      "contentType": "image/png",
+      "size": 24333,
+      "sha256": "874912aad5174655c1095edb64343962d739fc44da0a8a82f6c3a2fc17a691be",
+      "source": "template (Chromium)",
+      "description": "가격표: 10,500원"
+    },
+    {
+      "key": "q36-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q36-audio-501beb1a2103.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q36-audio-501beb1a2103.mp3",
+      "fileName": "q36-audio-501beb1a2103.mp3",
+      "contentType": "audio/mpeg",
+      "size": 146636,
+      "sha256": "501beb1a2103885bd33ccda6be7e6da8367f206eadfdcf926c40ebca495361df",
+      "source": "openai-tts gpt-4o-mini-tts (ash, coral)",
+      "script": "M: 보안경 하나에 얼마예요?\nF: 하나에 칠천 원이에요. 두 개 사시면 만 삼천 원에 드릴게요.\nM: 그럼 두 개 주세요.",
+      "durationSeconds": 12.2
+    },
+    {
+      "key": "q36-option-0",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q36-option-0-73d6c3671343.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q36-option-0-73d6c3671343.png",
+      "fileName": "q36-option-0-73d6c3671343.png",
+      "contentType": "image/png",
+      "size": 22260,
+      "sha256": "73d6c36713432557b4e81007f0fc28749e8573e95bbca45db75cc092ae00b841",
+      "source": "template (Chromium)",
+      "description": "가격표: 13,000원"
+    },
+    {
+      "key": "q36-option-1",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q36-option-1-5e6c650a6d57.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q36-option-1-5e6c650a6d57.png",
+      "fileName": "q36-option-1-5e6c650a6d57.png",
+      "contentType": "image/png",
+      "size": 22757,
+      "sha256": "5e6c650a6d57702e0dfc81de5134fa89ed539328d57701a029284404cec814e4",
+      "source": "template (Chromium)",
+      "description": "가격표: 7,000원"
+    },
+    {
+      "key": "q36-option-2",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q36-option-2-989d89e56293.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q36-option-2-989d89e56293.png",
+      "fileName": "q36-option-2-989d89e56293.png",
+      "contentType": "image/png",
+      "size": 20323,
+      "sha256": "989d89e56293fc3a3b5b50ec93c7176d54cdc25081ac591b2a0c2e4454f74244",
+      "source": "template (Chromium)",
+      "description": "가격표: 14,000원"
+    },
+    {
+      "key": "q36-option-3",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q36-option-3-508672a63c57.png",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q36-option-3-508672a63c57.png",
+      "fileName": "q36-option-3-508672a63c57.png",
+      "contentType": "image/png",
+      "size": 24836,
+      "sha256": "508672a63c57b883f5c60bf03b36af54d28156a33997b2d8be8c1bc849d8c0bd",
+      "source": "template (Chromium)",
+      "description": "가격표: 30,000원"
+    },
+    {
+      "key": "q37-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q37-audio-9d7cf3284f33.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q37-audio-9d7cf3284f33.mp3",
+      "fileName": "q37-audio-9d7cf3284f33.mp3",
+      "contentType": "audio/mpeg",
+      "size": 40940,
+      "sha256": "9d7cf3284f33e490ba48184b4efcd3845e2b4e10b8405bb4a37a4b50a2312465",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 구급상자는 어디에 있습니까?",
+      "durationSeconds": 3.4
+    },
+    {
+      "key": "q37-option-0-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q37-option-0-audio-ad797a63025e.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q37-option-0-audio-ad797a63025e.mp3",
+      "fileName": "q37-option-0-audio-ad797a63025e.mp3",
+      "contentType": "audio/mpeg",
+      "size": 36620,
+      "sha256": "ad797a63025e3b8ef4cdaef089ff60dcbb70f214b64deb8068c377c0b19549d9",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 책장 위에 있습니다.",
+      "durationSeconds": 3
+    },
+    {
+      "key": "q37-option-1-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q37-option-1-audio-ddcdd40441ad.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q37-option-1-audio-ddcdd40441ad.mp3",
+      "fileName": "q37-option-1-audio-ddcdd40441ad.mp3",
+      "contentType": "audio/mpeg",
+      "size": 32012,
+      "sha256": "ddcdd40441ad2c66ae486edf355c3f5b87b36592e812ab604198b394048afeb5",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 문 옆에 있습니다.",
+      "durationSeconds": 2.6
+    },
+    {
+      "key": "q37-option-2-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q37-option-2-audio-ec9093fb0d5b.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q37-option-2-audio-ec9093fb0d5b.mp3",
+      "fileName": "q37-option-2-audio-ec9093fb0d5b.mp3",
+      "contentType": "audio/mpeg",
+      "size": 43820,
+      "sha256": "ec9093fb0d5b119937452b2f81edbd9e2ef1f0484bf191ba6acbef6da85a98e1",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 책상 아래에 있습니다.",
+      "durationSeconds": 3.6
+    },
+    {
+      "key": "q37-option-3-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q37-option-3-audio-bd79c600cccd.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q37-option-3-audio-bd79c600cccd.mp3",
+      "fileName": "q37-option-3-audio-bd79c600cccd.mp3",
+      "contentType": "audio/mpeg",
+      "size": 33164,
+      "sha256": "bd79c600cccdcd327b3d62a0171f102fe789ae7c06eff271c493b6f76005d556",
+      "source": "openai-tts gpt-4o-mini-tts (coral)",
+      "script": "F: 창문 앞에 있습니다.",
+      "durationSeconds": 2.7
+    },
+    {
+      "key": "q37-prompt",
+      "kind": "image",
+      "objectKey": "eps-demo-set/v1/q37-prompt-feba94d598aa.webp",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q37-prompt-feba94d598aa.webp",
+      "fileName": "q37-prompt-feba94d598aa.webp",
+      "contentType": "image/webp",
+      "size": 412106,
+      "sha256": "feba94d598aa2db39bf159fa9cd5246ec3557287635f2996cd56a26f9c25aafd",
+      "source": "openai-image gpt-image-2.5-flare",
+      "description": "A small, tidy office room drawn from the front. On the left, a door; a fire extinguisher stands on the floor right next to the door. In the middle, a desk; several cardboard boxes are stacked on the floor under the desk. On the right, a bookshelf; one first-aid box with a large plus sign on its side sits on top of the bookshelf, and nothing else is on top of the bookshelf. The window is on the back wall between the door and the desk, far from the bookshelf; a potted plant stands on the floor in front of the window. The bookshelf is full of books; the first-aid box sits on its top surface, not on a shelf. Each object appears once."
+    },
+    {
+      "key": "q38-audio",
+      "kind": "audio",
+      "objectKey": "eps-demo-set/v1/q38-audio-f7ad49204432.mp3",
+      "publicUrl": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/eps-demo-set/v1/q38-audio-f7ad49204432.mp3",
+      "fileName": "q38-audio-f7ad49204432.mp3",
+      "contentType": "audio/mpeg",
+      "size": 342764,
+      "sha256": "f7ad49204432b45290d3de46510aed2ae6f5c5586d6c55b87875453e7ad647bd",
+      "source": "openai-tts gpt-4o-mini-tts (ash, coral)",
+      "script": "M: 여보세요, 고용센터지요?\nF: 네, 무엇을 도와드릴까요?\nM: 지금 다니는 회사가 다음 달에 문을 닫아서 다른 회사로 옮겨야 하는데요, 어떤 서류를 준비해야 하는지 궁금해서요.\nF: 사업장 변경 신청서를 쓰시고, 외국인등록증하고 여권을 가지고 오시면 됩니다.\nM: 네, 알겠습니다. 감사합니다.",
+      "durationSeconds": 28.5
+    }
+  ]
+}
