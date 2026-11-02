@@ -27,7 +27,7 @@ Jika syarat belum terpenuhi, Hakgyo menampilkan **Belum bisa dibuka** beserta al
 Di bagian tautan quiz:
 
 - Klik tombol salin untuk menyalin tautan, misalnya `hakgyo.id/nama-lembaga/quiz/ab12cd`.
-- Klik tombol QR untuk menampilkan **Kode QR quiz**. Tampilkan di kelas atau cetak di poster.
+- Klik tombol QR untuk membuka **Poster kode QR**: gambar berisi logo dan nama lembaga, judul quiz, jumlah soal, dan kode QR menuju quiz. Klik **Unduh PNG** untuk menyimpannya, lalu cetak, tempel di kelas, atau bagikan ke WhatsApp dan media sosial. Peserta cukup memindai kodenya dengan kamera ponsel.
 - Klik tombol buka untuk mencoba quiz seperti peserta.
 
 Di ponsel, daftar quiz di menu **Quiz publik** tidak punya tombol salin. Buka quiz-nya dulu untuk menyalin tautan.

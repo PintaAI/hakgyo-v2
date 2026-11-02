@@ -2,6 +2,7 @@ import { formatScoreOutOf } from "@hakgyo/shared";
 import { ImageResponse } from "next/og";
 
 import { hasImageSignature } from "~/lib/image-signature";
+import { qrPath } from "~/lib/qr-path";
 import {
   DEFAULT_ORGANIZATION_THEME,
   parseOrganizationTheme,
@@ -837,5 +838,180 @@ export async function renderPublicQuizResult(
       </div>
     </div>,
     { width: 1080, height: 1920, fonts },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Poster with QR code
+
+/**
+ * A 1080×1350 poster staff download to print or share: the organization, the quiz title, its
+ * question count and time, and a QR code of the quiz link with the logo in the middle (error
+ * correction H keeps it scannable).
+ */
+export async function renderPublicQuizPoster(input: {
+  title: string;
+  organizationName: string;
+  logoUrl: string | null;
+  questionCount: number;
+  timeLimitMinutes: number | null;
+  theme: unknown;
+  /** The full quiz URL the code opens. */
+  url: string;
+}) {
+  const colors = palette(input.theme);
+  const meta = [
+    `${input.questionCount} soal`,
+    input.timeLimitMinutes
+      ? `${input.timeLimitMinutes} menit`
+      : "Tanpa batas waktu",
+    "Tanpa daftar akun",
+  ].join("  ·  ");
+  const scan = "Pindai untuk ikut quiz";
+  const link = input.url.replace(/^https?:\/\//, "");
+  const [fonts, logo] = await Promise.all([
+    loadFonts(
+      `${input.title}${input.organizationName}${meta}${scan}${link}QUIZ ONLINE0123456789`,
+    ),
+    loadLogo(input.logoUrl),
+  ]);
+  const titleSize =
+    input.title.length > 60 ? 54 : input.title.length > 32 ? 66 : 80;
+
+  const qr = qrPath(input.url, "H");
+  const qrSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${qr.size} ${qr.size}" shape-rendering="crispEdges"><path d="${qr.path}" fill="#111111"/></svg>`;
+  const qrSrc = `data:image/svg+xml;base64,${Buffer.from(qrSvg).toString("base64")}`;
+  const qrWidth = 500;
+  const logoWidth = 112;
+
+  return new ImageResponse(
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+        background: colors.background,
+        fontFamily: "Plus Jakarta Sans, Noto Sans KR",
+        color: "white",
+        overflow: "hidden",
+        padding: "72px 80px 80px",
+      }}
+    >
+      <Glow size={760} top={-340} left={-260} />
+      <Glow size={640} top={820} left={620} />
+      <Brand logo={logo} name={input.organizationName} size={72} />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 22,
+          marginTop: 56,
+        }}
+      >
+        <div style={{ display: "flex" }}>
+          <Pill fontSize={22} background="rgba(255,255,255,0.16)" color="white">
+            QUIZ ONLINE
+          </Pill>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: titleSize,
+            fontWeight: 800,
+            lineHeight: 1.08,
+            letterSpacing: -1.5,
+          }}
+        >
+          {input.title}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 30,
+            fontWeight: 500,
+            opacity: 0.82,
+          }}
+        >
+          {meta}
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          alignSelf: "center",
+          marginTop: "auto",
+          background: "white",
+          borderRadius: 44,
+          padding: "40px 40px 34px",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            position: "relative",
+            width: qrWidth,
+            height: qrWidth,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qrSrc} width={qrWidth} height={qrWidth} alt="" />
+          {logo ? (
+            <div
+              style={{
+                display: "flex",
+                position: "absolute",
+                top: (qrWidth - logoWidth) / 2,
+                left: (qrWidth - logoWidth) / 2,
+                width: logoWidth,
+                height: logoWidth,
+                padding: 8,
+                borderRadius: 26,
+                background: "white",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logo}
+                width={logoWidth - 16}
+                height={logoWidth - 16}
+                style={{ objectFit: "contain", borderRadius: 18 }}
+                alt=""
+              />
+            </div>
+          ) : null}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            marginTop: 26,
+            fontSize: 34,
+            fontWeight: 800,
+            color: colors.deep,
+          }}
+        >
+          {scan}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            maxWidth: qrWidth + 40,
+            marginTop: 8,
+            fontSize: 22,
+            fontWeight: 500,
+            color: "#555",
+            textAlign: "center",
+          }}
+        >
+          {link}
+        </div>
+      </div>
+    </div>,
+    { width: 1080, height: 1350, fonts },
   );
 }

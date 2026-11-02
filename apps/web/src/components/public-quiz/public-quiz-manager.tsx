@@ -25,7 +25,6 @@ import {
 import { toast } from "sonner";
 
 import Link from "~/components/link";
-import { QrCode } from "~/components/qr-code";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -328,6 +327,15 @@ const stateCopy: Record<
   },
 };
 
+/** A short, stable hash of what the poster shows. */
+function posterVersion(text: string) {
+  let hash = 5381;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (Math.imul(hash, 33) ^ text.charCodeAt(index)) >>> 0;
+  }
+  return hash.toString(36);
+}
+
 function StatusPanel({
   overview,
   quiz,
@@ -353,6 +361,11 @@ function StatusPanel({
   const state = stateOf(quiz);
   const copy = stateCopy[state];
   const canOpen = !overview.issues.length;
+  // Same origin as the workspace, so `download` works; the version skips a cached poster after
+  // the title, question count or time changes.
+  const posterUrl = `${new URL(shareUrl).pathname}/poster?v=${posterVersion(
+    `${quiz.title}|${overview.questionCount}|${overview.timeLimitMinutes ?? ""}`,
+  )}`;
 
   async function copyLink() {
     try {
@@ -439,7 +452,7 @@ function StatusPanel({
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Tampilkan kode QR"
+              aria-label="Poster kode QR"
               onClick={() => setQrOpen(true)}
             >
               <QrCodeIcon />
@@ -467,16 +480,40 @@ function StatusPanel({
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Kode QR quiz</DialogTitle>
+            <DialogTitle>Poster kode QR</DialogTitle>
             <DialogDescription>
-              Tampilkan di kelas atau poster. Peserta cukup memindainya.
+              Berisi logo, judul, jumlah soal, dan kode QR quiz. Cetak, tempel
+              di kelas, atau bagikan ke WhatsApp dan media sosial.
             </DialogDescription>
           </DialogHeader>
-          <QrCode
-            value={shareUrl}
-            label={`Kode QR quiz ${quiz.title}`}
-            className="mx-auto w-full max-w-64 rounded-xl bg-white p-4"
-          />
+          {qrOpen ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={posterUrl}
+              alt={`Poster kode QR quiz ${quiz.title}`}
+              width={1080}
+              height={1350}
+              className="bg-muted mx-auto aspect-[4/5] h-auto w-full max-w-72 rounded-xl border"
+            />
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row-reverse">
+            <a
+              href={`${posterUrl}&unduh=1`}
+              download
+              className={cn(buttonVariants(), "sm:flex-1")}
+            >
+              <DownloadIcon data-icon="inline-start" />
+              Unduh PNG
+            </a>
+            <Button
+              variant="outline"
+              className="sm:flex-1"
+              onClick={() => void copyLink()}
+            >
+              <CopyIcon data-icon="inline-start" />
+              Salin link
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>
