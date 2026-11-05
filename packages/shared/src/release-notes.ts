@@ -31,6 +31,19 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    id: "2026-11-05",
+    version: "1.0.1",
+    date: "2026-11-05",
+    title: "Tur aplikasi dan belajar lebih lancar",
+    items: [
+      "Tur singkat menunjukkan isi setiap tab. Kamu bisa memutarnya lagi dari Pengaturan → Bantuan → Lihat tur aplikasi.",
+      "Di akhir materi, tarik ke atas untuk menandai selesai dan langsung lanjut ke materi berikutnya.",
+      "Tantangan soal di Hari Ini kini berupa kartu yang bisa digeser, dan contoh kalimat kosakata menandai kata yang sedang dipelajari.",
+      "Di Belajar, hanya bab yang berisi materi berikutnya yang terbuka, jadi daftar materi lebih ringkas.",
+      "Teks di kolom isian tidak lagi terpotong di iPhone.",
+    ],
+  },
+  {
     id: "2026-11-01",
     version: "1.0.1",
     date: "2026-11-01",
