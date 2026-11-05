@@ -7,7 +7,9 @@
  * the update can call a native module it lacks and crash on launch. EAS
  * records a fingerprint of the native project on every build, so this script
  * compares the project's fingerprint with every finished build on the channel
- * and runtime, and publishes only when all of them match.
+ * and runtime, and publishes only when all of them match. A build whose hash
+ * differs still counts as matching when the only difference is where bun
+ * installed the packages (see `native-fingerprint.ts`).
  *
  *   bun run --cwd apps/mobile ota:check --channel production
  *   bun run --cwd apps/mobile ota:publish --channel production --message "…"
@@ -21,6 +23,7 @@ import { parseArgs } from "node:util";
 import { releaseNotesUpTo } from "@hakgyo/shared/release-notes";
 
 import config from "../app.config";
+import { type Fingerprint, nativeDifferences } from "./native-fingerprint";
 
 const PROJECT_DIR = new URL("..", import.meta.url).pathname;
 /** EAS channels; each build profile in eas.json uses the EAS environment of the same name. */
@@ -148,10 +151,37 @@ for (const platform of platforms) {
     "--environment",
     channel,
   ]);
-  const mismatched = builds.filter((build) => build.fingerprint?.hash !== hash);
+  const differing = builds.filter((build) => build.fingerprint?.hash !== hash);
+  // Builds with the same recorded fingerprint need one comparison between them.
+  const differencesByHash = new Map<string, string[]>();
+  for (const build of differing) {
+    const recorded = build.fingerprint?.hash;
+    if (!recorded || differencesByHash.has(recorded)) continue;
+    const { fingerprint1, fingerprint2 } = easJson<{
+      fingerprint1: Fingerprint;
+      fingerprint2: Fingerprint;
+    }>([
+      "fingerprint:compare",
+      "--build-id",
+      build.id,
+      "--environment",
+      channel,
+    ]);
+    differencesByHash.set(
+      recorded,
+      nativeDifferences(fingerprint1, fingerprint2),
+    );
+  }
+  const mismatched = differing.filter(
+    (build) =>
+      differencesByHash.get(build.fingerprint?.hash ?? "")?.length !== 0,
+  );
   if (mismatched.length === 0) {
+    const moved = differing.length
+      ? ` (${differing.length} differ only in bun store folders)`
+      : "";
     console.log(
-      `✓ ${platform}: ${builds.length} build(s) match fingerprint ${hash.slice(0, 12)}`,
+      `✓ ${platform}: ${builds.length} build(s) match fingerprint ${hash.slice(0, 12)}${moved}`,
     );
     continue;
   }
@@ -164,6 +194,10 @@ for (const platform of platforms) {
       `    ${build.id}  ${build.createdAt.slice(0, 10)}  build ${build.appBuildVersion ?? "?"}  ` +
         `commit ${build.gitCommitHash?.slice(0, 8) ?? "?"}  fingerprint ${build.fingerprint?.hash.slice(0, 12) ?? "none"}`,
     );
+    for (const source of differencesByHash.get(build.fingerprint?.hash ?? "") ??
+      []) {
+      console.error(`        changed: ${source}`);
+    }
   }
   console.error(
     `    See what changed: eas fingerprint:compare --build-id ${mismatched[0]!.id} --environment ${channel}`,
