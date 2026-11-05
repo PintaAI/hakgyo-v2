@@ -91,6 +91,15 @@ Typecheck runs on TypeScript 7.1 (beta, the native compiler): `apps/mobile` depe
 - For authenticated checks, sign in at `/auth` with the seeded owner account `owner@hakgyo.test` and password `Hakgyo123!`. The complete seeded account list remains authoritative in `apps/web/prisma/seed.ts`.
 - The isolated conversation-block preview is available at `/conversation-block-preview`; append `?variant=useful-expression`, `?variant=pronunciation`, or `?variant=both` to inspect each supporting-panel state.
 
+## GPU Worker (`gpu-run`)
+
+The owner's PC (RTX 4080 SUPER) runs a Docker GPU worker for heavy video work (record, render, NVENC re-encode). It is reached over the tailnet with the `gpu-run` CLI (`status`, `jobs`, `speedtest [--internet]`), which was used from a remote VPS and is not on `PATH` on the PC itself. Check `tailscale status` first, because the PC may be offline.
+
+- `gpu-run` printing "The operation timed out" does not mean the job failed. Check `gpu-run jobs` and leave the job alone.
+- Keep Chrome on the CPU (SwiftShader) default in the worker: GPU rasterization made large screen-recording scenes about 4x slower.
+- Keep long finished videos on the PC, in the worker's `/output`, instead of downloading them. Check `df -h /output` first, because the bind mount once pointed at a small VM disk.
+- A job ends only when every process holding its output pipe exits. Start long-lived background processes with `setsid -f ... > log 2>&1 < /dev/null`.
+
 ## Web Conventions
 
 - Use the App Router under `apps/web/src/app`.
