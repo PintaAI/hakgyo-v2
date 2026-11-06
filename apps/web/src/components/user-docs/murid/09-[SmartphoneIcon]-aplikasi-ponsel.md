@@ -82,7 +82,11 @@ Jika muncul **Pembaruan diperlukan**, ikuti petunjuk di layar. Biasanya aplikasi
 
 ## Yang baru di aplikasi
 
-Aplikasi Hakgyo sering mendapat pembaruan kecil yang terpasang otomatis saat aplikasi dibuka ulang. Setelah pembaruan terpasang, muncul layar **Yang baru di Hakgyo** berisi daftar perubahannya. Ketuk **Lanjut belajar** untuk menutupnya.
+Aplikasi Hakgyo sering mendapat pembaruan kecil. Aplikasi mengunduhnya sendiri saat kamu membukanya, jadi kamu tidak perlu memeriksanya di Pengaturan.
+
+Setelah pembaruan terunduh, muncul **Pembaruan aplikasi siap**: di iPhone dengan iOS 26 atau lebih baru sebagai bar kecil di atas tab bawah, di Android sebagai pesan singkat di bagian bawah layar. Ketuk bar itu atau **Mulai ulang** untuk memasangnya sekarang. Kemajuanmu tetap aman. Kalau kamu biarkan, pembaruan terpasang sendiri saat kamu kembali ke aplikasi setelah meninggalkannya beberapa saat. Pembaruan tidak pernah dipasang saat kamu sedang membuka materi, latihan, atau tryout. Status pembaruan juga terlihat di **Status sinkron**, di bagian **Aplikasi**.
+
+Setelah pembaruan terpasang, muncul layar **Yang baru di Hakgyo** berisi daftar perubahannya. Ketuk **Lanjut belajar** untuk menutupnya.
 
 Untuk membaca lagi semua catatan pembaruan, buka **Profil**, lalu **Pengaturan**, lalu ketuk **Yang baru**.
 

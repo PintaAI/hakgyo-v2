@@ -1,6 +1,10 @@
 import { useSyncExternalStore } from "react";
 
-import type { SyncActivity } from "./activity";
+import {
+  type SyncActivity,
+  UPDATE_READY_DETAIL,
+  UPDATE_READY_TITLE,
+} from "./activity";
 
 /**
  * Development only: sample activities that Pengaturan → Pengembangan steps
@@ -33,6 +37,11 @@ const samples: Omit<SyncActivity, "key">[] = [
     kind: "waiting",
     title: "3 progres belum terkirim",
     detail: "Tersimpan di HP dan dikirim saat online.",
+  },
+  {
+    kind: "update",
+    title: UPDATE_READY_TITLE,
+    detail: UPDATE_READY_DETAIL,
   },
 ];
 

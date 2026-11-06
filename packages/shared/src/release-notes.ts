@@ -31,6 +31,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    id: "2026-11-06",
+    version: "1.0.1",
+    date: "2026-11-06",
+    title: "Pembaruan tanpa repot",
+    items: [
+      "Aplikasi kini mengunduh pembaruan sendiri saat kamu membukanya lagi, tanpa perlu ke Pengaturan.",
+      "Kalau pembaruan sudah siap, ketuk Pembaruan aplikasi siap untuk memulai ulang. Kalau kamu lama meninggalkan aplikasi, pembaruan terpasang sendiri saat kamu kembali.",
+    ],
+  },
+  {
     id: "2026-11-05",
     version: "1.0.1",
     date: "2026-11-05",

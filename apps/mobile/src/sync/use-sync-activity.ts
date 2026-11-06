@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { useReadyOtaUpdate } from "../lib/ota-updates";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { useMobileSync } from "../providers/MobileSyncProvider";
 import { selectSyncActivity, type SyncActivity } from "./activity";
@@ -25,7 +26,7 @@ function useIndexedCourses() {
   return { hasIndex, courseTitles };
 }
 
-/** What sync is doing right now that the learner should know about. */
+/** What sync is doing right now that the learner should know about, or a downloaded app update. */
 export function useSyncActivity(): SyncActivity | null {
   const {
     bundles,
@@ -35,6 +36,7 @@ export function useSyncActivity(): SyncActivity | null {
     refreshPhase,
   } = useMobileSync();
   const { hasIndex, courseTitles } = useIndexedCourses();
+  const readyUpdate = useReadyOtaUpdate();
   const [now, setNow] = useState(Date.now);
   const activity = selectSyncActivity({
     bundles,
@@ -44,6 +46,7 @@ export function useSyncActivity(): SyncActivity | null {
     refreshPhase,
     hasIndex,
     courseTitles,
+    readyUpdate,
     now,
   });
 

@@ -12,6 +12,7 @@ const symbols: Record<
   changed: "checkmark.circle.fill",
   failed: "exclamationmark.triangle.fill",
   waiting: "icloud.slash",
+  update: "arrow.down.circle.fill",
 };
 
 /** A spinner while preparing or downloading, otherwise the symbol of the activity. */
