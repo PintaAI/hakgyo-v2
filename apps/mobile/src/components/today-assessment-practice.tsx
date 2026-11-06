@@ -19,6 +19,7 @@ import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
 import { openCourseItem } from "../lib/navigation";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { withOpacity } from "../theme/colors";
 import { SymbolIcon } from "./ui/symbol-icon";
 
 type PracticeQuestion =
@@ -28,6 +29,10 @@ type AssessmentPool = RouterOutputs["practice"]["getAssessmentSample"];
 function randomSeed() {
   return Date.now() + ":" + Math.random();
 }
+
+/** Dot colours of the daily questions: answered, opened but not answered, not opened yet. */
+const DONE_COLOR = "#22c55e";
+const SEEN_COLOR = "#f59e0b";
 
 /**
  * Home's daily question challenge: a small random set of published questions
@@ -42,11 +47,19 @@ export function TodayAssessmentPractice({
   organizationId: string;
   pool: AssessmentPool;
 }) {
+  const { colors } = useAppTheme();
   const [seed, setSeed] = useState(randomSeed);
   const grade = api.practice.gradeAssessmentAnswer.useMutation();
   const resolveAssetUrl = useApiAssetResolver();
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
   const [index, setIndex] = useState(0);
+  // Questions the learner has had in view, for the dots.
+  const [seen, setSeen] = useState<ReadonlySet<number>>(() => new Set([0]));
+  useEffect(() => {
+    setSeen((current) =>
+      current.has(index) ? current : new Set(current).add(index),
+    );
+  }, [index]);
   const [selections, setSelections] = useState<Record<number, string[]>>({});
   const [results, setResults] = useState<Record<number, GradeResult>>({});
   // Several pages are mounted at once, so grading state is per question.
@@ -69,6 +82,7 @@ export function TodayAssessmentPractice({
     inFlight.current = false;
     setQuestions(questions);
     setIndex(0);
+    setSeen(new Set([0]));
     setSelections({});
     setResults({});
     setFailures({});
@@ -207,7 +221,17 @@ export function TodayAssessmentPractice({
             importantForAccessibility="no-hide-descendants"
             className="items-center"
           >
-            <PageDots count={questions.length} position={pagePosition} />
+            <PageDots
+              count={questions.length}
+              position={pagePosition}
+              colors={questions.map((_, questionIndex) =>
+                results[questionIndex]
+                  ? DONE_COLOR
+                  : seen.has(questionIndex)
+                    ? SEEN_COLOR
+                    : withOpacity(colors.mutedForeground, 0.35),
+              )}
+            />
           </View>
           <QuizPager
             ref={pager}
