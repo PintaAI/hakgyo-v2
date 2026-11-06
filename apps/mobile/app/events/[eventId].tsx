@@ -2,7 +2,7 @@ import { formatScoreOutOf, RUNTIME_VERSION } from "@hakgyo/shared";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Text } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 import {
   AssessmentMediaStatus,
@@ -22,6 +22,7 @@ import { api } from "../../src/lib/trpc";
 import { useSidebarIndicators } from "../../src/lib/sidebar-indicators";
 import { useMobileSyncActions } from "../../src/providers/MobileSyncProvider";
 import { usePushNotifications } from "../../src/providers/PushNotificationsProvider";
+import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { useLearnerEvent } from "../../src/sync/hooks";
 
 export default function AssessmentEventScreen() {
@@ -29,6 +30,7 @@ export default function AssessmentEventScreen() {
   const { markEntitySeen } = useSidebarIndicators();
   const { saveStartedAttempt } = useMobileSyncActions();
   const { promptInContext } = usePushNotifications();
+  const { colors } = useAppTheme();
 
   useEffect(() => {
     const timer = setTimeout(promptInContext, 800);
@@ -37,6 +39,13 @@ export default function AssessmentEventScreen() {
   // Online detail (leaderboard included), persisted for offline reopening.
   const query = useLearnerEvent(eventId);
   const start = api.mobileSyncV2.startEventAssessment.useMutation();
+  // From the tap until the attempt screen replaces this one: the start
+  // request, then saving the questions on the device.
+  const [starting, setStarting] = useState(false);
+  // Only a pull shows the refresh spinner. The refresh every open makes runs
+  // quietly: a spinner set from code as the screen appears can stay stuck on
+  // iOS, with nothing saying what it waits for.
+  const [pulling, setPulling] = useState(false);
   const event = query.data;
   const attempt = event?.attempts[0];
   const attemptState = assessmentAttemptPresentation(attempt);
@@ -79,7 +88,8 @@ export default function AssessmentEventScreen() {
   }, [attempt?.id, event?.entry.destination]);
 
   async function begin() {
-    if (!event || invalidated) return;
+    if (!event || invalidated || starting) return;
+    setStarting(true);
     try {
       const result = await start.mutateAsync({
         eventId,
@@ -91,6 +101,16 @@ export default function AssessmentEventScreen() {
       openAttempt(result.attempt.id, true);
     } catch {
       /* Mutation error is shown below. */
+      setStarting(false);
+    }
+  }
+
+  async function pullToRefresh() {
+    setPulling(true);
+    try {
+      await query.refetch();
+    } finally {
+      setPulling(false);
     }
   }
 
@@ -127,11 +147,12 @@ export default function AssessmentEventScreen() {
       <Stack.Screen options={{ headerBackButtonDisplayMode: "minimal" }} />
       <StudyScreen
         title={event?.title ?? "Latihan & tryout"}
-        refreshing={query.isRefetching}
-        onRefresh={() => void query.refetch()}
+        refreshing={pulling}
+        onRefresh={() => void pullToRefresh()}
       >
         <QueryState
           pending={query.isPending}
+          pendingLabel="Memuat latihan…"
           error={query.error}
           retry={() => void query.refetch()}
         />
@@ -145,6 +166,17 @@ export default function AssessmentEventScreen() {
         ) : event ? (
           <>
             <StudyGlass>
+              {query.isRefetching && !pulling ? (
+                <View
+                  className="flex-row items-center gap-2"
+                  accessibilityLiveRegion="polite"
+                >
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text className="text-xs text-muted-foreground">
+                    Memperbarui status dan hasil…
+                  </Text>
+                </View>
+              ) : null}
               <Eyebrow tone="primary" size="md">
                 {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
                 {event.cohort?.name ?? event.course.title}
@@ -192,12 +224,16 @@ export default function AssessmentEventScreen() {
               />
 
               {primaryAction ? (
-                <StudyAction
-                  disabled={start.isPending}
-                  onPress={() => void begin()}
-                >
-                  {start.isPending ? "Memulai…" : primaryAction}
-                </StudyAction>
+                <>
+                  <StudyAction loading={starting} onPress={() => void begin()}>
+                    {starting ? "Menyiapkan soal…" : primaryAction}
+                  </StudyAction>
+                  <Text className="text-xs leading-5 text-muted-foreground">
+                    {starting
+                      ? "Mengunduh soal ke HP ini, sebentar lagi soal pertama tampil."
+                      : "Perlu internet untuk mulai. Setelah soal terunduh, kamu bisa lanjut mengerjakan tanpa internet."}
+                  </Text>
+                </>
               ) : null}
 
               {attempt && attempt.status !== "IN_PROGRESS" ? (

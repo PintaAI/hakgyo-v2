@@ -1314,7 +1314,7 @@ function AssessmentAttemptContent({
                 onPress={confirmSubmit}
               >
                 {busy
-                  ? "Menyimpan…"
+                  ? "Mengirim jawaban…"
                   : answeredCount === assessment.data.questions.length
                     ? "Kirim tugas"
                     : `Kirim · ${answeredCount}/${assessment.data.questions.length} dijawab`}
