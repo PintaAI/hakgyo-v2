@@ -49,9 +49,42 @@ export function nativeAnchorRect(anchor: NativeAnchor, layout: Layout): Rect {
       );
     case "native:settings":
       return headerButton(window.width - HEADER_MARGIN - HEADER_BUTTON);
+    case "native:header-action": {
+      // A text button at the right of the header ("Selesaikan tugas").
+      const width = 170;
+      return {
+        x: window.width - HEADER_MARGIN - width,
+        y: headerCenter - HEADER_BUTTON / 2,
+        width,
+        height: HEADER_BUTTON,
+      };
+    }
+    case "native:toolbar":
+      return toolbarRect(layout);
     default:
       return tabRect(anchor, layout);
   }
+}
+
+/** A screen's bottom toolbar: floating on iOS 26, a full-width bar otherwise. */
+function toolbarRect({ window, insets }: Layout): Rect {
+  if (liquidGlass) {
+    const height = 52;
+    const margin = 16;
+    return {
+      x: margin,
+      y: window.height - Math.max(insets.bottom, 12) - height,
+      width: window.width - margin * 2,
+      height,
+    };
+  }
+  const height = ios ? 49 : 64;
+  return {
+    x: 0,
+    y: window.height - insets.bottom - height,
+    width: window.width,
+    height,
+  };
 }
 
 const TAB_ORDER = ["home", "learn", "assessments", "search"] as const;

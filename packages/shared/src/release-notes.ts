@@ -31,6 +31,18 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    id: "2026-11-06.2",
+    version: "1.0.1",
+    date: "2026-11-06",
+    title: "Mengerjakan soal lebih nyaman",
+    items: [
+      "Tekan Mulai, dan soal pertama langsung tampil.",
+      "Geser soal ke kiri atau kanan, atau pakai panah di bar bawah. Tombol Daftar soal di tengah menunjukkan semua soal.",
+      "Selesaikan tugas, latihan, atau tryout dari kanan atas, dengan konfirmasi sebelum jawaban dikirim.",
+      "Soal harian di Hari Ini memakai tampilan yang sama, dan bisa membuka tugas asal soalnya.",
+    ],
+  },
+  {
     id: "2026-11-06",
     version: "1.0.1",
     date: "2026-11-06",

@@ -1,5 +1,5 @@
 import { formatScore } from "@hakgyo/shared";
-import { Text } from "react-native";
+import { Text, View } from "react-native";
 
 import {
   NativeContentRenderer,
@@ -22,6 +22,7 @@ export function SectionIntro({
   timeLimitSeconds,
   secondsToAutoStart,
   busy,
+  rules = [],
   resolveAssetUrl,
   onStart,
 }: {
@@ -34,6 +35,8 @@ export function SectionIntro({
   /** Omitted before the section's countdown exists (the start preview). */
   secondsToAutoStart?: number;
   busy: boolean;
+  /** The section's rules (`sectionRules`), listed before it starts. */
+  rules?: readonly string[];
   resolveAssetUrl: AssetUrlResolver;
   onStart: () => void;
 }) {
@@ -54,6 +57,15 @@ export function SectionIntro({
           content={instructions}
           resolveAssetUrl={resolveAssetUrl}
         />
+      ) : null}
+      {rules.length ? (
+        <View className="gap-1.5">
+          {rules.map((rule) => (
+            <Text key={rule} className="text-sm font-semibold text-foreground">
+              • {rule}
+            </Text>
+          ))}
+        </View>
       ) : null}
       <Text className="text-sm text-muted-foreground">
         Waktu bagian ini berjalan setelah kamu menekan Mulai. Bagian yang sudah

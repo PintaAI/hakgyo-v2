@@ -1,5 +1,6 @@
 import { ActivityIndicator, Text, View } from "react-native";
 
+import { sectionRules } from "../lib/section-rules";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import type { CourseItemAssessment } from "../sync/hooks";
 import { useApiAssetResolver } from "./content-renderer";
@@ -77,6 +78,7 @@ export function AttemptStartingPreview({
           busy
           instructions={firstSection.instructions}
           onStart={() => undefined}
+          rules={sectionRules(firstSection)}
           position={1}
           questionCount={
             questions.filter(

@@ -23,7 +23,7 @@ Klik **Mulai tugas**. Tombolnya menjadi **Lanjutkan tugas** jika kamu sudah mula
    - **Pilih satu jawaban**.
    - **Pilih semua jawaban yang benar**: pilih semua yang benar dan jangan pilih yang salah. Jika salah satu keliru, soal itu dianggap salah.
    - **Tulis jawaban kamu**.
-3. Pindah soal dengan **Sebelumnya** dan **Berikutnya**, atau ketuk nomor soal untuk melihat daftar semua soal. Di aplikasi ponsel, kamu juga bisa menggeser soal ke kiri atau kanan, dan membuka daftar soal dengan tombol kotak-kotak di samping "Soal 1 dari 10".
+3. Pindah soal dengan **Sebelumnya** dan **Berikutnya**, atau ketuk nomor soal untuk melihat daftar semua soal. Di aplikasi ponsel, tombolnya ada di bar bawah: panah kiri dan kanan untuk pindah soal, dan **Daftar soal** di tengah untuk membuka semua soal beserta jumlah yang sudah dijawab. Kamu juga bisa menggeser soal ke kiri atau kanan. Saat pertama kali mengerjakan tugas tanpa batas waktu di aplikasi, tur singkat menunjukkan semua ini.
 4. Di situs web, jawabanmu tersimpan otomatis. Lihat tulisan **Jawaban tersimpan**.
 
 ## Tugas dengan bagian
@@ -34,9 +34,9 @@ Beberapa tugas, misalnya simulasi EPS-TOPIK, dibagi menjadi **bagian** seperti *
 2. Selama bagian berjalan, kamu hanya bisa membuka soal di bagian itu. Waktu yang tersisa tertulis di atas soal.
 3. Jika diizinkan pengajar, kamu bisa menekan **Selesai bagian ini** untuk lanjut lebih cepat. Saat waktu bagian habis, kamu otomatis pindah ke bagian berikutnya.
 4. Bagian yang sudah selesai **tidak bisa dibuka lagi**, jadi periksa jawabanmu sebelum menyelesaikannya.
-5. Di bagian terakhir, tekan **Kirim tugas**. Tugas juga terkirim otomatis saat waktu bagian terakhir habis.
+5. Di bagian terakhir, tekan **Kirim tugas** (di aplikasi ponsel: **Selesaikan tugas**, **Selesaikan latihan**, atau **Selesaikan tryout** di kanan atas). Tugas juga terkirim otomatis saat waktu bagian terakhir habis.
 
-Pengajar bisa menambahkan aturan pada sebuah bagian. Aturannya tertulis di bawah soal:
+Pengajar bisa menambahkan aturan pada sebuah bagian. Aturannya tertulis di bawah soal di situs web, dan di halaman pembuka bagian di aplikasi ponsel:
 
 - **Soal yang sudah dilewati tidak bisa dibuka lagi**: tombol **Sebelumnya** tidak ada dan soal tidak bisa digeser, jadi jawab dulu sebelum lanjut.
 - **Soal berganti sendiri**: audio diputar otomatis, lalu ada hitungan mundur "Soal berikutnya dalam ...". Jawab sebelum hitungan habis. Soal tidak bisa digeser.
@@ -49,9 +49,9 @@ Setelah dinilai, hasilmu juga menunjukkan nilai setiap bagian.
 
 ## Mengirim
 
-1. Klik **Kirim tugas**.
+1. Klik **Kirim tugas**. Di aplikasi ponsel, tombolnya ada di kanan atas: **Selesaikan tugas**, **Selesaikan latihan**, atau **Selesaikan tryout**.
 2. Baca konfirmasinya. Jawaban yang sudah dikirim tidak bisa diubah. Klik **Periksa lagi** jika ingin memeriksa dulu.
-3. Klik **Kirim**.
+3. Klik **Kirim** (di aplikasi ponsel: **Selesaikan**).
 
 Jika waktu habis saat halaman masih terbuka di situs web, jawabanmu dikirim otomatis. Jika halaman sudah tertutup, jawaban yang sempat tersimpan dikirim saat kamu membuka tugas itu lagi. Jawaban yang diubah setelah waktu habis tidak dihitung.
 

@@ -63,6 +63,10 @@ import {
 } from "../../../../../../src/lib/attempt-log";
 import { assessmentTerminalResult } from "../../../../../../src/lib/assessment-state";
 import { useAppTheme } from "../../../../../../src/providers/AppThemeProvider";
+import { toolbarIcons } from "../../../../../../src/theme/toolbar-icons";
+import { sectionRules } from "../../../../../../src/lib/section-rules";
+import { useAutoTour } from "../../../../../../src/tour/tour-provider";
+import { TourTarget } from "../../../../../../src/tour/tour-target";
 import { useMobileSyncActions } from "../../../../../../src/providers/MobileSyncProvider";
 import { useLearnerAttempt } from "../../../../../../src/sync/hooks";
 import { firstParam } from "../../../../../../src/lib/route-params";
@@ -192,7 +196,6 @@ function AssessmentAttemptContent({
   const [submitError, setSubmitError] = useState<string>();
   const [selectedIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
-  const [hasUnsavedAnswers, setHasUnsavedAnswers] = useState(false);
   const initialized = useRef<string | null>(null);
   const latestDraft = useRef<Record<string, Answer>>({});
   const latestDraftKey = useRef<string | null>(null);
@@ -318,7 +321,6 @@ function AssessmentAttemptContent({
       setLogReady(true);
     }
     setAnswers(saved);
-    setHasUnsavedAnswers(false);
   }, [assessment.data, attempt.data, attemptId, storageKey, session]);
 
   useEffect(() => {
@@ -342,7 +344,6 @@ function AssessmentAttemptContent({
           }).catch(() => undefined);
         }
         setDraftError(undefined);
-        setHasUnsavedAnswers(false);
       } catch {
         setDraftError(
           "Draf di perangkat tidak tersedia. Akan dicoba lagi selama kamu mengerjakan.",
@@ -555,6 +556,20 @@ function AssessmentAttemptContent({
       ? undefined
       : sectionIndexes.find((index) => statuses[index] === "unanswered")) ??
     -1;
+  // The toolbar's moves: back within a section that allows it, forward to
+  // the next question (or the next unanswered one from the last), never in a
+  // paced section, which moves by itself.
+  const previousIndex =
+    !paced && !forwardOnly && positionInSection > 0
+      ? sectionIndexes[positionInSection - 1]
+      : undefined;
+  const nextIndex = paced
+    ? undefined
+    : !isLastInSection
+      ? sectionIndexes[positionInSection + 1]
+      : nextUnanswered >= 0 && nextUnanswered !== currentIndex
+        ? nextUnanswered
+        : undefined;
   const openQuestions = useQuestionNavigator({
     title: activeSection?.title ?? assessment.data?.title ?? "Tugas",
     current: Math.max(0, positionInSection),
@@ -737,7 +752,6 @@ function AssessmentAttemptContent({
             : [...existing.optionIds, optionId];
       return { ...current, [target.id]: { optionIds } };
     });
-    setHasUnsavedAnswers(true);
   }
 
   function writeAnswer(questionId: string, content: string) {
@@ -745,7 +759,6 @@ function AssessmentAttemptContent({
       ...current,
       [questionId]: { content, optionIds: [] },
     }));
-    setHasUnsavedAnswers(true);
   }
 
   /** Moves to another question of the section, saving the answers first. */
@@ -785,7 +798,6 @@ function AssessmentAttemptContent({
         return false;
       }
     }
-    setHasUnsavedAnswers(false);
     if (nextIndex !== undefined) {
       // Answers are logged before the next question shows, so forward-only rules accept them.
       if (logAnswerChanges(answers)) {
@@ -928,18 +940,49 @@ function AssessmentAttemptContent({
   const screenTitle = assessment.data?.title ?? "Tugas";
   const loading = assessment.isPending || attempt.isPending;
   const error = assessment.error ?? attempt.error;
+  // "Selesaikan tryout", "Selesaikan latihan" or "Selesaikan tugas".
+  const kindLabel =
+    assessment.data?.event?.type === "TRYOUT"
+      ? "tryout"
+      : assessment.data?.event
+        ? "latihan"
+        : "tugas";
+
   function confirmSubmit() {
     Alert.alert(
-      "Kirim tugas?",
+      `Selesaikan ${kindLabel}?`,
       expired
-        ? "Waktu habis. Jawaban yang kamu isi sebelum waktu habis akan dinilai."
-        : `${answeredCount} dari ${assessment.data?.questions.length ?? 0} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`,
+        ? "Waktu habis. Jawaban yang kamu isi sebelum waktu habis akan dikirim dan dinilai."
+        : `Apakah kamu yakin ingin menyelesaikan ${kindLabel} ini dan mengirim jawaban? ${answeredCount} dari ${assessment.data?.questions.length ?? 0} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`,
       [
         { text: "Periksa lagi", style: "cancel" },
-        { text: "Kirim", onPress: () => void submit() },
+        { text: "Selesaikan", onPress: () => void submit() },
       ],
     );
   }
+
+  // How the attempt works, once, where no clock runs: a tour must not eat
+  // into a timed tugas or tryout (it can be replayed from Pengaturan).
+  useAutoTour(
+    "attempt",
+    Boolean(
+      question &&
+      !result &&
+      !sectioned &&
+      deadline === null &&
+      attempt.data?.status === "IN_PROGRESS",
+    ),
+  );
+
+  // The toolbar's main action: finish the section, or the whole tugas from
+  // the last section (or one without sections). Always in the same place,
+  // and always behind a confirmation.
+  const finish =
+    activeSection && !canFinishSection(activeSection)
+      ? null
+      : activeSection && !isLastSection
+        ? { label: "Selesai bagian", onPress: confirmFinishSection }
+        : { label: `Selesaikan ${kindLabel}`, onPress: confirmSubmit };
 
   function leaveResult() {
     if (assessment.data?.event) {
@@ -1124,6 +1167,7 @@ function AssessmentAttemptContent({
             busy={busy}
             instructions={activeSection.instructions}
             onStart={startSection}
+            rules={sectionRules(activeSection)}
             position={view.index + 1}
             questionCount={sectionIndexes.length}
             resolveAssetUrl={resolveAssetUrl}
@@ -1160,60 +1204,61 @@ function AssessmentAttemptContent({
               onRetry={media.retry}
             />
           ) : null}
-          <QuizPager
-            // A new section is a new set of pages.
-            key={activeSection?.id ?? "questions"}
-            ref={pager}
-            count={sectionIndexes.length}
-            initialIndex={Math.max(0, positionInSection)}
-            // Forward-only and paced sections move only with their own rules.
-            swipeEnabled={!forwardOnly && !paced && !busy}
-            onIndexChange={swipedTo}
-            renderPage={(position) => {
-              const pageIndex = sectionIndexes[position];
-              const page =
-                pageIndex === undefined
-                  ? undefined
-                  : assessment.data?.questions[pageIndex];
-              if (!page || pageIndex === undefined) return null;
-              const current = pageIndex === currentIndex;
-              return (
-                <QuizQuestion
-                  question={page}
-                  index={pageIndex}
-                  total={assessment.data?.questions.length ?? 0}
-                  answered={answeredCount}
-                  onOpenList={openQuestions}
-                  group={groupOf(page.id)}
-                  selectedOptionIds={answers[page.id]?.optionIds}
-                  writtenAnswer={answers[page.id]?.content}
-                  onChooseOption={(optionId) => chooseOption(page, optionId)}
-                  onChangeWritten={(content) => writeAnswer(page.id, content)}
-                  disabled={busy}
-                  answersDisabled={
-                    expired || sectionExpired || isAnswerLocked(page)
-                  }
-                  hideInlineAudio={Boolean(audioPolicy)}
-                  resolveAssetUrl={resolveAssetUrl}
-                  media={
-                    // Only the question in view plays: audio counts plays.
-                    current && audioPolicy && audioSources.length ? (
-                      <AssessmentAudioPlayer
-                        key={page.id}
-                        disabled={busy || expired || sectionExpired}
-                        onFinished={() => audioFinished(page.id)}
-                        onPlayStarted={() => recordPlay(page.id)}
-                        playsUsed={playsOf(page.id)}
-                        policy={audioPolicy}
-                        resolveAssetUrl={resolveAssetUrl}
-                        sources={audioSources}
-                      />
-                    ) : null
-                  }
-                />
-              );
-            }}
-          />
+          <TourTarget id="attempt.question">
+            <QuizPager
+              // A new section is a new set of pages.
+              key={activeSection?.id ?? "questions"}
+              ref={pager}
+              count={sectionIndexes.length}
+              initialIndex={Math.max(0, positionInSection)}
+              // Forward-only and paced sections move only with their own rules.
+              swipeEnabled={!forwardOnly && !paced && !busy}
+              onIndexChange={swipedTo}
+              renderPage={(position) => {
+                const pageIndex = sectionIndexes[position];
+                const page =
+                  pageIndex === undefined
+                    ? undefined
+                    : assessment.data?.questions[pageIndex];
+                if (!page || pageIndex === undefined) return null;
+                const current = pageIndex === currentIndex;
+                return (
+                  <QuizQuestion
+                    question={page}
+                    index={pageIndex}
+                    total={assessment.data?.questions.length ?? 0}
+                    answered={answeredCount}
+                    group={groupOf(page.id)}
+                    selectedOptionIds={answers[page.id]?.optionIds}
+                    writtenAnswer={answers[page.id]?.content}
+                    onChooseOption={(optionId) => chooseOption(page, optionId)}
+                    onChangeWritten={(content) => writeAnswer(page.id, content)}
+                    disabled={busy}
+                    answersDisabled={
+                      expired || sectionExpired || isAnswerLocked(page)
+                    }
+                    hideInlineAudio={Boolean(audioPolicy)}
+                    resolveAssetUrl={resolveAssetUrl}
+                    media={
+                      // Only the question in view plays: audio counts plays.
+                      current && audioPolicy && audioSources.length ? (
+                        <AssessmentAudioPlayer
+                          key={page.id}
+                          disabled={busy || expired || sectionExpired}
+                          onFinished={() => audioFinished(page.id)}
+                          onPlayStarted={() => recordPlay(page.id)}
+                          playsUsed={playsOf(page.id)}
+                          policy={audioPolicy}
+                          resolveAssetUrl={resolveAssetUrl}
+                          sources={audioSources}
+                        />
+                      ) : null
+                    }
+                  />
+                );
+              }}
+            />
+          </TourTarget>
           {pacedEndsAt ? (
             <Text className="text-sm font-semibold tabular-nums text-muted-foreground">
               {isLastInSection ? "Bagian selesai" : "Soal berikutnya"} dalam{" "}
@@ -1225,22 +1270,6 @@ function AssessmentAttemptContent({
               )}
             </Text>
           ) : null}
-          <Text className="text-xs leading-5 text-muted-foreground">
-            {paced
-              ? "Soal berganti sendiri setelah waktunya habis. "
-              : forwardOnly
-                ? "Soal yang sudah dilewati tidak bisa dibuka lagi. "
-                : ""}
-            {activeSection?.lockAnswers
-              ? "Pilihan pertama kamu langsung dikunci."
-              : forwardOnly
-                ? "Jawaban bisa diubah selama soal masih tampil."
-                : "Kamu bisa mengubah jawaban sampai mengirimnya."}{" "}
-            Draf tersimpan di perangkat ini selama kamu mengerjakan.
-            {deadline !== null || sectionSecondsLeft !== null
-              ? " Timer tetap berjalan meski kamu keluar."
-              : ""}
-          </Text>
           {draftError ? (
             <Text
               accessibilityRole="alert"
@@ -1257,76 +1286,58 @@ function AssessmentAttemptContent({
               {submitError}
             </Text>
           ) : null}
-          <View className="gap-3 border-t border-border pt-4">
-            <View className="flex-row gap-3">
-              {positionInSection > 0 && !forwardOnly ? (
-                <View className="flex-1">
-                  <Action
-                    variant="secondary"
-                    disabled={busy}
-                    onPress={() => {
-                      const previous = sectionIndexes[positionInSection - 1]!;
-                      if (expired) setCurrentIndex(previous);
-                      else void save(previous);
-                    }}
-                  >
-                    Sebelumnya
-                  </Action>
-                </View>
-              ) : null}
-              {!paced &&
-              (!isLastInSection ||
-                (nextUnanswered >= 0 && nextUnanswered !== currentIndex)) ? (
-                <View className="flex-1">
-                  <Action
-                    disabled={busy}
-                    onPress={() => {
-                      const next = isLastInSection
-                        ? nextUnanswered
-                        : sectionIndexes[positionInSection + 1]!;
-                      if (expired) setCurrentIndex(next);
-                      else void save(next);
-                    }}
-                    trailingIcon="arrow.right"
-                  >
-                    {!isLastInSection
-                      ? "Berikutnya"
-                      : "Soal belum dijawab berikutnya"}
-                  </Action>
-                </View>
-              ) : null}
-            </View>
-            {!expired ? (
-              <Text className="text-center text-xs text-muted-foreground">
-                {hasUnsavedAnswers
-                  ? "Menyimpan draf di perangkat ini…"
-                  : "Draf tersimpan di perangkat ini"}
-              </Text>
-            ) : null}
-            {!isLastSection && activeSection ? (
-              canFinishSection(activeSection) &&
-              (isLastInSection || sectionAnswered === sectionIndexes.length) ? (
-                <Action disabled={busy} onPress={confirmFinishSection}>
-                  Selesai bagian ini
-                </Action>
-              ) : null
-            ) : activeSection &&
-              !canFinishSection(activeSection) ? null : expired ||
-              currentIndex === assessment.data.questions.length - 1 ||
-              answeredCount === assessment.data.questions.length ? (
-              <Action
-                loading={submitting}
+          {/* Finishing sits at the top right and moving in the bottom
+              toolbar, so both stay put whatever the question's length. How
+              it all works is in the attempt tour; each section's rules are on
+              its intro. */}
+          {finish ? (
+            <Stack.Toolbar placement="right">
+              <Stack.Toolbar.Button
+                variant="prominent"
                 disabled={busy}
-                onPress={confirmSubmit}
+                onPress={finish.onPress}
               >
-                {busy
-                  ? "Mengirim jawaban…"
-                  : answeredCount === assessment.data.questions.length
-                    ? "Kirim tugas"
-                    : `Kirim · ${answeredCount}/${assessment.data.questions.length} dijawab`}
-              </Action>
-            ) : null}
-          </View>
+                {busy ? "Mengirim…" : finish.label}
+              </Stack.Toolbar.Button>
+            </Stack.Toolbar>
+          ) : null}
+          <Stack.Toolbar
+            placement="bottom"
+            backgroundColor={colors.background}
+            tintColor={colors.primary}
+          >
+            <Stack.Toolbar.Button
+              accessibilityLabel="Soal sebelumnya"
+              icon={toolbarIcons.previousQuestion}
+              hidden={previousIndex === undefined}
+              disabled={busy}
+              onPress={() => {
+                if (previousIndex !== undefined) void moveTo(previousIndex);
+              }}
+            />
+            <Stack.Toolbar.Spacer />
+            <Stack.Toolbar.Button
+              accessibilityHint={`${sectionAnswered} dari ${sectionIndexes.length} soal dijawab. Buka daftar untuk pindah ke soal mana pun.`}
+              disabled={busy}
+              onPress={openQuestions}
+            >
+              {`Daftar soal · ${sectionAnswered}/${sectionIndexes.length}`}
+            </Stack.Toolbar.Button>
+            <Stack.Toolbar.Spacer />
+            <Stack.Toolbar.Button
+              accessibilityLabel={
+                isLastInSection
+                  ? "Soal belum dijawab berikutnya"
+                  : "Soal berikutnya"
+              }
+              icon={toolbarIcons.nextQuestion}
+              hidden={nextIndex === undefined}
+              disabled={busy}
+              onPress={() => {
+                if (nextIndex !== undefined) void moveTo(nextIndex);
+              }}
+            />
+          </Stack.Toolbar>
         </StudyScreen>
       ) : (
         <FullScreenState
