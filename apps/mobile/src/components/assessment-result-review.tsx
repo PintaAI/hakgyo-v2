@@ -1,6 +1,6 @@
-import { formatScoreOutOf, groupRanges, usesPictureGrid } from "@hakgyo/shared";
+import { formatScoreOutOf, groupRanges } from "@hakgyo/shared";
 import type { RouterOutputs } from "@hakgyo/api";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Text, View } from "react-native";
 import {
   NativeContentRenderer,
@@ -12,13 +12,9 @@ import {
   type QuestionStatus,
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
-import {
-  AssessmentOption,
-  AssessmentOptions,
-  AssessmentQuestion,
-} from "./assessment-ui";
-import { QuestionGroupHeader } from "./question-group-header";
 import { Action, Card, Eyebrow } from "./learning-ui";
+import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
+import { QuizQuestion } from "./quiz/quiz-question";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
 type Attempt = RouterOutputs["assessment"]["getMyAttempt"];
@@ -35,8 +31,11 @@ export function AssessmentResultReview({
   onQuestionChange?: () => void;
 }) {
   const [index, setIndex] = useState(0);
-  function goToQuestion(next: number) {
+  const pager = useRef<QuizPagerHandle>(null);
+  /** A swipe already moved the pager; buttons and the list move it here. */
+  function goToQuestion(next: number, swiped = false) {
     setIndex(next);
+    if (!swiped) pager.current?.scrollTo(next);
     onQuestionChange?.();
   }
   const policy = assessmentResultPolicy(assessment.event?.type);
@@ -99,114 +98,105 @@ export function AssessmentResultReview({
       </Card>
     );
 
-  const question = assessment.questions[index];
-  if (!question) return null;
-  const answer = attempt.answers.find(
-    (candidate) => candidate.questionId === question.id,
-  );
-  const selected = new Set(
-    answer?.selectedOptions.map((selection) => selection.optionId) ?? [],
-  );
-  const writtenScore =
-    answer && "manualScore" in answer
-      ? (answer.manualScore ??
-        ("autoScore" in answer ? answer.autoScore : null))
-      : null;
-  // Scores arrive as plain numbers; the payload type widens them through the "in" checks.
-  const writtenScoreValue =
-    typeof writtenScore === "number" ? writtenScore : null;
-  const feedback = answer && "feedback" in answer ? answer.feedback : null;
-  const group = question.groupId
-    ? assessment.groups.find(({ id }) => id === question.groupId)
-    : undefined;
-  const groupRange = question.groupId
-    ? groupRanges(assessment.questions).get(question.groupId)
-    : undefined;
-  const pictureGrid = usesPictureGrid(question.options);
-  return (
-    <View className="gap-4">
-      <Text className="text-xl font-black text-foreground">
-        Review jawaban kamu
-      </Text>
-      <AssessmentQuestion
+  const answeredCount = statuses.filter(
+    (status) => status !== "unanswered",
+  ).length;
+  const ranges = groupRanges(assessment.questions);
+
+  function renderPage(position: number) {
+    const question = assessment.questions[position];
+    if (!question) return null;
+    const answer = attempt.answers.find(
+      (candidate) => candidate.questionId === question.id,
+    );
+    const writtenScore =
+      answer && "manualScore" in answer
+        ? (answer.manualScore ??
+          ("autoScore" in answer ? answer.autoScore : null))
+        : null;
+    // Scores arrive as plain numbers; the payload type widens them through the "in" checks.
+    const writtenScoreValue =
+      typeof writtenScore === "number" ? writtenScore : null;
+    const feedback = answer && "feedback" in answer ? answer.feedback : null;
+    const group = question.groupId
+      ? assessment.groups.find(({ id }) => id === question.groupId)
+      : undefined;
+    const range = question.groupId ? ranges.get(question.groupId) : undefined;
+    return (
+      <QuizQuestion
+        question={question}
+        index={position}
+        total={assessment.questions.length}
+        answered={answeredCount}
+        onOpenList={openQuestions}
         detail={
           question.type === "WRITTEN"
             ? writtenScoreValue !== null
               ? `${formatScoreOutOf(writtenScoreValue, question.points, " / ")} pt`
               : "Sudah direview"
-            : statuses[index] === "correct"
+            : statuses[position] === "correct"
               ? "Benar"
-              : statuses[index] === "unanswered"
+              : statuses[position] === "unanswered"
                 ? "Tidak dijawab"
                 : "Salah"
         }
-        current={index}
-        total={assessment.questions.length}
-        answered={statuses.filter((status) => status !== "unanswered").length}
-        onOpen={openQuestions}
+        group={
+          group && range
+            ? {
+                instructions: group.instructions,
+                stimulus: group.stimulus,
+                first: range.first,
+                last: range.last,
+              }
+            : null
+        }
+        selectedOptionIds={
+          answer?.selectedOptions.map((selection) => selection.optionId) ?? []
+        }
+        correctOptionIds={question.options
+          .filter((option) => option.isCorrect === true)
+          .map((option) => option.id)}
+        writtenAnswer={
+          typeof answer?.content === "string" ? answer.content : undefined
+        }
+        resolveAssetUrl={resolveAssetUrl}
       >
-        {group && groupRange ? (
-          <QuestionGroupHeader
-            first={groupRange.first}
-            instructions={group.instructions}
-            last={groupRange.last}
-            resolveAssetUrl={resolveAssetUrl}
-            stimulus={group.stimulus}
-          />
+        {feedback ? (
+          <Card className="gap-4 p-5">
+            <Eyebrow size="md" tone="primary">
+              Feedback pengajar
+            </Eyebrow>
+            <NativeContentRenderer
+              content={feedback}
+              resolveAssetUrl={resolveAssetUrl}
+            />
+          </Card>
         ) : null}
-        <NativeContentRenderer
-          content={question.prompt}
-          resolveAssetUrl={resolveAssetUrl}
-        />
-      </AssessmentQuestion>
-      {question.type === "WRITTEN" ? (
-        <Card className="gap-4 p-5">
-          <Eyebrow size="md">Jawaban kamu</Eyebrow>
-          <Text className="text-base leading-6 text-foreground">
-            {typeof answer?.content === "string" && answer.content.trim()
-              ? answer.content
-              : "Tidak dijawab"}
-          </Text>
-        </Card>
-      ) : (
-        <AssessmentOptions grid={pictureGrid}>
-          {question.options.map((option, optionIndex) => (
-            <AssessmentOption
-              key={option.id}
-              index={optionIndex}
-              selected={selected.has(option.id)}
-              correct={option.isCorrect === true}
-              multiple={question.type === "MULTIPLE_CHOICE"}
-              tile={pictureGrid}
-            >
-              <NativeContentRenderer
-                content={option.content}
-                resolveAssetUrl={resolveAssetUrl}
-              />
-            </AssessmentOption>
-          ))}
-        </AssessmentOptions>
-      )}
-      {feedback ? (
-        <Card className="gap-4 p-5">
-          <Eyebrow size="md" tone="primary">
-            Feedback pengajar
-          </Eyebrow>
-          <NativeContentRenderer
-            content={feedback}
-            resolveAssetUrl={resolveAssetUrl}
-          />
-        </Card>
-      ) : null}
-      {question.explanation ? (
-        <Card className="gap-4 p-5">
-          <Eyebrow size="md">Pembahasan</Eyebrow>
-          <NativeContentRenderer
-            content={question.explanation}
-            resolveAssetUrl={resolveAssetUrl}
-          />
-        </Card>
-      ) : null}
+        {question.explanation ? (
+          <Card className="gap-4 p-5">
+            <Eyebrow size="md">Pembahasan</Eyebrow>
+            <NativeContentRenderer
+              content={question.explanation}
+              resolveAssetUrl={resolveAssetUrl}
+            />
+          </Card>
+        ) : null}
+      </QuizQuestion>
+    );
+  }
+
+  return (
+    <View className="gap-4">
+      <Text className="text-xl font-black text-foreground">
+        Review jawaban kamu
+      </Text>
+      <QuizPager
+        ref={pager}
+        count={assessment.questions.length}
+        initialIndex={index}
+        onIndexChange={(next) => goToQuestion(next, true)}
+        renderPage={renderPage}
+      />
       <View className="flex-row gap-3">
         <View className="flex-1">
           <Action

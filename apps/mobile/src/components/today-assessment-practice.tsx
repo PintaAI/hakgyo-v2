@@ -1,23 +1,6 @@
 import type { RouterOutputs } from "@hakgyo/api";
-import {
-  type ReactNode,
-  type Ref,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { type LayoutChangeEvent, Text, View } from "react-native";
-import Animated, {
-  useAnimatedReaction,
-  useAnimatedRef,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-} from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
+import { useEffect, useRef, useState } from "react";
+import { Text, View } from "react-native";
 
 import { api } from "../lib/trpc";
 import { userErrorMessage } from "../lib/error-message";
@@ -28,12 +11,10 @@ import {
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
-import { Action, Card, Empty, Eyebrow, PageDots } from "./learning-ui";
-import {
-  AssessmentFeedback,
-  AssessmentOption,
-  AssessmentQuestion,
-} from "./assessment-ui";
+import { Action, Card, Empty, Eyebrow } from "./learning-ui";
+import { AssessmentFeedback } from "./assessment-ui";
+import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
+import { QuizQuestion } from "./quiz/quiz-question";
 import { MarqueeText } from "./ui/marquee-text";
 
 type PracticeQuestion =
@@ -47,7 +28,7 @@ function randomSeed() {
 /**
  * Home's daily question challenge: a small random set of published questions
  * from the learner's open curricula, one page per question. Swipe between
- * them, or jump from "Soal ▦" and "Soal belum dijawab berikutnya". Answers
+ * them, or jump from the question list and "Soal belum dijawab berikutnya". Answers
  * are graded on the server but change no score, attempt or XP.
  */
 export function TodayAssessmentPractice({
@@ -71,7 +52,7 @@ export function TodayAssessmentPractice({
   const initializedPool = useRef("");
   const gradingRequest = useRef(0);
   const inFlight = useRef(false);
-  const pager = useRef<QuestionPagerHandle>(null);
+  const pager = useRef<QuizPagerHandle>(null);
 
   useEffect(() => {
     const questions = localSample(pool.questions, seed, 5);
@@ -220,7 +201,7 @@ export function TodayAssessmentPractice({
               {question.assessmentTitle} · {question.courseTitle}
             </Eyebrow>
           </MarqueeText>
-          <QuestionPager
+          <QuizPager
             ref={pager}
             count={questions.length}
             initialIndex={index}
@@ -261,177 +242,6 @@ export function TodayAssessmentPractice({
   );
 }
 
-type QuestionPagerHandle = { scrollTo: (index: number) => void };
-
-/** Space between two question pages. */
-const PAGE_GAP = 12;
-/** The screen gutter the pager reaches out over, to run edge to edge. */
-const PAGE_BLEED = 20;
-
-/**
- * A horizontal pager of question pages. Pages differ in height, so the pager
- * takes the height of the page in view and blends between neighbours while
- * it is dragged, instead of reserving the tallest page's height.
- */
-function QuestionPager({
-  ref,
-  count,
-  initialIndex,
-  onIndexChange,
-  renderPage,
-}: {
-  ref: Ref<QuestionPagerHandle>;
-  count: number;
-  initialIndex: number;
-  onIndexChange: (index: number) => void;
-  renderPage: (index: number) => ReactNode;
-}) {
-  const [pageWidth, setPageWidth] = useState(0);
-  // Pages sit a gap apart; one swipe moves a page and its gap.
-  const interval = pageWidth + PAGE_GAP;
-  const intervalValue = useSharedValue(interval);
-  useEffect(() => {
-    intervalValue.value = interval;
-  }, [interval, intervalValue]);
-  const list = useAnimatedRef<Animated.FlatList<number>>();
-  /** Scroll offset in pages, for the dots and the height blend. */
-  const position = useSharedValue(initialIndex);
-  /** Measured page heights by index; 0 until a page has laid out. */
-  const heights = useSharedValue<number[]>([]);
-  const pages = useMemo(
-    () => Array.from({ length: count }, (_, page) => page),
-    [count],
-  );
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      scrollTo: (index) => {
-        if (pageWidth <= 0) return;
-        list.current?.scrollToOffset({
-          offset: interval * index,
-          animated: true,
-        });
-      },
-    }),
-    [interval, list, pageWidth],
-  );
-
-  const measureWidth = (event: LayoutChangeEvent) => {
-    const nextWidth = Math.round(event.nativeEvent.layout.width);
-    if (nextWidth > 0 && nextWidth !== pageWidth) setPageWidth(nextWidth);
-  };
-
-  const measurePage = useCallback(
-    (index: number, height: number) => {
-      heights.modify((current) => {
-        "worklet";
-        if (current[index] === height) return current;
-        const next = current.slice();
-        next[index] = height;
-        return next;
-      });
-    },
-    [heights],
-  );
-
-  const onScroll = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      if (intervalValue.value > PAGE_GAP) {
-        position.value = event.contentOffset.x / intervalValue.value;
-      }
-    },
-  });
-
-  // The page in view drives the title, the navigator and the next button.
-  useAnimatedReaction(
-    () => Math.round(position.value),
-    (current, previous) => {
-      if (previous !== null && current !== previous) {
-        scheduleOnRN(onIndexChange, current);
-      }
-    },
-  );
-
-  const heightStyle = useAnimatedStyle(() => {
-    const list = heights.value;
-    const from = Math.max(0, Math.min(count - 1, Math.floor(position.value)));
-    const to = Math.min(count - 1, from + 1);
-    const progress = Math.max(0, Math.min(1, position.value - from));
-    const fromHeight = list[from] || list[to] || 0;
-    const toHeight = list[to] || fromHeight;
-    const height = fromHeight + (toHeight - fromHeight) * progress;
-    // Unmeasured: let the list size itself for the first layout.
-    return height > 0 ? { height } : {};
-  });
-
-  return (
-    <View className="gap-4" onLayout={measureWidth}>
-      {count > 1 ? (
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          className="items-center"
-        >
-          <PageDots count={count} position={position} />
-        </View>
-      ) : null}
-      {pageWidth > 0 ? (
-        // Edge to edge: a page slides in from the screen's edge rather than
-        // being cut off at the gutter, and nothing clips its content.
-        <Animated.View style={[{ marginHorizontal: -PAGE_BLEED }, heightStyle]}>
-          <Animated.FlatList
-            style={{ overflow: "visible" }}
-            ref={list}
-            data={pages}
-            // Answers live in the parent: re-render the pages when it does.
-            extraData={renderPage}
-            horizontal
-            decelerationRate="fast"
-            disableIntervalMomentum
-            snapToInterval={interval}
-            snapToAlignment="start"
-            showsHorizontalScrollIndicator={false}
-            // Pages keep their own height; the gutter pads the first and last.
-            contentContainerStyle={{
-              alignItems: "flex-start",
-              paddingHorizontal: PAGE_BLEED,
-            }}
-            getItemLayout={(_, index) => ({
-              index,
-              length: interval,
-              offset: interval * index,
-            })}
-            initialScrollIndex={initialIndex > 0 ? initialIndex : undefined}
-            // A page renders rich content and up to four option cards: keep
-            // only the page in view and its neighbours mounted.
-            initialNumToRender={1}
-            maxToRenderPerBatch={1}
-            windowSize={3}
-            keyExtractor={(page) => String(page)}
-            onScroll={onScroll}
-            scrollEventThrottle={16}
-            scrollEnabled={count > 1}
-            renderItem={({ item: page }) => (
-              <View
-                style={{
-                  width: pageWidth,
-                  marginRight: page < count - 1 ? PAGE_GAP : 0,
-                }}
-                onLayout={(event) =>
-                  measurePage(page, event.nativeEvent.layout.height)
-                }
-              >
-                {renderPage(page)}
-              </View>
-            )}
-          />
-        </Animated.View>
-      ) : null}
-    </View>
-  );
-}
-
 function QuestionPage({
   question,
   index,
@@ -467,49 +277,21 @@ function QuestionPage({
   onCheck: () => void;
   onNext: () => void;
 }) {
-  const multiple = question.type === "MULTIPLE_CHOICE";
   const failed = failure !== undefined;
   return (
-    <View className="gap-4">
-      <AssessmentQuestion
-        compactHeader
-        current={index}
-        total={total}
-        answered={answered}
-        onOpen={onOpen}
-        disabled={busy}
-      >
-        <NativeContentRenderer
-          content={question.prompt}
-          resolveAssetUrl={resolveAssetUrl}
-        />
-      </AssessmentQuestion>
-      {/* Single choice checks on tap; only several answers need saying. */}
-      {multiple ? (
-        <Text className="text-sm font-bold text-foreground">
-          Pilih semua jawaban yang benar, lalu periksa
-        </Text>
-      ) : null}
-      <View className="gap-3">
-        {question.options.map((option, optionIndex) => (
-          <AssessmentOption
-            key={option.id}
-            index={optionIndex}
-            selected={selected.includes(option.id)}
-            multiple={multiple}
-            disabled={!!result || busy}
-            correct={
-              result ? result.correctOptionIds.includes(option.id) : undefined
-            }
-            onPress={() => onChoose(option.id)}
-          >
-            <NativeContentRenderer
-              content={option.content}
-              resolveAssetUrl={resolveAssetUrl}
-            />
-          </AssessmentOption>
-        ))}
-      </View>
+    <QuizQuestion
+      question={question}
+      index={index}
+      total={total}
+      answered={answered}
+      onOpenList={onOpen}
+      selectedOptionIds={selected}
+      correctOptionIds={result?.correctOptionIds}
+      onChooseOption={onChoose}
+      answersDisabled={!!result}
+      disabled={busy}
+      resolveAssetUrl={resolveAssetUrl}
+    >
       {result ? (
         <>
           <AssessmentFeedback correct={result.correct}>
@@ -539,7 +321,7 @@ function QuestionPage({
           {userErrorMessage(failure, "Jawaban tidak dapat diperiksa.")}
         </Text>
       ) : null}
-      {!result && (multiple || pending || failed) ? (
+      {!result && (question.type === "MULTIPLE_CHOICE" || pending || failed) ? (
         <Action
           loading={pending}
           disabled={!selected.length || (busy && !pending)}
@@ -552,6 +334,6 @@ function QuestionPage({
               : "Periksa jawaban"}
         </Action>
       ) : null}
-    </View>
+    </QuizQuestion>
   );
 }

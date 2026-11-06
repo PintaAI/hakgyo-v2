@@ -8,7 +8,6 @@ import {
   questionAudioSources,
   groupRanges,
   stimulusPlaysWith,
-  usesPictureGrid,
   ruleSectionsFor,
   ruleStateFrom,
   sectionAudioPolicy,
@@ -20,7 +19,7 @@ import {
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
-import { Alert, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
 
 import {
   AssessmentMediaStatus,
@@ -29,14 +28,13 @@ import {
 import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
 import { ScoreBandResults } from "../../../../../../src/components/score-band-results";
 import { SectionIntro } from "../../../../../../src/components/section-intro";
-import { QuestionGroupHeader } from "../../../../../../src/components/question-group-header";
 import { AssessmentAudioPlayer } from "../../../../../../src/components/assessment-audio-player";
 import { TagResults } from "../../../../../../src/components/tag-results";
 import {
-  AssessmentOption,
-  AssessmentOptions,
-  AssessmentQuestion,
-} from "../../../../../../src/components/assessment-ui";
+  QuizPager,
+  type QuizPagerHandle,
+} from "../../../../../../src/components/quiz/quiz-pager";
+import { QuizQuestion } from "../../../../../../src/components/quiz/quiz-question";
 import {
   Action,
   Card,
@@ -49,10 +47,7 @@ import {
   type QuestionStatus,
 } from "../../../../../../src/lib/question-progress";
 import { useQuestionNavigator } from "../../../../../../src/providers/QuestionNavigatorProvider";
-import {
-  NativeContentRenderer,
-  useApiAssetResolver,
-} from "../../../../../../src/components/content-renderer";
+import { useApiAssetResolver } from "../../../../../../src/components/content-renderer";
 import { api } from "../../../../../../src/lib/trpc";
 import { authClient } from "../../../../../../src/lib/auth-client";
 import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-draft";
@@ -74,9 +69,6 @@ import { firstParam } from "../../../../../../src/lib/route-params";
 import { SymbolIcon } from "../../../../../../src/components/ui/symbol-icon";
 
 type Answer = { content?: string; optionIds: string[] };
-
-// Audio of the content itself, hidden while a section plays it through the controlled player.
-const hiddenAudioRenderers = { assetAudio: () => null, audio: () => null };
 
 function buildAnswerPayload(
   questions: readonly { id: string; type: string }[] | undefined,
@@ -482,12 +474,28 @@ function AssessmentAttemptContent({
   // Groups: a question's shared part. Its stimulus audio plays with the group's first question;
   // bundles cached before groups have none.
   const groups = assessment.data?.groups ?? [];
-  const group = question?.groupId
-    ? groups.find(({ id }) => id === question.groupId)
-    : undefined;
-  const groupRange = question?.groupId
-    ? groupRanges(assessment.data?.questions ?? []).get(question.groupId)
-    : undefined;
+  const ranges = useMemo(
+    () => groupRanges(assessment.data?.questions ?? []),
+    [assessment.data?.questions],
+  );
+  /** The shared instructions and stimulus shown above a grouped question. */
+  function groupOf(questionId: string | null | undefined) {
+    const target = assessment.data?.questions.find(
+      (candidate) => candidate.id === questionId,
+    );
+    const group = target?.groupId
+      ? groups.find(({ id }) => id === target.groupId)
+      : undefined;
+    const range = target?.groupId ? ranges.get(target.groupId) : undefined;
+    return group && range
+      ? {
+          instructions: group.instructions,
+          stimulus: group.stimulus,
+          first: range.first,
+          last: range.last,
+        }
+      : null;
+  }
   const playsOf = (questionId: string) =>
     Math.max(
       assessment.data?.questionProgress.plays[questionId] ?? 0,
@@ -505,7 +513,6 @@ function AssessmentAttemptContent({
           ),
         )
       : [];
-  const pictureGrid = question ? usesPictureGrid(question.options) : false;
   const pacedEndsAt =
     paced && activeSection && question && pacedClock?.questionId === question.id
       ? pacedQuestionEndsAt({
@@ -516,11 +523,13 @@ function AssessmentAttemptContent({
         })
       : null;
   // A locked section keeps the first choice of a single-choice question.
-  const answerLocked = Boolean(
-    activeSection?.lockAnswers &&
-    question?.type === "SINGLE_CHOICE" &&
-    answerHasContent(answers[question.id] ?? {}),
-  );
+  function isAnswerLocked(target: { id: string; type: string }) {
+    return Boolean(
+      activeSection?.lockAnswers &&
+      target.type === "SINGLE_CHOICE" &&
+      answerHasContent(answers[target.id] ?? {}),
+    );
+  }
   const statuses: QuestionStatus[] = useMemo(
     () =>
       (assessment.data?.questions ?? []).map((item) =>
@@ -562,11 +571,7 @@ function AssessmentAttemptContent({
       ) {
         return false;
       }
-      if (expired || sectionExpired) {
-        setCurrentIndex(index);
-        return true;
-      }
-      return save(index);
+      return moveTo(index);
     },
   });
 
@@ -717,19 +722,54 @@ function AssessmentAttemptContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per shown question
   }, [shownQuestionId, logReady]);
 
-  function chooseOption(optionId: string) {
-    if (!question || busy || expired || result || answerLocked) return;
+  function chooseOption(
+    target: { id: string; type: string },
+    optionId: string,
+  ) {
+    if (busy || expired || result || isAnswerLocked(target)) return;
     setAnswers((current) => {
-      const existing = current[question.id] ?? { optionIds: [] };
+      const existing = current[target.id] ?? { optionIds: [] };
       const optionIds =
-        question.type === "SINGLE_CHOICE"
+        target.type === "SINGLE_CHOICE"
           ? [optionId]
           : existing.optionIds.includes(optionId)
             ? existing.optionIds.filter((id) => id !== optionId)
             : [...existing.optionIds, optionId];
-      return { ...current, [question.id]: { optionIds } };
+      return { ...current, [target.id]: { optionIds } };
     });
     setHasUnsavedAnswers(true);
+  }
+
+  function writeAnswer(questionId: string, content: string) {
+    setAnswers((current) => ({
+      ...current,
+      [questionId]: { content, optionIds: [] },
+    }));
+    setHasUnsavedAnswers(true);
+  }
+
+  /** Moves to another question of the section, saving the answers first. */
+  function moveTo(nextIndex: number) {
+    if (expired || sectionExpired) {
+      setCurrentIndex(nextIndex);
+      return Promise.resolve(true);
+    }
+    return save(nextIndex);
+  }
+
+  // The pager follows moves made with the buttons, the list or the paced
+  // clock; a swipe that did not stand (a failed save) is undone here too.
+  const pager = useRef<QuizPagerHandle>(null);
+  useEffect(() => {
+    if (positionInSection >= 0) pager.current?.scrollTo(positionInSection);
+  }, [positionInSection]);
+
+  function swipedTo(position: number) {
+    const nextIndex = sectionIndexes[position];
+    if (nextIndex === undefined || nextIndex === currentIndex) return;
+    void moveTo(nextIndex).then((moved) => {
+      if (!moved) pager.current?.scrollTo(positionInSection);
+    });
   }
 
   async function save(nextIndex?: number) {
@@ -1120,41 +1160,60 @@ function AssessmentAttemptContent({
               onRetry={media.retry}
             />
           ) : null}
-          <AssessmentQuestion
-            current={currentIndex}
-            total={assessment.data.questions.length}
-            answered={answeredCount}
-            onOpen={openQuestions}
-            disabled={busy}
-          >
-            {group && groupRange ? (
-              <QuestionGroupHeader
-                first={groupRange.first}
-                instructions={group.instructions}
-                last={groupRange.last}
-                renderers={audioPolicy ? hiddenAudioRenderers : undefined}
-                resolveAssetUrl={resolveAssetUrl}
-                stimulus={group.stimulus}
-              />
-            ) : null}
-            <NativeContentRenderer
-              content={question.prompt}
-              renderers={audioPolicy ? hiddenAudioRenderers : undefined}
-              resolveAssetUrl={resolveAssetUrl}
-            />
-          </AssessmentQuestion>
-          {audioPolicy && audioSources.length ? (
-            <AssessmentAudioPlayer
-              key={question.id}
-              disabled={busy || expired || sectionExpired}
-              onFinished={() => audioFinished(question.id)}
-              onPlayStarted={() => recordPlay(question.id)}
-              playsUsed={playsOf(question.id)}
-              policy={audioPolicy}
-              resolveAssetUrl={resolveAssetUrl}
-              sources={audioSources}
-            />
-          ) : null}
+          <QuizPager
+            // A new section is a new set of pages.
+            key={activeSection?.id ?? "questions"}
+            ref={pager}
+            count={sectionIndexes.length}
+            initialIndex={Math.max(0, positionInSection)}
+            // Forward-only and paced sections move only with their own rules.
+            swipeEnabled={!forwardOnly && !paced && !busy}
+            onIndexChange={swipedTo}
+            renderPage={(position) => {
+              const pageIndex = sectionIndexes[position];
+              const page =
+                pageIndex === undefined
+                  ? undefined
+                  : assessment.data?.questions[pageIndex];
+              if (!page || pageIndex === undefined) return null;
+              const current = pageIndex === currentIndex;
+              return (
+                <QuizQuestion
+                  question={page}
+                  index={pageIndex}
+                  total={assessment.data?.questions.length ?? 0}
+                  answered={answeredCount}
+                  onOpenList={openQuestions}
+                  group={groupOf(page.id)}
+                  selectedOptionIds={answers[page.id]?.optionIds}
+                  writtenAnswer={answers[page.id]?.content}
+                  onChooseOption={(optionId) => chooseOption(page, optionId)}
+                  onChangeWritten={(content) => writeAnswer(page.id, content)}
+                  disabled={busy}
+                  answersDisabled={
+                    expired || sectionExpired || isAnswerLocked(page)
+                  }
+                  hideInlineAudio={Boolean(audioPolicy)}
+                  resolveAssetUrl={resolveAssetUrl}
+                  media={
+                    // Only the question in view plays: audio counts plays.
+                    current && audioPolicy && audioSources.length ? (
+                      <AssessmentAudioPlayer
+                        key={page.id}
+                        disabled={busy || expired || sectionExpired}
+                        onFinished={() => audioFinished(page.id)}
+                        onPlayStarted={() => recordPlay(page.id)}
+                        playsUsed={playsOf(page.id)}
+                        policy={audioPolicy}
+                        resolveAssetUrl={resolveAssetUrl}
+                        sources={audioSources}
+                      />
+                    ) : null
+                  }
+                />
+              );
+            }}
+          />
           {pacedEndsAt ? (
             <Text className="text-sm font-semibold tabular-nums text-muted-foreground">
               {isLastInSection ? "Bagian selesai" : "Soal berikutnya"} dalam{" "}
@@ -1166,55 +1225,6 @@ function AssessmentAttemptContent({
               )}
             </Text>
           ) : null}
-          <Text className="text-sm font-bold text-foreground">
-            {question.type === "WRITTEN"
-              ? "Tulis jawaban kamu"
-              : question.type === "MULTIPLE_CHOICE"
-                ? "Pilih semua jawaban yang benar"
-                : "Pilih satu jawaban"}
-          </Text>
-          {question.type === "WRITTEN" ? (
-            <Card className="gap-4 p-5">
-              <TextInput
-                accessibilityLabel={`Jawaban soal ${currentIndex + 1}`}
-                className="min-h-32 text-base text-foreground"
-                multiline
-                editable={!busy && !expired && !sectionExpired}
-                onChangeText={(content) => {
-                  setAnswers((current) => ({
-                    ...current,
-                    [question.id]: { content, optionIds: [] },
-                  }));
-                  setHasUnsavedAnswers(true);
-                }}
-                placeholder="Tulis jawaban kamu…"
-                textAlignVertical="top"
-                value={answers[question.id]?.content ?? ""}
-              />
-            </Card>
-          ) : (
-            <AssessmentOptions grid={pictureGrid}>
-              {question.options.map((option, optionIndex) => (
-                <AssessmentOption
-                  key={option.id}
-                  index={optionIndex}
-                  selected={
-                    answers[question.id]?.optionIds.includes(option.id) ?? false
-                  }
-                  multiple={question.type === "MULTIPLE_CHOICE"}
-                  disabled={busy || expired || sectionExpired || answerLocked}
-                  tile={pictureGrid}
-                  onPress={() => chooseOption(option.id)}
-                >
-                  <NativeContentRenderer
-                    content={option.content}
-                    renderers={audioPolicy ? hiddenAudioRenderers : undefined}
-                    resolveAssetUrl={resolveAssetUrl}
-                  />
-                </AssessmentOption>
-              ))}
-            </AssessmentOptions>
-          )}
           <Text className="text-xs leading-5 text-muted-foreground">
             {paced
               ? "Soal berganti sendiri setelah waktunya habis. "

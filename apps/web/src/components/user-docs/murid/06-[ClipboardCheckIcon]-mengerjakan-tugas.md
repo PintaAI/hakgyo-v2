@@ -23,7 +23,7 @@ Klik **Mulai tugas**. Tombolnya menjadi **Lanjutkan tugas** jika kamu sudah mula
    - **Pilih satu jawaban**.
    - **Pilih semua jawaban yang benar**: pilih semua yang benar dan jangan pilih yang salah. Jika salah satu keliru, soal itu dianggap salah.
    - **Tulis jawaban kamu**.
-3. Pindah soal dengan **Sebelumnya** dan **Berikutnya**, atau ketuk nomor soal untuk melihat daftar semua soal.
+3. Pindah soal dengan **Sebelumnya** dan **Berikutnya**, atau ketuk nomor soal untuk melihat daftar semua soal. Di aplikasi ponsel, kamu juga bisa menggeser soal ke kiri atau kanan, dan membuka daftar soal dengan tombol kotak-kotak di samping "Soal 1 dari 10".
 4. Di situs web, jawabanmu tersimpan otomatis. Lihat tulisan **Jawaban tersimpan**.
 
 ## Tugas dengan bagian
@@ -38,8 +38,8 @@ Beberapa tugas, misalnya simulasi EPS-TOPIK, dibagi menjadi **bagian** seperti *
 
 Pengajar bisa menambahkan aturan pada sebuah bagian. Aturannya tertulis di bawah soal:
 
-- **Soal yang sudah dilewati tidak bisa dibuka lagi**: tombol **Sebelumnya** tidak ada, jadi jawab dulu sebelum lanjut.
-- **Soal berganti sendiri**: audio diputar otomatis, lalu ada hitungan mundur "Soal berikutnya dalam ...". Jawab sebelum hitungan habis.
+- **Soal yang sudah dilewati tidak bisa dibuka lagi**: tombol **Sebelumnya** tidak ada dan soal tidak bisa digeser, jadi jawab dulu sebelum lanjut.
+- **Soal berganti sendiri**: audio diputar otomatis, lalu ada hitungan mundur "Soal berikutnya dalam ...". Jawab sebelum hitungan habis. Soal tidak bisa digeser.
 - **Pilihan pertama kamu langsung dikunci**: pilih dengan teliti, karena pilihan tidak bisa diganti.
 - **Batas putar audio**: kotak audio menunjukkan "Diputar 1 dari 2". Audio tidak bisa digeser atau dijeda. Jika audio tidak mulai sendiri, tekan **Putar**.
 
