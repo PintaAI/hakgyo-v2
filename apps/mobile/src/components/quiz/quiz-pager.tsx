@@ -17,12 +17,22 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { useAppTheme } from "../../providers/AppThemeProvider";
 import { PageDots } from "../learning-ui";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 export type QuizPagerHandle = { scrollTo: (index: number) => void };
 
-/** Space between two question pages. */
-const PAGE_GAP = 12;
+/** The screen gutter the pager reaches out over, so pages slide in from the screen edge. */
+const PAGE_BLEED = 20;
+/**
+ * Space between two question pages: twice the gutter, so at rest the next
+ * page starts past the screen edge instead of peeking in. The gutter left
+ * on the right holds the arrow that says another question follows.
+ */
+const PAGE_GAP = PAGE_BLEED * 2;
+/** Where the arrow sits, level with the question header. */
+const ARROW_TOP = 10;
 
 /** More pages than this show no dots: the question header's count and progress say it. */
 const MAX_DOTS = 10;
@@ -66,6 +76,7 @@ export function QuizPager({
   const position = useSharedValue(initialIndex);
   /** Measured page heights by index; 0 until a page has laid out. */
   const heights = useSharedValue<number[]>([]);
+  const { colors } = useAppTheme();
   const pages = useMemo(
     () => Array.from({ length: count }, (_, page) => page),
     [count],
@@ -134,6 +145,16 @@ export function QuizPager({
     return height > 0 ? { height } : {};
   });
 
+  // The arrow shows at rest when a page follows, and fades out as a swipe
+  // begins so it never sits over a page sliding by.
+  const arrowStyle = useAnimatedStyle(() => {
+    const page = Math.round(position.value);
+    const drift = Math.abs(position.value - page);
+    return {
+      opacity: page < count - 1 ? Math.max(0, 1 - drift * 6) : 0,
+    };
+  });
+
   return (
     <View className="gap-4" onLayout={measureWidth}>
       {count > 1 && count <= MAX_DOTS ? (
@@ -146,10 +167,11 @@ export function QuizPager({
         </View>
       ) : null}
       {pageWidth > 0 ? (
-        // Clipped at the gutter: only the page in view shows, without the
-        // edge of the next one peeking in.
-        <Animated.View style={[{ overflow: "hidden" }, heightStyle]}>
+        // Edge to edge: a page slides in from the screen's edge rather than
+        // being cut off at the gutter, and nothing clips its content.
+        <Animated.View style={[{ marginHorizontal: -PAGE_BLEED }, heightStyle]}>
           <Animated.FlatList
+            style={{ overflow: "visible" }}
             ref={list}
             data={pages}
             // Answers live in the parent: re-render the pages when it does.
@@ -160,8 +182,11 @@ export function QuizPager({
             snapToInterval={interval}
             snapToAlignment="start"
             showsHorizontalScrollIndicator={false}
-            // Pages keep their own height.
-            contentContainerStyle={{ alignItems: "flex-start" }}
+            // Pages keep their own height; the gutter pads the first and last.
+            contentContainerStyle={{
+              alignItems: "flex-start",
+              paddingHorizontal: PAGE_BLEED,
+            }}
             getItemLayout={(_, index) => ({
               index,
               length: interval,
@@ -191,6 +216,22 @@ export function QuizPager({
               </View>
             )}
           />
+          {swipeEnabled && count > 1 ? (
+            <Animated.View
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              className="absolute right-0 items-center"
+              style={[{ top: ARROW_TOP, width: PAGE_BLEED }, arrowStyle]}
+            >
+              <SymbolIcon
+                name="chevron.right"
+                size={14}
+                weight="semibold"
+                tintColor={colors.mutedForeground}
+              />
+            </Animated.View>
+          ) : null}
         </Animated.View>
       ) : null}
     </View>
