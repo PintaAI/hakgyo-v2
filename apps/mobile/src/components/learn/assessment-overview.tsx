@@ -9,6 +9,7 @@ import {
 import { Text, View } from "react-native";
 
 import type { LearnerAttemptStatus } from "../../lib/assessment-state";
+import { dateLabel } from "../../lib/study";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { AssessmentOption, AssessmentOptions } from "../assessment-ui";
@@ -26,18 +27,25 @@ type LatestAttempt = {
 
 /**
  * A tugas's rules as small chips with icons: its time, passing score and
- * attempts. Sits under the title in the intro hero.
+ * attempts, plus the opening and closing time of a latihan or tryout. Sits
+ * under the title in the intro hero.
  */
 export function AssessmentFacts({
   timeLimitMinutes,
   passingScore,
   maxAttempts,
   attemptsUsed,
+  opensAt,
+  closesAt,
 }: {
   timeLimitMinutes: number | null;
   passingScore: number | null;
   maxAttempts: number | null;
   attemptsUsed: number;
+  /** A scheduled event's opening time. */
+  opensAt?: Date | null;
+  /** An event's closing time. */
+  closesAt?: Date | null;
 }) {
   const { colors } = useAppTheme();
   const facts: { icon: SymbolName; label: string; text: string }[] = [
@@ -63,6 +71,24 @@ export function AssessmentFacts({
           ? "Tanpa batas"
           : `${Math.min(attemptsUsed, maxAttempts)} dari ${maxAttempts}`,
     },
+    ...(opensAt
+      ? [
+          {
+            icon: "calendar.badge.clock" as const,
+            label: "Dibuka",
+            text: `Dibuka ${dateLabel(opensAt)}`,
+          },
+        ]
+      : []),
+    ...(closesAt
+      ? [
+          {
+            icon: "calendar" as const,
+            label: "Ditutup",
+            text: `Tutup ${dateLabel(closesAt)}`,
+          },
+        ]
+      : []),
   ];
   return (
     <View className="flex-row flex-wrap justify-center gap-2">

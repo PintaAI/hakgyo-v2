@@ -97,7 +97,15 @@ bundle the moment the learner taps "Mulai" (`AttemptStartingPreview`): the first
 or the first question when the assessment does not shuffle questions (shuffled options are left
 out). The learner event detail does not carry the event's own shuffle setting, so an event set to
 "Acak" on an unshuffled assessment swaps that first question once the attempt opens. Nothing can be answered until the start returns; then the attempt screen
-replaces it with a fade. A failed start returns to the event detail with the error.
+replaces it with a fade. A failed start returns to the event detail with the error. A course tugas
+starts the same way, from its own intro screen. What the server still has to order (question text
+when questions shuffle, option text when options shuffle) shows as grey placeholders in its final
+place.
+
+The event screen uses the course tugas intro's layout (`HakgyoHero` with the question count,
+`AssessmentFacts` chips including the opening and closing time, the first question as
+`QuestionPreview`, the latest attempt as `AssessmentOverview`), with the leaderboard in the same
+card style below.
 
 ## Offline materials (mobile)
 

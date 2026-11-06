@@ -12,6 +12,66 @@ import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
 import { QuestionGroupHeader } from "./question-group-header";
 import { SectionIntro } from "./section-intro";
 import { StudyGlass } from "./study-glass";
+import { Skeleton } from "./ui/skeleton";
+
+/** Grey lines where text appears once the server sets the order. */
+function TextPlaceholder({ lines }: { lines: number }) {
+  return (
+    <View className="gap-2">
+      {Array.from({ length: lines }, (_, line) => (
+        <Skeleton
+          key={line}
+          className={`h-4 rounded-md ${line === lines - 1 ? "w-2/3" : "w-full"}`}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** Option cards in their final places, their text still hidden. */
+function OptionPlaceholders({
+  count,
+  multiple,
+}: {
+  count: number;
+  multiple: boolean;
+}) {
+  return (
+    <AssessmentOptions grid={false}>
+      {Array.from({ length: count }, (_, index) => (
+        <AssessmentOption
+          key={index}
+          index={index}
+          selected={false}
+          multiple={multiple}
+          disabled
+        >
+          <TextPlaceholder lines={1} />
+        </AssessmentOption>
+      ))}
+    </AssessmentOptions>
+  );
+}
+
+/** The option count most questions have, for a question not known yet. */
+function typicalOptionCount(
+  questions: ReadonlyArray<{ options: readonly unknown[] }>,
+) {
+  const counts = new Map<number, number>();
+  for (const question of questions) {
+    const count = question.options.length;
+    if (count > 0) counts.set(count, (counts.get(count) ?? 0) + 1);
+  }
+  let typical = 0;
+  let seen = 0;
+  for (const [count, times] of counts) {
+    if (times > seen) {
+      typical = count;
+      seen = times;
+    }
+  }
+  return typical;
+}
 
 /** The status line above the preview while the server registers the start. */
 function StartingStatus() {
@@ -35,8 +95,9 @@ function StartingStatus() {
  * It matches what the attempt shows first: the first section's intro, or the
  * first question when the assessment does not shuffle (the app does not get
  * an event's own shuffle setting, so an event set to "Acak" can swap that
- * question once the attempt opens). Shuffled questions show an empty question
- * card instead, and shuffled options are left out. Nothing can be answered
+ * question once the attempt opens). What the server still has to order shows
+ * as grey placeholders in its final place: the question text when questions
+ * shuffle, the option text when options shuffle. Nothing can be answered
  * until the attempt exists.
  */
 export function AttemptStartingPreview({
@@ -85,8 +146,14 @@ export function AttemptStartingPreview({
       <>
         <StartingStatus />
         <AssessmentQuestion current={0} total={questions.length} disabled>
-          <View className="h-16" />
+          <TextPlaceholder lines={3} />
         </AssessmentQuestion>
+        {typicalOptionCount(questions) > 0 ? (
+          <OptionPlaceholders
+            count={typicalOptionCount(questions)}
+            multiple={false}
+          />
+        ) : null}
       </>
     );
   }
@@ -122,7 +189,12 @@ export function AttemptStartingPreview({
         <StudyGlass>
           <View className="min-h-32" />
         </StudyGlass>
-      ) : assessment.shuffleOptions ? null : (
+      ) : assessment.shuffleOptions ? (
+        <OptionPlaceholders
+          count={question.options.length}
+          multiple={question.type === "MULTIPLE_CHOICE"}
+        />
+      ) : (
         <AssessmentOptions grid={pictureGrid}>
           {question.options.map((option, optionIndex) => (
             <AssessmentOption
