@@ -389,7 +389,7 @@ export const m5WVowels: ModuleContent = {
       entries: [
         {
           term: "과자",
-          definition: "camilan, kue kering",
+          definition: "camilan; kue kering",
           romanization: "gwaja",
         },
         {
@@ -420,7 +420,7 @@ export const m5WVowels: ModuleContent = {
         { term: "스웨터", definition: "sweter", romanization: "seuweteo" },
         {
           term: "회사",
-          definition: "perusahaan, kantor",
+          definition: "perusahaan; kantor",
           romanization: "hoesa",
         },
         {
@@ -431,7 +431,7 @@ export const m5WVowels: ModuleContent = {
         },
         {
           term: "최고",
-          definition: "terbaik, nomor satu",
+          definition: "terbaik; nomor satu",
           romanization: "choego",
         },
         { term: "교회", definition: "gereja", romanization: "gyohoe" },

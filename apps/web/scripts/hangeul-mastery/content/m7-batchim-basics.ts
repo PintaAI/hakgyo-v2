@@ -652,7 +652,7 @@ export const m7BatchimBasics: ModuleContent = {
         },
         {
           term: "안녕하세요",
-          definition: "halo, apa kabar (sopan)",
+          definition: "halo; apa kabar (sopan)",
           romanization: "annyeonghaseyo",
         },
         { term: "사랑", definition: "cinta", romanization: "sarang" },
@@ -671,7 +671,7 @@ export const m7BatchimBasics: ModuleContent = {
         },
         {
           term: "학생",
-          definition: "siswa, pelajar",
+          definition: "siswa; pelajar",
           romanization: "haksaeng",
           examples: ["Dibaca [학쌩]."],
         },
@@ -698,13 +698,13 @@ export const m7BatchimBasics: ModuleContent = {
         { term: "월급", definition: "gaji bulanan", romanization: "wolgeup" },
         {
           term: "사장님",
-          definition: "bos, pemilik usaha (sapaan hormat)",
+          definition: "bos; pemilik usaha (sapaan hormat)",
           romanization: "sajangnim",
         },
         { term: "병원", definition: "rumah sakit", romanization: "byeongwon" },
         {
           term: "옷",
-          definition: "baju, pakaian",
+          definition: "baju; pakaian",
           romanization: "ot",
           examples: ["Dibaca [옫]."],
         },
