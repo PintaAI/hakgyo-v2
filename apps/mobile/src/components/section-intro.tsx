@@ -5,8 +5,7 @@ import {
   NativeContentRenderer,
   type AssetUrlResolver,
 } from "./content-renderer";
-import { Eyebrow } from "./learning-ui";
-import { StudyAction, StudyGlass } from "./study-glass";
+import { Action, Card, Eyebrow } from "./learning-ui";
 import { formatRemaining } from "../lib/format-remaining";
 
 /**
@@ -39,7 +38,7 @@ export function SectionIntro({
   onStart: () => void;
 }) {
   return (
-    <StudyGlass>
+    <Card className="gap-4 p-5">
       <Eyebrow>
         Bagian {position} dari {sectionCount}
       </Eyebrow>
@@ -60,9 +59,9 @@ export function SectionIntro({
         Waktu bagian ini berjalan setelah kamu menekan Mulai. Bagian yang sudah
         selesai tidak bisa dibuka lagi.
       </Text>
-      <StudyAction disabled={busy} onPress={onStart}>
+      <Action disabled={busy} onPress={onStart}>
         Mulai bagian
-      </StudyAction>
+      </Action>
       {secondsToAutoStart !== undefined ? (
         <Text
           accessibilityLiveRegion="polite"
@@ -71,6 +70,6 @@ export function SectionIntro({
           Dimulai otomatis dalam {formatRemaining(secondsToAutoStart)}
         </Text>
       ) : null}
-    </StudyGlass>
+    </Card>
   );
 }

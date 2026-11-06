@@ -18,8 +18,7 @@ import {
   AssessmentQuestion,
 } from "./assessment-ui";
 import { QuestionGroupHeader } from "./question-group-header";
-import { Eyebrow } from "./learning-ui";
-import { StudyAction, StudyGlass } from "./study-glass";
+import { Action, Card, Eyebrow } from "./learning-ui";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
 type Attempt = RouterOutputs["assessment"]["getMyAttempt"];
@@ -80,24 +79,24 @@ export function AssessmentResultReview({
   if (attempt.status !== "GRADED") return null;
   if (!policy.showAnswerReview)
     return (
-      <StudyGlass>
+      <Card className="gap-4 p-5">
         <Text className="font-bold text-foreground">Tryout hanya skor</Text>
         <Text className="text-sm leading-5 text-muted-foreground">
           Hasil tryout berisi skor akhir dan leaderboard. Kunci jawaban dan
           pembahasan tidak dipublikasikan.
         </Text>
-      </StudyGlass>
+      </Card>
     );
   if (!assessment.answersRevealed)
     return (
-      <StudyGlass>
+      <Card className="gap-4 p-5">
         <Text className="font-bold text-foreground">
           Review jawaban belum tersedia
         </Text>
         <Text className="text-sm leading-5 text-muted-foreground">
           Kunci jawaban dan pembahasan tersedia setelah latihan ini ditutup.
         </Text>
-      </StudyGlass>
+      </Card>
     );
 
   const question = assessment.questions[index];
@@ -161,14 +160,14 @@ export function AssessmentResultReview({
         />
       </AssessmentQuestion>
       {question.type === "WRITTEN" ? (
-        <StudyGlass>
+        <Card className="gap-4 p-5">
           <Eyebrow size="md">Jawaban kamu</Eyebrow>
           <Text className="text-base leading-6 text-foreground">
             {typeof answer?.content === "string" && answer.content.trim()
               ? answer.content
               : "Tidak dijawab"}
           </Text>
-        </StudyGlass>
+        </Card>
       ) : (
         <AssessmentOptions grid={pictureGrid}>
           {question.options.map((option, optionIndex) => (
@@ -189,7 +188,7 @@ export function AssessmentResultReview({
         </AssessmentOptions>
       )}
       {feedback ? (
-        <StudyGlass>
+        <Card className="gap-4 p-5">
           <Eyebrow size="md" tone="primary">
             Feedback pengajar
           </Eyebrow>
@@ -197,35 +196,35 @@ export function AssessmentResultReview({
             content={feedback}
             resolveAssetUrl={resolveAssetUrl}
           />
-        </StudyGlass>
+        </Card>
       ) : null}
       {question.explanation ? (
-        <StudyGlass>
+        <Card className="gap-4 p-5">
           <Eyebrow size="md">Pembahasan</Eyebrow>
           <NativeContentRenderer
             content={question.explanation}
             resolveAssetUrl={resolveAssetUrl}
           />
-        </StudyGlass>
+        </Card>
       ) : null}
       <View className="flex-row gap-3">
         <View className="flex-1">
-          <StudyAction
-            secondary
+          <Action
+            variant="secondary"
             disabled={index === 0}
             onPress={() => goToQuestion(index - 1)}
           >
             Sebelumnya
-          </StudyAction>
+          </Action>
         </View>
         <View className="flex-1">
-          <StudyAction
+          <Action
             disabled={index === assessment.questions.length - 1}
             onPress={() => goToQuestion(index + 1)}
             trailingIcon="arrow.right"
           >
             Berikutnya
-          </StudyAction>
+          </Action>
         </View>
       </View>
     </View>

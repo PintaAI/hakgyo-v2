@@ -1,7 +1,7 @@
 import { router, Stack, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { StudyAction } from "../src/components/study-glass";
+import { Action } from "../src/components/learning-ui";
 import {
   nextUnansweredQuestion,
   type QuestionStatus,
@@ -71,9 +71,13 @@ export default function AssessmentQuestionsScreen() {
             {session?.title ?? "Tidak ada tugas aktif"}
           </Text>
         </View>
-        <StudyAction secondary disabled={busy} onPress={() => router.back()}>
+        <Action
+          variant="secondary"
+          disabled={busy}
+          onPress={() => router.back()}
+        >
           Selesai
-        </StudyAction>
+        </Action>
       </View>
       {session ? (
         <>
@@ -85,13 +89,13 @@ export default function AssessmentQuestionsScreen() {
             membukanya
           </Text>
           {next >= 0 ? (
-            <StudyAction
+            <Action
               loading={busy}
               onPress={() => void select(next)}
               trailingIcon="arrow.right"
             >
               Soal belum dijawab berikutnya
-            </StudyAction>
+            </Action>
           ) : (
             <Text className="font-bold text-primary">
               Semua soal sudah dijawab. Kamu masih bisa meninjaunya.

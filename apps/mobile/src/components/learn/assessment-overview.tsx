@@ -171,7 +171,6 @@ export function QuestionPreview({
                 selected={false}
                 multiple={question.type === "MULTIPLE_CHOICE"}
                 tile={grid}
-                surface="card"
               >
                 <NativeContentRenderer
                   content={option.content}

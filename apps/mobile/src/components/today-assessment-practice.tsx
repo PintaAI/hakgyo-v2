@@ -28,13 +28,12 @@ import {
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
-import { Empty, Eyebrow, PageDots } from "./learning-ui";
+import { Action, Card, Empty, Eyebrow, PageDots } from "./learning-ui";
 import {
   AssessmentFeedback,
   AssessmentOption,
   AssessmentQuestion,
 } from "./assessment-ui";
-import { StudyAction, StudyGlass } from "./study-glass";
 import { MarqueeText } from "./ui/marquee-text";
 
 type PracticeQuestion =
@@ -196,7 +195,7 @@ export function TodayAssessmentPractice({
           yang dipublikasikan.
         </Empty>
       ) : finished ? (
-        <StudyGlass>
+        <Card className="gap-4 p-5">
           <Text className="text-2xl font-black text-foreground">
             {score} dari {questions.length} benar
           </Text>
@@ -204,11 +203,11 @@ export function TodayAssessmentPractice({
             Latihan selesai. Nilai, percobaan, progres kurikulum, dan XP kamu
             tidak berubah.
           </Text>
-          <StudyAction secondary onPress={openQuestions}>
+          <Action variant="secondary" onPress={openQuestions}>
             Tinjau soal
-          </StudyAction>
-          <StudyAction onPress={newSample}>Ambil set acak lainnya</StudyAction>
-        </StudyGlass>
+          </Action>
+          <Action onPress={newSample}>Ambil set acak lainnya</Action>
+        </Card>
       ) : question ? (
         <>
           <Text className="text-center text-lg font-bold tracking-tight text-foreground">
@@ -473,7 +472,7 @@ function QuestionPage({
   return (
     <View className="gap-4">
       <AssessmentQuestion
-        surface="card"
+        compactHeader
         current={index}
         total={total}
         answered={answered}
@@ -494,7 +493,6 @@ function QuestionPage({
       <View className="gap-3">
         {question.options.map((option, optionIndex) => (
           <AssessmentOption
-            surface="card"
             key={option.id}
             index={optionIndex}
             selected={selected.includes(option.id)}
@@ -526,14 +524,14 @@ function QuestionPage({
               </Text>
             )}
           </AssessmentFeedback>
-          <StudyAction
+          <Action
             onPress={onNext}
             trailingIcon={allAnswered ? undefined : "arrow.right"}
           >
             {allAnswered
               ? "Lihat hasil latihan"
               : "Soal belum dijawab berikutnya"}
-          </StudyAction>
+          </Action>
         </>
       ) : null}
       {failed ? (
@@ -542,7 +540,7 @@ function QuestionPage({
         </Text>
       ) : null}
       {!result && (multiple || pending || failed) ? (
-        <StudyAction
+        <Action
           loading={pending}
           disabled={!selected.length || (busy && !pending)}
           onPress={onCheck}
@@ -552,7 +550,7 @@ function QuestionPage({
             : failed
               ? "Coba periksa lagi"
               : "Periksa jawaban"}
-        </StudyAction>
+        </Action>
       ) : null}
     </View>
   );

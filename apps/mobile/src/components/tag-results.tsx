@@ -1,8 +1,7 @@
 import { tagResults } from "@hakgyo/shared";
 import { Text, View } from "react-native";
 
-import { Eyebrow, ProgressBar } from "./learning-ui";
-import { StudyGlass } from "./study-glass";
+import { Card, Eyebrow, ProgressBar } from "./learning-ui";
 
 /**
  * Results of a graded attempt per question tag ("Rambu K3: 1 dari 2 benar"). Mirrors the web
@@ -22,7 +21,7 @@ export function TagResults({
   const groups = tagResults(questions, answers);
   if (!groups.length) return null;
   return (
-    <StudyGlass>
+    <Card className="gap-4 p-5">
       <Text className="text-xl font-black text-foreground">
         Hasil per tipe soal
       </Text>
@@ -48,6 +47,6 @@ export function TagResults({
           ))}
         </View>
       ))}
-    </StudyGlass>
+    </Card>
   );
 }

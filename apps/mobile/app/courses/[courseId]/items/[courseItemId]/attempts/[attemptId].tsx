@@ -38,14 +38,12 @@ import {
   AssessmentQuestion,
 } from "../../../../../../src/components/assessment-ui";
 import {
+  Action,
+  Card,
   FullScreenState,
   IconCircle,
   StudyScreen,
 } from "../../../../../../src/components/learning-ui";
-import {
-  StudyAction,
-  StudyGlass,
-} from "../../../../../../src/components/study-glass";
 import {
   isQuestionAnswered,
   type QuestionStatus,
@@ -959,7 +957,7 @@ function AssessmentAttemptContent({
         />
       ) : result ? (
         <StudyScreen scrollViewRef={resultScrollRef} title={screenTitle}>
-          <StudyGlass>
+          <Card className="gap-4 p-5">
             <View className="self-center">
               <IconCircle size="lg">
                 <SymbolIcon
@@ -1018,7 +1016,7 @@ function AssessmentAttemptContent({
                 mereviewnya.
               </Text>
             )}
-          </StudyGlass>
+          </Card>
 
           {/* Scores are withheld (null) for invalidated or cancelled participations. */}
           {result.status === "GRADED" &&
@@ -1041,9 +1039,7 @@ function AssessmentAttemptContent({
           />
 
           {assessment.data.event ? (
-            <StudyAction onPress={leaveResult}>
-              Lihat skor & leaderboard
-            </StudyAction>
+            <Action onPress={leaveResult}>Lihat skor & leaderboard</Action>
           ) : null}
         </StudyScreen>
       ) : view?.mode === "done" ? (
@@ -1052,7 +1048,7 @@ function AssessmentAttemptContent({
           scrollViewRef={scrollRef}
           title={screenTitle}
         >
-          <StudyGlass>
+          <Card className="gap-4 p-5">
             <Text className="text-xl font-black text-foreground">
               Semua bagian selesai
             </Text>
@@ -1069,14 +1065,14 @@ function AssessmentAttemptContent({
                 {submitError}
               </Text>
             ) : null}
-            <StudyAction
+            <Action
               loading={submitting}
               disabled={busy}
               onPress={() => void submit()}
             >
               Kirim tugas
-            </StudyAction>
-          </StudyGlass>
+            </Action>
+          </Card>
         </StudyScreen>
       ) : view?.mode === "intro" && activeSection ? (
         <StudyScreen
@@ -1178,7 +1174,7 @@ function AssessmentAttemptContent({
                 : "Pilih satu jawaban"}
           </Text>
           {question.type === "WRITTEN" ? (
-            <StudyGlass>
+            <Card className="gap-4 p-5">
               <TextInput
                 accessibilityLabel={`Jawaban soal ${currentIndex + 1}`}
                 className="min-h-32 text-base text-foreground"
@@ -1195,7 +1191,7 @@ function AssessmentAttemptContent({
                 textAlignVertical="top"
                 value={answers[question.id]?.content ?? ""}
               />
-            </StudyGlass>
+            </Card>
           ) : (
             <AssessmentOptions grid={pictureGrid}>
               {question.options.map((option, optionIndex) => (
@@ -1255,8 +1251,8 @@ function AssessmentAttemptContent({
             <View className="flex-row gap-3">
               {positionInSection > 0 && !forwardOnly ? (
                 <View className="flex-1">
-                  <StudyAction
-                    secondary
+                  <Action
+                    variant="secondary"
                     disabled={busy}
                     onPress={() => {
                       const previous = sectionIndexes[positionInSection - 1]!;
@@ -1265,14 +1261,14 @@ function AssessmentAttemptContent({
                     }}
                   >
                     Sebelumnya
-                  </StudyAction>
+                  </Action>
                 </View>
               ) : null}
               {!paced &&
               (!isLastInSection ||
                 (nextUnanswered >= 0 && nextUnanswered !== currentIndex)) ? (
                 <View className="flex-1">
-                  <StudyAction
+                  <Action
                     disabled={busy}
                     onPress={() => {
                       const next = isLastInSection
@@ -1286,7 +1282,7 @@ function AssessmentAttemptContent({
                     {!isLastInSection
                       ? "Berikutnya"
                       : "Soal belum dijawab berikutnya"}
-                  </StudyAction>
+                  </Action>
                 </View>
               ) : null}
             </View>
@@ -1300,15 +1296,15 @@ function AssessmentAttemptContent({
             {!isLastSection && activeSection ? (
               canFinishSection(activeSection) &&
               (isLastInSection || sectionAnswered === sectionIndexes.length) ? (
-                <StudyAction disabled={busy} onPress={confirmFinishSection}>
+                <Action disabled={busy} onPress={confirmFinishSection}>
                   Selesai bagian ini
-                </StudyAction>
+                </Action>
               ) : null
             ) : activeSection &&
               !canFinishSection(activeSection) ? null : expired ||
               currentIndex === assessment.data.questions.length - 1 ||
               answeredCount === assessment.data.questions.length ? (
-              <StudyAction
+              <Action
                 loading={submitting}
                 disabled={busy}
                 onPress={confirmSubmit}
@@ -1318,7 +1314,7 @@ function AssessmentAttemptContent({
                   : answeredCount === assessment.data.questions.length
                     ? "Kirim tugas"
                     : `Kirim · ${answeredCount}/${assessment.data.questions.length} dijawab`}
-              </StudyAction>
+              </Action>
             ) : null}
           </View>
         </StudyScreen>

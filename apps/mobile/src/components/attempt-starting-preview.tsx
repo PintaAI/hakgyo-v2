@@ -11,7 +11,7 @@ import {
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
 import { QuestionGroupHeader } from "./question-group-header";
 import { SectionIntro } from "./section-intro";
-import { StudyGlass } from "./study-glass";
+import { Card } from "./learning-ui";
 import { Skeleton } from "./ui/skeleton";
 
 /** Grey lines where text appears once the server sets the order. */
@@ -186,9 +186,9 @@ export function AttemptStartingPreview({
         />
       </AssessmentQuestion>
       {question.type === "WRITTEN" ? (
-        <StudyGlass>
+        <Card className="gap-4 p-5">
           <View className="min-h-32" />
-        </StudyGlass>
+        </Card>
       ) : assessment.shuffleOptions ? (
         <OptionPlaceholders
           count={question.options.length}

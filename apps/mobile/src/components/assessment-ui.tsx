@@ -1,7 +1,6 @@
 import { Children, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Eyebrow, ProgressBar } from "./learning-ui";
-import { StudyGlass } from "./study-glass";
 import { Card } from "./ui/card";
 import { SymbolIcon } from "./ui/symbol-icon";
 import { useAppTheme } from "../providers/AppThemeProvider";
@@ -15,7 +14,7 @@ export function AssessmentQuestion({
   answered,
   onOpen,
   disabled = false,
-  surface = "glass",
+  compactHeader = false,
 }: {
   children: ReactNode;
   detail?: string;
@@ -25,20 +24,19 @@ export function AssessmentQuestion({
   onOpen?: () => void;
   disabled?: boolean;
   /**
-   * `card` is a plain card without the glass effect, with the counts on the
-   * title line (Home's daily challenge).
+   * The counts on the title line without a separator (Home's daily
+   * challenge) instead of the attempt's header with its progress line.
    */
-  surface?: "glass" | "card";
+  compactHeader?: boolean;
 }) {
   const showHeader =
     current !== undefined &&
     total !== undefined &&
     answered !== undefined &&
     onOpen;
-  const isCard = surface === "card";
   const content = (
     <>
-      {showHeader && isCard ? (
+      {showHeader && compactHeader ? (
         // Compact header: the counts share the title line, no separator.
         <View className="gap-2">
           <View className="flex-row items-center justify-between gap-3">
@@ -76,13 +74,10 @@ export function AssessmentQuestion({
       {children}
     </>
   );
-  if (!showHeader) {
-    return isCard ? (
-      <Card className="gap-4 p-5">{content}</Card>
-    ) : (
-      <StudyGlass>{content}</StudyGlass>
-    );
-  }
+  // Content surfaces are solid cards: glass is for the controls floating
+  // over content (headers, tab bars), and a glass view per card made long
+  // quizzes lag.
+  if (!showHeader) return <Card className="gap-4 p-5">{content}</Card>;
   const question = (
     <Pressable
       accessibilityRole="button"
@@ -96,11 +91,7 @@ export function AssessmentQuestion({
       {content}
     </Pressable>
   );
-  return isCard ? (
-    <Card className="p-5">{question}</Card>
-  ) : (
-    <StudyGlass isInteractive={!disabled}>{question}</StudyGlass>
-  );
+  return <Card className="p-5">{question}</Card>;
 }
 
 // EPS-TOPIK numbers picture options ①–④.
@@ -133,7 +124,6 @@ export function AssessmentOption({
   disabled = false,
   correct,
   tile = false,
-  surface = "glass",
   onPress,
 }: {
   children: ReactNode;
@@ -144,8 +134,6 @@ export function AssessmentOption({
   correct?: boolean;
   /** A picture option in the 2×2 grid (`usesPictureGrid`): badge on top, numbered ①–④. */
   tile?: boolean;
-  /** `card`: a plain bordered card without the glass effect (Home). */
-  surface?: "glass" | "card";
   onPress?: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -196,27 +184,17 @@ export function AssessmentOption({
       </View>
     </View>
   );
-  const content =
-    surface === "card" ? (
-      <View
-        className={`rounded-2xl border ${tile ? "gap-2 p-3" : "gap-4 p-5"}`}
-        style={{
-          backgroundColor: emphasized ? withOpacity(tone, 0.08) : colors.card,
-          borderColor: emphasized ? tone : colors.border,
-        }}
-      >
-        {body}
-      </View>
-    ) : (
-      <StudyGlass
-        tone={wrong ? "destructive" : "primary"}
-        emphasized={emphasized}
-        isInteractive={!!onPress}
-        contentClassName={tile ? "gap-2 p-3" : undefined}
-      >
-        {body}
-      </StudyGlass>
-    );
+  const content = (
+    <View
+      className={`rounded-2xl border ${tile ? "gap-2 p-3" : "gap-4 p-5"}`}
+      style={{
+        backgroundColor: emphasized ? withOpacity(tone, 0.08) : colors.card,
+        borderColor: emphasized ? tone : colors.border,
+      }}
+    >
+      {body}
+    </View>
+  );
   if (!onPress) return <View>{content}</View>;
   return (
     <Pressable
@@ -241,7 +219,7 @@ export function AssessmentFeedback({
   children: ReactNode;
 }) {
   return (
-    <StudyGlass tone={correct ? "primary" : "destructive"}>
+    <Card tone={correct ? "primary" : "destructive"} className="gap-4 p-5">
       <Text
         accessibilityLiveRegion="polite"
         className={`text-2xl font-black ${correct ? "text-primary" : "text-destructive"}`}
@@ -249,6 +227,6 @@ export function AssessmentFeedback({
         {correct ? "Tepat sekali." : "Hampir."}
       </Text>
       {children}
-    </StudyGlass>
+    </Card>
   );
 }
