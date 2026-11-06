@@ -1,19 +1,8 @@
 import { useFocusEffect } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  StyleSheet,
-  View,
-  type FlatList,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from "react-native";
-import Animated, {
-  useAnimatedScrollHandler,
-  useSharedValue,
-  type SharedValue,
-} from "react-native-reanimated";
+import { StyleSheet } from "react-native";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-screens/experimental";
 
 import {
@@ -33,6 +22,7 @@ import {
   QueryState,
 } from "../../../../src/components/learning-ui";
 import { TabScreen } from "../../../../src/components/tab-screen";
+import { Pager, type PagerHandle } from "../../../../src/components/ui/pager";
 import { isStaleClosedOnDemandAssessment } from "../../../../src/lib/assessment-state";
 import { authClient } from "../../../../src/lib/auth-client";
 import {
@@ -115,11 +105,10 @@ function CohortCarousel({
   pagePosition: SharedValue<number>;
   userId: string;
 }) {
-  const [pageWidth, setPageWidth] = useState(0);
-  const listRef = useRef<FlatList<LearnCohort>>(null);
+  const pager = useRef<PagerHandle>(null);
   const storageKey = `hakgyo:learn-cohort:v1:${userId}:${organizationId}`;
-  // The saved card opens first: the list renders it straight away and then
-  // scrolls there, which moves the page dots along. Read once, on mount.
+  // The saved card opens first: the pager renders it straight away, which
+  // moves the page dots along. Read once, on mount.
   const [initialIndex] = useState(() => {
     let savedCohortId: string | null = null;
     try {
@@ -128,13 +117,8 @@ function CohortCarousel({
       // No saved card: start from the first one.
     }
     const index = cohorts.findIndex(({ id }) => id === savedCohortId);
-    return index > 0 ? index : undefined;
+    return index > 0 ? index : 0;
   });
-
-  const measurePage = (event: LayoutChangeEvent) => {
-    const nextWidth = Math.round(event.nativeEvent.layout.width);
-    if (nextWidth > 0 && nextWidth !== pageWidth) setPageWidth(nextWidth);
-  };
 
   const persistCohort = useCallback(
     (cohortId: string) => {
@@ -147,95 +131,59 @@ function CohortCarousel({
     [storageKey],
   );
 
-  const trackPosition = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      const width = event.layoutMeasurement.width;
-      if (width > 0) pagePosition.value = event.contentOffset.x / width;
-    },
-  });
-
-  function savePosition(event: NativeSyntheticEvent<NativeScrollEvent>) {
-    if (pageWidth <= 0) return;
-    const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
-    const cohort = cohorts[index];
-    if (cohort) persistCohort(cohort.id);
-  }
-
   // A cohort picked in the sidebar slides into view with the native scroll
   // animation, which also shows that the cards can be swiped.
   const focus = useLearnCohortFocus();
   useEffect(() => {
-    if (!focus || pageWidth <= 0) return;
+    if (!focus) return;
     const index = cohorts.findIndex(({ id }) => id === focus.cohortId);
     if (index < 0) {
       completeLearnCohortFocus(focus.id);
       return;
     }
     const timer = setTimeout(() => {
-      listRef.current?.scrollToOffset({
-        offset: pageWidth * index,
-        animated: true,
-      });
+      pager.current?.scrollTo(index);
       persistCohort(focus.cohortId);
       completeLearnCohortFocus(focus.id);
     }, FOCUS_SLIDE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [cohorts, focus, pageWidth, persistCohort]);
+  }, [cohorts, focus, persistCohort]);
 
+  // Each card holds a whole curriculum, and cards differ a lot in length:
+  // the pager takes the height of the card in view instead of the longest.
   return (
-    <View className="w-full" onLayout={measurePage}>
-      {pageWidth > 0 ? (
-        <Animated.FlatList
-          ref={listRef}
-          accessibilityRole="list"
-          data={cohorts}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          getItemLayout={(_, index) => ({
-            index,
-            length: pageWidth,
-            offset: pageWidth * index,
-          })}
-          horizontal
-          // Each card holds a whole curriculum: mount only the visible card
-          // and its neighbours instead of every cohort at once.
-          initialNumToRender={1}
-          initialScrollIndex={
-            initialIndex !== undefined && initialIndex < cohorts.length
-              ? initialIndex
-              : undefined
-          }
-          maxToRenderPerBatch={1}
-          windowSize={3}
-          keyExtractor={(cohort) => cohort.id}
-          onMomentumScrollEnd={savePosition}
-          onScroll={trackPosition}
-          renderItem={({ item: cohort, index }) => (
-            <View style={{ width: pageWidth }}>
-              <CohortCard
-                // The card in view when the tour starts; its neighbours
-                // are mounted too but off screen.
-                tourTarget={index === (initialIndex ?? 0)}
-                cohort={cohort}
-                thumbnailUrl={cohort.course.thumbnailUrl}
-                events={eventsByCohort.get(cohort.id) ?? []}
-                eventsError={eventsError}
-                eventsPending={eventsPending}
-                milestoneGroup={milestonesByCohort.get(cohort.id)}
-                now={now}
-                isFirst
-                onRetryEvents={onRetryEvents}
-                outline={outlines[cohort.course.id]}
-              />
-            </View>
-          )}
-          scrollEnabled={cohorts.length > 1}
-          showsHorizontalScrollIndicator={false}
-          snapToAlignment="start"
-          snapToInterval={pageWidth}
-        />
-      ) : null}
-    </View>
+    <Pager
+      ref={pager}
+      accessibilityRole="list"
+      count={cohorts.length}
+      initialIndex={initialIndex}
+      position={pagePosition}
+      onIndexChange={(index) => {
+        const cohort = cohorts[index];
+        if (cohort) persistCohort(cohort.id);
+      }}
+      renderPage={(index) => {
+        const cohort = cohorts[index];
+        if (!cohort) return null;
+        return (
+          <CohortCard
+            // The card in view when the tour starts; its neighbours are
+            // mounted too but off screen.
+            tourTarget={index === initialIndex}
+            cohort={cohort}
+            thumbnailUrl={cohort.course.thumbnailUrl}
+            events={eventsByCohort.get(cohort.id) ?? []}
+            eventsError={eventsError}
+            eventsPending={eventsPending}
+            milestoneGroup={milestonesByCohort.get(cohort.id)}
+            now={now}
+            isFirst
+            onRetryEvents={onRetryEvents}
+            outline={outlines[cohort.course.id]}
+          />
+        );
+      }}
+    />
   );
 }
 

@@ -23,7 +23,7 @@ Klik **Mulai tugas**. Tombolnya menjadi **Lanjutkan tugas** jika kamu sudah mula
    - **Pilih satu jawaban**.
    - **Pilih semua jawaban yang benar**: pilih semua yang benar dan jangan pilih yang salah. Jika salah satu keliru, soal itu dianggap salah.
    - **Tulis jawaban kamu**.
-3. Pindah soal dengan **Sebelumnya** dan **Berikutnya**, atau ketuk nomor soal untuk melihat daftar semua soal.
+3. Pindah soal dengan **Sebelumnya** dan **Berikutnya**, atau ketuk nomor soal untuk melihat daftar semua soal. Di aplikasi ponsel, tombolnya ada di bar bawah: panah kiri dan kanan untuk pindah soal, dan **Daftar soal** di tengah untuk membuka semua nomor soal. Warnanya: hijau sudah dijawab, kuning sudah dibuka tapi belum dijawab, dan abu-abu belum dibuka. Soal yang sedang kamu buka diberi lingkaran. Warna yang sama tampil sebagai titik di atas soal (garis bersegmen jika soalnya lebih dari 20). Ketuk titik itu untuk membuka daftar soal juga. Kamu juga bisa menggeser soal ke kiri atau kanan. Saat pertama kali mengerjakan tugas tanpa batas waktu di aplikasi, tur singkat menunjukkan semua ini.
 4. Di situs web, jawabanmu tersimpan otomatis. Lihat tulisan **Jawaban tersimpan**.
 
 ## Tugas dengan bagian
@@ -34,12 +34,12 @@ Beberapa tugas, misalnya simulasi EPS-TOPIK, dibagi menjadi **bagian** seperti *
 2. Selama bagian berjalan, kamu hanya bisa membuka soal di bagian itu. Waktu yang tersisa tertulis di atas soal.
 3. Jika diizinkan pengajar, kamu bisa menekan **Selesai bagian ini** untuk lanjut lebih cepat. Saat waktu bagian habis, kamu otomatis pindah ke bagian berikutnya.
 4. Bagian yang sudah selesai **tidak bisa dibuka lagi**, jadi periksa jawabanmu sebelum menyelesaikannya.
-5. Di bagian terakhir, tekan **Kirim tugas**. Tugas juga terkirim otomatis saat waktu bagian terakhir habis.
+5. Di bagian terakhir, tekan **Kirim tugas** (di aplikasi ponsel: **Selesaikan tugas**, **Selesaikan latihan**, atau **Selesaikan tryout** di kanan atas). Tugas juga terkirim otomatis saat waktu bagian terakhir habis.
 
-Pengajar bisa menambahkan aturan pada sebuah bagian. Aturannya tertulis di bawah soal:
+Pengajar bisa menambahkan aturan pada sebuah bagian. Aturannya tertulis di bawah soal di situs web, dan di halaman pembuka bagian di aplikasi ponsel:
 
-- **Soal yang sudah dilewati tidak bisa dibuka lagi**: tombol **Sebelumnya** tidak ada, jadi jawab dulu sebelum lanjut.
-- **Soal berganti sendiri**: audio diputar otomatis, lalu ada hitungan mundur "Soal berikutnya dalam ...". Jawab sebelum hitungan habis.
+- **Soal yang sudah dilewati tidak bisa dibuka lagi**: tombol **Sebelumnya** tidak ada dan soal tidak bisa digeser, jadi jawab dulu sebelum lanjut.
+- **Soal berganti sendiri**: audio diputar otomatis, lalu ada hitungan mundur "Soal berikutnya dalam ...". Jawab sebelum hitungan habis. Soal tidak bisa digeser.
 - **Pilihan pertama kamu langsung dikunci**: pilih dengan teliti, karena pilihan tidak bisa diganti.
 - **Batas putar audio**: kotak audio menunjukkan "Diputar 1 dari 2". Audio tidak bisa digeser atau dijeda. Jika audio tidak mulai sendiri, tekan **Putar**.
 
@@ -49,9 +49,9 @@ Setelah dinilai, hasilmu juga menunjukkan nilai setiap bagian.
 
 ## Mengirim
 
-1. Klik **Kirim tugas**.
+1. Klik **Kirim tugas**. Di aplikasi ponsel, tombolnya ada di kanan atas: **Selesaikan tugas**, **Selesaikan latihan**, atau **Selesaikan tryout**.
 2. Baca konfirmasinya. Jawaban yang sudah dikirim tidak bisa diubah. Klik **Periksa lagi** jika ingin memeriksa dulu.
-3. Klik **Kirim**.
+3. Klik **Kirim** (di aplikasi ponsel: **Selesaikan**).
 
 Jika waktu habis saat halaman masih terbuka di situs web, jawabanmu dikirim otomatis. Jika halaman sudah tertutup, jawaban yang sempat tersimpan dikirim saat kamu membuka tugas itu lagi. Jawaban yang diubah setelah waktu habis tidak dihitung.
 
@@ -76,7 +76,7 @@ Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**,
 ## Mengerjakan di aplikasi ponsel
 
 - Halaman awal tugas merangkum **Waktu**, **Nilai lulus**, dan **Percobaan** dalam satu baris.
-- Setelah kamu mengirim, bagian **Hasil terakhir** menampilkan nilaimu dalam persen, status **Lulus** atau **Belum lulus**, dan garis batas nilai lulus. Ketuk **Lihat hasil** untuk membuka review jawabanmu.
+- Setelah kamu mengirim, kamu kembali ke halaman tugas (atau halaman latihan dan tryout). Bagian **Hasil terakhir** menampilkan nilaimu dalam persen, status **Lulus** atau **Belum lulus**, dan garis batas nilai lulus. Di bawahnya langsung ada rincian nilai (per bagian dan per tipe soal) dan review jawabanmu, jika pembahasannya sudah dibuka.
 - Memulai tugas membutuhkan internet. Setelah mulai, kamu bisa melanjutkan tanpa internet.
 - Jawabanmu disimpan di ponsel bersama waktu kamu menjawab. Saat ada internet, jawaban ikut terkirim sedikit demi sedikit sambil kamu mengerjakan.
 - Saat waktu habis, tugas **terkirim otomatis**, sama seperti di situs web. Jika saat itu ponsel tidak ada internet, tugasmu menunggu di ponsel dan terkirim sendiri begitu internet tersambung.
@@ -84,6 +84,6 @@ Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**,
 
 > **Penting:** untuk **tryout**, jawaban yang dikerjakan tanpa internet masih diterima sampai **24 jam** setelah tryout ditutup. Untuk **latihan**, jawaban harus terkirim sebelum latihan ditutup, karena pembahasannya langsung terbuka. Sambungkan ponsel ke internet secepatnya supaya nilaimu masuk ke peringkat. Jangan mengubah jam ponsel: jawaban dengan waktu yang tidak masuk akal ditolak.
 
-## Soal harian di Tantangan Soal hari ini
+## Soal harian
 
-Di halaman **Hari ini**, bagian **Tantangan Soal hari ini** berisi soal untuk mengulang pelajaran. Hasilnya tidak mengubah nilai, percobaan, progres kurikulum, maupun XP-mu.
+Di halaman **Hari ini**, bagian **Soal harian** berisi soal untuk mengulang pelajaran. Hasilnya tidak mengubah nilai, percobaan, progres kurikulum, maupun XP-mu. Di aplikasi ponsel, di bawah setiap soal ada tulisan kecil **Dari** diikuti nama tugas dan kurikulumnya. Ketuk tulisan itu untuk membuka tugas asal soal tersebut.

@@ -1,7 +1,7 @@
 import { router, Stack, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { StudyAction } from "../src/components/study-glass";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Action } from "../src/components/learning-ui";
 import {
   nextUnansweredQuestion,
   type QuestionStatus,
@@ -9,6 +9,12 @@ import {
 import { useQuestionNavigatorSession } from "../src/providers/QuestionNavigatorProvider";
 import { SymbolIcon } from "../src/components/ui/symbol-icon";
 import { useAppTheme } from "../src/providers/AppThemeProvider";
+import {
+  questionTone,
+  questionToneColor,
+  type QuestionTone,
+} from "../src/lib/question-colors";
+import { withOpacity } from "../src/theme/colors";
 
 const labels: Record<QuestionStatus, string> = {
   unanswered: "Belum dijawab",
@@ -16,6 +22,39 @@ const labels: Record<QuestionStatus, string> = {
   correct: "Benar",
   incorrect: "Salah",
 };
+
+/** Number tiles per row, like an exam answer sheet. */
+const COLUMNS = 5;
+
+const toneLabels: Record<QuestionTone, string> = {
+  done: "Sudah dijawab",
+  wrong: "Salah",
+  seen: "Dibuka, belum dijawab",
+  unseen: "Belum dibuka",
+};
+
+function LegendDot({ tone, label }: { tone: QuestionTone; label: string }) {
+  const { colors } = useAppTheme();
+  return (
+    <View className="flex-row items-center gap-1.5">
+      <View
+        className={`size-3 rounded-[4px] border ${tone === "unseen" ? "border-border bg-card" : ""}`}
+        style={
+          tone === "unseen"
+            ? undefined
+            : {
+                backgroundColor: withOpacity(
+                  questionToneColor(tone, colors),
+                  0.14,
+                ),
+                borderColor: withOpacity(questionToneColor(tone, colors), 0.45),
+              }
+        }
+      />
+      <Text className="text-xs text-muted-foreground">{label}</Text>
+    </View>
+  );
+}
 
 export default function AssessmentQuestionsScreen() {
   const { session } = useQuestionNavigatorSession();
@@ -57,6 +96,16 @@ export default function AssessmentQuestionsScreen() {
   const next = session
     ? nextUnansweredQuestion(session.statuses, session.current)
     : -1;
+  // A review grades questions; an attempt only knows answered or not.
+  const graded = session?.statuses.some(
+    (status) => status === "correct" || status === "incorrect",
+  );
+  // The same colours as the daily question dots.
+  const legend: QuestionTone[] = graded
+    ? ["done", "wrong", "unseen"]
+    : session?.seen
+      ? ["done", "seen", "unseen"]
+      : ["done", "unseen"];
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -64,39 +113,102 @@ export default function AssessmentQuestionsScreen() {
       contentContainerClassName="gap-5 px-5 pb-10 pt-6"
     >
       <Stack.Screen options={{ gestureEnabled: !busy }} />
-      <View className="flex-row items-center justify-between gap-4">
-        <View className="flex-1 gap-1">
-          <Text className="text-2xl font-black text-foreground">Soal</Text>
-          <Text className="text-sm text-muted-foreground">
+      <View className="flex-row items-start gap-3">
+        <View className="min-w-0 flex-1 gap-0.5">
+          <Text className="text-xl font-black text-foreground">
+            Daftar soal
+          </Text>
+          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
             {session?.title ?? "Tidak ada tugas aktif"}
           </Text>
         </View>
-        <StudyAction secondary disabled={busy} onPress={() => router.back()}>
-          Selesai
-        </StudyAction>
+        {session ? (
+          <Text className="pt-1 text-sm font-bold tabular-nums text-foreground">
+            {answered}/{session.statuses.length} dijawab
+          </Text>
+        ) : null}
+        {/* iOS closes the sheet by its grabber; Android needs a button. */}
+        {Platform.OS !== "ios" ? (
+          <Pressable
+            accessibilityLabel="Tutup daftar soal"
+            accessibilityRole="button"
+            disabled={busy}
+            hitSlop={8}
+            onPress={() => router.back()}
+            className="size-8 items-center justify-center rounded-full bg-muted active:opacity-70"
+          >
+            <SymbolIcon name="xmark" size={14} tintColor={colors.foreground} />
+          </Pressable>
+        ) : null}
       </View>
       {session ? (
         <>
-          <Text
-            accessibilityLiveRegion="polite"
-            className="text-sm text-muted-foreground"
-          >
-            {answered} dari {session.statuses.length} dijawab · Ketuk soal untuk
-            membukanya
-          </Text>
-          {next >= 0 ? (
-            <StudyAction
-              loading={busy}
-              onPress={() => void select(next)}
-              trailingIcon="arrow.right"
-            >
-              Soal belum dijawab berikutnya
-            </StudyAction>
-          ) : (
-            <Text className="font-bold text-primary">
-              Semua soal sudah dijawab. Kamu masih bisa meninjaunya.
-            </Text>
-          )}
+          <View className="flex-row flex-wrap gap-x-4 gap-y-2">
+            {legend.map((tone) => (
+              <LegendDot
+                key={tone}
+                tone={tone}
+                // In a review green means right and grey not answered.
+                label={
+                  graded && tone === "done"
+                    ? "Benar"
+                    : graded && tone === "unseen"
+                      ? "Tidak dijawab"
+                      : toneLabels[tone]
+                }
+              />
+            ))}
+          </View>
+          <View className="-m-1 flex-row flex-wrap">
+            {session.statuses.map((status, index) => {
+              const current = index === session.current;
+              const tone = questionTone(status, session.seen?.[index] ?? false);
+              // A soft wash of the status colour, its number in that colour:
+              // the colours read without shouting.
+              const tint =
+                tone === "unseen" ? null : questionToneColor(tone, colors);
+              return (
+                <View
+                  key={index}
+                  className="p-1"
+                  style={{ width: `${100 / COLUMNS}%` }}
+                >
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Soal ${index + 1}, ${labels[status]}${current ? ", soal saat ini" : ""}`}
+                    accessibilityState={{ selected: current, disabled: busy }}
+                    disabled={busy}
+                    onPress={() => void select(index)}
+                    className={`aspect-square items-center justify-center rounded-2xl border active:opacity-70 ${tint ? "" : "border-border bg-card"}`}
+                    style={{
+                      ...(tint
+                        ? {
+                            backgroundColor: withOpacity(tint, 0.14),
+                            borderColor: withOpacity(tint, 0.45),
+                          }
+                        : null),
+                      ...(current
+                        ? {
+                            // A ring outside the tile marks where you are.
+                            outlineColor: colors.foreground,
+                            outlineWidth: 2,
+                            outlineOffset: 2,
+                            outlineStyle: "solid" as const,
+                          }
+                        : null),
+                    }}
+                  >
+                    <Text
+                      className={`text-lg font-black tabular-nums ${tint ? "" : "text-foreground"}`}
+                      style={tint ? { color: tint } : undefined}
+                    >
+                      {index + 1}
+                    </Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
           {error ? (
             <Text
               accessibilityRole="alert"
@@ -105,52 +217,19 @@ export default function AssessmentQuestionsScreen() {
               {error}
             </Text>
           ) : null}
-          <View className="flex-row flex-wrap gap-3">
-            {session.statuses.map((status, index) => (
-              <Pressable
-                key={index}
-                accessibilityRole="button"
-                accessibilityLabel={`Soal ${index + 1}, ${labels[status]}${index === session.current ? ", soal saat ini" : ""}`}
-                accessibilityState={{
-                  selected: index === session.current,
-                  disabled: busy,
-                }}
-                disabled={busy}
-                onPress={() => void select(index)}
-                className={`min-h-24 grow items-center justify-center gap-1 rounded-2xl border p-3 active:opacity-75 ${index === session.current ? "border-primary bg-primary/20" : status === "incorrect" ? "border-destructive/50 bg-destructive/10" : status !== "unanswered" ? "border-primary/40 bg-primary/10" : "border-border bg-card"}`}
-                style={{ width: "28%" }}
-              >
-                <View className="flex-row items-center gap-1">
-                  <Text className="text-xl font-black text-foreground">
-                    {index + 1}
-                  </Text>
-                  {status === "correct" || status === "answered" ? (
-                    <SymbolIcon
-                      name="checkmark"
-                      size={18}
-                      weight="bold"
-                      tintColor={colors.primary}
-                    />
-                  ) : status === "incorrect" ? (
-                    <SymbolIcon
-                      name="xmark"
-                      size={16}
-                      weight="bold"
-                      tintColor={colors.destructive}
-                    />
-                  ) : null}
-                </View>
-                <Text className="text-xs text-muted-foreground">
-                  {labels[status]}
-                </Text>
-                {index === session.current ? (
-                  <Text className="text-xs font-bold text-primary">
-                    Saat ini
-                  </Text>
-                ) : null}
-              </Pressable>
-            ))}
-          </View>
+          {next >= 0 ? (
+            <Action
+              loading={busy}
+              onPress={() => void select(next)}
+              trailingIcon="arrow.right"
+            >
+              Soal belum dijawab berikutnya
+            </Action>
+          ) : (
+            <Text className="text-center text-sm font-semibold text-primary">
+              Semua soal sudah dijawab. Kamu masih bisa meninjaunya.
+            </Text>
+          )}
         </>
       ) : (
         <Text className="text-muted-foreground">

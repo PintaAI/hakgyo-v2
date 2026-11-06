@@ -1,107 +1,9 @@
 import { Children, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Eyebrow, ProgressBar } from "./learning-ui";
-import { StudyGlass } from "./study-glass";
 import { Card } from "./ui/card";
 import { SymbolIcon } from "./ui/symbol-icon";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
-
-export function AssessmentQuestion({
-  children,
-  detail,
-  current,
-  total,
-  answered,
-  onOpen,
-  disabled = false,
-  surface = "glass",
-}: {
-  children: ReactNode;
-  detail?: string;
-  current?: number;
-  total?: number;
-  answered?: number;
-  onOpen?: () => void;
-  disabled?: boolean;
-  /**
-   * `card` is a plain card without the glass effect, with the counts on the
-   * title line (Home's daily challenge).
-   */
-  surface?: "glass" | "card";
-}) {
-  const showHeader =
-    current !== undefined &&
-    total !== undefined &&
-    answered !== undefined &&
-    onOpen;
-  const isCard = surface === "card";
-  const content = (
-    <>
-      {showHeader && isCard ? (
-        // Compact header: the counts share the title line, no separator.
-        <View className="gap-2">
-          <View className="flex-row items-center justify-between gap-3">
-            <Text
-              className="min-w-0 flex-1 font-bold text-foreground"
-              numberOfLines={1}
-            >
-              Soal {(current as number) + 1} dari {total}
-              <Text className="text-sm font-normal text-muted-foreground">
-                {" · "}
-                {answered} dijawab · {(total as number) - (answered as number)}{" "}
-                tersisa
-              </Text>
-            </Text>
-            <Text className="text-sm font-bold text-primary">Soal ▦</Text>
-          </View>
-          <ProgressBar value={answered} max={total} />
-        </View>
-      ) : showHeader ? (
-        <View className="gap-2 border-b border-border/70 pb-4">
-          <View className="flex-row items-center justify-between gap-3">
-            <Text className="font-bold text-foreground">
-              Soal {(current as number) + 1} dari {total}
-            </Text>
-            <Text className="text-sm font-bold text-primary">Soal ▦</Text>
-          </View>
-          <ProgressBar value={answered} max={total} />
-          <Text className="text-xs text-muted-foreground">
-            {answered} dijawab · {(total as number) - (answered as number)}{" "}
-            tersisa
-          </Text>
-        </View>
-      ) : null}
-      {detail ? <Eyebrow size="xs">{detail}</Eyebrow> : null}
-      {children}
-    </>
-  );
-  if (!showHeader) {
-    return isCard ? (
-      <Card className="gap-4 p-5">{content}</Card>
-    ) : (
-      <StudyGlass>{content}</StudyGlass>
-    );
-  }
-  const question = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Soal. ${answered} dari ${total} dijawab. Soal saat ini ${(current as number) + 1}.`}
-      accessibilityHint="Buka daftar soal untuk berpindah ke soal mana pun"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onOpen}
-      className="gap-4 active:opacity-75"
-    >
-      {content}
-    </Pressable>
-  );
-  return isCard ? (
-    <Card className="p-5">{question}</Card>
-  ) : (
-    <StudyGlass isInteractive={!disabled}>{question}</StudyGlass>
-  );
-}
 
 // EPS-TOPIK numbers picture options ①–④.
 const circledNumbers = ["①", "②", "③", "④"];
@@ -133,7 +35,6 @@ export function AssessmentOption({
   disabled = false,
   correct,
   tile = false,
-  surface = "glass",
   onPress,
 }: {
   children: ReactNode;
@@ -144,8 +45,6 @@ export function AssessmentOption({
   correct?: boolean;
   /** A picture option in the 2×2 grid (`usesPictureGrid`): badge on top, numbered ①–④. */
   tile?: boolean;
-  /** `card`: a plain bordered card without the glass effect (Home). */
-  surface?: "glass" | "card";
   onPress?: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -196,27 +95,17 @@ export function AssessmentOption({
       </View>
     </View>
   );
-  const content =
-    surface === "card" ? (
-      <View
-        className={`rounded-2xl border ${tile ? "gap-2 p-3" : "gap-4 p-5"}`}
-        style={{
-          backgroundColor: emphasized ? withOpacity(tone, 0.08) : colors.card,
-          borderColor: emphasized ? tone : colors.border,
-        }}
-      >
-        {body}
-      </View>
-    ) : (
-      <StudyGlass
-        tone={wrong ? "destructive" : "primary"}
-        emphasized={emphasized}
-        isInteractive={!!onPress}
-        contentClassName={tile ? "gap-2 p-3" : undefined}
-      >
-        {body}
-      </StudyGlass>
-    );
+  const content = (
+    <View
+      className={`rounded-2xl border ${tile ? "gap-2 p-3" : "gap-4 p-5"}`}
+      style={{
+        backgroundColor: emphasized ? withOpacity(tone, 0.08) : colors.card,
+        borderColor: emphasized ? tone : colors.border,
+      }}
+    >
+      {body}
+    </View>
+  );
   if (!onPress) return <View>{content}</View>;
   return (
     <Pressable
@@ -241,7 +130,7 @@ export function AssessmentFeedback({
   children: ReactNode;
 }) {
   return (
-    <StudyGlass tone={correct ? "primary" : "destructive"}>
+    <Card tone={correct ? "primary" : "destructive"} className="gap-4 p-5">
       <Text
         accessibilityLiveRegion="polite"
         className={`text-2xl font-black ${correct ? "text-primary" : "text-destructive"}`}
@@ -249,6 +138,6 @@ export function AssessmentFeedback({
         {correct ? "Tepat sekali." : "Hampir."}
       </Text>
       {children}
-    </StudyGlass>
+    </Card>
   );
 }

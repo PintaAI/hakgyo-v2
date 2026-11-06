@@ -291,10 +291,13 @@ export function Row({
 
 export function QueryState({
   pending,
+  pendingLabel,
   error,
   retry,
 }: {
   pending: boolean;
+  /** What is loading, shown under the spinner. */
+  pendingLabel?: string;
   error?: { message: string } | null;
   retry: () => void;
 }) {
@@ -311,7 +314,7 @@ export function QueryState({
     );
   return pending ? (
     <View className="py-8">
-      <Spinner />
+      <Spinner label={pendingLabel} />
     </View>
   ) : null;
 }

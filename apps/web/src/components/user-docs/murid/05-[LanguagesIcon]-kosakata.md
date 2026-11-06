@@ -48,12 +48,12 @@ Di halaman **Hari ini**, bagian **Kosakata hari ini** mengambil hingga 24 kata d
 ## Di aplikasi ponsel
 
 - Kartu bisa digeser. Tarik sudut kartu untuk mengintip jawaban, atau geser ke atas, kiri, atau kanan untuk lanjut.
-- Di **Kosakata hari ini**, tekan dan tahan kartu untuk membuka kumpulan kosakata asal kata itu.
+- Di **Kosakata hari ini**, tulisan kecil **Dari** di bawah kolom jawaban menunjukkan kumpulan kosakata dan kurikulum asal kata itu. Ketuk tulisan itu, atau tekan dan tahan kartunya, untuk membuka kumpulan kosakata tersebut.
 - Tombol bendera di samping kolom jawaban menunjukkan bahasa jawabanmu: 🇮🇩 untuk menjawab artinya, 🇰🇷 untuk menjawab kata Koreanya. Ketuk untuk menggantinya.
 - Saat pertama kali berlatih, petunjuk singkat menunjukkan cara mengelupas kartu, menggeser kartu, dan mengganti bahasa. Petunjuk itu tidak muncul lagi setelah kamu mencobanya.
 - Kamu bisa menjawab dengan suara, dan ada mode latihan tanpa menyentuh layar. Untuk kata yang punya beberapa arti, cukup ucapkan salah satu artinya.
 - Tab **Latihan** punya permainan tambahan, seperti **Hujan Kata**, **Susun makna**, dan **Cocokkan**. Permainan **Cocokkan** menghitung kata sebagai sudah dilatih, tetapi tidak menambah status dikuasai.
-- Di permainan, kata yang punya beberapa arti menampilkan semua artinya sekaligus, dipisahkan titik koma. Di **Hujan Kata**, ketik salah satu artinya. Di **Cocokkan**, dua kata yang artinya sama tidak pernah muncul di ronde yang sama, jadi selalu hanya ada satu pasangan yang benar.
+- Di permainan, kata yang punya beberapa arti menampilkan semua artinya sekaligus, dipisahkan titik koma. Di **Hujan Kata**, ketik salah satu artinya. Di **Susun makna**, susun kata-kata menjadi contoh kalimat Korea; arti kalimatnya tampil di atas sebagai petunjuk. Di **Cocokkan**, dua kata yang artinya sama tidak pernah muncul di ronde yang sama, jadi selalu hanya ada satu pasangan yang benar.
 - Jawaban disimpan di ponsel dan dikirim di akhir ronde. Lihat [Aplikasi Ponsel dan Belajar Offline](/docs/murid/aplikasi-ponsel).
 
 Setiap jawaban benar memberimu XP. Lihat [XP, Streak, dan Notifikasi](/docs/murid/xp-streak-notifikasi).

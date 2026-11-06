@@ -316,9 +316,16 @@ function RootNavigator() {
                       }),
                     }}
                   />
+                  {/* Assessment screens leave only by the back button: an edge
+                      swipe must not end up leaving mid-attempt, and on the
+                      attempt it would compete with swiping questions. */}
                   <Stack.Screen
                     name="events/[eventId]"
-                    options={{ animation: transition }}
+                    options={{
+                      animation: transition,
+                      gestureEnabled: false,
+                      fullScreenGestureEnabled: false,
+                    }}
                   />
                   <Stack.Screen name="vocabulary/[vocabularySetId]" />
                   <Stack.Screen
@@ -377,7 +384,12 @@ function RootNavigator() {
                   />
                   <Stack.Screen
                     name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"
-                    options={{ headerShown: true, animation: transition }}
+                    options={{
+                      headerShown: true,
+                      animation: transition,
+                      gestureEnabled: false,
+                      fullScreenGestureEnabled: false,
+                    }}
                   />
                 </Stack.Protected>
               </Stack>

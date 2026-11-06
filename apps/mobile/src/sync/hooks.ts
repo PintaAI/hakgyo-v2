@@ -643,7 +643,7 @@ export function useLearnerAttempt(attemptId: string, courseItemId: string) {
     queryKey: syncQueryKeys.query(attemptQueryKey(attemptId)),
     queryFn: () =>
       localData!.loadQuery<LearnerAttempt>(attemptQueryKey(attemptId)),
-    enabled: enabled && Boolean(localData) && !resumable,
+    enabled: enabled && Boolean(localData),
     staleTime: Infinity,
   });
   const savedAssessment = useQuery({
@@ -652,16 +652,26 @@ export function useLearnerAttempt(attemptId: string, courseItemId: string) {
       localData!.loadQuery<CourseItemAssessment>(
         attemptAssessmentQueryKey(attemptId),
       ),
-    enabled: enabled && Boolean(localData) && !resumable,
+    enabled: enabled && Boolean(localData),
     staleTime: Infinity,
   });
-  const localAttempt = resumable?.attempt ?? savedAttempt.data ?? undefined;
-  const localAssessment =
-    resumable?.assessmentDetail ?? savedAssessment.data ?? undefined;
+  // The index lists the attempt as resumable until its next refresh, but a
+  // completion saves the graded attempt (with the answers revealed) right
+  // away: a finished saved copy wins over the stale resumable one, or the
+  // result screens would show it unsubmitted, without its review.
+  const savedFinished =
+    savedAttempt.data != null && savedAttempt.data.status !== "IN_PROGRESS";
+  const localAttempt = savedFinished
+    ? (savedAttempt.data ?? undefined)
+    : (resumable?.attempt ?? savedAttempt.data ?? undefined);
+  const localAssessment = savedFinished
+    ? (savedAssessment.data ?? undefined)
+    : (resumable?.assessmentDetail ?? savedAssessment.data ?? undefined);
   const localResolved =
     !index.isPending &&
-    (Boolean(resumable) ||
-      (!savedAttempt.isPending && !savedAssessment.isPending));
+    ((!savedAttempt.isPending && !savedAssessment.isPending) ||
+      // Without local storage the resumable copy is all there is.
+      (Boolean(resumable) && !localData));
   const needsOnline =
     enabled &&
     localResolved &&

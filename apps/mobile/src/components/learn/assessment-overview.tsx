@@ -1,20 +1,18 @@
-import type { ComponentProps } from "react";
 import {
   formatScore,
   formatScoreOutOf,
   reachesPercent,
   type SectionNavigation,
-  usesPictureGrid,
 } from "@hakgyo/shared";
 import { Text, View } from "react-native";
 
 import type { LearnerAttemptStatus } from "../../lib/assessment-state";
+import { dateLabel } from "../../lib/study";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
-import { AssessmentOption, AssessmentOptions } from "../assessment-ui";
-import { NativeContentRenderer } from "../content-renderer";
 import type { AssetUrlResolver } from "../content-renderer/types";
-import { Action, Badge, Eyebrow } from "../learning-ui";
+import { Badge, Eyebrow } from "../learning-ui";
+import { QuizQuestion, type QuizQuestionData } from "../quiz/quiz-question";
 import { SymbolIcon } from "../ui/symbol-icon";
 import type { SymbolName } from "../ui/symbol-names";
 
@@ -26,18 +24,25 @@ type LatestAttempt = {
 
 /**
  * A tugas's rules as small chips with icons: its time, passing score and
- * attempts. Sits under the title in the intro hero.
+ * attempts, plus the opening and closing time of a latihan or tryout. Sits
+ * under the title in the intro hero.
  */
 export function AssessmentFacts({
   timeLimitMinutes,
   passingScore,
   maxAttempts,
   attemptsUsed,
+  opensAt,
+  closesAt,
 }: {
   timeLimitMinutes: number | null;
   passingScore: number | null;
   maxAttempts: number | null;
   attemptsUsed: number;
+  /** A scheduled event's opening time. */
+  opensAt?: Date | null;
+  /** An event's closing time. */
+  closesAt?: Date | null;
 }) {
   const { colors } = useAppTheme();
   const facts: { icon: SymbolName; label: string; text: string }[] = [
@@ -63,6 +68,24 @@ export function AssessmentFacts({
           ? "Tanpa batas"
           : `${Math.min(attemptsUsed, maxAttempts)} dari ${maxAttempts}`,
     },
+    ...(opensAt
+      ? [
+          {
+            icon: "calendar.badge.clock" as const,
+            label: "Dibuka",
+            text: `Dibuka ${dateLabel(opensAt)}`,
+          },
+        ]
+      : []),
+    ...(closesAt
+      ? [
+          {
+            icon: "calendar" as const,
+            label: "Ditutup",
+            text: `Tutup ${dateLabel(closesAt)}`,
+          },
+        ]
+      : []),
   ];
   return (
     <View className="flex-row flex-wrap justify-center gap-2">
@@ -88,39 +111,24 @@ export function AssessmentFacts({
   );
 }
 
-type RendererContent = ComponentProps<typeof NativeContentRenderer>["content"];
-
-type PreviewQuestion = {
-  id: string;
-  prompt: RendererContent;
-  type: string;
-  options: ReadonlyArray<{ id: string; content: RendererContent }>;
-};
-
 /**
- * The tugas's first question as it will look, so the learner knows what to
- * expect: its prompt and options in the same cards as the attempt, without
- * a way to answer them here.
+ * The tugas's first question as it will look, in the attempt's own
+ * `QuizQuestion`, so the learner knows what to expect, without a way to
+ * answer it here.
  */
 export function QuestionPreview({
   question,
   total,
   resolveAssetUrl,
 }: {
-  question: PreviewQuestion;
+  question: QuizQuestionData;
   total: number;
   resolveAssetUrl: AssetUrlResolver;
 }) {
-  const grid = usesPictureGrid(question.options);
   const { colors } = useAppTheme();
   return (
     <View className="gap-3">
-      <View className="flex-row items-center justify-between gap-3">
-        <Eyebrow>Contoh soal</Eyebrow>
-        <Text className="text-xs font-semibold text-muted-foreground">
-          1 dari {total}
-        </Text>
-      </View>
+      <Eyebrow>Contoh soal</Eyebrow>
       {/* A sample, not the attempt: the bottom fades into the page under a
           "Pratinjau" pill, and the whole preview takes taps for nothing so
           its options do not look or feel answerable. */}
@@ -130,31 +138,13 @@ export function QuestionPreview({
         className="gap-3"
         onStartShouldSetResponder={() => true}
       >
-        <View className="gap-4 rounded-2xl border border-border bg-card p-5">
-          <NativeContentRenderer
-            content={question.prompt}
-            resolveAssetUrl={resolveAssetUrl}
-          />
-        </View>
-        {question.options.length > 0 ? (
-          <AssessmentOptions grid={grid}>
-            {question.options.map((option, index) => (
-              <AssessmentOption
-                key={option.id}
-                index={index}
-                selected={false}
-                multiple={question.type === "MULTIPLE_CHOICE"}
-                tile={grid}
-                surface="card"
-              >
-                <NativeContentRenderer
-                  content={option.content}
-                  resolveAssetUrl={resolveAssetUrl}
-                />
-              </AssessmentOption>
-            ))}
-          </AssessmentOptions>
-        ) : null}
+        <QuizQuestion
+          question={question}
+          index={0}
+          total={total}
+          disabled
+          resolveAssetUrl={resolveAssetUrl}
+        />
         <View
           pointerEvents="none"
           className="absolute inset-x-0 bottom-0 items-center justify-end pb-3"
@@ -200,7 +190,6 @@ export function AssessmentOverview({
   canReattempt,
   gatesProgress,
   sections,
-  onOpenAttempt,
 }: {
   timeLimitMinutes: number | null;
   passingScore: number | null;
@@ -217,7 +206,6 @@ export function AssessmentOverview({
     navigation: SectionNavigation;
     lockAnswers: boolean;
   }>;
-  onOpenAttempt: () => void;
 }) {
   const showGate = gatesProgress && itemCompleted === false;
 
@@ -237,20 +225,7 @@ export function AssessmentOverview({
         </View>
       ) : (
         <View className="gap-3 rounded-2xl border border-border bg-card p-4">
-          <View className="flex-row items-center justify-between gap-3">
-            <Eyebrow size="xs">Hasil terakhir</Eyebrow>
-            <Action
-              variant="link"
-              size="inline"
-              accessibilityRole="link"
-              trailingIcon="chevron.right"
-              onPress={onOpenAttempt}
-            >
-              {latestAttempt.status === "GRADED"
-                ? "Lihat hasil"
-                : "Lihat jawaban"}
-            </Action>
-          </View>
+          <Eyebrow size="xs">Hasil terakhir</Eyebrow>
           {latestAttempt.status === "GRADED" ? (
             <GradedResult
               attempt={latestAttempt}

@@ -87,6 +87,26 @@ JSON strings (culture sections).
 - Both clients show a progress bar with bytes (`formatByteSize` in `@hakgyo/shared`), files when
   sizes are unknown, and a retry for failed files.
 
+## Starting on mobile
+
+Starting needs a connection: the server records the start time, checks the attempt limit and the
+event window, opens a due scheduled event and picks the attempt's question order
+(`mobileSyncV2.startEventAssessment`). The questions themselves, without answers, are already on
+the device in the course bundle, so the event screen shows the attempt's first screen from the
+bundle the moment the learner taps "Mulai" (`AttemptStartingPreview`): the first section's intro,
+or the first question when the assessment does not shuffle questions (shuffled options are left
+out). The learner event detail does not carry the event's own shuffle setting, so an event set to
+"Acak" on an unshuffled assessment swaps that first question once the attempt opens. Nothing can be answered until the start returns; then the attempt screen
+replaces it with a fade. A failed start returns to the event detail with the error. A course tugas
+starts the same way, from its own intro screen. What the server still has to order (question text
+when questions shuffle, option text when options shuffle) shows as grey placeholders in its final
+place.
+
+The event screen uses the course tugas intro's layout (`HakgyoHero` with the question count,
+`AssessmentFacts` chips including the opening and closing time, the first question as
+`QuestionPreview`, the latest attempt as `AssessmentOverview`), with the leaderboard in the same
+card style below.
+
 ## Offline materials (mobile)
 
 The course screen offers "Simpan offline" for every chapter the learner can open, and each open

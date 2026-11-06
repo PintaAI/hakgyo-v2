@@ -28,8 +28,8 @@ Setiap kartu menampilkan status:
 
 1. Buka latihan yang berstatus **Dibuka**. Halaman ini menampilkan jumlah soal, durasi, nilai lulus, dan jadwal tutup.
 2. Tunggu sampai **Menyiapkan gambar & audio soal** selesai. Langkah ini mengunduh gambar dan suara lebih dulu supaya soal tidak tersendat. Jika ada yang gagal, klik ulangi.
-3. Klik **Mulai tugas berwaktu**.
-4. Kerjakan seperti tugas biasa, lalu kirim. Lihat [Mengerjakan Tugas](/docs/murid/mengerjakan-tugas).
+3. Klik **Mulai tugas berwaktu**. Memulai membutuhkan internet. Di aplikasi ponsel, soal pertama (atau petunjuk bagian pertama) langsung tampil dengan tulisan **Memulai…**, dan bisa dijawab begitu server mencatat waktu mulaimu. Setelah itu kamu bisa lanjut mengerjakan tanpa internet.
+4. Kerjakan seperti tugas biasa, lalu kirim. Di aplikasi ponsel, tekan **Selesaikan latihan** atau **Selesaikan tryout** di kanan atas, lalu **Selesaikan** di konfirmasinya. Tombolnya menampilkan **Mengirim…** selama jawaban dikirim, lalu kamu kembali ke halaman latihan. Di sana tulisan **Memperbarui status dan hasil…** muncul sebentar sampai nilaimu tampil. Lihat [Mengerjakan Tugas](/docs/murid/mengerjakan-tugas).
 
 Waktumu berakhir pada yang lebih dulu tercapai: durasi habis, atau jadwal tutup tiba. Jika mulai 10 menit sebelum tutup, kamu hanya punya 10 menit.
 

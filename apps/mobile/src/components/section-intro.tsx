@@ -1,12 +1,11 @@
 import { formatScore } from "@hakgyo/shared";
-import { Text } from "react-native";
+import { Text, View } from "react-native";
 
 import {
   NativeContentRenderer,
   type AssetUrlResolver,
 } from "./content-renderer";
-import { Eyebrow } from "./learning-ui";
-import { StudyAction, StudyGlass } from "./study-glass";
+import { Action, Card, Eyebrow } from "./learning-ui";
 import { formatRemaining } from "../lib/format-remaining";
 
 /**
@@ -23,6 +22,7 @@ export function SectionIntro({
   timeLimitSeconds,
   secondsToAutoStart,
   busy,
+  rules = [],
   resolveAssetUrl,
   onStart,
 }: {
@@ -32,13 +32,16 @@ export function SectionIntro({
   sectionCount: number;
   questionCount: number;
   timeLimitSeconds: number | null;
-  secondsToAutoStart: number;
+  /** Omitted before the section's countdown exists (the start preview). */
+  secondsToAutoStart?: number;
   busy: boolean;
+  /** The section's rules (`sectionRules`), listed before it starts. */
+  rules?: readonly string[];
   resolveAssetUrl: AssetUrlResolver;
   onStart: () => void;
 }) {
   return (
-    <StudyGlass>
+    <Card className="gap-4 p-5">
       <Eyebrow>
         Bagian {position} dari {sectionCount}
       </Eyebrow>
@@ -55,19 +58,30 @@ export function SectionIntro({
           resolveAssetUrl={resolveAssetUrl}
         />
       ) : null}
+      {rules.length ? (
+        <View className="gap-1.5">
+          {rules.map((rule) => (
+            <Text key={rule} className="text-sm font-semibold text-foreground">
+              • {rule}
+            </Text>
+          ))}
+        </View>
+      ) : null}
       <Text className="text-sm text-muted-foreground">
         Waktu bagian ini berjalan setelah kamu menekan Mulai. Bagian yang sudah
         selesai tidak bisa dibuka lagi.
       </Text>
-      <StudyAction disabled={busy} onPress={onStart}>
+      <Action disabled={busy} onPress={onStart}>
         Mulai bagian
-      </StudyAction>
-      <Text
-        accessibilityLiveRegion="polite"
-        className="text-center text-xs text-muted-foreground"
-      >
-        Dimulai otomatis dalam {formatRemaining(secondsToAutoStart)}
-      </Text>
-    </StudyGlass>
+      </Action>
+      {secondsToAutoStart !== undefined ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-center text-xs text-muted-foreground"
+        >
+          Dimulai otomatis dalam {formatRemaining(secondsToAutoStart)}
+        </Text>
+      ) : null}
+    </Card>
   );
 }

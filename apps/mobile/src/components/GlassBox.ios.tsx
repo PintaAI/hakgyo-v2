@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import {
   AccessibilityInfo,
   Platform,
@@ -26,6 +26,42 @@ type GlassBoxProps = ViewProps & {
   colorScheme?: GlassColorScheme;
 };
 
+/**
+ * "Reduce Transparency", read once for the whole app. Each box used to ask
+ * for itself and render a plain View until the answer came, then swap to a
+ * GlassView, remounting its children: on every screen, for every box.
+ * Glass is assumed until iOS says otherwise, so only learners who turned the
+ * setting on see a swap, once.
+ */
+let reduceTransparency = false;
+const listeners = new Set<() => void>();
+
+function setReduceTransparency(enabled: boolean) {
+  if (enabled === reduceTransparency) return;
+  reduceTransparency = enabled;
+  for (const listener of listeners) listener();
+}
+
+void AccessibilityInfo.isReduceTransparencyEnabled()
+  .then(setReduceTransparency)
+  .catch(() => undefined);
+AccessibilityInfo.addEventListener(
+  "reduceTransparencyChanged",
+  setReduceTransparency,
+);
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+const liquidGlass =
+  Platform.OS === "ios" &&
+  isLiquidGlassAvailable() &&
+  isGlassEffectAPIAvailable();
+
 export function GlassBox({
   isInteractive,
   tintColor,
@@ -35,35 +71,12 @@ export function GlassBox({
   children,
   ...viewProps
 }: GlassBoxProps) {
-  const [reduceTransparency, setReduceTransparency] = useState<boolean | null>(
-    null,
+  const reduced = useSyncExternalStore(
+    subscribe,
+    () => reduceTransparency,
+    () => false,
   );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void AccessibilityInfo.isReduceTransparencyEnabled().then((enabled) => {
-      if (!cancelled) setReduceTransparency(enabled);
-    });
-
-    const subscription = AccessibilityInfo.addEventListener(
-      "reduceTransparencyChanged",
-      (enabled) => {
-        if (!cancelled) setReduceTransparency(enabled);
-      },
-    );
-
-    return () => {
-      cancelled = true;
-      subscription.remove();
-    };
-  }, []);
-
-  const glassAvailable =
-    Platform.OS === "ios" &&
-    isLiquidGlassAvailable() &&
-    isGlassEffectAPIAvailable() &&
-    reduceTransparency === false;
+  const glassAvailable = liquidGlass && !reduced;
 
   if (glassAvailable) {
     return (

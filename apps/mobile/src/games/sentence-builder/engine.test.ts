@@ -55,6 +55,26 @@ describe("sentence builder engine", () => {
     expect(exampleSentences(null)).toEqual([]);
   });
 
+  test("builds tiles from the Korean sentence and keeps its translation", () => {
+    const [challenge] = createSentenceChallenges(
+      [
+        {
+          id: "padahal",
+          term: "-(으)면서",
+          meanings: ["padahal"],
+          examples: ["알면서 왜 물어봐? = Udah tahu kok nanya?"],
+        },
+      ],
+      () => 0.5,
+    );
+    expect(challenge?.sentence).toBe("알면서 왜 물어봐?");
+    expect(challenge?.translation).toBe("Udah tahu kok nanya?");
+    expect([...(challenge?.words ?? [])]).toEqual(["알면서", "왜", "물어봐"]);
+    expect(
+      exampleSentences(["알면서 왜 물어봐? = Udah tahu kok nanya?"]),
+    ).toEqual(["알면서 왜 물어봐?"]);
+  });
+
   test("splits words and drops final punctuation", () => {
     expect(sentenceWords("저는 학교에 가요.")).toEqual([
       "저는",

@@ -33,6 +33,15 @@ export const toolbarIcons = {
     ios: "paperplane.fill",
     android: import("@expo/material-symbols/send.xml"),
   }),
+  // Question to question in an attempt's bottom toolbar.
+  previousQuestion: Icon.select({
+    ios: "chevron.left",
+    android: import("@expo/material-symbols/chevron_left.xml"),
+  }),
+  nextQuestion: Icon.select({
+    ios: "chevron.right",
+    android: import("@expo/material-symbols/chevron_right.xml"),
+  }),
   next: Icon.select({
     ios: "arrow.right",
     android: import("@expo/material-symbols/arrow_forward.xml"),

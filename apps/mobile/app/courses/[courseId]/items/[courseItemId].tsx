@@ -58,6 +58,9 @@ import {
   StudyScreen,
 } from "../../../../src/components/learning-ui";
 import { firstParam } from "../../../../src/lib/route-params";
+import { AttemptStartingPreview } from "../../../../src/components/attempt-starting-preview";
+import { AttemptResultDetails } from "../../../../src/components/attempt-result-details";
+import { useTransitionOverride } from "../../../../src/navigation/screen-transition";
 
 export default function CourseItemScreen() {
   const params = useLocalSearchParams<{
@@ -210,6 +213,10 @@ function CourseItemContent({
     { enabled: Boolean(session && itemQuery.data?.assessment) },
   );
   const startAssessment = api.mobileSyncV2.startAssessment.useMutation();
+  // From the tap until the attempt opens: the attempt's first screen from the
+  // bundle, like an event's start (optimistic; answering waits for the server).
+  const [startingAssessment, setStartingAssessment] = useState(false);
+  const { fadeNextTransition } = useTransitionOverride();
   const [selectedCohortId, setSelectedCohortId] = useState<string>();
   const item = itemQuery.data;
   itemRef.current = item;
@@ -255,7 +262,7 @@ function CourseItemContent({
   }, [outline.data]);
 
   async function beginAssessment() {
-    if (!assessment) return;
+    if (!assessment || startingAssessment) return;
     if (latestAttempt?.status === "IN_PROGRESS") {
       router.push({
         pathname:
@@ -266,6 +273,7 @@ function CourseItemContent({
     }
     const cohorts = assessment.eligibleCohorts;
     const cohortId = cohorts.length === 1 ? cohorts[0]?.id : selectedCohortId;
+    setStartingAssessment(true);
     try {
       const result = await startAssessment.mutateAsync({
         protocol: SYNC_PROTOCOL,
@@ -275,13 +283,20 @@ function CourseItemContent({
       });
       // Persisted locally so the attempt resumes offline.
       await saveStartedAttempt(result);
-      router.push({
-        pathname:
-          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-        params: { courseId, courseItemId, attemptId: result.attempt.id },
+      // The preview already looks like the attempt: fade instead of a slide.
+      fadeNextTransition();
+      requestAnimationFrame(() => {
+        router.push({
+          pathname:
+            "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+          params: { courseId, courseItemId, attemptId: result.attempt.id },
+        });
+        // Back from the attempt shows the tugas again, not the preview.
+        setStartingAssessment(false);
       });
     } catch {
       // The mutation error is shown next to the action.
+      setStartingAssessment(false);
     }
   }
 
@@ -332,7 +347,14 @@ function CourseItemContent({
           title="Materi tidak tersedia"
         />
       ) : item.assessment ? (
-        assessment ? (
+        assessment && startingAssessment ? (
+          <StudyScreen contentClassName="gap-4" title={assessment.title}>
+            <AttemptStartingPreview
+              assessment={assessment}
+              shuffleQuestions={assessment.shuffleQuestions}
+            />
+          </StudyScreen>
+        ) : assessment ? (
           <StudyScreen title="" bleedTop>
             <HakgyoHero>
               <CardFan
@@ -402,11 +424,8 @@ function CourseItemContent({
                       ? "secondary"
                       : "primary"
                   }
-                  trailingIcon={
-                    startAssessment.isPending ? undefined : "arrow.right"
-                  }
+                  trailingIcon="arrow.right"
                   disabled={
-                    startAssessment.isPending ||
                     assessment.questions.length === 0 ||
                     ((assessmentEntry.canStart ||
                       assessmentEntry.canReattempt) &&
@@ -415,13 +434,11 @@ function CourseItemContent({
                   }
                   onPress={() => void beginAssessment()}
                 >
-                  {startAssessment.isPending
-                    ? "Memulai…"
-                    : assessmentEntry.destination === "ATTEMPT"
-                      ? "Lanjutkan tugas"
-                      : assessmentEntry.canReattempt
-                        ? "Kerjakan ulang tugas"
-                        : "Mulai tugas"}
+                  {assessmentEntry.destination === "ATTEMPT"
+                    ? "Lanjutkan tugas"
+                    : assessmentEntry.canReattempt
+                      ? "Kerjakan ulang tugas"
+                      : "Mulai tugas"}
                 </Action>
               ) : null}
               {startAssessment.isError ? (
@@ -452,19 +469,16 @@ function CourseItemContent({
               canReattempt={assessmentEntry.canReattempt}
               gatesProgress={!assessment.event}
               sections={assessment.sections}
-              onOpenAttempt={() => {
-                if (!latestAttempt) return;
-                router.push({
-                  pathname:
-                    "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                  params: {
-                    courseId,
-                    courseItemId,
-                    attemptId: latestAttempt.id,
-                  },
-                });
-              }}
             />
+            {/* The finished attempt in full: where the learner lands after
+                finishing, so the attempt has no result screen of its own. */}
+            {latestAttempt && latestAttempt.status !== "IN_PROGRESS" ? (
+              <AttemptResultDetails
+                key={latestAttempt.id}
+                attemptId={latestAttempt.id}
+                courseItemId={courseItemId}
+              />
+            ) : null}
             {!assessment.event ? (
               <CourseLearningFooter
                 key={courseItemId}

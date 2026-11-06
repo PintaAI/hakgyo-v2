@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
-import { router } from "expo-router";
+import { router, useNavigationContainerRef } from "expo-router";
 import {
   createContext,
   type ReactNode,
@@ -21,6 +21,7 @@ import {
   matchingIndicatorKeys,
   matchingNoticeIds,
 } from "../lib/notification-target";
+import { closeOpenSheets } from "../navigation/close-sheets";
 import {
   getDeviceDetails,
   getExpoPushToken,
@@ -234,6 +235,7 @@ export function PushNotificationsProvider({
     };
   }, [refresh, userId]);
 
+  const navigationRef = useNavigationContainerRef();
   // Open the notification's screen on tap, including the tap that launched
   // the app. Children (the navigator) mount first, so the route resolves.
   useEffect(() => {
@@ -256,9 +258,13 @@ export function PushNotificationsProvider({
         true,
       );
       if (target.kind === "cohort") {
+        closeOpenSheets(navigationRef);
         requestLearnCohortFocus(target.cohortId);
         router.navigate("/(home)/(tabs)/learn");
       } else if (target.kind === "route") {
+        // A sheet open when the push is tapped (Profil, a course) would
+        // otherwise present the screen inside it.
+        closeOpenSheets(navigationRef);
         // Server-built route; expo-router shows its not-found screen for
         // routes a newer server adds before this app version has them.
         router.push(target.path as never);
@@ -279,7 +285,7 @@ export function PushNotificationsProvider({
       subscription.remove();
       received.remove();
     };
-  }, [markRead, userId, utils]);
+  }, [markRead, navigationRef, userId, utils]);
 
   const setEnabled = useCallback(
     async (enabled: boolean) => {

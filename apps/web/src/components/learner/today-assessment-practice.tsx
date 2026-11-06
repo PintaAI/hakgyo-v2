@@ -54,7 +54,7 @@ export function TodayAssessmentPractice({
   return (
     <section aria-labelledby="today-assessment" className="flex flex-col gap-4">
       <h2 id="today-assessment" className="text-lg font-bold tracking-tight">
-        Tantangan Soal hari ini
+        Soal harian
       </h2>
       {pool.isPending ? (
         <QuestionSkeleton />

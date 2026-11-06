@@ -181,6 +181,15 @@ export function SentenceBuilderScreen({
             >
               {challenge.meaning}
             </Text>
+            {/* The meaning to build: the example's own translation. */}
+            {challenge.translation ? (
+              <Text
+                accessibilityLabel={`Artinya: ${challenge.translation}`}
+                style={[styles.translation, { color: colors.foreground }]}
+              >
+                “{challenge.translation}”
+              </Text>
+            ) : null}
           </View>
 
           <View
@@ -495,6 +504,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   definition: { fontSize: 15, lineHeight: 22, textAlign: "center" },
+  translation: {
+    fontSize: 17,
+    fontWeight: "600",
+    lineHeight: 24,
+    marginTop: 6,
+    textAlign: "center",
+  },
   workspace: {
     borderWidth: 1,
     borderRadius: 24,

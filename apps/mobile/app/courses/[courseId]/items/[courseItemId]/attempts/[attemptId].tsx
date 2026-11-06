@@ -2,13 +2,11 @@ import {
   answerHasContent,
   assessmentContentAssetIds,
   canFinishSection,
-  formatScoreOutOf,
   isForwardOnly,
   pacedQuestionEndsAt,
   questionAudioSources,
   groupRanges,
   stimulusPlaysWith,
-  usesPictureGrid,
   ruleSectionsFor,
   ruleStateFrom,
   sectionAudioPolicy,
@@ -17,44 +15,41 @@ import {
   type AttemptLogEntry,
   type TimelineEntry,
 } from "@hakgyo/shared";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import {
+  router,
+  Stack,
+  useLocalSearchParams,
+  useNavigation,
+} from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
-import { Alert, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, ScrollView, Text } from "react-native";
 
 import {
   AssessmentMediaStatus,
   useAssessmentMediaPrefetch,
 } from "../../../../../../src/components/assessment-media";
-import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
-import { ScoreBandResults } from "../../../../../../src/components/score-band-results";
 import { SectionIntro } from "../../../../../../src/components/section-intro";
-import { QuestionGroupHeader } from "../../../../../../src/components/question-group-header";
 import { AssessmentAudioPlayer } from "../../../../../../src/components/assessment-audio-player";
-import { TagResults } from "../../../../../../src/components/tag-results";
 import {
-  AssessmentOption,
-  AssessmentOptions,
-  AssessmentQuestion,
-} from "../../../../../../src/components/assessment-ui";
+  QuizPager,
+  type QuizPagerHandle,
+} from "../../../../../../src/components/quiz/quiz-pager";
+import { QuizQuestion } from "../../../../../../src/components/quiz/quiz-question";
+import { QuizStatusDots } from "../../../../../../src/components/quiz/quiz-status-dots";
+import { useSharedValue } from "react-native-reanimated";
 import {
+  Action,
+  Card,
   FullScreenState,
-  IconCircle,
   StudyScreen,
 } from "../../../../../../src/components/learning-ui";
-import {
-  StudyAction,
-  StudyGlass,
-} from "../../../../../../src/components/study-glass";
 import {
   isQuestionAnswered,
   type QuestionStatus,
 } from "../../../../../../src/lib/question-progress";
 import { useQuestionNavigator } from "../../../../../../src/providers/QuestionNavigatorProvider";
-import {
-  NativeContentRenderer,
-  useApiAssetResolver,
-} from "../../../../../../src/components/content-renderer";
+import { useApiAssetResolver } from "../../../../../../src/components/content-renderer";
 import { api } from "../../../../../../src/lib/trpc";
 import { authClient } from "../../../../../../src/lib/auth-client";
 import { restoreAssessmentDraft } from "../../../../../../src/lib/assessment-draft";
@@ -70,15 +65,15 @@ import {
 } from "../../../../../../src/lib/attempt-log";
 import { assessmentTerminalResult } from "../../../../../../src/lib/assessment-state";
 import { useAppTheme } from "../../../../../../src/providers/AppThemeProvider";
+import { toolbarIcons } from "../../../../../../src/theme/toolbar-icons";
+import { sectionRules } from "../../../../../../src/lib/section-rules";
+import { useAutoTour } from "../../../../../../src/tour/tour-provider";
+import { TourTarget } from "../../../../../../src/tour/tour-target";
 import { useMobileSyncActions } from "../../../../../../src/providers/MobileSyncProvider";
 import { useLearnerAttempt } from "../../../../../../src/sync/hooks";
 import { firstParam } from "../../../../../../src/lib/route-params";
-import { SymbolIcon } from "../../../../../../src/components/ui/symbol-icon";
 
 type Answer = { content?: string; optionIds: string[] };
-
-// Audio of the content itself, hidden while a section plays it through the controlled player.
-const hiddenAudioRenderers = { assetAudio: () => null, audio: () => null };
 
 function buildAnswerPayload(
   questions: readonly { id: string; type: string }[] | undefined,
@@ -177,7 +172,6 @@ function AssessmentAttemptContent({
   attemptId: string;
 }) {
   const scrollRef = useRef<ScrollView>(null);
-  const resultScrollRef = useRef<ScrollView>(null);
   const operationPending = useRef(false);
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
@@ -202,7 +196,6 @@ function AssessmentAttemptContent({
   const [submitError, setSubmitError] = useState<string>();
   const [selectedIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
-  const [hasUnsavedAnswers, setHasUnsavedAnswers] = useState(false);
   const initialized = useRef<string | null>(null);
   const latestDraft = useRef<Record<string, Answer>>({});
   const latestDraftKey = useRef<string | null>(null);
@@ -226,6 +219,10 @@ function AssessmentAttemptContent({
   // the server counted: the furthest position reached per section and plays per question.
   const [reached, setReached] = useState<Record<string, number>>({});
   const [localPlays, setLocalPlays] = useState<Record<string, number>>({});
+  // Questions opened in this attempt, for the question list's colours.
+  const [seenQuestionIds, setSeenQuestionIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   // Paced sections: when the question on screen showed and when its audio finished.
   const [pacedClock, setPacedClock] = useState<{
     questionId: string;
@@ -246,12 +243,8 @@ function AssessmentAttemptContent({
     deadline !== null &&
     (Date.now() >= deadline || expiredDeadline === deadline);
   const busy = submitting;
-  const [submittedResult, setSubmittedResult] = useState<{
-    status: "GRADED" | "IN_REVIEW";
-    score: number;
-    maxScore: number;
-  }>();
-  const result = assessmentTerminalResult(attempt.data) ?? submittedResult;
+  // A finished attempt shows on its tugas or event screen (see leaveToDetail).
+  const result = assessmentTerminalResult(attempt.data);
   const hasResult = result !== undefined;
 
   useEffect(() => {
@@ -325,10 +318,19 @@ function AssessmentAttemptContent({
       );
       setReached(Object.fromEntries(rules.furthest));
       setLocalPlays(Object.fromEntries(rules.plays));
+      // Questions opened before a restart are in the log.
+      setSeenQuestionIds(
+        new Set(
+          log.entries.flatMap((entry) =>
+            entry.kind === "QUESTION_SHOWN" && entry.questionId
+              ? [entry.questionId]
+              : [],
+          ),
+        ),
+      );
       setLogReady(true);
     }
     setAnswers(saved);
-    setHasUnsavedAnswers(false);
   }, [assessment.data, attempt.data, attemptId, storageKey, session]);
 
   useEffect(() => {
@@ -352,7 +354,6 @@ function AssessmentAttemptContent({
           }).catch(() => undefined);
         }
         setDraftError(undefined);
-        setHasUnsavedAnswers(false);
       } catch {
         setDraftError(
           "Draf di perangkat tidak tersedia. Akan dicoba lagi selama kamu mengerjakan.",
@@ -484,12 +485,28 @@ function AssessmentAttemptContent({
   // Groups: a question's shared part. Its stimulus audio plays with the group's first question;
   // bundles cached before groups have none.
   const groups = assessment.data?.groups ?? [];
-  const group = question?.groupId
-    ? groups.find(({ id }) => id === question.groupId)
-    : undefined;
-  const groupRange = question?.groupId
-    ? groupRanges(assessment.data?.questions ?? []).get(question.groupId)
-    : undefined;
+  const ranges = useMemo(
+    () => groupRanges(assessment.data?.questions ?? []),
+    [assessment.data?.questions],
+  );
+  /** The shared instructions and stimulus shown above a grouped question. */
+  function groupOf(questionId: string | null | undefined) {
+    const target = assessment.data?.questions.find(
+      (candidate) => candidate.id === questionId,
+    );
+    const group = target?.groupId
+      ? groups.find(({ id }) => id === target.groupId)
+      : undefined;
+    const range = target?.groupId ? ranges.get(target.groupId) : undefined;
+    return group && range
+      ? {
+          instructions: group.instructions,
+          stimulus: group.stimulus,
+          first: range.first,
+          last: range.last,
+        }
+      : null;
+  }
   const playsOf = (questionId: string) =>
     Math.max(
       assessment.data?.questionProgress.plays[questionId] ?? 0,
@@ -507,7 +524,6 @@ function AssessmentAttemptContent({
           ),
         )
       : [];
-  const pictureGrid = question ? usesPictureGrid(question.options) : false;
   const pacedEndsAt =
     paced && activeSection && question && pacedClock?.questionId === question.id
       ? pacedQuestionEndsAt({
@@ -518,11 +534,13 @@ function AssessmentAttemptContent({
         })
       : null;
   // A locked section keeps the first choice of a single-choice question.
-  const answerLocked = Boolean(
-    activeSection?.lockAnswers &&
-    question?.type === "SINGLE_CHOICE" &&
-    answerHasContent(answers[question.id] ?? {}),
-  );
+  function isAnswerLocked(target: { id: string; type: string }) {
+    return Boolean(
+      activeSection?.lockAnswers &&
+      target.type === "SINGLE_CHOICE" &&
+      answerHasContent(answers[target.id] ?? {}),
+    );
+  }
   const statuses: QuestionStatus[] = useMemo(
     () =>
       (assessment.data?.questions ?? []).map((item) =>
@@ -548,10 +566,27 @@ function AssessmentAttemptContent({
       ? undefined
       : sectionIndexes.find((index) => statuses[index] === "unanswered")) ??
     -1;
+  // The toolbar's moves: back within a section that allows it, forward to
+  // the next question (or the next unanswered one from the last), never in a
+  // paced section, which moves by itself.
+  const previousIndex =
+    !paced && !forwardOnly && positionInSection > 0
+      ? sectionIndexes[positionInSection - 1]
+      : undefined;
+  const nextIndex = paced
+    ? undefined
+    : !isLastInSection
+      ? sectionIndexes[positionInSection + 1]
+      : nextUnanswered >= 0 && nextUnanswered !== currentIndex
+        ? nextUnanswered
+        : undefined;
   const openQuestions = useQuestionNavigator({
     title: activeSection?.title ?? assessment.data?.title ?? "Tugas",
     current: Math.max(0, positionInSection),
     statuses: sectionStatuses,
+    seen: sectionIndexes.map((index) =>
+      seenQuestionIds.has(assessment.data?.questions[index]?.id ?? ""),
+    ),
     onSelect: async (position) => {
       const index = sectionIndexes[position];
       // Paced sections move by themselves; forward-only ones only ahead.
@@ -564,11 +599,7 @@ function AssessmentAttemptContent({
       ) {
         return false;
       }
-      if (expired || sectionExpired) {
-        setCurrentIndex(index);
-        return true;
-      }
-      return save(index);
+      return moveTo(index);
     },
   });
 
@@ -706,6 +737,14 @@ function AssessmentAttemptContent({
   // next progress or completion operation.
   const shownQuestionId = question?.id;
   useEffect(() => {
+    if (!shownQuestionId) return;
+    setSeenQuestionIds((current) =>
+      current.has(shownQuestionId)
+        ? current
+        : new Set(current).add(shownQuestionId),
+    );
+  }, [shownQuestionId]);
+  useEffect(() => {
     const log = attemptLog.current;
     if (!shownQuestionId || !log || !session || expired || result) return;
     attemptLog.current = appendAttemptLog(log, "QUESTION_SHOWN", {
@@ -719,19 +758,54 @@ function AssessmentAttemptContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per shown question
   }, [shownQuestionId, logReady]);
 
-  function chooseOption(optionId: string) {
-    if (!question || busy || expired || result || answerLocked) return;
+  function chooseOption(
+    target: { id: string; type: string },
+    optionId: string,
+  ) {
+    if (busy || expired || result || isAnswerLocked(target)) return;
     setAnswers((current) => {
-      const existing = current[question.id] ?? { optionIds: [] };
+      const existing = current[target.id] ?? { optionIds: [] };
       const optionIds =
-        question.type === "SINGLE_CHOICE"
+        target.type === "SINGLE_CHOICE"
           ? [optionId]
           : existing.optionIds.includes(optionId)
             ? existing.optionIds.filter((id) => id !== optionId)
             : [...existing.optionIds, optionId];
-      return { ...current, [question.id]: { optionIds } };
+      return { ...current, [target.id]: { optionIds } };
     });
-    setHasUnsavedAnswers(true);
+  }
+
+  function writeAnswer(questionId: string, content: string) {
+    setAnswers((current) => ({
+      ...current,
+      [questionId]: { content, optionIds: [] },
+    }));
+  }
+
+  /** Moves to another question of the section, saving the answers first. */
+  function moveTo(nextIndex: number) {
+    if (expired || sectionExpired) {
+      setCurrentIndex(nextIndex);
+      return Promise.resolve(true);
+    }
+    return save(nextIndex);
+  }
+
+  // The pager follows moves made with the buttons, the list or the paced
+  // clock; a swipe that did not stand (a failed save) is undone here too.
+  const pager = useRef<QuizPagerHandle>(null);
+  /** The pager's offset in questions, for the status dots. */
+  const pagePosition = useSharedValue(0);
+  useEffect(() => {
+    if (positionInSection >= 0) pager.current?.scrollTo(positionInSection);
+  }, [positionInSection]);
+
+  function swipedTo(position: number) {
+    const nextIndex = sectionIndexes[position];
+    if (nextIndex === undefined || nextIndex === currentIndex) return;
+    void moveTo(nextIndex).then((moved) => {
+      if (!moved) pager.current?.scrollTo(positionInSection);
+    });
   }
 
   async function save(nextIndex?: number) {
@@ -747,7 +821,6 @@ function AssessmentAttemptContent({
         return false;
       }
     }
-    setHasUnsavedAnswers(false);
     if (nextIndex !== undefined) {
       // Answers are logged before the next question shows, so forward-only rules accept them.
       if (logAnswerChanges(answers)) {
@@ -827,19 +900,6 @@ function AssessmentAttemptContent({
           );
           return;
         }
-        const submitted = sync.result.results.find(
-          (entry) => entry.id === operationId,
-        )?.assessment;
-        if (
-          submitted &&
-          (submitted.status === "GRADED" || submitted.status === "IN_REVIEW")
-        ) {
-          setSubmittedResult({
-            status: submitted.status,
-            score: submitted.score ?? 0,
-            maxScore: submitted.maxScore ?? 0,
-          });
-        }
       } else {
         Alert.alert(
           "Tersimpan di perangkat ini",
@@ -864,17 +924,7 @@ function AssessmentAttemptContent({
           utils.assessment.invalidate(undefined, { refetchType: "none" }),
         ]);
       }
-      if (assessment.data.event) {
-        router.replace({
-          pathname: "/events/[eventId]",
-          params: { eventId: assessment.data.event.id },
-        });
-      } else {
-        router.replace({
-          pathname: "/courses/[courseId]/items/[courseItemId]",
-          params: { courseId, courseItemId },
-        });
-      }
+      leaveToDetail();
     } catch (cause) {
       setSubmitError(
         cause instanceof Error
@@ -890,32 +940,92 @@ function AssessmentAttemptContent({
   const screenTitle = assessment.data?.title ?? "Tugas";
   const loading = assessment.isPending || attempt.isPending;
   const error = assessment.error ?? attempt.error;
+  // "Selesaikan tryout", "Selesaikan latihan" or "Selesaikan tugas".
+  const kindLabel =
+    assessment.data?.event?.type === "TRYOUT"
+      ? "tryout"
+      : assessment.data?.event
+        ? "latihan"
+        : "tugas";
+
   function confirmSubmit() {
     Alert.alert(
-      "Kirim tugas?",
+      `Selesaikan ${kindLabel}?`,
       expired
-        ? "Waktu habis. Jawaban yang kamu isi sebelum waktu habis akan dinilai."
-        : `${answeredCount} dari ${assessment.data?.questions.length ?? 0} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`,
+        ? "Waktu habis. Jawaban yang kamu isi sebelum waktu habis akan dikirim dan dinilai."
+        : `Apakah kamu yakin ingin menyelesaikan ${kindLabel} ini dan mengirim jawaban? ${answeredCount} dari ${assessment.data?.questions.length ?? 0} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`,
       [
         { text: "Periksa lagi", style: "cancel" },
-        { text: "Kirim", onPress: () => void submit() },
+        { text: "Selesaikan", onPress: () => void submit() },
       ],
     );
   }
 
-  function leaveResult() {
-    if (assessment.data?.event) {
+  // How the attempt works, once, where no clock runs: a tour must not eat
+  // into a timed tugas or tryout (it can be replayed from Pengaturan).
+  useAutoTour(
+    "attempt",
+    Boolean(
+      question &&
+      !result &&
+      !sectioned &&
+      deadline === null &&
+      attempt.data?.status === "IN_PROGRESS",
+    ),
+  );
+
+  // The toolbar's main action: finish the section, or the whole tugas from
+  // the last section (or one without sections). Always in the same place,
+  // and always behind a confirmation.
+  const finish =
+    activeSection && !canFinishSection(activeSection)
+      ? null
+      : activeSection && !isLastSection
+        ? { label: "Selesai bagian", onPress: confirmFinishSection }
+        : { label: `Selesaikan ${kindLabel}`, onPress: confirmSubmit };
+
+  /**
+   * Leaves a finished attempt for its event or tugas screen, which shows the
+   * result in full: after finishing, and when a finished attempt is opened (a
+   * "Nilai keluar" notice). Once, however both ask.
+   */
+  const leaving = useRef(false);
+  const navigation = useNavigation();
+  function leaveToDetail() {
+    if (leaving.current) return;
+    leaving.current = true;
+    const event = assessment.data?.event;
+    // Back to the screen right below when it is this tugas or event (opened
+    // from a chapter or a material), so it is not stacked twice; otherwise the
+    // detail takes the attempt's place. (dismissTo matches the first route of
+    // the same name, which can be the material the tugas was opened from.)
+    const state = navigation.getState();
+    const below = state?.routes[state.index - 1] as
+      { name: string; params?: Record<string, unknown> } | undefined;
+    const belowIsDetail = event
+      ? below?.name === "events/[eventId]" && below.params?.eventId === event.id
+      : below?.name === "courses/[courseId]/items/[courseItemId]" &&
+        below.params?.courseItemId === courseItemId;
+    if (belowIsDetail && router.canGoBack()) {
+      router.back();
+      return;
+    }
+    if (event) {
       router.replace({
         pathname: "/events/[eventId]",
-        params: { eventId: assessment.data.event.id },
+        params: { eventId: event.id },
       });
       return;
     }
     router.replace({
-      pathname: "/courses/[courseId]",
-      params: { courseId },
+      pathname: "/courses/[courseId]/items/[courseItemId]",
+      params: { courseId, courseItemId },
     });
   }
+  useEffect(() => {
+    if (result) leaveToDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once the result is known
+  }, [result]);
 
   const expireAttempt = useCallback(() => {
     if (deadline !== null) setExpiredDeadline(deadline);
@@ -958,101 +1068,14 @@ function AssessmentAttemptContent({
           title="Tugas tidak tersedia"
         />
       ) : result ? (
-        <StudyScreen scrollViewRef={resultScrollRef} title={screenTitle}>
-          <StudyGlass>
-            <View className="self-center">
-              <IconCircle size="lg">
-                <SymbolIcon
-                  name="checkmark"
-                  size={24}
-                  weight="bold"
-                  tintColor={colors.primary}
-                />
-              </IconCircle>
-            </View>
-            <Text className="text-center text-2xl font-black text-foreground">
-              {result.status === "IN_REVIEW"
-                ? "Menunggu review"
-                : "Tugas sudah direview"}
-            </Text>
-            {result.status === "GRADED" ? (
-              <>
-                <Text className="text-lg text-muted-foreground">
-                  Skor: {formatScoreOutOf(result.score, result.maxScore)}
-                </Text>
-                <ScoreBandResults
-                  bands={assessment.data?.scoreBands ?? []}
-                  maxScore={result.maxScore}
-                  score={result.score}
-                />
-                {assessment.data?.sectionResults.length ? (
-                  <View className="gap-1.5 self-stretch">
-                    {assessment.data.sections.map((section) => {
-                      const sectionResult =
-                        assessment.data?.sectionResults.find(
-                          (entry) => entry.sectionId === section.id,
-                        );
-                      return sectionResult ? (
-                        <View
-                          key={section.id}
-                          className="flex-row items-center justify-between gap-3"
-                        >
-                          <Text className="text-sm text-foreground">
-                            {section.title}
-                          </Text>
-                          <Text className="text-sm tabular-nums text-foreground">
-                            {formatScoreOutOf(
-                              sectionResult.score,
-                              sectionResult.maxScore,
-                            )}
-                          </Text>
-                        </View>
-                      ) : null;
-                    })}
-                  </View>
-                ) : null}
-              </>
-            ) : (
-              <Text className="text-center text-sm leading-5 text-muted-foreground">
-                Hasil lengkap kamu akan muncul di sini setelah pengajar selesai
-                mereviewnya.
-              </Text>
-            )}
-          </StudyGlass>
-
-          {/* Scores are withheld (null) for invalidated or cancelled participations. */}
-          {result.status === "GRADED" &&
-          assessment.data &&
-          attempt.data &&
-          attempt.data.score !== null ? (
-            <TagResults
-              answers={attempt.data.answers}
-              questions={assessment.data.questions}
-            />
-          ) : null}
-
-          <AssessmentResultReview
-            assessment={assessment.data}
-            attempt={attempt.data}
-            resolveAssetUrl={resolveAssetUrl}
-            onQuestionChange={() =>
-              resultScrollRef.current?.scrollTo({ y: 0, animated: false })
-            }
-          />
-
-          {assessment.data.event ? (
-            <StudyAction onPress={leaveResult}>
-              Lihat skor & leaderboard
-            </StudyAction>
-          ) : null}
-        </StudyScreen>
+        <FullScreenState kind="loading" message="Membuka hasil…" />
       ) : view?.mode === "done" ? (
         <StudyScreen
           contentClassName="gap-4"
           scrollViewRef={scrollRef}
           title={screenTitle}
         >
-          <StudyGlass>
+          <Card className="gap-4 p-5">
             <Text className="text-xl font-black text-foreground">
               Semua bagian selesai
             </Text>
@@ -1069,14 +1092,14 @@ function AssessmentAttemptContent({
                 {submitError}
               </Text>
             ) : null}
-            <StudyAction
+            <Action
               loading={submitting}
               disabled={busy}
               onPress={() => void submit()}
             >
               Kirim tugas
-            </StudyAction>
-          </StudyGlass>
+            </Action>
+          </Card>
         </StudyScreen>
       ) : view?.mode === "intro" && activeSection ? (
         <StudyScreen
@@ -1088,6 +1111,7 @@ function AssessmentAttemptContent({
             busy={busy}
             instructions={activeSection.instructions}
             onStart={startSection}
+            rules={sectionRules(activeSection)}
             position={view.index + 1}
             questionCount={sectionIndexes.length}
             resolveAssetUrl={resolveAssetUrl}
@@ -1124,41 +1148,73 @@ function AssessmentAttemptContent({
               onRetry={media.retry}
             />
           ) : null}
-          <AssessmentQuestion
-            current={currentIndex}
-            total={assessment.data.questions.length}
-            answered={answeredCount}
-            onOpen={openQuestions}
+          <QuizStatusDots
+            // A new section starts a new row, like its pages.
+            key={activeSection?.id ?? "questions"}
+            statuses={sectionStatuses}
+            seen={sectionIndexes.map((index) =>
+              seenQuestionIds.has(assessment.data?.questions[index]?.id ?? ""),
+            )}
+            current={Math.max(0, positionInSection)}
+            position={pagePosition}
+            onOpenList={openQuestions}
             disabled={busy}
-          >
-            {group && groupRange ? (
-              <QuestionGroupHeader
-                first={groupRange.first}
-                instructions={group.instructions}
-                last={groupRange.last}
-                renderers={audioPolicy ? hiddenAudioRenderers : undefined}
-                resolveAssetUrl={resolveAssetUrl}
-                stimulus={group.stimulus}
-              />
-            ) : null}
-            <NativeContentRenderer
-              content={question.prompt}
-              renderers={audioPolicy ? hiddenAudioRenderers : undefined}
-              resolveAssetUrl={resolveAssetUrl}
+          />
+          <TourTarget id="attempt.question">
+            <QuizPager
+              // A new section is a new set of pages.
+              key={activeSection?.id ?? "questions"}
+              ref={pager}
+              position={pagePosition}
+              count={sectionIndexes.length}
+              initialIndex={Math.max(0, positionInSection)}
+              // Forward-only and paced sections move only with their own rules.
+              swipeEnabled={!forwardOnly && !paced && !busy}
+              onIndexChange={swipedTo}
+              renderPage={(position) => {
+                const pageIndex = sectionIndexes[position];
+                const page =
+                  pageIndex === undefined
+                    ? undefined
+                    : assessment.data?.questions[pageIndex];
+                if (!page || pageIndex === undefined) return null;
+                const current = pageIndex === currentIndex;
+                return (
+                  <QuizQuestion
+                    question={page}
+                    index={pageIndex}
+                    total={assessment.data?.questions.length ?? 0}
+                    group={groupOf(page.id)}
+                    selectedOptionIds={answers[page.id]?.optionIds}
+                    writtenAnswer={answers[page.id]?.content}
+                    onChooseOption={(optionId) => chooseOption(page, optionId)}
+                    onChangeWritten={(content) => writeAnswer(page.id, content)}
+                    disabled={busy}
+                    answersDisabled={
+                      expired || sectionExpired || isAnswerLocked(page)
+                    }
+                    hideInlineAudio={Boolean(audioPolicy)}
+                    resolveAssetUrl={resolveAssetUrl}
+                    media={
+                      // Only the question in view plays: audio counts plays.
+                      current && audioPolicy && audioSources.length ? (
+                        <AssessmentAudioPlayer
+                          key={page.id}
+                          disabled={busy || expired || sectionExpired}
+                          onFinished={() => audioFinished(page.id)}
+                          onPlayStarted={() => recordPlay(page.id)}
+                          playsUsed={playsOf(page.id)}
+                          policy={audioPolicy}
+                          resolveAssetUrl={resolveAssetUrl}
+                          sources={audioSources}
+                        />
+                      ) : null
+                    }
+                  />
+                );
+              }}
             />
-          </AssessmentQuestion>
-          {audioPolicy && audioSources.length ? (
-            <AssessmentAudioPlayer
-              key={question.id}
-              disabled={busy || expired || sectionExpired}
-              onFinished={() => audioFinished(question.id)}
-              onPlayStarted={() => recordPlay(question.id)}
-              playsUsed={playsOf(question.id)}
-              policy={audioPolicy}
-              resolveAssetUrl={resolveAssetUrl}
-              sources={audioSources}
-            />
-          ) : null}
+          </TourTarget>
           {pacedEndsAt ? (
             <Text className="text-sm font-semibold tabular-nums text-muted-foreground">
               {isLastInSection ? "Bagian selesai" : "Soal berikutnya"} dalam{" "}
@@ -1170,71 +1226,6 @@ function AssessmentAttemptContent({
               )}
             </Text>
           ) : null}
-          <Text className="text-sm font-bold text-foreground">
-            {question.type === "WRITTEN"
-              ? "Tulis jawaban kamu"
-              : question.type === "MULTIPLE_CHOICE"
-                ? "Pilih semua jawaban yang benar"
-                : "Pilih satu jawaban"}
-          </Text>
-          {question.type === "WRITTEN" ? (
-            <StudyGlass>
-              <TextInput
-                accessibilityLabel={`Jawaban soal ${currentIndex + 1}`}
-                className="min-h-32 text-base text-foreground"
-                multiline
-                editable={!busy && !expired && !sectionExpired}
-                onChangeText={(content) => {
-                  setAnswers((current) => ({
-                    ...current,
-                    [question.id]: { content, optionIds: [] },
-                  }));
-                  setHasUnsavedAnswers(true);
-                }}
-                placeholder="Tulis jawaban kamu…"
-                textAlignVertical="top"
-                value={answers[question.id]?.content ?? ""}
-              />
-            </StudyGlass>
-          ) : (
-            <AssessmentOptions grid={pictureGrid}>
-              {question.options.map((option, optionIndex) => (
-                <AssessmentOption
-                  key={option.id}
-                  index={optionIndex}
-                  selected={
-                    answers[question.id]?.optionIds.includes(option.id) ?? false
-                  }
-                  multiple={question.type === "MULTIPLE_CHOICE"}
-                  disabled={busy || expired || sectionExpired || answerLocked}
-                  tile={pictureGrid}
-                  onPress={() => chooseOption(option.id)}
-                >
-                  <NativeContentRenderer
-                    content={option.content}
-                    renderers={audioPolicy ? hiddenAudioRenderers : undefined}
-                    resolveAssetUrl={resolveAssetUrl}
-                  />
-                </AssessmentOption>
-              ))}
-            </AssessmentOptions>
-          )}
-          <Text className="text-xs leading-5 text-muted-foreground">
-            {paced
-              ? "Soal berganti sendiri setelah waktunya habis. "
-              : forwardOnly
-                ? "Soal yang sudah dilewati tidak bisa dibuka lagi. "
-                : ""}
-            {activeSection?.lockAnswers
-              ? "Pilihan pertama kamu langsung dikunci."
-              : forwardOnly
-                ? "Jawaban bisa diubah selama soal masih tampil."
-                : "Kamu bisa mengubah jawaban sampai mengirimnya."}{" "}
-            Draf tersimpan di perangkat ini selama kamu mengerjakan.
-            {deadline !== null || sectionSecondsLeft !== null
-              ? " Timer tetap berjalan meski kamu keluar."
-              : ""}
-          </Text>
           {draftError ? (
             <Text
               accessibilityRole="alert"
@@ -1251,76 +1242,58 @@ function AssessmentAttemptContent({
               {submitError}
             </Text>
           ) : null}
-          <View className="gap-3 border-t border-border pt-4">
-            <View className="flex-row gap-3">
-              {positionInSection > 0 && !forwardOnly ? (
-                <View className="flex-1">
-                  <StudyAction
-                    secondary
-                    disabled={busy}
-                    onPress={() => {
-                      const previous = sectionIndexes[positionInSection - 1]!;
-                      if (expired) setCurrentIndex(previous);
-                      else void save(previous);
-                    }}
-                  >
-                    Sebelumnya
-                  </StudyAction>
-                </View>
-              ) : null}
-              {!paced &&
-              (!isLastInSection ||
-                (nextUnanswered >= 0 && nextUnanswered !== currentIndex)) ? (
-                <View className="flex-1">
-                  <StudyAction
-                    disabled={busy}
-                    onPress={() => {
-                      const next = isLastInSection
-                        ? nextUnanswered
-                        : sectionIndexes[positionInSection + 1]!;
-                      if (expired) setCurrentIndex(next);
-                      else void save(next);
-                    }}
-                    trailingIcon="arrow.right"
-                  >
-                    {!isLastInSection
-                      ? "Berikutnya"
-                      : "Soal belum dijawab berikutnya"}
-                  </StudyAction>
-                </View>
-              ) : null}
-            </View>
-            {!expired ? (
-              <Text className="text-center text-xs text-muted-foreground">
-                {hasUnsavedAnswers
-                  ? "Menyimpan draf di perangkat ini…"
-                  : "Draf tersimpan di perangkat ini"}
-              </Text>
-            ) : null}
-            {!isLastSection && activeSection ? (
-              canFinishSection(activeSection) &&
-              (isLastInSection || sectionAnswered === sectionIndexes.length) ? (
-                <StudyAction disabled={busy} onPress={confirmFinishSection}>
-                  Selesai bagian ini
-                </StudyAction>
-              ) : null
-            ) : activeSection &&
-              !canFinishSection(activeSection) ? null : expired ||
-              currentIndex === assessment.data.questions.length - 1 ||
-              answeredCount === assessment.data.questions.length ? (
-              <StudyAction
-                loading={submitting}
+          {/* Finishing sits at the top right and moving in the bottom
+              toolbar, so both stay put whatever the question's length. How
+              it all works is in the attempt tour; each section's rules are on
+              its intro. */}
+          {finish ? (
+            <Stack.Toolbar placement="right">
+              <Stack.Toolbar.Button
+                variant="prominent"
                 disabled={busy}
-                onPress={confirmSubmit}
+                onPress={finish.onPress}
               >
-                {busy
-                  ? "Menyimpan…"
-                  : answeredCount === assessment.data.questions.length
-                    ? "Kirim tugas"
-                    : `Kirim · ${answeredCount}/${assessment.data.questions.length} dijawab`}
-              </StudyAction>
-            ) : null}
-          </View>
+                {busy ? "Mengirim…" : finish.label}
+              </Stack.Toolbar.Button>
+            </Stack.Toolbar>
+          ) : null}
+          <Stack.Toolbar
+            placement="bottom"
+            backgroundColor={colors.background}
+            tintColor={colors.primary}
+          >
+            <Stack.Toolbar.Button
+              accessibilityLabel="Soal sebelumnya"
+              icon={toolbarIcons.previousQuestion}
+              hidden={previousIndex === undefined}
+              disabled={busy}
+              onPress={() => {
+                if (previousIndex !== undefined) void moveTo(previousIndex);
+              }}
+            />
+            <Stack.Toolbar.Spacer />
+            <Stack.Toolbar.Button
+              accessibilityHint={`${sectionAnswered} dari ${sectionIndexes.length} soal dijawab. Buka daftar untuk pindah ke soal mana pun.`}
+              disabled={busy}
+              onPress={openQuestions}
+            >
+              {`Daftar soal · ${sectionAnswered}/${sectionIndexes.length}`}
+            </Stack.Toolbar.Button>
+            <Stack.Toolbar.Spacer />
+            <Stack.Toolbar.Button
+              accessibilityLabel={
+                isLastInSection
+                  ? "Soal belum dijawab berikutnya"
+                  : "Soal berikutnya"
+              }
+              icon={toolbarIcons.nextQuestion}
+              hidden={nextIndex === undefined}
+              disabled={busy}
+              onPress={() => {
+                if (nextIndex !== undefined) void moveTo(nextIndex);
+              }}
+            />
+          </Stack.Toolbar>
         </StudyScreen>
       ) : (
         <FullScreenState

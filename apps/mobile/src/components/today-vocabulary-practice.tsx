@@ -21,8 +21,8 @@ import {
   DeckTutorialOverlay,
 } from "./onboarding-deck-tutorial";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
-import { Action, Empty, Eyebrow } from "./learning-ui";
-import { MarqueeText } from "./ui/marquee-text";
+import { Action, Empty } from "./learning-ui";
+import { SourceLink } from "./source-link";
 import {
   VocabularyPracticeDeck,
   type VocabularyPracticeDeckHandle,
@@ -365,14 +365,6 @@ export function TodayVocabularyPractice({
         <Empty>Belum ada kata untuk dilatih.</Empty>
       ) : round.length > 0 ? (
         <>
-          {/* Long set and curriculum names slide instead of wrapping. */}
-          <MarqueeText align="center">
-            <Eyebrow size="md">
-              {card
-                ? `${card.vocabularySetTitle} · ${card.courseTitle}`
-                : "Siap untuk campuran berikutnya?"}
-            </Eyebrow>
-          </MarqueeText>
           <View>
             <VocabularyPracticeDeck
               key={roundKey}
@@ -511,6 +503,13 @@ export function TodayVocabularyPractice({
                   highlight={tutorial.highlightLanguage}
                 />
               </View>
+              {/* Where the word comes from, like a daily question's source. */}
+              <SourceLink
+                title={card.vocabularySetTitle}
+                courseTitle={card.courseTitle}
+                hint="Membuka set kosakata asal kata ini"
+                onPress={openCardSet}
+              />
             </View>
           ) : (
             <Action onPress={newMix}>Campuran berikutnya</Action>

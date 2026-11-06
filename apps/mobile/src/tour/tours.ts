@@ -10,7 +10,9 @@ export type NativeAnchor =
   | "native:settings"
   | "native:tab:learn"
   | "native:tab:assessments"
-  | "native:tab:search";
+  | "native:tab:search"
+  | "native:toolbar"
+  | "native:header-action";
 
 export type TourTargetId =
   | "header.organization"
@@ -25,7 +27,8 @@ export type TourTargetId =
   | "search.field"
   | "profile.segments"
   | "profile.stats"
-  | "profile.milestones";
+  | "profile.milestones"
+  | "attempt.question";
 
 export type TourStep = {
   /** What to highlight; null shows the card without a spotlight. */
@@ -34,7 +37,8 @@ export type TourStep = {
   body: string;
 };
 
-export type TourId = "home" | "learn" | "practice" | "search" | "profile";
+export type TourId =
+  "home" | "learn" | "practice" | "search" | "profile" | "attempt";
 
 export type Tour = {
   id: TourId;
@@ -81,7 +85,7 @@ export const tours: Record<TourId, Tour> = {
       },
       {
         target: "home.challenge",
-        title: "Tantangan soal",
+        title: "Soal harian",
         body: "Lima soal acak dari kurikulummu. Geser ke samping untuk pindah soal. Nilai dan XP kamu tidak berubah.",
       },
       {
@@ -168,6 +172,33 @@ export const tours: Record<TourId, Tour> = {
         target: "profile.milestones",
         title: "Pencapaian",
         body: "Terus belajar untuk membuka pencapaian berikutnya.",
+      },
+    ],
+  },
+  // Replaces the help text that sat under every question.
+  attempt: {
+    id: "attempt",
+    version: 1,
+    steps: [
+      {
+        target: "attempt.question",
+        title: "Kerjakan soal",
+        body: "Pilih atau tulis jawabanmu di sini. Geser soal ke kiri atau kanan untuk pindah, kecuali di bagian yang hanya boleh maju.",
+      },
+      {
+        target: "native:toolbar",
+        title: "Pindah soal",
+        body: "Panah kiri dan kanan membuka soal sebelumnya dan berikutnya. Tombol tengah membuka daftar soal dan menunjukkan berapa yang sudah dijawab.",
+      },
+      {
+        target: "native:header-action",
+        title: "Selesaikan",
+        body: "Kalau sudah siap, selesaikan di sini. Kamu akan diminta konfirmasi dulu, karena jawaban yang dikirim tidak bisa diubah.",
+      },
+      {
+        target: null,
+        title: "Jawabanmu aman",
+        body: "Jawaban tersimpan di HP ini selama kamu mengerjakan, juga tanpa internet. Kalau ada batas waktu, timer tetap berjalan meski kamu keluar dari aplikasi.",
       },
     ],
   },

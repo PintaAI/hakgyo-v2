@@ -2,33 +2,50 @@ import { formatScoreOutOf, RUNTIME_VERSION } from "@hakgyo/shared";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Text } from "react-native";
+import { ActivityIndicator, Platform, Text, View } from "react-native";
 
 import {
   AssessmentMediaStatus,
   useAssessmentMediaPrefetch,
 } from "../../src/components/assessment-media";
+import { AttemptStartingPreview } from "../../src/components/attempt-starting-preview";
+import { AttemptResultDetails } from "../../src/components/attempt-result-details";
+import { useApiAssetResolver } from "../../src/components/content-renderer";
 import {
+  AssessmentFacts,
+  AssessmentOverview,
+  QuestionPreview,
+} from "../../src/components/learn/assessment-overview";
+import {
+  CardFan,
+  HakgyoHero,
+  HERO_TITLE,
+} from "../../src/components/learn/hakgyo-hero";
+import {
+  Action,
   Eyebrow,
-  QueryState,
+  FullScreenState,
   Row,
   StudyScreen,
 } from "../../src/components/learning-ui";
-import { StudyAction, StudyGlass } from "../../src/components/study-glass";
-import { assessmentAttemptPresentation } from "../../src/lib/assessment-state";
 import { dateLabel } from "../../src/lib/study";
 import { userErrorMessage } from "../../src/lib/error-message";
 import { api } from "../../src/lib/trpc";
 import { useSidebarIndicators } from "../../src/lib/sidebar-indicators";
 import { useMobileSyncActions } from "../../src/providers/MobileSyncProvider";
 import { usePushNotifications } from "../../src/providers/PushNotificationsProvider";
-import { useLearnerEvent } from "../../src/sync/hooks";
+import { useAppTheme } from "../../src/providers/AppThemeProvider";
+import { useTransitionOverride } from "../../src/navigation/screen-transition";
+import { useItemAssessment, useLearnerEvent } from "../../src/sync/hooks";
 
 export default function AssessmentEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { markEntitySeen } = useSidebarIndicators();
   const { saveStartedAttempt } = useMobileSyncActions();
   const { promptInContext } = usePushNotifications();
+  const { colors } = useAppTheme();
+  const { fadeNextTransition } = useTransitionOverride();
+  const resolveAssetUrl = useApiAssetResolver();
 
   useEffect(() => {
     const timer = setTimeout(promptInContext, 800);
@@ -37,11 +54,26 @@ export default function AssessmentEventScreen() {
   // Online detail (leaderboard included), persisted for offline reopening.
   const query = useLearnerEvent(eventId);
   const start = api.mobileSyncV2.startEventAssessment.useMutation();
+  // From the tap until the attempt screen replaces this one. Meanwhile the
+  // screen already shows the attempt's first screen from the course bundle
+  // (optimistic); answering waits for the server to register the start.
+  const [starting, setStarting] = useState(false);
+  // Only a pull shows the refresh spinner. The refresh every open makes runs
+  // quietly: a spinner set from code as the screen appears can stay stuck on
+  // iOS, with nothing saying what it waits for.
+  const [pulling, setPulling] = useState(false);
   const event = query.data;
   const attempt = event?.attempts[0];
-  const attemptState = assessmentAttemptPresentation(attempt);
   const invalidated = !!event?.participants[0]?.invalidatedAt;
   const assessment = event?.courseItem.assessment;
+  // The questions without answers, already on the device in the course bundle.
+  const bundled = useItemAssessment(
+    event?.course.id,
+    event?.courseItem.id ?? "",
+    {
+      enabled: Boolean(event),
+    },
+  );
   // The server lists the media once the event is open; download it while the connection is good.
   const media = useAssessmentMediaPrefetch(
     event?.media?.map((asset) => asset.assetId) ?? [],
@@ -79,7 +111,8 @@ export default function AssessmentEventScreen() {
   }, [attempt?.id, event?.entry.destination]);
 
   async function begin() {
-    if (!event || invalidated) return;
+    if (!event || invalidated || starting) return;
+    setStarting(true);
     try {
       const result = await start.mutateAsync({
         eventId,
@@ -88,9 +121,21 @@ export default function AssessmentEventScreen() {
       });
       // Persisted locally so the attempt resumes offline.
       await saveStartedAttempt(result);
-      openAttempt(result.attempt.id, true);
+      // The preview already looks like the attempt: swap without a slide.
+      fadeNextTransition();
+      requestAnimationFrame(() => openAttempt(result.attempt.id, true));
     } catch {
       /* Mutation error is shown below. */
+      setStarting(false);
+    }
+  }
+
+  async function pullToRefresh() {
+    setPulling(true);
+    try {
+      await query.refetch();
+    } finally {
+      setPulling(false);
     }
   }
 
@@ -122,148 +167,223 @@ export default function AssessmentEventScreen() {
         ? "Kerjakan ulang tugas"
         : null;
 
+  const firstQuestion = bundled.data?.questions
+    .slice()
+    .sort((first, second) => first.position - second.position)[0];
+  const statusNote = invalidated
+    ? (event?.participants[0]?.invalidationReason ??
+      "Partisipasi tidak tersedia. Hubungi tim kurikulum kamu.")
+    : !primaryAction && !attempt && event
+      ? event.status === "CANCELLED"
+        ? "Event ini dibatalkan."
+        : opensAt
+          ? `Dibuka ${dateLabel(opensAt)}. Kamu bisa mulai mengerjakan saat itu.`
+          : "Event ini belum dibuka untuk dikerjakan."
+      : null;
+
   return (
     <>
-      <Stack.Screen options={{ headerBackButtonDisplayMode: "minimal" }} />
-      <StudyScreen
-        title={event?.title ?? "Latihan & tryout"}
-        refreshing={query.isRefetching}
-        onRefresh={() => void query.refetch()}
-      >
-        <QueryState
-          pending={query.isPending}
-          error={query.error}
-          retry={() => void query.refetch()}
-        />
-
-        {event?.entry.destination === "ATTEMPT" ? (
-          <StudyGlass>
-            <Text className="text-lg font-black text-foreground">
-              Melanjutkan tugas kamu…
-            </Text>
-          </StudyGlass>
-        ) : event ? (
-          <>
-            <StudyGlass>
-              <Eyebrow tone="primary" size="md">
+      {/* The same transparent header as a course tugas, over the hero. */}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: "",
+          headerBackButtonDisplayMode: "minimal",
+          headerShadowVisible: false,
+          headerStyle: {
+            backgroundColor:
+              Platform.OS === "ios" ? "transparent" : colors.background,
+          },
+          headerTintColor: colors.foreground,
+          headerTransparent: Platform.OS === "ios",
+          scrollEdgeEffects:
+            Platform.OS === "ios" ? { top: "soft" } : undefined,
+        }}
+      />
+      {starting && event ? (
+        <StudyScreen
+          contentClassName="gap-4"
+          title={bundled.data?.title ?? assessment?.title ?? event.title}
+        >
+          <AttemptStartingPreview
+            assessment={bundled.data}
+            shuffleQuestions={bundled.data?.shuffleQuestions ?? true}
+          />
+        </StudyScreen>
+      ) : !event ? (
+        query.isPending ? (
+          <FullScreenState kind="loading" message="Memuat latihan…" />
+        ) : (
+          <FullScreenState
+            kind="error"
+            title="Latihan tidak tersedia"
+            message={userErrorMessage(
+              query.error ?? { message: "" },
+              "Latihan ini tidak tersedia atau kamu tidak lagi memiliki akses.",
+            )}
+            onBack={() => router.back()}
+          />
+        )
+      ) : event.entry.destination === "ATTEMPT" ? (
+        <FullScreenState kind="loading" message="Melanjutkan tugas kamu…" />
+      ) : (
+        <StudyScreen
+          title=""
+          bleedTop
+          refreshing={pulling}
+          onRefresh={() => void pullToRefresh()}
+        >
+          <HakgyoHero>
+            <CardFan
+              faces={[
+                <View className="items-center" key="count">
+                  <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
+                    {assessment?._count.questions ?? 0}
+                  </Text>
+                  <Eyebrow>soal</Eyebrow>
+                </View>,
+                <View key="second" />,
+                <View key="third" />,
+              ]}
+            />
+            <View className="items-center gap-2">
+              <Eyebrow size="md" tone="primary">
                 {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
                 {event.cohort?.name ?? event.course.title}
               </Eyebrow>
-              <Text className="text-2xl font-black leading-8 text-foreground">
+              <Text
+                accessibilityRole="header"
+                className="text-center font-black tracking-tight text-foreground"
+                numberOfLines={2}
+                style={HERO_TITLE}
+              >
                 {assessment?.title ?? event.title}
               </Text>
               {assessment?.description ? (
-                <Text className="text-sm leading-6 text-muted-foreground">
+                <Text className="text-center text-sm leading-6 text-muted-foreground">
                   {assessment.description}
                 </Text>
               ) : null}
-
-              <Text className="text-sm leading-6 text-muted-foreground">
-                {assessment?._count.questions ?? 0} soal ·{" "}
-                {event.durationMinutes} menit
-                {assessment?.passingScore != null
-                  ? ` · lulus ${assessment.passingScore}%`
-                  : ""}
-                {opensAt ? `\nDibuka ${dateLabel(opensAt)}` : ""}
-                {event.closesAt ? `\nDitutup ${dateLabel(event.closesAt)}` : ""}
-                {assessment?.maxAttempts != null
-                  ? `\n${event.attemptCount} dari ${assessment.maxAttempts} percobaan terpakai`
-                  : `\n${event.attemptCount} percobaan terpakai · tanpa batas`}
-              </Text>
-
-              {invalidated ? (
-                <Text className="text-sm text-destructive">
-                  {event.participants[0]?.invalidationReason ??
-                    "Partisipasi tidak tersedia. Hubungi tim kurikulum kamu."}
+            </View>
+            <AssessmentFacts
+              timeLimitMinutes={event.durationMinutes}
+              passingScore={assessment?.passingScore ?? null}
+              maxAttempts={assessment?.maxAttempts ?? null}
+              attemptsUsed={event.attemptCount}
+              opensAt={opensAt}
+              closesAt={event.closesAt}
+            />
+            {query.isRefetching && !pulling ? (
+              <View
+                accessibilityLiveRegion="polite"
+                className="flex-row items-center justify-center gap-2"
+              >
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text className="text-xs text-muted-foreground">
+                  Memperbarui status dan hasil…
                 </Text>
-              ) : null}
-
-              {attempt ? (
-                <Text className="text-base font-bold text-foreground">
-                  {/* The detail already carries the score once graded. */}
-                  {attemptState.detail}
-                </Text>
-              ) : null}
-
-              <AssessmentMediaStatus
-                progress={media.progress}
-                sizes={mediaSizes}
-                onRetry={media.retry}
-              />
-
-              {primaryAction ? (
-                <StudyAction
-                  disabled={start.isPending}
+              </View>
+            ) : null}
+            <AssessmentMediaStatus
+              progress={media.progress}
+              sizes={mediaSizes}
+              onRetry={media.retry}
+            />
+            {primaryAction ? (
+              <View className="gap-2">
+                <Action
+                  // Like a course tugas: retrying after a result is optional.
+                  variant={attempt ? "secondary" : "primary"}
+                  trailingIcon="arrow.right"
                   onPress={() => void begin()}
                 >
-                  {start.isPending ? "Memulai…" : primaryAction}
-                </StudyAction>
-              ) : null}
-
-              {attempt && attempt.status !== "IN_PROGRESS" ? (
-                <StudyAction secondary onPress={() => openAttempt(attempt.id)}>
-                  {attempt.status === "GRADED"
-                    ? "Lihat hasil"
-                    : "Lihat jawaban"}
-                </StudyAction>
-              ) : null}
-
-              {!primaryAction && !attempt && !invalidated ? (
-                <Text className="text-sm font-semibold text-muted-foreground">
-                  {event.status === "CANCELLED"
-                    ? "Event ini dibatalkan."
-                    : opensAt
-                      ? `Dibuka ${dateLabel(opensAt)}. Kamu bisa mulai mengerjakan saat itu.`
-                      : "Event ini belum dibuka untuk dikerjakan."}
+                  {primaryAction}
+                </Action>
+                <Text className="text-center text-xs leading-5 text-muted-foreground">
+                  Perlu internet untuk mulai. Setelah itu kamu bisa lanjut
+                  mengerjakan tanpa internet.
                 </Text>
-              ) : null}
-
-              {start.error ? (
-                <Text
-                  accessibilityRole="alert"
-                  className="text-sm text-destructive"
-                >
-                  {userErrorMessage(start.error, "Tryout tidak dapat dimulai.")}
-                </Text>
-              ) : null}
-            </StudyGlass>
-
-            {event.leaderboard ? (
-              <StudyGlass>
-                <Text className="text-xl font-black text-foreground">
-                  Leaderboard
-                </Text>
-                <Text className="text-sm text-muted-foreground">
-                  Percobaan terbaik yang sudah direview yang dihitung. Nilai
-                  seri ditentukan oleh waktu penyelesaian.
-                </Text>
-                {event.leaderboard.length ? (
-                  event.leaderboard.map((entry) => (
-                    <Row
-                      key={entry.userId}
-                      title={`${entry.rank}. ${entry.name}`}
-                      detail={`${formatScoreOutOf(entry.score, entry.maxScore, " / ")} · ${entry.percentage}%`}
-                    />
-                  ))
-                ) : (
-                  <Text className="text-sm text-muted-foreground">
-                    Belum ada hasil yang sudah direview.
-                  </Text>
-                )}
-              </StudyGlass>
-            ) : attempt ? (
-              <StudyGlass>
-                <Text className="text-lg font-black text-foreground">
-                  Leaderboard belum tersedia
-                </Text>
-                <Text className="text-sm text-muted-foreground">
-                  Peringkat muncul setelah hasil direview.
-                </Text>
-              </StudyGlass>
+              </View>
             ) : null}
-          </>
-        ) : null}
-      </StudyScreen>
+            {statusNote ? (
+              <Text
+                className={`text-center text-sm ${invalidated ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {statusNote}
+              </Text>
+            ) : null}
+            {start.error ? (
+              <Text
+                accessibilityRole="alert"
+                className="text-center text-sm text-destructive"
+              >
+                {userErrorMessage(start.error, "Tryout tidak dapat dimulai.")}
+              </Text>
+            ) : null}
+          </HakgyoHero>
+
+          {!attempt && primaryAction && firstQuestion ? (
+            <QuestionPreview
+              question={firstQuestion}
+              total={assessment?._count.questions ?? 0}
+              resolveAssetUrl={resolveAssetUrl}
+            />
+          ) : null}
+
+          <AssessmentOverview
+            timeLimitMinutes={event.durationMinutes}
+            passingScore={assessment?.passingScore ?? null}
+            maxAttempts={assessment?.maxAttempts ?? null}
+            attemptsUsed={event.attemptCount}
+            latestAttempt={attempt}
+            canReattempt={event.entry.canReattempt}
+            gatesProgress={false}
+            sections={bundled.data?.sections ?? []}
+          />
+
+          {event.leaderboard ? (
+            <View className="gap-3 rounded-2xl border border-border bg-card p-4">
+              <Eyebrow size="xs">Leaderboard</Eyebrow>
+              <Text className="text-sm leading-5 text-muted-foreground">
+                Percobaan terbaik yang sudah direview yang dihitung. Nilai seri
+                ditentukan oleh waktu penyelesaian.
+              </Text>
+              {event.leaderboard.length ? (
+                event.leaderboard.map((entry) => (
+                  <Row
+                    key={entry.userId}
+                    title={`${entry.rank}. ${entry.name}`}
+                    detail={`${formatScoreOutOf(entry.score, entry.maxScore, " / ")} · ${entry.percentage}%`}
+                  />
+                ))
+              ) : (
+                <Text className="text-sm text-muted-foreground">
+                  Belum ada hasil yang sudah direview.
+                </Text>
+              )}
+            </View>
+          ) : attempt ? (
+            <View className="gap-1 rounded-2xl border border-border bg-card p-4">
+              <Eyebrow size="xs">Leaderboard</Eyebrow>
+              <Text className="text-base font-bold text-foreground">
+                Belum tersedia
+              </Text>
+              <Text className="text-sm leading-5 text-muted-foreground">
+                Peringkat muncul setelah hasil direview.
+              </Text>
+            </View>
+          ) : null}
+          {/* The finished attempt in full: where the learner lands after
+              finishing, so the attempt has no result screen of its own. */}
+          {attempt && attempt.status !== "IN_PROGRESS" ? (
+            <AttemptResultDetails
+              key={attempt.id}
+              attemptId={attempt.id}
+              courseItemId={event.courseItem.id}
+            />
+          ) : null}
+        </StudyScreen>
+      )}
     </>
   );
 }
