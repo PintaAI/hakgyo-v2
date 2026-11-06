@@ -1,7 +1,7 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useRef, useState } from "react";
 import { useSharedValue } from "react-native-reanimated";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { api } from "../lib/trpc";
 import { userErrorMessage } from "../lib/error-message";
@@ -18,9 +18,8 @@ import { QuizNav } from "./quiz/quiz-nav";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
 import { QuizStatusDots } from "./quiz/quiz-status-dots";
+import { SourceLink } from "./source-link";
 import { openCourseItem } from "../lib/navigation";
-import { useAppTheme } from "../providers/AppThemeProvider";
-import { SymbolIcon } from "./ui/symbol-icon";
 
 type PracticeQuestion =
   RouterOutputs["practice"]["getAssessmentSample"]["questions"][number];
@@ -299,7 +298,6 @@ function QuestionPage({
   onCheck: () => void;
   onNext: () => void;
 }) {
-  const { colors } = useAppTheme();
   const failed = failure !== undefined;
   return (
     <QuizQuestion
@@ -356,31 +354,17 @@ function QuestionPage({
         </Action>
       ) : null}
       {/* Where the question comes from, as a quiet link to that tugas. */}
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={`Soal dari ${question.assessmentTitle}, ${question.courseTitle}`}
-        accessibilityHint="Membuka tugas asal soal ini"
-        hitSlop={8}
+      <SourceLink
+        title={question.assessmentTitle}
+        courseTitle={question.courseTitle}
+        hint="Membuka tugas asal soal ini"
         onPress={() =>
           openCourseItem({
             courseId: question.courseId,
             courseItemId: question.sourceCourseItemId,
           })
         }
-        className="flex-row items-center gap-1 self-start active:opacity-60"
-      >
-        <Text
-          className="shrink text-xs text-muted-foreground"
-          numberOfLines={1}
-        >
-          Dari{" "}
-          <Text className="font-semibold text-primary">
-            {question.assessmentTitle}
-          </Text>{" "}
-          · {question.courseTitle}
-        </Text>
-        <SymbolIcon name="chevron.right" size={12} tintColor={colors.primary} />
-      </Pressable>
+      />
     </QuizQuestion>
   );
 }
