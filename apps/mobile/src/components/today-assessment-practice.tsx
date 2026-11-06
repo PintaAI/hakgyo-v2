@@ -1,5 +1,6 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useRef, useState } from "react";
+import { useSharedValue } from "react-native-reanimated";
 import { Pressable, Text, View } from "react-native";
 
 import { api } from "../lib/trpc";
@@ -11,7 +12,7 @@ import {
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
-import { Action, Card, Empty } from "./learning-ui";
+import { Action, Card, Empty, PageDots } from "./learning-ui";
 import { AssessmentFeedback } from "./assessment-ui";
 import { QuizNav } from "./quiz/quiz-nav";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
@@ -56,6 +57,8 @@ export function TodayAssessmentPractice({
   const gradingRequest = useRef(0);
   const inFlight = useRef(false);
   const pager = useRef<QuizPagerHandle>(null);
+  /** The pager's offset in questions, for the dots above it. */
+  const pagePosition = useSharedValue(0);
 
   useEffect(() => {
     const questions = localSample(pool.questions, seed, 5);
@@ -197,10 +200,20 @@ export function TodayAssessmentPractice({
           <Text className="text-center text-lg font-bold tracking-tight text-foreground">
             Soal harian
           </Text>
+          {/* Five questions fit as dots, which also say they can be swiped.
+              Longer sets (the attempt) rely on the question number. */}
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            className="items-center"
+          >
+            <PageDots count={questions.length} position={pagePosition} />
+          </View>
           <QuizPager
             ref={pager}
             count={questions.length}
             initialIndex={index}
+            position={pagePosition}
             onIndexChange={setIndex}
             renderPage={(questionIndex) => {
               const page = questions[questionIndex];
