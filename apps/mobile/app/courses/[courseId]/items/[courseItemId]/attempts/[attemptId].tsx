@@ -15,7 +15,12 @@ import {
   type AttemptLogEntry,
   type TimelineEntry,
 } from "@hakgyo/shared";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import {
+  router,
+  Stack,
+  useLocalSearchParams,
+  useNavigation,
+} from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
 import { Alert, ScrollView, Text } from "react-native";
@@ -985,13 +990,30 @@ function AssessmentAttemptContent({
    * "Nilai keluar" notice). Once, however both ask.
    */
   const leaving = useRef(false);
+  const navigation = useNavigation();
   function leaveToDetail() {
     if (leaving.current) return;
     leaving.current = true;
-    if (assessment.data?.event) {
+    const event = assessment.data?.event;
+    // Back to the screen right below when it is this tugas or event (opened
+    // from a chapter or a material), so it is not stacked twice; otherwise the
+    // detail takes the attempt's place. (dismissTo matches the first route of
+    // the same name, which can be the material the tugas was opened from.)
+    const state = navigation.getState();
+    const below = state?.routes[state.index - 1] as
+      { name: string; params?: Record<string, unknown> } | undefined;
+    const belowIsDetail = event
+      ? below?.name === "events/[eventId]" && below.params?.eventId === event.id
+      : below?.name === "courses/[courseId]/items/[courseItemId]" &&
+        below.params?.courseItemId === courseItemId;
+    if (belowIsDetail && router.canGoBack()) {
+      router.back();
+      return;
+    }
+    if (event) {
       router.replace({
         pathname: "/events/[eventId]",
-        params: { eventId: assessment.data.event.id },
+        params: { eventId: event.id },
       });
       return;
     }
