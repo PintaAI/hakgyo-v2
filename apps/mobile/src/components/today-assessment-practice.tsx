@@ -214,12 +214,18 @@ export function TodayAssessmentPractice({
           <Text className="text-center text-lg font-bold tracking-tight text-foreground">
             Soal harian
           </Text>
-          {/* Five questions fit as dots, which also say they can be swiped.
-              Longer sets (the attempt) rely on the question number. */}
-          <View
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            className="items-center"
+          {/* Five questions fit as dots, which also say they can be swiped;
+              a tap opens the question list. Longer sets (the attempt) rely
+              on the question number. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Daftar soal, ${answered} dari ${questions.length} dijawab`}
+            accessibilityHint="Buka daftar untuk pindah ke soal mana pun"
+            accessibilityState={{ disabled: pendingIndex !== null }}
+            disabled={pendingIndex !== null}
+            hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
+            onPress={openQuestions}
+            className="items-center self-center active:opacity-60"
           >
             <PageDots
               count={questions.length}
@@ -232,7 +238,7 @@ export function TodayAssessmentPractice({
                     : withOpacity(colors.mutedForeground, 0.35),
               )}
             />
-          </View>
+          </Pressable>
           <QuizPager
             ref={pager}
             count={questions.length}
