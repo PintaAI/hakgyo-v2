@@ -426,6 +426,14 @@ export function TodayVocabularyPractice({
                   Jawaban kamu tidak dapat disimpan di perangkat ini. Coba lagi.
                 </Text>
               ) : null}
+              {/* Where the word comes from, between the deck and the input. */}
+              <SourceLink
+                title={card.vocabularySetTitle}
+                courseTitle={card.courseTitle}
+                hint="Membuka set kosakata asal kata ini"
+                align="center"
+                onPress={openCardSet}
+              />
               <View className="flex-row items-center gap-2">
                 <HandsFreeAnswerField
                   inputRef={inputRef}
@@ -503,13 +511,6 @@ export function TodayVocabularyPractice({
                   highlight={tutorial.highlightLanguage}
                 />
               </View>
-              {/* Where the word comes from, like a daily question's source. */}
-              <SourceLink
-                title={card.vocabularySetTitle}
-                courseTitle={card.courseTitle}
-                hint="Membuka set kosakata asal kata ini"
-                onPress={openCardSet}
-              />
             </View>
           ) : (
             <Action onPress={newMix}>Campuran berikutnya</Action>

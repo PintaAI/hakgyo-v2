@@ -342,6 +342,10 @@ function RootNavigator() {
                     options={{ headerShown: false }}
                   />
                   <Stack.Screen
+                    name="vocabulary/[vocabularySetId]/lesson"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
                     name="courses/[courseId]/items/[courseItemId]"
                     options={{
                       headerShown: true,
@@ -363,6 +367,16 @@ function RootNavigator() {
                         detents: "fitToContents",
                         grabber: false,
                         systemCornerRadius: true,
+                      }),
+                    }}
+                  />
+                  <Stack.Screen
+                    name="courses/[courseId]/items/[courseItemId]/result"
+                    options={{
+                      headerShown: false,
+                      ...formSheetOptions({
+                        detents: [0.6, 0.95],
+                        expandsWhenScrolledToEdge: true,
                       }),
                     }}
                   />

@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Pressable,
@@ -16,6 +16,7 @@ import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { GameJourneyFooter, GameModal, GameStartModal } from "../game-modals";
 import { useGameExitGuard } from "../game-navigation";
+import type { GameLesson } from "../lesson";
 import { GameBackToolbar } from "../game-screens";
 import {
   createSentenceChallenges,
@@ -34,6 +35,7 @@ export function SentenceBuilderScreen({
   onSessionStart,
   courseId,
   sourceCourseItemId,
+  lesson,
 }: {
   words: readonly SentenceSourceWord[];
   onExit: () => void;
@@ -42,6 +44,8 @@ export function SentenceBuilderScreen({
   onSessionStart: () => void;
   courseId?: string;
   sourceCourseItemId?: string;
+  /** Played as a round of a vocabulary lesson. */
+  lesson?: GameLesson;
 }) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -99,8 +103,18 @@ export function SentenceBuilderScreen({
   }, [correct, save, saveError, saved, saving]);
 
   useEffect(() => {
-    if (session.phase === "complete") void onComplete();
-  }, [onComplete, session.phase]);
+    if (session.phase !== "complete") return;
+    void onComplete();
+    lesson?.onRoundComplete();
+  }, [lesson, onComplete, session.phase]);
+
+  // A lesson round starts at once, without the start sheet.
+  const lessonStarted = useRef(false);
+  useEffect(() => {
+    if (!lesson || lessonStarted.current) return;
+    lessonStarted.current = true;
+    start();
+  }, [lesson, start]);
 
   useEffect(() => {
     if (!challenge) return;
@@ -127,7 +141,7 @@ export function SentenceBuilderScreen({
           headerBackVisible: false,
           headerShown: true,
           gestureEnabled: false,
-          title: "Susun makna",
+          title: lesson?.title ?? "Susun makna",
         }}
       />
       <View
@@ -411,7 +425,7 @@ export function SentenceBuilderScreen({
 
       <GameStartModal
         gameKey="sentences"
-        visible={session.phase === "intro"}
+        visible={session.phase === "intro" && !lesson}
         title="Susun makna"
         detail="Susun kata-kata menjadi contoh kalimat dari kosakata yang kamu pelajari."
         content={
@@ -426,7 +440,7 @@ export function SentenceBuilderScreen({
       />
       <GameModal
         gameKey="sentences"
-        visible={session.phase === "complete"}
+        visible={session.phase === "complete" && !lesson}
         eyebrow="LATIHAN SELESAI"
         title="Kalimat demi kalimat, bisa!"
         detail={`Kamu berhasil menyusun ${total} kalimat.`}

@@ -13,8 +13,11 @@ const ITEM_ID = "item-1";
 function fakeDb(
   entries: Array<{ id: string; vocabularySetId: string }>,
   options: {
-    /** Every entry already has current practice progress. */
-    practiced?: boolean;
+    /**
+     * Every entry's current progress: practised only (recognised), or learned
+     * (recalled correctly once).
+     */
+    progress?: "practiced" | "learned";
     /** Course items whose progress is already COMPLETED. */
     completed?: string[];
     courseId?: string;
@@ -45,7 +48,7 @@ function fakeDb(
             ...entry,
             term: entry.id,
             definition: entry.id,
-            progress: options.practiced
+            progress: options.progress
               ? [
                   {
                     contentHash: vocabularyContentHash({
@@ -55,7 +58,8 @@ function fakeDb(
                     practicedAt: new Date("2026-10-01T00:00:00.000Z"),
                     masteredAt: null,
                     nextReviewAt: null,
-                    correctRecallCount: 0,
+                    // Practised by recognising only, or recalled correctly once.
+                    correctRecallCount: options.progress === "learned" ? 1 : 0,
                   },
                 ]
               : [],
@@ -172,14 +176,14 @@ describe("vocabulary progress service", () => {
 
   test("writes completion only for placements that complete now", async () => {
     const entries = [{ id: "entry-1", vocabularySetId: SET_ID }];
-    const done = fakeDb(entries, { practiced: true, completed: [ITEM_ID] });
+    const done = fakeDb(entries, { progress: "learned", completed: [ITEM_ID] });
     await createVocabularyProgressService(
       done.db,
       async () => undefined,
     ).recordAttempts("user-1", [attempt("a-1", "entry-1")]);
     expect(done.progressWrites).toEqual([]);
 
-    const fresh = fakeDb(entries, { practiced: true });
+    const fresh = fakeDb(entries, { progress: "learned" });
     await createVocabularyProgressService(
       fresh.db,
       async () => undefined,
@@ -189,10 +193,22 @@ describe("vocabulary progress service", () => {
     expect(fresh.achievementLookups).toEqual([]);
   });
 
+  test("does not complete a set whose words are only practised", async () => {
+    const { db, progressWrites } = fakeDb(
+      [{ id: "entry-1", vocabularySetId: SET_ID }],
+      { progress: "practiced" },
+    );
+    await createVocabularyProgressService(
+      db,
+      async () => undefined,
+    ).recordAttempts("user-1", [attempt("a-1", "entry-1")]);
+    expect(progressWrites).toEqual([]);
+  });
+
   test("checks Hangeul Mastery when one of its sets completes", async () => {
     const { db, achievementLookups } = fakeDb(
       [{ id: "entry-1", vocabularySetId: SET_ID }],
-      { practiced: true, courseId: "hakgyo-foundation-hangeul-mastery" },
+      { progress: "learned", courseId: "hakgyo-foundation-hangeul-mastery" },
     );
     await createVocabularyProgressService(
       db,

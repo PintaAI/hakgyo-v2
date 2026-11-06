@@ -217,7 +217,7 @@ export async function buildLearnerState(
     passEvidence,
     requirementEvidence,
     practicedVocabularySetIds: [...vocabularyEvidence]
-      .filter(([, evidence]) => evidence.practiced)
+      .filter(([, evidence]) => evidence.learned)
       .map(([setId]) => setId)
       .sort(),
     eligibleCohortsByCourse,

@@ -35,6 +35,7 @@ import {
 } from "../games/game-modals";
 import { GameBackToolbar } from "../games/game-screens";
 import { useGameExitGuard } from "../games/game-navigation";
+import type { GameLesson } from "../games/lesson";
 import { useVocabularyProgressReporter } from "../lib/use-vocabulary-progress";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { toolbarIcons } from "../theme/toolbar-icons";
@@ -76,6 +77,7 @@ export function VocabularySession({
   scrollGesture,
   onRoundActiveChange,
   onComplete,
+  lesson,
 }: {
   words: Word[];
   vocabularySetId: string;
@@ -84,6 +86,11 @@ export function VocabularySession({
   scrollGesture: NativeGesture;
   onRoundActiveChange?: (active: boolean) => void;
   onComplete: () => Promise<void>;
+  /**
+   * Played as a round of a vocabulary lesson: every given word, at once,
+   * without the start and finish sheets.
+   */
+  lesson?: GameLesson;
 }) {
   const { colors } = useAppTheme();
   const { width: screenWidth } = useWindowDimensions();
@@ -138,9 +145,14 @@ export function VocabularySession({
     );
     return {
       reviewDueWords: reviewDue,
-      readyWords: unpracticed.length ? unpracticed : reviewDue,
+      // A lesson already picked its words.
+      readyWords: lesson
+        ? usableWords
+        : unpracticed.length
+          ? unpracticed
+          : reviewDue,
     };
-  }, [progressByEntry, usableWords]);
+  }, [lesson, progressByEntry, usableWords]);
   const { practicedCount, masteredCount } = useMemo(() => {
     let practiced = 0;
     let mastered = 0;
@@ -192,6 +204,20 @@ export function VocabularySession({
   useEffect(() => {
     onRoundActiveChange?.(roundActive);
   }, [onRoundActiveChange, roundActive]);
+
+  // A lesson round starts as soon as the saved progress has loaded.
+  const lessonStarted = useRef(false);
+  useEffect(() => {
+    if (
+      !lesson ||
+      lessonStarted.current ||
+      progressQuery.isPending ||
+      !readyWords.length
+    )
+      return;
+    lessonStarted.current = true;
+    beginRound();
+  });
 
   useEffect(
     () => () => {
@@ -290,6 +316,11 @@ export function VocabularySession({
     setRoundActive(false);
     setFeedback(undefined);
     stopSession();
+    if (lesson) {
+      void reporter.finishSession();
+      lesson.onRoundComplete();
+      return;
+    }
     const synced = await reporter.finishSession();
     const set = synced?.sets.find(
       (item) => item.vocabularySetId === vocabularySetId,
@@ -442,8 +473,8 @@ export function VocabularySession({
   }
 
   const showStart =
-    !roundActive && !evidence?.practiced && readyWords.length > 0;
-  const showFinish = Boolean(evidence?.practiced) && !roundActive;
+    !lesson && !roundActive && !evidence?.practiced && readyWords.length > 0;
+  const showFinish = !lesson && Boolean(evidence?.practiced) && !roundActive;
   const finishTitle = evidence?.mastered
     ? "Kosakata dikuasai"
     : "Latihan selesai";
@@ -486,7 +517,7 @@ export function VocabularySession({
           headerBackVisible: false,
           headerShadowVisible: false,
           headerShown: true,
-          title: "",
+          title: lesson?.title ?? "",
         }}
       />
       <Stack.Toolbar placement="right">

@@ -12,7 +12,7 @@ Cara mendapat XP:
 |---|---|
 | Menyelesaikan sebuah materi | 20 |
 | Setiap jawaban kosakata yang benar | 5 |
-| Menyelesaikan kumpulan kosakata (semua kata sudah dilatih) | 5 |
+| Menyelesaikan kumpulan kosakata (semua kata sudah dipelajari) | 5 |
 
 Hal yang perlu diketahui:
 

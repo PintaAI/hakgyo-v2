@@ -29,6 +29,7 @@ export const materialSymbols = {
   "chevron.left": "chevron_left",
   "chevron.right": "chevron_right",
   "clock.badge.exclamationmark": "schedule",
+  "dice.fill": "casino",
   "doc.text": "description",
   "doc.text.fill": "description",
   "envelope.fill": "mail",

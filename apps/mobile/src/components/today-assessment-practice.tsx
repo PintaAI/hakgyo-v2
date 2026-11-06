@@ -12,7 +12,7 @@ import {
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
-import { Action, Card, Empty } from "./learning-ui";
+import { Action, Card, Empty, Eyebrow } from "./learning-ui";
 import { AssessmentFeedback } from "./assessment-ui";
 import { QuizNav } from "./quiz/quiz-nav";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
@@ -20,6 +20,8 @@ import { QuizQuestion } from "./quiz/quiz-question";
 import { QuizStatusDots } from "./quiz/quiz-status-dots";
 import { SourceLink } from "./source-link";
 import { openCourseItem } from "../lib/navigation";
+import { useExplanationVisibility } from "../lib/use-explanation-visibility";
+import { SettingsSwitch } from "./ui/settings-switch";
 
 type PracticeQuestion =
   RouterOutputs["practice"]["getAssessmentSample"]["questions"][number];
@@ -31,9 +33,10 @@ function randomSeed() {
 
 /**
  * Home's daily question challenge: a small random set of published questions
- * from the learner's open curricula, one page per question. Swipe between
- * them, or jump from the question list and "Soal belum dijawab berikutnya". Answers
- * are graded on the server but change no score, attempt or XP.
+ * from the learner's open curricula, one page per question and a summary page
+ * with the retry action at the end. Swipe between them, or jump from the
+ * question list and "Soal belum dijawab berikutnya". Answers are graded on the
+ * server but change no score, attempt or XP.
  */
 export function TodayAssessmentPractice({
   organizationId,
@@ -59,13 +62,13 @@ export function TodayAssessmentPractice({
   // Several pages are mounted at once, so grading state is per question.
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const [failures, setFailures] = useState<Record<number, unknown>>({});
-  const [finished, setFinished] = useState(false);
   const initializedPool = useRef("");
   const gradingRequest = useRef(0);
   const inFlight = useRef(false);
   const pager = useRef<QuizPagerHandle>(null);
   /** The pager's offset in questions, for the dots above it. */
   const pagePosition = useSharedValue(0);
+  const [showExplanation, setShowExplanation] = useExplanationVisibility();
 
   useEffect(() => {
     const questions = localSample(pool.questions, seed, 5);
@@ -81,7 +84,6 @@ export function TodayAssessmentPractice({
     setResults({});
     setFailures({});
     setPendingIndex(null);
-    setFinished(false);
   }, [pool.questions, seed, organizationId]);
 
   useEffect(
@@ -90,7 +92,6 @@ export function TodayAssessmentPractice({
     },
     [],
   );
-  const question = questions[index];
   const statuses: QuestionStatus[] = questions.map((_, questionIndex) => {
     const answer = results[questionIndex];
     return answer ? (answer.correct ? "correct" : "incorrect") : "unanswered";
@@ -100,9 +101,8 @@ export function TodayAssessmentPractice({
     (answer) => answer.correct,
   ).length;
 
-  /** Shows question `next`: slides the pager there, or opens it there. */
+  /** Shows page `next` (a question, or the summary after the last one). */
   function goTo(next: number) {
-    setFinished(false);
     setIndex(next);
     pager.current?.scrollTo(next);
   }
@@ -168,8 +168,7 @@ export function TodayAssessmentPractice({
   }
   function nextQuestion(questionIndex: number) {
     const next = nextUnansweredQuestion(statuses, questionIndex);
-    if (next < 0) setFinished(true);
-    else goTo(next);
+    goTo(next < 0 ? questions.length : next);
   }
   function newSample() {
     gradingRequest.current += 1;
@@ -179,7 +178,6 @@ export function TodayAssessmentPractice({
     setQuestions([]);
     setResults({});
     setSelections({});
-    setFinished(false);
     setSeed(randomSeed());
   }
 
@@ -190,21 +188,7 @@ export function TodayAssessmentPractice({
           Latihan tugas muncul jika kurikulum yang terbuka memiliki soal pilihan
           yang dipublikasikan.
         </Empty>
-      ) : finished ? (
-        <Card className="gap-4 p-5">
-          <Text className="text-2xl font-black text-foreground">
-            {score} dari {questions.length} benar
-          </Text>
-          <Text className="text-sm leading-5 text-muted-foreground">
-            Latihan selesai. Nilai, percobaan, progres kurikulum, dan XP kamu
-            tidak berubah.
-          </Text>
-          <Action variant="secondary" onPress={openQuestions}>
-            Tinjau soal
-          </Action>
-          <Action onPress={newSample}>Ambil set acak lainnya</Action>
-        </Card>
-      ) : question ? (
+      ) : questions.length > 0 ? (
         <>
           <Text className="text-center text-lg font-bold tracking-tight text-foreground">
             Soal harian
@@ -219,11 +203,21 @@ export function TodayAssessmentPractice({
           />
           <QuizPager
             ref={pager}
-            count={questions.length}
+            count={questions.length + 1}
             initialIndex={index}
             position={pagePosition}
             onIndexChange={setIndex}
             renderPage={(questionIndex) => {
+              if (questionIndex === questions.length) {
+                return (
+                  <SummaryPage
+                    answered={answered}
+                    correct={score}
+                    total={questions.length}
+                    onRetry={newSample}
+                  />
+                );
+              }
               const page = questions[questionIndex];
               if (!page) return null;
               const result = results[questionIndex];
@@ -238,6 +232,8 @@ export function TodayAssessmentPractice({
                   busy={pendingIndex !== null}
                   failure={failures[questionIndex]}
                   allAnswered={answered === questions.length}
+                  showExplanation={showExplanation}
+                  onShowExplanationChange={setShowExplanation}
                   resolveAssetUrl={resolveAssetUrl}
                   onChoose={(optionId) => chooseOption(questionIndex, optionId)}
                   onCheck={() =>
@@ -256,7 +252,7 @@ export function TodayAssessmentPractice({
             total={questions.length}
             onPrevious={index > 0 ? () => goTo(index - 1) : undefined}
             onNext={
-              index < questions.length - 1 ? () => goTo(index + 1) : undefined
+              index < questions.length ? () => goTo(index + 1) : undefined
             }
             onOpenList={openQuestions}
             disabled={pendingIndex !== null}
@@ -264,6 +260,45 @@ export function TodayAssessmentPractice({
         </>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * The last page: how the set went and the way to a new one. Reached by the
+ * last question's "Lihat hasil latihan", or by swiping on early, when it says
+ * how many questions are left.
+ */
+function SummaryPage({
+  answered,
+  correct,
+  total,
+  onRetry,
+}: {
+  answered: number;
+  correct: number;
+  total: number;
+  onRetry: () => void;
+}) {
+  const done = answered === total;
+  return (
+    <Card className="gap-4 p-5">
+      <View className="gap-1">
+        <Eyebrow size="xs">Ringkasan</Eyebrow>
+        <Text className="text-2xl font-black text-foreground">
+          {done
+            ? `${correct} dari ${total} benar`
+            : `${answered} dari ${total} dijawab`}
+        </Text>
+      </View>
+      <Text className="text-sm leading-5 text-muted-foreground">
+        {done
+          ? "Latihan selesai. Nilai, percobaan, progres kurikulum, dan XP kamu tidak berubah."
+          : `${correct} benar sejauh ini. Selesaikan sisa soalnya, atau coba set soal yang baru.`}
+      </Text>
+      <Action leadingIcon="dice.fill" onPress={onRetry}>
+        Coba lagi
+      </Action>
+    </Card>
   );
 }
 
@@ -277,6 +312,8 @@ function QuestionPage({
   busy,
   failure,
   allAnswered,
+  showExplanation,
+  onShowExplanationChange,
   resolveAssetUrl,
   onChoose,
   onCheck,
@@ -293,6 +330,9 @@ function QuestionPage({
   busy: boolean;
   failure: unknown;
   allAnswered: boolean;
+  /** The saved preference: explanations show after an answer. */
+  showExplanation: boolean;
+  onShowExplanationChange: (show: boolean) => void;
   resolveAssetUrl: ReturnType<typeof useApiAssetResolver>;
   onChoose: (optionId: string) => void;
   onCheck: () => void;
@@ -315,10 +355,24 @@ function QuestionPage({
         <>
           <AssessmentFeedback correct={result.correct}>
             {result.explanation ? (
-              <NativeContentRenderer
-                content={result.explanation}
-                resolveAssetUrl={resolveAssetUrl}
-              />
+              <>
+                <View className="flex-row items-center justify-between gap-3">
+                  <Text className="shrink text-sm font-semibold text-foreground">
+                    Tampilkan penjelasan
+                  </Text>
+                  <SettingsSwitch
+                    label="Tampilkan penjelasan"
+                    value={showExplanation}
+                    onValueChange={onShowExplanationChange}
+                  />
+                </View>
+                {showExplanation ? (
+                  <NativeContentRenderer
+                    content={result.explanation}
+                    resolveAssetUrl={resolveAssetUrl}
+                  />
+                ) : null}
+              </>
             ) : (
               <Text className="text-sm text-muted-foreground">
                 Jawaban yang benar ditandai di atas.

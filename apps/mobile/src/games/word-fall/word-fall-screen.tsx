@@ -46,6 +46,7 @@ import { withOpacity, type ThemeColors } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
 import { GameBackToolbar } from "../game-screens";
 import { GameModal, GameStartModal, GameJourneyFooter } from "../game-modals";
+import type { GameLesson } from "../lesson";
 import { useGameExitGuard } from "../game-navigation";
 import {
   addWordFallReviewItem,
@@ -110,6 +111,18 @@ const MISTAKE_PLAYER_LIFT = 34;
 const PLAYER_SIZE = 26;
 const PLAYER_HEIGHT = PLAYER_SIZE;
 const STARTING_HEALTH = 3;
+/**
+ * A lesson round: each word falls once, slower than level 1 is long, and at
+ * most two at a time; a missed word costs no life and counts as wrong.
+ */
+const LESSON_FALL_MS = 15_000;
+const LESSON_MAX_ACTIVE_WORDS = 2;
+/**
+ * In a lesson the answer shows itself letter by letter as the word nears the
+ * ship: from this share of the way down, fully shown by the second.
+ */
+const ASSIST_REVEAL_FROM = 0.4;
+const ASSIST_REVEAL_TO = 0.9;
 const MAX_HEALTH = 6;
 const FORCE_REWARD_CHARGES = 10;
 const MAX_FORCE_CHARGES = 20;
@@ -179,6 +192,7 @@ const FallingWordView = memo(function FallingWordView({
   mistyped,
   paused,
   revealed,
+  assist = false,
   onImpact,
 }: {
   entity: FallingWord;
@@ -188,6 +202,8 @@ const FallingWordView = memo(function FallingWordView({
   mistyped: string;
   paused: boolean;
   revealed: boolean;
+  /** Show the answer letter by letter as the word comes close (lessons). */
+  assist?: boolean;
   onImpact: (id: string) => void;
 }) {
   const { colors } = useAppTheme();
@@ -332,11 +348,37 @@ const FallingWordView = memo(function FallingWordView({
   const prompt = promptTextForWord(entity.word, mode);
   const answer = entity.answer;
   const answerCharacters = Array.from(answer);
+  const [hinted, setHinted] = useState(0);
+  const answerLength = answerCharacters.length;
+  useAnimatedReaction(
+    () =>
+      assist
+        ? Math.floor(
+            answerLength *
+              Math.max(
+                0,
+                Math.min(
+                  1,
+                  (progress.value - ASSIST_REVEAL_FROM) /
+                    (ASSIST_REVEAL_TO - ASSIST_REVEAL_FROM),
+                ),
+              ),
+          )
+        : 0,
+    (count, previous) => {
+      if (count !== previous) runOnJS(setHinted)(count);
+    },
+  );
   const revealedAnswer = answerCharacters.slice(0, entity.matched).join("");
   const mistypedLength = Array.from(mistyped).length;
+  const hiddenStart = entity.matched + mistypedLength;
   const hiddenAnswer = answerCharacters
-    .slice(entity.matched + mistypedLength)
-    .map((character) => (revealed || character.trim() === "" ? character : "•"))
+    .slice(hiddenStart)
+    .map((character, offset) =>
+      revealed || character.trim() === "" || hiddenStart + offset < hinted
+        ? character
+        : "•",
+    )
     .join("");
 
   return (
@@ -733,6 +775,7 @@ const WordFallHeader = memo(function WordFallHeader({
   onPause,
   phase,
   score,
+  lessonTitle,
 }: {
   combo: number;
   health: number;
@@ -742,6 +785,8 @@ const WordFallHeader = memo(function WordFallHeader({
   onPause: () => void;
   phase: WordFallPhase;
   score: number;
+  /** A lesson round: this title, and no lives or level. */
+  lessonTitle?: string;
 }) {
   const { colors } = useAppTheme();
   return (
@@ -754,27 +799,35 @@ const WordFallHeader = memo(function WordFallHeader({
           headerBackVisible: false,
           headerShadowVisible: false,
           headerShown: true,
-          title: "",
+          title: lessonTitle ?? "",
         }}
       />
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.View hidesSharedBackground>
           <View
-            accessibilityLabel={`${health} nyawa, skor ${score}, level ${level}, combo ${combo}`}
+            accessibilityLabel={
+              lessonTitle
+                ? `Skor ${score}, combo ${combo}`
+                : `${health} nyawa, skor ${score}, level ${level}, combo ${combo}`
+            }
             style={styles.headerStats}
           >
-            <Text style={[styles.health, { color: colors.destructive }]}>
-              {"♥".repeat(health)}
-              {"♡".repeat(MAX_HEALTH - health)}
-            </Text>
+            {lessonTitle ? null : (
+              <Text style={[styles.health, { color: colors.destructive }]}>
+                {"♥".repeat(health)}
+                {"♡".repeat(MAX_HEALTH - health)}
+              </Text>
+            )}
             <Text style={[styles.headerMetric, { color: colors.foreground }]}>
               {score}
             </Text>
-            <Text
-              style={[styles.headerMetric, { color: colors.mutedForeground }]}
-            >
-              L{level}
-            </Text>
+            {lessonTitle ? null : (
+              <Text
+                style={[styles.headerMetric, { color: colors.mutedForeground }]}
+              >
+                L{level}
+              </Text>
+            )}
             {combo > 1 ? (
               <Text style={[styles.headerMetric, { color: colors.primary }]}>
                 ×{comboMultiplier(combo).toFixed(1)}
@@ -801,6 +854,7 @@ export function WordFallScreen({
   onSessionStart,
   courseId,
   sourceCourseItemId,
+  lesson,
 }: {
   words: readonly WordFallWord[];
   onExit: () => void;
@@ -812,6 +866,8 @@ export function WordFallScreen({
   onSessionStart: () => string;
   courseId?: string;
   sourceCourseItemId?: string;
+  /** Played as a round of a vocabulary lesson. */
+  lesson?: GameLesson;
 }) {
   const { colors } = useAppTheme();
   const inputRef = useRef<TextInput>(null);
@@ -825,6 +881,8 @@ export function WordFallScreen({
   const mistakeActiveRef = useRef(false);
   const mistakeWordIdsRef = useRef(new Set<string>());
   const reportedWordIdsRef = useRef(new Set<string>());
+  /** A lesson round's words that have fallen already; each falls once. */
+  const spawnedWordIdsRef = useRef(new Set<string>());
   const pendingReportIdsRef = useRef(new Set<string>());
   const progressSessionIdRef = useRef("");
   const completedSessionIdRef = useRef("");
@@ -1116,6 +1174,7 @@ export function WordFallScreen({
       reportWord(entity.word.id, "INCORRECT");
       mistakeActiveRef.current = false;
       resetCombo();
+      if (lesson) return;
       if (shieldRef.current > 0) {
         shieldRef.current -= 1;
         setShield(shieldRef.current);
@@ -1126,7 +1185,7 @@ export function WordFallScreen({
       setHealth(nextHealth);
       if (nextHealth === 0) endGame();
     },
-    [clearTargetInput, commitEntities, endGame, reportWord, resetCombo],
+    [clearTargetInput, commitEntities, endGame, lesson, reportWord, resetCombo],
   );
 
   const applyPowerUp = useCallback(
@@ -1220,14 +1279,21 @@ export function WordFallScreen({
   const spawnWord = useCallback(() => {
     if (!field.width || !field.height || usableWords.length === 0) return;
     const current = entitiesRef.current;
-    if (current.length >= maximumActiveWords(level)) return;
+    if (
+      current.length >=
+      (lesson ? LESSON_MAX_ACTIVE_WORDS : maximumActiveWords(level))
+    )
+      return;
     const unused = usableWords.filter(
-      (word) => !current.some((entity) => entity.word.id === word.id),
+      (word) =>
+        !current.some((entity) => entity.word.id === word.id) &&
+        !(lesson && spawnedWordIdsRef.current.has(word.id)),
     );
-    const pool = unused.length > 0 ? unused : usableWords;
+    const pool = unused.length > 0 || lesson ? unused : usableWords;
     const word = pool[Math.floor(Math.random() * pool.length)];
     if (!word) return;
-    const duration = fallDurationForLevel(level);
+    if (lesson) spawnedWordIdsRef.current.add(word.id);
+    const duration = lesson ? LESSON_FALL_MS : fallDurationForLevel(level);
     const prompt = promptTextForWord(word, answerMode);
     const answer = answerTextForWord(word, answerMode);
     const estimatedWidth = Math.min(
@@ -1254,7 +1320,7 @@ export function WordFallScreen({
       powerUp: powerUpForRoll(Math.random()),
     };
     commitEntities([...current, entity]);
-  }, [answerMode, commitEntities, field, level, usableWords]);
+  }, [answerMode, commitEntities, field, lesson, level, usableWords]);
 
   useEffect(() => {
     if (phase !== "running" || frozen || !field.width || !field.height) return;
@@ -1277,6 +1343,7 @@ export function WordFallScreen({
     mistakeActiveRef.current = false;
     mistakeWordIdsRef.current.clear();
     reportedWordIdsRef.current.clear();
+    spawnedWordIdsRef.current.clear();
     setEntities([]);
     setProjectiles([]);
     setBursts([]);
@@ -1314,6 +1381,42 @@ export function WordFallScreen({
     setPhase("running");
     focusInputOnAndroid();
   }, [focusInputOnAndroid]);
+
+  // A lesson round starts at once, without the start sheet (whose dismissal
+  // would otherwise focus the input on iOS).
+  const lessonStarted = useRef(false);
+  useEffect(() => {
+    if (!lesson || lessonStarted.current) return;
+    lessonStarted.current = true;
+    resetGame();
+    if (Platform.OS === "ios") focusInput();
+  }, [focusInput, lesson, resetGame]);
+
+  // It ends once every word has fallen and been shot down or missed, and
+  // every answer is saved.
+  const lessonDone = useRef(false);
+  useEffect(() => {
+    if (
+      !lesson ||
+      lessonDone.current ||
+      phase !== "running" ||
+      spawnedWordIdsRef.current.size < usableWords.length ||
+      entities.length > 0 ||
+      pendingReportCount > 0
+    )
+      return;
+    lessonDone.current = true;
+    Keyboard.dismiss();
+    void onComplete();
+    lesson.onRoundComplete();
+  }, [
+    entities.length,
+    lesson,
+    onComplete,
+    pendingReportCount,
+    phase,
+    usableWords.length,
+  ]);
 
   const handleInput = useCallback(
     (value: string) => {
@@ -1480,6 +1583,7 @@ export function WordFallScreen({
         onPause={pauseGame}
         phase={phase}
         score={score}
+        lessonTitle={lesson?.title}
       />
       <TextInput
         ref={inputRef}
@@ -1604,6 +1708,7 @@ export function WordFallScreen({
             paused={phase !== "running" || frozen || entity.completed}
             playerLift={playerLift}
             revealed={revealed}
+            assist={Boolean(lesson)}
           />
         ))}
         {projectiles.map((projectile) => (
@@ -1707,7 +1812,7 @@ export function WordFallScreen({
           ) : undefined
         }
         title="Hujan Kata"
-        visible={phase === "ready"}
+        visible={phase === "ready" && !lesson}
       />
       <GameModal
         detail={`Skor ${score} · Level ${level}`}
@@ -1751,7 +1856,7 @@ export function WordFallScreen({
         secondaryLabel="Keluar"
         secondaryDisabled={pendingReportCount > 0}
         title="Game selesai"
-        visible={phase === "gameover"}
+        visible={phase === "gameover" && !lesson}
       />
     </KeyboardAvoidingView>
   );
