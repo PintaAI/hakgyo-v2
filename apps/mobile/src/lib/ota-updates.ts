@@ -4,14 +4,22 @@ import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
 import { useMobileSync } from "../providers/MobileSyncProvider";
+import type { AppUpdateState } from "../sync/activity";
 
 /** EAS Updates run in release builds only, never in a dev client. */
 export const otaUpdatesEnabled = !__DEV__ && Updates.isEnabled;
 
-/** Coming back to the app checks for an update at most this often. */
-const CHECK_INTERVAL_MS = 30 * 60_000;
-/** Away at least this long, the learner starts over and a reload goes unnoticed. */
-const RELOAD_AFTER_BACKGROUND_MS = 10 * 60_000;
+/**
+ * Away at least this long, the learner is starting over rather than picking
+ * up where they were, so a restart does not cut into what they were doing.
+ */
+const FRESH_START_AFTER_BACKGROUND_MS = 10 * 60_000;
+/**
+ * After a fresh start (a launch, or a return after the time above), an update
+ * that finishes downloading this soon still applies by itself: the learner is
+ * still looking around the tab they landed on.
+ */
+const AUTO_APPLY_WINDOW_MS = 20_000;
 /** Tab roots: no lesson, attempt, game or sheet open that a reload would close. */
 const RELOAD_SAFE_PATHS = new Set([
   "/",
@@ -45,40 +53,60 @@ export function applyOtaUpdate() {
 }
 
 /**
- * The downloaded update waiting for a restart: its id, `"rollback"` for a
- * rollback directive, or null.
+ * The update expo-updates is downloading (with its progress in percent when
+ * the server reports sizes) or has downloaded and waits to apply.
  */
-export function useReadyOtaUpdate(): string | null {
-  const { isUpdatePending, downloadedUpdate } = Updates.useUpdates();
-  if (!otaUpdatesEnabled || !isUpdatePending) return null;
-  return downloadedUpdate?.updateId ?? "rollback";
+export function useOtaUpdateState(): AppUpdateState | null {
+  const { isUpdatePending, downloadedUpdate, isDownloading, downloadProgress } =
+    Updates.useUpdates();
+  if (!otaUpdatesEnabled) return null;
+  if (isUpdatePending) {
+    return { status: "ready", id: downloadedUpdate?.updateId ?? "rollback" };
+  }
+  if (isDownloading) {
+    return {
+      status: "downloading",
+      progress: downloadProgress
+        ? Math.min(99, Math.round(downloadProgress * 100))
+        : null,
+    };
+  }
+  return null;
 }
 
 /**
  * Keeps the app on the newest EAS Update without the learner restarting it.
  * expo-updates checks only on a cold start, which can be days away while the
- * OS keeps the app suspended, so this also checks when the app comes back to
- * the foreground and downloads in the background. A downloaded update applies
- * by itself when the learner returns after a while to a tab root; otherwise
- * the sync activity surfaces offer "Mulai ulang" (see `selectSyncActivity`).
+ * OS keeps the app suspended, so this also checks and downloads every time
+ * the app comes back to the foreground. The sync activity surfaces show the
+ * download and then offer "Mulai ulang" (see `selectSyncActivity`).
+ *
+ * An update applies by itself only on a fresh start, so it never cuts into a
+ * study session: on a return after 10 minutes in the background when it is
+ * already downloaded, or when its download finishes within 20 seconds of a
+ * launch or such a return. Either way the learner must be on a tab root and
+ * no sync may be running.
  */
 export function OtaUpdateWatcher() {
-  const readyUpdate = useReadyOtaUpdate();
+  const appUpdate = useOtaUpdateState();
+  const readyId = appUpdate?.status === "ready" ? appUpdate.id : null;
   const pathname = usePathname();
   const { isSyncing, refreshPhase, bundles } = useMobileSync();
   const syncBusy =
     isSyncing ||
     refreshPhase !== null ||
     (bundles?.changingCourseIds.length ?? 0) > 0;
-  const latest = useRef({ readyUpdate, pathname, syncBusy });
+  const canReload = RELOAD_SAFE_PATHS.has(pathname) && !syncBusy;
+  const latest = useRef({ readyId, canReload });
   useEffect(() => {
-    latest.current = { readyUpdate, pathname, syncBusy };
+    latest.current = { readyId, canReload };
   });
+  const autoApplyUntil = useRef(0);
 
   useEffect(() => {
     if (!otaUpdatesEnabled) return;
-    // The launch itself checked (`checkAutomatically` defaults to ON_LOAD).
-    let lastCheckAt = Date.now();
+    // A launch is a fresh start too; it checks by itself (ON_LOAD).
+    autoApplyUntil.current = Date.now() + AUTO_APPLY_WINDOW_MS;
     let backgroundedAt: number | null = null;
     const subscription = AppState.addEventListener("change", (next) => {
       if (next === "background") {
@@ -86,25 +114,31 @@ export function OtaUpdateWatcher() {
         return;
       }
       if (next !== "active") return;
-      const awayMs = backgroundedAt === null ? 0 : Date.now() - backgroundedAt;
+      const freshStart =
+        backgroundedAt !== null &&
+        Date.now() - backgroundedAt >= FRESH_START_AFTER_BACKGROUND_MS;
       backgroundedAt = null;
-      const { readyUpdate, pathname, syncBusy } = latest.current;
-      if (
-        readyUpdate &&
-        awayMs >= RELOAD_AFTER_BACKGROUND_MS &&
-        RELOAD_SAFE_PATHS.has(pathname) &&
-        !syncBusy
-      ) {
+      const { readyId, canReload } = latest.current;
+      if (freshStart && readyId && canReload) {
         applyOtaUpdate();
         return;
       }
-      if (Date.now() - lastCheckAt < CHECK_INTERVAL_MS) return;
-      lastCheckAt = Date.now();
+      autoApplyUntil.current = freshStart
+        ? Date.now() + AUTO_APPLY_WINDOW_MS
+        : 0;
       // Offline or the server is unreachable: try again next time.
       void fetchOtaUpdate().catch(() => undefined);
     });
     return () => subscription.remove();
   }, []);
+
+  // The download finished soon after a fresh start.
+  useEffect(() => {
+    if (!readyId || !canReload) return;
+    if (AppState.currentState !== "active") return;
+    if (Date.now() > autoApplyUntil.current) return;
+    applyOtaUpdate();
+  }, [readyId, canReload]);
 
   return null;
 }

@@ -36,7 +36,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
     date: "2026-11-06",
     title: "Pembaruan tanpa repot",
     items: [
-      "Aplikasi kini mengunduh pembaruan sendiri saat kamu membukanya lagi, tanpa perlu ke Pengaturan.",
+      "Aplikasi kini mengunduh pembaruan sendiri setiap kali kamu membukanya, tanpa perlu ke Pengaturan, dan menampilkan Mengunduh pembaruan aplikasi selama unduhan berjalan.",
       "Kalau pembaruan sudah siap, ketuk Pembaruan aplikasi siap untuk memulai ulang. Kalau kamu lama meninggalkan aplikasi, pembaruan terpasang sendiri saat kamu kembali.",
     ],
   },

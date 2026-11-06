@@ -2,6 +2,8 @@ import { useSyncExternalStore } from "react";
 
 import {
   type SyncActivity,
+  UPDATE_DOWNLOADING_DETAIL,
+  UPDATE_DOWNLOADING_TITLE,
   UPDATE_READY_DETAIL,
   UPDATE_READY_TITLE,
 } from "./activity";
@@ -37,6 +39,11 @@ const samples: Omit<SyncActivity, "key">[] = [
     kind: "waiting",
     title: "3 progres belum terkirim",
     detail: "Tersimpan di HP dan dikirim saat online.",
+  },
+  {
+    kind: "updating",
+    title: UPDATE_DOWNLOADING_TITLE,
+    detail: `42% · ${UPDATE_DOWNLOADING_DETAIL}`,
   },
   {
     kind: "update",

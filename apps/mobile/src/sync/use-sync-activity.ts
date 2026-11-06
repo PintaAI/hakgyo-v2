@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useReadyOtaUpdate } from "../lib/ota-updates";
+import { useOtaUpdateState } from "../lib/ota-updates";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { useMobileSync } from "../providers/MobileSyncProvider";
 import { selectSyncActivity, type SyncActivity } from "./activity";
@@ -36,7 +36,7 @@ export function useSyncActivity(): SyncActivity | null {
     refreshPhase,
   } = useMobileSync();
   const { hasIndex, courseTitles } = useIndexedCourses();
-  const readyUpdate = useReadyOtaUpdate();
+  const appUpdate = useOtaUpdateState();
   const [now, setNow] = useState(Date.now);
   const activity = selectSyncActivity({
     bundles,
@@ -46,7 +46,7 @@ export function useSyncActivity(): SyncActivity | null {
     refreshPhase,
     hasIndex,
     courseTitles,
-    readyUpdate,
+    appUpdate,
     now,
   });
 

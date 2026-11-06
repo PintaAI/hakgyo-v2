@@ -23,7 +23,7 @@ const idle: SyncActivityInput = {
   refreshPhase: null,
   hasIndex: true,
   courseTitles: { hm: "Hangeul Mastery", ik: "Indonesia → Korea" },
-  readyUpdate: null,
+  appUpdate: null,
   now: 10_000,
 };
 
@@ -155,8 +155,30 @@ describe("selectSyncActivity", () => {
     });
   });
 
+  test("shows an app update downloading ahead of summaries and queued progress", () => {
+    const downloading = {
+      ...idle,
+      outboxWaiting: "offline" as const,
+      pendingCount: 3,
+      appUpdate: { status: "downloading" as const, progress: 42 },
+    };
+    expect(selectSyncActivity(downloading)).toEqual({
+      kind: "updating",
+      key: "updating",
+      title: "Mengunduh pembaruan aplikasi",
+      detail: "42% · Kamu tetap bisa belajar seperti biasa.",
+    });
+    expect(
+      selectSyncActivity({
+        ...downloading,
+        appUpdate: { status: "downloading", progress: null },
+      })?.detail,
+    ).toBe("Kamu tetap bisa belajar seperti biasa.");
+  });
+
   test("offers a downloaded app update once sync has nothing to tell", () => {
-    expect(selectSyncActivity({ ...idle, readyUpdate: "abc" })).toEqual({
+    const ready = { status: "ready" as const, id: "abc" };
+    expect(selectSyncActivity({ ...idle, appUpdate: ready })).toEqual({
       kind: "update",
       key: "update:abc",
       title: "Pembaruan aplikasi siap",
@@ -165,7 +187,7 @@ describe("selectSyncActivity", () => {
     expect(
       selectSyncActivity({
         ...idle,
-        readyUpdate: "abc",
+        appUpdate: ready,
         outboxWaiting: "offline",
         pendingCount: 3,
       })?.kind,

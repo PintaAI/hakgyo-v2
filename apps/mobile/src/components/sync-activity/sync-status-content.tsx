@@ -5,7 +5,7 @@ import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import {
   applyOtaUpdate,
   otaUpdatesEnabled,
-  useReadyOtaUpdate,
+  useOtaUpdateState,
 } from "../../lib/ota-updates";
 import { APP_VERSION } from "../../lib/release-notes";
 import { useAppTheme } from "../../providers/AppThemeProvider";
@@ -113,19 +113,27 @@ function StatusRow({
 function AppUpdateSection() {
   const {
     currentlyRunning,
-    isDownloading,
     isUpdateAvailable,
     lastCheckForUpdateTimeSinceRestart,
   } = Updates.useUpdates();
-  const readyUpdate = useReadyOtaUpdate();
+  const checkedUpToDate =
+    Boolean(lastCheckForUpdateTimeSinceRestart) && !isUpdateAvailable;
+  const appUpdate = useOtaUpdateState();
+  const readyUpdate = appUpdate?.status === "ready";
   const updateId = currentlyRunning.updateId;
   const status = !otaUpdatesEnabled
     ? undefined
-    : readyUpdate
+    : appUpdate?.status === "ready"
       ? { label: "Siap dipasang", tone: "primary" as const }
-      : isDownloading
-        ? { label: "Mengunduh…", tone: "primary" as const }
-        : lastCheckForUpdateTimeSinceRestart && !isUpdateAvailable
+      : appUpdate?.status === "downloading"
+        ? {
+            label:
+              appUpdate.progress !== null
+                ? `Mengunduh ${appUpdate.progress}%`
+                : "Mengunduh…",
+            tone: "primary" as const,
+          }
+        : checkedUpToDate
           ? { label: "Terbaru", tone: "default" as const }
           : undefined;
 

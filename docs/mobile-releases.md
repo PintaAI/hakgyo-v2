@@ -27,9 +27,10 @@ Add a "Yang baru" entry first (see "What's new" below). Without `--message`, the
 
 Cold starts can be days apart while the OS keeps the app suspended, so `OtaUpdateWatcher` (`apps/mobile/src/lib/ota-updates.ts`, mounted in `app/_layout.tsx`) also:
 
-1. checks and downloads when the app returns to the foreground, at most every 30 minutes;
-2. applies a downloaded update (`Updates.reloadAsync()`) when the learner comes back after at least 10 minutes in the background, is on a tab root (no lesson, attempt, game or sheet open) and no sync is running. It never reloads while backgrounded, which Expo marks experimental;
-3. otherwise leaves the update to the sync activity surfaces: `selectSyncActivity` reports it as the `update` kind once sync has nothing else to say, so the iOS 26 tab bar accessory and the Android snackbar ("Mulai ulang") restart the app, and the sync status sheet lists the app version with a restart button.
+1. checks and downloads every time the app returns to the foreground. A check without a new update fetches only the manifest;
+2. shows the download through the sync activity surfaces: `selectSyncActivity` reports it as `updating` ("Mengunduh pembaruan aplikasi", with a percentage when the server sends sizes), ahead of download summaries and queued progress;
+3. applies the update by itself (`Updates.reloadAsync()`) only on a fresh start, so it never cuts into a study session: when the learner returns after at least 10 minutes in the background and it is already downloaded, or when its download finishes within 20 seconds of a launch or such a return. Either way the learner must be on a tab root (no lesson, attempt, game or sheet open) and no sync may be running. It never reloads while backgrounded, which Expo marks experimental;
+4. otherwise reports it as `update` once sync has nothing else to say, so the iOS 26 tab bar accessory and the Android snackbar ("Mulai ulang") restart the app, and the sync status sheet lists the app version with a restart button.
 
 The outbox is in SQLite, so a reload loses no progress. Pengaturan → Periksa pembaruan stays as the manual path.
 
@@ -85,7 +86,7 @@ ORDER BY users DESC;
 
 Test the update path on real `preview` or `production` builds; dev clients skip it. The `development` channel builds are dev clients and cannot run it.
 
-1. Publish an update with `ota:publish` and confirm the build applies it (Profil shows the update id). A build that already has `OtaUpdateWatcher` downloads it when brought back to the foreground more than 30 minutes after launch (or after a cold start), then shows "Pembaruan aplikasi siap" and applies it after 10 minutes in the background. Older builds still need two cold starts.
+1. Publish an update with `ota:publish` and confirm the build applies it (Profil shows the update id). A build that already has `OtaUpdateWatcher` downloads it when brought back to the foreground, shows "Mengunduh pembaruan aplikasi" and then "Pembaruan aplikasi siap", and applies it by itself after 10 minutes in the background. Older builds still need two cold starts.
 2. Trigger the gate with an update available: build a client with a higher `SYNC_PROTOCOL`, raise `MIN_SYNC_PROTOCOL` on the server it talks to, and publish that client as an update. An older build must show the gate, download the update and come back working.
 3. Trigger the gate with no update available (raise the minimum without publishing): the gate must show the store button and open the listing.
 4. Undo both server and channel changes afterwards.
