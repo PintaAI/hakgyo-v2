@@ -16,21 +16,10 @@ import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { withOpacity } from "../../../../src/theme/colors";
 import { useVocabularyPractice } from "../../../../src/sync/hooks";
 import { firstParam } from "../../../../src/lib/route-params";
-
-/**
- * Examples are written "Korean sentence = translation". Split on the first
- * " = " to show the translation under the sentence; anything else shows as
- * written.
- */
-function splitExample(example: string) {
-  const text = example.trim().replace(/^["“]|["”]$/g, "");
-  const at = text.indexOf(" = ");
-  if (at < 0) return { sentence: text, translation: null };
-  return {
-    sentence: text.slice(0, at).trim(),
-    translation: text.slice(at + 3).trim() || null,
-  };
-}
+import {
+  exampleLines,
+  splitExample,
+} from "../../../../src/lib/vocabulary-examples";
 
 /**
  * Large for a short word, smaller for a phrase, so the word always fills
@@ -40,17 +29,6 @@ function termStyle(term: string) {
   const length = [...term.trim()].length;
   const fontSize = length <= 3 ? 64 : length <= 6 ? 52 : length <= 12 ? 40 : 30;
   return { fontSize, lineHeight: Math.round(fontSize * 1.2) };
-}
-
-function exampleLines(value: unknown) {
-  if (Array.isArray(value))
-    return value.filter(
-      (example): example is string =>
-        typeof example === "string" && Boolean(example.trim()),
-    );
-  return typeof value === "string"
-    ? value.split("\n").filter((example) => Boolean(example.trim()))
-    : [];
 }
 
 export default function VocabularyItemSheet() {

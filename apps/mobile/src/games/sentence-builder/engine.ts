@@ -1,5 +1,7 @@
 import { joinMeanings } from "@hakgyo/shared";
 
+import { exampleLines, splitExample } from "../../lib/vocabulary-examples";
+
 export type SentenceSourceWord = {
   id: string;
   term: string;
@@ -13,7 +15,10 @@ export type SentenceChallenge = {
   term: string;
   /** Every meaning of the term, joined for the hint line. */
   meaning: string;
+  /** The Korean sentence to build. */
   sentence: string;
+  /** The example's translation, the meaning to build towards; null when the example has none. */
+  translation: string | null;
   words: readonly string[];
   tiles: readonly string[];
 };
@@ -64,18 +69,24 @@ function shuffled<T>(values: readonly T[], random: () => number) {
   return result;
 }
 
-/** Reads the example sentences stored on a vocabulary entry. */
-export function exampleSentences(examples: unknown): string[] {
-  const values = Array.isArray(examples)
-    ? examples
-    : typeof examples === "string"
-      ? examples.split("\n")
+/**
+ * The Korean example sentences of a vocabulary entry, each with its
+ * translation. Examples are written "Korean sentence = translation": only
+ * the sentence becomes tiles, so the translation never mixes into them.
+ */
+export function exampleSentencePairs(examples: unknown) {
+  return exampleLines(examples).flatMap((line) => {
+    const { sentence, translation } = splitExample(line);
+    const korean = clean(sentence);
+    return korean
+      ? [{ sentence: korean, translation: translation && clean(translation) }]
       : [];
-  return values.flatMap((value) => {
-    if (typeof value !== "string") return [];
-    const sentence = clean(value);
-    return sentence ? [sentence] : [];
   });
+}
+
+/** The Korean example sentences of a vocabulary entry, without translations. */
+export function exampleSentences(examples: unknown): string[] {
+  return exampleSentencePairs(examples).map(({ sentence }) => sentence);
 }
 
 /**
@@ -115,13 +126,15 @@ export function createSentenceChallenges(
     seenEntries.add(word.id);
     const term = clean(word.term);
     const meaning = clean(joinMeanings(word.meanings));
-    const sentences = exampleSentences(word.examples).filter((sentence) => {
-      const count = sentenceWords(sentence).length;
-      if (count < MIN_WORDS || count > MAX_WORDS) return false;
-      if (seenSentences.has(sentence)) return false;
-      seenSentences.add(sentence);
-      return true;
-    });
+    const sentences = exampleSentencePairs(word.examples).filter(
+      ({ sentence }) => {
+        const count = sentenceWords(sentence).length;
+        if (count < MIN_WORDS || count > MAX_WORDS) return false;
+        if (seenSentences.has(sentence)) return false;
+        seenSentences.add(sentence);
+        return true;
+      },
+    );
     return sentences.length > 0
       ? [{ word, term, meaning, sentences: shuffled(sentences, random) }]
       : [];
@@ -134,7 +147,7 @@ export function createSentenceChallenges(
     if (layer.length === 0) break;
     for (const pool of layer) {
       if (challenges.length >= limit) break;
-      const sentence = pool.sentences[depth]!;
+      const { sentence, translation } = pool.sentences[depth]!;
       const sentenceTiles = sentenceWords(sentence);
       challenges.push({
         id: `${pool.word.id}:${depth}`,
@@ -142,6 +155,7 @@ export function createSentenceChallenges(
         term: pool.term,
         meaning: pool.meaning,
         sentence,
+        translation,
         words: sentenceTiles,
         tiles: scrambled(sentenceTiles, random),
       });
