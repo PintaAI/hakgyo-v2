@@ -2,7 +2,6 @@ import {
   answerHasContent,
   assessmentContentAssetIds,
   canFinishSection,
-  formatScoreOutOf,
   isForwardOnly,
   pacedQuestionEndsAt,
   questionAudioSources,
@@ -19,17 +18,14 @@ import {
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Text } from "react-native";
 
 import {
   AssessmentMediaStatus,
   useAssessmentMediaPrefetch,
 } from "../../../../../../src/components/assessment-media";
-import { AssessmentResultReview } from "../../../../../../src/components/assessment-result-review";
-import { ScoreBandResults } from "../../../../../../src/components/score-band-results";
 import { SectionIntro } from "../../../../../../src/components/section-intro";
 import { AssessmentAudioPlayer } from "../../../../../../src/components/assessment-audio-player";
-import { TagResults } from "../../../../../../src/components/tag-results";
 import {
   QuizPager,
   type QuizPagerHandle,
@@ -41,7 +37,6 @@ import {
   Action,
   Card,
   FullScreenState,
-  IconCircle,
   StudyScreen,
 } from "../../../../../../src/components/learning-ui";
 import {
@@ -72,7 +67,6 @@ import { TourTarget } from "../../../../../../src/tour/tour-target";
 import { useMobileSyncActions } from "../../../../../../src/providers/MobileSyncProvider";
 import { useLearnerAttempt } from "../../../../../../src/sync/hooks";
 import { firstParam } from "../../../../../../src/lib/route-params";
-import { SymbolIcon } from "../../../../../../src/components/ui/symbol-icon";
 
 type Answer = { content?: string; optionIds: string[] };
 
@@ -173,7 +167,6 @@ function AssessmentAttemptContent({
   attemptId: string;
 }) {
   const scrollRef = useRef<ScrollView>(null);
-  const resultScrollRef = useRef<ScrollView>(null);
   const operationPending = useRef(false);
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
@@ -245,12 +238,8 @@ function AssessmentAttemptContent({
     deadline !== null &&
     (Date.now() >= deadline || expiredDeadline === deadline);
   const busy = submitting;
-  const [submittedResult, setSubmittedResult] = useState<{
-    status: "GRADED" | "IN_REVIEW";
-    score: number;
-    maxScore: number;
-  }>();
-  const result = assessmentTerminalResult(attempt.data) ?? submittedResult;
+  // A finished attempt shows on its tugas or event screen (see leaveToDetail).
+  const result = assessmentTerminalResult(attempt.data);
   const hasResult = result !== undefined;
 
   useEffect(() => {
@@ -906,19 +895,6 @@ function AssessmentAttemptContent({
           );
           return;
         }
-        const submitted = sync.result.results.find(
-          (entry) => entry.id === operationId,
-        )?.assessment;
-        if (
-          submitted &&
-          (submitted.status === "GRADED" || submitted.status === "IN_REVIEW")
-        ) {
-          setSubmittedResult({
-            status: submitted.status,
-            score: submitted.score ?? 0,
-            maxScore: submitted.maxScore ?? 0,
-          });
-        }
       } else {
         Alert.alert(
           "Tersimpan di perangkat ini",
@@ -943,17 +919,7 @@ function AssessmentAttemptContent({
           utils.assessment.invalidate(undefined, { refetchType: "none" }),
         ]);
       }
-      if (assessment.data.event) {
-        router.replace({
-          pathname: "/events/[eventId]",
-          params: { eventId: assessment.data.event.id },
-        });
-      } else {
-        router.replace({
-          pathname: "/courses/[courseId]/items/[courseItemId]",
-          params: { courseId, courseItemId },
-        });
-      }
+      leaveToDetail();
     } catch (cause) {
       setSubmitError(
         cause instanceof Error
@@ -1013,7 +979,15 @@ function AssessmentAttemptContent({
         ? { label: "Selesai bagian", onPress: confirmFinishSection }
         : { label: `Selesaikan ${kindLabel}`, onPress: confirmSubmit };
 
-  function leaveResult() {
+  /**
+   * Leaves a finished attempt for its event or tugas screen, which shows the
+   * result in full: after finishing, and when a finished attempt is opened (a
+   * "Nilai keluar" notice). Once, however both ask.
+   */
+  const leaving = useRef(false);
+  function leaveToDetail() {
+    if (leaving.current) return;
+    leaving.current = true;
     if (assessment.data?.event) {
       router.replace({
         pathname: "/events/[eventId]",
@@ -1022,10 +996,14 @@ function AssessmentAttemptContent({
       return;
     }
     router.replace({
-      pathname: "/courses/[courseId]",
-      params: { courseId },
+      pathname: "/courses/[courseId]/items/[courseItemId]",
+      params: { courseId, courseItemId },
     });
   }
+  useEffect(() => {
+    if (result) leaveToDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once the result is known
+  }, [result]);
 
   const expireAttempt = useCallback(() => {
     if (deadline !== null) setExpiredDeadline(deadline);
@@ -1068,92 +1046,7 @@ function AssessmentAttemptContent({
           title="Tugas tidak tersedia"
         />
       ) : result ? (
-        <StudyScreen scrollViewRef={resultScrollRef} title={screenTitle}>
-          <Card className="gap-4 p-5">
-            <View className="self-center">
-              <IconCircle size="lg">
-                <SymbolIcon
-                  name="checkmark"
-                  size={24}
-                  weight="bold"
-                  tintColor={colors.primary}
-                />
-              </IconCircle>
-            </View>
-            <Text className="text-center text-2xl font-black text-foreground">
-              {result.status === "IN_REVIEW"
-                ? "Menunggu review"
-                : "Tugas sudah direview"}
-            </Text>
-            {result.status === "GRADED" ? (
-              <>
-                <Text className="text-lg text-muted-foreground">
-                  Skor: {formatScoreOutOf(result.score, result.maxScore)}
-                </Text>
-                <ScoreBandResults
-                  bands={assessment.data?.scoreBands ?? []}
-                  maxScore={result.maxScore}
-                  score={result.score}
-                />
-                {assessment.data?.sectionResults.length ? (
-                  <View className="gap-1.5 self-stretch">
-                    {assessment.data.sections.map((section) => {
-                      const sectionResult =
-                        assessment.data?.sectionResults.find(
-                          (entry) => entry.sectionId === section.id,
-                        );
-                      return sectionResult ? (
-                        <View
-                          key={section.id}
-                          className="flex-row items-center justify-between gap-3"
-                        >
-                          <Text className="text-sm text-foreground">
-                            {section.title}
-                          </Text>
-                          <Text className="text-sm tabular-nums text-foreground">
-                            {formatScoreOutOf(
-                              sectionResult.score,
-                              sectionResult.maxScore,
-                            )}
-                          </Text>
-                        </View>
-                      ) : null;
-                    })}
-                  </View>
-                ) : null}
-              </>
-            ) : (
-              <Text className="text-center text-sm leading-5 text-muted-foreground">
-                Hasil lengkap kamu akan muncul di sini setelah pengajar selesai
-                mereviewnya.
-              </Text>
-            )}
-          </Card>
-
-          {/* Scores are withheld (null) for invalidated or cancelled participations. */}
-          {result.status === "GRADED" &&
-          assessment.data &&
-          attempt.data &&
-          attempt.data.score !== null ? (
-            <TagResults
-              answers={attempt.data.answers}
-              questions={assessment.data.questions}
-            />
-          ) : null}
-
-          <AssessmentResultReview
-            assessment={assessment.data}
-            attempt={attempt.data}
-            resolveAssetUrl={resolveAssetUrl}
-            onQuestionChange={() =>
-              resultScrollRef.current?.scrollTo({ y: 0, animated: false })
-            }
-          />
-
-          {assessment.data.event ? (
-            <Action onPress={leaveResult}>Lihat skor & leaderboard</Action>
-          ) : null}
-        </StudyScreen>
+        <FullScreenState kind="loading" message="Membuka hasil…" />
       ) : view?.mode === "done" ? (
         <StudyScreen
           contentClassName="gap-4"

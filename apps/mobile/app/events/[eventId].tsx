@@ -9,6 +9,7 @@ import {
   useAssessmentMediaPrefetch,
 } from "../../src/components/assessment-media";
 import { AttemptStartingPreview } from "../../src/components/attempt-starting-preview";
+import { AttemptResultDetails } from "../../src/components/attempt-result-details";
 import { useApiAssetResolver } from "../../src/components/content-renderer";
 import {
   AssessmentFacts,
@@ -338,9 +339,6 @@ export default function AssessmentEventScreen() {
             canReattempt={event.entry.canReattempt}
             gatesProgress={false}
             sections={bundled.data?.sections ?? []}
-            onOpenAttempt={() => {
-              if (attempt) openAttempt(attempt.id);
-            }}
           />
 
           {event.leaderboard ? (
@@ -374,6 +372,15 @@ export default function AssessmentEventScreen() {
                 Peringkat muncul setelah hasil direview.
               </Text>
             </View>
+          ) : null}
+          {/* The finished attempt in full: where the learner lands after
+              finishing, so the attempt has no result screen of its own. */}
+          {attempt && attempt.status !== "IN_PROGRESS" ? (
+            <AttemptResultDetails
+              key={attempt.id}
+              attemptId={attempt.id}
+              courseItemId={event.courseItem.id}
+            />
           ) : null}
         </StudyScreen>
       )}

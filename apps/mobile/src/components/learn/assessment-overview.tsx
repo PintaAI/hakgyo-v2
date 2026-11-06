@@ -11,7 +11,7 @@ import { dateLabel } from "../../lib/study";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import type { AssetUrlResolver } from "../content-renderer/types";
-import { Action, Badge, Eyebrow } from "../learning-ui";
+import { Badge, Eyebrow } from "../learning-ui";
 import { QuizQuestion, type QuizQuestionData } from "../quiz/quiz-question";
 import { SymbolIcon } from "../ui/symbol-icon";
 import type { SymbolName } from "../ui/symbol-names";
@@ -190,7 +190,6 @@ export function AssessmentOverview({
   canReattempt,
   gatesProgress,
   sections,
-  onOpenAttempt,
 }: {
   timeLimitMinutes: number | null;
   passingScore: number | null;
@@ -207,7 +206,6 @@ export function AssessmentOverview({
     navigation: SectionNavigation;
     lockAnswers: boolean;
   }>;
-  onOpenAttempt: () => void;
 }) {
   const showGate = gatesProgress && itemCompleted === false;
 
@@ -227,20 +225,7 @@ export function AssessmentOverview({
         </View>
       ) : (
         <View className="gap-3 rounded-2xl border border-border bg-card p-4">
-          <View className="flex-row items-center justify-between gap-3">
-            <Eyebrow size="xs">Hasil terakhir</Eyebrow>
-            <Action
-              variant="link"
-              size="inline"
-              accessibilityRole="link"
-              trailingIcon="chevron.right"
-              onPress={onOpenAttempt}
-            >
-              {latestAttempt.status === "GRADED"
-                ? "Lihat hasil"
-                : "Lihat jawaban"}
-            </Action>
-          </View>
+          <Eyebrow size="xs">Hasil terakhir</Eyebrow>
           {latestAttempt.status === "GRADED" ? (
             <GradedResult
               attempt={latestAttempt}

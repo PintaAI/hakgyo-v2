@@ -76,7 +76,7 @@ Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**,
 ## Mengerjakan di aplikasi ponsel
 
 - Halaman awal tugas merangkum **Waktu**, **Nilai lulus**, dan **Percobaan** dalam satu baris.
-- Setelah kamu mengirim, bagian **Hasil terakhir** menampilkan nilaimu dalam persen, status **Lulus** atau **Belum lulus**, dan garis batas nilai lulus. Ketuk **Lihat hasil** untuk membuka review jawabanmu.
+- Setelah kamu mengirim, kamu kembali ke halaman tugas (atau halaman latihan dan tryout). Bagian **Hasil terakhir** menampilkan nilaimu dalam persen, status **Lulus** atau **Belum lulus**, dan garis batas nilai lulus. Di bawahnya langsung ada rincian nilai (per bagian dan per tipe soal) dan review jawabanmu, jika pembahasannya sudah dibuka.
 - Memulai tugas membutuhkan internet. Setelah mulai, kamu bisa melanjutkan tanpa internet.
 - Jawabanmu disimpan di ponsel bersama waktu kamu menjawab. Saat ada internet, jawaban ikut terkirim sedikit demi sedikit sambil kamu mengerjakan.
 - Saat waktu habis, tugas **terkirim otomatis**, sama seperti di situs web. Jika saat itu ponsel tidak ada internet, tugasmu menunggu di ponsel dan terkirim sendiri begitu internet tersambung.

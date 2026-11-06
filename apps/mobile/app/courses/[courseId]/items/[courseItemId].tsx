@@ -59,6 +59,7 @@ import {
 } from "../../../../src/components/learning-ui";
 import { firstParam } from "../../../../src/lib/route-params";
 import { AttemptStartingPreview } from "../../../../src/components/attempt-starting-preview";
+import { AttemptResultDetails } from "../../../../src/components/attempt-result-details";
 import { useTransitionOverride } from "../../../../src/navigation/screen-transition";
 
 export default function CourseItemScreen() {
@@ -468,19 +469,16 @@ function CourseItemContent({
               canReattempt={assessmentEntry.canReattempt}
               gatesProgress={!assessment.event}
               sections={assessment.sections}
-              onOpenAttempt={() => {
-                if (!latestAttempt) return;
-                router.push({
-                  pathname:
-                    "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                  params: {
-                    courseId,
-                    courseItemId,
-                    attemptId: latestAttempt.id,
-                  },
-                });
-              }}
             />
+            {/* The finished attempt in full: where the learner lands after
+                finishing, so the attempt has no result screen of its own. */}
+            {latestAttempt && latestAttempt.status !== "IN_PROGRESS" ? (
+              <AttemptResultDetails
+                key={latestAttempt.id}
+                attemptId={latestAttempt.id}
+                courseItemId={courseItemId}
+              />
+            ) : null}
             {!assessment.event ? (
               <CourseLearningFooter
                 key={courseItemId}
