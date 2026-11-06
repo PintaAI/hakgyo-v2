@@ -23,8 +23,6 @@ export type QuizPagerHandle = { scrollTo: (index: number) => void };
 
 /** Space between two question pages. */
 const PAGE_GAP = 12;
-/** The screen gutter the pager reaches out over, to run edge to edge. */
-const PAGE_BLEED = 20;
 
 /** More pages than this show no dots: the question header's count and progress say it. */
 const MAX_DOTS = 10;
@@ -148,11 +146,10 @@ export function QuizPager({
         </View>
       ) : null}
       {pageWidth > 0 ? (
-        // Edge to edge: a page slides in from the screen's edge rather than
-        // being cut off at the gutter, and nothing clips its content.
-        <Animated.View style={[{ marginHorizontal: -PAGE_BLEED }, heightStyle]}>
+        // Clipped at the gutter: only the page in view shows, without the
+        // edge of the next one peeking in.
+        <Animated.View style={[{ overflow: "hidden" }, heightStyle]}>
           <Animated.FlatList
-            style={{ overflow: "visible" }}
             ref={list}
             data={pages}
             // Answers live in the parent: re-render the pages when it does.
@@ -163,11 +160,8 @@ export function QuizPager({
             snapToInterval={interval}
             snapToAlignment="start"
             showsHorizontalScrollIndicator={false}
-            // Pages keep their own height; the gutter pads the first and last.
-            contentContainerStyle={{
-              alignItems: "flex-start",
-              paddingHorizontal: PAGE_BLEED,
-            }}
+            // Pages keep their own height.
+            contentContainerStyle={{ alignItems: "flex-start" }}
             getItemLayout={(_, index) => ({
               index,
               length: interval,
