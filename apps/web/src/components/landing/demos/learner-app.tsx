@@ -12,7 +12,7 @@ import { useTimeline } from "../motion";
 const screens = [
   {
     name: "today",
-    alt: "Tab Hari Ini di aplikasi Hakgyo: streak mingguan, XP, kartu kosakata bergambar, dan Tantangan Soal hari ini.",
+    alt: "Tab Hari Ini di aplikasi Hakgyo: streak mingguan, XP, kartu kosakata bergambar, dan soal harian.",
   },
   {
     name: "learn",

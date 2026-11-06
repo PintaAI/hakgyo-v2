@@ -96,7 +96,7 @@ export function TodayAssessmentPractice({
   }
 
   const openQuestions = useQuestionNavigator({
-    title: "Tantangan Soal hari ini",
+    title: "Soal harian",
     current: index,
     statuses,
     onSelect: (next) => {
@@ -194,7 +194,7 @@ export function TodayAssessmentPractice({
       ) : question ? (
         <>
           <Text className="text-center text-lg font-bold tracking-tight text-foreground">
-            Tantangan Soal hari ini
+            Soal harian
           </Text>
           <QuizPager
             ref={pager}

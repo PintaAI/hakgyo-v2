@@ -15,14 +15,14 @@ Gunakan akun yang sama dengan di situs web supaya kelasmu muncul.
 
 | Tab | Isinya |
 |---|---|
-| **Hari Ini** | Streak, kosakata hari ini, dan tantangan soal |
+| **Hari Ini** | Streak, kosakata hari ini, dan soal harian |
 | **Belajar** | Kelas, materi, dan pembaruan terbaru |
 | **Latihan** | Kartu kosakata, permainan Hangeul, serta latihan dan tryout |
 | **Cari** | Pencarian materi, kosakata, dan soal dari semua kurikulummu |
 
 **Profil** berisi XP, pencapaian, pengaturan, dan bantuan. Bukalah dari tombol menu di kiri atas, dari namamu di tab **Hari Ini**, atau dari tombol pengaturan di kanan atas.
 
-Di tab **Hari Ini**, tantangan soal berisi lima soal acak dari kurikulummu. Geser ke kiri atau kanan untuk pindah soal. Jawabanmu dinilai, tapi nilai, percobaan, dan XP tidak berubah.
+Di tab **Hari Ini**, **Soal harian** berisi lima soal acak dari kurikulummu. Geser ke kiri atau kanan untuk pindah soal. Jawabanmu dinilai, tapi nilai, percobaan, dan XP tidak berubah.
 
 Jika kamu ikut lebih dari satu kelas, geser kartu kelas di tab **Belajar** ke kiri atau kanan. Titik-titik di atas menu bawah menunjukkan kelas yang sedang tampil.
 

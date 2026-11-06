@@ -81,7 +81,7 @@ export const tours: Record<TourId, Tour> = {
       },
       {
         target: "home.challenge",
-        title: "Tantangan soal",
+        title: "Soal harian",
         body: "Lima soal acak dari kurikulummu. Geser ke samping untuk pindah soal. Nilai dan XP kamu tidak berubah.",
       },
       {
