@@ -19,7 +19,7 @@ import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
 import { openCourseItem } from "../lib/navigation";
 import { useAppTheme } from "../providers/AppThemeProvider";
-import { withOpacity } from "../theme/colors";
+import { questionTone, questionToneColor } from "../lib/question-colors";
 import { SymbolIcon } from "./ui/symbol-icon";
 
 type PracticeQuestion =
@@ -29,10 +29,6 @@ type AssessmentPool = RouterOutputs["practice"]["getAssessmentSample"];
 function randomSeed() {
   return Date.now() + ":" + Math.random();
 }
-
-/** Dot colours of the daily questions: answered, opened but not answered, not opened yet. */
-const DONE_COLOR = "#22c55e";
-const SEEN_COLOR = "#f59e0b";
 
 /**
  * Home's daily question challenge: a small random set of published questions
@@ -117,6 +113,7 @@ export function TodayAssessmentPractice({
     title: "Soal harian",
     current: index,
     statuses,
+    seen: questions.map((_, questionIndex) => seen.has(questionIndex)),
     onSelect: (next) => {
       if (inFlight.current) return false;
       goTo(next);
@@ -230,12 +227,11 @@ export function TodayAssessmentPractice({
             <PageDots
               count={questions.length}
               position={pagePosition}
-              colors={questions.map((_, questionIndex) =>
-                results[questionIndex]
-                  ? DONE_COLOR
-                  : seen.has(questionIndex)
-                    ? SEEN_COLOR
-                    : withOpacity(colors.mutedForeground, 0.35),
+              colors={statuses.map((status, questionIndex) =>
+                questionToneColor(
+                  questionTone(status, seen.has(questionIndex)),
+                  colors,
+                ),
               )}
             />
           </Pressable>

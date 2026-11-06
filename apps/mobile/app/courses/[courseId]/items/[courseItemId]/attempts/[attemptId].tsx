@@ -219,6 +219,10 @@ function AssessmentAttemptContent({
   // the server counted: the furthest position reached per section and plays per question.
   const [reached, setReached] = useState<Record<string, number>>({});
   const [localPlays, setLocalPlays] = useState<Record<string, number>>({});
+  // Questions opened in this attempt, for the question list's colours.
+  const [seenQuestionIds, setSeenQuestionIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   // Paced sections: when the question on screen showed and when its audio finished.
   const [pacedClock, setPacedClock] = useState<{
     questionId: string;
@@ -318,6 +322,16 @@ function AssessmentAttemptContent({
       );
       setReached(Object.fromEntries(rules.furthest));
       setLocalPlays(Object.fromEntries(rules.plays));
+      // Questions opened before a restart are in the log.
+      setSeenQuestionIds(
+        new Set(
+          log.entries.flatMap((entry) =>
+            entry.kind === "QUESTION_SHOWN" && entry.questionId
+              ? [entry.questionId]
+              : [],
+          ),
+        ),
+      );
       setLogReady(true);
     }
     setAnswers(saved);
@@ -574,6 +588,9 @@ function AssessmentAttemptContent({
     title: activeSection?.title ?? assessment.data?.title ?? "Tugas",
     current: Math.max(0, positionInSection),
     statuses: sectionStatuses,
+    seen: sectionIndexes.map((index) =>
+      seenQuestionIds.has(assessment.data?.questions[index]?.id ?? ""),
+    ),
     onSelect: async (position) => {
       const index = sectionIndexes[position];
       // Paced sections move by themselves; forward-only ones only ahead.
@@ -723,6 +740,14 @@ function AssessmentAttemptContent({
   // Which question is on screen, for time per question in the staff analysis. It is sent with the
   // next progress or completion operation.
   const shownQuestionId = question?.id;
+  useEffect(() => {
+    if (!shownQuestionId) return;
+    setSeenQuestionIds((current) =>
+      current.has(shownQuestionId)
+        ? current
+        : new Set(current).add(shownQuestionId),
+    );
+  }, [shownQuestionId]);
   useEffect(() => {
     const log = attemptLog.current;
     if (!shownQuestionId || !log || !session || expired || result) return;

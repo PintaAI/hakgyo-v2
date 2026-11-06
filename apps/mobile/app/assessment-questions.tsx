@@ -9,6 +9,11 @@ import {
 import { useQuestionNavigatorSession } from "../src/providers/QuestionNavigatorProvider";
 import { SymbolIcon } from "../src/components/ui/symbol-icon";
 import { useAppTheme } from "../src/providers/AppThemeProvider";
+import {
+  questionTone,
+  questionToneColor,
+  type QuestionTone,
+} from "../src/lib/question-colors";
 
 const labels: Record<QuestionStatus, string> = {
   unanswered: "Belum dijawab",
@@ -20,30 +25,22 @@ const labels: Record<QuestionStatus, string> = {
 /** Number tiles per row, like an exam answer sheet. */
 const COLUMNS = 5;
 
-/** A tile's colours by status; the current question also gets a ring. */
-const tileStyles: Record<QuestionStatus, { box: string; text: string }> = {
-  unanswered: { box: "border-border bg-card", text: "text-foreground" },
-  answered: {
-    box: "border-primary bg-primary",
-    text: "text-primary-foreground",
-  },
-  correct: {
-    box: "border-primary bg-primary",
-    text: "text-primary-foreground",
-  },
-  incorrect: {
-    box: "border-destructive bg-destructive",
-    text: "text-destructive-foreground",
-  },
+const toneLabels: Record<QuestionTone, string> = {
+  done: "Sudah dijawab",
+  wrong: "Salah",
+  seen: "Dibuka, belum dijawab",
+  unseen: "Belum dibuka",
 };
 
-function LegendDot({ status }: { status: QuestionStatus }) {
+function LegendDot({ tone, label }: { tone: QuestionTone; label: string }) {
+  const { colors } = useAppTheme();
   return (
     <View className="flex-row items-center gap-1.5">
       <View
-        className={`size-3 rounded-[4px] border ${tileStyles[status].box}`}
+        className="size-3 rounded-[4px]"
+        style={{ backgroundColor: questionToneColor(tone, colors) }}
       />
-      <Text className="text-xs text-muted-foreground">{labels[status]}</Text>
+      <Text className="text-xs text-muted-foreground">{label}</Text>
     </View>
   );
 }
@@ -92,9 +89,12 @@ export default function AssessmentQuestionsScreen() {
   const graded = session?.statuses.some(
     (status) => status === "correct" || status === "incorrect",
   );
-  const legend: QuestionStatus[] = graded
-    ? ["correct", "incorrect", "unanswered"]
-    : ["answered", "unanswered"];
+  // The same colours as the daily question dots.
+  const legend: QuestionTone[] = graded
+    ? ["done", "wrong", "unseen"]
+    : session?.seen
+      ? ["done", "seen", "unseen"]
+      : ["done", "unseen"];
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -133,14 +133,26 @@ export default function AssessmentQuestionsScreen() {
       {session ? (
         <>
           <View className="flex-row flex-wrap gap-x-4 gap-y-2">
-            {legend.map((status) => (
-              <LegendDot key={status} status={status} />
+            {legend.map((tone) => (
+              <LegendDot
+                key={tone}
+                tone={tone}
+                // In a review green means right and grey not answered.
+                label={
+                  graded && tone === "done"
+                    ? "Benar"
+                    : graded && tone === "unseen"
+                      ? "Tidak dijawab"
+                      : toneLabels[tone]
+                }
+              />
             ))}
           </View>
           <View className="-m-1 flex-row flex-wrap">
             {session.statuses.map((status, index) => {
               const current = index === session.current;
-              const style = tileStyles[status];
+              const tone = questionTone(status, session.seen?.[index] ?? false);
+              const filled = tone !== "unseen";
               return (
                 <View
                   key={index}
@@ -153,21 +165,24 @@ export default function AssessmentQuestionsScreen() {
                     accessibilityState={{ selected: current, disabled: busy }}
                     disabled={busy}
                     onPress={() => void select(index)}
-                    className={`aspect-square items-center justify-center rounded-2xl border active:opacity-70 ${style.box}`}
-                    style={
-                      current
+                    className={`aspect-square items-center justify-center rounded-2xl border active:opacity-70 ${filled ? "border-transparent" : "border-border bg-card"}`}
+                    style={{
+                      ...(filled
+                        ? { backgroundColor: questionToneColor(tone, colors) }
+                        : null),
+                      ...(current
                         ? {
                             // A ring outside the tile marks where you are.
-                            outlineColor: colors.primary,
+                            outlineColor: colors.foreground,
                             outlineWidth: 2,
                             outlineOffset: 2,
-                            outlineStyle: "solid",
+                            outlineStyle: "solid" as const,
                           }
-                        : undefined
-                    }
+                        : null),
+                    }}
                   >
                     <Text
-                      className={`text-lg font-black tabular-nums ${style.text}`}
+                      className={`text-lg font-black tabular-nums ${filled ? "text-white" : "text-foreground"}`}
                     >
                       {index + 1}
                     </Text>

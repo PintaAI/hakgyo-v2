@@ -15,6 +15,12 @@ export type QuestionNavigatorSession = {
   title: string;
   current: number;
   statuses: QuestionStatus[];
+  /**
+   * Which questions the learner has opened, for telling an opened but
+   * unanswered question from one not seen yet. Left out where it does not
+   * matter (the result review).
+   */
+  seen?: readonly boolean[];
   onSelect: (index: number) => Promise<boolean> | boolean;
 };
 type Session = QuestionNavigatorSession & { owner: string };
