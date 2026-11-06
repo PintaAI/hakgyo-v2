@@ -12,8 +12,8 @@ const PAGE_BLEED = 20;
  * on the right holds the arrow that says another question follows.
  */
 const PAGE_GAP = PAGE_BLEED * 2;
-/** Where the arrow sits, level with the question number. */
-const ARROW_TOP = 2;
+/** Where the arrow sits: level with the middle of the question's number circle. */
+const ARROW_TOP = 11;
 
 /**
  * Questions one at a time (Home's daily questions, the attempt, the result

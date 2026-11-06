@@ -119,9 +119,20 @@ export function QuizQuestion({
     <View className="gap-4">
       {/* Where the learner is, once. Moving and the answered count live in
           the screen's navigation (QuizNav, or the attempt's toolbar). */}
-      <Text className="text-sm font-bold text-muted-foreground">
-        Soal {index + 1} dari {total}
-      </Text>
+      <View
+        accessible
+        accessibilityLabel={`Soal ${index + 1} dari ${total}`}
+        className="flex-row items-center gap-2"
+      >
+        <View className="size-9 items-center justify-center rounded-full bg-primary/15">
+          <Text className="text-base font-black tabular-nums text-primary">
+            {index + 1}
+          </Text>
+        </View>
+        <Text className="text-sm font-semibold tabular-nums text-muted-foreground">
+          / {total}
+        </Text>
+      </View>
 
       {detail ? <Eyebrow size="xs">{detail}</Eyebrow> : null}
       {group ? (
