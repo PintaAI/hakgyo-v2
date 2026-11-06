@@ -23,7 +23,7 @@ Klik **Mulai tugas**. Tombolnya menjadi **Lanjutkan tugas** jika kamu sudah mula
    - **Pilih satu jawaban**.
    - **Pilih semua jawaban yang benar**: pilih semua yang benar dan jangan pilih yang salah. Jika salah satu keliru, soal itu dianggap salah.
    - **Tulis jawaban kamu**.
-3. Pindah soal dengan **Sebelumnya** dan **Berikutnya**, atau ketuk nomor soal untuk melihat daftar semua soal. Di aplikasi ponsel, tombolnya ada di bar bawah: panah kiri dan kanan untuk pindah soal, dan **Daftar soal** di tengah untuk membuka semua nomor soal. Warnanya: hijau sudah dijawab, kuning sudah dibuka tapi belum dijawab, dan abu-abu belum dibuka. Soal yang sedang kamu buka diberi lingkaran. Kamu juga bisa menggeser soal ke kiri atau kanan. Saat pertama kali mengerjakan tugas tanpa batas waktu di aplikasi, tur singkat menunjukkan semua ini.
+3. Pindah soal dengan **Sebelumnya** dan **Berikutnya**, atau ketuk nomor soal untuk melihat daftar semua soal. Di aplikasi ponsel, tombolnya ada di bar bawah: panah kiri dan kanan untuk pindah soal, dan **Daftar soal** di tengah untuk membuka semua nomor soal. Warnanya: hijau sudah dijawab, kuning sudah dibuka tapi belum dijawab, dan abu-abu belum dibuka. Soal yang sedang kamu buka diberi lingkaran. Warna yang sama tampil sebagai titik di atas soal (garis bersegmen jika soalnya lebih dari 20). Ketuk titik itu untuk membuka daftar soal juga. Kamu juga bisa menggeser soal ke kiri atau kanan. Saat pertama kali mengerjakan tugas tanpa batas waktu di aplikasi, tur singkat menunjukkan semua ini.
 4. Di situs web, jawabanmu tersimpan otomatis. Lihat tulisan **Jawaban tersimpan**.
 
 ## Tugas dengan bagian

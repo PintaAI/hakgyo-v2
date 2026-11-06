@@ -35,6 +35,8 @@ import {
   type QuizPagerHandle,
 } from "../../../../../../src/components/quiz/quiz-pager";
 import { QuizQuestion } from "../../../../../../src/components/quiz/quiz-question";
+import { QuizStatusDots } from "../../../../../../src/components/quiz/quiz-status-dots";
+import { useSharedValue } from "react-native-reanimated";
 import {
   Action,
   Card,
@@ -798,6 +800,8 @@ function AssessmentAttemptContent({
   // The pager follows moves made with the buttons, the list or the paced
   // clock; a swipe that did not stand (a failed save) is undone here too.
   const pager = useRef<QuizPagerHandle>(null);
+  /** The pager's offset in questions, for the status dots. */
+  const pagePosition = useSharedValue(0);
   useEffect(() => {
     if (positionInSection >= 0) pager.current?.scrollTo(positionInSection);
   }, [positionInSection]);
@@ -1229,11 +1233,24 @@ function AssessmentAttemptContent({
               onRetry={media.retry}
             />
           ) : null}
+          <QuizStatusDots
+            // A new section starts a new row, like its pages.
+            key={activeSection?.id ?? "questions"}
+            statuses={sectionStatuses}
+            seen={sectionIndexes.map((index) =>
+              seenQuestionIds.has(assessment.data?.questions[index]?.id ?? ""),
+            )}
+            current={Math.max(0, positionInSection)}
+            position={pagePosition}
+            onOpenList={openQuestions}
+            disabled={busy}
+          />
           <TourTarget id="attempt.question">
             <QuizPager
               // A new section is a new set of pages.
               key={activeSection?.id ?? "questions"}
               ref={pager}
+              position={pagePosition}
               count={sectionIndexes.length}
               initialIndex={Math.max(0, positionInSection)}
               // Forward-only and paced sections move only with their own rules.

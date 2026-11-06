@@ -16,6 +16,8 @@ import { Card, Eyebrow } from "./learning-ui";
 import { QuizNav } from "./quiz/quiz-nav";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
+import { QuizStatusDots } from "./quiz/quiz-status-dots";
+import { useSharedValue } from "react-native-reanimated";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
 type Attempt = RouterOutputs["assessment"]["getMyAttempt"];
@@ -33,6 +35,8 @@ export function AssessmentResultReview({
 }) {
   const [index, setIndex] = useState(0);
   const pager = useRef<QuizPagerHandle>(null);
+  /** The pager's offset in questions, for the status dots. */
+  const pagePosition = useSharedValue(0);
   /** A swipe already moved the pager; buttons and the list move it here. */
   function goToQuestion(next: number, swiped = false) {
     setIndex(next);
@@ -186,8 +190,15 @@ export function AssessmentResultReview({
       <Text className="text-xl font-black text-foreground">
         Review jawaban kamu
       </Text>
+      <QuizStatusDots
+        statuses={statuses}
+        current={index}
+        position={pagePosition}
+        onOpenList={openQuestions}
+      />
       <QuizPager
         ref={pager}
+        position={pagePosition}
         count={assessment.questions.length}
         initialIndex={index}
         onIndexChange={(next) => goToQuestion(next, true)}

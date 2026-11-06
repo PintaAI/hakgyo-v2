@@ -12,14 +12,14 @@ import {
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
-import { Action, Card, Empty, PageDots } from "./learning-ui";
+import { Action, Card, Empty } from "./learning-ui";
 import { AssessmentFeedback } from "./assessment-ui";
 import { QuizNav } from "./quiz/quiz-nav";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
+import { QuizStatusDots } from "./quiz/quiz-status-dots";
 import { openCourseItem } from "../lib/navigation";
 import { useAppTheme } from "../providers/AppThemeProvider";
-import { questionTone, questionToneColor } from "../lib/question-colors";
 import { SymbolIcon } from "./ui/symbol-icon";
 
 type PracticeQuestion =
@@ -43,7 +43,6 @@ export function TodayAssessmentPractice({
   organizationId: string;
   pool: AssessmentPool;
 }) {
-  const { colors } = useAppTheme();
   const [seed, setSeed] = useState(randomSeed);
   const grade = api.practice.gradeAssessmentAnswer.useMutation();
   const resolveAssetUrl = useApiAssetResolver();
@@ -211,30 +210,14 @@ export function TodayAssessmentPractice({
           <Text className="text-center text-lg font-bold tracking-tight text-foreground">
             Soal harian
           </Text>
-          {/* Five questions fit as dots, which also say they can be swiped;
-              a tap opens the question list. Longer sets (the attempt) rely
-              on the question number. */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Daftar soal, ${answered} dari ${questions.length} dijawab`}
-            accessibilityHint="Buka daftar untuk pindah ke soal mana pun"
-            accessibilityState={{ disabled: pendingIndex !== null }}
+          <QuizStatusDots
+            statuses={statuses}
+            seen={questions.map((_, questionIndex) => seen.has(questionIndex))}
+            current={index}
+            position={pagePosition}
+            onOpenList={openQuestions}
             disabled={pendingIndex !== null}
-            hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
-            onPress={openQuestions}
-            className="items-center self-center active:opacity-60"
-          >
-            <PageDots
-              count={questions.length}
-              position={pagePosition}
-              colors={statuses.map((status, questionIndex) =>
-                questionToneColor(
-                  questionTone(status, seen.has(questionIndex)),
-                  colors,
-                ),
-              )}
-            />
-          </Pressable>
+          />
           <QuizPager
             ref={pager}
             count={questions.length}
