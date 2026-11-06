@@ -166,9 +166,7 @@ export default function AssessmentEventScreen() {
         >
           <AttemptStartingPreview
             assessment={bundled.data}
-            shuffleQuestions={
-              event.shuffleQuestions ?? bundled.data?.shuffleQuestions ?? true
-            }
+            shuffleQuestions={bundled.data?.shuffleQuestions ?? true}
           />
         </StudyScreen>
       ) : (

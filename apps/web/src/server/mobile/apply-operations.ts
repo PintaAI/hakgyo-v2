@@ -592,15 +592,11 @@ export async function startEventAssessmentForLearner(
   const started = await assessmentEvent.startAttempt({
     eventId: input.eventId,
   });
-  // Both read the attempt just created, so they run together: the learner
-  // waits on this request after tapping Mulai.
-  const [attempt, assessmentDetail] = await Promise.all([
-    assessment.getMyAttempt({ attemptId: started.id }),
-    assessment.getForCourseItem({
-      courseItemId: started.courseItemId,
-      attemptId: started.id,
-    }),
-  ]);
+  const attempt = await assessment.getMyAttempt({ attemptId: started.id });
+  const assessmentDetail = await assessment.getForCourseItem({
+    courseItemId: attempt.courseItemId,
+    attemptId: attempt.id,
+  });
   return { attempt, assessmentDetail, serverNow: new Date() };
 }
 

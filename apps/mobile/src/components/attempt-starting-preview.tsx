@@ -33,10 +33,11 @@ function StartingStatus() {
  * The attempt's first screen, drawn from the course bundle on the device while
  * the server registers the start, so "Mulai" opens the assessment at once.
  * It matches what the attempt shows first: the first section's intro, or the
- * first question when the order is known before the server picks it (no
- * shuffle). Shuffled questions show an empty question card instead, and
- * shuffled options are left out. Nothing can be answered until the attempt
- * exists.
+ * first question when the assessment does not shuffle (the app does not get
+ * an event's own shuffle setting, so an event set to "Acak" can swap that
+ * question once the attempt opens). Shuffled questions show an empty question
+ * card instead, and shuffled options are left out. Nothing can be answered
+ * until the attempt exists.
  */
 export function AttemptStartingPreview({
   assessment,
