@@ -379,6 +379,21 @@ export default function ProfileScreen() {
                 symbol="person.crop.circle"
                 onPress={() => router.push("/profile/account")}
               />
+              {/* Its screen shows each course and has "Sinkronkan sekarang". */}
+              <SettingsRow
+                label="Sinkronisasi"
+                detail={
+                  isSyncing
+                    ? "Menyinkronkan…"
+                    : pendingCount
+                      ? `${pendingCount} perubahan menunggu sinkronisasi`
+                      : deadLetterCount
+                        ? `${deadLetterCount} perubahan gagal disinkronkan`
+                        : "Sudah terbaru"
+                }
+                symbol="arrow.triangle.2.circlepath"
+                onPress={openSyncStatus}
+              />
               <SettingsRow
                 label="Keluar"
                 symbol="arrow.right"
@@ -444,21 +459,6 @@ export default function ProfileScreen() {
                   onPress={() => void handleCheckForUpdates()}
                 />
               ) : null}
-              {/* Its screen shows each course and has "Sinkronkan sekarang". */}
-              <SettingsRow
-                label="Sinkronisasi"
-                detail={
-                  isSyncing
-                    ? "Menyinkronkan…"
-                    : pendingCount
-                      ? `${pendingCount} perubahan menunggu sinkronisasi`
-                      : deadLetterCount
-                        ? `${deadLetterCount} perubahan gagal disinkronkan`
-                        : "Sudah terbaru"
-                }
-                symbol="arrow.triangle.2.circlepath"
-                onPress={openSyncStatus}
-              />
               <SettingsRow
                 label="Periksa pembaruan"
                 detail={
