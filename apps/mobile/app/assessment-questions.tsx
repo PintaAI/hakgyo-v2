@@ -14,6 +14,7 @@ import {
   questionToneColor,
   type QuestionTone,
 } from "../src/lib/question-colors";
+import { withOpacity } from "../src/theme/colors";
 
 const labels: Record<QuestionStatus, string> = {
   unanswered: "Belum dijawab",
@@ -37,8 +38,18 @@ function LegendDot({ tone, label }: { tone: QuestionTone; label: string }) {
   return (
     <View className="flex-row items-center gap-1.5">
       <View
-        className="size-3 rounded-[4px]"
-        style={{ backgroundColor: questionToneColor(tone, colors) }}
+        className={`size-3 rounded-[4px] border ${tone === "unseen" ? "border-border bg-card" : ""}`}
+        style={
+          tone === "unseen"
+            ? undefined
+            : {
+                backgroundColor: withOpacity(
+                  questionToneColor(tone, colors),
+                  0.14,
+                ),
+                borderColor: withOpacity(questionToneColor(tone, colors), 0.45),
+              }
+        }
       />
       <Text className="text-xs text-muted-foreground">{label}</Text>
     </View>
@@ -152,7 +163,10 @@ export default function AssessmentQuestionsScreen() {
             {session.statuses.map((status, index) => {
               const current = index === session.current;
               const tone = questionTone(status, session.seen?.[index] ?? false);
-              const filled = tone !== "unseen";
+              // A soft wash of the status colour, its number in that colour:
+              // the colours read without shouting.
+              const tint =
+                tone === "unseen" ? null : questionToneColor(tone, colors);
               return (
                 <View
                   key={index}
@@ -165,10 +179,13 @@ export default function AssessmentQuestionsScreen() {
                     accessibilityState={{ selected: current, disabled: busy }}
                     disabled={busy}
                     onPress={() => void select(index)}
-                    className={`aspect-square items-center justify-center rounded-2xl border active:opacity-70 ${filled ? "border-transparent" : "border-border bg-card"}`}
+                    className={`aspect-square items-center justify-center rounded-2xl border active:opacity-70 ${tint ? "" : "border-border bg-card"}`}
                     style={{
-                      ...(filled
-                        ? { backgroundColor: questionToneColor(tone, colors) }
+                      ...(tint
+                        ? {
+                            backgroundColor: withOpacity(tint, 0.14),
+                            borderColor: withOpacity(tint, 0.45),
+                          }
                         : null),
                       ...(current
                         ? {
@@ -182,7 +199,8 @@ export default function AssessmentQuestionsScreen() {
                     }}
                   >
                     <Text
-                      className={`text-lg font-black tabular-nums ${filled ? "text-white" : "text-foreground"}`}
+                      className={`text-lg font-black tabular-nums ${tint ? "" : "text-foreground"}`}
+                      style={tint ? { color: tint } : undefined}
                     >
                       {index + 1}
                     </Text>
