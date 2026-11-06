@@ -13,6 +13,7 @@ import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
 import { Action, Card, Empty } from "./learning-ui";
 import { AssessmentFeedback } from "./assessment-ui";
+import { QuizNav } from "./quiz/quiz-nav";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
 import { openCourseItem } from "../lib/navigation";
@@ -217,7 +218,6 @@ export function TodayAssessmentPractice({
                   failure={failures[questionIndex]}
                   allAnswered={answered === questions.length}
                   resolveAssetUrl={resolveAssetUrl}
-                  onOpen={openQuestions}
                   onChoose={(optionId) => chooseOption(questionIndex, optionId)}
                   onCheck={() =>
                     void checkAnswer(
@@ -229,6 +229,16 @@ export function TodayAssessmentPractice({
                 />
               );
             }}
+          />
+          <QuizNav
+            answered={answered}
+            total={questions.length}
+            onPrevious={index > 0 ? () => goTo(index - 1) : undefined}
+            onNext={
+              index < questions.length - 1 ? () => goTo(index + 1) : undefined
+            }
+            onOpenList={openQuestions}
+            disabled={pendingIndex !== null}
           />
         </>
       ) : null}
@@ -247,7 +257,6 @@ function QuestionPage({
   failure,
   allAnswered,
   resolveAssetUrl,
-  onOpen,
   onChoose,
   onCheck,
   onNext,
@@ -264,7 +273,6 @@ function QuestionPage({
   failure: unknown;
   allAnswered: boolean;
   resolveAssetUrl: ReturnType<typeof useApiAssetResolver>;
-  onOpen: () => void;
   onChoose: (optionId: string) => void;
   onCheck: () => void;
   onNext: () => void;
@@ -276,7 +284,6 @@ function QuestionPage({
       question={question}
       index={index}
       total={total}
-      onOpenList={onOpen}
       selectedOptionIds={selected}
       correctOptionIds={result?.correctOptionIds}
       onChooseOption={onChoose}

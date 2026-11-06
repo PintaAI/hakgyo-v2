@@ -12,7 +12,8 @@ import {
   type QuestionStatus,
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
-import { Action, Card, Eyebrow } from "./learning-ui";
+import { Card, Eyebrow } from "./learning-ui";
+import { QuizNav } from "./quiz/quiz-nav";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
 
@@ -124,7 +125,6 @@ export function AssessmentResultReview({
         question={question}
         index={position}
         total={assessment.questions.length}
-        onOpenList={openQuestions}
         detail={
           question.type === "WRITTEN"
             ? writtenScoreValue !== null
@@ -193,26 +193,17 @@ export function AssessmentResultReview({
         onIndexChange={(next) => goToQuestion(next, true)}
         renderPage={renderPage}
       />
-      <View className="flex-row gap-3">
-        <View className="flex-1">
-          <Action
-            variant="secondary"
-            disabled={index === 0}
-            onPress={() => goToQuestion(index - 1)}
-          >
-            Sebelumnya
-          </Action>
-        </View>
-        <View className="flex-1">
-          <Action
-            disabled={index === assessment.questions.length - 1}
-            onPress={() => goToQuestion(index + 1)}
-            trailingIcon="arrow.right"
-          >
-            Berikutnya
-          </Action>
-        </View>
-      </View>
+      <QuizNav
+        answered={statuses.filter((status) => status !== "unanswered").length}
+        total={assessment.questions.length}
+        onPrevious={index > 0 ? () => goToQuestion(index - 1) : undefined}
+        onNext={
+          index < assessment.questions.length - 1
+            ? () => goToQuestion(index + 1)
+            : undefined
+        }
+        onOpenList={openQuestions}
+      />
     </View>
   );
 }

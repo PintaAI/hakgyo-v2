@@ -1,8 +1,7 @@
 import { usesPictureGrid } from "@hakgyo/shared";
 import type { ComponentProps, ReactNode } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
 
-import { useAppTheme } from "../../providers/AppThemeProvider";
 import { AssessmentOption, AssessmentOptions } from "../assessment-ui";
 import {
   type AssetUrlResolver,
@@ -11,7 +10,6 @@ import {
 import { Card, Eyebrow } from "../learning-ui";
 import { QuestionGroupHeader } from "../question-group-header";
 import { Skeleton } from "../ui/skeleton";
-import { SymbolIcon } from "../ui/symbol-icon";
 
 type Content = ComponentProps<typeof NativeContentRenderer>["content"];
 
@@ -73,7 +71,6 @@ export function QuizQuestion({
   question,
   index,
   total,
-  onOpenList,
   detail,
   group,
   selectedOptionIds = [],
@@ -93,11 +90,6 @@ export function QuizQuestion({
   /** Zero-based position of the question among `total`. */
   index: number;
   total: number;
-  /**
-   * Opens the question list from a button next to the count. Screens with
-   * their own list control (the attempt's toolbar) leave it out.
-   */
-  onOpenList?: () => void;
   /** A short label above the question, such as "Benar" in the review. */
   detail?: string;
   group?: QuizQuestionGroup | null;
@@ -118,7 +110,6 @@ export function QuizQuestion({
   resolveAssetUrl: AssetUrlResolver;
   children?: ReactNode;
 }) {
-  const { colors } = useAppTheme();
   const renderers = hideInlineAudio ? hiddenAudioRenderers : undefined;
   const answersBlocked = disabled || answersDisabled;
   const grid = !hidden && usesPictureGrid(question.options);
@@ -126,32 +117,11 @@ export function QuizQuestion({
 
   return (
     <View className="gap-4">
-      {/* Where the learner is, once: how much is answered lives with the
-          question list, not here. */}
-      <View className="min-h-9 flex-row items-center gap-3">
-        <Text className="min-w-0 flex-1 text-sm font-bold text-muted-foreground">
-          Soal {index + 1} dari {total}
-        </Text>
-        {onOpenList ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Daftar soal"
-            accessibilityHint="Buka daftar untuk pindah ke soal mana pun."
-            accessibilityState={{ disabled }}
-            disabled={disabled}
-            hitSlop={8}
-            onPress={onOpenList}
-            className="size-9 items-center justify-center rounded-full bg-muted active:opacity-70"
-          >
-            <SymbolIcon
-              name="square.grid.2x2"
-              size={16}
-              weight="semibold"
-              tintColor={colors.foreground}
-            />
-          </Pressable>
-        ) : null}
-      </View>
+      {/* Where the learner is, once. Moving and the answered count live in
+          the screen's navigation (QuizNav, or the attempt's toolbar). */}
+      <Text className="text-sm font-bold text-muted-foreground">
+        Soal {index + 1} dari {total}
+      </Text>
 
       {detail ? <Eyebrow size="xs">{detail}</Eyebrow> : null}
       {group ? (
